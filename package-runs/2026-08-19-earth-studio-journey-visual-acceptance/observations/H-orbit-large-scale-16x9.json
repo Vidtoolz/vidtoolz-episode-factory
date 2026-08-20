@@ -1,0 +1,106 @@
+{
+  "id": "H-orbit-large-scale-16x9",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/H-orbit-large-scale-16x9/earth-studio/earth-studio.esp",
+  "esp_sha256": "f6eaf78762e6c34a15b0cb73be29b5ec1f6711436d0bf2be43ad65542bc4e2db",
+  "expected": {
+    "total_frames": 540,
+    "duration_seconds": 18,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 540,
+    "totalFrames": 540,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "orbit",
+      "place": "Finland",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/H-orbit-large-scale-16x9/H-orbit-large-scale-16x9_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 64.5,
+        "longitude": 26,
+        "altitude": 3686297.205255828,
+        "pan_deg": 180,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Finland",
+        "altitude_m": 3686333,
+        "tilt_deg": 0,
+        "target_lat": 64.5,
+        "target_lng": 26
+      }
+    },
+    {
+      "frame": 270,
+      "label": "seg1-mid",
+      "movement": "orbit",
+      "place": "Finland",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/H-orbit-large-scale-16x9/H-orbit-large-scale-16x9_f00270_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 270,
+        "latitude": 64.5,
+        "longitude": 26,
+        "altitude": 3686297.205255828,
+        "pan_deg": 389.5237084657889,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Finland",
+        "altitude_m": 3686333,
+        "tilt_deg": 0,
+        "target_lat": 64.5,
+        "target_lng": 26
+      }
+    },
+    {
+      "frame": 539,
+      "label": "seg1-end",
+      "movement": "orbit",
+      "place": "Finland",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/H-orbit-large-scale-16x9/H-orbit-large-scale-16x9_f00539_seg1-end.png",
+      "earth_studio_camera": {
+        "frame": 539,
+        "latitude": 64.5,
+        "longitude": 26,
+        "altitude": 3686297.205255828,
+        "pan_deg": 539.9974296378995,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Finland",
+        "altitude_m": 3686333,
+        "tilt_deg": 0,
+        "target_lat": 64.5,
+        "target_lng": 26
+      }
+    }
+  ],
+  "errors": []
+}

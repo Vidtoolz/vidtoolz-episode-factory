@@ -1,0 +1,197 @@
+{
+  "canary": "DIRECTOR-GLOBAL-network",
+  "title": "DIRECTOR-GLOBAL — a shipping network across three continents",
+  "question": "Is the whole planet used only when the story is genuinely global?",
+  "expect": "A globe shot, justified by GLOBAL_NETWORK. Route points get no flourish.",
+  "intent": {
+    "stops": [
+      {
+        "location": "Shanghai",
+        "role": "ROUTE_POINT"
+      },
+      {
+        "location": "Amsterdam",
+        "role": "ROUTE_POINT"
+      },
+      {
+        "location": "Los Angeles",
+        "role": "DESTINATION"
+      }
+    ],
+    "globe_justification": "GLOBAL_NETWORK"
+  },
+  "globe": {
+    "allowed": true,
+    "justification": "GLOBAL_NETWORK",
+    "reason": "Global scale is narratively justified: a network spanning the planet is the subject."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 2 (from 3 stops; 0 hero, 1 high).",
+    "Globe shot: Global scale is narratively justified: a network spanning the planet is the subject.",
+    "Special/selective moves used: High Transit, High Transit, Slow Orbit, Whole-globe view."
+  ],
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Shanghai",
+      "from": null,
+      "to": null,
+      "role": "ROUTE_POINT",
+      "importance": "LOW",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "city framing is within its useful range it gives the top-down view this purpose wants",
+      "rarity": "COMMON",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Pull Back",
+        "Push In",
+        "Reveal"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Shanghai",
+      "to": "Amsterdam",
+      "role": null,
+      "importance": null,
+      "movement": "style:high_transit",
+      "label": "High Transit",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+      "rarity": "SELECTIVE",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "the whole route at once",
+        "distance as information"
+      ],
+      "alternatives": [
+        "Direct Fly-To",
+        "Cinematic (pull back, travel, descend)"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Amsterdam",
+      "from": null,
+      "to": null,
+      "role": "ROUTE_POINT",
+      "importance": "LOW",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "city framing is within its useful range it gives the top-down view this purpose wants",
+      "rarity": "COMMON",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Pull Back",
+        "Push In",
+        "Reveal"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Amsterdam",
+      "to": "Los Angeles",
+      "role": null,
+      "importance": null,
+      "movement": "style:high_transit",
+      "label": "High Transit",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.2,
+      "angle": "top_down",
+      "communicates": [
+        "the whole route at once",
+        "distance as information"
+      ],
+      "alternatives": [
+        "Direct Fly-To",
+        "Cinematic (pull back, travel, descend)"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Los Angeles",
+      "from": null,
+      "to": null,
+      "role": "DESTINATION",
+      "importance": "HIGH",
+      "movement": "slow_orbit",
+      "label": "Slow Orbit",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "its primary purpose is INSPECT, which is what this shot is for city framing is within its useful range",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.25,
+      "angle": "oblique",
+      "communicates": [
+        "three-dimensional form",
+        "importance",
+        "unhurried inspection"
+      ],
+      "alternatives": [
+        "Orbit",
+        "Half Orbit",
+        "Fly-To-and-Orbit (native template)"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Los Angeles",
+      "from": null,
+      "to": null,
+      "role": "GEOGRAPHIC_CONTEXT",
+      "importance": "HIGH",
+      "movement": "globe_view",
+      "label": "Whole-globe view",
+      "purpose": "SHOW_SCALE",
+      "viewer_should_understand": "how big this is, or how it nests inside something bigger",
+      "why": "its primary purpose is ORIENT, which is what this shot is for globe framing is within its useful range",
+      "rarity": "SPECIAL",
+      "emphasis": 1.25,
+      "angle": "top_down",
+      "communicates": [
+        "planetary scale",
+        "this is a global story"
+      ],
+      "alternatives": [],
+      "angle_limitation": null
+    }
+  ],
+  "explanation": [
+    "Shanghai (Route point, LOW): Hold for Show the route — city framing is within its useful range it gives the top-down view this purpose wants",
+    "Shanghai → Amsterdam: High Transit — its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+    "Amsterdam (Route point, LOW): Hold for Show the route — city framing is within its useful range it gives the top-down view this purpose wants",
+    "Amsterdam → Los Angeles: High Transit — its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+    "Los Angeles (Destination, HIGH): Slow Orbit for Arrive — its primary purpose is INSPECT, which is what this shot is for city framing is within its useful range",
+    "Los Angeles (Geographic context, HIGH): Whole-globe view for Show the scale — its primary purpose is ORIENT, which is what this shot is for globe framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 3 stops; 0 hero, 1 high).",
+    "Globe shot: Global scale is narratively justified: a network spanning the planet is the subject.",
+    "Special/selective moves used: High Transit, High Transit, Slow Orbit, Whole-globe view."
+  ]
+}

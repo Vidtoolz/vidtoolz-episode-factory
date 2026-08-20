@@ -1,0 +1,44 @@
+{
+  "continuation_state_version": 1,
+  "generated_by": "earth-studio-journey",
+  "planner_version": "0.9.4",
+  "motion_profile_version": 4,
+  "source_animation": "DIRECTOR-GLOBAL-network",
+  "timestamp": "2026-08-19T13:00:00.000Z",
+  "aspect": "16:9",
+  "frame_rate": 30,
+  "total_frames": 5250,
+  "ends_at_frame": 5249,
+  "camera": {
+    "latitude": 34.0522,
+    "longitude": -118.2437,
+    "altitude_m": 36131736,
+    "pan_deg": 360,
+    "heading_deg": 0,
+    "tilt_deg": 0
+  },
+  "esp_mapping": {
+    "longitude": "cameraPositionGroup.longitude",
+    "latitude": "cameraPositionGroup.latitude",
+    "altitude_m": "cameraPositionGroup.altitude",
+    "pan_deg": "cameraRotationGroup.rotationX",
+    "tilt_deg": "cameraRotationGroup.rotationY",
+    "not_keyframed": [
+      "rotationZ",
+      "fov",
+      "exposure",
+      "aperture",
+      "minFocusLength"
+    ]
+  },
+  "target": {
+    "name": "Los Angeles",
+    "latitude": 34.0522,
+    "longitude": -118.2437
+  },
+  "final_movement": {
+    "segment_id": 11,
+    "action": "hover",
+    "location_name": "Los Angeles"
+  }
+}

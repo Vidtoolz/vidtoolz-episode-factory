@@ -1,0 +1,306 @@
+{
+  "id": "DIRECTOR-B-city-to-city-hero",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B-city-to-city-hero/earth-studio/earth-studio.esp",
+  "esp_sha256": "a2013f5ab56e0d51030c256a82eea071a540f867ac1f6c3326de39602e087c66",
+  "expected": {
+    "total_frames": 1980,
+    "duration_seconds": 66,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 1980,
+    "totalFrames": 1980,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B-city-to-city-hero/DIRECTOR-B-city-to-city-hero_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.16989601617573,
+        "longitude": 24.9384,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 60,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B-city-to-city-hero/DIRECTOR-B-city-to-city-hero_f00060_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 60,
+        "latitude": 60.16989601617573,
+        "longitude": 24.9384,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 120,
+      "label": "seg2-start",
+      "movement": "zoom_out",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B-city-to-city-hero/DIRECTOR-B-city-to-city-hero_f00120_seg2-start.png",
+      "earth_studio_camera": {
+        "frame": 120,
+        "latitude": 60.16989601617573,
+        "longitude": 24.9384,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Helsinki",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 195,
+      "label": "seg2-mid",
+      "movement": "zoom_out",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B-city-to-city-hero/DIRECTOR-B-city-to-city-hero_f00195_seg2-mid.png",
+      "earth_studio_camera": {
+        "frame": 195,
+        "latitude": 60.16989601617573,
+        "longitude": 24.9384,
+        "altitude": 103500.9669156811,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Helsinki",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 270,
+      "label": "seg3-start",
+      "movement": "fly_to",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B-city-to-city-hero/DIRECTOR-B-city-to-city-hero_f00270_seg3-start.png",
+      "earth_studio_camera": {
+        "frame": 270,
+        "latitude": 60.16989601617573,
+        "longitude": 24.9384,
+        "altitude": 155959.44330170358,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Stockholm",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 405,
+      "label": "seg3-mid",
+      "movement": "fly_to",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B-city-to-city-hero/DIRECTOR-B-city-to-city-hero_f00405_seg3-mid.png",
+      "earth_studio_camera": {
+        "frame": 405,
+        "latitude": 59.991393390733464,
+        "longitude": 23.080141832417954,
+        "altitude": 294495.0578890578,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Stockholm",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 540,
+      "label": "seg4-start",
+      "movement": "zoom_in",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B-city-to-city-hero/DIRECTOR-B-city-to-city-hero_f00540_seg4-start.png",
+      "earth_studio_camera": {
+        "frame": 540,
+        "latitude": 59.32929875685704,
+        "longitude": 18.068599982302963,
+        "altitude": 155959.4532409193,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Stockholm",
+        "altitude_m": 25521,
+        "tilt_deg": 60,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 645,
+      "label": "seg4-mid",
+      "movement": "zoom_in",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B-city-to-city-hero/DIRECTOR-B-city-to-city-hero_f00645_seg4-mid.png",
+      "earth_studio_camera": {
+        "frame": 645,
+        "latitude": 59.09797084861384,
+        "longitude": 18.06860004284799,
+        "altitude": 90741.08853907791,
+        "pan_deg": 6.252057515042187e-8,
+        "tilt_deg": 40.51112334333568,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Stockholm",
+        "altitude_m": 25521,
+        "tilt_deg": 60,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 750,
+      "label": "seg5-start",
+      "movement": "orbit",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B-city-to-city-hero/DIRECTOR-B-city-to-city-hero_f00750_seg5-start.png",
+      "earth_studio_camera": {
+        "frame": 750,
+        "latitude": 58.9322140225079,
+        "longitude": 18.068600005517112,
+        "altitude": 25521.74519978964,
+        "pan_deg": 6.3694872418937926e-9,
+        "tilt_deg": 60.00000002250787,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Stockholm",
+        "altitude_m": 25521,
+        "tilt_deg": 60,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 1365,
+      "label": "seg5-mid",
+      "movement": "orbit",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B-city-to-city-hero/DIRECTOR-B-city-to-city-hero_f01365_seg5-mid.png",
+      "earth_studio_camera": {
+        "frame": 1365,
+        "latitude": 59.72638344374446,
+        "longitude": 18.0686,
+        "altitude": 25521.745264829297,
+        "pan_deg": 173.08361574133497,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Stockholm",
+        "altitude_m": 25521,
+        "tilt_deg": 60,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 1979,
+      "label": "seg5-end",
+      "movement": "orbit",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B-city-to-city-hero/DIRECTOR-B-city-to-city-hero_f01979_seg5-end.png",
+      "earth_studio_camera": {
+        "frame": 1979,
+        "latitude": 58.93221776368797,
+        "longitude": 18.068654548473294,
+        "altitude": 25521.745264829297,
+        "pan_deg": 359.99950410107226,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Stockholm",
+        "altitude_m": 25521,
+        "tilt_deg": 60,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    }
+  ],
+  "errors": []
+}

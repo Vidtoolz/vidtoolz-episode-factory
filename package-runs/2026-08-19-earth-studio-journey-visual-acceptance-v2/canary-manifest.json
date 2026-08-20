@@ -1,0 +1,520 @@
+{
+  "gate": "fresh Earth Studio Journey Creator visual review — real import observation",
+  "generated_at": "2026-08-19T14:00:00.000Z",
+  "planner_version": "0.9.4",
+  "journey_version": 1,
+  "motion_profile_version": 4,
+  "canaries": [
+    {
+      "id": "A-local-landmark-to-landmark-16x9",
+      "title": "Fresh A — Senate Square to Market Square",
+      "category": "A small-area -> small-area",
+      "route": "Senate Square -> Market Square, Helsinki",
+      "aspect": "16:9",
+      "duration_seconds": 16,
+      "total_frames": 480,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "a9b3a8cbb11b8d7b33cef662f4c5776021aa4ac44231f2f6838ea8f8f9330f37",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "latitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "altitude": {
+            "keyframes": 6,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "rotationX": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          }
+        },
+        "segments": 3,
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "Close, restrained local transition; no unnecessary regional pullback; settle on the destination.",
+      "visual_questions": [
+        "Does the opening framing fit the square?",
+        "Is the local move gentle and readable?",
+        "Does arrival avoid a corrective pan or zoom?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "B-city-to-city-helsinki-stockholm-16x9",
+      "title": "Fresh B — Helsinki to Stockholm",
+      "category": "B city -> city",
+      "route": "Helsinki -> Stockholm",
+      "aspect": "16:9",
+      "duration_seconds": 81,
+      "total_frames": 2430,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "9a26cdb41527cf947754edca254b53ad1b3766012ee0af6222039cdcc5b09f65",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "latitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "altitude": {
+            "keyframes": 11,
+            "finite": true,
+            "duplicate_keyframes": 2,
+            "direction_changes": 1
+          },
+          "rotationX": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          }
+        },
+        "segments": 5,
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "Calm departure, coherent regional travel, natural destination reveal and short settle.",
+      "visual_questions": [
+        "Is the route continuous without backtracking?",
+        "Does altitude rise and descend for the distance?",
+        "Is Stockholm naturally framed on arrival?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "C-region-to-city-finland-helsinki-16x9",
+      "title": "Fresh C — Finland to Helsinki",
+      "category": "C country/region -> city",
+      "route": "Finland -> Helsinki",
+      "aspect": "16:9",
+      "duration_seconds": 62,
+      "total_frames": 1860,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/C-region-to-city-finland-helsinki-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/C-region-to-city-finland-helsinki-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "bb506cd23f7cd707b9b45c54a80dcd89113f424904affbf05f212a079cd3dc9a",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/C-region-to-city-finland-helsinki-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/C-region-to-city-finland-helsinki-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "latitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "altitude": {
+            "keyframes": 11,
+            "finite": true,
+            "duplicate_keyframes": 2,
+            "direction_changes": 1
+          },
+          "rotationX": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          }
+        },
+        "segments": 5,
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "Start at country context, descend monotonically into a city-scale destination composition.",
+      "visual_questions": [
+        "Is Finland comfortably framed at the start?",
+        "Does the scale transition explain the geography?",
+        "Does Helsinki arrive at an appropriate city distance?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "D-long-distance-helsinki-new-york-orbit-16x9",
+      "title": "Fresh D — Helsinki to New York with destination orbit",
+      "category": "D long-distance + orbit",
+      "route": "Helsinki -> New York -> destination orbit",
+      "aspect": "16:9",
+      "duration_seconds": 145,
+      "total_frames": 4350,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "e6d8c04a74d0a5712a4d77ebfa356b4f2c6a17b1fdb985b599a7c1deee882765",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 8,
+            "finite": true,
+            "duplicate_keyframes": 2,
+            "direction_changes": 0
+          },
+          "latitude": {
+            "keyframes": 8,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 1
+          },
+          "altitude": {
+            "keyframes": 11,
+            "finite": true,
+            "duplicate_keyframes": 2,
+            "direction_changes": 1
+          },
+          "rotationX": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          }
+        },
+        "segments": 5,
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "Local context, broad geographic travel, high transit arc, deliberate descent, then one clean partial orbit.",
+      "visual_questions": [
+        "Does the camera leave local altitude before the long transit?",
+        "Is the global path stable and free of reversals?",
+        "Is the New York orbit geometrically clean and intentional?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "E-multi-destination-helsinki-stockholm-copenhagen-16x9",
+      "title": "Fresh E — Helsinki, Stockholm, Copenhagen",
+      "category": "E multi-destination continuity",
+      "route": "Helsinki -> Stockholm -> Copenhagen",
+      "aspect": "16:9",
+      "duration_seconds": 142,
+      "total_frames": 4260,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/E-multi-destination-helsinki-stockholm-copenhagen-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/E-multi-destination-helsinki-stockholm-copenhagen-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "4630406fd44a4740b14426fef2561857299ec6dd171e4ffd5c60ea4d63e00f83",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/E-multi-destination-helsinki-stockholm-copenhagen-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/E-multi-destination-helsinki-stockholm-copenhagen-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [
+          "altitude direction changes 3 times"
+        ],
+        "tracks": {
+          "longitude": {
+            "keyframes": 5,
+            "finite": true,
+            "duplicate_keyframes": 2,
+            "direction_changes": 0
+          },
+          "latitude": {
+            "keyframes": 5,
+            "finite": true,
+            "duplicate_keyframes": 2,
+            "direction_changes": 0
+          },
+          "altitude": {
+            "keyframes": 21,
+            "finite": true,
+            "duplicate_keyframes": 4,
+            "direction_changes": 3
+          },
+          "rotationX": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          }
+        },
+        "segments": 9,
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "A single designed sequence: each arrival becomes the next departure state without reset-like jumps.",
+      "visual_questions": [
+        "Does each leg begin from the actual prior state?",
+        "Do heading, altitude and target remain coherent at Stockholm?",
+        "Does the final Copenhagen arrival feel earned rather than corrected?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "F1-continuation-source-helsinki-stockholm-16x9",
+      "title": "Fresh F1 — continuation source Helsinki to Stockholm",
+      "category": "F continuation source",
+      "route": "Helsinki -> Stockholm (source)",
+      "aspect": "16:9",
+      "duration_seconds": 80,
+      "total_frames": 2400,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F1-continuation-source-helsinki-stockholm-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F1-continuation-source-helsinki-stockholm-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "1786be62c5cbefd75c7b152fe632f7a4352b69e6850f9dfa9a50925ae1b1d059",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F1-continuation-source-helsinki-stockholm-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F1-continuation-source-helsinki-stockholm-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "latitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "altitude": {
+            "keyframes": 11,
+            "finite": true,
+            "duplicate_keyframes": 2,
+            "direction_changes": 1
+          },
+          "rotationX": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          }
+        },
+        "segments": 5,
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "Produce the authoritative final camera state used by Fresh F2.",
+      "visual_questions": [
+        "Record the final frame state; it must be the exact starting state of F2."
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "F2-continuation-target-stockholm-copenhagen-16x9",
+      "title": "Fresh F2 — continuation target Stockholm to Copenhagen",
+      "category": "F continuation target",
+      "route": "F1 final state -> Copenhagen",
+      "aspect": "16:9",
+      "duration_seconds": 58,
+      "total_frames": 1740,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "2d63e37783225126079a232fd2d956e8dd29d1b333bb672d648097fc84c6e135",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 16,
+            "finite": true,
+            "duplicate_keyframes": 2,
+            "direction_changes": 2
+          },
+          "latitude": {
+            "keyframes": 16,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 2
+          },
+          "altitude": {
+            "keyframes": 11,
+            "finite": true,
+            "duplicate_keyframes": 2,
+            "direction_changes": 1
+          },
+          "rotationX": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          }
+        },
+        "segments": 5,
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": "F1-continuation-source-helsinki-stockholm-16x9",
+      "intended_behavior": "Begin exactly at F1 final camera state, hold briefly, then continue to Copenhagen.",
+      "visual_questions": [
+        "Is frame 0 identical to F1 final frame?",
+        "Is there any heading, altitude, pitch or target snap?",
+        "Does the continuation remain calm through arrival?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    }
+  ]
+}

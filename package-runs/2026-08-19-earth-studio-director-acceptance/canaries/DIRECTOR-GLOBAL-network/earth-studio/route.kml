@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>DIRECTOR-GLOBAL-network route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>Shanghai</name>
+      <Point><coordinates>121.4737,31.2304,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Amsterdam</name>
+      <Point><coordinates>4.9041,52.3676,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Los Angeles</name>
+      <Point><coordinates>-118.2437,34.0522,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>DIRECTOR-GLOBAL-network route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        121.4737,31.2304,0
+        121.4737,31.2304,0
+        4.9041,52.3676,0
+        4.9041,52.3676,0
+        4.9041,52.3676,0
+        4.9041,52.3676,0
+        -118.2437,34.0522,0
+        -118.2437,34.0522,0
+        -118.2437,34.0522,0
+        -118.2437,34.0522,0
+        -118.2437,34.0522,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

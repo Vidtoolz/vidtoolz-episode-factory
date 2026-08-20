@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "review_order": [
+    "A-local-landmark-to-landmark-16x9",
+    "B-city-to-city-helsinki-stockholm-16x9",
+    "D-long-distance-helsinki-new-york-orbit-16x9",
+    "E-multi-destination-helsinki-stockholm-copenhagen-16x9",
+    "F1-continuation-source-helsinki-stockholm-16x9",
+    "F2-continuation-target-stockholm-copenhagen-16x9",
+    "C-region-to-city-finland-helsinki-16x9"
+  ],
+  "current_id": "A-local-landmark-to-landmark-16x9",
+  "records": {
+    "A-local-landmark-to-landmark-16x9": {
+      "state": "READY_TO_PLAY",
+      "human_decision": null,
+      "notes": "",
+      "evidence": {
+        "duration": 480,
+        "totalFrames": 480,
+        "frameRate": 30,
+        "frame": 0,
+        "loading": true,
+        "playing": false,
+        "bodyHasError": false,
+        "blockingModal": false,
+        "camera": {
+          "latitude": 60.1695,
+          "longitude": 24.9522,
+          "altitude": 600.9940111632608,
+          "tilt_deg": 0
+        },
+        "load_signal": "stable Earth Studio scene model; scene.loading may remain true during imagery streaming",
+        "expected_start": {
+          "latitude": 60.1695,
+          "longitude": 24.9522,
+          "altitude_m": 600,
+          "tilt_deg": 0
+        },
+        "autoplay": false,
+        "verified_at": "2026-08-19T17:34:15.989Z"
+      }
+    },
+    "B-city-to-city-helsinki-stockholm-16x9": {
+      "state": "NOT_PREPARED",
+      "human_decision": null,
+      "notes": "",
+      "evidence": null
+    },
+    "D-long-distance-helsinki-new-york-orbit-16x9": {
+      "state": "NOT_PREPARED",
+      "human_decision": null,
+      "notes": "",
+      "evidence": null
+    },
+    "E-multi-destination-helsinki-stockholm-copenhagen-16x9": {
+      "state": "NOT_PREPARED",
+      "human_decision": null,
+      "notes": "",
+      "evidence": null
+    },
+    "F1-continuation-source-helsinki-stockholm-16x9": {
+      "state": "NOT_PREPARED",
+      "human_decision": null,
+      "notes": "",
+      "evidence": null
+    },
+    "F2-continuation-target-stockholm-copenhagen-16x9": {
+      "state": "NOT_PREPARED",
+      "human_decision": null,
+      "notes": "",
+      "evidence": null
+    },
+    "C-region-to-city-finland-helsinki-16x9": {
+      "state": "NOT_PREPARED",
+      "human_decision": null,
+      "notes": "",
+      "evidence": null
+    }
+  }
+}

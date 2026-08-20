@@ -1,0 +1,37 @@
+{
+  "jobName": "B-city-to-city-16x9",
+  "slug": "b-city-to-city-16x9",
+  "description": "orbit Helsinki once clockwise at 17014m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 155960m tilted 0 degrees for 7 seconds then fly to Stockholm at 155960m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 17014m tilted 60 degrees for 7 seconds then orbit Stockholm once clockwise at 17014m tilted 60 degrees for 31 seconds",
+  "aspect": "16:9",
+  "render_dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "frame_rate": 30,
+  "total_frames": 2550,
+  "total_duration_seconds": 85,
+  "unresolved_count": 0,
+  "planner_version": "0.9.4",
+  "motion_profile": {
+    "profile_version": 4,
+    "source": "config/earth-studio-motion/motion-profile.json",
+    "references": [
+      "darien-gap",
+      "mountkinabalu",
+      "radiator-untitled",
+      "servyx"
+    ],
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
+  },
+  "created_at": "2026-08-19T11:00:00.000Z",
+  "journey": {
+    "journey_version": 1,
+    "pace": "calm",
+    "preset": null,
+    "start_source": "location",
+    "stop_count": 2,
+    "movement_count": 5,
+    "compiled_description": "orbit Helsinki once clockwise at 17014m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 155960m tilted 0 degrees for 7 seconds then fly to Stockholm at 155960m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 17014m tilted 60 degrees for 7 seconds then orbit Stockholm once clockwise at 17014m tilted 60 degrees for 31 seconds"
+  },
+  "continuation_state": "continuation-state.json"
+}

@@ -1,0 +1,231 @@
+{
+  "canary": "DIRECTOR-ROUTE-restraint",
+  "title": "DIRECTOR-ROUTE — four route stops, only the last one matters",
+  "question": "Does restraint stop a flourish appearing at every stop?",
+  "expect": "Plain establishing shots at Helsinki, Stockholm and Copenhagen; the only inspection move at Berlin.",
+  "intent": {
+    "stops": [
+      {
+        "location": "Helsinki",
+        "role": "ROUTE_POINT"
+      },
+      {
+        "location": "Stockholm",
+        "role": "ROUTE_POINT"
+      },
+      {
+        "location": "Copenhagen",
+        "role": "ROUTE_POINT"
+      },
+      {
+        "location": "Berlin",
+        "role": "PRIMARY_SUBJECT",
+        "importance": "HIGH"
+      }
+    ]
+  },
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 2 (from 4 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: High Transit, High Transit, High Transit, Slow Orbit."
+  ],
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Helsinki",
+      "from": null,
+      "to": null,
+      "role": "ROUTE_POINT",
+      "importance": "LOW",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "city framing is within its useful range it gives the top-down view this purpose wants",
+      "rarity": "COMMON",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Pull Back",
+        "Push In",
+        "Reveal"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Helsinki",
+      "to": "Stockholm",
+      "role": null,
+      "importance": null,
+      "movement": "style:high_transit",
+      "label": "High Transit",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+      "rarity": "SELECTIVE",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "the whole route at once",
+        "distance as information"
+      ],
+      "alternatives": [
+        "Cinematic (pull back, travel, descend)",
+        "Direct Fly-To"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Stockholm",
+      "from": null,
+      "to": null,
+      "role": "ROUTE_POINT",
+      "importance": "LOW",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "city framing is within its useful range it gives the top-down view this purpose wants",
+      "rarity": "COMMON",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Pull Back",
+        "Push In",
+        "Reveal"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Stockholm",
+      "to": "Copenhagen",
+      "role": null,
+      "importance": null,
+      "movement": "style:high_transit",
+      "label": "High Transit",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+      "rarity": "SELECTIVE",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "the whole route at once",
+        "distance as information"
+      ],
+      "alternatives": [
+        "Cinematic (pull back, travel, descend)",
+        "Direct Fly-To"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Copenhagen",
+      "from": null,
+      "to": null,
+      "role": "ROUTE_POINT",
+      "importance": "LOW",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "city framing is within its useful range it gives the top-down view this purpose wants",
+      "rarity": "COMMON",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Pull Back",
+        "Push In",
+        "Reveal"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Copenhagen",
+      "to": "Berlin",
+      "role": null,
+      "importance": null,
+      "movement": "style:high_transit",
+      "label": "High Transit",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.27,
+      "angle": "top_down",
+      "communicates": [
+        "the whole route at once",
+        "distance as information"
+      ],
+      "alternatives": [
+        "Cinematic (pull back, travel, descend)",
+        "Direct Fly-To"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Berlin",
+      "from": null,
+      "to": null,
+      "role": "PRIMARY_SUBJECT",
+      "importance": "HIGH",
+      "movement": "slow_orbit",
+      "label": "Slow Orbit",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "its primary purpose is INSPECT, which is what this shot is for city framing is within its useful range",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.35,
+      "angle": "oblique",
+      "communicates": [
+        "three-dimensional form",
+        "importance",
+        "unhurried inspection"
+      ],
+      "alternatives": [
+        "Orbit",
+        "Half Orbit",
+        "Push In"
+      ],
+      "angle_limitation": null
+    }
+  ],
+  "explanation": [
+    "Helsinki (Route point, LOW): Hold for Show the route — city framing is within its useful range it gives the top-down view this purpose wants",
+    "Helsinki → Stockholm: High Transit — its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+    "Stockholm (Route point, LOW): Hold for Show the route — city framing is within its useful range it gives the top-down view this purpose wants",
+    "Stockholm → Copenhagen: High Transit — its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+    "Copenhagen (Route point, LOW): Hold for Show the route — city framing is within its useful range it gives the top-down view this purpose wants",
+    "Copenhagen → Berlin: High Transit — its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+    "Berlin (Important subject, HIGH): Slow Orbit for Establish — its primary purpose is INSPECT, which is what this shot is for city framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 4 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: High Transit, High Transit, High Transit, Slow Orbit."
+  ]
+}

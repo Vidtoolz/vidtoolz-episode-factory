@@ -1,0 +1,306 @@
+{
+  "id": "DIRECTOR-HERO-landmark-reveal",
+  "aspect": "9:16",
+  "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-HERO-landmark-reveal/earth-studio/earth-studio.esp",
+  "esp_sha256": "be5a8600dfb53be18f3ac63713be88786305efa80ad670f1a427a882521fc1df",
+  "expected": {
+    "total_frames": 1710,
+    "duration_seconds": 57,
+    "render_dimensions": {
+      "width": 1080,
+      "height": 1920
+    }
+  },
+  "import": {
+    "duration": 1710,
+    "totalFrames": 1710,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 1044,
+    "y": 81,
+    "width": 472,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Paris",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-HERO-landmark-reveal/DIRECTOR-HERO-landmark-reveal_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 48.85659997756887,
+        "longitude": 2.3522,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Paris",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 48.8566,
+        "target_lng": 2.3522
+      }
+    },
+    {
+      "frame": 60,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Paris",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-HERO-landmark-reveal/DIRECTOR-HERO-landmark-reveal_f00060_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 60,
+        "latitude": 48.85659997756887,
+        "longitude": 2.3522,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Paris",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 48.8566,
+        "target_lng": 2.3522
+      }
+    },
+    {
+      "frame": 120,
+      "label": "seg2-start",
+      "movement": "zoom_out",
+      "place": "Paris",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-HERO-landmark-reveal/DIRECTOR-HERO-landmark-reveal_f00120_seg2-start.png",
+      "earth_studio_camera": {
+        "frame": 120,
+        "latitude": 48.85659997756887,
+        "longitude": 2.3522,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Paris",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 48.8566,
+        "target_lng": 2.3522
+      }
+    },
+    {
+      "frame": 195,
+      "label": "seg2-mid",
+      "movement": "zoom_out",
+      "place": "Paris",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-HERO-landmark-reveal/DIRECTOR-HERO-landmark-reveal_f00195_seg2-mid.png",
+      "earth_studio_camera": {
+        "frame": 195,
+        "latitude": 48.85659997756887,
+        "longitude": 2.3522,
+        "altitude": 103500.9669156811,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Paris",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 48.8566,
+        "target_lng": 2.3522
+      }
+    },
+    {
+      "frame": 270,
+      "label": "seg3-start",
+      "movement": "fly_to",
+      "place": "Eiffel Tower",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-HERO-landmark-reveal/DIRECTOR-HERO-landmark-reveal_f00270_seg3-start.png",
+      "earth_studio_camera": {
+        "frame": 270,
+        "latitude": 48.85659997756887,
+        "longitude": 2.3522,
+        "altitude": 155959.44330170358,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Eiffel Tower",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 48.8584,
+        "target_lng": 2.2945
+      }
+    },
+    {
+      "frame": 345,
+      "label": "seg3-mid",
+      "movement": "fly_to",
+      "place": "Eiffel Tower",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-HERO-landmark-reveal/DIRECTOR-HERO-landmark-reveal_f00345_seg3-mid.png",
+      "earth_studio_camera": {
+        "frame": 345,
+        "latitude": 48.85787858942676,
+        "longitude": 2.3233500000000005,
+        "altitude": 155959.44330170358,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Eiffel Tower",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 48.8584,
+        "target_lng": 2.2945
+      }
+    },
+    {
+      "frame": 420,
+      "label": "seg4-start",
+      "movement": "zoom_in",
+      "place": "Eiffel Tower",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-HERO-landmark-reveal/DIRECTOR-HERO-landmark-reveal_f00420_seg4-start.png",
+      "earth_studio_camera": {
+        "frame": 420,
+        "latitude": 48.85839997319491,
+        "longitude": 2.2945,
+        "altitude": 155959.44330170358,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Eiffel Tower",
+        "altitude_m": 1000,
+        "tilt_deg": 60,
+        "target_lat": 48.8584,
+        "target_lng": 2.2945
+      }
+    },
+    {
+      "frame": 585,
+      "label": "seg4-mid",
+      "movement": "zoom_in",
+      "place": "Eiffel Tower",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-HERO-landmark-reveal/DIRECTOR-HERO-landmark-reveal_f00585_seg4-mid.png",
+      "earth_studio_camera": {
+        "frame": 585,
+        "latitude": 48.85303725833744,
+        "longitude": 2.2945000020314987,
+        "altitude": 78480.2247545444,
+        "pan_deg": 3.0942233650220804e-9,
+        "tilt_deg": 40.51112335013647,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Eiffel Tower",
+        "altitude_m": 1000,
+        "tilt_deg": 60,
+        "target_lat": 48.8584,
+        "target_lng": 2.2945
+      }
+    },
+    {
+      "frame": 750,
+      "label": "seg5-start",
+      "movement": "orbit",
+      "place": "Eiffel Tower",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-HERO-landmark-reveal/DIRECTOR-HERO-landmark-reveal_f00750_seg5-start.png",
+      "earth_studio_camera": {
+        "frame": 750,
+        "latitude": 48.847368999429584,
+        "longitude": 2.294499999981958,
+        "altitude": 1000.990031540652,
+        "pan_deg": 359.99999999997954,
+        "tilt_deg": 59.99999999942958,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Eiffel Tower",
+        "altitude_m": 709,
+        "tilt_deg": 60,
+        "target_lat": 48.8584,
+        "target_lng": 2.2945
+      }
+    },
+    {
+      "frame": 1230,
+      "label": "seg5-mid",
+      "movement": "orbit",
+      "place": "Eiffel Tower",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-HERO-landmark-reveal/DIRECTOR-HERO-landmark-reveal_f01230_seg5-mid.png",
+      "earth_studio_camera": {
+        "frame": 1230,
+        "latitude": 48.86943094638982,
+        "longitude": 2.2945,
+        "altitude": 850.9738219342959,
+        "pan_deg": 173.08361574133497,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Eiffel Tower",
+        "altitude_m": 709,
+        "tilt_deg": 60,
+        "target_lat": 48.8584,
+        "target_lng": 2.2945
+      }
+    },
+    {
+      "frame": 1709,
+      "label": "seg5-end",
+      "movement": "orbit",
+      "place": "Eiffel Tower",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-HERO-landmark-reveal/DIRECTOR-HERO-landmark-reveal_f01709_seg5-end.png",
+      "earth_studio_camera": {
+        "frame": 1709,
+        "latitude": 48.84736916786575,
+        "longitude": 2.2945019064216527,
+        "altitude": 709.9986130824955,
+        "pan_deg": 359.9991858566707,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Eiffel Tower",
+        "altitude_m": 709,
+        "tilt_deg": 60,
+        "target_lat": 48.8584,
+        "target_lng": 2.2945
+      }
+    }
+  ],
+  "errors": []
+}

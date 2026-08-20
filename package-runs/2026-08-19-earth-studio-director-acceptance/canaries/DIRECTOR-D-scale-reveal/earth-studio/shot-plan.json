@@ -1,0 +1,269 @@
+{
+  "job_name": "DIRECTOR-D-scale-reveal",
+  "version": "0.9.4",
+  "generated_at": "2026-08-19T13:00:00.000Z",
+  "source_description": "hover over Senate Square tilted 0 degrees for 5 seconds then fly to Helsinki at 34028m tilted 0 degrees for 9 seconds then zoom out from Helsinki at 992474m tilted 0 degrees for 12 seconds then fly to Finland at 3686333m tilted 0 degrees for 9 seconds then zoom out from Finland at 7089102m tilted 0 degrees for 7 seconds then fly to Europe at 14178205m tilted 0 degrees for 19 seconds then zoom out from Europe at 36131736m tilted 0 degrees for 6 seconds",
+  "parser_strategy": "offline_regex_with_manual_review_fallback",
+  "frame_rate": 30,
+  "frame_convention": {
+    "start_frame": "inclusive",
+    "end_frame": "exclusive"
+  },
+  "aspect": "16:9",
+  "render_dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "total_duration_seconds": 67,
+  "total_frames": 2010,
+  "motion_policy": {
+    "coherent_trajectory": true,
+    "dedupe_keyframes": true,
+    "source": "journey"
+  },
+  "locations": [
+    {
+      "name": "Senate Square",
+      "latitude": 60.1695,
+      "longitude": 24.9522,
+      "resolution_status": "resolved_fixture"
+    },
+    {
+      "name": "Helsinki",
+      "latitude": 60.1699,
+      "longitude": 24.9384,
+      "resolution_status": "resolved_fixture"
+    },
+    {
+      "name": "Finland",
+      "latitude": 64.5,
+      "longitude": 26,
+      "resolution_status": "resolved_fixture"
+    },
+    {
+      "name": "Europe",
+      "latitude": 52,
+      "longitude": 15,
+      "resolution_status": "resolved_fixture"
+    }
+  ],
+  "segments": [
+    {
+      "segment_id": 1,
+      "source_text": "hover over Senate Square tilted 0 degrees for 5 seconds",
+      "action": "hover",
+      "requested_action": "hover",
+      "location_name": "Senate Square",
+      "location": {
+        "name": "Senate Square",
+        "latitude": 60.1695,
+        "longitude": 24.9522,
+        "altitude_m": 600,
+        "scale": "landmark",
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 600,
+      "altitude_source": "gazetteer",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 0,
+      "end_seconds": 5,
+      "duration_seconds": 5,
+      "start_frame": 0,
+      "end_frame": 150,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 2,
+      "source_text": "fly to Helsinki at 34028m tilted 0 degrees for 9 seconds",
+      "action": "fly_to",
+      "requested_action": "fly_to",
+      "location_name": "Helsinki",
+      "location": {
+        "name": "Helsinki",
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 34028,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 5,
+      "end_seconds": 14,
+      "duration_seconds": 9,
+      "start_frame": 150,
+      "end_frame": 420,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 3,
+      "source_text": "zoom out from Helsinki at 992474m tilted 0 degrees for 12 seconds",
+      "action": "zoom_out",
+      "requested_action": "zoom_out",
+      "location_name": "Helsinki",
+      "location": {
+        "name": "Helsinki",
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 992474,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 14,
+      "end_seconds": 26,
+      "duration_seconds": 12,
+      "start_frame": 420,
+      "end_frame": 780,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 4,
+      "source_text": "fly to Finland at 3686333m tilted 0 degrees for 9 seconds",
+      "action": "fly_to",
+      "requested_action": "fly_to",
+      "location_name": "Finland",
+      "location": {
+        "name": "Finland",
+        "latitude": 64.5,
+        "longitude": 26,
+        "scale": "country",
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 3686333,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 26,
+      "end_seconds": 35,
+      "duration_seconds": 9,
+      "start_frame": 780,
+      "end_frame": 1050,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 5,
+      "source_text": "zoom out from Finland at 7089102m tilted 0 degrees for 7 seconds",
+      "action": "zoom_out",
+      "requested_action": "zoom_out",
+      "location_name": "Finland",
+      "location": {
+        "name": "Finland",
+        "latitude": 64.5,
+        "longitude": 26,
+        "scale": "country",
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 7089102,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 35,
+      "end_seconds": 42,
+      "duration_seconds": 7,
+      "start_frame": 1050,
+      "end_frame": 1260,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 6,
+      "source_text": "fly to Europe at 14178205m tilted 0 degrees for 19 seconds",
+      "action": "fly_to",
+      "requested_action": "fly_to",
+      "location_name": "Europe",
+      "location": {
+        "name": "Europe",
+        "latitude": 52,
+        "longitude": 15,
+        "scale": "continent",
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 14178205,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 42,
+      "end_seconds": 61,
+      "duration_seconds": 19,
+      "start_frame": 1260,
+      "end_frame": 1830,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 7,
+      "source_text": "zoom out from Europe at 36131736m tilted 0 degrees for 6 seconds",
+      "action": "zoom_out",
+      "requested_action": "zoom_out",
+      "location_name": "Europe",
+      "location": {
+        "name": "Europe",
+        "latitude": 52,
+        "longitude": 15,
+        "scale": "continent",
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 36131736,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 61,
+      "end_seconds": 67,
+      "duration_seconds": 6,
+      "start_frame": 1830,
+      "end_frame": 2010,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    }
+  ],
+  "unresolved_items": [],
+  "motion_profile": {
+    "profile_version": 4,
+    "source": "config/earth-studio-motion/motion-profile.json",
+    "references": [
+      "darien-gap",
+      "mountkinabalu",
+      "radiator-untitled",
+      "servyx"
+    ],
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
+  },
+  "notes": [
+    "camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
+  ],
+  "manual_earth_studio_steps": [
+    "Open Google Earth Studio manually.",
+    "Create or open the project manually; this planner does not log in, automate a browser, or control Earth Studio.",
+    "Use shot-plan.json coordinates as manual camera/search references.",
+    "Use route.kml only as a placemark/path reference asset.",
+    "Manually create, review, and adjust all camera keyframes.",
+    "Render manually only after Mikko reviews the camera move."
+  ],
+  "warnings": [
+    "KML is a reference asset only and does not create a finished Google Earth Studio camera animation.",
+    "Placemark use as camera targets is unverified in v1; manually search or set camera targets from shot-plan.json if needed.",
+    "This planner does not render video, manipulate .esp files, control Google Earth Studio, or approve footage.",
+    "Technical planning artifacts are not creative approval, rights clearance, or package-run evidence approval."
+  ]
+}

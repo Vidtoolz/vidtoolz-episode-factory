@@ -1,0 +1,36 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": "16:9",
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Senate Square",
+    "story": {
+      "role": "PRIMARY_SUBJECT",
+      "importance": "HIGH",
+      "purposes": [
+        "ESTABLISH",
+        "INSPECT"
+      ]
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s1",
+      "type": "slow_orbit",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 1.35,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": []
+}

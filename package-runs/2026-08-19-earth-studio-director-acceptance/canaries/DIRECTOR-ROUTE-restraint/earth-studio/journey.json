@@ -1,0 +1,245 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": "16:9",
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Helsinki",
+    "story": {
+      "role": "ROUTE_POINT",
+      "importance": "LOW",
+      "purposes": [
+        "SHOW_ROUTE",
+        "TRANSITION"
+      ]
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s229",
+      "type": "hold",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 0.75,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": [
+    {
+      "destination": {
+        "location": "Stockholm",
+        "story": {
+          "role": "ROUTE_POINT",
+          "importance": "LOW",
+          "purposes": [
+            "SHOW_ROUTE",
+            "TRANSITION"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "high_transit",
+      "travel": [
+        {
+          "id": "s217",
+          "type": "climb_to_transit",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s218",
+          "type": "cruise",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s219",
+          "type": "descend",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s220",
+          "type": "hold",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 0.75,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    },
+    {
+      "destination": {
+        "location": "Copenhagen",
+        "story": {
+          "role": "ROUTE_POINT",
+          "importance": "LOW",
+          "purposes": [
+            "SHOW_ROUTE",
+            "TRANSITION"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "high_transit",
+      "travel": [
+        {
+          "id": "s221",
+          "type": "climb_to_transit",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s222",
+          "type": "cruise",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s223",
+          "type": "descend",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s224",
+          "type": "hold",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 0.75,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    },
+    {
+      "destination": {
+        "location": "Berlin",
+        "story": {
+          "role": "PRIMARY_SUBJECT",
+          "importance": "HIGH",
+          "purposes": [
+            "ESTABLISH",
+            "INSPECT",
+            "EMPHASIZE"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "high_transit",
+      "travel": [
+        {
+          "id": "s225",
+          "type": "climb_to_transit",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s226",
+          "type": "cruise",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s227",
+          "type": "descend",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s228",
+          "type": "slow_orbit",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 1.35,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    }
+  ]
+}

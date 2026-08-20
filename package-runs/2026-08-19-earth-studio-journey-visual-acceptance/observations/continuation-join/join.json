@@ -1,0 +1,93 @@
+{
+  "e1": {
+    "tag": "E1-final-frame",
+    "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E1-continuation-source-16x9/earth-studio/earth-studio.esp",
+    "duration": 2550,
+    "frame": 2550,
+    "camera": {
+      "frame": 2550,
+      "latitude": 59.726383426203824,
+      "longitude": 18.06859999439615,
+      "altitude": 25521.74491121127,
+      "pan_deg": 899.9999999967914,
+      "tilt_deg": 60.000000017540586,
+      "roll_deg": 0,
+      "fov": 20
+    },
+    "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/continuation-join/E1-final-frame.png",
+    "rect": {
+      "x": 535,
+      "y": 81,
+      "width": 1490,
+      "height": 838
+    }
+  },
+  "e2": {
+    "tag": "E2-first-frame",
+    "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E2-continuation-target-16x9/earth-studio/earth-studio.esp",
+    "duration": 1680,
+    "frame": 0,
+    "camera": {
+      "frame": 0,
+      "latitude": 59.7263731911126,
+      "longitude": 18.0686,
+      "altitude": 25521.745264829297,
+      "pan_deg": 900,
+      "tilt_deg": 60,
+      "roll_deg": 0,
+      "fov": 20
+    },
+    "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/continuation-join/E2-first-frame.png",
+    "rect": {
+      "x": 535,
+      "y": 81,
+      "width": 1490,
+      "height": 838
+    }
+  },
+  "exported_state": {
+    "latitude": 59.726386,
+    "longitude": 18.0686,
+    "altitude_m": 25521,
+    "pan_deg": 900,
+    "heading_deg": 180,
+    "tilt_deg": 60
+  },
+  "comparison": [
+    {
+      "field": "latitude",
+      "e1_final": 59.726383426203824,
+      "e2_first": 59.7263731911126,
+      "exported_state": 59.726386,
+      "delta": 0.000010235091224330972
+    },
+    {
+      "field": "longitude",
+      "e1_final": 18.06859999439615,
+      "e2_first": 18.0686,
+      "exported_state": 18.0686,
+      "delta": 5.603851604973897e-9
+    },
+    {
+      "field": "altitude",
+      "e1_final": 25521.74491121127,
+      "e2_first": 25521.745264829297,
+      "exported_state": 25521,
+      "delta": 0.00035361802656552754
+    },
+    {
+      "field": "pan_deg",
+      "e1_final": 899.9999999967914,
+      "e2_first": 900,
+      "exported_state": 900,
+      "delta": 3.2085836210171692e-9
+    },
+    {
+      "field": "tilt_deg",
+      "e1_final": 60.000000017540586,
+      "e2_first": 60,
+      "exported_state": 60,
+      "delta": 1.754058587266627e-8
+    }
+  ]
+}

@@ -47,3 +47,15 @@ package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/renders/
 # local evidence — never committed (the deployment CONTRACT under
 # config/presto/comfyui/ IS committed).
 /state/comfyui-deployments/
+
+# Earth Studio journey visual-acceptance gate: raw per-frame Earth Studio captures
+# are large and local-only. Contact sheets + the observation record + SHA256SUMS
+# are tracked; the raw PNGs are pinned by hash in SHA256SUMS-raw-captures.txt.
+package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/**/*.png
+package-runs/2026-08-19-earth-studio-journey-visual-acceptance/rounds/**/*.png
+
+# Earth Studio DIRECTOR acceptance gate: raw per-frame captures are large and
+# local-only. Contact sheets, the manifest, direction.json and expected-decisions
+# are tracked; raw PNGs are pinned in SHA256SUMS-raw-captures.txt.
+package-runs/2026-08-19-earth-studio-director-acceptance/observations/**/*.png
+package-runs/2026-08-19-earth-studio-director-acceptance/rounds/**/*.png

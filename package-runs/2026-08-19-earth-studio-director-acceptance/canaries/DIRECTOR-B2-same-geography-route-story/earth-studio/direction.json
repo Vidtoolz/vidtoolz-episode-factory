@@ -1,0 +1,118 @@
+{
+  "canary": "DIRECTOR-B2-same-geography-route-story",
+  "title": "DIRECTOR-B2 — the SAME geography directed as a ferry route instead",
+  "question": "Does identical geography with a different story intent produce different direction?",
+  "expect": "No orbit at Stockholm, no shaped arrival. It still climbs before crossing — 396 km flown at city framing is illegible — but that climb is functional, not ceremony. Substantially shorter than B.",
+  "intent": {
+    "stops": [
+      {
+        "location": "Helsinki",
+        "role": "ROUTE_POINT"
+      },
+      {
+        "location": "Stockholm",
+        "role": "ROUTE_POINT",
+        "purposes": [
+          "SHOW_ROUTE"
+        ]
+      }
+    ]
+  },
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 1 (from 2 stops; 0 hero, 0 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: High Transit."
+  ],
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Helsinki",
+      "from": null,
+      "to": null,
+      "role": "ROUTE_POINT",
+      "importance": "LOW",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "city framing is within its useful range it gives the top-down view this purpose wants",
+      "rarity": "COMMON",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Pull Back",
+        "Push In",
+        "Reveal"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Helsinki",
+      "to": "Stockholm",
+      "role": null,
+      "importance": null,
+      "movement": "style:high_transit",
+      "label": "High Transit",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+      "rarity": "SELECTIVE",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "the whole route at once",
+        "distance as information"
+      ],
+      "alternatives": [
+        "Cinematic (pull back, travel, descend)",
+        "Direct Fly-To"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Stockholm",
+      "from": null,
+      "to": null,
+      "role": "ROUTE_POINT",
+      "importance": "LOW",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "SHOW_ROUTE",
+      "viewer_should_understand": "the path taken and its geography",
+      "why": "city framing is within its useful range it gives the top-down view this purpose wants",
+      "rarity": "COMMON",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Pull Back",
+        "Push In",
+        "Reveal"
+      ],
+      "angle_limitation": null
+    }
+  ],
+  "explanation": [
+    "Helsinki (Route point, LOW): Hold for Show the route — city framing is within its useful range it gives the top-down view this purpose wants",
+    "Helsinki → Stockholm: High Transit — its primary purpose is SHOW_ROUTE, which is what this shot is for it gives the top-down view this purpose wants",
+    "Stockholm (Route point, LOW): Hold for Show the route — city framing is within its useful range it gives the top-down view this purpose wants",
+    "Flourish budget for this sequence: 1 (from 2 stops; 0 hero, 0 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: High Transit."
+  ]
+}

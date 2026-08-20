@@ -1,0 +1,64 @@
+{
+  "canary": "DIRECTOR-A-landmark-subject",
+  "title": "DIRECTOR-A — Senate Square as a primary landmark subject",
+  "question": "Does a small, visually important 3D subject get an inspection move, and only that?",
+  "expect": "An orbit-class move at Senate Square. No spiral (not a hero), no globe, no travel.",
+  "intent": {
+    "stops": [
+      {
+        "location": "Senate Square",
+        "role": "PRIMARY_SUBJECT",
+        "importance": "HIGH",
+        "purposes": [
+          "ESTABLISH",
+          "INSPECT"
+        ]
+      }
+    ]
+  },
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 2 (from 1 stop; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Slow Orbit."
+  ],
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Senate Square",
+      "from": null,
+      "to": null,
+      "role": "PRIMARY_SUBJECT",
+      "importance": "HIGH",
+      "movement": "slow_orbit",
+      "label": "Slow Orbit",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "its primary purpose is INSPECT, which is what this shot is for landmark framing is within its useful range",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.35,
+      "angle": "oblique",
+      "communicates": [
+        "three-dimensional form",
+        "importance",
+        "unhurried inspection"
+      ],
+      "alternatives": [
+        "Orbit",
+        "Orbit (native template)",
+        "Half Orbit"
+      ],
+      "angle_limitation": null
+    }
+  ],
+  "explanation": [
+    "Senate Square (Important subject, HIGH): Slow Orbit for Establish — its primary purpose is INSPECT, which is what this shot is for landmark framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 1 stop; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Slow Orbit."
+  ]
+}

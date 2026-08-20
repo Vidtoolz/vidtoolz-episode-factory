@@ -1,0 +1,412 @@
+{
+  "gate": "earth-studio journey builder — real Google Earth Studio import observation",
+  "generated_at": "2026-08-19T11:00:00.000Z",
+  "planner_version": "0.9.4",
+  "journey_version": 1,
+  "motion_profile_version": 4,
+  "canaries": [
+    {
+      "id": "A-landmark-16x9",
+      "title": "Canary A — small landmark, AUTO framing, calm slow orbit",
+      "aspect": "16:9",
+      "duration_seconds": 31,
+      "total_frames": 930,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/A-landmark-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "f145ed847b99c88908e8e8972e21114bee672c26827de3ee1c373fa9e716a0d0",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/A-landmark-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/A-landmark-16x9/earth-studio/continuation-state.json",
+      "compiled_description": "orbit Senate Square once clockwise tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Senate Square",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Start over Senate Square with a landmark / building framing at 600 m.",
+        "Slowly orbit Senate Square for 31 seconds.",
+        "Estimated duration: 31 seconds (00:31) at calm pace."
+      ],
+      "watch": "Is Senate Square visible, centred and comfortably framed? Is the orbit calm? Does it settle cleanly?"
+    },
+    {
+      "id": "B-city-to-city-16x9",
+      "title": "Canary B — Helsinki to Stockholm, cinematic travel",
+      "aspect": "16:9",
+      "duration_seconds": 81,
+      "total_frames": 2430,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "5f83c7d6582344df379f8d8731880cdd472fc9daaf84367f27fbebf20e9e5170",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-16x9/earth-studio/continuation-state.json",
+      "compiled_description": "orbit Helsinki once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 77980m tilted 60 degrees for 5 seconds then fly to Stockholm at 77980m tilted 60 degrees for 9 seconds then zoom in on Stockholm at 25521m tilted 60 degrees for 5 seconds then orbit Stockholm once clockwise at 25521m tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Helsinki",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Helsinki",
+          "seconds": 5
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 5
+        },
+        {
+          "label": "Slow Orbit · Stockholm",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 25.5 km.",
+        "Slowly orbit Helsinki for 31 seconds.",
+        "Pull back from Helsinki over 5 seconds before setting off.",
+        "Cruise to Stockholm (396 km) over 9 seconds, holding 78.0 km.",
+        "Descend into Stockholm over 5 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Stockholm for 31 seconds.",
+        "Estimated duration: 81 seconds (01:21) at calm pace."
+      ],
+      "watch": "Helsinki established? Departure smooth? Cruise intelligible? Stockholm approach + framing sensible? Any jump into the destination orbit?"
+    },
+    {
+      "id": "B-city-to-city-9x16",
+      "title": "Canary B/9:16 — same journey, vertical",
+      "aspect": "9:16",
+      "duration_seconds": 81,
+      "total_frames": 2430,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-9x16/earth-studio/earth-studio.esp",
+      "esp_sha256": "23017931cfb39ad1da6e78377d45715a40bba920a18ab8de337ace3cd7f5a840",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-9x16/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-9x16/earth-studio/continuation-state.json",
+      "compiled_description": "orbit Helsinki once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 77980m tilted 60 degrees for 5 seconds then fly to Stockholm at 77980m tilted 60 degrees for 9 seconds then zoom in on Stockholm at 25521m tilted 60 degrees for 5 seconds then orbit Stockholm once clockwise at 25521m tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Helsinki",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Helsinki",
+          "seconds": 5
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 5
+        },
+        {
+          "label": "Slow Orbit · Stockholm",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 25.5 km.",
+        "Slowly orbit Helsinki for 31 seconds.",
+        "Pull back from Helsinki over 5 seconds before setting off.",
+        "Cruise to Stockholm (396 km) over 9 seconds, holding 78.0 km.",
+        "Descend into Stockholm over 5 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Stockholm for 31 seconds.",
+        "Estimated duration: 81 seconds (01:21) at calm pace."
+      ],
+      "watch": "Same journey in 9:16 — compare framing, headroom, orbit and travel visibility against the 16:9 version."
+    },
+    {
+      "id": "C-multi-stop-16x9",
+      "title": "Canary C — Helsinki, Stockholm, Copenhagen, Berlin",
+      "aspect": "16:9",
+      "duration_seconds": 180,
+      "total_frames": 5400,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/C-multi-stop-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "dbc463ee2f12519c8d5ae74aacc85200aa9ff28812cf40e5e9252e5cb1699c22",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/C-multi-stop-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/C-multi-stop-16x9/earth-studio/continuation-state.json",
+      "compiled_description": "orbit Helsinki once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 77980m tilted 60 degrees for 5 seconds then fly to Stockholm at 77980m tilted 60 degrees for 9 seconds then zoom in on Stockholm at 25521m tilted 60 degrees for 5 seconds then orbit Stockholm once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Stockholm at 77980m tilted 60 degrees for 5 seconds then fly to Copenhagen at 77980m tilted 60 degrees for 9 seconds then zoom in on Copenhagen at 25521m tilted 60 degrees for 5 seconds then orbit Copenhagen once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Copenhagen at 77980m tilted 60 degrees for 5 seconds then fly to Berlin at 77980m tilted 60 degrees for 8 seconds then zoom in on Berlin at 25521m tilted 60 degrees for 5 seconds then orbit Berlin once clockwise at 25521m tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Helsinki",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Helsinki",
+          "seconds": 5
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 5
+        },
+        {
+          "label": "Slow Orbit · Stockholm",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Stockholm",
+          "seconds": 5
+        },
+        {
+          "label": "Cruise · Copenhagen",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Copenhagen",
+          "seconds": 5
+        },
+        {
+          "label": "Slow Orbit · Copenhagen",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Copenhagen",
+          "seconds": 5
+        },
+        {
+          "label": "Cruise · Berlin",
+          "seconds": 8
+        },
+        {
+          "label": "Descend · Berlin",
+          "seconds": 5
+        },
+        {
+          "label": "Slow Orbit · Berlin",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 25.5 km.",
+        "Slowly orbit Helsinki for 31 seconds.",
+        "Pull back from Helsinki over 5 seconds before setting off.",
+        "Cruise to Stockholm (396 km) over 9 seconds, holding 78.0 km.",
+        "Descend into Stockholm over 5 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Stockholm for 31 seconds.",
+        "Pull back from Stockholm over 5 seconds before setting off.",
+        "Cruise to Copenhagen (522 km) over 9 seconds, holding 78.0 km.",
+        "Descend into Copenhagen over 5 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Copenhagen for 31 seconds.",
+        "Pull back from Copenhagen over 5 seconds before setting off.",
+        "Cruise to Berlin (355 km) over 8 seconds, holding 78.0 km.",
+        "Descend into Berlin over 5 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Berlin for 31 seconds.",
+        "Estimated duration: 180 seconds (03:00) at calm pace."
+      ],
+      "watch": "Validate each leg separately. Watch for accumulated drift or camera-state problems in the later legs."
+    },
+    {
+      "id": "D-scale-contrast-16x9",
+      "title": "Canary D — landmark to country to continent (AUTO framing only)",
+      "aspect": "16:9",
+      "duration_seconds": 47,
+      "total_frames": 1410,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/D-scale-contrast-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "aae08611e73c4167f830a1eb29afab08be4e6b26f78e470dfda1db0e272daa4a",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/D-scale-contrast-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/D-scale-contrast-16x9/earth-studio/continuation-state.json",
+      "compiled_description": "hover over Senate Square tilted 50 degrees for 4 seconds then fly to Finland at 2369529m tilted 50 degrees for 16 seconds then hover over Finland for 4 seconds then fly to Europe at 9113574m tilted 50 degrees for 19 seconds then hover over Europe for 4 seconds",
+      "movements": [
+        {
+          "label": "Hold · Senate Square",
+          "seconds": 4
+        },
+        {
+          "label": "Fly To · Finland",
+          "seconds": 16
+        },
+        {
+          "label": "Hold · Finland",
+          "seconds": 4
+        },
+        {
+          "label": "Fly To · Europe",
+          "seconds": 19
+        },
+        {
+          "label": "Hold · Europe",
+          "seconds": 4
+        }
+      ],
+      "prose": [
+        "Start over Senate Square with a landmark / building framing at 600 m.",
+        "Open on Senate Square at 600 m (landmark / building framing) and hold for 4 seconds without moving the camera.",
+        "Fly to Finland (485 km) over 16 seconds.",
+        "Hold on Finland for 4 seconds without moving the camera.",
+        "Fly to Europe (1,527 km) over 19 seconds.",
+        "Hold on Europe for 4 seconds without moving the camera.",
+        "Estimated duration: 47 seconds (00:47) at calm pace."
+      ],
+      "watch": "Is the target RECOGNISABLE at each scale? Landmark close, country wide, continent very wide — or is the composition visually useless?"
+    },
+    {
+      "id": "G-hold-then-orbit-16x9",
+      "title": "Canary G — hold then orbit around a DIFFERENT centre (known slide)",
+      "aspect": "16:9",
+      "duration_seconds": 24,
+      "total_frames": 720,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/G-hold-then-orbit-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "11fbe17fbcec1d591f3af630acb8d98e9da21bc1271999f821b21cf18f73233a",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/G-hold-then-orbit-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/G-hold-then-orbit-16x9/earth-studio/continuation-state.json",
+      "compiled_description": "hover over Helsinki at 32809m tilted 50 degrees for 4 seconds then hover over Helsinki for 4 seconds then orbit Espoo once clockwise at 32809m tilted 50 degrees for 16 seconds",
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 4
+        },
+        {
+          "label": "Pause · Helsinki",
+          "seconds": 4
+        },
+        {
+          "label": "Orbit · Espoo",
+          "seconds": 16
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 32.8 km.",
+        "Open on Helsinki at 32.8 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Hold on Helsinki for 4 seconds without moving the camera.",
+        "Orbit Espoo once over 16 seconds.",
+        "Estimated duration: 24 seconds (00:24) at calm pace."
+      ],
+      "watch": "Does the camera visibly slide sideways onto the orbit ring? Is that a UX failure or an acceptable characteristic?"
+    },
+    {
+      "id": "E1-continuation-source-16x9",
+      "title": "Canary E1 — continuation SOURCE: Helsinki to Stockholm",
+      "aspect": "16:9",
+      "duration_seconds": 81,
+      "total_frames": 2430,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E1-continuation-source-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "acb67862a50a5e852220fad590b780a2b67355eed63bcca5b6ea942790f2ad0b",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E1-continuation-source-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E1-continuation-source-16x9/earth-studio/continuation-state.json",
+      "compiled_description": "orbit Helsinki once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 77980m tilted 60 degrees for 5 seconds then fly to Stockholm at 77980m tilted 60 degrees for 9 seconds then zoom in on Stockholm at 25521m tilted 60 degrees for 5 seconds then orbit Stockholm once clockwise at 25521m tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Helsinki",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Helsinki",
+          "seconds": 5
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 5
+        },
+        {
+          "label": "Slow Orbit · Stockholm",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 25.5 km.",
+        "Slowly orbit Helsinki for 31 seconds.",
+        "Pull back from Helsinki over 5 seconds before setting off.",
+        "Cruise to Stockholm (396 km) over 9 seconds, holding 78.0 km.",
+        "Descend into Stockholm over 5 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Stockholm for 31 seconds.",
+        "Estimated duration: 81 seconds (01:21) at calm pace."
+      ],
+      "watch": "Note the FINAL rendered frame precisely; it must equal E2 frame 0."
+    },
+    {
+      "id": "E2-continuation-target-16x9",
+      "title": "Canary E2 — continuation TARGET: starts on E1 ending camera, then to Copenhagen",
+      "aspect": "16:9",
+      "duration_seconds": 54,
+      "total_frames": 1620,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E2-continuation-target-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "44ece98eb6014e92b0e899bd153e0b1a2d7c73b9f11eaab54c68d90491866896",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E2-continuation-target-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E2-continuation-target-16x9/earth-studio/continuation-state.json",
+      "compiled_description": "hover over Stockholm at 25521m tilted 60 degrees for 4 seconds then zoom out from Stockholm at 77980m tilted 60 degrees for 5 seconds then fly to Copenhagen at 77980m tilted 60 degrees for 9 seconds then zoom in on Copenhagen at 25521m tilted 60 degrees for 5 seconds then orbit Copenhagen once clockwise at 25521m tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Hold · Stockholm",
+          "seconds": 4
+        },
+        {
+          "label": "Pull Back · Stockholm",
+          "seconds": 5
+        },
+        {
+          "label": "Cruise · Copenhagen",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Copenhagen",
+          "seconds": 5
+        },
+        {
+          "label": "Slow Orbit · Copenhagen",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Begin exactly where the previous animation ended (over Stockholm): 25.5 km up, heading 180deg, tilted 60deg.",
+        "Open on Stockholm at 25.5 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Pull back from Stockholm over 5 seconds before setting off.",
+        "Cruise to Copenhagen (522 km) over 9 seconds, holding 78.0 km.",
+        "Descend into Copenhagen over 5 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Copenhagen for 31 seconds.",
+        "Estimated duration: 54 seconds (00:54) at calm pace."
+      ],
+      "watch": "Frame 0 must be visually identical to E1 final frame. Then Stockholm to Copenhagen.",
+      "continues_from": "E1-continuation-source-16x9",
+      "expected_frame0_camera": {
+        "latitude": 59.726386,
+        "longitude": 18.0686,
+        "altitude_m": 25521,
+        "pan_deg": 900,
+        "heading_deg": 180,
+        "tilt_deg": 60
+      }
+    }
+  ]
+}

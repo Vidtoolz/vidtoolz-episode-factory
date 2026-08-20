@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>G-hold-then-orbit-16x9 route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>Helsinki</name>
+      <Point><coordinates>24.9384,60.1699,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Espoo</name>
+      <Point><coordinates>24.6559,60.2055,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>G-hold-then-orbit-16x9 route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        24.9384,60.1699,0
+        24.9384,60.1699,0
+        24.6559,60.2055,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

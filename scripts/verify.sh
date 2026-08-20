@@ -45,6 +45,14 @@ node --check trailer-cue-generator.js
 node --check music-cue-generator.js
 node --check supervised-capture.js
 node --check earth-studio-job-planner.js
+node --check earth-studio-journey.js
+node --check earth-studio-director.js
+node --check earth-studio-lane.js
+node --check earth-studio-native-template-profiles.js
+node --check scripts/earth-studio-journey-browser-smoke.js
+node --check scripts/earth-studio-journey-import-gate.js
+node --check scripts/earth-studio-journey-canaries.js
+node --check scripts/earth-studio-director-canaries.js
 node --check scripts/verify-earth-studio-proof.js
 node --check score-engine/score-schemas.js
 node --check score-engine/midi-writer.js

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "verdict": "PASS_FOR_HUMAN_REVIEW",
+  "scope": "machine continuity and serialization checks; not an aesthetic approval",
+  "errors": [],
+  "warnings": [],
+  "tracks": {
+    "longitude": {
+      "keyframes": 16,
+      "finite": true,
+      "duplicate_keyframes": 2,
+      "direction_changes": 2
+    },
+    "latitude": {
+      "keyframes": 16,
+      "finite": true,
+      "duplicate_keyframes": 1,
+      "direction_changes": 2
+    },
+    "altitude": {
+      "keyframes": 11,
+      "finite": true,
+      "duplicate_keyframes": 2,
+      "direction_changes": 1
+    },
+    "rotationX": {
+      "keyframes": 3,
+      "finite": true,
+      "duplicate_keyframes": 1,
+      "direction_changes": 0
+    },
+    "rotationY": {
+      "keyframes": 3,
+      "finite": true,
+      "duplicate_keyframes": 1,
+      "direction_changes": 0
+    }
+  },
+  "segments": 5,
+  "motion_policy": {
+    "coherent_trajectory": true,
+    "dedupe_keyframes": true,
+    "source": "journey"
+  }
+}

@@ -1,0 +1,218 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": "16:9",
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Shanghai",
+    "story": {
+      "role": "ROUTE_POINT",
+      "importance": "LOW",
+      "purposes": [
+        "SHOW_ROUTE",
+        "TRANSITION"
+      ]
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s443",
+      "type": "hold",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 0.75,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": [
+    {
+      "destination": {
+        "location": "Amsterdam",
+        "story": {
+          "role": "ROUTE_POINT",
+          "importance": "LOW",
+          "purposes": [
+            "SHOW_ROUTE",
+            "TRANSITION"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "high_transit",
+      "travel": [
+        {
+          "id": "s433",
+          "type": "climb_to_transit",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s434",
+          "type": "cruise",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s435",
+          "type": "descend",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s436",
+          "type": "hold",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 0.75,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    },
+    {
+      "destination": {
+        "location": "Los Angeles",
+        "story": {
+          "role": "DESTINATION",
+          "importance": "HIGH",
+          "purposes": [
+            "ARRIVE",
+            "ESTABLISH",
+            "INSPECT"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "high_transit",
+      "travel": [
+        {
+          "id": "s437",
+          "type": "climb_to_transit",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s438",
+          "type": "cruise",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s439",
+          "type": "descend",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s440",
+          "type": "slow_orbit",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 1.25,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    },
+    {
+      "destination": {
+        "location": "Los Angeles",
+        "story": {
+          "role": null,
+          "importance": null,
+          "purposes": []
+        },
+        "framing": "globe",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "direct",
+      "travel": [
+        {
+          "id": "s441",
+          "type": "pull_back",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 1.25,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": "globe",
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s442",
+          "type": "hold",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 1.25,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    }
+  ]
+}

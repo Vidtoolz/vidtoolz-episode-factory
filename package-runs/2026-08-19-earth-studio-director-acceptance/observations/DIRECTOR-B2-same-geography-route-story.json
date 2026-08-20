@@ -1,0 +1,206 @@
+{
+  "id": "DIRECTOR-B2-same-geography-route-story",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B2-same-geography-route-story/earth-studio/earth-studio.esp",
+  "esp_sha256": "295bf64a4d76c88989c83035f61c794793df618fff17feeecfb01ee0642cb945",
+  "expected": {
+    "total_frames": 450,
+    "duration_seconds": 15,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 450,
+    "totalFrames": 450,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B2-same-geography-route-story/DIRECTOR-B2-same-geography-route-story_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.169897259273505,
+        "longitude": 24.9384,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 45,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B2-same-geography-route-story/DIRECTOR-B2-same-geography-route-story_f00045_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 45,
+        "latitude": 60.169897259273505,
+        "longitude": 24.9384,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 90,
+      "label": "seg2-start",
+      "movement": "fly_to",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B2-same-geography-route-story/DIRECTOR-B2-same-geography-route-story_f00090_seg2-start.png",
+      "earth_studio_camera": {
+        "frame": 90,
+        "latitude": 60.169897259273505,
+        "longitude": 24.9384,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Stockholm",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 225,
+      "label": "seg2-mid",
+      "movement": "fly_to",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B2-same-geography-route-story/DIRECTOR-B2-same-geography-route-story_f00225_seg2-mid.png",
+      "earth_studio_camera": {
+        "frame": 225,
+        "latitude": 59.94127990693349,
+        "longitude": 23.068435217825602,
+        "altitude": 189578.1171382744,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Stockholm",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 360,
+      "label": "seg3-start",
+      "movement": "hover",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B2-same-geography-route-story/DIRECTOR-B2-same-geography-route-story_f00360_seg3-start.png",
+      "earth_studio_camera": {
+        "frame": 360,
+        "latitude": 59.3292999936605,
+        "longitude": 18.06860000019373,
+        "altitude": 51042.49109425227,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Stockholm",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 405,
+      "label": "seg3-mid",
+      "movement": "hover",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B2-same-geography-route-story/DIRECTOR-B2-same-geography-route-story_f00405_seg3-mid.png",
+      "earth_studio_camera": {
+        "frame": 405,
+        "latitude": 59.3292999936605,
+        "longitude": 18.0686,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Stockholm",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 449,
+      "label": "seg3-end",
+      "movement": "hover",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-B2-same-geography-route-story/DIRECTOR-B2-same-geography-route-story_f00449_seg3-end.png",
+      "earth_studio_camera": {
+        "frame": 449,
+        "latitude": 59.3292999936605,
+        "longitude": 18.0686,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Stockholm",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    }
+  ],
+  "errors": []
+}

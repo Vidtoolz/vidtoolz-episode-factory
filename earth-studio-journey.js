@@ -1,0 +1,1511 @@
+(function earthStudioJourney(globalScope) {
+  "use strict";
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Earth Studio CAMERA JOURNEY model (journey_version 1)
+  //
+  // This module is a GUI-facing ABSTRACTION over the proven generator. It owns
+  // no Earth Studio semantics of its own: every journey compiles down to the
+  // planner's five validated primitives (fly_to / hover / orbit / zoom_in /
+  // zoom_out) expressed in the planner's own description grammar, and the
+  // existing keyframe engine, easing profile and .esp serializer then run
+  // completely unchanged. Nothing here invents an Earth Studio capability.
+  //
+  //   journey (this module)
+  //     -> canonical description string (planner grammar)
+  //     -> planner.parseDescription / buildShotPlan   [proven, byte-frozen]
+  //     -> buildEsp                                   [proven, import-verified]
+  //
+  // Because the compile target is the description grammar, every compile is
+  // VERIFIED by re-parsing it and checking each segment against the intent
+  // (see verifyCompilation) — a silent grammar drift becomes a loud error
+  // rather than a wrong animation.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  // Strict numeric coercion: null / undefined / "" mean ABSENT, not zero.
+  // (Number(null) === 0, which would silently turn "no override" into 0 m.)
+  function numOrNull(v) {
+    if (v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  const JOURNEY_VERSION = 1;
+  const CONTINUATION_STATE_VERSION = 1;
+
+  function loadPlanner(injected) {
+    if (injected) return injected;
+    if (globalScope && globalScope.EarthStudioJobPlanner) return globalScope.EarthStudioJobPlanner;
+    if (typeof require === "function") return require("./earth-studio-job-planner.js");
+    throw new Error("earth-studio-journey: planner module unavailable");
+  }
+
+  // ── Framing: geographic scale -> camera distance ──────────────────────────
+  // The camera altitude needed to fit a ground span S in frame, for a camera
+  // tilted `tilt` degrees from straight-down, is a plain optical identity:
+  //
+  //   visible span at the subject = 2 * slantRange * tan(FOV/2)
+  //   slantRange                  = altitude / cos(tilt)
+  //   => altitude = S * cos(tilt) / (2 * tan(FOV/2))
+  //
+  // FOV is Earth Studio's documented default (planner.EARTH_STUDIO_DEFAULT_FOV_DEG
+  // = 20 deg); our .esp never keyframes `fov`, so that default genuinely holds
+  // for every frame we generate. The law is CROSS-CHECKED against the verified
+  // gazetteer: the calibrated Eiffel Tower altitude (1000 m) is what this
+  // formula returns for a 500 m landmark span at the default 45 deg tilt
+  // (1002 m) — i.e. the existing hand-validated framing and this derivation
+  // agree at the landmark end of the range.
+  //
+  // `span_m` is the ground width the frame should cover, breathing room already
+  // included (a subject is framed with margin, not edge-to-edge).
+  const FRAMING_SCALES = {
+    landmark: { key: "landmark", label: "Landmark / building", span_m: 500, blurb: "Very close — a single building or monument fills the frame." },
+    neighborhood: { key: "neighborhood", label: "Neighborhood", span_m: 2500, blurb: "Close — a few streets and blocks." },
+    district: { key: "district", label: "District", span_m: 8000, blurb: "Medium-close — a downtown or island district." },
+    city: { key: "city", label: "City", span_m: 12000, blurb: "Medium-close — the city's core and centre." },
+    metro: { key: "metro", label: "Metropolitan area", span_m: 55000, blurb: "Medium — city plus its suburbs and surroundings." },
+    region: { key: "region", label: "Region", span_m: 350000, blurb: "Wider — a province, mountain range, or sea." },
+    country: { key: "country", label: "Country", span_m: 1300000, blurb: "Wide — a whole country in frame." },
+    subcontinent: { key: "subcontinent", label: "Sub-continental area", span_m: 2500000, blurb: "Very wide — a large sea or group of countries." },
+    continent: { key: "continent", label: "Continent", span_m: 5000000, blurb: "Very wide — a whole continent." },
+    // The whole globe is just another span: Earth's diameter. Deriving it with
+    // the same law is what actually fits the planet inside the frame — the
+    // planner's flat SPACE_ALTITUDE_M (12,000 km) leaves the Earth overflowing
+    // the 20 deg frame, which is not a "whole globe" shot.
+    globe: { key: "globe", label: "Whole globe", span_m: 12742000, blurb: "From space — the whole planet in frame." },
+  };
+  // Wide -> close, so "one step closer / wider" is well defined.
+  const SCALE_LADDER = ["landmark", "neighborhood", "district", "city", "metro", "region", "country", "subcontinent", "continent", "globe"];
+
+  // Fixtures whose scale class is not a plain city and which carry no `scale`
+  // field in the planner's gazetteer (that field is only on the entries added
+  // with the large-area geography; adding keys to pre-existing fixture objects
+  // would change byte-frozen shot-plan.json output, so those classifications
+  // live here instead).
+  const SCALE_OVERRIDES = {
+    "midtown manhattan": "district",
+    "lower manhattan": "district",
+    "downtown boston": "district",
+    "manhattan": "district",
+    "bali": "region",
+    "santorini": "district",
+    "lofoten": "region",
+    "galapagos": "region",
+    "great barrier reef": "region",
+    "grand canyon": "region",
+    "yellowstone": "region",
+    "yosemite": "region",
+    "banff": "region",
+    "monument valley": "region",
+    "torres del paine": "region",
+    "the great wall of china": "region",
+    "great wall of china": "region",
+    "geirangerfjord": "district",
+    "central park": "neighborhood",
+    "palm jumeirah": "neighborhood",
+  };
+  // Word cues for a place the gazetteer does not know (free text or an explicit
+  // coordinate pair). Ordered: first match wins.
+  const SCALE_KEYWORDS = [
+    [/\b(continent)\b/i, "continent"],
+    [/\b(ocean)\b/i, "continent"],
+    [/\b(sea|gulf|strait|archipelago|desert|rainforest|steppe|tundra)\b/i, "region"],
+    [/\b(country|republic|kingdom|federation)\b/i, "country"],
+    [/\b(province|county|region|highlands|mountains|range|alps|valley|coast|riviera|lakeland|fjords)\b/i, "region"],
+    [/\b(metro|metropolitan|greater)\b/i, "metro"],
+    [/\b(downtown|district|quarter|old town|city cent(?:re|er)|waterfront|harbou?r|island)\b/i, "district"],
+    [/\b(neighbou?rhood|park|campus|zoo|stadium|airport|port|marina|beach)\b/i, "neighborhood"],
+    [/\b(tower|cathedral|church|temple|mosque|palace|castle|bridge|square|monument|statue|museum|theat(?:re|er)|arena|lighthouse|fort|ruins|building|skyscraper|hotel|station)\b/i, "landmark"],
+    [/\b(city|town|village)\b/i, "city"],
+  ];
+
+  function scaleOf(key) { return FRAMING_SCALES[key] || null; }
+
+  // ── Target-framing tilt limit (real-import finding, 2026-08-19) ────────────
+  // The generator positions a fly / hover / zoom camera at the TARGET'S OWN
+  // coordinates and then tilts it. The target therefore sits at nadir while the
+  // view axis points `tilt` degrees away from nadir, so the target's angular
+  // distance from frame centre IS the tilt. With Earth Studio's 20 deg FOV the
+  // frame only reaches FOV/2 = 10 deg from its centre, so any tilt beyond that
+  // pushes the requested place completely out of shot. Real imports confirmed
+  // this exactly: at tilt 60 the target measured 4.9 half-frames off centre
+  // (sin(60)/tan(10) = 4.9), a Stockholm descent showed open sea, and country /
+  // continent framing rendered as horizon-only or fully black.
+  //
+  // An ORBIT is exempt and needs no cap: the engine offsets the camera onto a
+  // ring of radius altitude*tan(tilt) and points it back at the centre, so the
+  // target is dead-centre at any tilt (verified in the same import round).
+  //
+  // marginFraction is how much of the frame half-height the target is allowed to
+  // sit away from centre. This is the LIMIT used to validate an operator's own
+  // tilt; a DERIVED tilt goes further and uses TARGET_FRAMING_TILT_DEG below.
+  const TARGET_FRAMING_MARGIN_FRACTION = 0.6;
+
+  // The derived tilt for a movement that must frame its target. A camera above
+  // the target sees it `tilt` degrees off the view axis, so ONLY a top-down
+  // camera puts the requested place in the middle of the shot — which is exactly
+  // what the framing law computes a span for. Round 2 of the real-import gate
+  // showed the difference plainly: at the 6.07 deg limit Finland was in frame but
+  // pushed 60% toward the bottom edge with Arctic ocean filling the top half;
+  // top-down centres it. Oblique, cinematic looks come from orbits and from the
+  // ring entry into an orbit, both of which point the camera AT the target and
+  // are visually accepted at their full tilt.
+  const TARGET_FRAMING_TILT_DEG = 0;
+  function maxTargetFramingTiltDeg(options = {}) {
+    const planner = loadPlanner(options.planner);
+    const fov = options.fovDeg || planner.EARTH_STUDIO_DEFAULT_FOV_DEG;
+    const margin = Number.isFinite(options.marginFraction) ? options.marginFraction : TARGET_FRAMING_MARGIN_FRACTION;
+    const rad = (d) => (d * Math.PI) / 180;
+    const sin = Math.min(1, margin * Math.tan(rad(fov / 2)));
+    return Math.round(((Math.asin(sin) * 180) / Math.PI) * 100) / 100;
+  }
+
+  // The generator caps how far an orbit's camera may sit from the target
+  // (orbitRadiusMeters). Beyond that cap the camera can no longer be placed at
+  // the look-at offset the tilt implies, so the orbit stops facing its target and
+  // the shot degenerates to sky. Read the cap from the planner's own law instead
+  // of duplicating the constant.
+  function orbitRingCapM(planner) {
+    return planner.orbitRadiusMeters(1e12, 45);
+  }
+
+  // Can an orbit at this altitude/tilt actually be placed on a ring that faces
+  // its target? Real import (canary H): "Slow Orbit" around Finland needed a
+  // 3,192 km ring, got the 80 km cap, and rendered as a near-black frame with
+  // only the Earth's limb at the bottom edge.
+  function orbitCanFaceTarget(altitudeM, tiltDeg, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const rad = (d) => (d * Math.PI) / 180;
+    const needed = Math.abs(Number(altitudeM)) * Math.tan(rad(Math.min(89.9, Math.abs(tiltDeg))));
+    return needed <= orbitRingCapM(planner) + 1;
+  }
+
+  // How far off frame centre a nadir target sits, in half-frames, for a camera
+  // directly above it at `tilt`. > 1 means the target is outside the frame.
+  function targetOffsetHalfFrames(tiltDeg, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const fov = options.fovDeg || planner.EARTH_STUDIO_DEFAULT_FOV_DEG;
+    const rad = (d) => (d * Math.PI) / 180;
+    return Math.sin(rad(Math.min(89.9, Math.abs(tiltDeg)))) / Math.tan(rad(fov / 2));
+  }
+
+  // Inverse of framingAltitudeM at the reference tilt: the ground span an
+  // altitude puts in frame.
+  const REFERENCE_TILT_DEG = 45;
+  function spanForAltitudeM(altitudeM, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const fov = options.fovDeg || planner.EARTH_STUDIO_DEFAULT_FOV_DEG;
+    const rad = (d) => (d * Math.PI) / 180;
+    const tilt = Number.isFinite(options.tiltDeg) ? options.tiltDeg : REFERENCE_TILT_DEG;
+    return (2 * (Number(altitudeM) / Math.cos(rad(tilt)))) * Math.tan(rad(fov / 2));
+  }
+
+  // The ladder scale whose nominal span is closest (in log space, since the
+  // ladder is geometric) to a given span.
+  function scaleForSpanM(spanM) {
+    const candidates = SCALE_LADDER.filter((k) => Number.isFinite(FRAMING_SCALES[k].span_m));
+    let best = candidates[0];
+    let bestErr = Infinity;
+    candidates.forEach((k) => {
+      const err = Math.abs(Math.log(FRAMING_SCALES[k].span_m) - Math.log(Math.max(1, spanM)));
+      if (err < bestErr) { bestErr = err; best = k; }
+    });
+    return best;
+  }
+
+  // Classify a place's geographic scale. Returns { scale, source }.
+  function classifyScale(resolved, rawName) {
+    const name = String(rawName == null ? "" : rawName).trim();
+    const norm = name.toLowerCase().replace(/^the\s+/, "").trim();
+    if (resolved && resolved.scale && FRAMING_SCALES[resolved.scale]) {
+      return { scale: resolved.scale, source: "gazetteer_scale" };
+    }
+    const resolvedNorm = resolved && resolved.name ? resolved.name.toLowerCase() : "";
+    for (const candidate of [resolvedNorm, resolvedNorm.replace(/^the\s+/, ""), norm, name.toLowerCase()]) {
+      if (candidate && SCALE_OVERRIDES[candidate]) return { scale: SCALE_OVERRIDES[candidate], source: "classified_override" };
+    }
+    // A gazetteer-calibrated altitude means the framing for this place was
+    // hand-validated. Name its scale by inverting the framing law — what ground
+    // span does that altitude actually put in frame? — so the label describes
+    // what the operator will see.
+    if (resolved && Number.isFinite(resolved.altitude_m)) {
+      return { scale: scaleForSpanM(spanForAltitudeM(resolved.altitude_m)), source: "calibrated_altitude" };
+    }
+    for (const [pattern, scale] of SCALE_KEYWORDS) {
+      if (pattern.test(name)) return { scale, source: "classified_keyword" };
+    }
+    // An explicit coordinate pair carries no scale information at all — say so,
+    // so the GUI can prompt for a framing choice instead of quietly assuming.
+    if (resolved && resolved.source === "explicit_coordinates") {
+      return { scale: "city", source: "assumed_coordinates" };
+    }
+    if (resolved) return { scale: "city", source: "gazetteer_default_city" };
+    return { scale: "city", source: "assumed_city" };
+  }
+
+  function stepScale(scaleKey, steps) {
+    const i = SCALE_LADDER.indexOf(scaleKey);
+    if (i < 0) return scaleKey;
+    return SCALE_LADDER[Math.min(SCALE_LADDER.length - 1, Math.max(0, i + steps))];
+  }
+
+  // altitude = span * cos(tilt) / (2 * tan(FOV/2)), floored by the place's
+  // terrain minimum and clamped to Earth Studio's altitude range.
+  function framingAltitudeM(scaleKey, tiltDeg, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const scale = scaleOf(scaleKey) || FRAMING_SCALES.city;
+    const fov = options.fovDeg || planner.EARTH_STUDIO_DEFAULT_FOV_DEG;
+    const tilt = Math.min(80, Math.max(0, Number.isFinite(tiltDeg) ? tiltDeg : 45));
+    const rad = (d) => (d * Math.PI) / 180;
+    const raw = (scale.span_m * Math.cos(rad(tilt))) / (2 * Math.tan(rad(fov / 2)));
+    const floor = Math.max(planner.MIN_ALTITUDE_M, options.minAltitudeM || 0);
+    return Math.round(Math.min(planner.MAX_ALTITUDE_M, Math.max(floor, raw)));
+  }
+
+  // ── Readability of a crossing (operator directive 2026-08-19) ──────────────
+  // "Moving long distances close to the ground is not recommended by default —
+  // the image changes so quickly one cannot understand the locations."
+  //
+  // The measurable quantity is how much of the FRAME the ground traverses per
+  // second: groundSpeed / frameWidth, in frame-widths per second. Measured
+  // against the operator's own verdicts on real playback: everything accepted sat
+  // at or below 0.80 fw/s (a 396 km leg at 156 km altitude; a 4 km leg at 1 km),
+  // and everything reported unreadable was 3.29 fw/s or worse (up to 21.8 fw/s
+  // for 8,873 km flown at 34 km altitude). The limit therefore sits between the
+  // two, at 1.0.
+  const READABLE_SCREEN_SPEED_FW_PER_S = 1.0;
+
+  function frameWidthMeters(altitudeM, tiltDeg, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const fov = options.fovDeg || planner.EARTH_STUDIO_DEFAULT_FOV_DEG;
+    const rad = (d) => (d * Math.PI) / 180;
+    const tilt = Math.min(85, Math.max(0, Number.isFinite(tiltDeg) ? tiltDeg : 0));
+    return 2 * (Math.abs(Number(altitudeM)) / Math.cos(rad(tilt))) * Math.tan(rad(fov / 2));
+  }
+
+  // How many frame-widths of ground sweep past per second on this crossing.
+  function screenSpeedFrameWidths(distanceM, durationS, altitudeM, tiltDeg, options = {}) {
+    const d = Number(distanceM);
+    const t = Number(durationS);
+    if (!Number.isFinite(d) || !Number.isFinite(t) || t <= 0 || d <= 0) return 0;
+    const w = frameWidthMeters(altitudeM, tiltDeg, options);
+    if (!(w > 0)) return Infinity;
+    return (d / t) / w;
+  }
+
+  // The lowest altitude at which a crossing still reads.
+  function readableTransitAltitudeM(distanceM, durationS, tiltDeg, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const d = Number(distanceM);
+    const t = Number(durationS);
+    if (!Number.isFinite(d) || !Number.isFinite(t) || t <= 0 || d <= 0) return 0;
+    const fov = options.fovDeg || planner.EARTH_STUDIO_DEFAULT_FOV_DEG;
+    const rad = (deg) => (deg * Math.PI) / 180;
+    const limit = Number.isFinite(options.limit) ? options.limit : READABLE_SCREEN_SPEED_FW_PER_S;
+    const tilt = Math.min(85, Math.max(0, Number.isFinite(tiltDeg) ? tiltDeg : 0));
+    // groundSpeed / (2*(alt/cos t)*tan(fov/2)) <= limit
+    const alt = (d / t) * Math.cos(rad(tilt)) / (2 * Math.tan(rad(fov / 2)) * limit);
+    return Math.round(Math.min(planner.SPACE_ALTITUDE_M, Math.max(planner.MIN_ALTITUDE_M, alt)));
+  }
+
+  // Cruising altitude for a crossing. Driven by LEGIBILITY, not by spectacle:
+  // climb exactly as high as the ground needs to be readable (with headroom), and
+  // no higher. Framing the entire route is the ceiling, not the target — route
+  // framing for a 396 km leg is 1,122 km up, which shows all of Scandinavia and
+  // loses the cities the leg is actually about, while ~190 km reads fine.
+  const TRANSIT_LEGIBILITY_HEADROOM = 1.5;
+  function transitAltitudeM(distanceM, tiltDeg, floorM, options = {}) {
+    const planner = loadPlanner(options.planner);
+    if (!Number.isFinite(distanceM) || distanceM <= 0) return Math.round(Math.max(floorM || 0, planner.DEFAULT_ALTITUDE_M));
+    const fov = options.fovDeg || planner.EARTH_STUDIO_DEFAULT_FOV_DEG;
+    const rad = (d) => (d * Math.PI) / 180;
+    const tilt = Math.min(80, Math.max(0, Number.isFinite(tiltDeg) ? tiltDeg : 45));
+    // Upper bound: the altitude that frames the whole route.
+    const routeFraming = (distanceM * Math.cos(rad(tilt))) / (2 * Math.tan(rad(fov / 2)));
+    // Target: legible at the generator's own baseline duration for this distance
+    // (the real duration is only ever longer once pace is applied, so this is the
+    // conservative reading), plus headroom.
+    const seconds = planner.defaultDuration("fly_to", { distanceM });
+    const legible = readableTransitAltitudeM(distanceM, seconds, tilt, { planner, fovDeg: fov })
+      * TRANSIT_LEGIBILITY_HEADROOM;
+    const target = Math.min(routeFraming, legible);
+    return Math.round(Math.min(planner.SPACE_ALTITUDE_M, Math.max(floorM || 0, target)));
+  }
+
+  // ── Movement catalogue ────────────────────────────────────────────────────
+  // `slot`: "at" = a movement performed AT a location (start or destination);
+  //         "travel" = a movement that forms part of getting from A to B.
+  // `primitive`: the planner action every step of this type compiles into.
+  // Everything here is one of the five proven actions; the only compositions
+  // are multi-step travel presets, which are ordinary ordered step lists.
+  const MOVEMENTS = {
+    hold: {
+      key: "hold", slot: "at", primitive: "hover", label: "Hold", icon: "■",
+      blurb: "No camera movement — the shot sits still and lets the viewer read the place.",
+      suggested: [3, 6], holdsCamera: true,
+    },
+    slow_orbit: {
+      key: "slow_orbit", slot: "at", primitive: "orbit", label: "Slow Orbit", icon: "↻",
+      blurb: "Calmly circle the location once. The signature establishing move.",
+      suggested: [10, 22], revolutions: 1, paceStretch: 1.35, orientable: true,
+    },
+    orbit: {
+      key: "orbit", slot: "at", primitive: "orbit", label: "Orbit", icon: "↻",
+      blurb: "Circle the location once at a normal pace.",
+      suggested: [8, 16], revolutions: 1, orientable: true,
+    },
+    orbit_twice: {
+      key: "orbit_twice", slot: "at", primitive: "orbit", label: "Double Orbit", icon: "↻↻",
+      blurb: "Two full circles — for a hero shot you want to sit on.",
+      suggested: [18, 36], revolutions: 2, orientable: true,
+    },
+    half_orbit: {
+      key: "half_orbit", slot: "at", primitive: "orbit", label: "Half Orbit", icon: "⤾",
+      blurb: "Swing halfway around the location, ending on the opposite side.",
+      suggested: [5, 11], revolutions: 0.5, orientable: true,
+    },
+    zoom_in: {
+      key: "zoom_in", slot: "at", primitive: "zoom_in", label: "Push In", icon: "⤓",
+      blurb: "Move closer, tightening onto the subject.",
+      suggested: [4, 9], scaleShift: -1,
+    },
+    zoom_out: {
+      key: "zoom_out", slot: "at", primitive: "zoom_out", label: "Pull Back", icon: "⤒",
+      blurb: "Move away, opening the shot up.",
+      suggested: [4, 9], scaleShift: +1,
+    },
+    reveal: {
+      key: "reveal", slot: "at", primitive: "zoom_out", label: "Reveal", icon: "◈",
+      blurb: "Pull back two steps to reveal where this place sits in the world.",
+      suggested: [6, 13], scaleShift: +2,
+    },
+    spiral_in: {
+      key: "spiral_in", slot: "at", primitive: "orbit", label: "Spiral In", icon: "◉",
+      blurb: "Circle the location while moving closer — orbit and descent at once.",
+      suggested: [12, 24], revolutions: 1, scaleShift: -1, orientable: true,
+    },
+    spiral_out: {
+      key: "spiral_out", slot: "at", primitive: "orbit", label: "Spiral Out", icon: "◎",
+      blurb: "Circle the location while pulling away — orbit and ascent at once.",
+      suggested: [12, 24], revolutions: 1, scaleShift: +1, orientable: true,
+    },
+    // ── travel slot ──
+    fly: {
+      key: "fly", slot: "travel", primitive: "fly_to", label: "Fly To", icon: "→",
+      blurb: "Travel straight to the next location. Long flights automatically arc up and back down.",
+      suggested: null, travelsToDestination: true,
+    },
+    cruise: {
+      key: "cruise", slot: "travel", primitive: "fly_to", label: "Cruise", icon: "→",
+      blurb: "Travel to the next location keeping the altitude you are already at.",
+      suggested: null, travelsToDestination: true, holdAltitude: true,
+    },
+    fly_high: {
+      key: "fly_high", slot: "travel", primitive: "fly_to", label: "Fly High", icon: "⇗",
+      blurb: "Travel at an altitude high enough to see both ends of the journey.",
+      suggested: null, travelsToDestination: true, useTransitAltitude: true,
+    },
+    fly_low: {
+      key: "fly_low", slot: "travel", primitive: "fly_to", label: "Low Approach", icon: "⇘",
+      blurb: "Come in low and tilted toward the horizon, like an aircraft on approach.",
+      suggested: null, travelsToDestination: true, scaleShift: -1, tiltDeg: 72,
+    },
+    pull_back: {
+      key: "pull_back", slot: "travel", primitive: "zoom_out", label: "Pull Back", icon: "⤒",
+      blurb: "Rise away from where you are before setting off.",
+      suggested: [3, 7], scaleShift: +1,
+    },
+    climb_to_transit: {
+      key: "climb_to_transit", slot: "travel", primitive: "zoom_out", label: "Climb Out", icon: "⇑",
+      blurb: "Climb to travelling altitude — high enough to see the whole route.",
+      suggested: [4, 9], useTransitAltitude: true,
+    },
+    descend: {
+      key: "descend", slot: "travel", primitive: "zoom_in", label: "Descend", icon: "⤓",
+      blurb: "Drop smoothly into the destination's framing.",
+      suggested: [4, 10], atDestination: true,
+    },
+    pause: {
+      key: "pause", slot: "travel", primitive: "hover", label: "Pause", icon: "■",
+      blurb: "Hold still for a beat mid-journey.",
+      suggested: [2, 4], holdsCamera: true,
+    },
+  };
+
+  const AT_MOVEMENT_KEYS = Object.keys(MOVEMENTS).filter((k) => MOVEMENTS[k].slot === "at");
+  const TRAVEL_MOVEMENT_KEYS = Object.keys(MOVEMENTS).filter((k) => MOVEMENTS[k].slot === "travel");
+
+  // Named travel styles: each one just POPULATES the travel step list, so
+  // "+ add movement" and a preset produce the same kind of data.
+  const TRAVEL_STYLES = {
+    direct: {
+      key: "direct", label: "Direct Fly-To", icon: "→",
+      blurb: "One smooth flight from here to there. Long flights arc up and back down on their own.",
+      steps: ["fly"],
+    },
+    cinematic: {
+      key: "cinematic", label: "Cinematic", icon: "⤒→⤓",
+      blurb: "Pull back from where you are, travel high, then descend into the destination.",
+      steps: ["pull_back", "cruise", "descend"],
+    },
+    high_transit: {
+      key: "high_transit", label: "High Transit", icon: "⇑→",
+      blurb: "Climb to an altitude that shows the whole route, then cross to the destination.",
+      steps: ["climb_to_transit", "fly"],
+    },
+    low_approach: {
+      key: "low_approach", label: "Low Approach", icon: "⇘",
+      blurb: "Stay low and tilted toward the horizon all the way in.",
+      steps: ["fly_low"],
+    },
+    custom: { key: "custom", label: "Custom", icon: "✎", blurb: "Build the travel out of individual movements.", steps: ["fly"] },
+  };
+
+  // ── Pacing ────────────────────────────────────────────────────────────────
+  // Baseline durations come from planner.defaultDuration(), the magnitude-scaled
+  // law that real Earth Studio playback validated across acceptance rounds 2-4
+  // (flight time by ground distance, orbit seconds per revolution stretched by
+  // tan(tilt) for camera proximity, zooms on a log altitude ratio). A pace
+  // preset scales that baseline; it never replaces it. CALM is the default.
+  const PACE_PRESETS = {
+    calm: { key: "calm", label: "Calm", factor: 1.35, low: 1.15, high: 1.6, blurb: "Deliberate and cinematic. The default." },
+    relaxed: { key: "relaxed", label: "Relaxed", factor: 1.15, low: 1.0, high: 1.35, blurb: "A little tighter, still unhurried." },
+    standard: { key: "standard", label: "Standard", factor: 1.0, low: 0.9, high: 1.15, blurb: "The generator's validated baseline pacing." },
+    quick: { key: "quick", label: "Quick", factor: 0.8, low: 0.7, high: 0.95, blurb: "Faster cuts. Watch for movement that reads as frantic." },
+  };
+  const DEFAULT_PACE = "calm";
+
+  function paceOf(key) { return PACE_PRESETS[key] || PACE_PRESETS[DEFAULT_PACE]; }
+
+  // ── Presets ───────────────────────────────────────────────────────────────
+  const JOURNEY_PRESETS = {
+    establish: {
+      key: "establish", label: "Establish Location",
+      blurb: "Approach a place, settle, then orbit it slowly. One location, no travel.",
+      build: (a) => ({ start: a[0] || "Helsinki", startMovements: ["slow_orbit"], legs: [] }),
+    },
+    city_to_city: {
+      key: "city_to_city", label: "City to City",
+      blurb: "Establish A, pull back, fly across, descend, establish B.",
+      build: (a) => ({
+        start: a[0] || "Helsinki", startMovements: ["slow_orbit"],
+        legs: [{ destination: a[1] || "Stockholm", travelStyle: "cinematic", movements: ["slow_orbit"] }],
+      }),
+    },
+    location_reveal: {
+      key: "location_reveal", label: "Location Reveal",
+      blurb: "Start wide, come in close, settle. Shows where a place sits in the world.",
+      build: (a) => ({
+        start: a[0] || "Suomenlinna", startFraming: "region", startMovements: ["hold"],
+        legs: [{ destination: a[0] || "Suomenlinna", travelStyle: "low_approach", movements: ["hold"] }],
+      }),
+    },
+    orbit_and_depart: {
+      key: "orbit_and_depart", label: "Orbit and Depart",
+      blurb: "Circle the first location, then travel on to the second.",
+      build: (a) => ({
+        start: a[0] || "Helsinki", startMovements: ["orbit"],
+        legs: [{ destination: a[1] || "Stockholm", travelStyle: "direct", movements: ["hold"] }],
+      }),
+    },
+    multi_city: {
+      key: "multi_city", label: "Multi-City Journey",
+      blurb: "Four stops, each established with a slow orbit.",
+      build: (a) => ({
+        start: a[0] || "Helsinki", startMovements: ["slow_orbit"],
+        legs: [a[1] || "Stockholm", a[2] || "Copenhagen", a[3] || "Berlin"].map((d) => ({
+          destination: d, travelStyle: "cinematic", movements: ["slow_orbit"],
+        })),
+      }),
+    },
+  };
+
+  function applyPreset(key, places = [], base = {}) {
+    const preset = JOURNEY_PRESETS[key];
+    if (!preset) throw new Error(`unknown journey preset "${key}"`);
+    const shape = preset.build(places);
+    const mkSteps = (keys, slot) => (keys || []).map((k) => newStep(k, slot));
+    return normalizeJourney({
+      ...base,
+      preset: key,
+      start: { location: shape.start, framing: shape.startFraming || "auto" },
+      start_movements: mkSteps(shape.startMovements, "at"),
+      legs: (shape.legs || []).map((leg) => ({
+        destination: { location: leg.destination, framing: leg.framing || "auto" },
+        travel_style: leg.travelStyle || "direct",
+        travel: mkSteps((TRAVEL_STYLES[leg.travelStyle] || TRAVEL_STYLES.direct).steps, "travel"),
+        movements: mkSteps(leg.movements, "at"),
+      })),
+    });
+  }
+
+  // ── Journey normalization (schema v1 + migration) ─────────────────────────
+  let stepCounter = 0;
+  function newStep(type, slot, extra = {}) {
+    stepCounter += 1;
+    const def = MOVEMENTS[type];
+    return {
+      id: `s${stepCounter}`,
+      type: def ? type : (slot === "travel" ? "fly" : "hold"),
+      duration_seconds: null,   // null = use the suggested (paced) duration
+      pace: null,               // null = inherit the journey pace
+      emphasis: null,           // directorial dwell multiplier over the paced suggestion
+      direction: 1,             // orbit only: 1 = clockwise, -1 = counterclockwise
+      altitude_m: null,         // manual override
+      tilt_deg: null,           // manual override
+      framing: null,            // manual framing scale for this step's target
+      ...extra,
+    };
+  }
+
+  function normalizeStep(raw, slot) {
+    const src = raw && typeof raw === "object" ? raw : { type: raw };
+    const def = MOVEMENTS[src.type];
+    const valid = def && def.slot === slot;
+    const step = newStep(valid ? src.type : undefined, slot);
+    if (src.id) step.id = String(src.id);
+    step.duration_seconds = numOrNull(src.duration_seconds);
+    step.pace = PACE_PRESETS[src.pace] ? src.pace : null;
+    // Narrative emphasis (the Director's dwell multiplier). The physical,
+    // playback-validated duration law stays the baseline; this only scales it.
+    step.emphasis = numOrNull(src.emphasis);
+    step.direction = Number(src.direction) === -1 ? -1 : 1;
+    step.altitude_m = numOrNull(src.altitude_m);
+    step.tilt_deg = numOrNull(src.tilt_deg);
+    step.revolutions = numOrNull(src.revolutions);
+    step.framing = FRAMING_SCALES[src.framing] ? src.framing : null;
+    if (!valid && src.type) step.unsupported_type = String(src.type);
+    return step;
+  }
+
+  // Story intent attached to a stop: what this place is DOING in the sequence.
+  // The journey model only carries and persists it — the meaning lives in
+  // earth-studio-director.js, which reads it to choose camera treatment.
+  function normalizeStory(raw) {
+    const src = raw && typeof raw === "object" ? raw : {};
+    const purposes = Array.isArray(src.purposes) ? src.purposes.filter((p) => typeof p === "string" && p) : [];
+    return {
+      role: typeof src.role === "string" && src.role ? src.role : null,
+      importance: typeof src.importance === "string" && src.importance ? src.importance : null,
+      purposes,
+    };
+  }
+
+  function normalizePlace(raw) {
+    const src = raw && typeof raw === "object" ? raw : { location: raw };
+    return {
+      location: String(src.location == null ? "" : src.location).trim(),
+      story: normalizeStory(src.story),
+      framing: src.framing === "auto" || !src.framing ? "auto" : (FRAMING_SCALES[src.framing] ? src.framing : "auto"),
+      altitude_m: numOrNull(src.altitude_m),
+      tilt_deg: numOrNull(src.tilt_deg),
+    };
+  }
+
+  function normalizeJourney(raw) {
+    const src = raw && typeof raw === "object" ? raw : {};
+    const start = normalizePlace(src.start);
+    const startSource = src.start && src.start.source === "continuation" ? "continuation" : "location";
+    const continuation = startSource === "continuation" && src.start.continuation ? src.start.continuation : null;
+    return {
+      journey_version: JOURNEY_VERSION,
+      pace: PACE_PRESETS[src.pace] ? src.pace : DEFAULT_PACE,
+      aspect: src.aspect || null,
+      preset: src.preset || null,
+      start: {
+        source: startSource,
+        ...start,
+        ...(continuation ? { continuation } : {}),
+      },
+      start_movements: (Array.isArray(src.start_movements) ? src.start_movements : []).map((s) => normalizeStep(s, "at")),
+      legs: (Array.isArray(src.legs) ? src.legs : []).map((leg) => {
+        const l = leg && typeof leg === "object" ? leg : {};
+        const styleKey = TRAVEL_STYLES[l.travel_style] ? l.travel_style : "direct";
+        const travel = Array.isArray(l.travel) && l.travel.length
+          ? l.travel.map((s) => normalizeStep(s, "travel"))
+          : TRAVEL_STYLES[styleKey].steps.map((k) => newStep(k, "travel"));
+        return {
+          destination: normalizePlace(l.destination),
+          travel_style: styleKey,
+          travel,
+          movements: (Array.isArray(l.movements) ? l.movements : []).map((s) => normalizeStep(s, "at")),
+        };
+      }),
+    };
+  }
+
+  function moveLeg(journey, index, delta) {
+    const j = normalizeJourney(journey);
+    const to = index + delta;
+    if (index < 0 || index >= j.legs.length || to < 0 || to >= j.legs.length) return j;
+    const [leg] = j.legs.splice(index, 1);
+    j.legs.splice(to, 0, leg);
+    return j;
+  }
+
+  // ── Compilation ───────────────────────────────────────────────────────────
+  // Walks the journey, resolving each place, deriving each step's framing
+  // altitude / tilt / duration, and emitting one planner-grammar phrase per
+  // step. State carried between steps mirrors what the keyframe engine itself
+  // carries (location, altitude, tilt) so suggested durations use the same
+  // magnitudes the generator will use.
+
+  const BAD_PLACE_TEXT = /[,;\n]|\bthen\b/i;
+
+  function resolvePlace(planner, place) {
+    const text = place.location;
+    if (!text) return { text, resolved: null, ok: false, reason: "missing" };
+    if (BAD_PLACE_TEXT.test(text) && !planner.parseExplicitCoords(text)) {
+      return { text, resolved: null, ok: false, reason: "punctuation" };
+    }
+    const resolved = planner.resolveLocation(text);
+    if (!resolved) return { text, resolved: null, ok: false, reason: "unknown" };
+    return { text, resolved, ok: true, reason: null };
+  }
+
+  // The name to write into the description: the gazetteer's canonical name
+  // (never contains a comma, so segment splitting is safe) or the raw
+  // coordinate pair (which the splitter explicitly protects).
+  function descriptionName(planner, resolvePlaceResult) {
+    const { text, resolved } = resolvePlaceResult;
+    if (resolved && resolved.source === "gazetteer_fixture") return resolved.name;
+    if (planner.parseExplicitCoords(text)) return text.trim();
+    return resolved ? resolved.name : text.trim();
+  }
+
+  function framingFor(planner, place, resolvedInfo, tiltDeg) {
+    const classified = classifyScale(resolvedInfo.resolved, resolvedInfo.text);
+    const scale = place.framing === "auto" ? classified.scale : place.framing;
+    const minAltitudeM = (resolvedInfo.resolved && resolvedInfo.resolved.min_altitude_m) || 0;
+    const calibrated = resolvedInfo.resolved && Number.isFinite(resolvedInfo.resolved.altitude_m)
+      ? resolvedInfo.resolved.altitude_m : null;
+    let altitude = null;
+    let source = null;
+    if (Number.isFinite(place.altitude_m)) {
+      altitude = place.altitude_m; source = "manual_altitude";
+    } else if (place.framing === "auto" && calibrated !== null) {
+      // The gazetteer's hand-validated altitude for this place wins on AUTO:
+      // it is verified framing, and leaving it implicit keeps the exact proven
+      // planner path (altitude_source stays "gazetteer").
+      altitude = calibrated; source = "gazetteer_calibrated";
+    } else {
+      altitude = framingAltitudeM(scale, tiltDeg, { planner, minAltitudeM }); source = "derived_optical";
+    }
+    return {
+      scale, scale_label: (scaleOf(scale) || {}).label || scale,
+      classified_scale: classified.scale, classification_source: classified.source,
+      altitude_m: Math.round(altitude), altitude_source: source,
+      min_altitude_m: minAltitudeM,
+      implicit: source === "gazetteer_calibrated",
+    };
+  }
+
+  function compiledLocationLabel(info) {
+    return (info && info.resolved && info.resolved.name) || (info && info.text) || "this place";
+  }
+
+  function orbitDegreesFor(def, step) {
+    const revs = Number.isFinite(step.revolutions) ? step.revolutions : def.revolutions;
+    return Math.round((Number.isFinite(revs) ? revs : 1) * 360);
+  }
+
+  function suggestedRange(planner, action, magnitude, def, paceKey, emphasis) {
+    let raw = planner.defaultDuration(action, magnitude);
+    if (action === "fly_to") {
+      const from = Math.max(1, magnitude.fromAltitudeM || 1);
+      const to = Math.max(1, magnitude.toAltitudeM || 1);
+      const ratio = Math.max(from, to) / Math.min(from, to);
+      if (ratio > 4) {
+        // The same move read as an altitude change: whichever law needs more
+        // time is the one that governs whether it reads on screen.
+        raw = Math.max(raw, planner.defaultDuration(to < from ? "zoom_in" : "zoom_out", magnitude));
+      }
+    }
+    const emph = Number.isFinite(emphasis) && emphasis > 0 ? Math.max(0.5, Math.min(2.5, emphasis)) : 1;
+    const base = raw * (def.paceStretch || 1) * emph;
+    const pace = paceOf(paceKey);
+    const clamp = (v) => Math.max(1, Math.round(v));
+    return {
+      base_seconds: Math.round(base * 10) / 10,
+      low_seconds: clamp(base * pace.low),
+      high_seconds: clamp(base * pace.high),
+      seconds: clamp(base * pace.factor),
+    };
+  }
+
+  function orbitPhrase(degrees, direction) {
+    const parts = [];
+    if (degrees === 720) parts.push("twice");
+    else if (degrees === 1080) parts.push("thrice");
+    else if (degrees === 360) parts.push("once");
+    else if (degrees === 180) parts.push("half");
+    else if (degrees === 90) parts.push("a quarter");
+    else parts.push(`${degrees} degrees`);
+    if (direction === -1) parts.push("counterclockwise");
+    else parts.push("clockwise");
+    return parts.join(" ");
+  }
+
+  function phraseFor(compiled) {
+    const p = [];
+    const n = compiled.location_phrase;
+    if (compiled.action === "fly_to") p.push(`fly to ${n}`);
+    else if (compiled.action === "hover") p.push(`hover over ${n}`);
+    else if (compiled.action === "orbit") p.push(`orbit ${n} ${orbitPhrase(compiled.orbit_degrees, compiled.orbit_direction)}`);
+    else if (compiled.action === "zoom_in") p.push(`zoom in on ${n}`);
+    else if (compiled.action === "zoom_out") p.push(`zoom out from ${n}`);
+    if (compiled.emit_altitude) p.push(`at ${Math.round(compiled.altitude_m)}m`);
+    if (compiled.emit_tilt) p.push(`tilted ${round2(compiled.tilt_deg)} degrees`);
+    p.push(`for ${round2(compiled.duration_seconds)} seconds`);
+    return p.join(" ");
+  }
+
+  function round2(v) { return Math.round(Number(v) * 100) / 100; }
+
+  function compileJourney(journey, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const j = normalizeJourney(journey);
+    const steps = [];
+    const warnings = [];
+
+    // Resolve every place once.
+    const startInfo = resolvePlace(planner, j.start);
+    const legInfos = j.legs.map((leg) => resolvePlace(planner, leg.destination));
+
+    // Camera state carried through the walk, mirroring the keyframe engine. The
+    // opening altitude is the START location's own framing (not the planner's
+    // flat default), so a Hold that opens the journey holds the framing the
+    // operator chose rather than a generic altitude.
+    const startFraming = startInfo.resolved
+      ? framingFor(planner, j.start, startInfo, planner.DEFAULT_TILT_DEG.hover)
+      : null;
+    let cursor = {
+      info: startInfo,
+      place: j.start,
+      altitude_m: startFraming ? startFraming.altitude_m : planner.DEFAULT_ALTITUDE_M,
+      tilt_deg: null,
+      framing: startFraming ? startFraming.scale : null,
+    };
+    if (j.start.source === "continuation" && j.start.continuation) {
+      const seed = planner.normalizeInitialCamera(j.start.continuation);
+      if (seed) {
+        if (Number.isFinite(seed.altitude_m)) cursor.altitude_m = seed.altitude_m;
+        if (Number.isFinite(seed.tilt_deg)) cursor.tilt_deg = seed.tilt_deg;
+      }
+    }
+
+    // Does `next` orbit the same resolved point that `info` names? This mirrors
+    // the planner's own successor-orbit lookahead (parseDescription), which makes
+    // such a move terminate on the orbit's ring instead of the target centre.
+    const sameResolved = (a, b) => a && b && a.resolved && b.resolved
+      && Math.abs(a.resolved.latitude - b.resolved.latitude) < 1e-6
+      && Math.abs(a.resolved.longitude - b.resolved.longitude) < 1e-6;
+
+    function emit(step, slot, targetInfo, targetPlace, context, next) {
+      const def = MOVEMENTS[step.type] || MOVEMENTS[slot === "travel" ? "fly" : "hold"];
+      const action = def.primitive;
+      // A fly/zoom immediately followed by an orbit around the SAME target lands
+      // on that orbit's ring entry, so it is correctly framed and must keep the
+      // orbit's tilt for a continuous boundary (the v0.8 zero-slide property).
+      const nextDef = next ? (MOVEMENTS[next.step.type] || null) : null;
+      const endsAtOrbitEntry = !!(nextDef && nextDef.primitive === "orbit"
+        && ["fly_to", "zoom_in", "zoom_out"].includes(action)
+        && sameResolved(targetInfo, next.targetInfo));
+      const successorOrbitTilt = endsAtOrbitEntry
+        ? (Number.isFinite(next.step.tilt_deg) ? next.step.tilt_deg
+          : Number.isFinite(next.targetPlace && next.targetPlace.tilt_deg) ? next.targetPlace.tilt_deg
+          // matches the orbit's own derivation below: a flattened carried tilt is
+          // not inheritable by an orbit, so it takes the oblique orbit default.
+          : (Number.isFinite(cursor.tilt_deg) && !cursor.tilt_capped) ? cursor.tilt_deg
+          : planner.DEFAULT_TILT_DEG.orbit)
+        : null;
+      // Provenance of the tilt matters: an operator's explicit tilt, and a
+      // movement whose whole point is a tilt (Low Approach), stay authoritative.
+      const tiltExplicit = Number.isFinite(step.tilt_deg) || Number.isFinite(targetPlace && targetPlace.tilt_deg);
+      const tiltIntentional = tiltExplicit || Number.isFinite(def.tiltDeg);
+      // Tilt carry-over keeps a journey visually stable, but a tilt that was
+      // FLATTENED for target framing is only meaningful for a camera sitting above
+      // its target. An orbit rides a ring and faces the target, so it must fall
+      // back to its own oblique default rather than inherit the flattened value —
+      // otherwise picking "Orbit" silently produced a top-down spin-in-place.
+      const inheritable = Number.isFinite(cursor.tilt_deg)
+        && !(action === "orbit" && cursor.tilt_capped);
+      let baseTilt = Number.isFinite(step.tilt_deg) ? step.tilt_deg
+        : Number.isFinite(def.tiltDeg) ? def.tiltDeg
+        : Number.isFinite(targetPlace && targetPlace.tilt_deg) ? targetPlace.tilt_deg
+        : endsAtOrbitEntry ? successorOrbitTilt
+        : inheritable ? cursor.tilt_deg
+        : (planner.DEFAULT_TILT_DEG[action] != null ? planner.DEFAULT_TILT_DEG[action] : 45);
+      // Cap a DERIVED tilt so the requested place is actually in shot.
+      const framesTargetFromAbove = action !== "orbit" && !endsAtOrbitEntry;
+      if (framesTargetFromAbove && !tiltIntentional && baseTilt > TARGET_FRAMING_TILT_DEG) {
+        baseTilt = TARGET_FRAMING_TILT_DEG;
+      }
+      // "Flattened" describes the tilt itself, not which step clamped it: a
+      // derived target-framing tilt at or below the optical limit is only
+      // meaningful for a camera above its target. The flag must therefore be
+      // sticky across carry-over (a second Hold inherits 0 without re-clamping),
+      // so an orbit further down the journey still refuses to inherit it.
+      let tiltCapped = framesTargetFromAbove && !tiltIntentional
+        && baseTilt <= maxTargetFramingTiltDeg({ planner });
+
+      // Framing for this step's target, shifted by the movement's own intent
+      // (push in = one step closer, reveal = two steps wider, ...).
+      const frameBase = framingFor(planner, {
+        ...targetPlace,
+        framing: step.framing || targetPlace.framing,
+      }, targetInfo, baseTilt);
+      let altitude = frameBase.altitude_m;
+      let altitudeSource = frameBase.altitude_source;
+      let scale = frameBase.scale;
+      const shift = Number.isFinite(step.scaleShift) ? step.scaleShift : def.scaleShift;
+      if (Number.isFinite(shift) && shift !== 0 && !Number.isFinite(step.altitude_m)) {
+        const shifted = stepScale(frameBase.scale, shift);
+        if (shifted !== frameBase.scale) {
+          scale = shifted;
+          altitude = framingAltitudeM(scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m });
+          altitudeSource = "derived_optical_shifted";
+        }
+        // else: the ladder is already at its end, so there is no closer/wider
+        // framing to move to. Keep the base framing — which may be a place's
+        // hand-validated gazetteer altitude — instead of re-deriving it.
+      }
+      if (def.holdAltitude && !Number.isFinite(step.altitude_m)) {
+        altitude = cursor.altitude_m;
+        altitudeSource = "cruise_held";
+        scale = cursor.framing || scale;
+      }
+      if (def.useTransitAltitude && !Number.isFinite(step.altitude_m)) {
+        const dist = context && Number.isFinite(context.distanceM) ? context.distanceM : null;
+        altitude = transitAltitudeM(dist, baseTilt, Math.max(cursor.altitude_m, frameBase.altitude_m), { planner });
+        altitudeSource = "derived_transit";
+        scale = "transit";
+      }
+      if (Number.isFinite(step.altitude_m)) { altitude = step.altitude_m; altitudeSource = "manual_altitude"; }
+
+      // An orbit only frames its target because the engine puts the camera on a
+      // ring of altitude*tan(tilt) facing inward. Past the generator's ring cap
+      // that placement is impossible and the orbit points at empty sky, so a
+      // DERIVED tilt goes top-down — which the planner documents as the top-down
+      // orbit look (a spin in place) and which keeps the target centred.
+      let orbitFlattened = false;
+      if (action === "orbit" && !orbitCanFaceTarget(altitude, baseTilt, { planner })) {
+        if (tiltIntentional) {
+          warnings.push(`${def.label} around ${compiledLocationLabel(targetInfo)} needs the camera ${Math.round(altitude * Math.tan((baseTilt * Math.PI) / 180) / 1000)} km out to face it at ${round2(baseTilt)}\u00b0, but the generator holds an orbit within ${Math.round(orbitRingCapM(planner) / 1000)} km. At this framing the orbit will point at empty sky instead of ${compiledLocationLabel(targetInfo)} — lower the tilt, or orbit a smaller target.`);
+        } else {
+          baseTilt = TARGET_FRAMING_TILT_DEG;
+          orbitFlattened = true;
+          // The framing altitude depends on the tilt, so re-derive it at the new
+          // one unless the altitude came from somewhere else entirely.
+          if (altitudeSource === "derived_optical") {
+            altitude = framingAltitudeM(frameBase.scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m });
+          } else if (altitudeSource === "derived_optical_shifted") {
+            altitude = framingAltitudeM(scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m });
+          }
+        }
+      }
+
+      // A hold must not carry an explicit altitude/tilt: an explicit value turns
+      // the planner's camera HOLD into a move. Holds therefore emit neither —
+      // EXCEPT the very first movement of a journey, where there is no previous
+      // camera to hold. parseSegment only applies hold semantics when a previous
+      // location exists, so the opening hold states its framing instead (that is
+      // the only way an opening shot can be framed at all).
+      const isHold = !!def.holdsCamera;
+      const openingHold = isHold && !cursor.started;
+      if (isHold && !openingHold) { altitude = cursor.altitude_m; altitudeSource = "held"; }
+
+      const orbitDegrees = action === "orbit" ? orbitDegreesFor(def, step) : null;
+      const distanceM = targetInfo.resolved && cursor.info && cursor.info.resolved
+        ? planner.haversineMeters(cursor.info.resolved, targetInfo.resolved) : null;
+      const magnitude = {
+        // A flight that is the journey's FIRST movement has no previous camera
+        // position, so the generator plays it as an establishing dive onto the
+        // target rather than a crossing — distance is not the magnitude then.
+        // This mirrors parseSegment's own rule (previousLocation === null).
+        distanceM: action === "fly_to" && !cursor.started ? null : distanceM,
+        orbitDegrees: orbitDegrees || 360,
+        tiltDeg: baseTilt,
+        fromAltitudeM: cursor.altitude_m,
+        toAltitudeM: altitude,
+      };
+      const suggestion = suggestedRange(planner, action, magnitude, def, step.pace || j.pace, step.emphasis);
+      const duration = Number.isFinite(step.duration_seconds) ? step.duration_seconds : suggestion.seconds;
+
+      const compiled = {
+        step_id: step.id,
+        slot,
+        movement: def.key,
+        movement_label: def.label,
+        action,
+        location_name: targetInfo.resolved ? targetInfo.resolved.name : targetInfo.text,
+        location_text: targetInfo.text,
+        location_phrase: descriptionName(planner, targetInfo),
+        location_resolved: !!targetInfo.resolved,
+        framing_scale: scale,
+        framing_label: (scaleOf(scale) || {}).label || scale,
+        classified_scale: frameBase.classified_scale,
+        classification_source: frameBase.classification_source,
+        altitude_m: Math.round(altitude),
+        altitude_source: altitudeSource,
+        tilt_deg: round2(baseTilt),
+        // Only an UNSHIFTED auto framing may stay implicit (letting the planner
+        // apply its own hand-validated gazetteer altitude, which keeps the exact
+        // proven path). Anything that moved the altitude must say so.
+        emit_altitude: (!isHold || openingHold) && altitudeSource !== "gazetteer_calibrated",
+        emit_tilt: !isHold || openingHold,
+        orbit_degrees: orbitDegrees,
+        orbit_direction: action === "orbit" ? (step.direction === -1 ? -1 : 1) : null,
+        duration_seconds: round2(duration),
+        duration_source: Number.isFinite(step.duration_seconds) ? "manual"
+          : (Number.isFinite(step.emphasis) && step.emphasis !== 1 ? "suggested_with_emphasis" : "suggested"),
+        emphasis: Number.isFinite(step.emphasis) ? step.emphasis : null,
+        suggestion,
+        pace: step.pace || j.pace,
+        distance_m: Number.isFinite(distanceM) ? Math.round(distanceM) : null,
+        altitude_from_m: Math.round(cursor.altitude_m),
+        holds_camera: isHold && !openingHold,
+        ends_at_orbit_entry: endsAtOrbitEntry,
+        tilt_intentional: tiltIntentional,
+        tilt_capped: tiltCapped,
+        orbit_flattened: orbitFlattened,
+        target_offset_half_frames: action === "orbit" || endsAtOrbitEntry
+          ? 0 : Math.round(targetOffsetHalfFrames(baseTilt, { planner }) * 100) / 100,
+      };
+      // An authoritative tilt that puts the place out of shot is the operator's
+      // call, but they must be told — this is the exact defect real imports found.
+      if (framesTargetFromAbove && tiltIntentional && targetOffsetHalfFrames(baseTilt, { planner }) > 1) {
+        warnings.push(`${def.label} at ${compiledLocationLabel(targetInfo)} uses a ${round2(baseTilt)}\u00b0 tilt, which points the camera away from the place itself — ${compiledLocationLabel(targetInfo)} will not be visible in frame during this movement. Lower the tilt below ${maxTargetFramingTiltDeg({ planner })}\u00b0, or use an orbit, which frames the target at any tilt.`);
+      }
+      // On AUTO framing with a calibrated gazetteer altitude the phrase omits
+      // the altitude, so the planner applies its own gazetteer value — record
+      // what that will be so the summary is truthful.
+      if (altitudeSource === "gazetteer_calibrated" && (!isHold || openingHold)) {
+        compiled.altitude_m = Math.round(frameBase.altitude_m);
+      }
+      if (orbitFlattened) compiled.tilt_capped = tiltCapped = true;
+      compiled.phrase = phraseFor(compiled);
+      steps.push(compiled);
+
+      cursor = {
+        info: targetInfo,
+        place: targetPlace,
+        altitude_m: compiled.altitude_m,
+        tilt_deg: compiled.tilt_deg,
+        tilt_capped: tiltCapped,
+        framing: scale,
+        started: true,
+        moved: true,
+      };
+      return compiled;
+    }
+
+    // Plan the whole ordered walk BEFORE emitting, so every step can see its
+    // successor (needed for the ring-entry rule above). Travel steps that run
+    // where the camera already is resolve their target during the walk.
+    const planned = [];
+    j.start_movements.forEach((step) => planned.push({ step, slot: "at", targetInfo: startInfo, targetPlace: j.start, context: null }));
+    let walkInfo = startInfo;
+    let walkPlace = j.start;
+    j.legs.forEach((leg, i) => {
+      const destInfo = legInfos[i];
+      const distanceM = destInfo.resolved && walkInfo && walkInfo.resolved
+        ? planner.haversineMeters(walkInfo.resolved, destInfo.resolved) : null;
+      leg.travel.forEach((step) => {
+        const def = MOVEMENTS[step.type] || MOVEMENTS.fly;
+        const targetsDestination = !!(def.travelsToDestination || def.atDestination);
+        const info = targetsDestination ? destInfo : walkInfo;
+        const place = targetsDestination ? leg.destination : walkPlace;
+        planned.push({ step, slot: "travel", targetInfo: info, targetPlace: place, context: { distanceM } });
+        if (targetsDestination) { walkInfo = destInfo; walkPlace = leg.destination; }
+      });
+      leg.movements.forEach((step) => planned.push({ step, slot: "at", targetInfo: destInfo, targetPlace: leg.destination, context: null }));
+      walkInfo = destInfo; walkPlace = leg.destination;
+    });
+    planned.forEach((p, i) => emit(p.step, p.slot, p.targetInfo, p.targetPlace, p.context, planned[i + 1] || null));
+
+    const description = steps.map((s) => s.phrase).join(" then ");
+    const total = steps.reduce((sum, s) => sum + s.duration_seconds, 0);
+
+    if (j.start.source === "continuation" && steps.length && steps[0].action === "orbit") {
+      warnings.push("The first movement after a continuation is an orbit. The camera will slide sideways onto the orbit circle at the very start — begin a continuation with Hold or a travel movement for a seamless join.");
+    }
+
+    // Any crossing whose ground sweeps past faster than the readable limit gets an
+    // advisory: the operator may still want it, but they must know the locations
+    // will not be legible.
+    steps.forEach((s) => {
+      if (!["fly_to"].includes(s.action)) return;
+      if (!Number.isFinite(s.distance_m) || s.distance_m < 1000) return;
+      // A move that changes altitude while travelling is only as legible as its
+      // lowest point, so judge the crossing there rather than at its endpoint.
+      const worstAlt = Math.min(
+        Number.isFinite(s.altitude_from_m) ? s.altitude_from_m : s.altitude_m,
+        s.altitude_m,
+      );
+      const fw = screenSpeedFrameWidths(s.distance_m, s.duration_seconds, worstAlt, s.tilt_deg, { planner });
+      s.screen_speed_frame_widths_per_second = Math.round(fw * 100) / 100;
+      s.screen_speed_judged_at_altitude_m = worstAlt;
+      if (fw <= READABLE_SCREEN_SPEED_FW_PER_S) return;
+      const need = readableTransitAltitudeM(s.distance_m, s.duration_seconds, s.tilt_deg, { planner });
+      warnings.push(`${s.movement_label} covers ${formatDistance(s.distance_m)} to ${compiledLocationLabel({ resolved: { name: s.location_name } })} in ${round2(s.duration_seconds)}s at ${formatAltitude(worstAlt)}. The ground sweeps past ${round2(fw)} frame-widths per second, which is too fast to read the locations — cross at about ${formatAltitude(need)} instead (High Transit or Cinematic travel does that), or give the leg more time.`);
+    });
+
+    // Hold-then-orbit slide (confirmed by real import, canary G): a hold keeps the
+    // camera exactly where it is, so an orbit that follows it around a DIFFERENT
+    // place has to glide onto its ring during its own first revolution instead of
+    // starting on it. A fly/zoom arrival does not have this problem — it is
+    // annotated to terminate on the ring entry — so this only needs saying when a
+    // hold or pause sits directly in front of the orbit. Advisory only: the move
+    // is legal and reads as a swoop, it is just not a clean circle from frame one.
+    steps.forEach((s, i) => {
+      const prev = steps[i - 1];
+      if (!prev || s.action !== "orbit" || !prev.holds_camera) return;
+      if (prev.location_name === s.location_name) return;
+      warnings.push(`${prev.movement_label} at ${prev.location_name} is immediately followed by ${s.movement_label} around ${s.location_name}. A hold leaves the camera where it is, so the orbit glides onto its circle during its first revolution rather than starting on it. Put a travel movement between them (Fly To or Cruise) for a clean orbit, or accept the swoop.`);
+    });
+
+    return {
+      journey: j,
+      description,
+      steps,
+      total_duration_seconds: Math.round(total * 100) / 100,
+      initial_camera: j.start.source === "continuation" && j.start.continuation
+        ? planner.normalizeInitialCamera(j.start.continuation) : null,
+      places: {
+        start: startInfo,
+        destinations: legInfos,
+      },
+      warnings,
+    };
+  }
+
+  // ── Compile verification ──────────────────────────────────────────────────
+  // Re-parse the emitted description through the real planner and check every
+  // segment against the compiled intent. This is what makes compiling to the
+  // description grammar safe: grammar drift fails loudly instead of silently
+  // producing a different animation.
+  function verifyCompilation(compiled, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const parsed = planner.parseDescription(compiled.description);
+    const problems = [];
+    if (parsed.segments.length !== compiled.steps.length) {
+      problems.push(`compiled ${compiled.steps.length} movements but the planner parsed ${parsed.segments.length} segments`);
+    }
+    const near = (a, b, tol) => Math.abs(Number(a) - Number(b)) <= tol;
+    compiled.steps.forEach((step, i) => {
+      const seg = parsed.segments[i];
+      if (!seg) return;
+      const at = `movement ${i + 1} (${step.movement_label})`;
+      if (seg.action !== step.action) problems.push(`${at}: expected action ${step.action}, planner read ${seg.action}`);
+      if (step.location_resolved && seg.location_name !== step.location_name) {
+        problems.push(`${at}: expected location "${step.location_name}", planner read "${seg.location_name}"`);
+      }
+      if (!near(seg.duration_seconds, step.duration_seconds, 0.011)) {
+        problems.push(`${at}: expected ${step.duration_seconds}s, planner read ${seg.duration_seconds}s`);
+      }
+      if (step.emit_tilt && !near(seg.tilt_deg, step.tilt_deg, 0.011)) {
+        problems.push(`${at}: expected tilt ${step.tilt_deg}deg, planner read ${seg.tilt_deg}deg`);
+      }
+      if (step.emit_altitude && !near(seg.altitude_m, step.altitude_m, 1)) {
+        problems.push(`${at}: expected altitude ${step.altitude_m}m, planner read ${seg.altitude_m}m`);
+      }
+      if (step.action === "orbit") {
+        if (seg.orbit_degrees !== step.orbit_degrees) problems.push(`${at}: expected ${step.orbit_degrees}deg of orbit, planner read ${seg.orbit_degrees}deg`);
+        if (seg.orbit_direction !== step.orbit_direction) problems.push(`${at}: expected orbit direction ${step.orbit_direction}, planner read ${seg.orbit_direction}`);
+      }
+    });
+    return { ok: problems.length === 0, problems, parsed };
+  }
+
+  // ── Validation (operator language) ────────────────────────────────────────
+  function validateJourney(journey, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const j = normalizeJourney(journey);
+    const errors = [];
+    const warnings = [];
+
+    const placeProblem = (info, label) => {
+      if (info.reason === "missing") return `${label} has no place yet. Type a city, landmark, country, or coordinates like 60.17,24.94.`;
+      if (info.reason === "punctuation") return `${label} "${info.text}" contains a comma or the word "then", which the generator reads as a new movement. Use a single plain name — "Helsinki", not "Helsinki, Finland".`;
+      if (info.reason === "unknown") return `${label} "${info.text}" is not a place the generator knows. Pick one from the place list, or give coordinates like 60.17,24.94.`;
+      return null;
+    };
+
+    if (j.start.source === "continuation") {
+      const check = validateContinuationState(j.start.continuation);
+      errors.push(...check.errors);
+      if (!j.start.location) {
+        warnings.push("The continuation start has no place name. The camera position is exact, but the journey summary will not be able to name where it begins.");
+      }
+    }
+    const startInfo = resolvePlace(planner, j.start);
+    if (j.start.source !== "continuation" || j.start.location) {
+      const problem = placeProblem(startInfo, "The start location");
+      if (problem) errors.push(problem);
+    }
+
+    if (!j.start_movements.length && !j.legs.length) {
+      errors.push("This journey has nothing in it yet. Add an opening movement at the start location, or add a destination to travel to.");
+    }
+
+    const checkSteps = (steps, label) => {
+      steps.forEach((step, i) => {
+        const def = MOVEMENTS[step.type];
+        const at = `${label} movement ${i + 1}`;
+        if (step.unsupported_type) {
+          errors.push(`${at} is "${step.unsupported_type}", which this generator cannot produce. Pick one of: ${(step.slot === "travel" ? TRAVEL_MOVEMENT_KEYS : AT_MOVEMENT_KEYS).map((k) => MOVEMENTS[k].label).join(", ")}.`);
+          return;
+        }
+        if (step.duration_seconds === null) return;
+        if (step.duration_seconds < 0) {
+          errors.push(`${at} (${def ? def.label : step.type}) has a negative duration. Durations must be at least 1 second.`);
+        } else if (step.duration_seconds === 0) {
+          errors.push(`${at} (${def ? def.label : step.type}) is set to 0 seconds, so it would never play. Give it at least 1 second, or remove the movement.`);
+        } else if (step.duration_seconds < 1) {
+          warnings.push(`${at} (${def ? def.label : step.type}) is under a second — that is less than 30 frames and will read as a jump cut.`);
+        }
+      });
+    };
+    checkSteps(j.start_movements.map((s) => ({ ...s, slot: "at" })), "Start");
+
+    j.legs.forEach((leg, i) => {
+      const label = `Destination ${i + 1}`;
+      const info = resolvePlace(planner, leg.destination);
+      const hasTravel = leg.travel.length > 0;
+      if (!leg.destination.location && hasTravel) {
+        errors.push(`${label} has a travel movement but no destination location. Name the place the camera travels to, or remove the travel movement.`);
+      } else {
+        const problem = placeProblem(info, `${label}'s location`);
+        if (problem) errors.push(problem);
+      }
+      if (!hasTravel && leg.destination.location) {
+        const previous = i === 0 ? j.start.location : j.legs[i - 1].destination.location;
+        if (previous && info.resolved) {
+          warnings.push(`${label} (${info.resolved.name}) has no travel movement, so the camera will jump there rather than travel. Add a travel movement for a continuous shot.`);
+        }
+      }
+      checkSteps(leg.travel.map((s) => ({ ...s, slot: "travel" })), `${label} travel`);
+      checkSteps(leg.movements.map((s) => ({ ...s, slot: "at" })), label);
+    });
+
+    // Only compile when the shape is sound; a compile of a broken journey is
+    // noise on top of the real errors.
+    let compiled = null;
+    if (!errors.length) {
+      compiled = compileJourney(j, { planner });
+      warnings.push(...compiled.warnings);
+      const verified = verifyCompilation(compiled, { planner });
+      if (!verified.ok) {
+        errors.push(...verified.problems.map((p) => `Internal check failed — the generator would not build what the journey describes: ${p}. This is a bug; please report it with the journey.`));
+      }
+      if (compiled.total_duration_seconds <= 0) {
+        errors.push("The whole journey adds up to zero seconds. Give at least one movement a duration.");
+      }
+    }
+
+    return { ok: errors.length === 0, errors, warnings, compiled };
+  }
+
+  // ── Summary / timeline ────────────────────────────────────────────────────
+  function formatClock(seconds) {
+    const s = Math.max(0, Math.round(Number(seconds) || 0));
+    return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  }
+
+  function formatAltitude(m) {
+    const v = Number(m);
+    if (!Number.isFinite(v)) return "—";
+    if (v >= 100000) return `${Math.round(v / 1000).toLocaleString("en-US")} km`;
+    if (v >= 1000) return `${(v / 1000).toFixed(1)} km`;
+    return `${Math.round(v)} m`;
+  }
+
+  // A distance below ~100 m means the two endpoints are effectively the same
+  // point (e.g. a reveal that approaches the place it started over), where
+  // printing "(0 m)" is noise rather than information.
+  function formatDistance(m) {
+    const v = Number(m);
+    if (!Number.isFinite(v) || v < 100) return null;
+    return v >= 1000 ? `${Math.round(v / 1000).toLocaleString("en-US")} km` : `${Math.round(v)} m`;
+  }
+
+  function sentenceFor(step, index) {
+    const secs = `${round2(step.duration_seconds)} second${step.duration_seconds === 1 ? "" : "s"}`;
+    const where = step.location_name || "the current location";
+    const framing = step.framing_label ? String(step.framing_label).toLowerCase() : null;
+    switch (step.movement) {
+      case "hold":
+      case "pause":
+        return index === 0
+          ? `Open on ${where} at ${formatAltitude(step.altitude_m)} (${framing} framing) and hold for ${secs} without moving the camera.`
+          : `Hold on ${where} for ${secs} without moving the camera.`;
+      case "slow_orbit":
+        return `Slowly orbit ${where} ${step.orbit_direction === -1 ? "counterclockwise " : ""}for ${secs}.`;
+      case "orbit":
+        return `Orbit ${where} ${step.orbit_direction === -1 ? "counterclockwise " : ""}once over ${secs}.`;
+      case "orbit_twice":
+        return `Circle ${where} twice ${step.orbit_direction === -1 ? "counterclockwise " : ""}over ${secs}.`;
+      case "half_orbit":
+        return `Swing halfway around ${where} over ${secs}, finishing on the far side.`;
+      case "spiral_in":
+        return `Spiral in around ${where} over ${secs}, closing to ${formatAltitude(step.altitude_m)}.`;
+      case "spiral_out":
+        return `Spiral out around ${where} over ${secs}, opening to ${formatAltitude(step.altitude_m)}.`;
+      case "zoom_in":
+        return `Push in on ${where} over ${secs} to a ${framing} framing at ${formatAltitude(step.altitude_m)}.`;
+      case "zoom_out":
+        return `Pull back from ${where} over ${secs} to a ${framing} framing at ${formatAltitude(step.altitude_m)}.`;
+      case "reveal":
+        return `Pull back over ${secs} to reveal ${where} at ${framing} scale (${formatAltitude(step.altitude_m)}).`;
+      case "pull_back":
+        return `Pull back from ${where} over ${secs} before setting off.`;
+      case "climb_to_transit":
+        return `Climb to ${formatAltitude(step.altitude_m)} over ${secs} — high enough to see the whole route.`;
+      case "cruise": {
+        const dist = formatDistance(step.distance_m);
+        return `Cruise to ${where}${dist ? ` (${dist})` : ""} over ${secs}, holding ${formatAltitude(step.altitude_m)}.`;
+      }
+      case "fly":
+      case "fly_high": {
+        const dist = formatDistance(step.distance_m);
+        return `Fly to ${where}${dist ? ` (${dist})` : ""} over ${secs}${step.movement === "fly_high" ? `, cruising at ${formatAltitude(step.altitude_m)}` : ""}.`;
+      }
+      case "fly_low": {
+        const dist = formatDistance(step.distance_m);
+        return `Come in low to ${where}${dist ? ` (${dist})` : ""} over ${secs}, tilted toward the horizon.`;
+      }
+      case "descend":
+        return `Descend into ${where} over ${secs}, settling on a ${framing} framing at ${formatAltitude(step.altitude_m)}.`;
+      default:
+        return `${step.movement_label} at ${where} for ${secs}.`;
+    }
+  }
+
+  function summarizeJourney(journey, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const check = validateJourney(journey, { planner });
+    const compiled = check.compiled || compileJourney(journey, { planner });
+    const j = compiled.journey;
+    const lines = [];
+
+    const first = compiled.steps[0];
+    if (j.start.source === "continuation") {
+      const seed = compiled.initial_camera || {};
+      lines.push(`Begin exactly where the previous animation ended${j.start.location ? ` (over ${j.start.location})` : ""}: ${formatAltitude(seed.altitude_m)} up, heading ${Math.round(((seed.pan_deg || 0) % 360 + 360) % 360)}deg, tilted ${round2(seed.tilt_deg)}deg.`);
+    } else if (first) {
+      lines.push(`Start over ${compiled.places.start.resolved ? compiled.places.start.resolved.name : j.start.location} with a ${String(first.framing_label).toLowerCase()} framing at ${formatAltitude(first.altitude_m)}.`);
+    }
+    compiled.steps.forEach((step, i) => lines.push(sentenceFor(step, i)));
+    lines.push(`Estimated duration: ${Math.round(compiled.total_duration_seconds)} seconds (${formatClock(compiled.total_duration_seconds)}) at ${paceOf(j.pace).label.toLowerCase()} pace.`);
+
+    // Compact route timeline: stops with the movements performed at them, and
+    // the travel between.
+    const timeline = [];
+    const pushStop = (name, framing) => timeline.push({ kind: "stop", label: name, framing, movements: [] });
+    pushStop(compiled.places.start.resolved ? compiled.places.start.resolved.name : (j.start.location || "Previous ending"),
+      first ? first.framing_label : null);
+    let cursorIndex = 0;
+    j.start_movements.forEach(() => {
+      const step = compiled.steps[cursorIndex++];
+      if (step) timeline[timeline.length - 1].movements.push({ icon: (MOVEMENTS[step.movement] || {}).icon || "·", label: step.movement_label, seconds: step.duration_seconds });
+    });
+    j.legs.forEach((leg, i) => {
+      const travel = [];
+      leg.travel.forEach(() => {
+        const step = compiled.steps[cursorIndex++];
+        if (step) travel.push({ icon: (MOVEMENTS[step.movement] || {}).icon || "·", label: step.movement_label, seconds: step.duration_seconds, distance_m: step.distance_m });
+      });
+      if (travel.length) timeline.push({ kind: "travel", steps: travel, seconds: Math.round(travel.reduce((a, b) => a + b.seconds, 0) * 100) / 100 });
+      const dest = compiled.places.destinations[i];
+      const movementsStart = cursorIndex;
+      pushStop(dest.resolved ? dest.resolved.name : (leg.destination.location || `Destination ${i + 1}`), null);
+      leg.movements.forEach(() => {
+        const step = compiled.steps[cursorIndex++];
+        if (step) timeline[timeline.length - 1].movements.push({ icon: (MOVEMENTS[step.movement] || {}).icon || "·", label: step.movement_label, seconds: step.duration_seconds });
+      });
+      const framingStep = compiled.steps[movementsStart] || compiled.steps[movementsStart - 1];
+      if (framingStep) timeline[timeline.length - 1].framing = framingStep.framing_label;
+    });
+
+    return {
+      prose: lines,
+      text: lines.join("\n\n"),
+      timeline,
+      breakdown: compiled.steps.map((s) => ({
+        label: `${s.movement_label}${s.location_name ? ` · ${s.location_name}` : ""}`,
+        seconds: s.duration_seconds,
+      })),
+      total_duration_seconds: compiled.total_duration_seconds,
+      total_clock: formatClock(compiled.total_duration_seconds),
+      total_frames: Math.round(compiled.total_duration_seconds * planner.FRAME_RATE),
+      ok: check.ok,
+      errors: check.errors,
+      warnings: check.warnings,
+      description: compiled.description,
+    };
+  }
+
+  // ── Continuation state ────────────────────────────────────────────────────
+  // A continuation state is a CAMERA state, deliberately distinct from a
+  // location: `camera` is where the lens is and how it points, `target` is the
+  // semantic place the animation was looking at. Only the five values the .esp
+  // actually keyframes appear under `camera` — longitude, latitude, altitude,
+  // rotationX (pan/heading) and rotationY (tilt). Earth Studio's rotationZ
+  // (roll) and fov are never keyframed by this generator, so they are not part
+  // of a camera state and are NOT invented here.
+  function continuationStateFromPlan(plan, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const camera = planner.finalCameraState(plan);
+    if (!camera) return null;
+    const resolved = (plan.segments || []).filter((s) => s.location && s.duration_seconds > 0);
+    const finalSegment = resolved.length ? resolved[resolved.length - 1] : null;
+    return {
+      continuation_state_version: CONTINUATION_STATE_VERSION,
+      generated_by: "earth-studio-journey",
+      planner_version: plan.version || planner.VERSION,
+      motion_profile_version: (plan.motion_profile && plan.motion_profile.profile_version) || planner.MOTION_PROFILE_VERSION,
+      source_animation: plan.job_name || null,
+      timestamp: plan.generated_at || null,
+      aspect: plan.aspect || null,
+      frame_rate: plan.frame_rate || planner.FRAME_RATE,
+      total_frames: plan.total_frames || null,
+      ends_at_frame: plan.total_frames != null ? Math.max(0, plan.total_frames - 1) : null,
+      // The camera state itself, in real-world units.
+      camera: {
+        latitude: camera.latitude,
+        longitude: camera.longitude,
+        altitude_m: camera.altitude_m,
+        pan_deg: camera.pan_deg,
+        heading_deg: camera.heading_deg,
+        tilt_deg: camera.tilt_deg,
+      },
+      // How those values map onto the .esp attributes that carry them.
+      esp_mapping: {
+        longitude: "cameraPositionGroup.longitude",
+        latitude: "cameraPositionGroup.latitude",
+        altitude_m: "cameraPositionGroup.altitude",
+        pan_deg: "cameraRotationGroup.rotationX",
+        tilt_deg: "cameraRotationGroup.rotationY",
+        not_keyframed: ["rotationZ", "fov", "exposure", "aperture", "minFocusLength"],
+      },
+      // Semantic, NOT camera: what the animation was looking at when it ended.
+      target: finalSegment && finalSegment.location ? {
+        name: finalSegment.location.name,
+        latitude: finalSegment.location.latitude,
+        longitude: finalSegment.location.longitude,
+      } : null,
+      final_movement: finalSegment ? {
+        segment_id: finalSegment.segment_id,
+        action: finalSegment.action,
+        location_name: finalSegment.location_name,
+      } : null,
+    };
+  }
+
+  function validateContinuationState(state) {
+    const errors = [];
+    if (!state || typeof state !== "object") {
+      return { ok: false, errors: ["No continuation state was supplied. Export one from a finished animation first, or start from a new location instead."] };
+    }
+    const v = state.continuation_state_version;
+    if (v === undefined || v === null) {
+      errors.push("That file is not an Earth Studio continuation state — it has no continuation_state_version. Use the file exported by \"Export continuation state\".");
+    } else if (!Number.isInteger(Number(v))) {
+      errors.push(`That continuation state's version ("${v}") is not a whole number, so it cannot be read.`);
+    } else if (Number(v) > CONTINUATION_STATE_VERSION) {
+      errors.push(`That continuation state is version ${v}, but this generator only understands version ${CONTINUATION_STATE_VERSION}. It was made by a newer version of the tool — regenerate it here, or update the tool.`);
+    } else if (Number(v) < CONTINUATION_STATE_VERSION) {
+      errors.push(`That continuation state is version ${v}, which this generator no longer reads (current version is ${CONTINUATION_STATE_VERSION}). Re-export it from the source animation.`);
+    }
+    const cam = state.camera;
+    if (!cam || typeof cam !== "object") {
+      errors.push("That continuation state has no camera block, so there is no camera position to continue from.");
+    } else {
+      const required = [["latitude", -90, 90], ["longitude", -180, 180], ["altitude_m", 0, Infinity], ["tilt_deg", -360, 360], ["pan_deg", -100000, 100000]];
+      required.forEach(([field, lo, hi]) => {
+        const value = Number(cam[field]);
+        if (!Number.isFinite(value)) errors.push(`That continuation state's camera is missing a usable ${field.replace(/_/g, " ")}, so the starting camera cannot be reproduced.`);
+        else if (value < lo || value > hi) errors.push(`That continuation state's camera ${field.replace(/_/g, " ")} (${cam[field]}) is outside the range Earth Studio accepts.`);
+      });
+    }
+    return { ok: errors.length === 0, errors };
+  }
+
+  // Seed a NEW journey from a finished animation's ending state. The camera is
+  // exact; the place name is carried across only as a LABEL (a continuation is
+  // a camera state, not a location — see §21 of the data-model note above).
+  function journeyFromContinuationState(state, options = {}) {
+    const check = validateContinuationState(state);
+    if (!check.ok) { const e = new Error(check.errors[0]); e.errors = check.errors; throw e; }
+    return normalizeJourney({
+      pace: options.pace || DEFAULT_PACE,
+      aspect: options.aspect || state.aspect || null,
+      start: {
+        source: "continuation",
+        location: (state.target && state.target.name) || "",
+        framing: "auto",
+        continuation: state,
+      },
+      start_movements: [newStep("hold", "at")],
+      legs: options.destination ? [{
+        destination: { location: options.destination, framing: "auto" },
+        travel_style: "cinematic",
+        travel: TRAVEL_STYLES.cinematic.steps.map((k) => newStep(k, "travel")),
+        movements: [newStep("slow_orbit", "at")],
+      }] : [],
+    });
+  }
+
+  const api = {
+    JOURNEY_VERSION,
+    CONTINUATION_STATE_VERSION,
+    numOrNull,
+    normalizeStory,
+    FRAMING_SCALES,
+    SCALE_LADDER,
+    SCALE_OVERRIDES,
+    MOVEMENTS,
+    AT_MOVEMENT_KEYS,
+    TRAVEL_MOVEMENT_KEYS,
+    TRAVEL_STYLES,
+    PACE_PRESETS,
+    DEFAULT_PACE,
+    JOURNEY_PRESETS,
+    applyPreset,
+    newStep,
+    normalizeJourney,
+    normalizeStep,
+    moveLeg,
+    classifyScale,
+    stepScale,
+    maxTargetFramingTiltDeg,
+    targetOffsetHalfFrames,
+    orbitRingCapM,
+    orbitCanFaceTarget,
+    TARGET_FRAMING_MARGIN_FRACTION,
+    TARGET_FRAMING_TILT_DEG,
+    READABLE_SCREEN_SPEED_FW_PER_S,
+    TRANSIT_LEGIBILITY_HEADROOM,
+    frameWidthMeters,
+    screenSpeedFrameWidths,
+    readableTransitAltitudeM,
+    spanForAltitudeM,
+    scaleForSpanM,
+    framingAltitudeM,
+    transitAltitudeM,
+    compileJourney,
+    verifyCompilation,
+    validateJourney,
+    summarizeJourney,
+    continuationStateFromPlan,
+    validateContinuationState,
+    journeyFromContinuationState,
+    formatClock,
+    formatAltitude,
+    formatDistance,
+  };
+
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else globalScope.EarthStudioJourney = api;
+})(typeof window !== "undefined" ? window : globalThis);

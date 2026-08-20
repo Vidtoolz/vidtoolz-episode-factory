@@ -32,6 +32,81 @@
       video{max-width:320px;border-radius:8px;border:1px solid var(--border,#30363d);background:#0d1117;}
       .es-map{display:block;width:100%;max-width:560px;background:#0d1117;border:1px solid var(--border,#30363d);border-radius:8px;margin-top:8px;}
       #es-loc-search{max-width:260px;display:inline-block;margin:4px 8px 4px 0;padding:4px 8px;font-size:12px;}
+      /* ── Camera journey builder ─────────────────────────────────────────── */
+      .jb{margin:10px 0 0;}
+      .jb-modes{display:flex;gap:6px;margin:0 0 12px;}
+      .jb-mode{flex:0 0 auto;font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid var(--border,#30363d);background:var(--panel-3,#21262d);cursor:pointer;color:inherit;}
+      .jb-mode.sel{border-color:#3fb950;color:#3fb950;background:rgba(63,185,80,.12);}
+      .jb-card{background:#0d1117;border:1px solid var(--border,#30363d);border-radius:10px;padding:12px 14px;position:relative;}
+      .jb-card.stop{border-left:3px solid #3fb950;}
+      .jb-card.move{border-left:3px solid #58a6ff;}
+      .jb-card.travel{border-left:3px solid #d29922;}
+      .jb-kicker{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted,#8b949e);font-weight:700;display:flex;align-items:center;gap:8px;}
+      .jb-kicker .jb-num{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:var(--panel-3,#21262d);border:1px solid var(--border,#30363d);font-size:10px;letter-spacing:0;}
+      .jb-title{font-size:16px;font-weight:600;margin:3px 0 1px;}
+      .jb-sub{font-size:12px;color:var(--muted,#8b949e);}
+      .jb-arrow{text-align:center;color:var(--muted,#8b949e);font-size:15px;line-height:1;margin:5px 0;}
+      .jb-flow{display:flex;flex-direction:column;}
+      .jb-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:6px;margin-top:9px;}
+      .jb-opt{text-align:left;background:var(--panel-3,#21262d);border:1px solid var(--border,#30363d);border-radius:7px;padding:7px 9px;cursor:pointer;color:inherit;font:inherit;}
+      .jb-opt:hover{border-color:#58a6ff;}
+      .jb-opt.sel{border-color:#3fb950;background:rgba(63,185,80,.12);}
+      .jb-opt-name{font-size:12px;font-weight:600;display:flex;gap:6px;align-items:center;}
+      .jb-opt-blurb{font-size:11px;color:var(--muted,#8b949e);margin-top:2px;line-height:1.35;}
+      .jb-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px;}
+      .jb-row label{color:var(--muted,#8b949e);}
+      .jb-dur{width:66px;padding:3px 6px;font-size:12px;text-align:right;}
+      .jb-place{max-width:330px;}
+      .jb-sel{background:#0d1117;color:#e6edf3;border:1px solid var(--border,#30363d);border-radius:6px;padding:3px 6px;font-size:12px;font-family:inherit;}
+      .jb-x{position:absolute;top:9px;right:9px;background:none;border:1px solid var(--border,#30363d);color:var(--muted,#8b949e);border-radius:5px;font-size:11px;padding:1px 7px;cursor:pointer;}
+      .jb-x:hover{border-color:#f85149;color:#f85149;}
+      .jb-ord{position:absolute;top:9px;right:44px;display:flex;gap:3px;}
+      .jb-ord button{background:none;border:1px solid var(--border,#30363d);color:var(--muted,#8b949e);border-radius:5px;font-size:11px;padding:1px 6px;cursor:pointer;}
+      .jb-ord button:hover:not(:disabled){border-color:#58a6ff;color:#58a6ff;}
+      .jb-ord button:disabled{opacity:.3;cursor:default;}
+      .jb-add{width:100%;background:var(--panel-3,#21262d);border:1px dashed var(--border,#30363d);color:var(--muted,#8b949e);border-radius:8px;padding:9px;font-size:12px;cursor:pointer;font-family:inherit;}
+      .jb-add:hover{border-color:#3fb950;color:#3fb950;}
+      .jb-adv{margin-top:8px;}
+      .jb-adv > summary{font-size:11px;color:var(--muted,#8b949e);cursor:pointer;}
+      .jb-adv-body{display:flex;gap:10px;flex-wrap:wrap;margin-top:7px;font-size:12px;align-items:center;}
+      .jb-side{background:var(--panel,#161b22);border:1px solid var(--border,#30363d);border-radius:10px;padding:12px 14px;margin-top:14px;}
+      .jb-total{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+      .jb-total .big{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;}
+      .jb-bd{font-size:12px;margin-top:9px;}
+      .jb-bd div{display:flex;justify-content:space-between;gap:12px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+      .jb-bd div.tot{border-bottom:none;border-top:1px solid var(--border,#30363d);margin-top:3px;padding-top:4px;font-weight:600;}
+      .jb-tl{font-size:12px;line-height:1.55;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre;overflow-x:auto;}
+      .jb-prose{font-size:13px;line-height:1.6;}
+      .jb-prose p{margin:0 0 7px;}
+      .jb-err{font-size:12px;color:#f85149;margin-top:8px;line-height:1.5;}
+      .jb-warnmsg{font-size:12px;color:#d29922;margin-top:8px;line-height:1.5;}
+      .jb-frame{font-size:11px;color:var(--muted,#8b949e);margin-top:5px;}
+      .jb-cont{background:rgba(88,166,255,.07);border:1px solid #58a6ff44;border-radius:8px;padding:9px 11px;font-size:12px;margin-top:8px;}
+      @media (max-width:720px){ .jb-opts{grid-template-columns:1fr 1fr;} }
+      /* ── Directorial layer ──────────────────────────────────────────────── */
+      .dir-card{background:rgba(88,166,255,.06);border:1px solid #58a6ff33;border-radius:9px;padding:10px 12px;margin-top:9px;}
+      .dir-kicker{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#58a6ff;font-weight:700;}
+      .dir-q{font-size:12px;color:var(--muted,#8b949e);margin:7px 0 5px;}
+      .dir-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:5px;}
+      .dir-opt{text-align:left;background:var(--panel-3,#21262d);border:1px solid var(--border,#30363d);border-radius:6px;padding:6px 8px;cursor:pointer;color:inherit;font:inherit;}
+      .dir-opt:hover{border-color:#58a6ff;}
+      .dir-opt.sel{border-color:#58a6ff;background:rgba(88,166,255,.14);color:#58a6ff;}
+      .dir-opt-name{font-size:11.5px;font-weight:600;}
+      .dir-opt-blurb{font-size:10.5px;color:var(--muted,#8b949e);margin-top:2px;line-height:1.3;}
+      .dir-rec{background:rgba(63,185,80,.08);border:1px solid #3fb95055;border-radius:8px;padding:10px 12px;margin-top:9px;}
+      .dir-rec-name{font-size:15px;font-weight:700;color:#3fb950;}
+      .dir-rec-row{font-size:12px;margin-top:4px;line-height:1.5;}
+      .dir-rec-row b{color:#e6edf3;}
+      .dir-alt{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;}
+      .dir-alt button{background:var(--panel-3,#21262d);border:1px solid var(--border,#30363d);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;color:inherit;font-family:inherit;}
+      .dir-alt button:hover{border-color:#58a6ff;}
+      .dir-not{font-size:11.5px;color:#d29922;margin-top:6px;line-height:1.45;}
+      .dir-teach{font-size:11.5px;color:var(--muted,#8b949e);margin-top:6px;line-height:1.5;border-left:2px solid var(--border,#30363d);padding-left:8px;}
+      .dir-teach b{color:#e6edf3;}
+      .dir-auto textarea{margin-top:6px;}
+      .dir-log{font-size:12px;line-height:1.6;margin-top:8px;}
+      .dir-log div{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+      .dir-log .k{color:#58a6ff;font-weight:600;}
       #copy-status{position:fixed;bottom:16px;right:16px;background:#238636;color:#fff;padding:7px 14px;border-radius:8px;font-size:13px;display:none;z-index:50;}
     </style>
     <script src="ef-nav.js"></script>
@@ -54,6 +129,8 @@
     </div>
     <div id="copy-status"></div>
     <script src="earth-studio-job-planner.js"></script>
+    <script src="earth-studio-journey.js"></script>
+    <script src="earth-studio-director.js"></script>
     <script>
       const ID = new URLSearchParams(location.search).get('id') || '';
       const planner = window.EarthStudioJobPlanner;
@@ -182,6 +259,705 @@
         </div>`;
       }
 
+      // ══ CAMERA JOURNEY BUILDER ═══════════════════════════════════════════
+      // A visible sequence of blocks — start location, opening movement, travel,
+      // destination, destination movement, more destinations — over the SAME
+      // proven generator. The journey compiles to the planner's own description
+      // grammar (see earth-studio-journey.js), so nothing here changes how the
+      // .esp is built.
+      const JB = window.EarthStudioJourney;
+      let MODE = 'journey';        // 'journey' | 'freeform'
+      let JOURNEY = null;          // normalized journey object (the edit buffer)
+      let LAST_SUMMARY = null;     // most recent summarizeJourney() result
+      let jbFocus = null;          // {id, start, end} so a re-render keeps the caret
+      let DIRECTOR_ON = true;      // the story-intent layer sits above movement selection
+      let DIRECTOR_INTENT = '';    // Auto-Direct free text
+      let DIRECTOR_LAST = null;    // last autoDirect() result, for the decision log
+
+      function jbDefaultJourney(){
+        return JB.applyPreset('city_to_city', ['Helsinki', 'Stockholm'], { aspect: ASPECT });
+      }
+
+      function jbInit(){
+        if (JOURNEY) return;
+        if (ST && ST.journey && ST.journey.journey_version) {
+          JOURNEY = JB.normalizeJourney(ST.journey);
+          if (JOURNEY.aspect) { ASPECT = JOURNEY.aspect; }
+        } else if (ST && ST.job && ST.job.description) {
+          // A project made before the journey builder existed: keep its own
+          // description authoritative and open in freeform mode rather than
+          // silently reinterpreting it as a journey.
+          MODE = 'freeform';
+          JOURNEY = jbDefaultJourney();
+        } else {
+          JOURNEY = jbDefaultJourney();
+        }
+      }
+
+      function jbSummary(){
+        try { LAST_SUMMARY = JB.summarizeJourney(JOURNEY); }
+        catch (e) { LAST_SUMMARY = { ok:false, errors:['Could not read this journey: '+e.message], warnings:[], prose:[], timeline:[], breakdown:[], total_duration_seconds:0, total_clock:'00:00', total_frames:0, description:'' }; }
+        return LAST_SUMMARY;
+      }
+
+      // ── small builders ──
+      function jbNum(n){ return `<span class="jb-num">${n}</span>`; }
+      function jbSecs(v){ return `${Math.round(v*100)/100}s`; }
+
+      function jbMovementOpts(keys, selected, dataAttrs){
+        return keys.map((k)=>{
+          const m = JB.MOVEMENTS[k];
+          // Directorial teaching on hover: what the move communicates, when to
+          // reach for it, and when not to.
+          const g = DIR.CAMERA_GRAMMAR[k];
+          const tip = g ? [g.teaching,
+            'Communicates: '+g.communicates.join(', '),
+            'Best for: '+g.good_for.join('; '),
+            'Avoid when: '+g.usually_avoid_when.join('; '),
+            'Editorial rarity: '+g.rarity.toLowerCase()].join('\n\n') : m.blurb;
+          return `<button type="button" class="jb-opt ${k===selected?'sel':''}" ${dataAttrs} data-mtype="${esc(k)}" title="${esc(tip)}">
+            <span class="jb-opt-name">${esc(m.icon)} ${esc(m.label)}</span>
+            <span class="jb-opt-blurb">${esc(m.blurb)}</span></button>`;
+        }).join('');
+      }
+
+      function jbFramingSelect(scope, index, place, compiledStep){
+        const opts = ['auto'].concat(JB.SCALE_LADDER).map((k)=>{
+          const label = k==='auto' ? 'Auto' : JB.FRAMING_SCALES[k].label;
+          return `<option value="${esc(k)}" ${place.framing===k?'selected':''}>${esc(label)}</option>`;
+        }).join('');
+        let detail = '';
+        if (compiledStep) {
+          const src = compiledStep.altitude_source;
+          const how = src==='gazetteer_calibrated' ? 'hand-calibrated for this place'
+            : src==='manual_altitude' ? 'set by hand'
+            : src==='derived_optical' || src==='derived_optical_shifted' ? 'derived from the target’s size'
+            : src==='derived_transit' ? 'derived from the route length'
+            : src==='cruise_held' ? 'held from the previous movement' : src;
+          detail = `<div class="jb-frame">Camera distance: <b>${esc(JB.formatAltitude(compiledStep.altitude_m))}</b> at ${esc(String(compiledStep.tilt_deg))}&deg; tilt — ${esc(how)}.
+            ${place.framing==='auto'?`Detected scale: <b>${esc(compiledStep.framing_label)}</b> (${esc(String(compiledStep.classification_source).replace(/_/g,' '))}).`:''}</div>`;
+        }
+        return `<div class="jb-row"><label>Framing</label>
+          <select class="jb-sel" data-framing="${esc(scope)}" data-idx="${index}">${opts}</select>
+          <span class="jb-sub">${esc(place.framing==='auto' ? 'Camera distance follows how big the target is.' : (JB.FRAMING_SCALES[place.framing]||{}).blurb||'')}</span>
+        </div>${detail}`;
+      }
+
+      function jbAdvancedPlace(scope, index, place){
+        return `<details class="jb-adv"><summary>Advanced camera</summary><div class="jb-adv-body">
+          <label>Altitude (m)</label><input class="jb-dur" style="width:92px" type="text" data-place-alt="${esc(scope)}" data-idx="${index}" value="${place.altitude_m==null?'':esc(String(place.altitude_m))}" placeholder="auto">
+          <label>Tilt (&deg; from straight down)</label><input class="jb-dur" type="text" data-place-tilt="${esc(scope)}" data-idx="${index}" value="${place.tilt_deg==null?'':esc(String(place.tilt_deg))}" placeholder="auto">
+          <span class="jb-sub">Blank = derived. 0&deg; is top-down, ~70&deg; looks toward the horizon.</span>
+        </div></details>`;
+      }
+
+      function jbAdvancedStep(scope, index, si, step, compiledStep){
+        const isOrbit = compiledStep && compiledStep.action === 'orbit';
+        return `<details class="jb-adv"><summary>Advanced</summary><div class="jb-adv-body">
+          ${isOrbit?`<label>Direction</label><select class="jb-sel" data-step-dir="${esc(scope)}" data-idx="${index}" data-si="${si}">
+            <option value="1" ${step.direction!==-1?'selected':''}>Clockwise</option>
+            <option value="-1" ${step.direction===-1?'selected':''}>Counterclockwise</option></select>`:''}
+          ${isOrbit?`<label>Revolutions</label><input class="jb-dur" type="text" data-step-rev="${esc(scope)}" data-idx="${index}" data-si="${si}" value="${step.revolutions==null?'':esc(String(step.revolutions))}" placeholder="preset">`:''}
+          <label>Altitude (m)</label><input class="jb-dur" style="width:92px" type="text" data-step-alt="${esc(scope)}" data-idx="${index}" data-si="${si}" value="${step.altitude_m==null?'':esc(String(step.altitude_m))}" placeholder="auto">
+          <label>Tilt (&deg;)</label><input class="jb-dur" type="text" data-step-tilt="${esc(scope)}" data-idx="${index}" data-si="${si}" value="${step.tilt_deg==null?'':esc(String(step.tilt_deg))}" placeholder="auto">
+        </div></details>`;
+      }
+
+      // One movement block (start movement, travel step, or destination movement)
+      function jbStepCard(scope, index, si, step, compiledStep, kicker, kickerNum, removable){
+        const slot = scope === 'travel' ? 'travel' : 'at';
+        const keys = slot === 'travel' ? JB.TRAVEL_MOVEMENT_KEYS : JB.AT_MOVEMENT_KEYS;
+        const m = JB.MOVEMENTS[step.type] || {};
+        const sug = compiledStep ? compiledStep.suggestion : null;
+        const dattr = `data-mstep="${esc(scope)}" data-idx="${index}" data-si="${si}"`;
+        return `<div class="jb-card ${slot==='travel'?'travel':'move'}">
+          ${removable?`<button type="button" class="jb-x" data-rmstep="${esc(scope)}" data-idx="${index}" data-si="${si}" title="Remove this movement">remove</button>`:''}
+          <div class="jb-kicker">${kickerNum?jbNum(kickerNum):''}${esc(kicker)}</div>
+          <div class="jb-title">${esc(m.icon||'')} ${esc(m.label||step.type)}</div>
+          <div class="jb-sub">${esc(m.blurb||'')}</div>
+          <div class="jb-opts">${jbMovementOpts(keys, step.type, dattr)}</div>
+          <div class="jb-row">
+            <label>Duration</label>
+            <input class="jb-dur" type="text" data-dur="${esc(scope)}" data-idx="${index}" data-si="${si}" value="${step.duration_seconds==null?'':esc(String(step.duration_seconds))}" placeholder="${sug?String(sug.seconds):'auto'}">
+            <span class="jb-sub">seconds${sug?` · suggested <b>${sug.low_seconds}–${sug.high_seconds}s</b> at ${esc(JB.PACE_PRESETS[compiledStep.pace].label.toLowerCase())} pace${step.duration_seconds==null?` (using ${sug.seconds}s)`:''}`:''}</span>
+            ${step.duration_seconds!=null&&sug?`<button type="button" class="btn" style="padding:2px 8px;font-size:11px;margin:0" data-usesug="${esc(scope)}" data-idx="${index}" data-si="${si}">use ${sug.seconds}s</button>`:''}
+          </div>
+          ${jbAdvancedStep(scope, index, si, step, compiledStep)}
+        </div>`;
+      }
+
+      function jbPlaceCard(scope, index, place, compiledStep, kicker, kickerNum, opts){
+        const o = opts || {};
+        const resolved = place.location ? planner.resolveLocation(place.location) : null;
+        const status = !place.location
+          ? '<span class="warn">Name a place to begin.</span>'
+          : resolved
+            ? `<span class="ok">✓ ${esc(resolved.name)}</span> <span class="jb-sub">${resolved.latitude.toFixed(4)}, ${resolved.longitude.toFixed(4)}${resolved.source==='explicit_coordinates'?' (coordinates — set the framing by hand, coordinates carry no size)':''}</span>`
+            : `<span class="blk">Not a known place. Pick one below, or type coordinates like 60.17,24.94.</span>`;
+        return `<div class="jb-card stop">
+          ${o.removable?`<button type="button" class="jb-x" data-rmleg="${index}" title="Remove this destination">remove</button>`:''}
+          ${o.orderable?`<div class="jb-ord">
+            <button type="button" data-mvleg="${index}" data-dir="-1" ${index===0?'disabled':''} title="Move earlier">↑</button>
+            <button type="button" data-mvleg="${index}" data-dir="1" ${index===JOURNEY.legs.length-1?'disabled':''} title="Move later">↓</button></div>`:''}
+          <div class="jb-kicker">${kickerNum?jbNum(kickerNum):''}${esc(kicker)}</div>
+          <div class="jb-title">${esc(resolved?resolved.name:(place.location||'—'))}</div>
+          <div class="jb-row">
+            <input class="jb-place" type="text" data-place="${esc(scope)}" data-idx="${index}" value="${esc(place.location)}" placeholder="City, landmark, country, sea… or 60.17,24.94">
+            ${status}
+          </div>
+          ${jbFramingSelect(scope, index, place, compiledStep)}
+          ${dirStoryBlock(scope, index, place, compiledStep, o.movementKey)}
+          ${jbAdvancedPlace(scope, index, place)}
+        </div>`;
+      }
+
+      function jbStartCard(compiled){
+        const j = JOURNEY;
+        const fromCont = j.start.source === 'continuation';
+        const seedable = ST && ST.continuation;
+        const first = compiled && compiled.steps.length ? compiled.steps[0] : null;
+        let body;
+        if (fromCont) {
+          const place = j.start;
+          const c = (j.start.continuation && j.start.continuation.camera) || {};
+          body = `<div class="jb-title">Previous animation's ending frame</div>
+            <div class="jb-cont">Camera resumes exactly where <b>${esc((j.start.continuation&&j.start.continuation.source_animation)||'the previous animation')}</b> stopped:
+              ${esc(JB.formatAltitude(c.altitude_m))} altitude, heading ${esc(String(Math.round(((c.heading_deg!=null?c.heading_deg:c.pan_deg)||0))))}&deg;, tilt ${esc(String(c.tilt_deg))}&deg;
+              at ${esc(String(c.latitude))}, ${esc(String(c.longitude))}.
+              <div class="jb-sub" style="margin-top:4px;">This is a <b>camera state</b>, not a place: the first frame of this animation is the last frame of that one.</div></div>
+            <div class="jb-row"><label>Label (optional)</label>
+              <input class="jb-place" type="text" data-place="start" data-idx="0" value="${esc(j.start.location)}" placeholder="e.g. Berlin — used only in the summary"></div>
+            ${dirStoryBlock('start', 0, place || j.start, first, JOURNEY.start_movements[0] ? JOURNEY.start_movements[0].type : null)}`;
+        } else {
+          const place = j.start;
+          const resolved = place.location ? planner.resolveLocation(place.location) : null;
+          body = `<div class="jb-title">${esc(resolved?resolved.name:(place.location||'—'))}</div>
+            <div class="jb-row">
+              <input class="jb-place" type="text" data-place="start" data-idx="0" value="${esc(place.location)}" placeholder="City, landmark, country, sea… or 60.17,24.94">
+              ${!place.location?'<span class="warn">Name a place to begin.</span>'
+                : resolved?`<span class="ok">✓ ${esc(resolved.name)}</span> <span class="jb-sub">${resolved.latitude.toFixed(4)}, ${resolved.longitude.toFixed(4)}</span>`
+                : '<span class="blk">Not a known place. Pick one below, or type coordinates like 60.17,24.94.</span>'}
+            </div>
+            ${jbFramingSelect('start', 0, place, first)}
+            ${dirStoryBlock('start', 0, place, first, JOURNEY.start_movements[0] ? JOURNEY.start_movements[0].type : null)}
+            ${jbAdvancedPlace('start', 0, place)}`;
+        }
+        return `<div class="jb-card stop">
+          <div class="jb-kicker">${jbNum(1)}Start location</div>
+          <div class="jb-row" style="margin-top:6px;">
+            <label>Start from</label>
+            <select class="jb-sel" data-startsource>
+              <option value="location" ${!fromCont?'selected':''}>A new location</option>
+              <option value="continuation" ${fromCont?'selected':''} ${seedable?'':'disabled'}>Where the previous animation ended${seedable?'':' (none available)'}</option>
+            </select>
+            <button type="button" class="btn" style="padding:3px 9px;font-size:11px;margin:0" data-importcont>Import continuation file…</button>
+            <input type="file" accept="application/json,.json" style="display:none" data-contfile>
+          </div>
+          ${body}</div>`;
+      }
+
+      function jbArrow(){ return '<div class="jb-arrow">↓</div>'; }
+
+      function jbFlowHtml(compiled){
+        const j = JOURNEY;
+        const parts = [];
+        let k = 0;                       // index into compiled.steps
+        const step = () => (compiled ? compiled.steps[k++] : null);
+        let num = 1;
+
+        if (DIRECTOR_ON) parts.push(dirAutoBlock());
+        parts.push(jbStartCard(compiled));
+
+        j.start_movements.forEach((s, si) => {
+          parts.push(jbArrow());
+          parts.push(jbStepCard('start_movements', 0, si, s, step(), 'Movement at start', ++num, j.start_movements.length > 1 || si > 0 || true));
+        });
+        parts.push(jbArrow());
+        parts.push(`<button type="button" class="jb-add" data-addstep="start_movements" data-idx="0">+ Add another movement at the start</button>`);
+
+        j.legs.forEach((leg, i) => {
+          // travel
+          parts.push(jbArrow());
+          const styleChips = Object.keys(JB.TRAVEL_STYLES).map((sk)=>{
+            const st = JB.TRAVEL_STYLES[sk];
+            return `<button type="button" class="jb-opt ${leg.travel_style===sk?'sel':''}" data-tstyle="${esc(sk)}" data-idx="${i}">
+              <span class="jb-opt-name">${esc(st.icon)} ${esc(st.label)}</span>
+              <span class="jb-opt-blurb">${esc(st.blurb)}</span></button>`;
+          }).join('');
+          parts.push(`<div class="jb-card travel">
+            <div class="jb-kicker">${jbNum(++num)}Travel to destination ${i+1}</div>
+            <div class="jb-title">${esc(JB.TRAVEL_STYLES[leg.travel_style].label)}</div>
+            <div class="jb-sub">Pick a travel style, or build the travel out of individual movements below.</div>
+            <div class="jb-opts">${styleChips}</div></div>`);
+          leg.travel.forEach((s, si) => {
+            parts.push(jbArrow());
+            parts.push(jbStepCard('travel', i, si, s, step(), `Travel ${i+1} · movement ${si+1}`, null, true));
+          });
+          parts.push(jbArrow());
+          parts.push(`<button type="button" class="jb-add" data-addstep="travel" data-idx="${i}">+ Add a movement inside travel ${i+1}</button>`);
+
+          // destination + its movements
+          parts.push(jbArrow());
+          // The compiled step that establishes this destination's framing is the
+          // first movement AT it, or the travel step that arrives there.
+          const destStep = (compiled && (compiled.steps[k] || compiled.steps[k-1])) || null;
+          parts.push(jbPlaceCard('legs', i, leg.destination, destStep, `Destination ${i+1}`, ++num,
+            { removable:true, orderable:true, movementKey: leg.movements[0] ? leg.movements[0].type : null }));
+          leg.movements.forEach((s, si) => {
+            parts.push(jbArrow());
+            parts.push(jbStepCard('movements', i, si, s, step(), `Movement at destination ${i+1}`, ++num, true));
+          });
+          parts.push(jbArrow());
+          parts.push(`<button type="button" class="jb-add" data-addstep="movements" data-idx="${i}">+ Add another movement at destination ${i+1}</button>`);
+        });
+
+        parts.push(jbArrow());
+        parts.push(`<button type="button" class="jb-add" data-addleg style="border-color:#3fb95066;color:#3fb950;">+ Add destination</button>`);
+        return `<div class="jb-flow">${parts.join('')}</div>`;
+      }
+
+      function jbTimelineText(sum){
+        const rows = [];
+        sum.timeline.forEach((t)=>{
+          if (t.kind === 'stop') {
+            rows.push(t.label.toUpperCase() + (t.framing?`   [${t.framing}]`:''));
+            t.movements.forEach((m)=>rows.push(`  ${m.icon} ${m.label} · ${jbSecs(m.seconds)}`));
+          } else {
+            rows.push('   │');
+            t.steps.forEach((m)=>rows.push(`   │ ${m.icon} ${m.label} · ${jbSecs(m.seconds)}${m.distance_m?`  (${JB.formatDistance(m.distance_m)})`:''}`));
+            rows.push('   ▼');
+          }
+        });
+        return rows.join('\n');
+      }
+
+      function jbSideHtml(sum){
+        const paceChips = Object.keys(JB.PACE_PRESETS).map((p)=>{
+          const d = JB.PACE_PRESETS[p];
+          return `<span class="chip ${JOURNEY.pace===p?'sel':''}" data-pace="${esc(p)}" title="${esc(d.blurb)}">${esc(d.label)}</span>`;
+        }).join('');
+        const errs = sum.errors.length ? `<div class="jb-err">${sum.errors.map((e)=>'⚠ '+esc(e)).join('<br>')}</div>` : '';
+        const warns = sum.warnings.length ? `<div class="jb-warnmsg">${sum.warnings.map((e)=>'• '+esc(e)).join('<br>')}</div>` : '';
+        return `<div class="jb-side">
+          <div class="jb-kicker">Estimated video length</div>
+          <div class="jb-total"><span class="big">${esc(sum.total_clock)}</span>
+            <span class="jb-sub">${sum.total_duration_seconds}s · ${sum.total_frames} frames @ ${planner.FRAME_RATE}fps · ${esc(ASPECT)}</span></div>
+          <div class="jb-row"><label>Pacing</label>${paceChips}</div>
+          <div class="jb-bd">${sum.breakdown.map((b)=>`<div><span>${esc(b.label)}</span><span>${jbSecs(b.seconds)}</span></div>`).join('')}
+            <div class="tot"><span>Total</span><span>${jbSecs(sum.total_duration_seconds)}</span></div></div>
+          ${errs}${warns}
+        </div>
+        ${DIRECTOR_LAST ? `<div class="jb-side">${dirLogHtml()}</div>` : ''}
+        <div class="jb-side"><div class="jb-kicker">Route</div><div class="jb-tl">${esc(jbTimelineText(sum))}</div></div>
+        <div class="jb-side"><div class="jb-kicker">Your camera journey</div>
+          <div class="jb-prose">${sum.prose.map((p)=>`<p>${esc(p)}</p>`).join('')}</div>
+          <details class="jb-adv"><summary>Compiled description sent to the generator</summary>
+            <pre style="margin-top:6px;">${esc(sum.description)}</pre>
+            <div class="jb-sub">This is the exact planner instruction the journey compiles to. Every value above was checked back against it before generating.</div>
+          </details></div>`;
+      }
+
+      // ══ DIRECTORIAL LAYER ════════════════════════════════════════════════
+      // Above movement selection: what is this location doing in the story, what
+      // should the viewer understand, and therefore which camera treatment. The
+      // Director recommends and explains; the operator always keeps control.
+      const DIR = window.EarthStudioDirector;
+
+      // Story intent lives on the journey's places, so it persists in journey.json.
+      function dirStory(place){
+        const st = place && place.story ? place.story : {};
+        return { role: st.role || null, importance: st.importance || null, purposes: Array.isArray(st.purposes)?st.purposes:[] };
+      }
+
+      // The purposes worth offering for a given role — the question "what should
+      // the viewer understand?" only makes sense with a shortlist.
+      const DIR_PURPOSE_CHOICES = ['LOCATE','ESTABLISH','INSPECT','REVEAL','SHOW_SCALE','SHOW_ROUTE','SHOW_TERRAIN','COMPARE','RELATE','EMPHASIZE','ORIENT','CONCLUDE'];
+
+      function dirContextFor(scope, index, place, compiledStep){
+        const st = dirStory(place);
+        const resolved = place.location ? planner.resolveLocation(place.location) : null;
+        const scale = (compiledStep && compiledStep.framing_scale)
+          || (place.framing && place.framing !== 'auto' ? place.framing : (resolved ? JB.classifyScale(resolved, place.location).scale : 'city'));
+        return {
+          slot: 'at', role: st.role, importance: st.importance, purposes: st.purposes,
+          scale, place: resolved ? resolved.name : place.location,
+          journey_span_m: dirSpanM(), globe_justification: dirGlobeJustification(),
+        };
+      }
+
+      function dirSpanM(){
+        try {
+          const c = JB.compileJourney(JOURNEY);
+          return c.steps.reduce((a,s)=>a+(s.distance_m||0),0);
+        } catch(e){ return 0; }
+      }
+      function dirGlobeJustification(){ return (JOURNEY && JOURNEY.globe_justification) || null; }
+
+      function dirRoleCards(scope, index, place){
+        const st = dirStory(place);
+        return Object.keys(DIR.LOCATION_ROLES).map((k)=>{
+          const r = DIR.LOCATION_ROLES[k];
+          return `<button type="button" class="dir-opt ${st.role===k?'sel':''}" data-dirrole="${esc(scope)}" data-idx="${index}" data-val="${esc(k)}" title="${esc(r.blurb)}">
+            <span class="dir-opt-name">${esc(r.label)}</span>
+            <span class="dir-opt-blurb">${esc(r.blurb)}</span></button>`;
+        }).join('');
+      }
+
+      function dirPurposeCards(scope, index, place){
+        const st = dirStory(place);
+        return DIR_PURPOSE_CHOICES.map((k)=>{
+          const p = DIR.SHOT_PURPOSES[k];
+          const on = st.purposes.indexOf(k) >= 0;
+          return `<button type="button" class="dir-opt ${on?'sel':''}" data-dirpurpose="${esc(scope)}" data-idx="${index}" data-val="${esc(k)}" title="${esc(p.viewer_should_understand)}">
+            <span class="dir-opt-name">${esc(p.label)}</span>
+            <span class="dir-opt-blurb">${esc(p.viewer_should_understand)}</span></button>`;
+        }).join('');
+      }
+
+      // The recommendation panel: what the Director suggests, why, and what else
+      // is valid. Also flags an operator choice the Director would not have made.
+      function dirRecommendation(scope, index, place, compiledStep, currentMovementKey){
+        const st = dirStory(place);
+        if (!st.role && !st.purposes.length) {
+          return `<div class="dir-q">Pick what this location is doing in the story and the Director will recommend a camera treatment.</div>`;
+        }
+        let rec;
+        try { rec = DIR.recommend(dirContextFor(scope, index, place, compiledStep)); }
+        catch(e){ return `<div class="dir-not">Could not form a recommendation: ${esc(e.message)}</div>`; }
+        if (!rec.recommended) return `<div class="dir-not">No camera treatment fits that combination. Try a different purpose.</div>`;
+        const r = rec.recommended;
+        const chosen = currentMovementKey;
+        const chosenGrammar = chosen ? DIR.CAMERA_GRAMMAR[chosen] : null;
+        const mismatch = chosen && r.movement && chosen !== r.movement;
+        const notRec = mismatch && chosenGrammar ? dirWhyNotRecommended(chosen, rec) : null;
+        return `<div class="dir-rec">
+            <div class="dir-kicker">Recommended camera treatment</div>
+            <div class="dir-rec-name">${esc(r.label)}</div>
+            <div class="dir-rec-row"><b>Purpose:</b> ${esc(r.purpose_label)} — ${esc(r.viewer_should_understand||'')}</div>
+            <div class="dir-rec-row"><b>Why:</b> ${esc(r.why)}</div>
+            <div class="dir-rec-row"><b>Communicates:</b> ${esc((r.communicates||[]).join(', '))}</div>
+            <div class="dir-rec-row"><b>Screen time:</b> ${esc(String(r.emphasis))}× the paced suggestion${r.rarity!=='COMMON'?` · <span title="Editorial rarity: a special move loses meaning if used constantly">${esc(r.rarity.toLowerCase())} move</span>`:''}</div>
+            ${r.angle_limitation?`<div class="dir-not">${esc(r.angle_limitation)}</div>`:''}
+            ${r.movement&&r.movement!==chosen?`<button type="button" class="btn btn-go" style="margin-top:8px" data-diruse="${esc(scope)}" data-idx="${index}" data-mv="${esc(r.movement)}" data-emph="${esc(String(r.emphasis))}">Use recommendation</button>`:'<div class="dir-rec-row" style="margin-top:6px;color:#3fb950">✓ This is what the movement below is set to.</div>'}
+            ${rec.alternatives.length?`<div class="dir-kicker" style="margin-top:9px">Other valid options</div>
+              <div class="dir-alt">${rec.alternatives.filter(a=>a.movement).map(a=>`<button type="button" data-diruse="${esc(scope)}" data-idx="${index}" data-mv="${esc(a.movement)}" data-emph="${esc(String(a.emphasis))}" title="${esc(a.why)}">${esc(a.label)}</button>`).join('')}</div>`:''}
+            ${notRec?`<div class="dir-not"><b>Your choice (${esc(chosenGrammar.label)}) is not what the Director would pick.</b> ${esc(notRec)} You can keep it.</div>`:''}
+            ${rec.rejected.length?`<details class="jb-adv"><summary>Ruled out here (${rec.rejected.length})</summary>
+              <div class="dir-teach">${rec.rejected.map(x=>`<div style="margin:4px 0"><b>${esc(x.label)}</b> — ${esc(x.reason)}</div>`).join('')}</div></details>`:''}
+            <div class="dir-teach"><b>${esc(r.label)}:</b> ${esc(r.teaching)}</div>
+            ${dirGlobeNote(rec)}
+          </div>`;
+      }
+
+      function dirWhyNotRecommended(movementKey, rec){
+        const rej = rec.rejected.find((x)=>DIR.CAMERA_GRAMMAR[x.key] && DIR.CAMERA_GRAMMAR[x.key].movement===movementKey);
+        if (rej) return rej.reason;
+        const g = Object.values(DIR.CAMERA_GRAMMAR).find((x)=>x.movement===movementKey);
+        if (!g) return 'It is outside the Director’s grammar.';
+        return `${g.label} usually avoids: ${(g.usually_avoid_when||[]).slice(0,2).join('; ')}.`;
+      }
+
+      function dirGlobeNote(rec){
+        if (!rec.globe) return '';
+        const g = DIR.CAMERA_GRAMMAR.globe_view;
+        return `<details class="jb-adv"><summary>Whole-globe view — ${rec.globe.allowed?'available':'not recommended'}</summary>
+          <div class="dir-teach"><b>Reason:</b> ${esc(rec.globe.reason)}<br><b>Best for:</b> ${esc(g.good_for.join(', '))}<br><b>Avoid when:</b> ${esc(g.usually_avoid_when.join('; '))}</div></details>`;
+      }
+
+      // The story-intent block that sits ABOVE movement selection on a stop card.
+      function dirStoryBlock(scope, index, place, compiledStep, currentMovementKey){
+        if (!DIRECTOR_ON) return '';
+        return `<div class="dir-card">
+          <div class="dir-kicker">What is this location doing in the story?</div>
+          <div class="dir-opts" style="margin-top:6px">${dirRoleCards(scope, index, place)}</div>
+          <div class="dir-kicker" style="margin-top:10px">What should the viewer understand?</div>
+          <div class="dir-q">Pick one or two. This is what decides the camera treatment.</div>
+          <div class="dir-opts">${dirPurposeCards(scope, index, place)}</div>
+          ${dirRecommendation(scope, index, place, compiledStep, currentMovementKey)}
+        </div>`;
+      }
+
+      // ── Auto-Direct ──
+      function dirAutoBlock(){
+        return `<div class="dir-card dir-auto">
+          <div class="dir-kicker">Auto-Direct</div>
+          <div class="dir-q">Describe the story in plain words. The Director derives structured intent, then chooses each shot and explains why. Places must be ones the generator knows.</div>
+          <textarea id="dir-intent" rows="4" placeholder="Start in Helsinki.&#10;Show where Stockholm is relative to Helsinki.&#10;Stockholm is the main destination.&#10;Then continue to Copenhagen as a secondary waypoint.">${esc(DIRECTOR_INTENT)}</textarea>
+          <div style="margin-top:7px">
+            <button type="button" class="btn btn-go" id="dir-run">Direct this journey</button>
+            <span class="meta" id="dir-status"></span>
+          </div>
+          <div id="dir-log"></div>
+        </div>`;
+      }
+
+      function dirRunAuto(){
+        const el = document.getElementById('dir-intent');
+        const status = document.getElementById('dir-status');
+        DIRECTOR_INTENT = el ? el.value : '';
+        let intent, result;
+        try { intent = DIR.parseIntent(DIRECTOR_INTENT); }
+        catch(e){ status.textContent = 'Could not read that: '+e.message; return; }
+        if (!intent.stops.length) {
+          status.textContent = 'No known places found in that text. Name cities, landmarks, countries or seas the generator knows.';
+          return;
+        }
+        try { result = DIR.autoDirect({ ...intent, pace: JOURNEY?JOURNEY.pace:undefined, aspect: ASPECT }); }
+        catch(e){ status.textContent = 'Could not direct that: '+e.message; return; }
+        // carry the derived story intent onto the journey so the cards show it
+        const stops = result.stops;
+        result.journey.start.story = { role: stops[0].role, importance: stops[0].importance, purposes: stops[0].purposes };
+        result.journey.legs.forEach((leg, i)=>{
+          const st = stops[i+1];
+          if (st) leg.destination.story = { role: st.role, importance: st.importance, purposes: st.purposes };
+        });
+        if (intent.globe_justification) result.journey.globe_justification = intent.globe_justification;
+        JOURNEY = JB.normalizeJourney(result.journey);
+        JOURNEY.globe_justification = intent.globe_justification || null;
+        DIRECTOR_LAST = result;
+        status.textContent = `Directed ${stops.length} stop${stops.length===1?'':'s'}.`;
+        jbRerender();
+      }
+
+      function dirLogHtml(){
+        if (!DIRECTOR_LAST) return '';
+        const rows = DIR.explainDirection(DIRECTOR_LAST).map((l)=>`<div>${esc(l)}</div>`).join('');
+        return `<div class="dir-log"><div class="dir-kicker">Why the camera does this</div>${rows}</div>`;
+      }
+
+      function jbHtml(){
+        jbInit();
+        const sum = jbSummary();
+        const compiled = sum.ok ? JB.compileJourney(JOURNEY) : jbCompileLoose();
+        return `<div class="jb">
+          ${jbFlowHtml(compiled)}
+          ${jbSideHtml(sum)}
+        </div>`;
+      }
+
+      // Compile even when validation failed, so the cards can still show
+      // suggested durations and framing while the operator is mid-edit.
+      function jbCompileLoose(){
+        try { return JB.compileJourney(JOURNEY); } catch (e) { return null; }
+      }
+
+      // ── mutation helpers ──
+      function jbStepList(scope, idx){
+        if (scope === 'start_movements') return JOURNEY.start_movements;
+        if (scope === 'travel') return JOURNEY.legs[idx] ? JOURNEY.legs[idx].travel : null;
+        if (scope === 'movements') return JOURNEY.legs[idx] ? JOURNEY.legs[idx].movements : null;
+        return null;
+      }
+      function jbPlaceRef(scope, idx){
+        if (scope === 'start') return JOURNEY.start;
+        if (scope === 'legs') return JOURNEY.legs[idx] ? JOURNEY.legs[idx].destination : null;
+        return null;
+      }
+      function jbNumField(v){ const t=String(v==null?'':v).trim(); if(!t) return null; const n=Number(t); return Number.isFinite(n)?n:null; }
+
+      function jbRerender(){
+        const el = document.getElementById('es-journey');
+        if (!el) return;
+        const act = document.activeElement;
+        if (act && act.dataset && (act.dataset.place!==undefined || act.dataset.dur!==undefined
+            || act.dataset.stepAlt!==undefined || act.dataset.stepTilt!==undefined
+            || act.dataset.placeAlt!==undefined || act.dataset.placeTilt!==undefined || act.dataset.stepRev!==undefined)) {
+          jbFocus = { key: jbFocusKey(act), start: act.selectionStart, end: act.selectionEnd };
+        }
+        el.innerHTML = jbHtml();
+        wireJourney();
+        if (jbFocus) {
+          const target = Array.from(el.querySelectorAll('input')).find((i)=>jbFocusKey(i)===jbFocus.key);
+          if (target) { target.focus(); try { target.setSelectionRange(jbFocus.start, jbFocus.end); } catch(e){} }
+          jbFocus = null;
+        }
+        jbUpdateGenerateState();
+      }
+      function jbFocusKey(el){
+        const d = el.dataset || {};
+        return [d.place, d.dur, d.stepAlt, d.stepTilt, d.placeAlt, d.placeTilt, d.stepRev, d.idx, d.si].join('|');
+      }
+
+      function jbUpdateGenerateState(){
+        const btn = document.getElementById('es-generate');
+        if (!btn) return;
+        if (MODE !== 'journey') { btn.disabled = false; return; }
+        const ok = LAST_SUMMARY && LAST_SUMMARY.ok;
+        btn.disabled = !ok;
+        btn.title = ok ? '' : 'Fix the problems listed under the journey first.';
+      }
+
+      function wireJourney(){
+        const root = document.getElementById('es-journey');
+        if (!root) return;
+        const on = (sel, ev, fn) => root.querySelectorAll(sel).forEach((el)=>el.addEventListener(ev, fn));
+
+        // mode is wired outside (it lives above the journey block)
+        on('[data-startsource]','change',(e)=>{
+          const v = e.target.value;
+          if (v === 'continuation') {
+            const state = ST && ST.continuation;
+            if (!state) { toast('No ending state available yet — generate an animation first.', false); jbRerender(); return; }
+            try { JOURNEY = JB.journeyFromContinuationState(state, { aspect: ASPECT, pace: JOURNEY.pace }); }
+            catch (err) { toast(err.message, false); }
+          } else {
+            JOURNEY.start.source = 'location';
+            delete JOURNEY.start.continuation;
+            JOURNEY = JB.normalizeJourney(JOURNEY);
+          }
+          jbRerender();
+        });
+        on('[data-importcont]','click',()=>{ const f = root.querySelector('[data-contfile]'); if (f) f.click(); });
+        on('[data-contfile]','change',(e)=>{
+          const file = e.target.files && e.target.files[0]; if (!file) return;
+          const rd = new FileReader();
+          rd.onload = () => {
+            let parsed = null;
+            try { parsed = JSON.parse(rd.result); }
+            catch (err) { toast('That file is not valid JSON, so it cannot be a continuation state.', false); return; }
+            const check = JB.validateContinuationState(parsed);
+            if (!check.ok) { toast(check.errors[0], false); return; }
+            try { JOURNEY = JB.journeyFromContinuationState(parsed, { aspect: ASPECT, pace: JOURNEY.pace }); jbRerender(); toast('Continuation state imported'); }
+            catch (err) { toast(err.message, false); }
+          };
+          rd.readAsText(file);
+        });
+
+        on('[data-place]','input',(e)=>{
+          const ref = jbPlaceRef(e.target.dataset.place, Number(e.target.dataset.idx));
+          if (ref) { ref.location = e.target.value; jbRerender(); }
+        });
+        on('[data-framing]','change',(e)=>{
+          const ref = jbPlaceRef(e.target.dataset.framing, Number(e.target.dataset.idx));
+          if (ref) { ref.framing = e.target.value; jbRerender(); }
+        });
+        on('[data-place-alt]','input',(e)=>{
+          const ref = jbPlaceRef(e.target.dataset.placeAlt, Number(e.target.dataset.idx));
+          if (ref) { ref.altitude_m = jbNumField(e.target.value); jbRerender(); }
+        });
+        on('[data-place-tilt]','input',(e)=>{
+          const ref = jbPlaceRef(e.target.dataset.placeTilt, Number(e.target.dataset.idx));
+          if (ref) { ref.tilt_deg = jbNumField(e.target.value); jbRerender(); }
+        });
+
+        on('[data-mstep]','click',(e)=>{
+          const b = e.currentTarget;
+          const list = jbStepList(b.dataset.mstep, Number(b.dataset.idx));
+          if (!list) return;
+          const step = list[Number(b.dataset.si)];
+          if (!step) return;
+          step.type = b.dataset.mtype;
+          step.duration_seconds = null;  // a new movement gets that movement's own suggested duration
+          jbRerender();
+        });
+        on('[data-dur]','input',(e)=>{
+          const list = jbStepList(e.target.dataset.dur, Number(e.target.dataset.idx));
+          const step = list && list[Number(e.target.dataset.si)];
+          if (step) { step.duration_seconds = jbNumField(e.target.value); jbRerender(); }
+        });
+        on('[data-usesug]','click',(e)=>{
+          const b = e.currentTarget;
+          const list = jbStepList(b.dataset.usesug, Number(b.dataset.idx));
+          const step = list && list[Number(b.dataset.si)];
+          if (step) { step.duration_seconds = null; jbRerender(); }
+        });
+        on('[data-step-alt]','input',(e)=>{
+          const list = jbStepList(e.target.dataset.stepAlt, Number(e.target.dataset.idx));
+          const step = list && list[Number(e.target.dataset.si)];
+          if (step) { step.altitude_m = jbNumField(e.target.value); jbRerender(); }
+        });
+        on('[data-step-tilt]','input',(e)=>{
+          const list = jbStepList(e.target.dataset.stepTilt, Number(e.target.dataset.idx));
+          const step = list && list[Number(e.target.dataset.si)];
+          if (step) { step.tilt_deg = jbNumField(e.target.value); jbRerender(); }
+        });
+        on('[data-step-rev]','input',(e)=>{
+          const list = jbStepList(e.target.dataset.stepRev, Number(e.target.dataset.idx));
+          const step = list && list[Number(e.target.dataset.si)];
+          if (step) { step.revolutions = jbNumField(e.target.value); jbRerender(); }
+        });
+        on('[data-step-dir]','change',(e)=>{
+          const list = jbStepList(e.target.dataset.stepDir, Number(e.target.dataset.idx));
+          const step = list && list[Number(e.target.dataset.si)];
+          if (step) { step.direction = Number(e.target.value) === -1 ? -1 : 1; jbRerender(); }
+        });
+        on('[data-rmstep]','click',(e)=>{
+          const b = e.currentTarget;
+          const list = jbStepList(b.dataset.rmstep, Number(b.dataset.idx));
+          if (list) { list.splice(Number(b.dataset.si), 1); jbRerender(); }
+        });
+        on('[data-addstep]','click',(e)=>{
+          const b = e.currentTarget;
+          const scope = b.dataset.addstep;
+          const list = jbStepList(scope, Number(b.dataset.idx));
+          if (list) { list.push(JB.newStep(scope === 'travel' ? 'cruise' : 'hold', scope === 'travel' ? 'travel' : 'at')); jbRerender(); }
+        });
+
+        on('[data-tstyle]','click',(e)=>{
+          const b = e.currentTarget;
+          const leg = JOURNEY.legs[Number(b.dataset.idx)];
+          if (!leg) return;
+          const style = JB.TRAVEL_STYLES[b.dataset.tstyle];
+          leg.travel_style = b.dataset.tstyle;
+          leg.travel = style.steps.map((k)=>JB.newStep(k, 'travel'));
+          jbRerender();
+        });
+        on('[data-addleg]','click',()=>{
+          JOURNEY.legs.push(JB.normalizeJourney({ legs:[{ destination:{location:''}, travel_style:'cinematic', movements:[{type:'slow_orbit'}] }] }).legs[0]);
+          jbRerender();
+        });
+        on('[data-rmleg]','click',(e)=>{ JOURNEY.legs.splice(Number(e.currentTarget.dataset.rmleg), 1); jbRerender(); });
+        on('[data-mvleg]','click',(e)=>{
+          const b = e.currentTarget;
+          JOURNEY = JB.moveLeg(JOURNEY, Number(b.dataset.mvleg), Number(b.dataset.dir));
+          jbRerender();
+        });
+        on('[data-pace]','click',(e)=>{ JOURNEY.pace = e.currentTarget.dataset.pace; jbRerender(); });
+
+        // ── directorial layer ──
+        on('[data-dirrole]','click',(e)=>{
+          const b = e.currentTarget;
+          const ref = jbPlaceRef(b.dataset.dirrole, Number(b.dataset.idx));
+          if (!ref) return;
+          const st = dirStory(ref);
+          const next = st.role === b.dataset.val ? null : b.dataset.val;
+          const role = next ? DIR.LOCATION_ROLES[next] : null;
+          ref.story = {
+            role: next,
+            importance: role ? role.importance : null,
+            // adopting a role seeds its default purposes; the operator can change them
+            purposes: role ? role.purposes.slice() : [],
+          };
+          jbRerender();
+        });
+        on('[data-dirpurpose]','click',(e)=>{
+          const b = e.currentTarget;
+          const ref = jbPlaceRef(b.dataset.dirpurpose, Number(b.dataset.idx));
+          if (!ref) return;
+          const st = dirStory(ref);
+          const list = st.purposes.slice();
+          const i = list.indexOf(b.dataset.val);
+          if (i >= 0) list.splice(i,1); else list.push(b.dataset.val);
+          ref.story = { role: st.role, importance: st.importance, purposes: list };
+          jbRerender();
+        });
+        on('[data-diruse]','click',(e)=>{
+          const b = e.currentTarget;
+          const scope = b.dataset.diruse;
+          const idx = Number(b.dataset.idx);
+          const list = scope === 'start' ? JOURNEY.start_movements
+            : (JOURNEY.legs[idx] ? JOURNEY.legs[idx].movements : null);
+          if (!list) return;
+          const step = JB.normalizeStep({ type: b.dataset.mv, emphasis: Number(b.dataset.emph) }, 'at');
+          if (list.length) list[0] = step; else list.push(step);
+          jbRerender();
+        });
+        const dirBtn = root.querySelector('#dir-run');
+        if (dirBtn) dirBtn.addEventListener('click', dirRunAuto);
+        const dirTa = root.querySelector('#dir-intent');
+        if (dirTa) dirTa.addEventListener('input', ()=>{ DIRECTOR_INTENT = dirTa.value; });
+      }
+
       function render(){
         const s = ST;
         const framesDir = s.frames_dir || '';
@@ -199,17 +975,27 @@
 
         document.getElementById('es-steps').innerHTML = `
           <div class="step ${s.has_plan?'done':''} ${active===1?'active':''}">
-            <div class="step-head">1 · Describe the camera move ${stepBadge(s.has_plan,false)}</div>
-            <div class="meta" style="margin:6px 0;">Plain words: <b>fly to</b> / <b>hover over</b> / <b>orbit</b> / <b>zoom in on</b> / <b>zoom out from</b> a place. Chain with "then". Optional per segment: duration ("for 5 seconds" or "for 2 minutes"), altitude ("at 800m", "from space", "low", "high"), tilt ("top-down", "tilted", "toward the horizon"), orbit amount + direction ("twice", "180 degrees", "counterclockwise"). Skip the location to reuse the previous one; skip the duration for a sensible default.</div>
-            <div style="margin:4px 0;">${presetRow()}</div>
-            <div style="margin:4px 0 8px;"><input id="es-loc-search" type="text" placeholder="Search ${Object.keys(planner.LOCATION_FIXTURES).length} known places…"><span id="es-loc-chips">${locChips('')}</span></div>
+            <div class="step-head">1 · Design the camera journey ${stepBadge(s.has_plan,false)}</div>
+            <div class="jb-modes">
+              <button type="button" class="jb-mode ${MODE==='journey'?'sel':''}" data-mode="journey">Journey builder</button>
+              <button type="button" class="jb-mode ${MODE==='freeform'?'sel':''}" data-mode="freeform">Freeform description</button>
+            </div>
             <input id="es-job" type="text" placeholder="Job name (e.g. Helsinki Flyover)" value="${esc(job?job.jobName:'')}">
-            <textarea id="es-desc" rows="2" style="margin-top:6px;" placeholder="fly to Helsinki in 4 seconds, then orbit Helsinki for 5 seconds">${esc(job?job.description:'')}</textarea>
             <div style="margin:6px 0 0;"><span class="meta">Aspect:</span> ${aspectRow()}</div>
-            <div style="margin:6px 0 0;"><span class="meta" title="Reconstructions of the five native Earth Studio Quick Start templates (ges-native-derived-v1). Only an explicit choice here (or an explicit phrase like 'template: orbit') activates one — plain descriptions always use the generic planner.">Native template:</span> ${templateRow()}</div>
-            <div id="es-template-params-box">${templateParamsBlock(job)}</div>
-            <div id="es-preview" style="margin-top:8px;"><div class="meta">Preview appears here while you type.</div></div>
-            <div style="margin-top:8px;"><button type="button" class="btn btn-go" id="es-generate">${s.has_plan?'Regenerate plan + .esp':'Generate plan + .esp'}</button>
+
+            <div id="es-journey" style="display:${MODE==='journey'?'block':'none'}"></div>
+
+            <div id="es-freeform" style="display:${MODE==='freeform'?'block':'none'}">
+              <div class="meta" style="margin:10px 0 6px;">Plain words: <b>fly to</b> / <b>hover over</b> / <b>orbit</b> / <b>zoom in on</b> / <b>zoom out from</b> a place. Chain with "then". Optional per segment: duration ("for 5 seconds" or "for 2 minutes"), altitude ("at 800m", "from space", "low", "high"), tilt ("top-down", "tilted", "toward the horizon"), orbit amount + direction ("twice", "180 degrees", "counterclockwise"). Skip the location to reuse the previous one; skip the duration for a sensible default.</div>
+              <div style="margin:4px 0;">${presetRow()}</div>
+              <div style="margin:4px 0 8px;"><input id="es-loc-search" type="text" placeholder="Search ${Object.keys(planner.LOCATION_FIXTURES).length} known places…"><span id="es-loc-chips">${locChips('')}</span></div>
+              <textarea id="es-desc" rows="2" style="margin-top:6px;" placeholder="fly to Helsinki in 4 seconds, then orbit Helsinki for 5 seconds">${esc(job?job.description:'')}</textarea>
+              <div style="margin:6px 0 0;"><span class="meta" title="Reconstructions of the five native Earth Studio Quick Start templates (ges-native-derived-v1). Only an explicit choice here (or an explicit phrase like 'template: orbit') activates one — plain descriptions always use the generic planner.">Native template:</span> ${templateRow()}</div>
+              <div id="es-template-params-box">${templateParamsBlock(job)}</div>
+              <div id="es-preview" style="margin-top:8px;"><div class="meta">Preview appears here while you type.</div></div>
+            </div>
+
+            <div style="margin-top:12px;"><button type="button" class="btn btn-go" id="es-generate">${s.has_plan?'Regenerate plan + .esp':'Generate plan + .esp'}</button>
             <span class="meta" id="es-gen-status"></span></div>
           </div>
 
@@ -248,9 +1034,37 @@
             <div class="meta" style="margin:6px 0;">The MP4 lives in the project (<code>earth-studio/renders/</code>) — import it into Resolve from there like any other clip, or stage a copy to the VIDNAS sandbox for sharing.</div>
             ${rendered?`<div>${cbtn(PKG_PATH+'/'+s.rendered_mp4,'rendered MP4 path')}<button type="button" class="btn" id="es-stage">Stage copy → VIDNAS sandbox</button><span class="meta" id="es-stage-status"></span></div>`:''}
           </div>
+
+          <div class="step ${s.continuation?'done':''}">
+            <div class="step-head">6 · Continue into the next animation ${s.continuation?'<span class="badge done">state ready</span>':'<span class="badge todo">after generate</span>'}</div>
+            ${s.continuation?`
+              <div class="meta" style="margin:6px 0;">This animation's <b>ending camera state</b> is saved beside the plan. A new animation started from it opens on exactly the frame this one closes on, so the two cut together seamlessly.</div>
+              <div class="jb-cont">Ends at <b>${esc(JB.formatAltitude(s.continuation.camera.altitude_m))}</b> altitude,
+                heading <b>${esc(String(Math.round(s.continuation.camera.heading_deg)))}&deg;</b>,
+                tilt <b>${esc(String(s.continuation.camera.tilt_deg))}&deg;</b>,
+                over <b>${esc(String(s.continuation.camera.latitude))}, ${esc(String(s.continuation.camera.longitude))}</b>${s.continuation.target?` — looking at <b>${esc(s.continuation.target.name)}</b>`:''}.
+                <div class="jb-sub" style="margin-top:4px;">Frame ${esc(String(s.continuation.ends_at_frame))} of ${esc(String(s.continuation.total_frames))}. Only the five values Earth Studio keyframes are carried (longitude, latitude, altitude, pan, tilt) — roll and field of view are never keyframed by this generator.</div></div>
+              <div style="margin-top:8px;">
+                <button type="button" class="btn" id="es-export-cont">Export continuation state</button>
+                ${cbtn(laneDirPath+'/continuation-state.json','continuation-state.json path')}
+                <button type="button" class="btn btn-go" id="es-create-cont">Create continuation →</button>
+                <span class="meta" id="es-cont-status"></span>
+              </div>
+              <div class="meta" style="margin-top:6px;">“Create continuation” loads this ending state into the journey builder above as the starting camera. Give it a new job name before generating, or the next animation will overwrite this one in the same project.</div>
+            `:`<div class="meta" style="margin:6px 0;">Generate a plan first — the ending camera state is derived from it.</div>`}
+          </div>
         `;
 
         // wire handlers
+        // Mode switch: the journey builder and the freeform description are two
+        // front ends onto the same generator; switching never discards the other.
+        document.querySelectorAll('[data-mode]').forEach((b)=>b.addEventListener('click',()=>{
+          MODE = b.getAttribute('data-mode');
+          document.querySelectorAll('[data-mode]').forEach((x)=>x.classList.toggle('sel', x===b));
+          document.getElementById('es-journey').style.display = MODE==='journey' ? 'block' : 'none';
+          document.getElementById('es-freeform').style.display = MODE==='freeform' ? 'block' : 'none';
+          if (MODE==='journey') jbRerender(); else jbUpdateGenerateState();
+        }));
         const desc = document.getElementById('es-desc');
         let deb=null; desc.addEventListener('input', ()=>{ clearTimeout(deb); deb=setTimeout(parsePreview,250); });
         const wireChips = ()=>document.querySelectorAll('#es-loc-chips .chip').forEach((c)=>c.addEventListener('click',()=>{ desc.value=(desc.value?desc.value.replace(/\s*$/,' '):'')+c.getAttribute('data-ins'); desc.dispatchEvent(new Event('input')); desc.focus(); }));
@@ -265,7 +1079,8 @@
         document.querySelectorAll('[data-aspect]').forEach((c)=>c.addEventListener('click',()=>{
           ASPECT=c.getAttribute('data-aspect'); aspectTouched=true;
           document.querySelectorAll('[data-aspect]').forEach((x)=>x.classList.toggle('sel',x===c));
-          parsePreview();
+          if (JOURNEY) JOURNEY.aspect = ASPECT;
+          parsePreview(); if (MODE==='journey') jbRerender();
         }));
         document.querySelectorAll('[data-template]').forEach((c)=>c.addEventListener('click',()=>{
           TEMPLATE=c.getAttribute('data-template'); templateTouched=true;
@@ -273,22 +1088,66 @@
           document.getElementById('es-template-params-box').innerHTML=templateParamsBlock(ST&&ST.job);
         }));
         parsePreview();
+        jbRerender();
         document.getElementById('es-generate').onclick = generate;
         document.getElementById('es-refresh').onclick = refresh;
         const rbtn = document.getElementById('es-render'); if (rbtn) rbtn.onclick = startRender;
         const cbtnEl = document.getElementById('es-cancel'); if (cbtnEl) cbtnEl.onclick = cancelRender;
         const sbtn = document.getElementById('es-stage'); if (sbtn) sbtn.onclick = stage;
+        const xc = document.getElementById('es-export-cont'); if (xc) xc.onclick = exportContinuation;
+        const cc = document.getElementById('es-create-cont'); if (cc) cc.onclick = createContinuation;
 
         // auto-poll: waiting for frames, or an active render
         clearInterval(pollTimer); pollTimer=null;
         if ((s.has_plan && !hasFrames) || renderJob.active) pollTimer = setInterval(refresh, renderJob.active ? 3000 : 6000);
       }
 
+      // Download the ending camera state as a file the generator can read back
+      // (the same JSON that already sits in the lane dir — this is a copy out,
+      // not a different artifact).
+      function exportContinuation(){
+        const state = ST && ST.continuation;
+        if (!state) { toast('No ending state yet — generate a plan first.', false); return; }
+        const name = (ST.job && ST.job.slug ? ST.job.slug : 'earth-studio') + '-continuation-state.json';
+        const blob = new Blob([JSON.stringify(state, null, 2) + '\n'], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = name;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+        document.getElementById('es-cont-status').textContent = 'Exported ' + name;
+      }
+
+      // Open a NEW journey whose starting camera is this animation's ending
+      // camera. Only the onward travel + destinations still need choosing.
+      function createContinuation(){
+        const state = ST && ST.continuation;
+        if (!state) { toast('No ending state yet — generate a plan first.', false); return; }
+        try { JOURNEY = JB.journeyFromContinuationState(state, { aspect: ASPECT, pace: JOURNEY ? JOURNEY.pace : JB.DEFAULT_PACE }); }
+        catch (e) { toast(e.message, false); return; }
+        MODE = 'journey';
+        document.querySelectorAll('[data-mode]').forEach((x)=>x.classList.toggle('sel', x.getAttribute('data-mode')==='journey'));
+        document.getElementById('es-journey').style.display = 'block';
+        document.getElementById('es-freeform').style.display = 'none';
+        const jobEl = document.getElementById('es-job');
+        if (jobEl) jobEl.value = ((ST.job && ST.job.jobName) || 'Map Animation') + ' — continued';
+        jbRerender();
+        document.getElementById('es-journey').scrollIntoView({ behavior:'smooth', block:'start' });
+        toast('Continuation started from the ending camera state');
+      }
+
       async function generate(){
         const st = document.getElementById('es-gen-status'); st.textContent='Generating…';
         try{
-          const body = { id: ID, jobName: document.getElementById('es-job').value || 'Map Animation', description: document.getElementById('es-desc').value, aspect: ASPECT };
-          if (TEMPLATE) {
+          const body = { id: ID, jobName: document.getElementById('es-job').value || 'Map Animation', aspect: ASPECT };
+          if (MODE === 'journey') {
+            const sum = jbSummary();
+            if (!sum.ok) { st.textContent = 'Fix the journey first: ' + sum.errors[0]; return; }
+            JOURNEY.aspect = ASPECT;
+            body.journey = JOURNEY;
+          } else {
+            body.description = document.getElementById('es-desc').value;
+          }
+          if (MODE !== 'journey' && TEMPLATE) {
             body.template = TEMPLATE;
             const paramsEl = document.getElementById('es-template-params');
             if (paramsEl && paramsEl.value.trim()) {
@@ -341,11 +1200,32 @@
         // focused OR blurred. Polling never overwrites a dirty field; a
         // successful Generate makes server text == local text, which clears
         // dirtiness naturally and resumes full re-renders.
+        // Which text counts as "the description the operator is editing" depends
+        // on the mode: in journey mode the freeform textarea is NOT the source of
+        // truth (the journey is), so comparing it would leave the page
+        // permanently dirty and freeze every later re-render.
         const descEl=document.getElementById('es-desc');
         const jobEl=document.getElementById('es-job');
-        const dirty = (descEl && descEl.value !== (ST.job?ST.job.description:''))
+        const serverDesc = ST.job ? ST.job.description : '';
+        let localDesc;
+        if (MODE === 'journey') {
+          // Unsaved journey edits are exactly "the journey compiles to something
+          // other than what the server has stored" — which Generate then clears.
+          let compiled = '';
+          try { compiled = JOURNEY ? JB.compileJourney(JOURNEY).description : ''; } catch(e) { compiled = serverDesc; }
+          localDesc = (ST.journey || ST.job) ? compiled : serverDesc;
+        } else {
+          localDesc = descEl ? descEl.value : serverDesc;
+        }
+        const dirty = localDesc !== serverDesc
           || (jobEl && jobEl.value !== (ST.job?ST.job.jobName:''));
-        if (dirty){ // update only the dynamic bits, never the edited fields
+        // Before the very first render() there is no step DOM to protect — and
+        // the job-name input still carries its placeholder default, which
+        // trips the dirty check on any project that already has a job. That
+        // used to make the page sit on "Loading…" forever; force the initial
+        // full render no matter what.
+        const neverRendered = !document.querySelector('#es-steps .step');
+        if (dirty && !neverRendered){ // update only the dynamic bits, never the edited fields
           const fc=document.getElementById('es-frame-count'); if(fc) fc.textContent=ST.frame_count||0;
           return;
         }

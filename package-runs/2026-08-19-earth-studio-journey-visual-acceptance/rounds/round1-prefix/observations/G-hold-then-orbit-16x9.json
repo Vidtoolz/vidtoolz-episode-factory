@@ -1,0 +1,206 @@
+{
+  "id": "G-hold-then-orbit-16x9",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/G-hold-then-orbit-16x9/earth-studio/earth-studio.esp",
+  "esp_sha256": "11fbe17fbcec1d591f3af630acb8d98e9da21bc1271999f821b21cf18f73233a",
+  "expected": {
+    "total_frames": 720,
+    "duration_seconds": 24,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 720,
+    "totalFrames": 720,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.16989895294665,
+        "longitude": 24.9384,
+        "altitude": 32809.67252042571,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 32809,
+        "tilt_deg": 50,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 60,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00060_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 60,
+        "latitude": 60.16989895294665,
+        "longitude": 24.9384,
+        "altitude": 32809.67252042571,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 32809,
+        "tilt_deg": 50,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 120,
+      "label": "seg2-start",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00120_seg2-start.png",
+      "earth_studio_camera": {
+        "frame": 120,
+        "latitude": 60.16989895294665,
+        "longitude": 24.9384,
+        "altitude": 32809.67252042571,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 32809,
+        "tilt_deg": 50,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 180,
+      "label": "seg2-mid",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00180_seg2-mid.png",
+      "earth_studio_camera": {
+        "frame": 180,
+        "latitude": 60.16989895294665,
+        "longitude": 24.9384,
+        "altitude": 32809.67252042571,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 32809,
+        "tilt_deg": 50,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 240,
+      "label": "seg3-start",
+      "movement": "orbit",
+      "place": "Espoo",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00240_seg3-start.png",
+      "earth_studio_camera": {
+        "frame": 240,
+        "latitude": 60.16989895294665,
+        "longitude": 24.9384,
+        "altitude": 32809.67252042571,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Espoo",
+        "altitude_m": 32809,
+        "tilt_deg": 50,
+        "target_lat": 60.2055,
+        "target_lng": 24.6559
+      }
+    },
+    {
+      "frame": 480,
+      "label": "seg3-mid",
+      "movement": "orbit",
+      "place": "Espoo",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00480_seg3-mid.png",
+      "earth_studio_camera": {
+        "frame": 480,
+        "latitude": 60.55673967228479,
+        "longitude": 24.655900001851812,
+        "altitude": 32809.67087306579,
+        "pan_deg": 173.083615741929,
+        "tilt_deg": 49.999999997550944,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Espoo",
+        "altitude_m": 32809,
+        "tilt_deg": 50,
+        "target_lat": 60.2055,
+        "target_lng": 24.6559
+      }
+    },
+    {
+      "frame": 719,
+      "label": "seg3-end",
+      "movement": "orbit",
+      "place": "Espoo",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00719_seg3-end.png",
+      "earth_studio_camera": {
+        "frame": 719,
+        "latitude": 59.85427962605813,
+        "longitude": 24.65622227629521,
+        "altitude": 32809.67252042571,
+        "pan_deg": 359.99674206325386,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Espoo",
+        "altitude_m": 32809,
+        "tilt_deg": 50,
+        "target_lat": 60.2055,
+        "target_lng": 24.6559
+      }
+    }
+  ],
+  "errors": []
+}

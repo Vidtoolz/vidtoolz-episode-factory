@@ -1,0 +1,2317 @@
+{
+  "gate": "Earth Studio journey builder — real Google Earth Studio import observation",
+  "date": "2026-08-19",
+  "planner_version": "0.9.4",
+  "journey_version": 1,
+  "motion_profile_version": 4,
+  "environment": {
+    "application": "real Google Earth Studio (earth.google.com/studio), authenticated session",
+    "profile": "~/.chrome-earthstudio-debug (the profile established for the native-template gates)",
+    "driver": "Chrome --headless=new + CDP; scene model read via window.scene.getWorldValuesAt / getCurrentWorldValues",
+    "renderer": "ANGLE SwiftShader (software WebGL 2.0) — real Earth imagery, real camera model"
+  },
+  "separation_of_evidence": "machine_verification = values read from Earth Studio itself. frame_observations = geometry derived from those values. visual_observation = rendered PNGs viewed. operator_aesthetic_verdict = Mikko, still pending.",
+  "canaries": [
+    {
+      "id": "A-landmark-16x9",
+      "title": "Canary A — small landmark, AUTO framing, calm slow orbit",
+      "aspect": "16:9",
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "duration_seconds": 31,
+      "total_frames": 930,
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/A-landmark-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "f145ed847b99c88908e8e8972e21114bee672c26827de3ee1c373fa9e716a0d0",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/A-landmark-16x9/earth-studio/journey.json",
+      "compiled_description": "orbit Senate Square once clockwise tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Senate Square",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Start over Senate Square with a landmark / building framing at 600 m.",
+        "Slowly orbit Senate Square for 31 seconds.",
+        "Estimated duration: 31 seconds (00:31) at calm pace."
+      ],
+      "watch": "Is Senate Square visible, centred and comfortably framed? Is the orbit calm? Does it settle cleanly?",
+      "machine_verification": {
+        "esp_sha256_matches_manifest": true,
+        "imported_without_error": true,
+        "duration_frames_match": true,
+        "frame_rate_match": true,
+        "frames_observed": 3
+      },
+      "frame_observations": [
+        {
+          "frame": 0,
+          "label": "seg1-start",
+          "action": "orbit",
+          "place": "Senate Square",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/A-landmark-16x9/A-landmark-16x9_f00000_seg1-start.png",
+          "altitude_m": 601,
+          "tilt_deg": 60,
+          "pan_deg": 180,
+          "camera_to_target_m": 1039,
+          "target_off_centre_half_frames": 0.01,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 465,
+          "label": "seg1-mid",
+          "action": "orbit",
+          "place": "Senate Square",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/A-landmark-16x9/A-landmark-16x9_f00465_seg1-mid.png",
+          "altitude_m": 601,
+          "tilt_deg": 60,
+          "pan_deg": 389.5237084657889,
+          "camera_to_target_m": 1039,
+          "target_off_centre_half_frames": 0.01,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 929,
+          "label": "seg1-end",
+          "action": "orbit",
+          "place": "Senate Square",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/A-landmark-16x9/A-landmark-16x9_f00929_seg1-end.png",
+          "altitude_m": 601,
+          "tilt_deg": 60,
+          "pan_deg": 539.9991331715473,
+          "camera_to_target_m": 1039,
+          "target_off_centre_half_frames": 0.01,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        }
+      ],
+      "framing_checkpoints": 3,
+      "frames_in_transit_exempt": 0,
+      "checkpoints_with_target_out_of_shot": 0,
+      "known_slide_frames": 0,
+      "machine_verdict": "PASS",
+      "visual_observation": {
+        "observed_by": "Claude Code, headless Chrome (SwiftShader WebGL) driving the real authenticated Google Earth Studio application via CDP",
+        "method": "imported the .esp through File > Import, scrubbed each movement boundary/midpoint, captured the render-frame region (canvas.guides-view) as PNG",
+        "limitation": "render-frame region capture at viewport resolution, not an Earth Studio image export; imagery streams at software-renderer speed",
+        "operator_aesthetic_verdict": "PENDING — see operator-checklist.md"
+      }
+    },
+    {
+      "id": "B-city-to-city-16x9",
+      "title": "Canary B — Helsinki to Stockholm, cinematic travel",
+      "aspect": "16:9",
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "duration_seconds": 85,
+      "total_frames": 2550,
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "afbdebd376a7554eb34b614a328a9b787c05fd73d1da1c5d8639c309dc041ea2",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-16x9/earth-studio/journey.json",
+      "compiled_description": "orbit Helsinki once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 155960m tilted 0 degrees for 7 seconds then fly to Stockholm at 155960m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 25521m tilted 60 degrees for 7 seconds then orbit Stockholm once clockwise at 25521m tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Helsinki",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Helsinki",
+          "seconds": 7
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 7
+        },
+        {
+          "label": "Slow Orbit · Stockholm",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 25.5 km.",
+        "Slowly orbit Helsinki for 31 seconds.",
+        "Pull back from Helsinki over 7 seconds before setting off.",
+        "Cruise to Stockholm (396 km) over 9 seconds, holding 156 km.",
+        "Descend into Stockholm over 7 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Stockholm for 31 seconds.",
+        "Estimated duration: 85 seconds (01:25) at calm pace."
+      ],
+      "watch": "Helsinki established? Departure smooth? Cruise intelligible? Stockholm approach + framing sensible? Any jump into the destination orbit?",
+      "machine_verification": {
+        "esp_sha256_matches_manifest": true,
+        "imported_without_error": true,
+        "duration_frames_match": true,
+        "frame_rate_match": true,
+        "frames_observed": 11
+      },
+      "frame_observations": [
+        {
+          "frame": 0,
+          "label": "seg1-start",
+          "action": "orbit",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-16x9/B-city-to-city-16x9_f00000_seg1-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 180,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 465,
+          "label": "seg1-mid",
+          "action": "orbit",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-16x9/B-city-to-city-16x9_f00465_seg1-mid.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 395.93552739459847,
+          "camera_to_target_m": 44204,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 930,
+          "label": "seg2-start",
+          "action": "zoom_out",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-16x9/B-city-to-city-16x9_f00930_seg2-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 540,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1035,
+          "label": "seg2-mid",
+          "action": "zoom_out",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-16x9/B-city-to-city-16x9_f01035_seg2-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 8.689677157719682,
+          "pan_deg": 540.0000000211783,
+          "camera_to_target_m": 36493,
+          "target_off_centre_half_frames": 1.4,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1140,
+          "label": "seg3-start",
+          "action": "fly_to",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-16x9/B-city-to-city-16x9_f01140_seg3-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 540,
+          "camera_to_target_m": 391748,
+          "target_off_centre_half_frames": 14.25,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1275,
+          "label": "seg3-mid",
+          "action": "fly_to",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-16x9/B-city-to-city-16x9_f01275_seg3-mid.png",
+          "altitude_m": 294495,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 282054,
+          "target_off_centre_half_frames": 5.43,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1410,
+          "label": "seg4-start",
+          "action": "zoom_in",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-16x9/B-city-to-city-16x9_f01410_seg4-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1515,
+          "label": "seg4-mid",
+          "action": "zoom_in",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-16x9/B-city-to-city-16x9_f01515_seg4-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 40.5111233148462,
+          "pan_deg": 540.0000000019127,
+          "camera_to_target_m": 13085,
+          "target_off_centre_half_frames": 3.06,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1620,
+          "label": "seg5-start",
+          "action": "orbit",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-16x9/B-city-to-city-16x9_f01620_seg5-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60.000000004629015,
+          "pan_deg": 540.0000000059244,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 2085,
+          "label": "seg5-mid",
+          "action": "orbit",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-16x9/B-city-to-city-16x9_f02085_seg5-mid.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 713.0836157413349,
+          "camera_to_target_m": 44204,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 2549,
+          "label": "seg5-end",
+          "action": "orbit",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-16x9/B-city-to-city-16x9_f02549_seg5-end.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 899.9991324723886,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        }
+      ],
+      "framing_checkpoints": 5,
+      "frames_in_transit_exempt": 6,
+      "checkpoints_with_target_out_of_shot": 0,
+      "known_slide_frames": 0,
+      "machine_verdict": "PASS",
+      "visual_observation": {
+        "observed_by": "Claude Code, headless Chrome (SwiftShader WebGL) driving the real authenticated Google Earth Studio application via CDP",
+        "method": "imported the .esp through File > Import, scrubbed each movement boundary/midpoint, captured the render-frame region (canvas.guides-view) as PNG",
+        "limitation": "render-frame region capture at viewport resolution, not an Earth Studio image export; imagery streams at software-renderer speed",
+        "operator_aesthetic_verdict": "PENDING — see operator-checklist.md"
+      }
+    },
+    {
+      "id": "B-city-to-city-9x16",
+      "title": "Canary B/9:16 — same journey, vertical",
+      "aspect": "9:16",
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "duration_seconds": 85,
+      "total_frames": 2550,
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-9x16/earth-studio/earth-studio.esp",
+      "esp_sha256": "930b13c1e84ec17116d0fdb6ab5ee51e5784296b71bf2919760f58d40cb7098a",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-9x16/earth-studio/journey.json",
+      "compiled_description": "orbit Helsinki once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 155960m tilted 0 degrees for 7 seconds then fly to Stockholm at 155960m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 25521m tilted 60 degrees for 7 seconds then orbit Stockholm once clockwise at 25521m tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Helsinki",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Helsinki",
+          "seconds": 7
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 7
+        },
+        {
+          "label": "Slow Orbit · Stockholm",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 25.5 km.",
+        "Slowly orbit Helsinki for 31 seconds.",
+        "Pull back from Helsinki over 7 seconds before setting off.",
+        "Cruise to Stockholm (396 km) over 9 seconds, holding 156 km.",
+        "Descend into Stockholm over 7 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Stockholm for 31 seconds.",
+        "Estimated duration: 85 seconds (01:25) at calm pace."
+      ],
+      "watch": "Same journey in 9:16 — compare framing, headroom, orbit and travel visibility against the 16:9 version.",
+      "machine_verification": {
+        "esp_sha256_matches_manifest": true,
+        "imported_without_error": true,
+        "duration_frames_match": true,
+        "frame_rate_match": true,
+        "frames_observed": 11
+      },
+      "frame_observations": [
+        {
+          "frame": 0,
+          "label": "seg1-start",
+          "action": "orbit",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-9x16/B-city-to-city-9x16_f00000_seg1-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 180,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 465,
+          "label": "seg1-mid",
+          "action": "orbit",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-9x16/B-city-to-city-9x16_f00465_seg1-mid.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 395.93552739459847,
+          "camera_to_target_m": 44204,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 930,
+          "label": "seg2-start",
+          "action": "zoom_out",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-9x16/B-city-to-city-9x16_f00930_seg2-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 540,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1035,
+          "label": "seg2-mid",
+          "action": "zoom_out",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-9x16/B-city-to-city-9x16_f01035_seg2-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 8.689677157719682,
+          "pan_deg": 540.0000000211783,
+          "camera_to_target_m": 36493,
+          "target_off_centre_half_frames": 1.4,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1140,
+          "label": "seg3-start",
+          "action": "fly_to",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-9x16/B-city-to-city-9x16_f01140_seg3-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 540,
+          "camera_to_target_m": 391748,
+          "target_off_centre_half_frames": 14.25,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1275,
+          "label": "seg3-mid",
+          "action": "fly_to",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-9x16/B-city-to-city-9x16_f01275_seg3-mid.png",
+          "altitude_m": 294495,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 282054,
+          "target_off_centre_half_frames": 5.43,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1410,
+          "label": "seg4-start",
+          "action": "zoom_in",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-9x16/B-city-to-city-9x16_f01410_seg4-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1515,
+          "label": "seg4-mid",
+          "action": "zoom_in",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-9x16/B-city-to-city-9x16_f01515_seg4-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 40.5111233148462,
+          "pan_deg": 540.0000000019127,
+          "camera_to_target_m": 13085,
+          "target_off_centre_half_frames": 3.06,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1620,
+          "label": "seg5-start",
+          "action": "orbit",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-9x16/B-city-to-city-9x16_f01620_seg5-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60.000000004629015,
+          "pan_deg": 540.0000000059244,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 2085,
+          "label": "seg5-mid",
+          "action": "orbit",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-9x16/B-city-to-city-9x16_f02085_seg5-mid.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 713.0836157413349,
+          "camera_to_target_m": 44204,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 2549,
+          "label": "seg5-end",
+          "action": "orbit",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/B-city-to-city-9x16/B-city-to-city-9x16_f02549_seg5-end.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 899.9991324723886,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        }
+      ],
+      "framing_checkpoints": 5,
+      "frames_in_transit_exempt": 6,
+      "checkpoints_with_target_out_of_shot": 0,
+      "known_slide_frames": 0,
+      "machine_verdict": "PASS",
+      "visual_observation": {
+        "observed_by": "Claude Code, headless Chrome (SwiftShader WebGL) driving the real authenticated Google Earth Studio application via CDP",
+        "method": "imported the .esp through File > Import, scrubbed each movement boundary/midpoint, captured the render-frame region (canvas.guides-view) as PNG",
+        "limitation": "render-frame region capture at viewport resolution, not an Earth Studio image export; imagery streams at software-renderer speed",
+        "operator_aesthetic_verdict": "PENDING — see operator-checklist.md"
+      }
+    },
+    {
+      "id": "C-multi-stop-16x9",
+      "title": "Canary C — Helsinki, Stockholm, Copenhagen, Berlin",
+      "aspect": "16:9",
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "duration_seconds": 192,
+      "total_frames": 5760,
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/C-multi-stop-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "5b5923b6c9d0c52e6babb844dcdf656943763458384f47eb50da0a07d3f21982",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/C-multi-stop-16x9/earth-studio/journey.json",
+      "compiled_description": "orbit Helsinki once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 155960m tilted 0 degrees for 7 seconds then fly to Stockholm at 155960m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 25521m tilted 60 degrees for 7 seconds then orbit Stockholm once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Stockholm at 155960m tilted 0 degrees for 7 seconds then fly to Copenhagen at 155960m tilted 0 degrees for 9 seconds then zoom in on Copenhagen at 25521m tilted 60 degrees for 7 seconds then orbit Copenhagen once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Copenhagen at 155960m tilted 0 degrees for 7 seconds then fly to Berlin at 155960m tilted 0 degrees for 8 seconds then zoom in on Berlin at 25521m tilted 60 degrees for 7 seconds then orbit Berlin once clockwise at 25521m tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Helsinki",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Helsinki",
+          "seconds": 7
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 7
+        },
+        {
+          "label": "Slow Orbit · Stockholm",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Stockholm",
+          "seconds": 7
+        },
+        {
+          "label": "Cruise · Copenhagen",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Copenhagen",
+          "seconds": 7
+        },
+        {
+          "label": "Slow Orbit · Copenhagen",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Copenhagen",
+          "seconds": 7
+        },
+        {
+          "label": "Cruise · Berlin",
+          "seconds": 8
+        },
+        {
+          "label": "Descend · Berlin",
+          "seconds": 7
+        },
+        {
+          "label": "Slow Orbit · Berlin",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 25.5 km.",
+        "Slowly orbit Helsinki for 31 seconds.",
+        "Pull back from Helsinki over 7 seconds before setting off.",
+        "Cruise to Stockholm (396 km) over 9 seconds, holding 156 km.",
+        "Descend into Stockholm over 7 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Stockholm for 31 seconds.",
+        "Pull back from Stockholm over 7 seconds before setting off.",
+        "Cruise to Copenhagen (522 km) over 9 seconds, holding 156 km.",
+        "Descend into Copenhagen over 7 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Copenhagen for 31 seconds.",
+        "Pull back from Copenhagen over 7 seconds before setting off.",
+        "Cruise to Berlin (355 km) over 8 seconds, holding 156 km.",
+        "Descend into Berlin over 7 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Berlin for 31 seconds.",
+        "Estimated duration: 192 seconds (03:12) at calm pace."
+      ],
+      "watch": "Validate each leg separately. Watch for accumulated drift or camera-state problems in the later legs.",
+      "machine_verification": {
+        "esp_sha256_matches_manifest": true,
+        "imported_without_error": true,
+        "duration_frames_match": true,
+        "frame_rate_match": true,
+        "frames_observed": 27
+      },
+      "frame_observations": [
+        {
+          "frame": 0,
+          "label": "seg1-start",
+          "action": "orbit",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f00000_seg1-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 180,
+          "camera_to_target_m": 44201,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 465,
+          "label": "seg1-mid",
+          "action": "orbit",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f00465_seg1-mid.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 395.93552739459875,
+          "camera_to_target_m": 44206,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 930,
+          "label": "seg2-start",
+          "action": "zoom_out",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f00930_seg2-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 540,
+          "camera_to_target_m": 44201,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1035,
+          "label": "seg2-mid",
+          "action": "zoom_out",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f01035_seg2-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 8.68967717777934,
+          "pan_deg": 540.00000000829,
+          "camera_to_target_m": 36474,
+          "target_off_centre_half_frames": 1.4,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1140,
+          "label": "seg3-start",
+          "action": "fly_to",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f01140_seg3-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 540,
+          "camera_to_target_m": 391747,
+          "target_off_centre_half_frames": 14.25,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1275,
+          "label": "seg3-mid",
+          "action": "fly_to",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f01275_seg3-mid.png",
+          "altitude_m": 294495,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 264444,
+          "target_off_centre_half_frames": 5.09,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1410,
+          "label": "seg4-start",
+          "action": "zoom_in",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f01410_seg4-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 2,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1515,
+          "label": "seg4-mid",
+          "action": "zoom_in",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f01515_seg4-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 41.361590769329766,
+          "pan_deg": 540.0000000029422,
+          "camera_to_target_m": 13158,
+          "target_off_centre_half_frames": 3.13,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1620,
+          "label": "seg5-start",
+          "action": "orbit",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f01620_seg5-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 59.99999999598447,
+          "pan_deg": 539.9999999975153,
+          "camera_to_target_m": 44201,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 2085,
+          "label": "seg5-mid",
+          "action": "orbit",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f02085_seg5-mid.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 720.0000000000001,
+          "camera_to_target_m": 44206,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 2550,
+          "label": "seg6-start",
+          "action": "zoom_out",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f02550_seg6-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 900,
+          "camera_to_target_m": 44201,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 2655,
+          "label": "seg6-mid",
+          "action": "zoom_out",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f02655_seg6-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 8.68967718435363,
+          "pan_deg": 899.9999999885956,
+          "camera_to_target_m": 44873,
+          "target_off_centre_half_frames": 1.92,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 2760,
+          "label": "seg7-start",
+          "action": "fly_to",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f02760_seg7-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 512771,
+          "target_off_centre_half_frames": 18.65,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 2895,
+          "label": "seg7-mid",
+          "action": "fly_to",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f02895_seg7-mid.png",
+          "altitude_m": 338703,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 302005,
+          "target_off_centre_half_frames": 5.06,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 3030,
+          "label": "seg8-start",
+          "action": "zoom_in",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f03030_seg8-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 1,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 3135,
+          "label": "seg8-mid",
+          "action": "zoom_in",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f03135_seg8-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 41.36159086348556,
+          "pan_deg": 900.0000000004654,
+          "camera_to_target_m": 7891,
+          "target_off_centre_half_frames": 3.38,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 3240,
+          "label": "seg9-start",
+          "action": "orbit",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f03240_seg9-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60.00000003756774,
+          "pan_deg": 900.0000000029512,
+          "camera_to_target_m": 44202,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 3705,
+          "label": "seg9-mid",
+          "action": "orbit",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f03705_seg9-mid.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 1079.9999999999995,
+          "camera_to_target_m": 44205,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 4170,
+          "label": "seg10-start",
+          "action": "zoom_out",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f04170_seg10-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 1260,
+          "camera_to_target_m": 44202,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 4275,
+          "label": "seg10-mid",
+          "action": "zoom_out",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f04275_seg10-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 8.689677172271784,
+          "pan_deg": 1260.0000000098048,
+          "camera_to_target_m": 44473,
+          "target_off_centre_half_frames": 1.89,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 4380,
+          "label": "seg11-start",
+          "action": "fly_to",
+          "place": "Berlin",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f04380_seg11-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 355240,
+          "target_off_centre_half_frames": 12.92,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 4500,
+          "label": "seg11-mid",
+          "action": "fly_to",
+          "place": "Berlin",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f04500_seg11-mid.png",
+          "altitude_m": 280261,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 171709,
+          "target_off_centre_half_frames": 3.47,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 4620,
+          "label": "seg12-start",
+          "action": "zoom_in",
+          "place": "Berlin",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f04620_seg12-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 4725,
+          "label": "seg12-mid",
+          "action": "zoom_in",
+          "place": "Berlin",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f04725_seg12-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 40.51112336333473,
+          "pan_deg": 1259.9999999999404,
+          "camera_to_target_m": 8375,
+          "target_off_centre_half_frames": 3.29,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 4830,
+          "label": "seg13-start",
+          "action": "orbit",
+          "place": "Berlin",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f04830_seg13-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 59.99999996462901,
+          "pan_deg": 1259.9999999988434,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 5295,
+          "label": "seg13-mid",
+          "action": "orbit",
+          "place": "Berlin",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f05295_seg13-mid.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 1433.0836157413353,
+          "camera_to_target_m": 44204,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 5759,
+          "label": "seg13-end",
+          "action": "orbit",
+          "place": "Berlin",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/C-multi-stop-16x9/C-multi-stop-16x9_f05759_seg13-end.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 1619.9991324723887,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        }
+      ],
+      "framing_checkpoints": 9,
+      "frames_in_transit_exempt": 18,
+      "checkpoints_with_target_out_of_shot": 0,
+      "known_slide_frames": 0,
+      "machine_verdict": "PASS",
+      "visual_observation": {
+        "observed_by": "Claude Code, headless Chrome (SwiftShader WebGL) driving the real authenticated Google Earth Studio application via CDP",
+        "method": "imported the .esp through File > Import, scrubbed each movement boundary/midpoint, captured the render-frame region (canvas.guides-view) as PNG",
+        "limitation": "render-frame region capture at viewport resolution, not an Earth Studio image export; imagery streams at software-renderer speed",
+        "operator_aesthetic_verdict": "PENDING — see operator-checklist.md"
+      }
+    },
+    {
+      "id": "D-scale-contrast-16x9",
+      "title": "Canary D — landmark to country to continent (AUTO framing only)",
+      "aspect": "16:9",
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "duration_seconds": 47,
+      "total_frames": 1410,
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/D-scale-contrast-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "26e2c4d62cecf6e3268ee50544b4ba4c47be3d06af52e3b7f41c274a69c78423",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/D-scale-contrast-16x9/earth-studio/journey.json",
+      "compiled_description": "hover over Senate Square tilted 0 degrees for 4 seconds then fly to Finland at 3686333m tilted 0 degrees for 16 seconds then hover over Finland for 4 seconds then fly to Europe at 14178205m tilted 0 degrees for 19 seconds then hover over Europe for 4 seconds",
+      "movements": [
+        {
+          "label": "Hold · Senate Square",
+          "seconds": 4
+        },
+        {
+          "label": "Fly To · Finland",
+          "seconds": 16
+        },
+        {
+          "label": "Hold · Finland",
+          "seconds": 4
+        },
+        {
+          "label": "Fly To · Europe",
+          "seconds": 19
+        },
+        {
+          "label": "Hold · Europe",
+          "seconds": 4
+        }
+      ],
+      "prose": [
+        "Start over Senate Square with a landmark / building framing at 600 m.",
+        "Open on Senate Square at 600 m (landmark / building framing) and hold for 4 seconds without moving the camera.",
+        "Fly to Finland (485 km) over 16 seconds.",
+        "Hold on Finland for 4 seconds without moving the camera.",
+        "Fly to Europe (1,527 km) over 19 seconds.",
+        "Hold on Europe for 4 seconds without moving the camera.",
+        "Estimated duration: 47 seconds (00:47) at calm pace."
+      ],
+      "watch": "Is the target RECOGNISABLE at each scale? Landmark close, country wide, continent very wide — or is the composition visually useless?",
+      "machine_verification": {
+        "esp_sha256_matches_manifest": true,
+        "imported_without_error": true,
+        "duration_frames_match": true,
+        "frame_rate_match": true,
+        "frames_observed": 11
+      },
+      "frame_observations": [
+        {
+          "frame": 0,
+          "label": "seg1-start",
+          "action": "hover",
+          "place": "Senate Square",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00000_seg1-start.png",
+          "altitude_m": 601,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 2,
+          "target_off_centre_half_frames": 0.02,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 60,
+          "label": "seg1-mid",
+          "action": "hover",
+          "place": "Senate Square",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00060_seg1-mid.png",
+          "altitude_m": 601,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 2,
+          "target_off_centre_half_frames": 0.02,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 120,
+          "label": "seg2-start",
+          "action": "fly_to",
+          "place": "Finland",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00120_seg2-start.png",
+          "altitude_m": 601,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 485553,
+          "target_off_centre_half_frames": 4581.92,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 360,
+          "label": "seg2-mid",
+          "action": "fly_to",
+          "place": "Finland",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00360_seg2-mid.png",
+          "altitude_m": 2013037,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 70396,
+          "target_off_centre_half_frames": 0.2,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 600,
+          "label": "seg3-start",
+          "action": "hover",
+          "place": "Finland",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00600_seg3-start.png",
+          "altitude_m": 3686297,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 4,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 660,
+          "label": "seg3-mid",
+          "action": "hover",
+          "place": "Finland",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00660_seg3-mid.png",
+          "altitude_m": 3686297,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 4,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 720,
+          "label": "seg4-start",
+          "action": "fly_to",
+          "place": "Europe",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00720_seg4-start.png",
+          "altitude_m": 3686297,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 1488009,
+          "target_off_centre_half_frames": 2.29,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1005,
+          "label": "seg4-mid",
+          "action": "fly_to",
+          "place": "Europe",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f01005_seg4-mid.png",
+          "altitude_m": 9466511,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 845446,
+          "target_off_centre_half_frames": 0.51,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1290,
+          "label": "seg5-start",
+          "action": "hover",
+          "place": "Europe",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f01290_seg5-start.png",
+          "altitude_m": 14178064,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1350,
+          "label": "seg5-mid",
+          "action": "hover",
+          "place": "Europe",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f01350_seg5-mid.png",
+          "altitude_m": 14178064,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1409,
+          "label": "seg5-end",
+          "action": "hover",
+          "place": "Europe",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f01409_seg5-end.png",
+          "altitude_m": 14178064,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        }
+      ],
+      "framing_checkpoints": 7,
+      "frames_in_transit_exempt": 4,
+      "checkpoints_with_target_out_of_shot": 0,
+      "known_slide_frames": 0,
+      "machine_verdict": "PASS",
+      "visual_observation": {
+        "observed_by": "Claude Code, headless Chrome (SwiftShader WebGL) driving the real authenticated Google Earth Studio application via CDP",
+        "method": "imported the .esp through File > Import, scrubbed each movement boundary/midpoint, captured the render-frame region (canvas.guides-view) as PNG",
+        "limitation": "render-frame region capture at viewport resolution, not an Earth Studio image export; imagery streams at software-renderer speed",
+        "operator_aesthetic_verdict": "PENDING — see operator-checklist.md"
+      }
+    },
+    {
+      "id": "H-orbit-large-scale-16x9",
+      "title": "Canary H — Slow Orbit around a COUNTRY (orbit ring vs the planner 80 km cap)",
+      "aspect": "16:9",
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "duration_seconds": 18,
+      "total_frames": 540,
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/H-orbit-large-scale-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "f6eaf78762e6c34a15b0cb73be29b5ec1f6711436d0bf2be43ad65542bc4e2db",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/H-orbit-large-scale-16x9/earth-studio/journey.json",
+      "compiled_description": "orbit Finland once clockwise at 3686333m tilted 0 degrees for 18 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Finland",
+          "seconds": 18
+        }
+      ],
+      "prose": [
+        "Start over Finland with a country framing at 3,686 km.",
+        "Slowly orbit Finland for 18 seconds.",
+        "Estimated duration: 18 seconds (00:18) at calm pace."
+      ],
+      "watch": "Is Finland visible at all? The orbit ring needed for a country-scale orbit is far beyond the generator 80 km ring cap.",
+      "machine_verification": {
+        "esp_sha256_matches_manifest": true,
+        "imported_without_error": true,
+        "duration_frames_match": true,
+        "frame_rate_match": true,
+        "frames_observed": 3
+      },
+      "frame_observations": [
+        {
+          "frame": 0,
+          "label": "seg1-start",
+          "action": "orbit",
+          "place": "Finland",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/H-orbit-large-scale-16x9/H-orbit-large-scale-16x9_f00000_seg1-start.png",
+          "altitude_m": 3686297,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 270,
+          "label": "seg1-mid",
+          "action": "orbit",
+          "place": "Finland",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/H-orbit-large-scale-16x9/H-orbit-large-scale-16x9_f00270_seg1-mid.png",
+          "altitude_m": 3686297,
+          "tilt_deg": 0,
+          "pan_deg": 389.5237084657889,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 539,
+          "label": "seg1-end",
+          "action": "orbit",
+          "place": "Finland",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/H-orbit-large-scale-16x9/H-orbit-large-scale-16x9_f00539_seg1-end.png",
+          "altitude_m": 3686297,
+          "tilt_deg": 0,
+          "pan_deg": 539.9974296378995,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        }
+      ],
+      "framing_checkpoints": 3,
+      "frames_in_transit_exempt": 0,
+      "checkpoints_with_target_out_of_shot": 0,
+      "known_slide_frames": 0,
+      "machine_verdict": "PASS",
+      "visual_observation": {
+        "observed_by": "Claude Code, headless Chrome (SwiftShader WebGL) driving the real authenticated Google Earth Studio application via CDP",
+        "method": "imported the .esp through File > Import, scrubbed each movement boundary/midpoint, captured the render-frame region (canvas.guides-view) as PNG",
+        "limitation": "render-frame region capture at viewport resolution, not an Earth Studio image export; imagery streams at software-renderer speed",
+        "operator_aesthetic_verdict": "PENDING — see operator-checklist.md"
+      }
+    },
+    {
+      "id": "I-wide-target-9x16",
+      "title": "Canary I — a target WIDER than tall (Europe) in 9:16 vs 16:9",
+      "aspect": "9:16",
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-9x16/earth-studio/earth-studio.esp",
+      "esp_sha256": "9bdb7976452833347724bd0143f4fbc9053c23c1933d5297d2cf0f6aadba27da",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-9x16/earth-studio/journey.json",
+      "compiled_description": "hover over Europe at 14178205m tilted 0 degrees for 4 seconds",
+      "movements": [
+        {
+          "label": "Hold · Europe",
+          "seconds": 4
+        }
+      ],
+      "prose": [
+        "Start over Europe with a continent framing at 14,178 km.",
+        "Open on Europe at 14,178 km (continent framing) and hold for 4 seconds without moving the camera.",
+        "Estimated duration: 4 seconds (00:04) at calm pace."
+      ],
+      "watch": "Europe is ~4,500 km wide x ~3,000 km tall. Does the vertical frame crop it left/right?",
+      "machine_verification": {
+        "esp_sha256_matches_manifest": true,
+        "imported_without_error": true,
+        "duration_frames_match": true,
+        "frame_rate_match": true,
+        "frames_observed": 3
+      },
+      "frame_observations": [
+        {
+          "frame": 0,
+          "label": "seg1-start",
+          "action": "hover",
+          "place": "Europe",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-9x16/I-wide-target-9x16_f00000_seg1-start.png",
+          "altitude_m": 14178064,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 60,
+          "label": "seg1-mid",
+          "action": "hover",
+          "place": "Europe",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-9x16/I-wide-target-9x16_f00060_seg1-mid.png",
+          "altitude_m": 14178064,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 119,
+          "label": "seg1-end",
+          "action": "hover",
+          "place": "Europe",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-9x16/I-wide-target-9x16_f00119_seg1-end.png",
+          "altitude_m": 14178064,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        }
+      ],
+      "framing_checkpoints": 3,
+      "frames_in_transit_exempt": 0,
+      "checkpoints_with_target_out_of_shot": 0,
+      "known_slide_frames": 0,
+      "machine_verdict": "PASS",
+      "visual_observation": {
+        "observed_by": "Claude Code, headless Chrome (SwiftShader WebGL) driving the real authenticated Google Earth Studio application via CDP",
+        "method": "imported the .esp through File > Import, scrubbed each movement boundary/midpoint, captured the render-frame region (canvas.guides-view) as PNG",
+        "limitation": "render-frame region capture at viewport resolution, not an Earth Studio image export; imagery streams at software-renderer speed",
+        "operator_aesthetic_verdict": "PENDING — see operator-checklist.md"
+      }
+    },
+    {
+      "id": "I-wide-target-16x9",
+      "title": "Canary I/16:9 — the same wide target for comparison",
+      "aspect": "16:9",
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "b1a9bafebbb46b749a6c39426806a77cc82820f5db87ea32bc60dafaaf31a4d9",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-16x9/earth-studio/journey.json",
+      "compiled_description": "hover over Europe at 14178205m tilted 0 degrees for 4 seconds",
+      "movements": [
+        {
+          "label": "Hold · Europe",
+          "seconds": 4
+        }
+      ],
+      "prose": [
+        "Start over Europe with a continent framing at 14,178 km.",
+        "Open on Europe at 14,178 km (continent framing) and hold for 4 seconds without moving the camera.",
+        "Estimated duration: 4 seconds (00:04) at calm pace."
+      ],
+      "watch": "Reference composition for the 9:16 comparison.",
+      "machine_verification": {
+        "esp_sha256_matches_manifest": true,
+        "imported_without_error": true,
+        "duration_frames_match": true,
+        "frame_rate_match": true,
+        "frames_observed": 3
+      },
+      "frame_observations": [
+        {
+          "frame": 0,
+          "label": "seg1-start",
+          "action": "hover",
+          "place": "Europe",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-16x9/I-wide-target-16x9_f00000_seg1-start.png",
+          "altitude_m": 14178064,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 60,
+          "label": "seg1-mid",
+          "action": "hover",
+          "place": "Europe",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-16x9/I-wide-target-16x9_f00060_seg1-mid.png",
+          "altitude_m": 14178064,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 119,
+          "label": "seg1-end",
+          "action": "hover",
+          "place": "Europe",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-16x9/I-wide-target-16x9_f00119_seg1-end.png",
+          "altitude_m": 14178064,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        }
+      ],
+      "framing_checkpoints": 3,
+      "frames_in_transit_exempt": 0,
+      "checkpoints_with_target_out_of_shot": 0,
+      "known_slide_frames": 0,
+      "machine_verdict": "PASS",
+      "visual_observation": {
+        "observed_by": "Claude Code, headless Chrome (SwiftShader WebGL) driving the real authenticated Google Earth Studio application via CDP",
+        "method": "imported the .esp through File > Import, scrubbed each movement boundary/midpoint, captured the render-frame region (canvas.guides-view) as PNG",
+        "limitation": "render-frame region capture at viewport resolution, not an Earth Studio image export; imagery streams at software-renderer speed",
+        "operator_aesthetic_verdict": "PENDING — see operator-checklist.md"
+      }
+    },
+    {
+      "id": "G-hold-then-orbit-16x9",
+      "title": "Canary G — hold then orbit around a DIFFERENT centre (known slide)",
+      "aspect": "16:9",
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "duration_seconds": 31,
+      "total_frames": 930,
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/G-hold-then-orbit-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "337ffe46863aaa25e6595f89b286741a8a0b8ac807749f19d1944e231e7cf94f",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/G-hold-then-orbit-16x9/earth-studio/journey.json",
+      "compiled_description": "hover over Helsinki at 51042m tilted 0 degrees for 4 seconds then hover over Helsinki for 4 seconds then orbit Espoo once clockwise at 25521m tilted 60 degrees for 23 seconds",
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 4
+        },
+        {
+          "label": "Pause · Helsinki",
+          "seconds": 4
+        },
+        {
+          "label": "Orbit · Espoo",
+          "seconds": 23
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 51.0 km.",
+        "Open on Helsinki at 51.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Hold on Helsinki for 4 seconds without moving the camera.",
+        "Orbit Espoo once over 23 seconds.",
+        "Estimated duration: 31 seconds (00:31) at calm pace."
+      ],
+      "watch": "Does the camera visibly slide sideways onto the orbit ring? Is that a UX failure or an acceptable characteristic?",
+      "machine_verification": {
+        "esp_sha256_matches_manifest": true,
+        "imported_without_error": true,
+        "duration_frames_match": true,
+        "frame_rate_match": true,
+        "frames_observed": 7
+      },
+      "frame_observations": [
+        {
+          "frame": 0,
+          "label": "seg1-start",
+          "action": "hover",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00000_seg1-start.png",
+          "altitude_m": 51042,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 60,
+          "label": "seg1-mid",
+          "action": "hover",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00060_seg1-mid.png",
+          "altitude_m": 51042,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 120,
+          "label": "seg2-start",
+          "action": "hover",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00120_seg2-start.png",
+          "altitude_m": 51042,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 180,
+          "label": "seg2-mid",
+          "action": "hover",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00180_seg2-mid.png",
+          "altitude_m": 51042,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 240,
+          "label": "seg3-start",
+          "action": "orbit",
+          "place": "Espoo",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00240_seg3-start.png",
+          "altitude_m": 51042,
+          "tilt_deg": 0,
+          "pan_deg": 0,
+          "camera_to_target_m": 16137,
+          "target_off_centre_half_frames": 1.79,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": false
+        },
+        {
+          "frame": 585,
+          "label": "seg3-mid",
+          "action": "orbit",
+          "place": "Espoo",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00585_seg3-mid.png",
+          "altitude_m": 47635,
+          "tilt_deg": 28.847269267741613,
+          "pan_deg": 173.0836157363866,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 1.87,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": false
+        },
+        {
+          "frame": 929,
+          "label": "seg3-end",
+          "action": "orbit",
+          "place": "Espoo",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/G-hold-then-orbit-16x9/G-hold-then-orbit-16x9_f00929_seg3-end.png",
+          "altitude_m": 25523,
+          "tilt_deg": 59.99973729697639,
+          "pan_deg": 359.9984237818584,
+          "camera_to_target_m": 44202,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        }
+      ],
+      "framing_checkpoints": 7,
+      "frames_in_transit_exempt": 0,
+      "checkpoints_with_target_out_of_shot": 0,
+      "known_slide_frames": 2,
+      "machine_verdict": "PASS",
+      "visual_observation": {
+        "observed_by": "Claude Code, headless Chrome (SwiftShader WebGL) driving the real authenticated Google Earth Studio application via CDP",
+        "method": "imported the .esp through File > Import, scrubbed each movement boundary/midpoint, captured the render-frame region (canvas.guides-view) as PNG",
+        "limitation": "render-frame region capture at viewport resolution, not an Earth Studio image export; imagery streams at software-renderer speed",
+        "operator_aesthetic_verdict": "PENDING — see operator-checklist.md"
+      }
+    },
+    {
+      "id": "E1-continuation-source-16x9",
+      "title": "Canary E1 — continuation SOURCE: Helsinki to Stockholm",
+      "aspect": "16:9",
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "duration_seconds": 85,
+      "total_frames": 2550,
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E1-continuation-source-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "8ed007b66bd4d836c70db43168e909f0cc2189e10a823ab4a3bd4f76f9bfd78b",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E1-continuation-source-16x9/earth-studio/journey.json",
+      "compiled_description": "orbit Helsinki once clockwise at 25521m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 155960m tilted 0 degrees for 7 seconds then fly to Stockholm at 155960m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 25521m tilted 60 degrees for 7 seconds then orbit Stockholm once clockwise at 25521m tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Helsinki",
+          "seconds": 31
+        },
+        {
+          "label": "Pull Back · Helsinki",
+          "seconds": 7
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 7
+        },
+        {
+          "label": "Slow Orbit · Stockholm",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 25.5 km.",
+        "Slowly orbit Helsinki for 31 seconds.",
+        "Pull back from Helsinki over 7 seconds before setting off.",
+        "Cruise to Stockholm (396 km) over 9 seconds, holding 156 km.",
+        "Descend into Stockholm over 7 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Stockholm for 31 seconds.",
+        "Estimated duration: 85 seconds (01:25) at calm pace."
+      ],
+      "watch": "Note the FINAL rendered frame precisely; it must equal E2 frame 0.",
+      "machine_verification": {
+        "esp_sha256_matches_manifest": true,
+        "imported_without_error": true,
+        "duration_frames_match": true,
+        "frame_rate_match": true,
+        "frames_observed": 11
+      },
+      "frame_observations": [
+        {
+          "frame": 0,
+          "label": "seg1-start",
+          "action": "orbit",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E1-continuation-source-16x9/E1-continuation-source-16x9_f00000_seg1-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 180,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 465,
+          "label": "seg1-mid",
+          "action": "orbit",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E1-continuation-source-16x9/E1-continuation-source-16x9_f00465_seg1-mid.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 395.93552739459847,
+          "camera_to_target_m": 44204,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 930,
+          "label": "seg2-start",
+          "action": "zoom_out",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E1-continuation-source-16x9/E1-continuation-source-16x9_f00930_seg2-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 540,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1035,
+          "label": "seg2-mid",
+          "action": "zoom_out",
+          "place": "Helsinki",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E1-continuation-source-16x9/E1-continuation-source-16x9_f01035_seg2-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 8.689677157719682,
+          "pan_deg": 540.0000000211783,
+          "camera_to_target_m": 36493,
+          "target_off_centre_half_frames": 1.4,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1140,
+          "label": "seg3-start",
+          "action": "fly_to",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E1-continuation-source-16x9/E1-continuation-source-16x9_f01140_seg3-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 540,
+          "camera_to_target_m": 391748,
+          "target_off_centre_half_frames": 14.25,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1275,
+          "label": "seg3-mid",
+          "action": "fly_to",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E1-continuation-source-16x9/E1-continuation-source-16x9_f01275_seg3-mid.png",
+          "altitude_m": 294495,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 282054,
+          "target_off_centre_half_frames": 5.43,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1410,
+          "label": "seg4-start",
+          "action": "zoom_in",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E1-continuation-source-16x9/E1-continuation-source-16x9_f01410_seg4-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1515,
+          "label": "seg4-mid",
+          "action": "zoom_in",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E1-continuation-source-16x9/E1-continuation-source-16x9_f01515_seg4-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 40.5111233148462,
+          "pan_deg": 540.0000000019127,
+          "camera_to_target_m": 13085,
+          "target_off_centre_half_frames": 3.06,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 1620,
+          "label": "seg5-start",
+          "action": "orbit",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E1-continuation-source-16x9/E1-continuation-source-16x9_f01620_seg5-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60.000000004629015,
+          "pan_deg": 540.0000000059244,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 2085,
+          "label": "seg5-mid",
+          "action": "orbit",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E1-continuation-source-16x9/E1-continuation-source-16x9_f02085_seg5-mid.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 713.0836157413349,
+          "camera_to_target_m": 44204,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 2549,
+          "label": "seg5-end",
+          "action": "orbit",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E1-continuation-source-16x9/E1-continuation-source-16x9_f02549_seg5-end.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 899.9991324723886,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        }
+      ],
+      "framing_checkpoints": 5,
+      "frames_in_transit_exempt": 6,
+      "checkpoints_with_target_out_of_shot": 0,
+      "known_slide_frames": 0,
+      "machine_verdict": "PASS",
+      "visual_observation": {
+        "observed_by": "Claude Code, headless Chrome (SwiftShader WebGL) driving the real authenticated Google Earth Studio application via CDP",
+        "method": "imported the .esp through File > Import, scrubbed each movement boundary/midpoint, captured the render-frame region (canvas.guides-view) as PNG",
+        "limitation": "render-frame region capture at viewport resolution, not an Earth Studio image export; imagery streams at software-renderer speed",
+        "operator_aesthetic_verdict": "PENDING — see operator-checklist.md"
+      }
+    },
+    {
+      "id": "E2-continuation-target-16x9",
+      "title": "Canary E2 — continuation TARGET: starts on E1 ending camera, then to Copenhagen",
+      "aspect": "16:9",
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "duration_seconds": 56,
+      "total_frames": 1680,
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E2-continuation-target-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "8782a8438398e632e2bd9c3e90563b9595db6571eaed4705f3a9a70fc6a01a71",
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E2-continuation-target-16x9/earth-studio/journey.json",
+      "compiled_description": "hover over Stockholm at 51042m tilted 0 degrees for 4 seconds then zoom out from Stockholm at 155960m tilted 0 degrees for 5 seconds then fly to Copenhagen at 155960m tilted 0 degrees for 9 seconds then zoom in on Copenhagen at 25521m tilted 60 degrees for 7 seconds then orbit Copenhagen once clockwise at 25521m tilted 60 degrees for 31 seconds",
+      "movements": [
+        {
+          "label": "Hold · Stockholm",
+          "seconds": 4
+        },
+        {
+          "label": "Pull Back · Stockholm",
+          "seconds": 5
+        },
+        {
+          "label": "Cruise · Copenhagen",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Copenhagen",
+          "seconds": 7
+        },
+        {
+          "label": "Slow Orbit · Copenhagen",
+          "seconds": 31
+        }
+      ],
+      "prose": [
+        "Begin exactly where the previous animation ended (over Stockholm): 25.5 km up, heading 180deg, tilted 60deg.",
+        "Open on Stockholm at 51.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Pull back from Stockholm over 5 seconds before setting off.",
+        "Cruise to Copenhagen (522 km) over 9 seconds, holding 156 km.",
+        "Descend into Copenhagen over 7 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Copenhagen for 31 seconds.",
+        "Estimated duration: 56 seconds (00:56) at calm pace."
+      ],
+      "watch": "Frame 0 must be visually identical to E1 final frame. Then Stockholm to Copenhagen.",
+      "machine_verification": {
+        "esp_sha256_matches_manifest": true,
+        "imported_without_error": true,
+        "duration_frames_match": true,
+        "frame_rate_match": true,
+        "frames_observed": 11
+      },
+      "frame_observations": [
+        {
+          "frame": 0,
+          "label": "seg1-start",
+          "action": "hover",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E2-continuation-target-16x9/E2-continuation-target-16x9_f00000_seg1-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 900,
+          "camera_to_target_m": 44202,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 60,
+          "label": "seg1-mid",
+          "action": "hover",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E2-continuation-target-16x9/E2-continuation-target-16x9_f00060_seg1-mid.png",
+          "altitude_m": 38283,
+          "tilt_deg": 24.010745434233492,
+          "pan_deg": 900,
+          "camera_to_target_m": 21089,
+          "target_off_centre_half_frames": 0.55,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 120,
+          "label": "seg2-start",
+          "action": "zoom_out",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E2-continuation-target-16x9/E2-continuation-target-16x9_f00120_seg2-start.png",
+          "altitude_m": 51042,
+          "tilt_deg": 0,
+          "pan_deg": 900,
+          "camera_to_target_m": 1,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 195,
+          "label": "seg2-mid",
+          "action": "zoom_out",
+          "place": "Stockholm",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E2-continuation-target-16x9/E2-continuation-target-16x9_f00195_seg2-mid.png",
+          "altitude_m": 103501,
+          "tilt_deg": 0,
+          "pan_deg": 900,
+          "camera_to_target_m": 1,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 270,
+          "label": "seg3-start",
+          "action": "fly_to",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E2-continuation-target-16x9/E2-continuation-target-16x9_f00270_seg3-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 900,
+          "camera_to_target_m": 512772,
+          "target_off_centre_half_frames": 18.65,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 405,
+          "label": "seg3-mid",
+          "action": "fly_to",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E2-continuation-target-16x9/E2-continuation-target-16x9_f00405_seg3-mid.png",
+          "altitude_m": 338703,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 331124,
+          "target_off_centre_half_frames": 5.54,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 540,
+          "label": "seg4-start",
+          "action": "zoom_in",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E2-continuation-target-16x9/E2-continuation-target-16x9_f00540_seg4-start.png",
+          "altitude_m": 155959,
+          "tilt_deg": 0,
+          "pan_deg": 180,
+          "camera_to_target_m": 0,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": true
+        },
+        {
+          "frame": 645,
+          "label": "seg4-mid",
+          "action": "zoom_in",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E2-continuation-target-16x9/E2-continuation-target-16x9_f00645_seg4-mid.png",
+          "altitude_m": 90741,
+          "tilt_deg": 40.51112335722283,
+          "pan_deg": 900.0000000005191,
+          "camera_to_target_m": 2418,
+          "target_off_centre_half_frames": 3.57,
+          "framing_checkpoint": false,
+          "in_transit": true,
+          "target_in_frame": false
+        },
+        {
+          "frame": 750,
+          "label": "seg5-start",
+          "action": "orbit",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E2-continuation-target-16x9/E2-continuation-target-16x9_f00750_seg5-start.png",
+          "altitude_m": 25522,
+          "tilt_deg": 59.9999999995394,
+          "pan_deg": 899.9999999991778,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1215,
+          "label": "seg5-mid",
+          "action": "orbit",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E2-continuation-target-16x9/E2-continuation-target-16x9_f01215_seg5-mid.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 1073.0836157413348,
+          "camera_to_target_m": 44204,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        },
+        {
+          "frame": 1679,
+          "label": "seg5-end",
+          "action": "orbit",
+          "place": "Copenhagen",
+          "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/E2-continuation-target-16x9/E2-continuation-target-16x9_f01679_seg5-end.png",
+          "altitude_m": 25522,
+          "tilt_deg": 60,
+          "pan_deg": 1259.9991324723883,
+          "camera_to_target_m": 44203,
+          "target_off_centre_half_frames": 0,
+          "framing_checkpoint": true,
+          "in_transit": false,
+          "target_in_frame": true
+        }
+      ],
+      "framing_checkpoints": 5,
+      "frames_in_transit_exempt": 6,
+      "checkpoints_with_target_out_of_shot": 0,
+      "known_slide_frames": 0,
+      "machine_verdict": "PASS",
+      "visual_observation": {
+        "observed_by": "Claude Code, headless Chrome (SwiftShader WebGL) driving the real authenticated Google Earth Studio application via CDP",
+        "method": "imported the .esp through File > Import, scrubbed each movement boundary/midpoint, captured the render-frame region (canvas.guides-view) as PNG",
+        "limitation": "render-frame region capture at viewport resolution, not an Earth Studio image export; imagery streams at software-renderer speed",
+        "operator_aesthetic_verdict": "PENDING — see operator-checklist.md"
+      }
+    }
+  ],
+  "continuation_join": {
+    "e1": {
+      "tag": "E1-final-frame",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E1-continuation-source-16x9/earth-studio/earth-studio.esp",
+      "duration": 2550,
+      "frame": 2550,
+      "camera": {
+        "frame": 2550,
+        "latitude": 59.726383426203824,
+        "longitude": 18.06859999439615,
+        "altitude": 25521.74491121127,
+        "pan_deg": 899.9999999967914,
+        "tilt_deg": 60.000000017540586,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/continuation-join/E1-final-frame.png",
+      "rect": {
+        "x": 535,
+        "y": 81,
+        "width": 1490,
+        "height": 838
+      }
+    },
+    "e2": {
+      "tag": "E2-first-frame",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E2-continuation-target-16x9/earth-studio/earth-studio.esp",
+      "duration": 1680,
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 59.7263731911126,
+        "longitude": 18.0686,
+        "altitude": 25521.745264829297,
+        "pan_deg": 900,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/continuation-join/E2-first-frame.png",
+      "rect": {
+        "x": 535,
+        "y": 81,
+        "width": 1490,
+        "height": 838
+      }
+    },
+    "exported_state": {
+      "latitude": 59.726386,
+      "longitude": 18.0686,
+      "altitude_m": 25521,
+      "pan_deg": 900,
+      "heading_deg": 180,
+      "tilt_deg": 60
+    },
+    "comparison": [
+      {
+        "field": "latitude",
+        "e1_final": 59.726383426203824,
+        "e2_first": 59.7263731911126,
+        "exported_state": 59.726386,
+        "delta": 0.000010235091224330972
+      },
+      {
+        "field": "longitude",
+        "e1_final": 18.06859999439615,
+        "e2_first": 18.0686,
+        "exported_state": 18.0686,
+        "delta": 5.603851604973897e-9
+      },
+      {
+        "field": "altitude",
+        "e1_final": 25521.74491121127,
+        "e2_first": 25521.745264829297,
+        "exported_state": 25521,
+        "delta": 0.00035361802656552754
+      },
+      {
+        "field": "pan_deg",
+        "e1_final": 899.9999999967914,
+        "e2_first": 900,
+        "exported_state": 900,
+        "delta": 3.2085836210171692e-9
+      },
+      {
+        "field": "tilt_deg",
+        "e1_final": 60.000000017540586,
+        "e2_first": 60,
+        "exported_state": 60,
+        "delta": 1.754058587266627e-8
+      }
+    ]
+  },
+  "totals": {
+    "canaries": 11,
+    "machine_pass": 11,
+    "machine_fail": 0,
+    "frames_observed": 101
+  }
+}

@@ -19,6 +19,8 @@ const path = require('path');
 const crypto = require('crypto');
 const planner = require('./earth-studio-job-planner.js');
 const nativeTemplates = require('./earth-studio-native-template-profiles.js');
+const journeyModel = require('./earth-studio-journey.js');
+const cameraQuality = require('./earth-studio-camera-quality.js');
 
 const LANE_DIR = 'earth-studio';
 const VIDNAS_STAGE_DIR = '/mnt/vidnas_public/VIDTOOLZ/99_SANDBOX/earth-studio-pilot';
@@ -92,9 +94,29 @@ function laneDir(packageDir) {
 // Write plan + .esp + reference artifacts into <package>/earth-studio/.
 function writeJob(packageDir, payload = {}, options = {}) {
   const jobName = String(payload.jobName || payload.job || 'Map Animation').slice(0, 120);
-  const description = String(payload.description || '');
-  if (!description.trim()) { const e = new Error('description is required.'); e.statusCode = 400; throw e; }
-  const aspect = payload.aspect ? String(payload.aspect) : planner.DEFAULT_ASPECT;
+  // A CAMERA JOURNEY (journey-builder GUI) compiles down to the planner's own
+  // description grammar, so the whole proven generation path below runs
+  // unchanged. A bare description (freeform / pre-journey clients) still works
+  // exactly as before. The journey is the authority when one is supplied.
+  let journey = null;
+  let journeyCompiled = null;
+  let journeySummary = null;
+  if (payload.journey && typeof payload.journey === 'object') {
+    journey = journeyModel.normalizeJourney(payload.journey);
+    const check = journeyModel.validateJourney(journey);
+    if (!check.ok) {
+      const e = new Error(`this camera journey cannot be generated yet:\n- ${check.errors.join('\n- ')}`);
+      e.statusCode = 400; e.journey_errors = check.errors; throw e;
+    }
+    journeyCompiled = check.compiled;
+    journeySummary = journeyModel.summarizeJourney(journey);
+  }
+  const description = journeyCompiled ? journeyCompiled.description : String(payload.description || '');
+  if (!description.trim()) {
+    const e = new Error(journey ? 'this camera journey has no movements to generate.' : 'description is required.');
+    e.statusCode = 400; throw e;
+  }
+  const aspect = String(payload.aspect || (journey && journey.aspect) || planner.DEFAULT_ASPECT);
   if (!planner.ASPECTS[aspect]) {
     const e = new Error(`unknown aspect "${aspect}" — use one of: ${Object.keys(planner.ASPECTS).join(', ')}.`);
     e.statusCode = 400; throw e;
@@ -121,9 +143,24 @@ function writeJob(packageDir, payload = {}, options = {}) {
   fs.mkdirSync(path.join(dir, 'frames'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'renders'), { recursive: true });
   const createdAt = options.now || new Date().toISOString();
-  const artifacts = planner.buildArtifacts(jobName, description, createdAt, { aspect });
+  // A journey that starts from a previous animation's ending state seeds the
+  // opening camera; every downstream rule (easing, arcs, ring entry) is
+  // untouched by the seed.
+  const planOptions = { aspect };
+  if (journeyCompiled && journeyCompiled.initial_camera) planOptions.initialCamera = journeyCompiled.initial_camera;
+  // A journey-built animation asks the generator for a single coherent camera
+  // trajectory (no wobble inside a movement) and for keyframes that change
+  // nothing to be dropped when the animation is finished. Freeform description
+  // jobs keep the byte-frozen v0.9.4 behaviour untouched.
+  if (journey) {
+    planOptions.motionPolicy = { coherent_trajectory: true, dedupe_keyframes: true, source: 'journey' };
+  }
+  const artifacts = planner.buildArtifacts(jobName, description, createdAt, planOptions);
   Object.entries(artifacts).forEach(([file, content]) => fs.writeFileSync(path.join(dir, file), content));
-  const plan = planner.buildShotPlan(jobName, description, createdAt, { aspect });
+  const plan = planner.buildShotPlan(jobName, description, createdAt, planOptions);
+  const esp = JSON.parse(artifacts['earth-studio.esp']);
+  const quality = cameraQuality.evaluate({ plan, esp });
+  fs.writeFileSync(path.join(dir, 'camera-quality.json'), `${JSON.stringify(quality, null, 2)}\n`);
   // When a template is requested AND the caller supplied its explicit native
   // parameters, generate the additional native-shape .esp beside the generic
   // one. Framing/target inputs are never invented (Gate 3 policy) — without
@@ -159,6 +196,28 @@ function writeJob(packageDir, payload = {}, options = {}) {
       templateMeta.note = 'template intent recorded; native .esp generation needs explicit template_params (framing/target inputs are Earth-Studio-derived and never invented here)';
     }
   }
+  // Continuation state: the camera state this animation ENDS on, derived by the
+  // same keyframe engine that wrote the .esp. Written for every job so any
+  // animation can be continued, and reusable as an input rather than a note.
+  const continuationState = journeyModel.continuationStateFromPlan(plan);
+  const extraFiles = [];
+  if (continuationState) {
+    fs.writeFileSync(path.join(dir, 'continuation-state.json'), `${JSON.stringify(continuationState, null, 2)}\n`);
+    extraFiles.push('continuation-state.json');
+  }
+  if (journey) {
+    fs.writeFileSync(path.join(dir, 'journey.json'), `${JSON.stringify(journey, null, 2)}\n`);
+    extraFiles.push('journey.json');
+    if (journeySummary) {
+      const md = [`# ${jobName} — camera journey`, '', ...journeySummary.prose, '',
+        '## Movement breakdown', '',
+        ...journeySummary.breakdown.map((b) => `- ${b.label} — ${b.seconds}s`),
+        `- **Total — ${journeySummary.total_duration_seconds}s (${journeySummary.total_clock}, ${journeySummary.total_frames} frames)**`,
+        '', '## Compiled description', '', '```', journeySummary.description, '```', ''].join('\n');
+      fs.writeFileSync(path.join(dir, 'journey-summary.md'), md);
+      extraFiles.push('journey-summary.md');
+    }
+  }
   const meta = {
     jobName,
     slug: planner.slugify(jobName),
@@ -176,6 +235,21 @@ function writeJob(packageDir, payload = {}, options = {}) {
     // Native-template provenance ONLY when explicitly requested — untemplated
     // job.json keeps the exact v0.9.4 field set.
     ...(templateMeta ? { template: templateMeta } : {}),
+    // Journey provenance ONLY for journey-built jobs (same rule): a freeform
+    // description job.json is field-for-field what it was before.
+    ...(journey ? {
+      journey: {
+        journey_version: journey.journey_version,
+        pace: journey.pace,
+        preset: journey.preset || null,
+        start_source: journey.start.source,
+        stop_count: journey.legs.length + 1,
+        movement_count: journeyCompiled.steps.length,
+        compiled_description: description,
+      },
+      camera_quality: 'camera-quality.json',
+    } : {}),
+    ...(continuationState ? { continuation_state: 'continuation-state.json' } : {}),
   };
   fs.writeFileSync(path.join(dir, 'job.json'), `${JSON.stringify(meta, null, 2)}\n`);
   return {
@@ -186,8 +260,19 @@ function writeJob(packageDir, payload = {}, options = {}) {
     // settle provenance) — additive so the GUI can show them.
     notes: plan.notes || [],
     unresolved_items: plan.unresolved_items,
-    files: Object.keys(artifacts).concat('job.json'),
+    files: Object.keys(artifacts).concat('job.json', 'camera-quality.json', ...extraFiles),
     lane_dir: dir,
+    ...(continuationState ? { continuation: continuationState } : {}),
+    ...(journeySummary ? {
+      journey_summary: {
+        prose: journeySummary.prose,
+        timeline: journeySummary.timeline,
+        breakdown: journeySummary.breakdown,
+        total_duration_seconds: journeySummary.total_duration_seconds,
+        total_clock: journeySummary.total_clock,
+        warnings: journeySummary.warnings,
+      },
+    } : {}),
   };
 }
 
@@ -279,6 +364,14 @@ function currentJobStatus(now = Date.now()) {
   return serializeJob(null, false, now);
 }
 
+// Read one JSON sidecar out of the lane dir; a missing or unparsable file is
+// simply absent rather than an error (the lane must still report status).
+function readLaneJson(packageDir, file) {
+  const p = path.join(laneDir(packageDir), file);
+  if (!fs.existsSync(p)) return null;
+  try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) { return null; }
+}
+
 function status(packageDir, projectId) {
   const job = readJob(packageDir);
   const out = renderPath(packageDir);
@@ -296,6 +389,11 @@ function status(packageDir, projectId) {
     rendered_mp4: rendered ? path.relative(packageDir, out) : null,
     rendered_bytes: rendered ? fs.statSync(out).size : 0,
     render_job: currentJobStatus(),
+    // Journey builder state so the GUI can restore the exact camera journey,
+    // and the ending camera state so a continuation can be started from it.
+    journey: readLaneJson(packageDir, 'journey.json'),
+    continuation: readLaneJson(packageDir, 'continuation-state.json'),
+    camera_quality: readLaneJson(packageDir, 'camera-quality.json'),
     earth_studio_url: 'https://earth.google.com/studio/',
   };
 }
@@ -375,7 +473,7 @@ function stageToVidnas(packageDir, projectId, options = {}) {
 
 module.exports = {
   LANE_DIR, VIDNAS_STAGE_DIR, STATE, MOUNT_DOWN_TTL_MS, MOUNT_PROBE_TIMEOUT_MS,
-  laneDir, writeJob, readJob, countFrames, frameGlob, renderPath, framesStale,
+  laneDir, writeJob, readJob, readLaneJson, countFrames, frameGlob, renderPath, framesStale,
   status, startRender, cancelRender, currentJobStatus, stageToVidnas,
   probeMount, resetMountLatch,
 };

@@ -1,0 +1,214 @@
+[
+  {
+    "id": "I-wide-target-9x16",
+    "aspect": "9:16",
+    "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-9x16/earth-studio/earth-studio.esp",
+    "esp_sha256": "9bdb7976452833347724bd0143f4fbc9053c23c1933d5297d2cf0f6aadba27da",
+    "expected": {
+      "total_frames": 120,
+      "duration_seconds": 4,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      }
+    },
+    "import": {
+      "duration": 120,
+      "totalFrames": 120,
+      "frameRate": 30,
+      "loading": false,
+      "bodyHasError": false,
+      "imported": false
+    },
+    "render_rect": {
+      "x": 1044,
+      "y": 81,
+      "width": 472,
+      "height": 838
+    },
+    "frames": [
+      {
+        "frame": 0,
+        "label": "seg1-start",
+        "movement": "hover",
+        "place": "Europe",
+        "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-9x16/I-wide-target-9x16_f00000_seg1-start.png",
+        "earth_studio_camera": {
+          "frame": 0,
+          "latitude": 52,
+          "longitude": 15,
+          "altitude": 14178064.481741667,
+          "pan_deg": 0,
+          "tilt_deg": 0,
+          "roll_deg": 0,
+          "fov": 20
+        },
+        "intended": {
+          "action": "hover",
+          "place": "Europe",
+          "altitude_m": 14178205,
+          "tilt_deg": 0,
+          "target_lat": 52,
+          "target_lng": 15
+        }
+      },
+      {
+        "frame": 60,
+        "label": "seg1-mid",
+        "movement": "hover",
+        "place": "Europe",
+        "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-9x16/I-wide-target-9x16_f00060_seg1-mid.png",
+        "earth_studio_camera": {
+          "frame": 60,
+          "latitude": 52,
+          "longitude": 15,
+          "altitude": 14178064.481741667,
+          "pan_deg": 0,
+          "tilt_deg": 0,
+          "roll_deg": 0,
+          "fov": 20
+        },
+        "intended": {
+          "action": "hover",
+          "place": "Europe",
+          "altitude_m": 14178205,
+          "tilt_deg": 0,
+          "target_lat": 52,
+          "target_lng": 15
+        }
+      },
+      {
+        "frame": 119,
+        "label": "seg1-end",
+        "movement": "hover",
+        "place": "Europe",
+        "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-9x16/I-wide-target-9x16_f00119_seg1-end.png",
+        "earth_studio_camera": {
+          "frame": 119,
+          "latitude": 52,
+          "longitude": 15,
+          "altitude": 14178064.481741667,
+          "pan_deg": 0,
+          "tilt_deg": 0,
+          "roll_deg": 0,
+          "fov": 20
+        },
+        "intended": {
+          "action": "hover",
+          "place": "Europe",
+          "altitude_m": 14178205,
+          "tilt_deg": 0,
+          "target_lat": 52,
+          "target_lng": 15
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "id": "I-wide-target-16x9",
+    "aspect": "16:9",
+    "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-16x9/earth-studio/earth-studio.esp",
+    "esp_sha256": "b1a9bafebbb46b749a6c39426806a77cc82820f5db87ea32bc60dafaaf31a4d9",
+    "expected": {
+      "total_frames": 120,
+      "duration_seconds": 4,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    "import": {
+      "duration": 120,
+      "totalFrames": 120,
+      "frameRate": 30,
+      "loading": false,
+      "bodyHasError": false,
+      "imported": false
+    },
+    "render_rect": {
+      "x": 535,
+      "y": 81,
+      "width": 1490,
+      "height": 838
+    },
+    "frames": [
+      {
+        "frame": 0,
+        "label": "seg1-start",
+        "movement": "hover",
+        "place": "Europe",
+        "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-16x9/I-wide-target-16x9_f00000_seg1-start.png",
+        "earth_studio_camera": {
+          "frame": 0,
+          "latitude": 52,
+          "longitude": 15,
+          "altitude": 14178064.481741667,
+          "pan_deg": 0,
+          "tilt_deg": 0,
+          "roll_deg": 0,
+          "fov": 20
+        },
+        "intended": {
+          "action": "hover",
+          "place": "Europe",
+          "altitude_m": 14178205,
+          "tilt_deg": 0,
+          "target_lat": 52,
+          "target_lng": 15
+        }
+      },
+      {
+        "frame": 60,
+        "label": "seg1-mid",
+        "movement": "hover",
+        "place": "Europe",
+        "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-16x9/I-wide-target-16x9_f00060_seg1-mid.png",
+        "earth_studio_camera": {
+          "frame": 60,
+          "latitude": 52,
+          "longitude": 15,
+          "altitude": 14178064.481741667,
+          "pan_deg": 0,
+          "tilt_deg": 0,
+          "roll_deg": 0,
+          "fov": 20
+        },
+        "intended": {
+          "action": "hover",
+          "place": "Europe",
+          "altitude_m": 14178205,
+          "tilt_deg": 0,
+          "target_lat": 52,
+          "target_lng": 15
+        }
+      },
+      {
+        "frame": 119,
+        "label": "seg1-end",
+        "movement": "hover",
+        "place": "Europe",
+        "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/I-wide-target-16x9/I-wide-target-16x9_f00119_seg1-end.png",
+        "earth_studio_camera": {
+          "frame": 119,
+          "latitude": 52,
+          "longitude": 15,
+          "altitude": 14178064.481741667,
+          "pan_deg": 0,
+          "tilt_deg": 0,
+          "roll_deg": 0,
+          "fov": 20
+        },
+        "intended": {
+          "action": "hover",
+          "place": "Europe",
+          "altitude_m": 14178205,
+          "tilt_deg": 0,
+          "target_lat": 52,
+          "target_lng": 15
+        }
+      }
+    ],
+    "errors": []
+  }
+]

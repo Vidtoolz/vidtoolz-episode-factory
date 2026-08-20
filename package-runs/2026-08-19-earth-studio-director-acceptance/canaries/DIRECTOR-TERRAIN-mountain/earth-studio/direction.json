@@ -1,0 +1,120 @@
+{
+  "canary": "DIRECTOR-TERRAIN-mountain",
+  "title": "DIRECTOR-TERRAIN — Zurich to the Matterhorn, terrain is the subject",
+  "question": "Does a terrain story get a lower, raking angle than a city inspection?",
+  "expect": "A legible approach (170 km cannot be flown low), then oblique treatment where the terrain is: descend to a tilted view and spiral the mountain.",
+  "intent": {
+    "stops": [
+      {
+        "location": "Zurich",
+        "role": "STARTING_CONTEXT"
+      },
+      {
+        "location": "Matterhorn",
+        "role": "FINAL_REVEAL",
+        "importance": "HERO",
+        "purposes": [
+          "SHOW_TERRAIN",
+          "REVEAL"
+        ]
+      }
+    ]
+  },
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 3 (from 2 stops; 1 hero, 0 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Cinematic (pull back, travel, descend), Slow Orbit."
+  ],
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Zurich",
+      "from": null,
+      "to": null,
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.08,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Zoom-To (native template)",
+        "Reveal",
+        "Half Orbit"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Zurich",
+      "to": "Matterhorn",
+      "role": null,
+      "importance": null,
+      "movement": "style:cinematic",
+      "label": "Cinematic (pull back, travel, descend)",
+      "purpose": "SHOW_TERRAIN",
+      "viewer_should_understand": "the physical shape of the land",
+      "why": "its primary purpose is ARRIVE, which is what this shot is for a selective move is earned here (FINAL_REVEAL, importance HERO)",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.4,
+      "angle": "top_down",
+      "communicates": [
+        "a departure and an arrival that matter"
+      ],
+      "alternatives": [
+        "High Transit",
+        "Low Approach"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Matterhorn",
+      "from": null,
+      "to": null,
+      "role": "FINAL_REVEAL",
+      "importance": "HERO",
+      "movement": "slow_orbit",
+      "label": "Slow Orbit",
+      "purpose": "SHOW_TERRAIN",
+      "viewer_should_understand": "the physical shape of the land",
+      "why": "neighborhood framing is within its useful range it gives the oblique view this purpose wants",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.4,
+      "angle": "oblique",
+      "communicates": [
+        "three-dimensional form",
+        "importance",
+        "unhurried inspection"
+      ],
+      "alternatives": [
+        "Orbit",
+        "Double Orbit",
+        "Zoom-To (native template)"
+      ],
+      "angle_limitation": null
+    }
+  ],
+  "explanation": [
+    "Zurich (Starting context, NORMAL): Hold for Establish — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Zurich → Matterhorn: Cinematic (pull back, travel, descend) — its primary purpose is ARRIVE, which is what this shot is for a selective move is earned here (FINAL_REVEAL, importance HERO)",
+    "Matterhorn (Final reveal, HERO): Slow Orbit for Show the terrain — neighborhood framing is within its useful range it gives the oblique view this purpose wants",
+    "Flourish budget for this sequence: 3 (from 2 stops; 1 hero, 0 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Cinematic (pull back, travel, descend), Slow Orbit."
+  ]
+}

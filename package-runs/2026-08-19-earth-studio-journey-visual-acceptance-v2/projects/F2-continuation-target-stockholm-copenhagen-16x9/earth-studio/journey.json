@@ -1,0 +1,144 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": "16:9",
+  "preset": null,
+  "start": {
+    "source": "continuation",
+    "location": "Stockholm",
+    "story": {
+      "role": null,
+      "importance": null,
+      "purposes": []
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null,
+    "continuation": {
+      "continuation_state_version": 1,
+      "generated_by": "earth-studio-journey",
+      "planner_version": "0.9.4",
+      "motion_profile_version": 4,
+      "source_animation": "Fresh F1 — continuation source Helsinki to Stockholm",
+      "timestamp": "2026-08-19T14:00:00.000Z",
+      "aspect": "16:9",
+      "frame_rate": 30,
+      "total_frames": 2400,
+      "ends_at_frame": 2399,
+      "camera": {
+        "latitude": 59.3293,
+        "longitude": 18.0686,
+        "altitude_m": 34028,
+        "pan_deg": 0,
+        "heading_deg": 0,
+        "tilt_deg": 0
+      },
+      "esp_mapping": {
+        "longitude": "cameraPositionGroup.longitude",
+        "latitude": "cameraPositionGroup.latitude",
+        "altitude_m": "cameraPositionGroup.altitude",
+        "pan_deg": "cameraRotationGroup.rotationX",
+        "tilt_deg": "cameraRotationGroup.rotationY",
+        "not_keyframed": [
+          "rotationZ",
+          "fov",
+          "exposure",
+          "aperture",
+          "minFocusLength"
+        ]
+      },
+      "target": {
+        "name": "Stockholm",
+        "latitude": 59.3293,
+        "longitude": 18.0686
+      },
+      "final_movement": {
+        "segment_id": 5,
+        "action": "hover",
+        "location_name": "Stockholm"
+      }
+    }
+  },
+  "start_movements": [
+    {
+      "id": "s301",
+      "type": "hold",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": null,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": [
+    {
+      "destination": {
+        "location": "Copenhagen",
+        "story": {
+          "role": null,
+          "importance": null,
+          "purposes": []
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "cinematic",
+      "travel": [
+        {
+          "id": "s302",
+          "type": "pull_back",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s303",
+          "type": "cruise",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s304",
+          "type": "descend",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s305",
+          "type": "slow_orbit",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    }
+  ]
+}

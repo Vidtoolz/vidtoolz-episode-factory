@@ -1,0 +1,44 @@
+{
+  "continuation_state_version": 1,
+  "generated_by": "earth-studio-journey",
+  "planner_version": "0.9.4",
+  "motion_profile_version": 4,
+  "source_animation": "I-wide-target-9x16",
+  "timestamp": "2026-08-19T11:00:00.000Z",
+  "aspect": "9:16",
+  "frame_rate": 30,
+  "total_frames": 120,
+  "ends_at_frame": 119,
+  "camera": {
+    "latitude": 52,
+    "longitude": 15,
+    "altitude_m": 14178205,
+    "pan_deg": 0,
+    "heading_deg": 0,
+    "tilt_deg": 0
+  },
+  "esp_mapping": {
+    "longitude": "cameraPositionGroup.longitude",
+    "latitude": "cameraPositionGroup.latitude",
+    "altitude_m": "cameraPositionGroup.altitude",
+    "pan_deg": "cameraRotationGroup.rotationX",
+    "tilt_deg": "cameraRotationGroup.rotationY",
+    "not_keyframed": [
+      "rotationZ",
+      "fov",
+      "exposure",
+      "aperture",
+      "minFocusLength"
+    ]
+  },
+  "target": {
+    "name": "Europe",
+    "latitude": 52,
+    "longitude": 15
+  },
+  "final_movement": {
+    "segment_id": 1,
+    "action": "hover",
+    "location_name": "Europe"
+  }
+}

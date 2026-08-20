@@ -1,0 +1,120 @@
+{
+  "canary": "DIRECTOR-B-city-to-city-hero",
+  "title": "DIRECTOR-B — Helsinki to Stockholm, Stockholm as the primary destination",
+  "question": "Are departure, travel, arrival and inspection distinguishable, with the emphasis on the destination?",
+  "expect": "Helsinki established without flourish; a shaped (cinematic) leg because the arrival matters; an orbit at Stockholm.",
+  "intent": {
+    "stops": [
+      {
+        "location": "Helsinki",
+        "role": "STARTING_CONTEXT"
+      },
+      {
+        "location": "Stockholm",
+        "role": "PRIMARY_SUBJECT",
+        "importance": "HIGH",
+        "purposes": [
+          "ARRIVE",
+          "INSPECT"
+        ]
+      }
+    ]
+  },
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Cinematic (pull back, travel, descend), Slow Orbit."
+  ],
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Helsinki",
+      "from": null,
+      "to": null,
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.08,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Zoom-To (native template)",
+        "Reveal",
+        "Half Orbit"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Helsinki",
+      "to": "Stockholm",
+      "role": null,
+      "importance": null,
+      "movement": "style:cinematic",
+      "label": "Cinematic (pull back, travel, descend)",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "its primary purpose is ARRIVE, which is what this shot is for a selective move is earned here (PRIMARY_SUBJECT, importance HIGH)",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.33,
+      "angle": "top_down",
+      "communicates": [
+        "a departure and an arrival that matter"
+      ],
+      "alternatives": [
+        "High Transit",
+        "Low Approach"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Stockholm",
+      "from": null,
+      "to": null,
+      "role": "PRIMARY_SUBJECT",
+      "importance": "HIGH",
+      "movement": "slow_orbit",
+      "label": "Slow Orbit",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "its primary purpose is INSPECT, which is what this shot is for city framing is within its useful range",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.33,
+      "angle": "oblique",
+      "communicates": [
+        "three-dimensional form",
+        "importance",
+        "unhurried inspection"
+      ],
+      "alternatives": [
+        "Orbit",
+        "Half Orbit",
+        "Fly-To-and-Orbit (native template)"
+      ],
+      "angle_limitation": null
+    }
+  ],
+  "explanation": [
+    "Helsinki (Starting context, NORMAL): Hold for Establish — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Helsinki → Stockholm: Cinematic (pull back, travel, descend) — its primary purpose is ARRIVE, which is what this shot is for a selective move is earned here (PRIMARY_SUBJECT, importance HIGH)",
+    "Stockholm (Important subject, HIGH): Slow Orbit for Arrive — its primary purpose is INSPECT, which is what this shot is for city framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Cinematic (pull back, travel, descend), Slow Orbit."
+  ]
+}

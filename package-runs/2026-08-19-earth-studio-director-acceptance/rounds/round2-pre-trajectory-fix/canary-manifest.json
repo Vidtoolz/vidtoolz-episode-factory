@@ -1,0 +1,415 @@
+{
+  "gate": "earth-studio DIRECTOR acceptance — does it look intentionally directed?",
+  "generated_at": "2026-08-19T13:00:00.000Z",
+  "director_version": 1,
+  "journey_version": 1,
+  "planner_version": "0.9.4",
+  "canaries": [
+    {
+      "id": "DIRECTOR-A-landmark-subject",
+      "title": "DIRECTOR-A — Senate Square as a primary landmark subject",
+      "question": "Does a small, visually important 3D subject get an inspection move, and only that?",
+      "expect": "An orbit-class move at Senate Square. No spiral (not a hero), no globe, no travel.",
+      "aspect": "16:9",
+      "duration_seconds": 42,
+      "total_frames": 1260,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-A-landmark-subject/earth-studio/earth-studio.esp",
+      "esp_sha256": "e5b9f2e9989eded2c8bb34ec544e85e831eadcc2b4f2f9c3f50e08a6a12c79c1",
+      "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-A-landmark-subject/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-A-landmark-subject/earth-studio/direction.json",
+      "compiled_description": "orbit Senate Square once clockwise tilted 60 degrees for 42 seconds",
+      "movements": [
+        {
+          "label": "Slow Orbit · Senate Square",
+          "seconds": 42
+        }
+      ],
+      "prose": [
+        "Start over Senate Square with a landmark / building framing at 600 m.",
+        "Slowly orbit Senate Square for 42 seconds.",
+        "Estimated duration: 42 seconds (00:42) at calm pace."
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "watch": "Does a small, visually important 3D subject get an inspection move, and only that?"
+    },
+    {
+      "id": "DIRECTOR-B-city-to-city-hero",
+      "title": "DIRECTOR-B — Helsinki to Stockholm, Stockholm as the primary destination",
+      "question": "Are departure, travel, arrival and inspection distinguishable, with the emphasis on the destination?",
+      "expect": "Helsinki established without flourish; a shaped (cinematic) leg because the arrival matters; an orbit at Stockholm.",
+      "aspect": "16:9",
+      "duration_seconds": 66,
+      "total_frames": 1980,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B-city-to-city-hero/earth-studio/earth-studio.esp",
+      "esp_sha256": "a2013f5ab56e0d51030c256a82eea071a540f867ac1f6c3326de39602e087c66",
+      "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B-city-to-city-hero/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B-city-to-city-hero/earth-studio/direction.json",
+      "compiled_description": "hover over Helsinki at 51042m tilted 0 degrees for 4 seconds then zoom out from Helsinki at 155960m tilted 0 degrees for 5 seconds then fly to Stockholm at 155960m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 25521m tilted 60 degrees for 7 seconds then orbit Stockholm once clockwise at 25521m tilted 60 degrees for 41 seconds",
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 4
+        },
+        {
+          "label": "Pull Back · Helsinki",
+          "seconds": 5
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 9
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 7
+        },
+        {
+          "label": "Slow Orbit · Stockholm",
+          "seconds": 41
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 51.0 km.",
+        "Open on Helsinki at 51.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Pull back from Helsinki over 5 seconds before setting off.",
+        "Cruise to Stockholm (396 km) over 9 seconds, holding 156 km.",
+        "Descend into Stockholm over 7 seconds, settling on a city framing at 25.5 km.",
+        "Slowly orbit Stockholm for 41 seconds.",
+        "Estimated duration: 66 seconds (01:06) at calm pace."
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "watch": "Are departure, travel, arrival and inspection distinguishable, with the emphasis on the destination?"
+    },
+    {
+      "id": "DIRECTOR-B2-same-geography-route-story",
+      "title": "DIRECTOR-B2 — the SAME geography directed as a ferry route instead",
+      "question": "Does identical geography with a different story intent produce different direction?",
+      "expect": "No orbit at Stockholm. Route/spatial clarity instead of destination inspection. Shorter overall.",
+      "aspect": "16:9",
+      "duration_seconds": 15,
+      "total_frames": 450,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B2-same-geography-route-story/earth-studio/earth-studio.esp",
+      "esp_sha256": "295bf64a4d76c88989c83035f61c794793df618fff17feeecfb01ee0642cb945",
+      "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B2-same-geography-route-story/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B2-same-geography-route-story/earth-studio/direction.json",
+      "compiled_description": "hover over Helsinki at 51042m tilted 0 degrees for 3 seconds then fly to Stockholm at 51042m tilted 0 degrees for 9 seconds then hover over Stockholm for 3 seconds",
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 3
+        },
+        {
+          "label": "Fly To · Stockholm",
+          "seconds": 9
+        },
+        {
+          "label": "Hold · Stockholm",
+          "seconds": 3
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 51.0 km.",
+        "Open on Helsinki at 51.0 km (city framing) and hold for 3 seconds without moving the camera.",
+        "Fly to Stockholm (396 km) over 9 seconds.",
+        "Hold on Stockholm for 3 seconds without moving the camera.",
+        "Estimated duration: 15 seconds (00:15) at calm pace."
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "watch": "Does identical geography with a different story intent produce different direction?"
+    },
+    {
+      "id": "DIRECTOR-D-scale-reveal",
+      "title": "DIRECTOR-D — Senate Square to Helsinki to Finland to Europe as a scale reveal",
+      "question": "Does a nested scale story widen progressively, and stop short of the planet?",
+      "expect": "Progressive pull-back/reveal at each rung. Explicitly NO globe shot.",
+      "aspect": "16:9",
+      "duration_seconds": 67,
+      "total_frames": 2010,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-D-scale-reveal/earth-studio/earth-studio.esp",
+      "esp_sha256": "ab1531239d608f1dc1d0b679debb039d29312e953be2b51df9b155cb572a66a3",
+      "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-D-scale-reveal/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-D-scale-reveal/earth-studio/direction.json",
+      "compiled_description": "hover over Senate Square tilted 0 degrees for 5 seconds then fly to Helsinki at 51042m tilted 0 degrees for 11 seconds then zoom out from Helsinki at 992474m tilted 0 degrees for 10 seconds then fly to Finland at 3686333m tilted 0 degrees for 9 seconds then zoom out from Finland at 7089102m tilted 0 degrees for 7 seconds then fly to Europe at 14178205m tilted 0 degrees for 19 seconds then zoom out from Europe at 36131736m tilted 0 degrees for 6 seconds",
+      "movements": [
+        {
+          "label": "Hold · Senate Square",
+          "seconds": 5
+        },
+        {
+          "label": "Fly To · Helsinki",
+          "seconds": 11
+        },
+        {
+          "label": "Reveal · Helsinki",
+          "seconds": 10
+        },
+        {
+          "label": "Fly To · Finland",
+          "seconds": 9
+        },
+        {
+          "label": "Pull Back · Finland",
+          "seconds": 7
+        },
+        {
+          "label": "Fly To · Europe",
+          "seconds": 19
+        },
+        {
+          "label": "Pull Back · Europe",
+          "seconds": 6
+        }
+      ],
+      "prose": [
+        "Start over Senate Square with a landmark / building framing at 600 m.",
+        "Open on Senate Square at 600 m (landmark / building framing) and hold for 5 seconds without moving the camera.",
+        "Fly to Helsinki (765 m) over 11 seconds.",
+        "Pull back over 10 seconds to reveal Helsinki at region scale (992 km).",
+        "Fly to Finland (485 km) over 9 seconds.",
+        "Pull back from Finland over 7 seconds to a sub-continental area framing at 7,089 km.",
+        "Fly to Europe (1,527 km) over 19 seconds.",
+        "Pull back from Europe over 6 seconds to a whole globe framing at 36,132 km.",
+        "Estimated duration: 67 seconds (01:07) at calm pace."
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "watch": "Does a nested scale story widen progressively, and stop short of the planet?"
+    },
+    {
+      "id": "DIRECTOR-ROUTE-restraint",
+      "title": "DIRECTOR-ROUTE — four route stops, only the last one matters",
+      "question": "Does restraint stop a flourish appearing at every stop?",
+      "expect": "Plain establishing shots at Helsinki, Stockholm and Copenhagen; the only inspection move at Berlin.",
+      "aspect": "16:9",
+      "duration_seconds": 86,
+      "total_frames": 2580,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-ROUTE-restraint/earth-studio/earth-studio.esp",
+      "esp_sha256": "1feea8038a114232cf27da587ac47119ae7309045823de5aeec6045087930600",
+      "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-ROUTE-restraint/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-ROUTE-restraint/earth-studio/direction.json",
+      "compiled_description": "hover over Helsinki at 51042m tilted 0 degrees for 3 seconds then fly to Stockholm at 51042m tilted 0 degrees for 9 seconds then hover over Stockholm for 3 seconds then fly to Copenhagen at 51042m tilted 0 degrees for 9 seconds then hover over Copenhagen for 3 seconds then zoom out from Copenhagen at 1007079m tilted 0 degrees for 8 seconds then fly to Berlin at 25521m tilted 60 degrees for 9 seconds then orbit Berlin once clockwise at 25521m tilted 60 degrees for 42 seconds",
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 3
+        },
+        {
+          "label": "Fly To · Stockholm",
+          "seconds": 9
+        },
+        {
+          "label": "Hold · Stockholm",
+          "seconds": 3
+        },
+        {
+          "label": "Fly To · Copenhagen",
+          "seconds": 9
+        },
+        {
+          "label": "Hold · Copenhagen",
+          "seconds": 3
+        },
+        {
+          "label": "Climb Out · Copenhagen",
+          "seconds": 8
+        },
+        {
+          "label": "Fly To · Berlin",
+          "seconds": 9
+        },
+        {
+          "label": "Slow Orbit · Berlin",
+          "seconds": 42
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 51.0 km.",
+        "Open on Helsinki at 51.0 km (city framing) and hold for 3 seconds without moving the camera.",
+        "Fly to Stockholm (396 km) over 9 seconds.",
+        "Hold on Stockholm for 3 seconds without moving the camera.",
+        "Fly to Copenhagen (522 km) over 9 seconds.",
+        "Hold on Copenhagen for 3 seconds without moving the camera.",
+        "Climb to 1,007 km over 8 seconds — high enough to see the whole route.",
+        "Fly to Berlin (355 km) over 9 seconds.",
+        "Slowly orbit Berlin for 42 seconds.",
+        "Estimated duration: 86 seconds (01:26) at calm pace."
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "watch": "Does restraint stop a flourish appearing at every stop?"
+    },
+    {
+      "id": "DIRECTOR-HERO-landmark-reveal",
+      "title": "DIRECTOR-HERO — locate Paris, then reveal the Eiffel Tower",
+      "question": "Is a spiral reserved for a genuine hero reveal of a compact 3D subject?",
+      "expect": "Paris located top-down; a spiral at the Eiffel Tower. This is the ONE canary where a spiral is correct.",
+      "aspect": "9:16",
+      "duration_seconds": 45,
+      "total_frames": 1350,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-HERO-landmark-reveal/earth-studio/earth-studio.esp",
+      "esp_sha256": "741e561691cf9518a200dcace370d9e8e634aa4ea0790dd7d41ef377b28130ce",
+      "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-HERO-landmark-reveal/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-HERO-landmark-reveal/earth-studio/direction.json",
+      "compiled_description": "hover over Paris at 51042m tilted 0 degrees for 4 seconds then fly to Eiffel Tower tilted 60 degrees for 9 seconds then orbit Eiffel Tower once clockwise at 709m tilted 60 degrees for 32 seconds",
+      "movements": [
+        {
+          "label": "Hold · Paris",
+          "seconds": 4
+        },
+        {
+          "label": "Fly To · Eiffel Tower",
+          "seconds": 9
+        },
+        {
+          "label": "Spiral In · Eiffel Tower",
+          "seconds": 32
+        }
+      ],
+      "prose": [
+        "Start over Paris with a city framing at 51.0 km.",
+        "Open on Paris at 51.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Fly to Eiffel Tower (4 km) over 9 seconds.",
+        "Spiral in around Eiffel Tower over 32 seconds, closing to 709 m.",
+        "Estimated duration: 45 seconds (00:45) at calm pace."
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "watch": "Is a spiral reserved for a genuine hero reveal of a compact 3D subject?"
+    },
+    {
+      "id": "DIRECTOR-GLOBAL-network",
+      "title": "DIRECTOR-GLOBAL — a shipping network across three continents",
+      "question": "Is the whole planet used only when the story is genuinely global?",
+      "expect": "A globe shot, justified by GLOBAL_NETWORK. Route points get no flourish.",
+      "aspect": "16:9",
+      "duration_seconds": 149,
+      "total_frames": 4470,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-GLOBAL-network/earth-studio/earth-studio.esp",
+      "esp_sha256": "b610a9de99e59af2f10191f98f94458d51d0374f1e62d58253111e01c6caee37",
+      "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-GLOBAL-network/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-GLOBAL-network/earth-studio/direction.json",
+      "compiled_description": "hover over Shanghai at 51042m tilted 0 degrees for 3 seconds then fly to Amsterdam at 51042m tilted 0 degrees for 34 seconds then hover over Amsterdam for 3 seconds then zoom out from Amsterdam at 12000000m tilted 0 degrees for 12 seconds then fly to Los Angeles at 25521m tilted 60 degrees for 34 seconds then orbit Los Angeles once clockwise at 25521m tilted 60 degrees for 39 seconds then zoom out from Los Angeles at 36131736m tilted 0 degrees for 19 seconds then hover over Los Angeles for 5 seconds",
+      "movements": [
+        {
+          "label": "Hold · Shanghai",
+          "seconds": 3
+        },
+        {
+          "label": "Fly To · Amsterdam",
+          "seconds": 34
+        },
+        {
+          "label": "Hold · Amsterdam",
+          "seconds": 3
+        },
+        {
+          "label": "Climb Out · Amsterdam",
+          "seconds": 12
+        },
+        {
+          "label": "Fly To · Los Angeles",
+          "seconds": 34
+        },
+        {
+          "label": "Slow Orbit · Los Angeles",
+          "seconds": 39
+        },
+        {
+          "label": "Pull Back · Los Angeles",
+          "seconds": 19
+        },
+        {
+          "label": "Hold · Los Angeles",
+          "seconds": 5
+        }
+      ],
+      "prose": [
+        "Start over Shanghai with a city framing at 51.0 km.",
+        "Open on Shanghai at 51.0 km (city framing) and hold for 3 seconds without moving the camera.",
+        "Fly to Amsterdam (8,873 km) over 34 seconds.",
+        "Hold on Amsterdam for 3 seconds without moving the camera.",
+        "Climb to 12,000 km over 12 seconds — high enough to see the whole route.",
+        "Fly to Los Angeles (8,940 km) over 34 seconds.",
+        "Slowly orbit Los Angeles for 39 seconds.",
+        "Pull back from Los Angeles over 19 seconds before setting off.",
+        "Hold on Los Angeles for 5 seconds without moving the camera.",
+        "Estimated duration: 149 seconds (02:29) at calm pace."
+      ],
+      "globe_used": true,
+      "globe_reason": "Global scale is narratively justified: a network spanning the planet is the subject.",
+      "watch": "Is the whole planet used only when the story is genuinely global?"
+    },
+    {
+      "id": "DIRECTOR-TERRAIN-mountain",
+      "title": "DIRECTOR-TERRAIN — Zurich to the Matterhorn, terrain is the subject",
+      "question": "Does a terrain story get an oblique treatment instead of a flat map view?",
+      "expect": "A low, horizon-tilted approach; oblique inspection at the mountain.",
+      "aspect": "16:9",
+      "duration_seconds": 68,
+      "total_frames": 2040,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/earth-studio.esp",
+      "esp_sha256": "a9fbf89b77a2569ec2d91255045023186c419ee80875371194c8d2e59afd8275",
+      "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/direction.json",
+      "compiled_description": "hover over Zurich at 51042m tilted 0 degrees for 4 seconds then fly to Matterhorn at 5500m tilted 72 degrees for 7 seconds then orbit Matterhorn once clockwise at 5500m tilted 72 degrees for 57 seconds",
+      "movements": [
+        {
+          "label": "Hold · Zurich",
+          "seconds": 4
+        },
+        {
+          "label": "Low Approach · Matterhorn",
+          "seconds": 7
+        },
+        {
+          "label": "Spiral In · Matterhorn",
+          "seconds": 57
+        }
+      ],
+      "prose": [
+        "Start over Zurich with a city framing at 51.0 km.",
+        "Open on Zurich at 51.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Come in low to Matterhorn (170 km) over 7 seconds, tilted toward the horizon.",
+        "Spiral in around Matterhorn over 57 seconds, closing to 5.5 km.",
+        "Estimated duration: 68 seconds (01:08) at calm pace."
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "watch": "Does a terrain story get an oblique treatment instead of a flat map view?"
+    }
+  ]
+}

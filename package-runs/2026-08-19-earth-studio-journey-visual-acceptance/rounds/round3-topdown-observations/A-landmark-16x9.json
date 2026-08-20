@@ -1,0 +1,106 @@
+{
+  "id": "A-landmark-16x9",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/A-landmark-16x9/earth-studio/earth-studio.esp",
+  "esp_sha256": "f145ed847b99c88908e8e8972e21114bee672c26827de3ee1c373fa9e716a0d0",
+  "expected": {
+    "total_frames": 930,
+    "duration_seconds": 31,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 930,
+    "totalFrames": 930,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "orbit",
+      "place": "Senate Square",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/A-landmark-16x9/A-landmark-16x9_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.17883593742592,
+        "longitude": 24.9522,
+        "altitude": 600.9940111632608,
+        "pan_deg": 180,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Senate Square",
+        "altitude_m": 600,
+        "tilt_deg": 60,
+        "target_lat": 60.1695,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 465,
+      "label": "seg1-mid",
+      "movement": "orbit",
+      "place": "Senate Square",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/A-landmark-16x9/A-landmark-16x9_f00465_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 465,
+        "latitude": 60.160164,
+        "longitude": 24.9522,
+        "altitude": 600.9940111632608,
+        "pan_deg": 389.5237084657889,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Senate Square",
+        "altitude_m": 600,
+        "tilt_deg": 60,
+        "target_lat": 60.1695,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 929,
+      "label": "seg1-end",
+      "movement": "orbit",
+      "place": "Senate Square",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/A-landmark-16x9/A-landmark-16x9_f00929_seg1-end.png",
+      "earth_studio_camera": {
+        "frame": 929,
+        "latitude": 60.178835781868116,
+        "longitude": 24.952197690044564,
+        "altitude": 600.9940111632608,
+        "pan_deg": 539.9991331715473,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Senate Square",
+        "altitude_m": 600,
+        "tilt_deg": 60,
+        "target_lat": 60.1695,
+        "target_lng": 24.9522
+      }
+    }
+  ],
+  "errors": []
+}

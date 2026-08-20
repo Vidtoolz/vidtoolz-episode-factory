@@ -1,0 +1,44 @@
+{
+  "continuation_state_version": 1,
+  "generated_by": "earth-studio-journey",
+  "planner_version": "0.9.4",
+  "motion_profile_version": 4,
+  "source_animation": "Fresh D — Helsinki to New York with destination orbit",
+  "timestamp": "2026-08-19T14:00:00.000Z",
+  "aspect": "16:9",
+  "frame_rate": 30,
+  "total_frames": 4350,
+  "ends_at_frame": 4349,
+  "camera": {
+    "latitude": 40.7128,
+    "longitude": -74.355246,
+    "altitude_m": 17014,
+    "pan_deg": 90,
+    "heading_deg": 90,
+    "tilt_deg": 60
+  },
+  "esp_mapping": {
+    "longitude": "cameraPositionGroup.longitude",
+    "latitude": "cameraPositionGroup.latitude",
+    "altitude_m": "cameraPositionGroup.altitude",
+    "pan_deg": "cameraRotationGroup.rotationX",
+    "tilt_deg": "cameraRotationGroup.rotationY",
+    "not_keyframed": [
+      "rotationZ",
+      "fov",
+      "exposure",
+      "aperture",
+      "minFocusLength"
+    ]
+  },
+  "target": {
+    "name": "New York",
+    "latitude": 40.7128,
+    "longitude": -74.006
+  },
+  "final_movement": {
+    "segment_id": 5,
+    "action": "orbit",
+    "location_name": "New York"
+  }
+}

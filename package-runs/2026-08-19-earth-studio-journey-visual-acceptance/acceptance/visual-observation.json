@@ -1,0 +1,20 @@
+{
+  "_instructions": "Mikko's aesthetic verdict on journey-builder animations opened in the real Google Earth Studio. Booleans/verdicts are real observations; notes preserve anything worth acting on. Leave a field null if you did not look at it.",
+  "observedAt": null,
+  "observer": null,
+  "method": null,
+  "small_target_framing": { "verdict": null, "notes": "canary A - Senate Square, slow orbit" },
+  "city_framing": { "verdict": null, "notes": "canary B - Helsinki and Stockholm establishment" },
+  "large_area_framing": { "verdict": null, "notes": "canary D - Finland (country) and Europe (continent)" },
+  "calm_pacing": { "verdict": null, "notes": "does calm read as deliberate rather than sluggish or frantic" },
+  "single_leg_travel": { "verdict": null, "notes": "canary B - departure, cruise, approach" },
+  "multi_leg_travel": { "verdict": null, "notes": "canary C - four stops, watch the later legs" },
+  "destination_movement": { "verdict": null, "notes": "does the destination orbit start cleanly, without a jump" },
+  "aspect_16x9": { "verdict": null, "notes": null },
+  "aspect_9x16": { "verdict": null, "notes": "canary B/9:16 and I/9:16" },
+  "continuation_seamless": { "verdict": null, "notes": "E1 last frame vs E2 frame 0" },
+  "hold_then_orbit_swoop": { "verdict": null, "notes": "canary G - acceptable characteristic, or must it be blocked" },
+  "top_down_target_movements": { "verdict": null, "notes": "fly/hover/zoom are top-down so the place is centred - acceptable, or do you want an oblique option wired differently" },
+  "overall": { "verdict": null, "notes": null },
+  "rawNotes": null
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>DIRECTOR-B-city-to-city-hero route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>Helsinki</name>
+      <Point><coordinates>24.9384,60.1699,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Stockholm</name>
+      <Point><coordinates>18.0686,59.3293,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>DIRECTOR-B-city-to-city-hero route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        24.9384,60.1699,0
+        24.9384,60.1699,0
+        18.0686,59.3293,0
+        18.0686,59.3293,0
+        18.0686,59.3293,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

@@ -1,0 +1,38 @@
+{
+  "jobName": "Fresh A — Senate Square to Market Square",
+  "slug": "fresh-a-senate-square-to-market-square",
+  "description": "hover over Senate Square tilted 0 degrees for 4 seconds then fly to Helsinki Cathedral tilted 0 degrees for 8 seconds then hover over Helsinki Cathedral for 4 seconds",
+  "aspect": "16:9",
+  "render_dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "frame_rate": 30,
+  "total_frames": 480,
+  "total_duration_seconds": 16,
+  "unresolved_count": 0,
+  "planner_version": "0.9.4",
+  "motion_profile": {
+    "profile_version": 4,
+    "source": "config/earth-studio-motion/motion-profile.json",
+    "references": [
+      "darien-gap",
+      "mountkinabalu",
+      "radiator-untitled",
+      "servyx"
+    ],
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
+  },
+  "created_at": "2026-08-19T14:00:00.000Z",
+  "journey": {
+    "journey_version": 1,
+    "pace": "calm",
+    "preset": null,
+    "start_source": "location",
+    "stop_count": 2,
+    "movement_count": 3,
+    "compiled_description": "hover over Senate Square tilted 0 degrees for 4 seconds then fly to Helsinki Cathedral tilted 0 degrees for 8 seconds then hover over Helsinki Cathedral for 4 seconds"
+  },
+  "camera_quality": "camera-quality.json",
+  "continuation_state": "continuation-state.json"
+}

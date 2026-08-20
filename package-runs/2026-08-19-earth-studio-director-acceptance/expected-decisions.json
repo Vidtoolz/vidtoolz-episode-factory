@@ -1,0 +1,289 @@
+{
+  "DIRECTOR-A-landmark-subject": {
+    "title": "DIRECTOR-A — Senate Square as a primary landmark subject",
+    "globe_allowed": false,
+    "globe_justification": null,
+    "decisions": [
+      {
+        "kind": "at",
+        "at": "Senate Square",
+        "movement": "slow_orbit",
+        "purpose": "ESTABLISH",
+        "rarity": "SELECTIVE"
+      }
+    ]
+  },
+  "DIRECTOR-B-city-to-city-hero": {
+    "title": "DIRECTOR-B — Helsinki to Stockholm, Stockholm as the primary destination",
+    "globe_allowed": false,
+    "globe_justification": null,
+    "decisions": [
+      {
+        "kind": "at",
+        "at": "Helsinki",
+        "movement": "hold",
+        "purpose": "ESTABLISH",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "travel",
+        "at": "Helsinki->Stockholm",
+        "movement": "style:cinematic",
+        "purpose": "ARRIVE",
+        "rarity": "SELECTIVE"
+      },
+      {
+        "kind": "at",
+        "at": "Stockholm",
+        "movement": "slow_orbit",
+        "purpose": "ARRIVE",
+        "rarity": "SELECTIVE"
+      }
+    ]
+  },
+  "DIRECTOR-B2-same-geography-route-story": {
+    "title": "DIRECTOR-B2 — the SAME geography directed as a ferry route instead",
+    "globe_allowed": false,
+    "globe_justification": null,
+    "decisions": [
+      {
+        "kind": "at",
+        "at": "Helsinki",
+        "movement": "hold",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "travel",
+        "at": "Helsinki->Stockholm",
+        "movement": "style:high_transit",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "SELECTIVE"
+      },
+      {
+        "kind": "at",
+        "at": "Stockholm",
+        "movement": "hold",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "COMMON"
+      }
+    ]
+  },
+  "DIRECTOR-D-scale-reveal": {
+    "title": "DIRECTOR-D — Senate Square to Helsinki to Finland to Europe as a scale reveal",
+    "globe_allowed": false,
+    "globe_justification": null,
+    "decisions": [
+      {
+        "kind": "at",
+        "at": "Senate Square",
+        "movement": "hold",
+        "purpose": "ESTABLISH",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "travel",
+        "at": "Senate Square->Helsinki",
+        "movement": "style:direct",
+        "purpose": "SHOW_SCALE",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "at",
+        "at": "Helsinki",
+        "movement": "reveal",
+        "purpose": "SHOW_SCALE",
+        "rarity": "SELECTIVE"
+      },
+      {
+        "kind": "travel",
+        "at": "Helsinki->Finland",
+        "movement": "style:direct",
+        "purpose": "SHOW_SCALE",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "at",
+        "at": "Finland",
+        "movement": "zoom_out",
+        "purpose": "SHOW_SCALE",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "travel",
+        "at": "Finland->Europe",
+        "movement": "style:direct",
+        "purpose": "SHOW_SCALE",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "at",
+        "at": "Europe",
+        "movement": "zoom_out",
+        "purpose": "SHOW_SCALE",
+        "rarity": "COMMON"
+      }
+    ]
+  },
+  "DIRECTOR-ROUTE-restraint": {
+    "title": "DIRECTOR-ROUTE — four route stops, only the last one matters",
+    "globe_allowed": false,
+    "globe_justification": null,
+    "decisions": [
+      {
+        "kind": "at",
+        "at": "Helsinki",
+        "movement": "hold",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "travel",
+        "at": "Helsinki->Stockholm",
+        "movement": "style:high_transit",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "SELECTIVE"
+      },
+      {
+        "kind": "at",
+        "at": "Stockholm",
+        "movement": "hold",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "travel",
+        "at": "Stockholm->Copenhagen",
+        "movement": "style:high_transit",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "SELECTIVE"
+      },
+      {
+        "kind": "at",
+        "at": "Copenhagen",
+        "movement": "hold",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "travel",
+        "at": "Copenhagen->Berlin",
+        "movement": "style:high_transit",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "SELECTIVE"
+      },
+      {
+        "kind": "at",
+        "at": "Berlin",
+        "movement": "slow_orbit",
+        "purpose": "ESTABLISH",
+        "rarity": "SELECTIVE"
+      }
+    ]
+  },
+  "DIRECTOR-HERO-landmark-reveal": {
+    "title": "DIRECTOR-HERO — locate Paris, then circle the Eiffel Tower",
+    "globe_allowed": false,
+    "globe_justification": null,
+    "decisions": [
+      {
+        "kind": "at",
+        "at": "Paris",
+        "movement": "hold",
+        "purpose": "LOCATE",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "travel",
+        "at": "Paris->Eiffel Tower",
+        "movement": "style:cinematic",
+        "purpose": "REVEAL",
+        "rarity": "SELECTIVE"
+      },
+      {
+        "kind": "at",
+        "at": "Eiffel Tower",
+        "movement": "slow_orbit",
+        "purpose": "REVEAL",
+        "rarity": "SELECTIVE"
+      }
+    ]
+  },
+  "DIRECTOR-GLOBAL-network": {
+    "title": "DIRECTOR-GLOBAL — a shipping network across three continents",
+    "globe_allowed": true,
+    "globe_justification": "GLOBAL_NETWORK",
+    "decisions": [
+      {
+        "kind": "at",
+        "at": "Shanghai",
+        "movement": "hold",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "travel",
+        "at": "Shanghai->Amsterdam",
+        "movement": "style:high_transit",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "SELECTIVE"
+      },
+      {
+        "kind": "at",
+        "at": "Amsterdam",
+        "movement": "hold",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "travel",
+        "at": "Amsterdam->Los Angeles",
+        "movement": "style:high_transit",
+        "purpose": "SHOW_ROUTE",
+        "rarity": "SELECTIVE"
+      },
+      {
+        "kind": "at",
+        "at": "Los Angeles",
+        "movement": "slow_orbit",
+        "purpose": "ARRIVE",
+        "rarity": "SELECTIVE"
+      },
+      {
+        "kind": "at",
+        "at": "Los Angeles",
+        "movement": "globe_view",
+        "purpose": "SHOW_SCALE",
+        "rarity": "SPECIAL"
+      }
+    ]
+  },
+  "DIRECTOR-TERRAIN-mountain": {
+    "title": "DIRECTOR-TERRAIN — Zurich to the Matterhorn, terrain is the subject",
+    "globe_allowed": false,
+    "globe_justification": null,
+    "decisions": [
+      {
+        "kind": "at",
+        "at": "Zurich",
+        "movement": "hold",
+        "purpose": "ESTABLISH",
+        "rarity": "COMMON"
+      },
+      {
+        "kind": "travel",
+        "at": "Zurich->Matterhorn",
+        "movement": "style:cinematic",
+        "purpose": "SHOW_TERRAIN",
+        "rarity": "SELECTIVE"
+      },
+      {
+        "kind": "at",
+        "at": "Matterhorn",
+        "movement": "slow_orbit",
+        "purpose": "SHOW_TERRAIN",
+        "rarity": "SELECTIVE"
+      }
+    ]
+  }
+}

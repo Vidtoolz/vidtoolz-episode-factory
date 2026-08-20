@@ -1,0 +1,44 @@
+{
+  "continuation_state_version": 1,
+  "generated_by": "earth-studio-journey",
+  "planner_version": "0.9.4",
+  "motion_profile_version": 4,
+  "source_animation": "DIRECTOR-HERO-landmark-reveal",
+  "timestamp": "2026-08-19T13:00:00.000Z",
+  "aspect": "9:16",
+  "frame_rate": 30,
+  "total_frames": 2100,
+  "ends_at_frame": 2099,
+  "camera": {
+    "latitude": 48.842841,
+    "longitude": 2.2945,
+    "altitude_m": 1000,
+    "pan_deg": 360,
+    "heading_deg": 0,
+    "tilt_deg": 60
+  },
+  "esp_mapping": {
+    "longitude": "cameraPositionGroup.longitude",
+    "latitude": "cameraPositionGroup.latitude",
+    "altitude_m": "cameraPositionGroup.altitude",
+    "pan_deg": "cameraRotationGroup.rotationX",
+    "tilt_deg": "cameraRotationGroup.rotationY",
+    "not_keyframed": [
+      "rotationZ",
+      "fov",
+      "exposure",
+      "aperture",
+      "minFocusLength"
+    ]
+  },
+  "target": {
+    "name": "Eiffel Tower",
+    "latitude": 48.8584,
+    "longitude": 2.2945
+  },
+  "final_movement": {
+    "segment_id": 5,
+    "action": "orbit",
+    "location_name": "Eiffel Tower"
+  }
+}

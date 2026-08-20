@@ -1,0 +1,44 @@
+{
+  "continuation_state_version": 1,
+  "generated_by": "earth-studio-journey",
+  "planner_version": "0.9.4",
+  "motion_profile_version": 4,
+  "source_animation": "DIRECTOR-B-city-to-city-hero",
+  "timestamp": "2026-08-19T13:00:00.000Z",
+  "aspect": "16:9",
+  "frame_rate": 30,
+  "total_frames": 2040,
+  "ends_at_frame": 2039,
+  "camera": {
+    "latitude": 59.064576,
+    "longitude": 18.0686,
+    "altitude_m": 17014,
+    "pan_deg": 360,
+    "heading_deg": 0,
+    "tilt_deg": 60
+  },
+  "esp_mapping": {
+    "longitude": "cameraPositionGroup.longitude",
+    "latitude": "cameraPositionGroup.latitude",
+    "altitude_m": "cameraPositionGroup.altitude",
+    "pan_deg": "cameraRotationGroup.rotationX",
+    "tilt_deg": "cameraRotationGroup.rotationY",
+    "not_keyframed": [
+      "rotationZ",
+      "fov",
+      "exposure",
+      "aperture",
+      "minFocusLength"
+    ]
+  },
+  "target": {
+    "name": "Stockholm",
+    "latitude": 59.3293,
+    "longitude": 18.0686
+  },
+  "final_movement": {
+    "segment_id": 5,
+    "action": "orbit",
+    "location_name": "Stockholm"
+  }
+}

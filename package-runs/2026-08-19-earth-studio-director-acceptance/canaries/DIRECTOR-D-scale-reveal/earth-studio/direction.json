@@ -1,0 +1,241 @@
+{
+  "canary": "DIRECTOR-D-scale-reveal",
+  "title": "DIRECTOR-D — Senate Square to Helsinki to Finland to Europe as a scale reveal",
+  "question": "Does a nested scale story widen progressively, and stop short of the planet?",
+  "expect": "Progressive pull-back/reveal at each rung. Explicitly NO globe shot.",
+  "intent": {
+    "stops": [
+      {
+        "location": "Senate Square",
+        "role": "PRIMARY_SUBJECT",
+        "importance": "HIGH",
+        "purposes": [
+          "ESTABLISH"
+        ]
+      },
+      {
+        "location": "Helsinki",
+        "role": "SCALE_REFERENCE",
+        "purposes": [
+          "SHOW_SCALE"
+        ]
+      },
+      {
+        "location": "Finland",
+        "role": "SCALE_REFERENCE",
+        "purposes": [
+          "SHOW_SCALE"
+        ]
+      },
+      {
+        "location": "Europe",
+        "role": "GEOGRAPHIC_CONTEXT",
+        "purposes": [
+          "SHOW_SCALE"
+        ]
+      }
+    ]
+  },
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 2 (from 4 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Reveal."
+  ],
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Senate Square",
+      "from": null,
+      "to": null,
+      "role": "PRIMARY_SUBJECT",
+      "importance": "HIGH",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for landmark framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.35,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Slow Orbit",
+        "Orbit",
+        "Orbit (native template)"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Senate Square",
+      "to": "Helsinki",
+      "role": null,
+      "importance": null,
+      "movement": "style:direct",
+      "label": "Direct Fly-To",
+      "purpose": "SHOW_SCALE",
+      "viewer_should_understand": "how big this is, or how it nests inside something bigger",
+      "why": "its primary purpose is TRAVEL, which is what this shot is for it gives the top-down view this purpose wants",
+      "rarity": "COMMON",
+      "emphasis": 1.23,
+      "angle": "top_down",
+      "communicates": [
+        "we are going there",
+        "the geography between"
+      ],
+      "alternatives": [
+        "High Transit",
+        "Cinematic (pull back, travel, descend)"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Helsinki",
+      "from": null,
+      "to": null,
+      "role": "SCALE_REFERENCE",
+      "importance": "NORMAL",
+      "movement": "reveal",
+      "label": "Reveal",
+      "purpose": "SHOW_SCALE",
+      "viewer_should_understand": "how big this is, or how it nests inside something bigger",
+      "why": "its primary purpose is SHOW_SCALE, which is what this shot is for city framing is within its useful range",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.23,
+      "angle": "top_down",
+      "communicates": [
+        "a big jump outward in context"
+      ],
+      "alternatives": [
+        "Pull Back",
+        "Hold",
+        "Push In"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Helsinki",
+      "to": "Finland",
+      "role": null,
+      "importance": null,
+      "movement": "style:direct",
+      "label": "Direct Fly-To",
+      "purpose": "SHOW_SCALE",
+      "viewer_should_understand": "how big this is, or how it nests inside something bigger",
+      "why": "its primary purpose is TRAVEL, which is what this shot is for it gives the top-down view this purpose wants",
+      "rarity": "COMMON",
+      "emphasis": 1.23,
+      "angle": "top_down",
+      "communicates": [
+        "we are going there",
+        "the geography between"
+      ],
+      "alternatives": [
+        "High Transit",
+        "Cinematic (pull back, travel, descend)"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Finland",
+      "from": null,
+      "to": null,
+      "role": "SCALE_REFERENCE",
+      "importance": "NORMAL",
+      "movement": "zoom_out",
+      "label": "Pull Back",
+      "purpose": "SHOW_SCALE",
+      "viewer_should_understand": "how big this is, or how it nests inside something bigger",
+      "why": "its primary purpose is SHOW_SCALE, which is what this shot is for country framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.23,
+      "angle": "top_down",
+      "communicates": [
+        "this is part of something larger",
+        "the wider region"
+      ],
+      "alternatives": [
+        "Reveal",
+        "Hold",
+        "Push In"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Finland",
+      "to": "Europe",
+      "role": null,
+      "importance": null,
+      "movement": "style:direct",
+      "label": "Direct Fly-To",
+      "purpose": "SHOW_SCALE",
+      "viewer_should_understand": "how big this is, or how it nests inside something bigger",
+      "why": "its primary purpose is TRAVEL, which is what this shot is for it gives the top-down view this purpose wants",
+      "rarity": "COMMON",
+      "emphasis": 1.2,
+      "angle": "top_down",
+      "communicates": [
+        "we are going there",
+        "the geography between"
+      ],
+      "alternatives": [
+        "High Transit",
+        "Cinematic (pull back, travel, descend)"
+      ],
+      "angle_limitation": null
+    },
+    {
+      "kind": "at",
+      "place": "Europe",
+      "from": null,
+      "to": null,
+      "role": "GEOGRAPHIC_CONTEXT",
+      "importance": "NORMAL",
+      "movement": "zoom_out",
+      "label": "Pull Back",
+      "purpose": "SHOW_SCALE",
+      "viewer_should_understand": "how big this is, or how it nests inside something bigger",
+      "why": "its primary purpose is SHOW_SCALE, which is what this shot is for continent framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.2,
+      "angle": "top_down",
+      "communicates": [
+        "this is part of something larger",
+        "the wider region"
+      ],
+      "alternatives": [
+        "Hold",
+        "Reveal",
+        "Push In"
+      ],
+      "angle_limitation": null
+    }
+  ],
+  "explanation": [
+    "Senate Square (Important subject, HIGH): Hold for Establish — its primary purpose is ESTABLISH, which is what this shot is for landmark framing is within its useful range",
+    "Senate Square → Helsinki: Direct Fly-To — its primary purpose is TRAVEL, which is what this shot is for it gives the top-down view this purpose wants",
+    "Helsinki (Scale reference, NORMAL): Reveal for Show the scale — its primary purpose is SHOW_SCALE, which is what this shot is for city framing is within its useful range",
+    "Helsinki → Finland: Direct Fly-To — its primary purpose is TRAVEL, which is what this shot is for it gives the top-down view this purpose wants",
+    "Finland (Scale reference, NORMAL): Pull Back for Show the scale — its primary purpose is SHOW_SCALE, which is what this shot is for country framing is within its useful range",
+    "Finland → Europe: Direct Fly-To — its primary purpose is TRAVEL, which is what this shot is for it gives the top-down view this purpose wants",
+    "Europe (Geographic context, NORMAL): Pull Back for Show the scale — its primary purpose is SHOW_SCALE, which is what this shot is for continent framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 4 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Reveal."
+  ]
+}

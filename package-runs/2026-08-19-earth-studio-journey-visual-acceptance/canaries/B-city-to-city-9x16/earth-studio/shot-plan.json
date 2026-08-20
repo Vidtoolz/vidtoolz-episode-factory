@@ -1,0 +1,205 @@
+{
+  "job_name": "B-city-to-city-9x16",
+  "version": "0.9.4",
+  "generated_at": "2026-08-19T11:00:00.000Z",
+  "source_description": "orbit Helsinki once clockwise at 17014m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 155960m tilted 0 degrees for 7 seconds then fly to Stockholm at 155960m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 17014m tilted 60 degrees for 7 seconds then orbit Stockholm once clockwise at 17014m tilted 60 degrees for 31 seconds",
+  "parser_strategy": "offline_regex_with_manual_review_fallback",
+  "frame_rate": 30,
+  "frame_convention": {
+    "start_frame": "inclusive",
+    "end_frame": "exclusive"
+  },
+  "aspect": "9:16",
+  "render_dimensions": {
+    "width": 1080,
+    "height": 1920
+  },
+  "total_duration_seconds": 85,
+  "total_frames": 2550,
+  "motion_policy": {
+    "coherent_trajectory": true,
+    "dedupe_keyframes": true,
+    "source": "journey"
+  },
+  "locations": [
+    {
+      "name": "Helsinki",
+      "latitude": 60.1699,
+      "longitude": 24.9384,
+      "resolution_status": "resolved_fixture"
+    },
+    {
+      "name": "Stockholm",
+      "latitude": 59.3293,
+      "longitude": 18.0686,
+      "resolution_status": "resolved_fixture"
+    }
+  ],
+  "segments": [
+    {
+      "segment_id": 1,
+      "source_text": "orbit Helsinki once clockwise at 17014m tilted 60 degrees for 31 seconds",
+      "action": "orbit",
+      "requested_action": "orbit",
+      "location_name": "Helsinki",
+      "location": {
+        "name": "Helsinki",
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 17014,
+      "altitude_source": "explicit",
+      "tilt_deg": 60,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 0,
+      "end_seconds": 31,
+      "duration_seconds": 31,
+      "start_frame": 0,
+      "end_frame": 930,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": [],
+      "orbit_degrees": 360,
+      "orbit_direction": 1
+    },
+    {
+      "segment_id": 2,
+      "source_text": "zoom out from Helsinki at 155960m tilted 0 degrees for 7 seconds",
+      "action": "zoom_out",
+      "requested_action": "zoom_out",
+      "location_name": "Helsinki",
+      "location": {
+        "name": "Helsinki",
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 155960,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 31,
+      "end_seconds": 38,
+      "duration_seconds": 7,
+      "start_frame": 930,
+      "end_frame": 1140,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 3,
+      "source_text": "fly to Stockholm at 155960m tilted 0 degrees for 9 seconds",
+      "action": "fly_to",
+      "requested_action": "fly_to",
+      "location_name": "Stockholm",
+      "location": {
+        "name": "Stockholm",
+        "latitude": 59.3293,
+        "longitude": 18.0686,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 155960,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 38,
+      "end_seconds": 47,
+      "duration_seconds": 9,
+      "start_frame": 1140,
+      "end_frame": 1410,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 4,
+      "source_text": "zoom in on Stockholm at 17014m tilted 60 degrees for 7 seconds",
+      "action": "zoom_in",
+      "requested_action": "zoom_in",
+      "location_name": "Stockholm",
+      "location": {
+        "name": "Stockholm",
+        "latitude": 59.3293,
+        "longitude": 18.0686,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 17014,
+      "altitude_source": "explicit",
+      "tilt_deg": 60,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 47,
+      "end_seconds": 54,
+      "duration_seconds": 7,
+      "start_frame": 1410,
+      "end_frame": 1620,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": [],
+      "ends_at_orbit_entry": 5
+    },
+    {
+      "segment_id": 5,
+      "source_text": "orbit Stockholm once clockwise at 17014m tilted 60 degrees for 31 seconds",
+      "action": "orbit",
+      "requested_action": "orbit",
+      "location_name": "Stockholm",
+      "location": {
+        "name": "Stockholm",
+        "latitude": 59.3293,
+        "longitude": 18.0686,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 17014,
+      "altitude_source": "explicit",
+      "tilt_deg": 60,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 54,
+      "end_seconds": 85,
+      "duration_seconds": 31,
+      "start_frame": 1620,
+      "end_frame": 2550,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": [],
+      "orbit_degrees": 360,
+      "orbit_direction": 1
+    }
+  ],
+  "unresolved_items": [],
+  "motion_profile": {
+    "profile_version": 4,
+    "source": "config/earth-studio-motion/motion-profile.json",
+    "references": [
+      "darien-gap",
+      "mountkinabalu",
+      "radiator-untitled",
+      "servyx"
+    ],
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
+  },
+  "notes": [
+    "segment 4: endpoint set to segment 5's orbit ring entry (same target — the move lands on the ring the orbit starts from).",
+    "camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
+  ],
+  "manual_earth_studio_steps": [
+    "Open Google Earth Studio manually.",
+    "Create or open the project manually; this planner does not log in, automate a browser, or control Earth Studio.",
+    "Use shot-plan.json coordinates as manual camera/search references.",
+    "Use route.kml only as a placemark/path reference asset.",
+    "Manually create, review, and adjust all camera keyframes.",
+    "Render manually only after Mikko reviews the camera move."
+  ],
+  "warnings": [
+    "KML is a reference asset only and does not create a finished Google Earth Studio camera animation.",
+    "Placemark use as camera targets is unverified in v1; manually search or set camera targets from shot-plan.json if needed.",
+    "This planner does not render video, manipulate .esp files, control Google Earth Studio, or approve footage.",
+    "Technical planning artifacts are not creative approval, rights clearance, or package-run evidence approval."
+  ]
+}

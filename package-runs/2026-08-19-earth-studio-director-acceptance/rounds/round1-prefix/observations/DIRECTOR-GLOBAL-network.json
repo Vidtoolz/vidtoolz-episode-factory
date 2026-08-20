@@ -1,0 +1,456 @@
+{
+  "id": "DIRECTOR-GLOBAL-network",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-GLOBAL-network/earth-studio/earth-studio.esp",
+  "esp_sha256": "9389c740b6ce7640792685502a6b0e7ceedcdb96ca406708d3594bb73cda2778",
+  "expected": {
+    "total_frames": 4110,
+    "duration_seconds": 137,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 4110,
+    "totalFrames": 4110,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Shanghai",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 31.2304,
+        "longitude": 121.4737,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Shanghai",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 31.2304,
+        "target_lng": 121.4737
+      }
+    },
+    {
+      "frame": 45,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Shanghai",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f00045_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 45,
+        "latitude": 31.2304,
+        "longitude": 121.4737,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Shanghai",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 31.2304,
+        "target_lng": 121.4737
+      }
+    },
+    {
+      "frame": 90,
+      "label": "seg2-start",
+      "movement": "fly_to",
+      "place": "Amsterdam",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f00090_seg2-start.png",
+      "earth_studio_camera": {
+        "frame": 90,
+        "latitude": 31.2304,
+        "longitude": 121.4737,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Amsterdam",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 52.3676,
+        "target_lng": 4.9041
+      }
+    },
+    {
+      "frame": 600,
+      "label": "seg2-mid",
+      "movement": "fly_to",
+      "place": "Amsterdam",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f00600_seg2-mid.png",
+      "earth_studio_camera": {
+        "frame": 600,
+        "latitude": 49.29270083268038,
+        "longitude": 21.88361819126736,
+        "altitude": 2551017.438692755,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Amsterdam",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 52.3676,
+        "target_lng": 4.9041
+      }
+    },
+    {
+      "frame": 1110,
+      "label": "seg3-start",
+      "movement": "hover",
+      "place": "Amsterdam",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f01110_seg3-start.png",
+      "earth_studio_camera": {
+        "frame": 1110,
+        "latitude": 52.36756403378618,
+        "longitude": 4.9041,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Amsterdam",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 52.3676,
+        "target_lng": 4.9041
+      }
+    },
+    {
+      "frame": 1155,
+      "label": "seg3-mid",
+      "movement": "hover",
+      "place": "Amsterdam",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f01155_seg3-mid.png",
+      "earth_studio_camera": {
+        "frame": 1155,
+        "latitude": 52.36756403378618,
+        "longitude": 4.9041,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Amsterdam",
+        "altitude_m": 51042,
+        "tilt_deg": 0,
+        "target_lat": 52.3676,
+        "target_lng": 4.9041
+      }
+    },
+    {
+      "frame": 1200,
+      "label": "seg4-start",
+      "movement": "zoom_out",
+      "place": "Amsterdam",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f01200_seg4-start.png",
+      "earth_studio_camera": {
+        "frame": 1200,
+        "latitude": 52.36756403378618,
+        "longitude": 4.9041,
+        "altitude": 51042.49052965859,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Amsterdam",
+        "altitude_m": 12000000,
+        "tilt_deg": 0,
+        "target_lat": 52.3676,
+        "target_lng": 4.9041
+      }
+    },
+    {
+      "frame": 1380,
+      "label": "seg4-mid",
+      "movement": "zoom_out",
+      "place": "Amsterdam",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f01380_seg4-mid.png",
+      "earth_studio_camera": {
+        "frame": 1380,
+        "latitude": 52.36756403378618,
+        "longitude": 4.9041,
+        "altitude": 6025461.856897438,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Amsterdam",
+        "altitude_m": 12000000,
+        "tilt_deg": 0,
+        "target_lat": 52.3676,
+        "target_lng": 4.9041
+      }
+    },
+    {
+      "frame": 1560,
+      "label": "seg5-start",
+      "movement": "fly_to",
+      "place": "Los Angeles",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f01560_seg5-start.png",
+      "earth_studio_camera": {
+        "frame": 1560,
+        "latitude": 52.36756403378618,
+        "longitude": 4.9041,
+        "altitude": 11999881.223265216,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Los Angeles",
+        "altitude_m": 25521,
+        "tilt_deg": 60,
+        "target_lat": 34.0522,
+        "target_lng": -118.2437
+      }
+    },
+    {
+      "frame": 2070,
+      "label": "seg5-mid",
+      "movement": "fly_to",
+      "place": "Los Angeles",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f02070_seg5-mid.png",
+      "earth_studio_camera": {
+        "frame": 2070,
+        "latitude": 39.64089531656584,
+        "longitude": -79.04994416019352,
+        "altitude": 8512677.03077362,
+        "pan_deg": 0,
+        "tilt_deg": 41.36159082363978,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Los Angeles",
+        "altitude_m": 25521,
+        "tilt_deg": 60,
+        "target_lat": 34.0522,
+        "target_lng": -118.2437
+      }
+    },
+    {
+      "frame": 2580,
+      "label": "seg6-start",
+      "movement": "orbit",
+      "place": "Los Angeles",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f02580_seg6-start.png",
+      "earth_studio_camera": {
+        "frame": 2580,
+        "latitude": 33.655109878637255,
+        "longitude": -118.24369997895306,
+        "altitude": 25521.74276484306,
+        "pan_deg": 2.177879693887759e-8,
+        "tilt_deg": 60.00000000443357,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Los Angeles",
+        "altitude_m": 25521,
+        "tilt_deg": 60,
+        "target_lat": 34.0522,
+        "target_lng": -118.2437
+      }
+    },
+    {
+      "frame": 3165,
+      "label": "seg6-mid",
+      "movement": "orbit",
+      "place": "Los Angeles",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f03165_seg6-mid.png",
+      "earth_studio_camera": {
+        "frame": 3165,
+        "latitude": 34.44928052287237,
+        "longitude": -118.2437,
+        "altitude": 25521.745264829297,
+        "pan_deg": 173.08361574133505,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Los Angeles",
+        "altitude_m": 25521,
+        "tilt_deg": 60,
+        "target_lat": 34.0522,
+        "target_lng": -118.2437
+      }
+    },
+    {
+      "frame": 3750,
+      "label": "seg7-start",
+      "movement": "zoom_out",
+      "place": "Los Angeles",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f03750_seg7-start.png",
+      "earth_studio_camera": {
+        "frame": 3750,
+        "latitude": 33.65510987420367,
+        "longitude": -118.2437,
+        "altitude": 25521.745264829297,
+        "pan_deg": 360,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Los Angeles",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 34.0522,
+        "target_lng": -118.2437
+      }
+    },
+    {
+      "frame": 3855,
+      "label": "seg7-mid",
+      "movement": "zoom_out",
+      "place": "Los Angeles",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f03855_seg7-mid.png",
+      "earth_studio_camera": {
+        "frame": 3855,
+        "latitude": 33.83231589048453,
+        "longitude": -118.2437,
+        "altitude": 90741.09427827575,
+        "pan_deg": 360,
+        "tilt_deg": 31.152730709777362,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Los Angeles",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 34.0522,
+        "target_lng": -118.2437
+      }
+    },
+    {
+      "frame": 3960,
+      "label": "seg8-start",
+      "movement": "hover",
+      "place": "Los Angeles",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f03960_seg8-start.png",
+      "earth_studio_camera": {
+        "frame": 3960,
+        "latitude": 34.052195178201124,
+        "longitude": -118.24369999582633,
+        "altitude": 155959.44883667323,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Los Angeles",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 34.0522,
+        "target_lng": -118.2437
+      }
+    },
+    {
+      "frame": 4035,
+      "label": "seg8-mid",
+      "movement": "hover",
+      "place": "Los Angeles",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f04035_seg8-mid.png",
+      "earth_studio_camera": {
+        "frame": 4035,
+        "latitude": 34.052195198538016,
+        "longitude": -118.2437,
+        "altitude": 155959.44330170358,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Los Angeles",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 34.0522,
+        "target_lng": -118.2437
+      }
+    },
+    {
+      "frame": 4109,
+      "label": "seg8-end",
+      "movement": "hover",
+      "place": "Los Angeles",
+      "png": "package-runs/2026-08-19-earth-studio-director-acceptance/observations/DIRECTOR-GLOBAL-network/DIRECTOR-GLOBAL-network_f04109_seg8-end.png",
+      "earth_studio_camera": {
+        "frame": 4109,
+        "latitude": 34.052195198538016,
+        "longitude": -118.2437,
+        "altitude": 155959.44330170358,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Los Angeles",
+        "altitude_m": 155960,
+        "tilt_deg": 0,
+        "target_lat": 34.0522,
+        "target_lng": -118.2437
+      }
+    }
+  ],
+  "errors": []
+}

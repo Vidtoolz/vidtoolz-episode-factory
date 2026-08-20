@@ -31,6 +31,10 @@
   // degrees from straight-down (0 = top-down map view, ~70 = horizon).
   const DEFAULT_DURATION_S = { fly_to: 4, hover: 3, orbit: 10, zoom_in: 3, zoom_out: 4 };
   const DEFAULT_TILT_DEG = { fly_to: 45, hover: 50, orbit: 60, zoom_in: 45, zoom_out: 35 };
+  // Fraction of a move that ends on an orbit ring during which the camera tips
+  // from its travelling angle into the orbit's angle. Concentrating the tip near
+  // the ring entry keeps the earlier part of the move a single clean intention.
+  const ORBIT_ENTRY_TILT_MAX_RATE_DEG_PER_S = 12;
   const ZOOM_IN_ALTITUDE_M = 800;
   const ZOOM_OUT_ALTITUDE_M = 6000;
 
@@ -54,6 +58,65 @@
   //   Studio altitude keyframes are meters above sea level, best-effort.
   const LOCATION_FIXTURES = {
     // Finland + Nordics + Baltics
+    // ── Large-area geography (v0.9.5) ──────────────────────────────────────
+    // Countries, regions, seas and continents. These exist so the operator can
+    // frame a WHOLE geographic subject; the journey layer's auto-framing derives
+    // the camera altitude from each one's scale class (see
+    // earth-studio-journey.js FRAMING_SCALES). Coordinates are visual centroids
+    // chosen for framing, not administrative capitals.
+    // Nordic + Baltic countries
+    "finland": { name: "Finland", latitude: 64.5, longitude: 26, scale: "country" },
+    "sweden": { name: "Sweden", latitude: 62.5, longitude: 16.5, scale: "country" },
+    "norway": { name: "Norway", latitude: 64.5, longitude: 13, scale: "country" },
+    "denmark": { name: "Denmark", latitude: 56.1, longitude: 9.6, scale: "country" },
+    "iceland": { name: "Iceland", latitude: 64.9, longitude: -18.6, scale: "country" },
+    "estonia": { name: "Estonia", latitude: 58.6, longitude: 25.5, scale: "country" },
+    "latvia": { name: "Latvia", latitude: 56.9, longitude: 24.9, scale: "country" },
+    "lithuania": { name: "Lithuania", latitude: 55.2, longitude: 23.9, scale: "country" },
+    // Other countries
+    "united kingdom": { name: "United Kingdom", latitude: 54.4, longitude: -3, scale: "country" },
+    "ireland": { name: "Ireland", latitude: 53.2, longitude: -8, scale: "country" },
+    "france": { name: "France", latitude: 46.6, longitude: 2.4, scale: "country" },
+    "germany": { name: "Germany", latitude: 51.1, longitude: 10.4, scale: "country" },
+    "spain": { name: "Spain", latitude: 40.2, longitude: -3.7, scale: "country" },
+    "portugal": { name: "Portugal", latitude: 39.6, longitude: -8.2, scale: "country" },
+    "italy": { name: "Italy", latitude: 42.6, longitude: 12.6, scale: "country" },
+    "switzerland": { name: "Switzerland", latitude: 46.8, longitude: 8.2, scale: "country" },
+    "austria": { name: "Austria", latitude: 47.6, longitude: 13.4, scale: "country" },
+    "netherlands": { name: "Netherlands", latitude: 52.2, longitude: 5.5, scale: "country" },
+    "belgium": { name: "Belgium", latitude: 50.6, longitude: 4.6, scale: "country" },
+    "poland": { name: "Poland", latitude: 52.1, longitude: 19.4, scale: "country" },
+    "greece": { name: "Greece", latitude: 38.5, longitude: 23.8, scale: "country" },
+    "turkey": { name: "Turkey", latitude: 39, longitude: 35.2, scale: "country" },
+    "japan": { name: "Japan", latitude: 37.5, longitude: 137.5, scale: "country" },
+    "new zealand": { name: "New Zealand", latitude: -41.3, longitude: 173.2, scale: "country" },
+    // Regions
+    "lapland": { name: "Lapland", latitude: 67.9, longitude: 26.5, scale: "region" },
+    "scandinavia": { name: "Scandinavia", latitude: 63, longitude: 15, scale: "region" },
+    "the alps": { name: "The Alps", latitude: 46.6, longitude: 10.2, scale: "region" },
+    "the sahara": { name: "The Sahara", latitude: 23.4, longitude: 12.6, scale: "region" },
+    "the himalayas": { name: "The Himalayas", latitude: 29.3, longitude: 84.5, scale: "region" },
+    "the amazon": { name: "The Amazon", latitude: -4.4, longitude: -61.5, scale: "region" },
+    "the alps and dolomites": { name: "The Alps and Dolomites", latitude: 46.5, longitude: 11.5, scale: "region" },
+    "tuscany": { name: "Tuscany", latitude: 43.4, longitude: 11.1, scale: "region" },
+    "the scottish highlands": { name: "The Scottish Highlands", latitude: 57.3, longitude: -4.8, scale: "region" },
+    // Seas and other water bodies
+    "the baltic sea": { name: "The Baltic Sea", latitude: 58.3, longitude: 20.1, scale: "region" },
+    "the mediterranean": { name: "The Mediterranean", latitude: 35.5, longitude: 15.5, scale: "subcontinent" },
+    "the north sea": { name: "The North Sea", latitude: 56.2, longitude: 3.4, scale: "region" },
+    "the gulf of finland": { name: "The Gulf of Finland", latitude: 59.9, longitude: 25.4, scale: "region" },
+    "the red sea": { name: "The Red Sea", latitude: 20.4, longitude: 38.4, scale: "region" },
+    // Continents
+    "europe": { name: "Europe", latitude: 52, longitude: 15, scale: "continent" },
+    "africa": { name: "Africa", latitude: 2, longitude: 19, scale: "continent" },
+    "asia": { name: "Asia", latitude: 45, longitude: 90, scale: "continent" },
+    "north america": { name: "North America", latitude: 46, longitude: -100, scale: "continent" },
+    "south america": { name: "South America", latitude: -16, longitude: -60, scale: "continent" },
+    "australia": { name: "Australia", latitude: -25.3, longitude: 134, scale: "continent" },
+    "antarctica": { name: "Antarctica", latitude: -82, longitude: 20, scale: "continent" },
+    // Small named urban places the journey builder's examples use
+    "senate square": { name: "Senate Square", latitude: 60.1695, longitude: 24.9522, altitude_m: 600, scale: "landmark" },
+    "market square helsinki": { name: "Market Square, Helsinki", latitude: 60.1675, longitude: 24.9525, altitude_m: 600, scale: "landmark" },
     "helsinki": { name: "Helsinki", latitude: 60.1699, longitude: 24.9384 },
     "espoo": { name: "Espoo", latitude: 60.2055, longitude: 24.6559 },
     "tampere": { name: "Tampere", latitude: 61.4978, longitude: 23.761 },
@@ -250,6 +313,27 @@
 
   // Alternate names → canonical gazetteer key (keys are normalized names).
   const LOCATION_ALIASES = {
+    // Large-area geography spoken without the article (v0.9.5)
+    "baltic sea": "the baltic sea",
+    "mediterranean": "the mediterranean",
+    "mediterranean sea": "the mediterranean",
+    "north sea": "the north sea",
+    "gulf of finland": "the gulf of finland",
+    "red sea": "the red sea",
+    "alps": "the alps",
+    "sahara": "the sahara",
+    "sahara desert": "the sahara",
+    "himalayas": "the himalayas",
+    "amazon": "the amazon",
+    "amazon rainforest": "the amazon",
+    "scottish highlands": "the scottish highlands",
+    "uk": "united kingdom",
+    "great britain": "united kingdom",
+    "britain": "united kingdom",
+    "holland": "netherlands",
+    "nordics": "scandinavia",
+    "the nordics": "scandinavia",
+    "finnish lapland": "lapland",
     "nyc": "new york",
     "new york city": "new york",
     "manhattan": "midtown manhattan",
@@ -809,6 +893,54 @@
     };
   }
 
+  // Accept a camera seed in either the engine's own field names or the
+  // continuation-state export's names, and keep ONLY the five keyframed values.
+  function normalizeInitialCamera(seed) {
+    if (!seed || typeof seed !== "object") return null;
+    const src = seed.camera && typeof seed.camera === "object" ? seed.camera : seed;
+    // null/undefined/"" mean ABSENT (Number(null) === 0 would fabricate a 0).
+    const num = (v) => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    const out = {
+      latitude: num(src.latitude),
+      longitude: num(src.longitude),
+      altitude_m: num(src.altitude_m != null ? src.altitude_m : src.altitude),
+      pan_deg: num(src.pan_deg != null ? src.pan_deg : src.pan),
+      tilt_deg: num(src.tilt_deg != null ? src.tilt_deg : src.tilt),
+    };
+    const present = Object.values(out).filter((v) => v !== null).length;
+    if (!present) return null;
+    Object.keys(out).forEach((k) => { if (out[k] === null) delete out[k]; });
+    return out;
+  }
+
+  // The camera state the animation ENDS on, in real-world units, derived by
+  // running the same keyframe engine that writes the .esp — never re-derived by
+  // a parallel implementation. `pan_deg` is the engine's accumulated heading
+  // (an .esp pan track normalizes against its own min/max, so values beyond
+  // 360° are legitimate and are what a seamless continuation needs);
+  // `heading_deg` is the same angle wrapped into [0, 360) for humans.
+  // Longitude is wrapped into the exported ±180 contract.
+  function finalCameraState(plan, options = {}) {
+    const capture = {};
+    buildEspKeyframes(plan, { ...options, captureState: capture });
+    const state = capture.final;
+    if (!state) return null;
+    const wrapLng = (v) => { let x = ((Number(v) + 180) % 360 + 360) % 360 - 180; if (x === -180) x = 180; return x; };
+    const pan = Number(state.pan) || 0;
+    return {
+      latitude: round6(state.latitude),
+      longitude: round6(wrapLng(state.longitude)),
+      altitude_m: Math.round(state.altitude),
+      pan_deg: round6(pan),
+      heading_deg: round6(((pan % 360) + 360) % 360),
+      tilt_deg: round6(state.tilt),
+    };
+  }
+
   function uniqueResolvedLocations(segments) {
     const locations = new Map();
     segments.forEach((segment) => {
@@ -824,6 +956,14 @@
 
   function buildShotPlan(jobName, description, generatedAt = new Date().toISOString(), options = {}) {
     const parsed = parseDescription(description);
+    const initialCamera = normalizeInitialCamera(options.initialCamera);
+    const motionPolicyOption = options.motionPolicy && typeof options.motionPolicy === "object"
+      ? {
+        coherent_trajectory: !!options.motionPolicy.coherent_trajectory,
+        dedupe_keyframes: !!options.motionPolicy.dedupe_keyframes,
+        source: String(options.motionPolicy.source || "caller"),
+      }
+      : null;
     let aspect = options.aspect || DEFAULT_ASPECT;
     const aspectWarnings = [];
     if (!ASPECTS[aspect]) {
@@ -842,6 +982,10 @@
       render_dimensions: { ...ASPECTS[aspect] },
       total_duration_seconds: parsed.total_duration_seconds,
       total_frames: parsed.total_frames,
+      // Continuation seed (optional): present ONLY when the caller supplied one,
+      // so an ordinary plan keeps its byte-frozen field set exactly.
+      ...(initialCamera ? { initial_camera: initialCamera } : {}),
+      ...(motionPolicyOption ? { motion_policy: motionPolicyOption } : {}),
       locations: uniqueResolvedLocations(parsed.segments),
       segments: parsed.segments,
       unresolved_items: parsed.unresolved_items,
@@ -1136,6 +1280,25 @@ This checklist is technical planning support only. It is not creative approval, 
   }
 
   // Where the camera starts when the plan opens with this segment.
+  // A continuation seed: the exact camera state a PREVIOUS animation ended on
+  // (see finalCameraState / continuation-state.json). Only the five values the
+  // .esp actually keyframes exist — longitude, latitude, altitude, pan
+  // (rotationX) and tilt (rotationY); roll and FOV are never keyframed, so
+  // they are not part of a camera state and are not invented here. Missing
+  // fields fall back to the derived opening state for that field.
+  function seededCameraState(seed, segment, endAltitude, tilt) {
+    const derived = initialCameraState(segment, endAltitude, tilt);
+    const num = (v, fallback) => (Number.isFinite(v) ? Number(v) : fallback);
+    return {
+      latitude: num(seed.latitude, derived.latitude),
+      longitude: num(seed.longitude, derived.longitude),
+      altitude: clampAltitude(num(seed.altitude_m, num(seed.altitude, derived.altitude)),
+        (segment.location && segment.location.min_altitude_m) || 0),
+      pan: num(seed.pan_deg, num(seed.pan, derived.pan)),
+      tilt: num(seed.tilt_deg, num(seed.tilt, derived.tilt)),
+    };
+  }
+
   function initialCameraState(segment, endAltitude, tilt) {
     const location = segment.location;
     const minAlt = location.min_altitude_m || 0;
@@ -1166,7 +1329,40 @@ This checklist is technical planning support only. It is not creative approval, 
     return Math.min(altitude * Math.tan(toRadians(tilt)), 80000);
   }
 
+  // Operator directive (2026-08-19): "the camera movement must always follow a
+  // single coherent trajectory; wobbling at any point is prohibited by default"
+  // and "if some keyframes have no change between them, remove the keyframe when
+  // finishing the animation". Both are opt-in via plan.motion_policy so the
+  // byte-frozen freeform path is untouched.
+  function motionPolicy(plan, options = {}) {
+    const p = (plan && plan.motion_policy) || null;
+    return {
+      coherentTrajectory: !!(p && p.coherent_trajectory) && !options.compareLegacyMotion,
+      dedupeKeyframes: !!(p && p.dedupe_keyframes) && !options.compareLegacyMotion,
+    };
+  }
+
+  // Drop keyframes that change nothing: an interior keyframe whose value equals
+  // BOTH neighbours contributes no motion, so removing it leaves the curve
+  // identical while making the timeline readable. Flat-only by design — a
+  // collinear-but-moving keyframe still carries its own easing handles.
+  function dropRedundantKeyframes(track) {
+    if (!Array.isArray(track) || track.length < 3) return track;
+    const same = (a, b) => Math.abs(a - b) <= Math.max(1e-9, 1e-12 * Math.max(Math.abs(a), Math.abs(b)));
+    let out = track;
+    for (let pass = 0; pass < 64; pass += 1) {
+      const next = out.filter((kf, i) => {
+        if (i === 0 || i === out.length - 1) return true;
+        return !(same(kf.value, out[i - 1].value) && same(out[i + 1].value, kf.value));
+      });
+      if (next.length === out.length) return next;
+      out = next;
+    }
+    return out;
+  }
+
   function buildEspKeyframes(plan, options = {}) {
+    const policy = motionPolicy(plan, options);
     const tracks = { lng: [], lat: [], alt: [], pan: [], tilt: [] };
     const put = (trackName, frame, value) => {
       const track = tracks[trackName];
@@ -1201,7 +1397,12 @@ This checklist is technical planning support only. It is not creative approval, 
       const ef = segment.end_frame;
 
       if (!state) {
-        state = initialCameraState(segment, endAltitude, tilt);
+        // A continuation seed replaces ONLY the opening state; every downstream
+        // rule (easing, arcs, settle-hold, orbit ring entry) is untouched.
+        const seed = options.initialCamera;
+        state = seed && typeof seed === "object"
+          ? seededCameraState(seed, segment, endAltitude, tilt)
+          : initialCameraState(segment, endAltitude, tilt);
         put("lng", sf, state.longitude);
         put("lat", sf, state.latitude);
         put("alt", sf, state.altitude);
@@ -1253,7 +1454,13 @@ This checklist is technical planning support only. It is not creative approval, 
         if (hold >= Math.round(MOTION_SETTLE.min_hold_seconds * fpsFrames)) em = ef - hold;
       }
       const distance = haversineMeters(state, location);
-      const arcBump = segment.action === "fly_to" && distance > 30000 ? Math.min(distance * 0.35, 2500000) : 0;
+      // The cinematic arc adds a sine hump inside one fly_to, which reads as the
+      // camera wobbling up and back down mid-move (measured: a 15 s Helsinki ->
+      // Stockholm route climbed 51 -> 190 -> 51 km). Under a coherent-trajectory
+      // policy the altitude profile belongs to the journey's travel shape
+      // (pull back / cruise / descend), which is monotonic per movement.
+      const arcBump = !policy.coherentTrajectory && segment.action === "fly_to" && distance > 30000
+        ? Math.min(distance * 0.35, 2500000) : 0;
       const constrainedSpaceZoom = segment.action === "zoom_out"
         && segment.tilt_source === "semantic_space_composition";
       if (arcBump || state.altitude !== endAltitude) {
@@ -1300,12 +1507,35 @@ This checklist is technical planning support only. It is not creative approval, 
       }
       change("lng", sf, em, destLng);
       change("lat", sf, em, destLat);
-      if (!constrainedSpaceZoom) change("tilt", sf, em, tilt);
+      if (!constrainedSpaceZoom) {
+        const enteringOrbit = policy.coherentTrajectory && segment.ends_at_orbit_entry
+          && last("tilt") && last("tilt").value !== tilt;
+        if (enteringOrbit) {
+          // Hold the incoming tilt, then tip into the ring over as much of the
+          // move as a calm rotation rate needs (never more than the whole move).
+          const fps = plan.frame_rate || FRAME_RATE;
+          const delta = Math.abs(tilt - last("tilt").value);
+          const needFrames = Math.min(em - sf, (delta / ORBIT_ENTRY_TILT_MAX_RATE_DEG_PER_S) * fps);
+          anchor("tilt", sf);
+          put("tilt", em - needFrames, last("tilt").value);
+        }
+        change("tilt", sf, em, tilt);
+      }
       state = { latitude: destLat, longitude: destLng, altitude: endAltitude, pan: state.pan, tilt };
     });
+    // Terminal camera state out-channel: the state machine's last state IS the
+    // ending frame's camera, in real-world units (longitude still unwrapped —
+    // finalCameraState wraps it for export). Purely additive: callers that do
+    // not pass captureState see byte-identical behavior.
+    if (options.captureState && typeof options.captureState === "object") {
+      options.captureState.final = state ? { ...state } : null;
+    }
     // Emit-time wrap: the state machine runs unwrapped; the exported track
     // stays inside the ±180 contract, with seam pairs at crossings.
     tracks.lng = wrapLngTrack(tracks.lng);
+    if (policy.dedupeKeyframes) {
+      Object.keys(tracks).forEach((k) => { tracks[k] = dropRedundantKeyframes(tracks[k]); });
+    }
     return tracks;
   }
 
@@ -1376,7 +1606,13 @@ This checklist is technical planning support only. It is not creative approval, 
     const width = options.width || dims.width;
     const height = options.height || dims.height;
     const totalFrames = Math.max(1, plan.total_frames || 1);
-    const tracks = buildEspKeyframes(plan, options.compareLegacyMotion ? { compareLegacyMotion: true } : {});
+    const policy = motionPolicy(plan, options);
+    const keyframeOptions = options.compareLegacyMotion ? { compareLegacyMotion: true } : {};
+    // A plan carrying an initial_camera (continuation) seeds the opening state.
+    if (plan.initial_camera && typeof plan.initial_camera === "object") {
+      keyframeOptions.initialCamera = plan.initial_camera;
+    }
+    const tracks = buildEspKeyframes(plan, keyframeOptions);
     const frac = (frame) => Math.min(1, Math.max(0, frame / totalFrames));
     // Reference-informed easing (see MOTION_EASING): handles span a fraction of
     // the gap to the neighbor keyframe — easeOut departure, auto interiors,
@@ -1414,10 +1650,30 @@ This checklist is technical planning support only. It is not creative approval, 
         } else if (boundaryFracs.has(kf.time)) {
           const sa = MOTION_EASING.segment_arrival[cls];
           kf.transitionIn = { x: round6(-sa.fraction * gapPrev), y: 0, influence: sa.influence, type: "custom" };
-          kf.transitionOut = { x: 0, y: 0, type: "linear" };
+          // Does motion continue through this boundary? If it does, a linear
+          // out-side means the next movement starts instantly at full speed.
+          const motionContinues = i < arr.length - 1 && arr[i + 1].value !== k.value;
+          kf.transitionOut = (policy.coherentTrajectory && motionContinues)
+            ? { x: round6(MOTION_EASING.interior_fraction * gapNext), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" }
+            : { x: 0, y: 0, type: "linear" };
         } else {
-          kf.transitionIn = { x: round6(-MOTION_EASING.interior_fraction * gapPrev), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" };
-          kf.transitionOut = { x: round6(MOTION_EASING.interior_fraction * gapNext), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" };
+          const wasStill = arr[i - 1].value === k.value;
+          const willMove = i < arr.length - 1 && arr[i + 1].value !== k.value;
+          const startsMoving = policy.coherentTrajectory && wasStill && willMove;
+          const stopsMoving = policy.coherentTrajectory && !wasStill && !willMove;
+          if (startsMoving) {
+            // a real departure: hold still, then ease away
+            kf.transitionIn = { x: round6(-MOTION_EASING.interior_fraction * gapPrev), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" };
+            kf.transitionOut = { x: round6(MOTION_EASING.departure_fraction * gapNext), y: 0, type: "easeOut" };
+          } else if (stopsMoving) {
+            // a real arrival at rest: decelerate in, then hold still
+            const t = MOTION_EASING.terminal_arrival[cls];
+            kf.transitionIn = { x: round6(-t.fraction * gapPrev), y: 0, influence: t.influence, type: "custom" };
+            kf.transitionOut = { x: round6(MOTION_EASING.interior_fraction * gapNext), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" };
+          } else {
+            kf.transitionIn = { x: round6(-MOTION_EASING.interior_fraction * gapPrev), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" };
+            kf.transitionOut = { x: round6(MOTION_EASING.interior_fraction * gapNext), y: 0, influence: MOTION_EASING.interior_influence, type: "auto" };
+          }
         }
       }
       return kf;
@@ -1635,6 +1891,10 @@ This checklist is technical planning support only. It is not creative approval, 
     buildShotPlanMarkdown,
     buildEspKeyframes,
     buildEsp,
+    normalizeInitialCamera,
+    finalCameraState,
+    motionPolicy,
+    dropRedundantKeyframes,
     expectedFiles,
     validateShotPlanPayload,
     haversineMeters,

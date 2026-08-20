@@ -197,9 +197,20 @@ test("earth-studio GUI: pipeline page is a launcher; the guided page owns the wo
   assert.match(page, /earth\.google\.com\/studio/);
   assert.match(page, /frames folder/i);
   assert.match(page, /page-guide/);
-  for (const step of ["1 · Describe", "2 · Build the move", "3 · Export frames", "4 · Render frames", "5 · Use it"]) {
+  // Step 1 became the CAMERA JOURNEY BUILDER (the freeform description it
+  // replaced is still there behind the mode switch, asserted below).
+  for (const step of ["1 · Design the camera journey", "2 · Build the move", "3 · Export frames",
+    "4 · Render frames", "5 · Use it", "6 · Continue into the next animation"]) {
     assert.ok(page.includes(step), `missing step: ${step}`);
   }
+  assert.match(page, /earth-studio-journey\.js/);      // journey model shared with the server
+  assert.match(page, /data-mode="journey"/);           // journey builder is a visible mode
+  assert.match(page, /data-mode="freeform"/);          // the original description path is preserved
+  assert.match(page, /id="es-desc"/);                  // ...and its textarea still exists
+  assert.match(page, /data-addleg/);                   // + add destination
+  assert.match(page, /data-mvleg/);                    // destination reordering
+  assert.match(page, /es-create-cont/);                // create continuation
+  assert.match(page, /es-export-cont/);                // export continuation state
   assert.doesNotMatch(page, /8099/);
 });
 
@@ -773,8 +784,20 @@ test("earth-studio lane v0.7: in-place re-export (fresh file mtimes) is not stal
 test("project-earth-studio.html v0.7: unsaved edits survive polling regardless of focus", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "project-earth-studio.html"), "utf8");
   assert.ok(!html.includes("document.activeElement===descEl"), "focus-only guard removed");
-  assert.match(html, /descEl\.value !== \(ST\.job\?ST\.job\.description:''\)/);
-  assert.match(html, /jobEl\.value !== \(ST\.job\?ST\.job\.jobName:''\)/);
+  // The v0.7 rule is unchanged — dirtiness is a VALUE difference against the
+  // server-synchronized job, never a focus check. The journey builder made the
+  // description's local value mode-dependent (freeform textarea vs compiled
+  // journey), so the comparison is now against `localDesc`; both the
+  // description and the job name are still protected, and Generate still
+  // clears dirtiness by making server text == local text.
+  const start = html.indexOf("async function refresh()");
+  assert.ok(start > 0, "refresh() found");
+  const body = html.slice(start, html.indexOf("async function load()", start));
+  assert.match(body, /const serverDesc = ST\.job \? ST\.job\.description : ''/);
+  assert.match(body, /localDesc = descEl \? descEl\.value : serverDesc/);   // freeform mode
+  assert.match(body, /JB\.compileJourney\(JOURNEY\)\.description/);         // journey mode
+  assert.match(body, /const dirty = localDesc !== serverDesc/);
+  assert.match(body, /jobEl\.value !== \(ST\.job\?ST\.job\.jobName:''\)/);
   assert.match(html, /never the edited fields/);
 });
 
@@ -1215,7 +1238,7 @@ test("project-earth-studio.html: Windows UNC copy button emits a valid UNC path"
   const body = html.slice(start + anchor.length - 1, html.indexOf("`;", start) + 1);
   let captured = null;
   const evalRender = new Function(
-    "ID", "PKG_PATH", "ST", "esc", "cbtn", "stepBadge", "presetRow", "locChips", "aspectRow", "templateRow", "templateParamsBlock", "planner",
+    "ID", "PKG_PATH", "ST", "esc", "cbtn", "stepBadge", "presetRow", "locChips", "aspectRow", "templateRow", "templateParamsBlock", "planner", "MODE", "JB",
     `const s = ST; const framesDir = s.frames_dir; const hasFrames = (s.frame_count || 0) > 0;
      const rendered = false; const renderedUrl = ''; const active = 1; const job = s.job;
      const renderJob = s.render_job || {}; const laneDirPath = PKG_PATH + '/earth-studio';
@@ -1227,7 +1250,9 @@ test("project-earth-studio.html: Windows UNC copy button emits a valid UNC path"
     (x) => String(x == null ? "" : x),
     (text) => { if (text && String(text).includes("192.168.61.186")) captured = text; return ""; },
     () => "", () => "", () => "", () => "", () => "", () => "",
-    { LOCATION_FIXTURES: { x: { name: "x" } }, ASPECTS: { "16:9": { width: 1920, height: 1080 }, "9:16": { width: 1080, height: 1920 }, "1:1": { width: 1080, height: 1080 } } }
+    { LOCATION_FIXTURES: { x: { name: "x" } }, ASPECTS: { "16:9": { width: 1920, height: 1080 }, "9:16": { width: 1080, height: 1920 }, "1:1": { width: 1080, height: 1080 } }, FRAME_RATE: 30 },
+    "journey",
+    require("../earth-studio-journey.js")
   );
   assert.ok(captured, "UNC copy button rendered");
   const leading = captured.match(/^\\+/);

@@ -1,0 +1,306 @@
+{
+  "id": "D-scale-contrast-16x9",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/D-scale-contrast-16x9/earth-studio/earth-studio.esp",
+  "esp_sha256": "aae08611e73c4167f830a1eb29afab08be4e6b26f78e470dfda1db0e272daa4a",
+  "expected": {
+    "total_frames": 1410,
+    "duration_seconds": 47,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 1410,
+    "totalFrames": 1410,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Senate Square",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.16947850131579,
+        "longitude": 24.9522,
+        "altitude": 600.9940111632608,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Senate Square",
+        "altitude_m": 600,
+        "tilt_deg": 50,
+        "target_lat": 60.1695,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 60,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Senate Square",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00060_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 60,
+        "latitude": 60.16947850131579,
+        "longitude": 24.9522,
+        "altitude": 600.9940111632608,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Senate Square",
+        "altitude_m": 600,
+        "tilt_deg": 50,
+        "target_lat": 60.1695,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 120,
+      "label": "seg2-start",
+      "movement": "fly_to",
+      "place": "Finland",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00120_seg2-start.png",
+      "earth_studio_camera": {
+        "frame": 120,
+        "latitude": 60.16947850131579,
+        "longitude": 24.9522,
+        "altitude": 600.9940111632608,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Finland",
+        "altitude_m": 2369529,
+        "tilt_deg": 50,
+        "target_lat": 64.5,
+        "target_lng": 26
+      }
+    },
+    {
+      "frame": 360,
+      "label": "seg2-mid",
+      "movement": "fly_to",
+      "place": "Finland",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00360_seg2-mid.png",
+      "earth_studio_camera": {
+        "frame": 360,
+        "latitude": 63.87120144004563,
+        "longitude": 25.847430894604383,
+        "altitude": 1354641.4264422078,
+        "pan_deg": 5.968890485366578e-7,
+        "tilt_deg": 49.99999944101812,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Finland",
+        "altitude_m": 2369529,
+        "tilt_deg": 50,
+        "target_lat": 64.5,
+        "target_lng": 26
+      }
+    },
+    {
+      "frame": 600,
+      "label": "seg3-start",
+      "movement": "hover",
+      "place": "Finland",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00600_seg3-start.png",
+      "earth_studio_camera": {
+        "frame": 600,
+        "latitude": 64.49996710526315,
+        "longitude": 26,
+        "altitude": 2369506.348796117,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Finland",
+        "altitude_m": 2369529,
+        "tilt_deg": 50,
+        "target_lat": 64.5,
+        "target_lng": 26
+      }
+    },
+    {
+      "frame": 660,
+      "label": "seg3-mid",
+      "movement": "hover",
+      "place": "Finland",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00660_seg3-mid.png",
+      "earth_studio_camera": {
+        "frame": 660,
+        "latitude": 64.49996710526315,
+        "longitude": 26,
+        "altitude": 2369506.348796117,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Finland",
+        "altitude_m": 2369529,
+        "tilt_deg": 50,
+        "target_lat": 64.5,
+        "target_lng": 26
+      }
+    },
+    {
+      "frame": 720,
+      "label": "seg4-start",
+      "movement": "fly_to",
+      "place": "Europe",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f00720_seg4-start.png",
+      "earth_studio_camera": {
+        "frame": 720,
+        "latitude": 64.49996710526315,
+        "longitude": 26,
+        "altitude": 2369506.348796117,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Europe",
+        "altitude_m": 9113574,
+        "tilt_deg": 50,
+        "target_lat": 52,
+        "target_lng": 15
+      }
+    },
+    {
+      "frame": 1005,
+      "label": "seg4-mid",
+      "movement": "fly_to",
+      "place": "Europe",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f01005_seg4-mid.png",
+      "earth_studio_camera": {
+        "frame": 1005,
+        "latitude": 58.33626306957159,
+        "longitude": 22.976437606984444,
+        "altitude": 6275824.357905587,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Europe",
+        "altitude_m": 9113574,
+        "tilt_deg": 50,
+        "target_lat": 52,
+        "target_lng": 15
+      }
+    },
+    {
+      "frame": 1290,
+      "label": "seg5-start",
+      "movement": "hover",
+      "place": "Europe",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f01290_seg5-start.png",
+      "earth_studio_camera": {
+        "frame": 1290,
+        "latitude": 52,
+        "longitude": 15,
+        "altitude": 9113484.033822006,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Europe",
+        "altitude_m": 9113574,
+        "tilt_deg": 50,
+        "target_lat": 52,
+        "target_lng": 15
+      }
+    },
+    {
+      "frame": 1350,
+      "label": "seg5-mid",
+      "movement": "hover",
+      "place": "Europe",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f01350_seg5-mid.png",
+      "earth_studio_camera": {
+        "frame": 1350,
+        "latitude": 52,
+        "longitude": 15,
+        "altitude": 9113484.033822006,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Europe",
+        "altitude_m": 9113574,
+        "tilt_deg": 50,
+        "target_lat": 52,
+        "target_lng": 15
+      }
+    },
+    {
+      "frame": 1409,
+      "label": "seg5-end",
+      "movement": "hover",
+      "place": "Europe",
+      "png": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/observations/D-scale-contrast-16x9/D-scale-contrast-16x9_f01409_seg5-end.png",
+      "earth_studio_camera": {
+        "frame": 1409,
+        "latitude": 52,
+        "longitude": 15,
+        "altitude": 9113484.033822006,
+        "pan_deg": 0,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Europe",
+        "altitude_m": 9113574,
+        "tilt_deg": 50,
+        "target_lat": 52,
+        "target_lng": 15
+      }
+    }
+  ],
+  "errors": []
+}
