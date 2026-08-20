@@ -62,10 +62,10 @@ It never serializes anything. It produces journey-model decisions and an explana
 Fully deterministic: the same structured intent always gives the same direction, with no
 randomness, no clock and no LLM in the decision path.
 
-**Vocabularies.** 15 shot purposes (ORIENT, LOCATE, ESTABLISH, TRAVEL, ARRIVE, INSPECT,
+**Vocabularies.** 16 shot purposes (ORIENT, LOCATE, ESTABLISH, TRAVEL, ARRIVE, INSPECT,
 REVEAL, COMPARE, RELATE, SHOW_ROUTE, SHOW_SCALE, SHOW_TERRAIN, EMPHASIZE, TRANSITION,
-CONCLUDE), each declaring what the viewer should understand and which angle it wants;
-9 location roles (STARTING_CONTEXT, PRIMARY_SUBJECT, DESTINATION, WAYPOINT,
+CONCLUDE, CONTINUE), each declaring what the viewer should understand and which angle it
+wants; 9 location roles (STARTING_CONTEXT, PRIMARY_SUBJECT, DESTINATION, WAYPOINT,
 COMPARISON_LOCATION, ROUTE_POINT, GEOGRAPHIC_CONTEXT, SCALE_REFERENCE, FINAL_REVEAL);
 4 importance levels (LOW / NORMAL / HIGH / HERO); editorial rarity (COMMON / SELECTIVE /
 SPECIAL) as a prior, not a hard limit.
@@ -95,14 +95,68 @@ matter (`1 + highs + heroes*2`, capped) and spends it; selective moves cost 1, s
 moves 2. Once spent, they are actively discouraged. Repetition is penalised adjacently and
 cumulatively, so a special move that appears constantly stops being recommended.
 
-**Duration.** The journey model's magnitude-scaled, playback-validated duration stays the
-physical baseline. The Director only supplies a narrative `emphasis` multiplier over it
-(clamped 0.75-1.4, averaged rather than multiplied so three factors cannot triple a shot).
+**Duration.** Two layers. The journey model's magnitude-scaled duration remains the
+physical baseline for moves the Director does not time itself, with a narrative
+`emphasis` multiplier over it (clamped 0.75-1.4, averaged rather than multiplied).
+Travel legs the Director directs itself use an **editorial duration law**: screen
+time, not kilometres. Crossing duration grows logarithmically with distance (4s up to
+~150 km, `4 + 2.2·ln(km/50)` beyond, capped at 30s), paced relative to `calm` — so
+"calm" never degenerates into "slow". A Helsinki→Tokyo flight takes ~23s of crossing,
+not ~10× a Helsinki→Tallinn hop. When the legibility floor demands more time than the
+cap allows, the crossing alone grows and everything else stays editorial — readability
+beats runtime, but the rest of the shot doesn't pay for geography.
+
+**Continuation.** `CONTINUE` is a first-class purpose: a continuation shot picks up the
+EXACT terminal camera state of the previous animation (position, altitude, tilt,
+heading — never an approximation), settles from it, and hands its own terminal state
+forward. The GUI's Auto-Direct passes the lane's held continuation state; a journey
+that begins from continuation seeds `journey.start.source = "continuation"`.
+
+**Comparison.** Explicitly compared places are filmed as ONE repeated shot: after the
+first compared place, the group's movement and emphasis are mirrored (matched framing,
+matched scale, matched emphasis), and `direction.json` records `compare_match`. A
+scale-ladder story ("tiny Singapore compared with Southeast Asia") is the exception:
+the scale difference IS the story, so framing stays deliberately unequal — the word
+"compare" alone never forces matching.
+
+**Restraint (movement).** A circle must be earned: stated inspection intent, an
+explicitly assigned role, or hero importance. An ordinary destination that merely ends
+a travel leg gets a hold, not an orbit. Director-added orbits default to half a
+revolution; a full revolution needs explicit grammar ("full orbit"), hero importance or
+stated inspection/emphasis/reveal intent. Negative directions ("don't orbit", "no
+spiral", "don't go to globe view", "keep the horizon level") are hard constraints the
+Director does not argue with.
+
+**Explicit intent wins.** Explicit operator grammar ("orbit the Colosseum", "push in",
+"pull back", "hold") and explicit travel shape ("move directly to") hard-select the
+movement — except where the legibility doctrine outranks it (a shape that cannot stay
+readable in editorial time is declined, and the override is recorded in the decision
+evidence, never silent).
+
+**Directorial Plan.** `buildPlan()` returns the beat sequence as an explicit artifact:
+per-beat purpose, subject, role, importance, grammar, why, and duration taken from the
+journey's own compiled timeline; provenance per field (USER_SPECIFIED /
+GEOGRAPHICALLY_DERIVED / PLANNER_INFERRED / DEFAULTED / CARRIED_OVER / COMPUTED);
+compare/continuation blocks; total duration. `auditDirection()` adds story-level
+warnings with a clear visual reading (orientation reset — scale-ladder exempt, orbit
+monotony, unjustified globe, spiral overuse, orphan beats). Warnings inform; they never
+veto. The production lane persists the plan as `direction.json` next to every artifact.
 
 **Auto-Direct.** Free text is reduced to structured intent by deterministic keyword
-extraction over the planner's own gazetteer — it can only name places the generator knows,
-and it never invents a global reason from distance language. Once structured, direction is
+extraction over the planner's own gazetteer — it can only name places the generator
+knows, and it never invents a global reason from distance language. Clause-level
+attribution attaches purposes and roles to the places in the same clause; closing
+re-mentions become genuine wide conclusion beats; pacing language (calm/calmly,
+gentle/gently, slow/slowly, quickly) selects the pace. Once structured, direction is
 reproducible.
+
+**Human visual gate.** Everything above is technical evidence. Aesthetic authority
+remains with the operator: the fresh directorial evaluation package
+(`package-runs/2026-08-20-earth-studio-directorial-evaluation/`, regenerated by
+`scripts/earth-studio-directorial-evaluation.js`) is marked
+`TECHNICALLY VALID — READY FOR HUMAN VISUAL REVIEW`, and
+`node scripts/earth-studio-visual-review.js --gate package-runs/2026-08-20-earth-studio-directorial-evaluation`
+runs the one-button review (open → select case → click Play → judge).
 
 ## Camera journey builder (the default way to build a move)
 

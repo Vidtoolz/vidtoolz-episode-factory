@@ -1,0 +1,149 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": null,
+  "preset": null,
+  "start": {
+    "source": "continuation",
+    "location": "Tallinn",
+    "story": {
+      "role": "GEOGRAPHIC_CONTEXT",
+      "importance": "NORMAL",
+      "purposes": [
+        "CONTINUE"
+      ]
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null,
+    "continuation": {
+      "continuation_state_version": 1,
+      "generated_by": "earth-studio-journey",
+      "planner_version": "0.9.4",
+      "motion_profile_version": 4,
+      "source_animation": "DIRN-16a-continuation-source",
+      "timestamp": "2026-08-20T09:00:00.000Z",
+      "aspect": "16:9",
+      "frame_rate": 30,
+      "total_frames": 420,
+      "ends_at_frame": 419,
+      "camera": {
+        "latitude": 59.437,
+        "longitude": 24.7536,
+        "altitude_m": 34028,
+        "pan_deg": 0,
+        "heading_deg": 0,
+        "tilt_deg": 0
+      },
+      "esp_mapping": {
+        "longitude": "cameraPositionGroup.longitude",
+        "latitude": "cameraPositionGroup.latitude",
+        "altitude_m": "cameraPositionGroup.altitude",
+        "pan_deg": "cameraRotationGroup.rotationX",
+        "tilt_deg": "cameraRotationGroup.rotationY",
+        "not_keyframed": [
+          "rotationZ",
+          "fov",
+          "exposure",
+          "aperture",
+          "minFocusLength"
+        ]
+      },
+      "target": {
+        "name": "Tallinn",
+        "latitude": 59.437,
+        "longitude": 24.7536
+      },
+      "final_movement": {
+        "segment_id": 5,
+        "action": "hover",
+        "location_name": "Tallinn"
+      }
+    }
+  },
+  "start_movements": [
+    {
+      "id": "s985",
+      "type": "hold",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 0.95,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": [
+    {
+      "destination": {
+        "location": "Stockholm",
+        "story": {
+          "role": "STARTING_CONTEXT",
+          "importance": "NORMAL",
+          "purposes": [
+            "ESTABLISH",
+            "ORIENT"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "high_transit",
+      "travel": [
+        {
+          "id": "s981",
+          "type": "climb_to_transit",
+          "duration_seconds": 1.6,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s982",
+          "type": "cruise",
+          "duration_seconds": 4.8,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s983",
+          "type": "descend",
+          "duration_seconds": 1.6,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s984",
+          "type": "hold",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 1.08,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    }
+  ]
+}

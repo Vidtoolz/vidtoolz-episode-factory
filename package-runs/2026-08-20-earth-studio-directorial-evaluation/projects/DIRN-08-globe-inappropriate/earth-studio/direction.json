@@ -1,0 +1,218 @@
+{
+  "case": "DIRN-08-globe-inappropriate",
+  "title": "DIRN-08 — Gothenburg to Oslo (globe view would be ridiculous)",
+  "question": "Does the globe-justification gate suppress planetary scale for a ~250 km regional move?",
+  "expected": "Regional/city-scale treatment only. No globe shot, no space altitude.",
+  "generated_via": "parseIntent -> autoDirect -> journey model -> lane.writeJob (GUI path)",
+  "source_text": "Move from Gothenburg to Oslo.",
+  "parsed_intent": {
+    "stops": [
+      {
+        "location": "Gothenburg"
+      },
+      {
+        "location": "Oslo"
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null
+  },
+  "plan": {
+    "plan_version": 1,
+    "director_version": 1,
+    "source_text": "Move from Gothenburg to Oslo.",
+    "beats": [
+      {
+        "beat": "STARTING_CONTEXT",
+        "subject": "Gothenburg",
+        "role": "STARTING_CONTEXT",
+        "importance": "NORMAL",
+        "purpose": "ESTABLISH",
+        "purpose_label": "Establish",
+        "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.08,
+        "tilt_deg": null,
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 4,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      },
+      {
+        "beat": "TRAVEL",
+        "subject": "Gothenburg → Oslo",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "style:cinematic",
+        "grammar_label": "Cinematic (pull back, travel, descend)",
+        "rarity": "SELECTIVE",
+        "angle": "top_down",
+        "why": "its primary purpose is ARRIVE, which is what this shot is for a selective move is earned here (DESTINATION, importance HIGH)",
+        "distance_m": 255077,
+        "duration_seconds": 8,
+        "provenance": {
+          "subject": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "duration": "computed"
+        }
+      },
+      {
+        "beat": "DESTINATION",
+        "subject": "Oslo",
+        "role": "DESTINATION",
+        "importance": "HIGH",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.25,
+        "tilt_deg": null,
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 5,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      }
+    ],
+    "globe": {
+      "allowed": false,
+      "justification": null,
+      "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+    },
+    "compare_match": null,
+    "continuation": null,
+    "notes": [
+      "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+      "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "Special/selective moves used: Cinematic (pull back, travel, descend)."
+    ],
+    "span_m": 255077,
+    "total_duration_seconds": 17
+  },
+  "audit": {
+    "findings": [],
+    "ok": true,
+    "beat_count": 3
+  },
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Gothenburg",
+      "from": null,
+      "to": null,
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.08,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Zoom-To (native template)",
+        "Reveal",
+        "Pull Back"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Gothenburg",
+      "to": "Oslo",
+      "role": null,
+      "importance": null,
+      "movement": "style:cinematic",
+      "label": "Cinematic (pull back, travel, descend)",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "its primary purpose is ARRIVE, which is what this shot is for a selective move is earned here (DESTINATION, importance HIGH)",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.25,
+      "angle": "top_down",
+      "communicates": [
+        "a departure and an arrival that matter"
+      ],
+      "alternatives": [
+        "High Transit",
+        "Direct Fly-To"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "at",
+      "place": "Oslo",
+      "from": null,
+      "to": null,
+      "role": "DESTINATION",
+      "importance": "HIGH",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.25,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Push In",
+        "Reveal",
+        "Pull Back"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    }
+  ],
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Cinematic (pull back, travel, descend)."
+  ],
+  "explanation": [
+    "Gothenburg (Starting context, NORMAL): Hold for Establish — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Gothenburg → Oslo: Cinematic (pull back, travel, descend) — its primary purpose is ARRIVE, which is what this shot is for a selective move is earned here (DESTINATION, importance HIGH)",
+    "Oslo (Destination, HIGH): Hold for Arrive — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Cinematic (pull back, travel, descend)."
+  ]
+}

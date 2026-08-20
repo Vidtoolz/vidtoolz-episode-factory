@@ -117,7 +117,26 @@
       viewer_should_understand: "that the sequence has landed and is finished",
       angle: "either", motion: "low", dwell: 1.25, scales: [],
     },
+    CONTINUE: {
+      key: "CONTINUE", label: "Continue",
+      viewer_should_understand: "that the camera is picking up exactly where a previous animation left it",
+      angle: "either", motion: "low", dwell: 0.9, scales: [],
+    },
   };
+
+  // ── Provenance — where each plan value came from ──────────────────────────
+  // The plan must never present planner-inferred or defaulted values as
+  // user-specified facts.
+  const PROVENANCE = {
+    USER_SPECIFIED: "user-specified",
+    GEOGRAPHICALLY_DERIVED: "geographically-derived",
+    PLANNER_INFERRED: "planner-inferred",
+    DEFAULTED: "defaulted",
+    CARRIED_OVER: "carried-over",
+    COMPUTED: "computed",
+  };
+
+  const PLAN_VERSION = 1;
 
   // ── Location narrative role — what is this place doing in the story? ───────
   // `flourish` is how much visual specialness this role has earned:
@@ -672,6 +691,56 @@
     if (g.template && ctx.templates_allowed === false) {
       hard = `${g.label} needs explicit native-template parameters, which are not available here.`;
     }
+    // Explicit operator grammar wins over inference: when the operator names a
+    // movement ("orbit the Colosseum", "move directly to Berlin"), every other
+    // candidate is disqualified. Provenance: user-specified beats inferred.
+    if (ctx.explicit_grammar && key !== ctx.explicit_grammar) {
+      hard = `the operator explicitly asked for ${(CAMERA_GRAMMAR[ctx.explicit_grammar] || {}).label || ctx.explicit_grammar}`;
+    }
+    if (ctx.explicit_style && key !== ctx.explicit_style) {
+      hard = `the operator explicitly asked for ${(CAMERA_GRAMMAR[ctx.explicit_style] || {}).label || ctx.explicit_style.replace("style:", "")} travel`;
+    }
+    // Explicit style is authoritative UNLESS the shape it asks for cannot stay
+    // readable in editorial time — the legibility doctrine outranks it, and the
+    // override is always explained in the direction record, never silent.
+    if (!hard && ctx.explicit_style && key === ctx.explicit_style
+        && Number.isFinite(ctx.distance_m) && ctx.distance_m > 1000 && g.cruise) {
+      const Jl = loadJourney();
+      const Pl = loadPlanner();
+      if (Jl.readableTransitAltitudeM) {
+        const tilt = g.cruise === "destination_closer" ? 72 : 0;
+        const maxT = 30;
+        const floor = Jl.readableTransitAltitudeM(ctx.distance_m, maxT, tilt, { planner: Pl });
+        const cruiseAlt = styleCruiseAltitudeM(g, ctx, { planner: Pl, journey: Jl });
+        if (!Number.isFinite(floor) || floor > Math.max(cruiseAlt * 1.001, Pl.SPACE_ALTITUDE_M * 0.95)) {
+          hard = `the legibility doctrine outranks the explicit request: ${Math.round(ctx.distance_m / 1000)} km cannot be read from the altitude ${g.label} crosses at within ${maxT} seconds`;
+        }
+      }
+    }
+    // Negative directions are hard constraints — the Director does not argue.
+    const negs = ctx.negatives || [];
+    if (!hard && negs.includes("orbit") && /orbit/i.test(g.movement || key)) {
+      hard = "the operator ruled out orbits";
+    }
+    if (!hard && negs.includes("spiral") && g.spiral) {
+      hard = "the operator ruled out spirals";
+    }
+    if (!hard && negs.includes("globe") && g.requires_globe_justification) {
+      hard = "the operator ruled out globe views";
+    }
+    if (!hard && negs.includes("high_transit") && key === "style:high_transit") {
+      hard = "the operator ruled out high transit";
+    }
+    // Orbit restraint: a circle must be EARNED — by stated inspection intent, by
+    // an explicitly assigned role, or by hero importance. An ordinary
+    // destination that merely ends a travel sentence gets a settle, not a
+    // circle: orbiting every arrival is how generated animation reveals itself.
+    if (!hard && !ctx.explicit_grammar && /orbit/i.test(key) && ctx.slot === "at") {
+      const earned = ctx.purposes_explicit || ctx.role_explicit || ctx.importance === "HERO";
+      if (!earned) {
+        hard = "an orbit must be earned — by stated inspection intent, an assigned role, or hero importance. A plain arrival settles instead of circling.";
+      }
+    }
 
     const total = parts.reduce((a, p) => a + p.value, 0);
     return {
@@ -746,6 +815,20 @@
       // true when the camera TRAVELLED to this place: it is an endpoint, not an
       // open-ended subject to keep closing in on.
       is_arrival: !!raw.is_arrival,
+      // Explicit operator language, threaded from autoDirect: authoritative
+      // grammar/style choices and hard negative constraints.
+      explicit_grammar: raw.explicit_grammar || null,
+      explicit_style: raw.explicit_style || null,
+      negatives: Array.isArray(raw.negatives) ? raw.negatives : [],
+      // Whether the operator actually stated purposes/role (as opposed to the
+      // Director inferring them from position) — earned-intent evidence for the
+      // orbit-restraint rule. Direct recommend()/scoreCandidate() callers state
+      // their context explicitly, so an unspecified flag defaults to "stated"
+      // whenever the field itself is present; autoDirect overrides it with the
+      // parsed-intent provenance.
+      purposes_explicit: raw.purposes_explicit == null
+        ? !!(Array.isArray(raw.purposes) && raw.purposes.length) : !!raw.purposes_explicit,
+      role_explicit: raw.role_explicit == null ? !!raw.role : !!raw.role_explicit,
     };
   }
 
@@ -814,6 +897,76 @@
     ];
     const e = 1 + 0.5 * deltas.reduce((a, b) => a + b, 0);
     return Math.max(0.75, Math.min(1.4, e));
+  }
+
+  // ── Editorial travel duration: screen time, not kilometres ───────────────
+  // Map animation COMPRESSES geography: a 7,800 km flight is not ten times
+  // more interesting than a 780 km one, and a viewer cannot usefully watch
+  // thirty seconds of crossing. The physical baseline (planner.defaultDuration,
+  // distance-proportional) stays authoritative wherever the operator or a test
+  // sets durations explicitly; this is the Director's own pacing for the legs it
+  // invents. Log-compressed above a local floor, capped at 15 s, and scaled by
+  // pace RELATIVE to calm so "calm" never silently means "slow":
+  //   ~80 km   ->  5 s      ~400 km  ->  9 s
+  //   ~600 km  -> 10 s      ~7,800 km -> 15 s (cap, was 34 s)
+  // Readability is preserved by composition, not runtime: the journey model's
+  // legibility floor raises the transit altitude when a compressed crossing
+  // would smear the ground.
+  function editorialTravelSeconds(distanceM, paceKey) {
+    const km = Number.isFinite(distanceM) ? Math.max(0, distanceM) / 1000 : null;
+    const J = loadJourney();
+    const paces = J.PACE_PRESETS || {};
+    const calmFactor = (paces[J.DEFAULT_PACE] || { factor: 1 }).factor || 1;
+    const pf = ((paces[paceKey] || paces[J.DEFAULT_PACE] || { factor: 1 }).factor || 1) / calmFactor;
+    let base;
+    if (km == null) base = 6;
+    else if (km < 150) base = 5;
+    else base = Math.min(15, Math.round(4 + 2.2 * Math.log(km / 50)));
+    return Math.max(3, Math.round(base * pf * 10) / 10);
+  }
+  // How an editorial leg total is distributed over a travel style's steps.
+  // The crossing carries most of the time; the climb and descent share the rest.
+  const TRAVEL_STEP_WEIGHTS = {
+    direct: { fly: 1 },
+    cinematic: { pull_back: 0.2, cruise: 0.6, descend: 0.2 },
+    high_transit: { climb_to_transit: 0.2, cruise: 0.6, descend: 0.2 },
+    low_approach: { fly_low: 1 },
+    custom: { fly: 1 },
+  };
+  function editorialTravelSteps(styleKey, distanceM, paceKey, scaleCtx = {}) {
+    const g = TRAVEL_STYLE_GRAMMAR[styleKey];
+    if (!g) return [];
+    const total = editorialTravelSeconds(distanceM, paceKey);
+    const weights = TRAVEL_STEP_WEIGHTS[g.style] || {};
+    const steps = g.steps.map((s) => ({
+      type: s,
+      duration_seconds: Math.max(1, Math.round(total * (weights[s] != null ? weights[s] : 1 / g.steps.length) * 10) / 10),
+    }));
+    // Legibility: the crossing duration must fit the shape the style actually
+    // produces. The journey model's legibility floor raises transit altitude to
+    // the exact readable boundary — fw exactly AT the limit, which the
+    // validator rounds into a warning. So solve numerically for the shortest
+    // crossing time at which the floor altitude drops to (or below) the
+    // altitude this style cruises at; then the leg crosses at its own altitude
+    // with the ground sweeping past under the readable limit. Readability beats
+    // runtime: the crossing may exceed the editorial cap when the geography
+    // demands it, but nothing else does.
+    const J = loadJourney();
+    const planner = loadPlanner();
+    const crossing = steps.find((s) => (J.MOVEMENTS[s.type] || {}).travelsToDestination);
+    if (crossing && Number.isFinite(distanceM) && distanceM > 1000
+        && J.readableTransitAltitudeM && g.cruise) {
+      const tilt = g.cruise === "destination_closer" ? 72 : 0;
+      const cruiseAlt = styleCruiseAltitudeM(g, { distance_m: distanceM, scale: scaleCtx.scale, origin_scale: scaleCtx.origin_scale }, { planner, journey: J });
+      let t = crossing.duration_seconds;
+      while (t < 30) {
+        const floor = J.readableTransitAltitudeM(distanceM, t, tilt, { planner });
+        if (Number.isFinite(floor) && floor <= cruiseAlt * 1.001) break;
+        t += 0.5;
+      }
+      crossing.duration_seconds = Math.round(Math.min(t, 30) * 10) / 10;
+    }
+    return steps;
   }
 
   // ── Travel STYLES as directorial units ────────────────────────────────────
@@ -908,6 +1061,17 @@
     return Math.min(6, 1 + highs + heroes * 2);
   }
 
+  // Editorial orbit span: a director-added orbit is a RESTRAINED arc by
+  // default. A full revolution needs an earned reason — the operator asking
+  // for one, hero importance, or stated inspection/emphasis intent. Anything
+  // else is an arrival that circles once "because orbits are available".
+  function orbitRevolutionsFor(dec, stop) {
+    if (!dec || !/orbit/i.test(dec.movement || "")) return null;
+    const full = stop.explicit_grammar || stop.importance === "HERO"
+      || (stop.purposes_explicit && (stop.purposes || []).some((p) => ["INSPECT", "EMPHASIZE", "REVEAL"].includes(p)));
+    return full ? null : 0.5;
+  }
+
   // ── Auto-direct: structured intent -> an intentional journey ───────────────
   function autoDirect(intent = {}, options = {}) {
     const J = loadJourney(options.journey);
@@ -916,6 +1080,9 @@
       const src = typeof raw === "string" ? { location: raw } : (raw || {});
       const role = LOCATION_ROLES[src.role] ? src.role
         : (i === 0 ? "STARTING_CONTEXT" : (i === (intent.stops || []).length - 1 ? "DESTINATION" : "WAYPOINT"));
+      // A role the operator (or parser) actually assigned, not one inferred from
+      // stop position. Inferred roles are defaults; stated roles are intent.
+      const role_explicit = !!src.role;
       const roleDef = LOCATION_ROLES[role];
       const resolved = src.location ? planner.resolveLocation(src.location) : null;
       const classified = resolved || src.location
@@ -923,9 +1090,18 @@
       return {
         location: src.location || "",
         role,
+        role_explicit,
         importance: IMPORTANCE[src.importance] ? src.importance : roleDef.importance,
         purposes: (Array.isArray(src.purposes) && src.purposes.length ? src.purposes : roleDef.purposes)
           .filter((p) => SHOT_PURPOSES[p]),
+        // Purposes the OPERATOR stated are full intent; purposes inherited from
+        // a role definition are defaults. The distinction decides what an
+        // arrival orbit needs as justification (see the arrival-restraint rule).
+        purposes_explicit: Array.isArray(src.purposes) && src.purposes.length > 0,
+        // Explicit camera language from parseIntent (or structured input) is
+        // authoritative — it wins over inferred direction below.
+        explicit_grammar: src.explicit_grammar || src.grammar || null,
+        explicit_travel_style: src.explicit_travel_style || src.travel_style || null,
         framing: src.framing || "auto",
         scale: src.framing && src.framing !== "auto" ? src.framing : classified.scale,
         resolved,
@@ -948,6 +1124,10 @@
     const used = {};
     const decisions = [];
     let previous = null;
+    // Comparison-group state. Declared before the opening shot so an opening
+    // COMPARISON_LOCATION can anchor the group's grammar mirror.
+    let compareAnchorDecision = null;
+    let compareEmphasis = null;
 
     const spend = (dec) => {
       const g = CAMERA_GRAMMAR[dec.key] || {};
@@ -962,18 +1142,84 @@
       previous = { key: dec.key, grammar: CAMERA_GRAMMAR[dec.key] };
     };
 
+    // ── continuation: pick up exactly where a previous animation ended ──────
+    // The continuation state is the EXACT terminal camera of the source
+    // animation (earth-studio-journey.js continuationStateFromPlan) — never an
+    // approximation. The Director treats the hand-over as its own beat: settle
+    // briefly on the carried state, because an orbit right at the cut would
+    // slide sideways onto its ring (the journey validator warns the same).
+    const continuationState = intent.continuation_from || null;
+    if (continuationState) {
+      const J2 = loadJourney(options.journey);
+      const continuationCheck = J2.validateContinuationState(continuationState);
+      if (!continuationCheck.ok) throw new Error(`continuation state rejected: ${continuationCheck.errors[0]}`);
+      // "Continue from my previous animation and fly to X" names ONE place —
+      // the destination, not an anchor. Give the carried camera an anchor stop
+      // so the named place becomes a real travel leg instead of a lone hold.
+      if (stops.length === 1) {
+        const label = (continuationState.target && continuationState.target.name) || stops[0].location;
+        const resolved = planner.resolveLocation(label);
+        const classified = resolved ? J.classifyScale(resolved, label) : { scale: "city", source: "assumed_city" };
+        stops.unshift({
+          location: label, role: "GEOGRAPHIC_CONTEXT", importance: "NORMAL",
+          purposes: ["CONTINUE"], framing: "auto", scale: classified.scale, resolved,
+        });
+      }
+    }
+
     // ── opening shot at the first stop ──
     const first = stops[0];
-    const openCtx = {
-      slot: "at", role: first.role, importance: first.importance, purposes: first.purposes,
-      scale: first.scale, place: first.location, flourish_budget: Math.min(budget, IMPORTANCE[first.importance].flourish),
-      spectacle_spent: spectacleSpent, used_counts: used, previous,
-      journey_span_m: spanM, globe_justification: globe.allowed ? globe.justification : null,
-      templates_allowed: options.templates_allowed !== false,
-    };
-    const opening = recommend(openCtx);
-    const openDec = opening.recommended;
-    if (openDec) { decisions.push({ stop: 0, kind: "at", place: first.location, role: first.role, importance: first.importance, decision: openDec, alternatives: opening.alternatives, rejected: opening.rejected }); spend(openDec); }
+    let openDec = null;
+    let opening = null;
+    if (continuationState) {
+      const contLabel = (continuationState.target && continuationState.target.name) || first.location;
+      openDec = decisionOf(scoreCandidate("hold", normalizeContext({
+        slot: "at", role: "GEOGRAPHIC_CONTEXT", importance: "NORMAL", purposes: ["CONTINUE"],
+        scale: first.scale, place: contLabel,
+        flourish_budget: 0, spectacle_spent: spectacleSpent, used_counts: used, previous,
+      })), normalizeContext({ slot: "at", purposes: ["CONTINUE"], scale: first.scale }));
+      openDec.purpose = "CONTINUE";
+      openDec.purpose_label = SHOT_PURPOSES.CONTINUE.label;
+      openDec.viewer_should_understand = SHOT_PURPOSES.CONTINUE.viewer_should_understand;
+      openDec.why = "the camera picks up the exact terminal state of the previous animation; a brief settle makes the join seamless instead of sliding onto a ring at the cut";
+      decisions.push({ stop: 0, kind: "at", place: contLabel, role: "GEOGRAPHIC_CONTEXT", importance: "NORMAL", decision: openDec, alternatives: [], rejected: [], continuation: true });
+      spend(openDec);
+    } else {
+      const openCtx = {
+        slot: "at", role: first.role, importance: first.importance, purposes: first.purposes,
+        scale: first.scale, place: first.location, flourish_budget: Math.min(budget, IMPORTANCE[first.importance].flourish),
+        spectacle_spent: spectacleSpent, used_counts: used, previous,
+        journey_span_m: spanM, globe_justification: globe.allowed ? globe.justification : null,
+        templates_allowed: options.templates_allowed !== false,
+        explicit_grammar: first.explicit_grammar, negatives: intent.negatives || [],
+        purposes_explicit: first.purposes_explicit, role_explicit: first.role_explicit,
+      };
+      opening = recommend(openCtx);
+      openDec = opening.recommended;
+      if (openDec && first.role === "COMPARISON_LOCATION") compareAnchorDecision = openDec;
+      if (openDec) { decisions.push({ stop: 0, kind: "at", place: first.location, role: first.role, importance: first.importance, decision: openDec, alternatives: opening.alternatives, rejected: opening.rejected }); spend(openDec); }
+    }
+
+    // ── comparison group: matched framing is a hard directorial rule ────────
+    // Places the story explicitly compares must be filmed the same way — same
+    // framing scale, same emphasis — or the viewer measures the camera, not the
+    // geography. Only EXPLICIT comparison roles trigger matching: a scale story
+    // ("Singapore is small compared with Southeast Asia") infers COMPARE as a
+    // purpose but its whole point is UNEQUAL framing, so purpose alone must not
+    // trigger it. The first compared place's scale anchors the group; explicit
+    // operator framing is never overridden.
+    const compareIdx = stops
+      .map((s, i) => (s.role === "COMPARISON_LOCATION" ? i : -1))
+      .filter((i) => i >= 0);
+    let compareMatch = null;
+    if (compareIdx.length >= 2) {
+      const anchor = stops[compareIdx[0]];
+      compareIdx.forEach((i) => {
+        const s = stops[i];
+        if (s.framing === "auto") { s.framing = anchor.scale; s.scale = anchor.scale; }
+      });
+      compareMatch = { anchor: anchor.location, scale: anchor.scale, stops: compareIdx.map((i) => stops[i].location) };
+    }
 
     const legs = [];
     for (let i = 1; i < stops.length; i += 1) {
@@ -997,11 +1243,27 @@
         pace: intent.pace || (options.journeyPace || null),
         flourish_budget: budget, spectacle_spent: spectacleSpent, used_counts: used, previous,
         globe_justification: globe.allowed ? globe.justification : null,
+        explicit_style: to.explicit_travel_style, negatives: intent.negatives || [],
       });
-      const styleScored = TRAVEL_STYLE_CANDIDATES.map((k) => scoreCandidate(k, travelCtx))
+      let styleScored = TRAVEL_STYLE_CANDIDATES.map((k) => scoreCandidate(k, travelCtx))
         .filter((s) => !s.disqualified).sort((a, b) => b.score - a.score);
+      let styleOverrideNote = null;
+      if (!styleScored.length && to.explicit_travel_style) {
+        // The explicit style was ruled out by the legibility doctrine and every
+        // alternative by the explicit preference. Re-score WITHOUT the
+        // preference, record WHY the operator's shape was declined — explicit
+        // intent is authoritative, but a crossing that smears is not an
+        // alternative the Director may silently substitute.
+        const relaxed = normalizeContext({ ...travelCtx, explicit_style: null });
+        styleScored = TRAVEL_STYLE_CANDIDATES.map((k) => scoreCandidate(k, relaxed))
+          .filter((s) => !s.disqualified).sort((a, b) => b.score - a.score);
+        const declined = scoreCandidate(to.explicit_travel_style, travelCtx);
+        styleOverrideNote = declined.disqualified
+          || `the explicit travel shape could not stay readable within editorial time`;
+      }
       const styleTop = styleScored[0];
       const styleDec = decisionOf(styleTop, travelCtx);
+      if (styleOverrideNote) styleDec.explicit_override = styleOverrideNote;
       decisions.push({
         stop: i, kind: "travel", from: from.location, to: to.location,
         distance_m: distanceM == null ? null : Math.round(distanceM),
@@ -1020,9 +1282,29 @@
         templates_allowed: options.templates_allowed !== false,
         is_final: i === stops.length - 1,
         is_arrival: true,
+        explicit_grammar: to.explicit_grammar, negatives: intent.negatives || [],
+        purposes_explicit: to.purposes_explicit, role_explicit: to.role_explicit,
       };
       const arrival = recommend(atCtx);
-      const atDec = arrival.recommended;
+      let atDec = arrival.recommended;
+      // Comparison beats must read as ONE repeated shot, visually — not just in
+      // metadata. After the first compared place, mirror the anchor's grammar
+      // (movement + emphasis + orbit span) so the two shots film the same way.
+      if (atDec && compareMatch && to.role === "COMPARISON_LOCATION") {
+        if (compareEmphasis == null) compareEmphasis = atDec.emphasis;
+        else {
+          const anchor = compareAnchorDecision;
+          if (anchor && anchor.key !== atDec.key && !(to.explicit_grammar)) {
+            atDec = { ...atDec, key: anchor.key, movement: anchor.movement,
+              label: anchor.label, rarity: anchor.rarity,
+              tilt_deg: anchor.tilt_deg || null, compare_mirrored: true };
+          }
+          atDec.emphasis = compareEmphasis;
+        }
+      }
+      if (!compareAnchorDecision && compareMatch && to.role === "COMPARISON_LOCATION" && atDec) {
+        compareAnchorDecision = atDec;
+      }
       if (atDec && (SHOT_PURPOSES[to.purposes[0]] || {}).angle === "oblique"
           && !["oblique", "oblique_capable"].includes(atDec.grammarAngle || (CAMERA_GRAMMAR[atDec.key] || {}).angle)) {
         atDec.angle_limitation = `${to.purposes[0]} wants an oblique view, but at ${to.scale} scale no at-location move can hold one: an orbit can only face its target within the generator's ring cap. The oblique view is delivered by the approach instead.`;
@@ -1032,9 +1314,18 @@
       legs.push({
         destination: { location: to.location, framing: to.framing },
         travel_style: style.style,
-        travel: style.steps.map((k) => J.newStep(k, "travel")),
+        // EDITORIAL PACING: the Director sets travel durations itself — screen
+        // time compressed for distance, capped at 15 s, pace-relative — instead
+        // of letting the physical baseline grow with kilometres. Explicit step
+        // durations are "manual" in the journey model, so pace presets do not
+        // stretch them a second time.
+        travel: editorialTravelSteps(styleTop.key, distanceM, intent.pace || J.DEFAULT_PACE,
+          { scale: to.scale, origin_scale: from.scale })
+          .map((s) => J.normalizeStep(s, "travel")),
         movements: atDec
-          ? [J.normalizeStep({ type: atDec.movement, emphasis: atDec.emphasis, tilt_deg: atDec.tilt_deg || null }, "at")]
+          ? [J.normalizeStep({ type: atDec.movement, emphasis: atDec.emphasis,
+              tilt_deg: atDec.tilt_deg || null,
+              revolutions: orbitRevolutionsFor(atDec, to) }, "at")]
           : [],
       });
     }
@@ -1060,12 +1351,25 @@
       });
     }
 
+    // A continuation journey seeds its opening from the EXACT terminal camera
+    // state; the place name is only a label (see journey.continuationStateFromPlan).
+    const startSpec = continuationState
+      ? {
+        source: "continuation",
+        location: (continuationState.target && continuationState.target.name) || first.location,
+        framing: "auto",
+        continuation: continuationState,
+      }
+      : { location: first.location, framing: first.framing };
+
     const journey = J.normalizeJourney({
       pace: intent.pace || J.DEFAULT_PACE,
       aspect: intent.aspect || null,
-      start: { location: first.location, framing: first.framing },
+      start: startSpec,
       start_movements: openDec
-        ? [J.normalizeStep({ type: openDec.movement, emphasis: openDec.emphasis, tilt_deg: openDec.tilt_deg || null }, "at")]
+        ? [J.normalizeStep({ type: openDec.movement, emphasis: openDec.emphasis,
+            tilt_deg: openDec.tilt_deg || null,
+            revolutions: orbitRevolutionsFor(openDec, first) }, "at")]
         : [],
       legs,
     });
@@ -1077,8 +1381,166 @@
     notes.push(specials.length
       ? `Special/selective moves used: ${specials.map((d) => d.decision.label).join(", ")}.`
       : "No selective or special moves were used — nothing in this sequence earned one.");
+    if (compareMatch) notes.push(`Matched framing: ${compareMatch.stops.join(" / ")} are all filmed at ${compareMatch.scale} scale so they compare honestly.`);
+    if (continuationState) notes.push("This animation begins from the exact terminal camera state of a previous animation — no hidden reset.");
 
-    return { journey, decisions, globe, notes, span_m: Math.round(spanM), stops };
+    const result = { journey, decisions, globe, notes, span_m: Math.round(spanM), stops };
+    result.summary = J.summarizeJourney(journey);
+    result.plan = buildPlan(result, intent, { compare_match: compareMatch, continuation: continuationState });
+    result.audit = auditDirection(result);
+    return result;
+  }
+
+  // ── The Directorial Plan — an explicit artifact of the editorial beats ─────
+  // This is the thing an operator reads BEFORE any keyframe: what the story is,
+  // beat by beat, what each beat is for, which grammar was chosen and why. It is
+  // derived from the decisions the Director already made (no second source of
+  // truth) and persisted as machine-readable provenance.
+  function buildPlan(result, intent = {}, options = {}) {
+    const beats = [];
+    const push = (beat) => beats.push(beat);
+
+    // Beat durations come from the journey's own compiled timeline — the same
+    // numbers the generator will produce. stop -> movements, travel -> steps;
+    // a closing globe beat owns both the widening travel and its hold.
+    const timeline = (result.summary && result.summary.timeline) || [];
+    let ti = 0;
+    const sumSeconds = (items) => items.reduce((a, b) => a + (Number(b.seconds) || 0), 0);
+    const consumeStop = () => { const e = timeline[ti]; if (e && e.kind === "stop") { ti += 1; return sumSeconds(e.movements || []); } return null; };
+    const consumeTravel = () => { const e = timeline[ti]; if (e && e.kind === "travel") { ti += 1; return sumSeconds(e.steps || []); } return null; };
+
+    result.decisions.forEach((d) => {
+      const dec = d.decision || {};
+      if (d.kind === "travel") {
+        push({
+          beat: "TRAVEL",
+          subject: `${d.from} → ${d.to}`,
+          purpose: dec.purpose || "TRAVEL",
+          purpose_label: dec.purpose_label || "Travel",
+          viewer_should_understand: dec.viewer_should_understand || null,
+          grammar: dec.key, grammar_label: dec.label,
+          rarity: dec.rarity || null,
+          angle: dec.angle || null,
+          why: dec.why || null,
+          distance_m: d.distance_m == null ? null : d.distance_m,
+          duration_seconds: consumeTravel(),
+          provenance: {
+            subject: PROVENANCE.USER_SPECIFIED,
+            purpose: PROVENANCE.PLANNER_INFERRED,
+            grammar: PROVENANCE.PLANNER_INFERRED,
+            duration: PROVENANCE.COMPUTED,
+          },
+        });
+      } else {
+        let seconds = null;
+        if (d.globe) { seconds = (consumeTravel() || 0) + (consumeStop() || 0); }
+        else { seconds = consumeStop(); }
+        push({
+          beat: d.continuation ? "CONTINUE" : (d.role || "AT"),
+          subject: d.place || null,
+          role: d.role || null,
+          importance: d.importance || null,
+          purpose: dec.purpose || "ESTABLISH",
+          purpose_label: dec.purpose_label || "Establish",
+          viewer_should_understand: dec.viewer_should_understand || null,
+          grammar: dec.key, grammar_label: dec.label,
+          rarity: dec.rarity || null,
+          angle: dec.angle || null,
+          emphasis: dec.emphasis == null ? null : dec.emphasis,
+          tilt_deg: dec.tilt_deg == null ? null : dec.tilt_deg,
+          why: dec.why || null,
+          angle_limitation: dec.angle_limitation || null,
+          duration_seconds: seconds,
+          provenance: {
+            subject: PROVENANCE.USER_SPECIFIED,
+            role: (intent.stops || []).some((s) => (typeof s === "object" ? s.role : null) === d.role)
+              ? PROVENANCE.USER_SPECIFIED : PROVENANCE.PLANNER_INFERRED,
+            importance: (intent.stops || []).some((s) => (typeof s === "object" ? s.importance : null) === d.importance)
+              ? PROVENANCE.USER_SPECIFIED : PROVENANCE.PLANNER_INFERRED,
+            purpose: PROVENANCE.PLANNER_INFERRED,
+            grammar: PROVENANCE.PLANNER_INFERRED,
+            emphasis: PROVENANCE.COMPUTED,
+          },
+        });
+      }
+    });
+
+    // globe decision (if the Director appended a closing globe beat it is
+    // already a decision; the gate itself is recorded here regardless)
+    return {
+      plan_version: PLAN_VERSION,
+      director_version: DIRECTOR_VERSION,
+      source_text: intent.source_text || null,
+      beats,
+      globe: result.globe,
+      compare_match: options.compare_match || null,
+      continuation: options.continuation ? {
+        source_animation: options.continuation.source_animation || null,
+        ends_at_frame: options.continuation.ends_at_frame == null ? null : options.continuation.ends_at_frame,
+        camera: options.continuation.camera || null,
+        provenance: PROVENANCE.CARRIED_OVER,
+      } : null,
+      notes: result.notes,
+      span_m: result.span_m,
+      total_duration_seconds: result.summary ? result.summary.total_duration_seconds : null,
+    };
+  }
+
+  // ── Story-level audit — the sequence must hold together, not just each shot ─
+  // Deterministic checks that read the finished direction as a whole. These are
+  // WARNINGS/DEFECTS about editorial coherence, never a veto.
+  function auditDirection(result) {
+    const findings = [];
+    const warn = (code, message) => findings.push({ severity: "warning", code, message });
+
+    const decisions = result.decisions || [];
+    const atDecisions = decisions.filter((d) => d.kind === "at" && d.decision);
+
+    // 1) unnecessary orientation reset: a wide ORIENT/SHOW_SCALE that re-opens a
+    //    region the viewer has already been given. An explicit scale-ladder
+    //    story (SCALE_REFERENCE rungs) is a declared widening, not a reset.
+    const wideSeen = [];
+    atDecisions.forEach((d, i) => {
+      const stop = result.stops[d.stop] || {};
+      const p = d.decision.purpose;
+      const isWide = ["ORIENT", "SHOW_SCALE"].includes(p)
+        && ["region", "country", "subcontinent", "continent"].includes(stop.scale)
+        && stop.role !== "SCALE_REFERENCE";
+      if (!isWide) return;
+      if (i > 0 && wideSeen.length) {
+        warn("orientation_reset", `${d.place}: the viewer already has wide context (${wideSeen.join(", ")}) — a second wide ${p} beat re-orients without a narrative reason.`);
+      }
+      wideSeen.push(d.place);
+    });
+
+    // 2) orbit monotony: three or more at-location beats all orbiting.
+    const orbitBeats = atDecisions.filter((d) => /orbit/i.test(d.decision.key));
+    if (orbitBeats.length >= 3) {
+      warn("orbit_monotony", `${orbitBeats.length} stops are orbited (${orbitBeats.map((d) => d.place).join(", ")}). Repeated circles read as a style, not as intention.`);
+    }
+
+    // 3) globe used without a justification (defense in depth — the gate already blocks this).
+    const globeBeats = atDecisions.filter((d) => d.decision.key === "globe_view");
+    if (globeBeats.length && !(result.globe && result.globe.allowed)) {
+      warn("unjustified_globe", "A globe shot is present but no global justification was declared.");
+    }
+
+    // 4) specialty-motion overuse: more than one spiral in one sequence.
+    const spirals = atDecisions.filter((d) => /spiral/i.test(d.decision.key));
+    if (spirals.length > 1) {
+      warn("spiral_overuse", `${spirals.length} spirals in one sequence — a reveal move loses its meaning the second time it appears.`);
+    }
+
+    // 5) every destination has meaningful treatment (no empty at-beat).
+    atDecisions.forEach((d) => {
+      if (!d.decision || !d.decision.key) warn("orphan_at_beat", `${d.place}: an at-location beat has no camera grammar.`);
+    });
+
+    return {
+      findings,
+      ok: findings.every((f) => f.severity !== "error"),
+      beat_count: decisions.length,
+    };
   }
 
   // ── Deterministic structured-intent extraction ─────────────────────────────
@@ -1086,6 +1548,7 @@
   // intent always produces the same direction. No LLM in the decision path.
   const ROLE_PHRASES = [
     [/\b(main|primary|hero)\s+(destination|subject|city|location|place)\b/i, { role: "PRIMARY_SUBJECT", importance: "HIGH" }],
+    [/\bfeel\s+like\s+(the\s+)?(important|main|hero)\s+(destination|subject|place)\b/i, { role: "PRIMARY_SUBJECT", importance: "HIGH" }],
     [/\bhero\b/i, { role: "FINAL_REVEAL", importance: "HERO" }],
     [/\b(final|last)\s+(reveal|shot|subject)\b/i, { role: "FINAL_REVEAL", importance: "HERO" }],
     [/\b(destination)\b/i, { role: "DESTINATION", importance: "HIGH" }],
@@ -1098,10 +1561,11 @@
   ];
   const PURPOSE_PHRASES = [
     [/\bwhere\s+.*\bis\b|\bwhere\s+it\s+is\b|\brelative\s+to\b|\blocat(e|ion)\b/i, "LOCATE"],
+    [/\b(move|come)\s+closer\b|\bend\s+over\b|\bpull\s+in\b|\bclose\s+in\b/i, "LOCATE"],
     [/\bwhat\s+.*\blooks?\s+like\b|\binspect\b|\barchitecture\b|\bclose\s+look\b/i, "INSPECT"],
     [/\breveal\b|\bdramatic\b/i, "REVEAL"],
     [/\brout(e|es)\b|\bpath\b|\bjourney\s+through\b/i, "SHOW_ROUTE"],
-    [/\bscale\b|\bhow\s+big\b|\bnests?\b|\bcontext\b/i, "SHOW_SCALE"],
+    [/\bscale\b|\bhow\s+(big|small|large|remote)\b|\bnests?\b|\bcompared\s+(with|to)\b|\bcontext\b/i, "SHOW_SCALE"],
     [/\bterrain\b|\bmountain|\bvalley|\blandscape\b/i, "SHOW_TERRAIN"],
     [/\bcompar/i, "COMPARE"],
     [/\brelationship\b|\bconnects?\b/i, "RELATE"],
@@ -1111,6 +1575,21 @@
     [/\bemphasi/i, "EMPHASIZE"],
     [/\bconclu|\bend(ing)?\b|\bfinish/i, "CONCLUDE"],
   ];
+  // Explicit continuation requests. "Continue to X" alone is NOT one — that is
+  // ordinary travel language; a continuation hand-off must be stated as picking
+  // up from a PREVIOUS animation / where we left off.
+  const CONTINUE_PHRASES = [
+    /\bcontinue\s+(seamlessly\s+)?from\s+(my\s+|the\s+)?previous\b/i,
+    /\bseamless(ly)?\b/i,
+    /\bpick\s+up\s+where\b/i,
+    /\bfrom\s+where\s+(we|it|the\s+last)\b/i,
+  ];
+  // Pacing language. Deliberately coarse: only clearly-stated tempo changes are
+  // honoured; everything else keeps the journey's own pace.
+  const PACE_PHRASES = [
+    [/\b(quickly|fast|brief|tight)\b/i, "quick"],
+    [/\b(slow(ly)?|calm(ly)?|gentl(e|y)|unhurried|take\s+(your|our|its)\s+time)\b/i, "calm"],
+  ];
   const GLOBE_PHRASES = [
     [/\bglobal\s+network\b|\bworldwide\s+network\b|\bspans?\s+the\s+(planet|globe|world)\b|\bsubmarine\s+cables?\b|\bshipping\s+network\b/i, "GLOBAL_NETWORK"],
     [/\bworldwide\b|\bacross\s+the\s+world\b|\bglobally\b|\bspread\s+globally\b/i, "WORLDWIDE_PHENOMENON"],
@@ -1119,9 +1598,41 @@
     [/\bglobal\s+context\b|\bglobal\s+scale\b/i, "GLOBAL_CONTEXT"],
     [/\bwhole\s+(earth|planet|globe)\b|\bentire\s+planet\b/i, "GLOBAL_CONTEXT"],
   ];
+  // Explicit camera-grammar language. When the operator NAMES a movement, that
+  // is authoritative — it must win over inferred direction (see the override in
+  // autoDirect). Deliberately coarse: only unambiguous movement words map;
+  // everything else stays inferred. "Push in / come closer" asks for an
+  // approach; "pull back / out" asks to widen; "hold / stay" asks for stillness.
+  const GRAMMAR_PHRASES = [
+    [/\bfull\s+(360|circle|orbit)\b|\borbit\s+(twice|twice\s+around)\b|\bcircle\s+twice\b/i, "orbit"],
+    [/\b(circle|orbit|encircle)\b/i, "slow_orbit"],
+    [/\bpush\s+in\b|\bmove\s+closer\b|\bcome\s+closer\b|\bapproach\b|\bclose\s+in\s+on\b/i, "zoom_in"],
+    [/\bpull\s+(back|out|away)\b|\bzoom\s+out\b|\bwiden\s+(out)?\b/i, "zoom_out"],
+    [/\b(hold|stay)\s+(still|here|put)?\b|\bremains?\s+still\b|\bsteady\s+on\b/i, "hold"],
+  ];
+  // Explicit travel-shape language applies to the leg travelling TO the place
+  // named in the same clause ("then move directly to Berlin").
+  const TRAVEL_STYLE_PHRASES = [
+    [/\bdirectly\b|\bstraight\s+(to|there|across)\b|\bwithout\s+detours?\b/i, "style:direct"],
+  ];
+  // Explicit NEGATIVE directions: what the operator ruled out. These are hard
+  // constraints — the Director must not talk the operator out of them.
+  const NEGATIVE_PHRASES = [
+    [/\bdon'?t\s+orbit\b|\bno\s+orbit(ing)?\b|\bwithout\s+(an?\s+)?orbit/i, "orbit"],
+    [/\bdon'?t\s+spiral\b|\bno\s+spiral(ing)?\b/i, "spiral"],
+    [/\bno\s+globe\b|\bdon'?t\s+(go\s+to\s+|show\s+|use\s+)?(a\s+)?globe\b|\bstay\s+below\s+globe/i, "globe"],
+    [/\bno\s+(high\s+)?transit\b|\bdon'?t\s+climb\b/i, "high_transit"],
+  ];
+  const LEVEL_HORIZON_PHRASE = /\bkeep\s+the\s+horizon\s+level\b|\blevel\s+horizon\b/i;
 
-  // Split intent text into per-stop sentences and pull out place names using the
-  // planner's own gazetteer, so nothing is invented.
+  // Split intent text into sentences, then into CLAUSES, and attribute each
+  // clause's purposes/roles to the places actually named in THAT clause.
+  // Referential clauses ("compare the two cities", "inspect both", "make them
+  // comparable") carry intent but no place name; they apply to their referent:
+  // both/two/them/each -> the last two places mentioned, anything else -> the
+  // most recently mentioned place. TRAVEL is never a location purpose — it is
+  // the language of the leg, and the Director builds travel legs itself.
+  // Place names come from the planner's own gazetteer, so nothing is invented.
   function parseIntent(text, options = {}) {
     const planner = loadPlanner(options.planner);
     const raw = String(text == null ? "" : text);
@@ -1132,34 +1643,95 @@
 
     const seen = new Map();     // canonical name -> stop
     const order = [];
-    sentences.forEach((sentence) => {
+    const ensureStop = (name) => {
+      if (!seen.has(name)) { const stop = { location: name, purposes: [] }; seen.set(name, stop); order.push(stop); }
+      return seen.get(name);
+    };
+    const findHits = (clause) => {
       const hits = [];
       byLength.forEach((name) => {
-        const idx = sentence.toLowerCase().indexOf(name.toLowerCase());
+        const idx = clause.toLowerCase().indexOf(name.toLowerCase());
         if (idx < 0) return;
         if (hits.some((h) => idx >= h.idx && idx + name.length <= h.idx + h.name.length)) return;
         hits.push({ name, idx });
       });
-      hits.sort((a, b) => a.idx - b.idx);
-      const roleHit = ROLE_PHRASES.find(([re]) => re.test(sentence));
-      const purposeHits = PURPOSE_PHRASES.filter(([re]) => re.test(sentence)).map(([, p]) => p);
-      hits.forEach((h) => {
-        if (!seen.has(h.name)) {
-          const stop = { location: h.name, purposes: [] };
-          seen.set(h.name, stop); order.push(stop);
+      return hits.sort((a, b) => a.idx - b.idx);
+    };
+
+    sentences.forEach((sentence) => {
+      const clauses = sentence.split(/,(?=\s)/).map((x) => x.trim()).filter(Boolean);
+      clauses.forEach((clause) => {
+        const hits = findHits(clause);
+        const roleHit = ROLE_PHRASES.find(([re]) => re.test(clause));
+        const purposeHits = PURPOSE_PHRASES
+          .filter(([re]) => re.test(clause)).map(([, p]) => p)
+          .filter((p) => p !== "TRAVEL");
+        // "compare ... from roughly the SAME SCALE" is matched-framing language,
+        // not a scale story: the size relationship is not the subject. A scale
+        // STORY ("show how tiny Singapore is compared with Southeast Asia")
+        // keeps SHOW_SCALE — there the inequality itself is the point.
+        if (purposeHits.includes("SHOW_SCALE") && /\b(same|similar|equal|matching|comparable)\s+scale\b/i.test(clause)) {
+          purposeHits.splice(purposeHits.indexOf("SHOW_SCALE"), 1);
         }
-        const stop = seen.get(h.name);
-        if (roleHit && !stop.role) { stop.role = roleHit[1].role; stop.importance = roleHit[1].importance; }
-        purposeHits.forEach((p) => { if (!stop.purposes.includes(p)) stop.purposes.push(p); });
+        const plural = /\b(both|two|three|four|them|each)\b/i.test(clause);
+
+        // A CLOSING re-mention ("...then end in Scandinavia") names a place the
+        // story already used, but it is a NEW final beat — a resolved wide
+        // ending, not extra purposes on the opening stop. Re-emit it as the
+        // last stop so the sequence actually returns to the wider geography.
+        const closing = /\b(end|finish|conclude|close)\b/i.test(clause)
+          && hits.length === 1 && seen.has(hits[0].name);
+        if (closing) {
+          const stop = {
+            location: hits[0].name,
+            role: "GEOGRAPHIC_CONTEXT",
+            importance: "NORMAL",
+            purposes: purposeHits.slice(),
+          };
+          // A wide ending must WIDEN back to that geography, then settle.
+          if (!stop.purposes.includes("SHOW_SCALE")) stop.purposes.push("SHOW_SCALE");
+          if (!stop.purposes.includes("CONCLUDE")) stop.purposes.push("CONCLUDE");
+          order.push(stop);
+          return;
+        }
+
+        hits.forEach((h) => ensureStop(h.name));
+        const targets = hits.length
+          ? hits.map((h) => seen.get(h.name))
+          : (plural ? order.slice(-2) : order.slice(-1));
+        // Explicit camera-grammar words in this clause are AUTHORITATIVE for the
+        // places named in it ("orbit the Colosseum", "push in toward it"). A
+        // clause with no place name applies to the most recent place, same as
+        // purposes. Travel-shape words ("move directly to Berlin") govern the
+        // leg arriving at the clause's destination.
+        const grammarHit = GRAMMAR_PHRASES.find(([re]) => re.test(clause));
+        const styleHit = TRAVEL_STYLE_PHRASES.find(([re]) => re.test(clause));
+        targets.forEach((stop) => {
+          if (roleHit && !stop.role) { stop.role = roleHit[1].role; stop.importance = roleHit[1].importance; }
+          purposeHits.forEach((p) => { if (!stop.purposes.includes(p)) stop.purposes.push(p); });
+          if (grammarHit && !stop.explicit_grammar) stop.explicit_grammar = grammarHit[1];
+          if (styleHit && !stop.explicit_travel_style) stop.explicit_travel_style = styleHit[1];
+        });
       });
     });
     const globeHit = GLOBE_PHRASES.find(([re]) => re.test(raw));
+    // Continuation is a HAND-OFF, not a destination purpose: parseIntent flags it
+    // and the operator supplies the source animation's exported state; the
+    // Director refuses to approximate a previous camera from memory.
+    const continuationRequested = CONTINUE_PHRASES.some((re) => re.test(raw));
+    const paceHit = options.pace ? null : PACE_PHRASES.find(([re]) => re.test(raw));
+    // Explicit negative directions are hard constraints, applied sequence-wide:
+    // "don't orbit", "no spiral", "stay below globe view".
+    const negatives = NEGATIVE_PHRASES.filter(([re]) => re.test(raw)).map(([, family]) => family);
     return {
       stops: order.map((s) => ({ ...s, purposes: s.purposes.length ? s.purposes : undefined })),
       globe_justification: globeHit ? globeHit[1] : null,
-      source_text: raw,
-      pace: options.pace || null,
+      continuation_requested: continuationRequested,
+      pace: options.pace || (paceHit ? paceHit[1] : null),
       aspect: options.aspect || null,
+      negatives: negatives.length ? negatives : undefined,
+      level_horizon: LEVEL_HORIZON_PHRASE.test(raw) || undefined,
+      source_text: raw,
     };
   }
 
@@ -1174,6 +1746,9 @@
       }
     });
     result.notes.forEach((n) => lines.push(n));
+    if (result.audit && result.audit.findings && result.audit.findings.length) {
+      result.audit.findings.forEach((f) => lines.push(`[${f.code}] ${f.message}`));
+    }
     return lines;
   }
 
@@ -1197,6 +1772,10 @@
     LARGE_SCALES,
     TRAVEL_STYLE_GRAMMAR,
     TRAVEL_STYLE_CANDIDATES,
+    PROVENANCE,
+    PLAN_VERSION,
+    buildPlan,
+    auditDirection,
     styleCruiseAltitudeM,
     flourishBudgetFor,
     autoDirect,

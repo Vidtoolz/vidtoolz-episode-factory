@@ -1,0 +1,36 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": null,
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Helsinki Cathedral",
+    "story": {
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "purposes": [
+        "ESTABLISH",
+        "ORIENT"
+      ]
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s15",
+      "type": "zoom_in",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 1.08,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": []
+}

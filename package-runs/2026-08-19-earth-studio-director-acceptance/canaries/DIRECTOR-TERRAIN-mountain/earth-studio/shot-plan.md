@@ -1,8 +1,8 @@
 # Shot Plan: DIRECTOR-TERRAIN-mountain
 
-Total duration: 103 seconds
+Total duration: 88 seconds
 Frame rate: 30 fps
-Total frames: 3090
+Total frames: 2640
 Aspect: 16:9 (1920x1080)
 Frame convention: start_frame inclusive, end_frame exclusive
 
@@ -11,10 +11,10 @@ Frame convention: start_frame inclusive, end_frame exclusive
 | # | Action | Location | Alt (m) | Tilt | Time | start_frame | end_frame | Status |
 |---|---|---|---:|---:|---:|---:|---:|---|
 | 1 | hover | Zurich | 34028 | 0 | 0-4s | 0 | 120 | resolved |
-| 2 | zoom_out | Zurich | 155960 | 0 | 4-11s | 120 | 330 | resolved |
-| 3 | fly_to | Matterhorn | 155960 | 0 | 11-18s | 330 | 540 | resolved |
-| 4 | zoom_in | Matterhorn | 6500 | 72 | 18-26s | 540 | 780 | resolved |
-| 5 | orbit | Matterhorn | 6500 | 72 | 26-103s | 780 | 3090 | resolved |
+| 2 | zoom_out | Zurich | 155960 | 0 | 4-5.4s | 120 | 162 | resolved |
+| 3 | fly_to | Matterhorn | 155960 | 0 | 5.4-9.600000000000001s | 162 | 288 | resolved |
+| 4 | zoom_in | Matterhorn | 6500 | 72 | 9.600000000000001-11.000000000000002s | 288 | 330 | resolved |
+| 5 | orbit | Matterhorn | 6500 | 72 | 11.000000000000002-88s | 330 | 2640 | resolved |
 
 ## Locations
 

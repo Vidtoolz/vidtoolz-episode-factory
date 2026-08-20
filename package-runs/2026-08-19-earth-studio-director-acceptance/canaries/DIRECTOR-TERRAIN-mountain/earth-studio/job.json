@@ -1,15 +1,15 @@
 {
   "jobName": "DIRECTOR-TERRAIN-mountain",
   "slug": "director-terrain-mountain",
-  "description": "hover over Zurich at 34028m tilted 0 degrees for 4 seconds then zoom out from Zurich at 155960m tilted 0 degrees for 7 seconds then fly to Matterhorn at 155960m tilted 0 degrees for 7 seconds then zoom in on Matterhorn tilted 72 degrees for 8 seconds then orbit Matterhorn once clockwise tilted 72 degrees for 77 seconds",
+  "description": "hover over Zurich at 34028m tilted 0 degrees for 4 seconds then zoom out from Zurich at 155960m tilted 0 degrees for 1.4 seconds then fly to Matterhorn at 155960m tilted 0 degrees for 4.2 seconds then zoom in on Matterhorn tilted 72 degrees for 1.4 seconds then orbit Matterhorn once clockwise tilted 72 degrees for 77 seconds",
   "aspect": "16:9",
   "render_dimensions": {
     "width": 1920,
     "height": 1080
   },
   "frame_rate": 30,
-  "total_frames": 3090,
-  "total_duration_seconds": 103,
+  "total_frames": 2640,
+  "total_duration_seconds": 88,
   "unresolved_count": 0,
   "planner_version": "0.9.4",
   "motion_profile": {
@@ -31,7 +31,8 @@
     "start_source": "location",
     "stop_count": 2,
     "movement_count": 5,
-    "compiled_description": "hover over Zurich at 34028m tilted 0 degrees for 4 seconds then zoom out from Zurich at 155960m tilted 0 degrees for 7 seconds then fly to Matterhorn at 155960m tilted 0 degrees for 7 seconds then zoom in on Matterhorn tilted 72 degrees for 8 seconds then orbit Matterhorn once clockwise tilted 72 degrees for 77 seconds"
+    "compiled_description": "hover over Zurich at 34028m tilted 0 degrees for 4 seconds then zoom out from Zurich at 155960m tilted 0 degrees for 1.4 seconds then fly to Matterhorn at 155960m tilted 0 degrees for 4.2 seconds then zoom in on Matterhorn tilted 72 degrees for 1.4 seconds then orbit Matterhorn once clockwise tilted 72 degrees for 77 seconds"
   },
+  "camera_quality": "camera-quality.json",
   "continuation_state": "continuation-state.json"
 }

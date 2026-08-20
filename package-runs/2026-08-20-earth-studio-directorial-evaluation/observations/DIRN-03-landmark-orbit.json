@@ -1,0 +1,106 @@
+{
+  "id": "DIRN-03-landmark-orbit",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-03-landmark-orbit/earth-studio/earth-studio.esp",
+  "esp_sha256": "af741606b21efa804a5fef9fc2ff057e19e3fd53fbcd9be6008f9092f835083c",
+  "expected": {
+    "total_frames": 990,
+    "duration_seconds": 33,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 990,
+    "totalFrames": 990,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "orbit",
+      "place": "Colosseum",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-03-landmark-orbit/DIRN-03-landmark-orbit_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 41.90110395468063,
+        "longitude": 12.4922,
+        "altitude": 700.9930130238043,
+        "pan_deg": 180,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Colosseum",
+        "altitude_m": 700,
+        "tilt_deg": 60,
+        "target_lat": 41.8902,
+        "target_lng": 12.4922
+      }
+    },
+    {
+      "frame": 495,
+      "label": "seg1-mid",
+      "movement": "orbit",
+      "place": "Colosseum",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-03-landmark-orbit/DIRN-03-landmark-orbit_f00495_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 495,
+        "latitude": 41.879296,
+        "longitude": 12.4922,
+        "altitude": 700.9930130238043,
+        "pan_deg": 360,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Colosseum",
+        "altitude_m": 700,
+        "tilt_deg": 60,
+        "target_lat": 41.8902,
+        "target_lng": 12.4922
+      }
+    },
+    {
+      "frame": 989,
+      "label": "seg1-end",
+      "movement": "orbit",
+      "place": "Colosseum",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-03-landmark-orbit/DIRN-03-landmark-orbit_f00989_seg1-end.png",
+      "earth_studio_camera": {
+        "frame": 989,
+        "latitude": 41.90110379961791,
+        "longitude": 12.49219515342281,
+        "altitude": 700.9930130238043,
+        "pan_deg": 539.9728012321968,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Colosseum",
+        "altitude_m": 700,
+        "tilt_deg": 60,
+        "target_lat": 41.8902,
+        "target_lng": 12.4922
+      }
+    }
+  ],
+  "errors": []
+}

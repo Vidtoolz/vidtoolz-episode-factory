@@ -1,0 +1,176 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": null,
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Helsinki",
+    "story": {
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "purposes": [
+        "ESTABLISH",
+        "ORIENT"
+      ]
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s793",
+      "type": "hold",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 1.08,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": [
+    {
+      "destination": {
+        "location": "Stockholm",
+        "story": {
+          "role": "WAYPOINT",
+          "importance": "LOW",
+          "purposes": [
+            "ESTABLISH",
+            "TRANSITION"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "high_transit",
+      "travel": [
+        {
+          "id": "s785",
+          "type": "climb_to_transit",
+          "duration_seconds": 1.8,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s786",
+          "type": "cruise",
+          "duration_seconds": 5.4,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s787",
+          "type": "descend",
+          "duration_seconds": 1.8,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s788",
+          "type": "hold",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 0.88,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    },
+    {
+      "destination": {
+        "location": "Copenhagen",
+        "story": {
+          "role": "DESTINATION",
+          "importance": "HIGH",
+          "purposes": [
+            "ARRIVE",
+            "ESTABLISH",
+            "INSPECT"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "high_transit",
+      "travel": [
+        {
+          "id": "s789",
+          "type": "climb_to_transit",
+          "duration_seconds": 1.8,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s790",
+          "type": "cruise",
+          "duration_seconds": 5.4,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s791",
+          "type": "descend",
+          "duration_seconds": 1.8,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s792",
+          "type": "slow_orbit",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 1.25,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": 0.5
+        }
+      ]
+    }
+  ]
+}

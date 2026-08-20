@@ -1,0 +1,220 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": null,
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Scandinavia",
+    "story": {
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "purposes": [
+        "ESTABLISH",
+        "ORIENT"
+      ]
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s641",
+      "type": "hold",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 1.08,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": [
+    {
+      "destination": {
+        "location": "Helsinki",
+        "story": {
+          "role": "WAYPOINT",
+          "importance": "LOW",
+          "purposes": [
+            "ESTABLISH",
+            "TRANSITION"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "high_transit",
+      "travel": [
+        {
+          "id": "s631",
+          "type": "climb_to_transit",
+          "duration_seconds": 2,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s632",
+          "type": "cruise",
+          "duration_seconds": 6,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s633",
+          "type": "descend",
+          "duration_seconds": 2,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s634",
+          "type": "hold",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 0.88,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    },
+    {
+      "destination": {
+        "location": "Stockholm",
+        "story": {
+          "role": "WAYPOINT",
+          "importance": "LOW",
+          "purposes": [
+            "ESTABLISH",
+            "TRANSITION"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "high_transit",
+      "travel": [
+        {
+          "id": "s635",
+          "type": "climb_to_transit",
+          "duration_seconds": 1.8,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s636",
+          "type": "cruise",
+          "duration_seconds": 5.4,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s637",
+          "type": "descend",
+          "duration_seconds": 1.8,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s638",
+          "type": "hold",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 0.88,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    },
+    {
+      "destination": {
+        "location": "Scandinavia",
+        "story": {
+          "role": "GEOGRAPHIC_CONTEXT",
+          "importance": "NORMAL",
+          "purposes": [
+            "CONCLUDE",
+            "SHOW_SCALE"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "direct",
+      "travel": [
+        {
+          "id": "s639",
+          "type": "fly",
+          "duration_seconds": 9,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s640",
+          "type": "zoom_out",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 1.18,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    }
+  ]
+}

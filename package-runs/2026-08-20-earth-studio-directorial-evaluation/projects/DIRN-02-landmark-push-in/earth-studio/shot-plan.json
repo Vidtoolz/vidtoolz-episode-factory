@@ -1,0 +1,90 @@
+{
+  "job_name": "DIRN-02-landmark-push-in",
+  "version": "0.9.4",
+  "generated_at": "2026-08-20T09:00:00.000Z",
+  "source_description": "zoom in on Helsinki Cathedral tilted 0 degrees for 4 seconds",
+  "parser_strategy": "offline_regex_with_manual_review_fallback",
+  "frame_rate": 30,
+  "frame_convention": {
+    "start_frame": "inclusive",
+    "end_frame": "exclusive"
+  },
+  "aspect": "16:9",
+  "render_dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "total_duration_seconds": 4,
+  "total_frames": 120,
+  "motion_policy": {
+    "coherent_trajectory": true,
+    "dedupe_keyframes": true,
+    "source": "journey"
+  },
+  "locations": [
+    {
+      "name": "Helsinki Cathedral",
+      "latitude": 60.1704,
+      "longitude": 24.9522,
+      "resolution_status": "resolved_fixture"
+    }
+  ],
+  "segments": [
+    {
+      "segment_id": 1,
+      "source_text": "zoom in on Helsinki Cathedral tilted 0 degrees for 4 seconds",
+      "action": "zoom_in",
+      "requested_action": "zoom_in",
+      "location_name": "Helsinki Cathedral",
+      "location": {
+        "name": "Helsinki Cathedral",
+        "latitude": 60.1704,
+        "longitude": 24.9522,
+        "altitude_m": 700,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 700,
+      "altitude_source": "gazetteer",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 0,
+      "end_seconds": 4,
+      "duration_seconds": 4,
+      "start_frame": 0,
+      "end_frame": 120,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    }
+  ],
+  "unresolved_items": [],
+  "motion_profile": {
+    "profile_version": 4,
+    "source": "config/earth-studio-motion/motion-profile.json",
+    "references": [
+      "darien-gap",
+      "mountkinabalu",
+      "radiator-untitled",
+      "servyx"
+    ],
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
+  },
+  "notes": [
+    "camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
+  ],
+  "manual_earth_studio_steps": [
+    "Open Google Earth Studio manually.",
+    "Create or open the project manually; this planner does not log in, automate a browser, or control Earth Studio.",
+    "Use shot-plan.json coordinates as manual camera/search references.",
+    "Use route.kml only as a placemark/path reference asset.",
+    "Manually create, review, and adjust all camera keyframes.",
+    "Render manually only after Mikko reviews the camera move."
+  ],
+  "warnings": [
+    "KML is a reference asset only and does not create a finished Google Earth Studio camera animation.",
+    "Placemark use as camera targets is unverified in v1; manually search or set camera targets from shot-plan.json if needed.",
+    "This planner does not render video, manipulate .esp files, control Google Earth Studio, or approve footage.",
+    "Technical planning artifacts are not creative approval, rights clearance, or package-run evidence approval."
+  ]
+}

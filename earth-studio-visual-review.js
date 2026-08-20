@@ -25,15 +25,21 @@ const STATES = Object.freeze({
   HUMAN_FAIL: 'HUMAN_FAIL',
 });
 
-function loadManifest(root) {
-  const dir = path.join(root, 'package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2');
+function loadManifest(root, gateDir = null) {
+  // Default (no argument): the v2 journey-visual-acceptance gate in its
+  // authoritative review order. Any other gate dir is reviewed in the order
+  // its generation manifest lists its records.
+  const DEFAULT_DIR = 'package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2';
+  const dir = gateDir || path.join(root, DEFAULT_DIR);
   const file = path.join(dir, 'generation-manifest.json');
-  if (!fs.existsSync(file)) throw new Error('ARTIFACT_MISSING — generation-manifest.json');
+  if (!fs.existsSync(file)) throw new Error(`ARTIFACT_MISSING — generation-manifest.json at ${path.relative(root, dir)}`);
   const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
   const byId = new Map((manifest.records || []).map((record) => [record.id, record]));
-  const records = REVIEW_ORDER.map((id) => {
+  const isDefault = !gateDir;
+  const order = isDefault ? REVIEW_ORDER : (manifest.records || []).map((record) => record.id);
+  const records = order.map((id) => {
     const record = byId.get(id);
-    if (!record) throw new Error(`ARTIFACT_MISSING — authoritative project ${id}`);
+    if (!record) throw new Error(`ARTIFACT_MISSING — review project ${id}`);
     const esp = path.join(root, record.esp);
     const plan = path.join(root, path.dirname(record.esp), 'shot-plan.json');
     if (!fs.existsSync(esp)) throw new Error(`ARTIFACT_MISSING — ${record.esp}`);
@@ -62,7 +68,7 @@ function transition(record, state, evidence = {}) {
 function freshSession(manifest) {
   return {
     schema_version: 1,
-    review_order: REVIEW_ORDER,
+    review_order: manifest.records.map((record) => record.id),
     current_id: manifest.records[0].id,
     records: Object.fromEntries(manifest.records.map((record) => [record.id, {
       state: STATES.NOT_PREPARED,

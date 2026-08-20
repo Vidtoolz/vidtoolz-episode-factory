@@ -7,7 +7,7 @@
       "width": 1920,
       "height": 1080
     },
-    "duration": 870,
+    "duration": 450,
     "timeFormat": "frames"
   },
   "scenes": [
@@ -20,7 +20,7 @@
         "logarithmic": false,
         "groupedPosition": true
       },
-      "duration": 870,
+      "duration": 450,
       "attributes": [
         {
           "type": "cameraGroup",
@@ -41,32 +41,32 @@
                       "time": 0,
                       "value": 0.04242413762865017,
                       "transitionOut": {
-                        "x": 0.086207,
+                        "x": 0.08,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.3448275862068966,
+                      "time": 0.32,
                       "value": 0.04242413762865017,
                       "transitionIn": {
-                        "x": -0.341379,
+                        "x": -0.3168,
                         "y": 0,
                         "influence": 0.99,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.093103,
+                        "x": 0.108,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.6551724137931034,
+                      "time": 0.68,
                       "value": 0,
                       "transitionIn": {
-                        "x": -0.077586,
+                        "x": -0.09,
                         "y": 0,
                         "influence": 0.4,
                         "type": "custom"
@@ -86,32 +86,32 @@
                       "time": 0,
                       "value": 0.02740726491407092,
                       "transitionOut": {
-                        "x": 0.086207,
+                        "x": 0.08,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.3448275862068966,
+                      "time": 0.32,
                       "value": 0.02740726491407092,
                       "transitionIn": {
-                        "x": -0.341379,
+                        "x": -0.3168,
                         "y": 0,
                         "influence": 0.99,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.093103,
+                        "x": 0.108,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.6551724137931034,
+                      "time": 0.68,
                       "value": 0,
                       "transitionIn": {
-                        "x": -0.077586,
+                        "x": -0.09,
                         "y": 0,
                         "influence": 0.4,
                         "type": "custom"
@@ -131,79 +131,31 @@
                       "time": 0,
                       "value": 0.0005225580036743703,
                       "transitionOut": {
-                        "x": 0.025862,
+                        "x": 0.05,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.10344827586206896,
+                      "time": 0.2,
                       "value": 0.0005225580036743703,
                       "transitionIn": {
-                        "x": -0.031034,
+                        "x": -0.06,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
-                        "x": 0.01523,
+                        "x": 0.03,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.16436781609195403,
-                      "value": 0.0010180267773475182,
-                      "transitionIn": {
-                        "x": -0.018276,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.017931,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.22413793103448276,
-                      "value": 0.002108045794063364,
-                      "transitionIn": {
-                        "x": -0.017931,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.018276,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.2850574712643678,
-                      "value": 0.0031980494540728597,
-                      "transitionIn": {
-                        "x": -0.018276,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.017931,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.3448275862068966,
+                      "time": 0.32,
                       "value": 0.003693518227746008,
                       "transitionIn": {
-                        "x": -0.149425,
+                        "x": -0.3,
                         "y": 0,
                         "influence": 1,
                         "type": "custom"
@@ -215,74 +167,26 @@
                       }
                     },
                     {
-                      "time": 0.6551724137931034,
+                      "time": 0.68,
                       "value": 0.003693518227746008,
                       "transitionIn": {
-                        "x": -0.775862,
+                        "x": -0.9,
                         "y": 0,
                         "influence": 1,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.018276,
+                        "x": 0.036,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.7160919540229885,
-                      "value": 0.0031980494540728597,
-                      "transitionIn": {
-                        "x": -0.018276,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.017931,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.7758620689655172,
-                      "value": 0.002108045794063364,
-                      "transitionIn": {
-                        "x": -0.017931,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.018276,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.8367816091954023,
-                      "value": 0.0010180267773475182,
-                      "transitionIn": {
-                        "x": -0.018276,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.017931,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.896551724137931,
+                      "time": 0.8,
                       "value": 0.0005225580036743703,
                       "transitionIn": {
-                        "x": -0.017333,
+                        "x": -0.0348,
                         "y": 0,
                         "influence": 0.4,
                         "type": "custom"
@@ -465,7 +369,7 @@
   "playbackManager": {
     "range": {
       "start": 0,
-      "end": 870
+      "end": 450
     }
   }
 }

@@ -1,8 +1,8 @@
 # Shot Plan: DIRECTOR-B2-same-geography-route-story
 
-Total duration: 29 seconds
+Total duration: 15 seconds
 Frame rate: 30 fps
-Total frames: 870
+Total frames: 450
 Aspect: 16:9 (1920x1080)
 Frame convention: start_frame inclusive, end_frame exclusive
 
@@ -11,10 +11,10 @@ Frame convention: start_frame inclusive, end_frame exclusive
 | # | Action | Location | Alt (m) | Tilt | Time | start_frame | end_frame | Status |
 |---|---|---|---:|---:|---:|---:|---:|---|
 | 1 | hover | Helsinki | 34028 | 0 | 0-3s | 0 | 90 | resolved |
-| 2 | zoom_out | Helsinki | 240515 | 0 | 3-10s | 90 | 300 | resolved |
-| 3 | fly_to | Stockholm | 240515 | 0 | 10-19s | 300 | 570 | resolved |
-| 4 | zoom_in | Stockholm | 34028 | 0 | 19-26s | 570 | 780 | resolved |
-| 5 | hover | Stockholm | 34028 | 0 | 26-29s | 780 | 870 | resolved |
+| 2 | zoom_out | Helsinki | 240515 | 0 | 3-4.8s | 90 | 144 | resolved |
+| 3 | fly_to | Stockholm | 240515 | 0 | 4.8-10.2s | 144 | 306 | resolved |
+| 4 | zoom_in | Stockholm | 34028 | 0 | 10.2-12s | 306 | 360 | resolved |
+| 5 | hover | Stockholm | 34028 | 0 | 12-15s | 360 | 450 | resolved |
 
 ## Locations
 

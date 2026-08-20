@@ -107,6 +107,19 @@
       .dir-log{font-size:12px;line-height:1.6;margin-top:8px;}
       .dir-log div{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);}
       .dir-log .k{color:#58a6ff;font-weight:600;}
+      /* Directorial plan cards */
+      .dir-plan{margin-top:10px;}
+      .dir-beats{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px;}
+      .dir-beat{background:#0d1b2e;border:1px solid #2b4a6f;border-radius:8px;padding:8px 10px;min-width:190px;max-width:260px;font-size:12px;line-height:1.5;}
+      .dir-beat-travel{border-color:#d2992255;}
+      .dir-beat-continue{border-color:#a371f755;}
+      .dir-beat-k{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:#d29922;font-weight:700;}
+      .dir-beat-continue .dir-beat-k{color:#a371f7;}
+      .dir-beat-stop .dir-beat-k{color:#58a6ff;}
+      .dir-beat-s{font-weight:600;margin:2px 0;}
+      .dir-beat-m{color:#c9d1d9;}
+      .dir-beat-w{color:#8b949e;margin-top:4px;font-style:italic;}
+      .dir-audit{margin-top:6px;font-size:12px;color:#e3b341;background:rgba(210,153,34,.08);border-left:3px solid #d29922;padding:5px 9px;border-radius:4px;}
       #copy-status{position:fixed;bottom:16px;right:16px;background:#238636;color:#fff;padding:7px 14px;border-radius:8px;font-size:13px;display:none;z-index:50;}
     </style>
     <script src="ef-nav.js"></script>
@@ -465,7 +478,7 @@
         const step = () => (compiled ? compiled.steps[k++] : null);
         let num = 1;
 
-        if (DIRECTOR_ON) parts.push(dirAutoBlock());
+        if (DIRECTOR_ON) { parts.push(dirAutoBlock()); parts.push(dirPlanHtml()); }
         parts.push(jbStartCard(compiled));
 
         j.start_movements.forEach((s, si) => {
@@ -702,7 +715,27 @@
           status.textContent = 'No known places found in that text. Name cities, landmarks, countries or seas the generator knows.';
           return;
         }
-        try { result = DIR.autoDirect({ ...intent, pace: JOURNEY?JOURNEY.pace:undefined, aspect: ASPECT }); }
+        // A continuation request needs the SOURCE animation's exact terminal
+        // state — never an approximation. Use the one this lane already holds
+        // (generated or loaded here); otherwise tell the operator exactly how.
+        let continuationState = null;
+        if (intent.continuation_requested) {
+          continuationState = (ST && ST.continuation) || null;
+          if (!continuationState) {
+            status.textContent = 'Continuation requested, but this lane has no ending camera state yet. Generate the source animation here (or use "Create continuation →" from it) and run Auto-Direct again.';
+            return;
+          }
+        }
+        try {
+          // Explicit pacing language wins over the journey's pace; otherwise the
+          // journey keeps its own tempo. Aspect follows the current selector.
+          result = DIR.autoDirect({
+            ...intent,
+            pace: intent.pace || (JOURNEY ? JOURNEY.pace : undefined),
+            aspect: ASPECT,
+            continuation_from: continuationState,
+          });
+        }
         catch(e){ status.textContent = 'Could not direct that: '+e.message; return; }
         // carry the derived story intent onto the journey so the cards show it
         const stops = result.stops;
@@ -715,8 +748,40 @@
         JOURNEY = JB.normalizeJourney(result.journey);
         JOURNEY.globe_justification = intent.globe_justification || null;
         DIRECTOR_LAST = result;
-        status.textContent = `Directed ${stops.length} stop${stops.length===1?'':'s'}.`;
+        // The direction is only valid provenance for THIS journey; if the
+        // operator edits the cards afterwards, the direction must not ride along.
+        DIRECTOR_LAST.journey_fingerprint = JSON.stringify(JOURNEY);
+        const auditN = (result.audit && result.audit.findings) ? result.audit.findings.length : 0;
+        status.textContent = `Directed ${stops.length} stop${stops.length===1?'':'s'}.` + (auditN ? ` ${auditN} coherence note${auditN===1?'':'s'} below.` : '');
         jbRerender();
+      }
+
+      // The Directorial Plan, beat by beat — what the operator reads BEFORE
+      // generating: purpose, grammar and duration per beat, plus the audit.
+      function dirPlanHtml(){
+        if (!DIRECTOR_LAST || !DIRECTOR_LAST.plan) return '';
+        const p = DIRECTOR_LAST.plan;
+        const cards = p.beats.map((b)=>{
+          const kind = b.beat === 'TRAVEL' ? 'travel' : (b.beat === 'CONTINUE' ? 'continue' : 'stop');
+          const dur = b.duration_seconds == null ? '' : ` · ${Math.round(b.duration_seconds)}s`;
+          const sub = b.beat === 'TRAVEL' ? `Purpose: ${esc(b.purpose_label||'Travel')}` :
+            `${esc(b.purpose_label||'Establish')}${b.importance && b.importance!=='NORMAL' ? ` · ${esc(b.importance.toLowerCase())}` : ''}`;
+          return `<div class="dir-beat dir-beat-${kind}">
+            <div class="dir-beat-k">${esc(b.beat === 'CONTINUE' ? 'CONTINUE' : (b.beat === 'TRAVEL' ? 'TRAVEL' : (b.purpose_label || 'AT').toUpperCase()))}</div>
+            <div class="dir-beat-s">${esc(b.subject || '')}</div>
+            <div class="dir-beat-m">${esc(sub)}<br>Movement: ${esc(b.grammar_label || b.grammar)}${esc(dur)}</div>
+            ${b.why ? `<div class="dir-beat-w">${esc(b.why)}</div>` : ''}
+          </div>`;
+        }).join('');
+        const audit = (DIRECTOR_LAST.audit && DIRECTOR_LAST.audit.findings || []).map(f=>`<div class="dir-audit">[${esc(f.code)}] ${esc(f.message)}</div>`).join('');
+        const total = p.total_duration_seconds != null ? `Total ≈ ${Math.round(p.total_duration_seconds)}s.` : '';
+        return `<div class="dir-plan">
+          <div class="dir-kicker">Directorial plan — ${p.beats.length} beats · ${total}</div>
+          <div class="dir-beats">${cards}</div>
+          ${p.compare_match ? `<div class="dir-audit">Matched framing: ${esc(p.compare_match.stops.join(' / '))} filmed at ${esc(p.compare_match.scale)} scale.</div>` : ''}
+          ${p.continuation ? `<div class="dir-audit">Continues from the exact terminal state of “${esc(p.continuation.source_animation || 'previous animation')}” (frame ${p.continuation.ends_at_frame}). No hidden reset.</div>` : ''}
+          ${audit}
+        </div>`;
       }
 
       function dirLogHtml(){
@@ -1144,6 +1209,21 @@
             if (!sum.ok) { st.textContent = 'Fix the journey first: ' + sum.errors[0]; return; }
             JOURNEY.aspect = ASPECT;
             body.journey = JOURNEY;
+            // Directorial provenance rides along ONLY if the current journey is
+            // byte-identical to the one the Director produced (fingerprinted at
+            // Auto-Direct time). Edited journeys keep working — they just carry
+            // no direction file.
+            if (DIRECTOR_LAST && DIRECTOR_LAST.plan && DIRECTOR_LAST.journey_fingerprint === JSON.stringify(JOURNEY)) {
+              body.direction = {
+                director_version: DIR.DIRECTOR_VERSION,
+                plan_version: DIR.PLAN_VERSION,
+                plan: DIRECTOR_LAST.plan,
+                audit: DIRECTOR_LAST.audit || null,
+                globe: DIRECTOR_LAST.globe || null,
+                explanation: DIR.explainDirection(DIRECTOR_LAST),
+                source: 'earth-studio-director autoDirect (deterministic; no LLM)',
+              };
+            }
           } else {
             body.description = document.getElementById('es-desc').value;
           }

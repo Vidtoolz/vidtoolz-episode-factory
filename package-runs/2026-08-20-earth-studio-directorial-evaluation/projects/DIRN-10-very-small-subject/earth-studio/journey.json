@@ -1,0 +1,35 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": null,
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Eiffel Tower",
+    "story": {
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "purposes": [
+        "INSPECT"
+      ]
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s379",
+      "type": "half_orbit",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 1.15,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": []
+}

@@ -1,0 +1,289 @@
+{
+  "schema_version": 1,
+  "fingerprints": {
+    "direction_plan": "958dd08341c3e7e6d0db1a018542534b8e2dad5642a95d8bf2bc2634f78121c0",
+    "shot_plan": "d0fb51aa8d477828f72165ce21ac41bc9d6db4a7ec3d8484fa8b1160208dd413",
+    "job": "f0367de42c71c2c1e3ce8d90165ce1190e819a137d1ebadcf87488f8bdda9d6b"
+  },
+  "mapping": {
+    "method": "semantic-beat-to-segment aggregation",
+    "confidence": "MODERATE",
+    "plan_beats": 7,
+    "shot_segments": 11
+  },
+  "trace": [
+    {
+      "plan_index": 0,
+      "beat": "STARTING_CONTEXT",
+      "subject": "Scandinavia",
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "purpose": "ESTABLISH",
+      "grammar_planned": "hold",
+      "grammar_actual": "HOLD",
+      "planned_duration_seconds": 4,
+      "actual_duration_seconds": 4,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        1
+      ],
+      "segment_start_frame": 0,
+      "segment_end_frame": 120,
+      "mapping_method": "location+at-action",
+      "comparison_group": null,
+      "is_final": false,
+      "provenance": {
+        "subject": "user-specified",
+        "role": "user-specified",
+        "importance": "user-specified",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "emphasis": "computed"
+      }
+    },
+    {
+      "plan_index": 1,
+      "beat": "TRAVEL",
+      "subject": "Scandinavia → Helsinki",
+      "role": null,
+      "importance": null,
+      "purpose": "TRAVEL",
+      "grammar_planned": "style:high_transit",
+      "grammar_actual": "TRAVEL",
+      "planned_duration_seconds": 10,
+      "actual_duration_seconds": 10,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        2,
+        3,
+        4
+      ],
+      "segment_start_frame": 120,
+      "segment_end_frame": 420,
+      "mapping_method": "travel-until-destination-arrival",
+      "comparison_group": null,
+      "is_final": false,
+      "provenance": {
+        "subject": "user-specified",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "duration": "computed"
+      }
+    },
+    {
+      "plan_index": 2,
+      "beat": "WAYPOINT",
+      "subject": "Helsinki",
+      "role": "WAYPOINT",
+      "importance": "LOW",
+      "purpose": "ESTABLISH",
+      "grammar_planned": "hold",
+      "grammar_actual": "HOLD",
+      "planned_duration_seconds": 4,
+      "actual_duration_seconds": 4,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        5
+      ],
+      "segment_start_frame": 420,
+      "segment_end_frame": 540,
+      "mapping_method": "location+at-action",
+      "comparison_group": null,
+      "is_final": false,
+      "provenance": {
+        "subject": "user-specified",
+        "role": "planner-inferred",
+        "importance": "planner-inferred",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "emphasis": "computed"
+      }
+    },
+    {
+      "plan_index": 3,
+      "beat": "TRAVEL",
+      "subject": "Helsinki → Stockholm",
+      "role": null,
+      "importance": null,
+      "purpose": "TRAVEL",
+      "grammar_planned": "style:high_transit",
+      "grammar_actual": "TRAVEL",
+      "planned_duration_seconds": 9,
+      "actual_duration_seconds": 9,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        6,
+        7,
+        8
+      ],
+      "segment_start_frame": 540,
+      "segment_end_frame": 810,
+      "mapping_method": "travel-until-destination-arrival",
+      "comparison_group": null,
+      "is_final": false,
+      "provenance": {
+        "subject": "user-specified",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "duration": "computed"
+      }
+    },
+    {
+      "plan_index": 4,
+      "beat": "WAYPOINT",
+      "subject": "Stockholm",
+      "role": "WAYPOINT",
+      "importance": "LOW",
+      "purpose": "ESTABLISH",
+      "grammar_planned": "hold",
+      "grammar_actual": "HOLD",
+      "planned_duration_seconds": 4,
+      "actual_duration_seconds": 4,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        9
+      ],
+      "segment_start_frame": 810,
+      "segment_end_frame": 930,
+      "mapping_method": "location+at-action",
+      "comparison_group": null,
+      "is_final": false,
+      "provenance": {
+        "subject": "user-specified",
+        "role": "planner-inferred",
+        "importance": "planner-inferred",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "emphasis": "computed"
+      }
+    },
+    {
+      "plan_index": 5,
+      "beat": "TRAVEL",
+      "subject": "Stockholm → Scandinavia",
+      "role": null,
+      "importance": null,
+      "purpose": "SHOW_SCALE",
+      "grammar_planned": "style:direct",
+      "grammar_actual": "FLY",
+      "planned_duration_seconds": 9,
+      "actual_duration_seconds": 9,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        10
+      ],
+      "segment_start_frame": 930,
+      "segment_end_frame": 1200,
+      "mapping_method": "travel-until-destination-arrival",
+      "comparison_group": null,
+      "is_final": false,
+      "provenance": {
+        "subject": "user-specified",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "duration": "computed"
+      }
+    },
+    {
+      "plan_index": 6,
+      "beat": "GEOGRAPHIC_CONTEXT",
+      "subject": "Scandinavia",
+      "role": "GEOGRAPHIC_CONTEXT",
+      "importance": "NORMAL",
+      "purpose": "CONCLUDE",
+      "grammar_planned": "zoom_out",
+      "grammar_actual": "PULL_BACK",
+      "planned_duration_seconds": 6,
+      "actual_duration_seconds": 6,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        11
+      ],
+      "segment_start_frame": 1200,
+      "segment_end_frame": 1380,
+      "mapping_method": "location-only",
+      "comparison_group": null,
+      "is_final": true,
+      "provenance": {
+        "subject": "user-specified",
+        "role": "user-specified",
+        "importance": "user-specified",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "emphasis": "computed"
+      }
+    }
+  ],
+  "timeline": {
+    "frame_rate": 30,
+    "total_frames": 1380,
+    "compiled_end_frame": 1380,
+    "total_duration_seconds": 46,
+    "frame_issues": []
+  },
+  "shares": {
+    "travel_seconds": 28,
+    "travel_fraction": 0.6086956521739131,
+    "subject_seconds": 18,
+    "subject_fraction": 0.391304347826087
+  },
+  "grammar_pattern": [
+    "HOLD",
+    "TRAVEL",
+    "HOLD",
+    "TRAVEL",
+    "HOLD",
+    "FLY",
+    "PULL_BACK"
+  ],
+  "comparisons": {},
+  "warnings": [
+    {
+      "code": "LOW_MAPPING_CONFIDENCE",
+      "message": "Beat 7 used location-only mapping.",
+      "plan_index": 6
+    },
+    {
+      "code": "DUPLICATE_SUBJECT",
+      "message": "Repeated subjects exist without explicit comparison metadata.",
+      "subjects": [
+        "scandinavia"
+      ]
+    },
+    {
+      "code": "GRAMMAR_MONOTONY",
+      "message": "Three consecutive subject beats use HOLD.",
+      "plan_indices": [
+        0,
+        2,
+        4
+      ]
+    }
+  ],
+  "errors": [],
+  "execution_ok": true,
+  "directorial_review": [
+    {
+      "code": "LOW_MAPPING_CONFIDENCE",
+      "message": "Beat 7 used location-only mapping.",
+      "plan_index": 6
+    },
+    {
+      "code": "DUPLICATE_SUBJECT",
+      "message": "Repeated subjects exist without explicit comparison metadata.",
+      "subjects": [
+        "scandinavia"
+      ]
+    },
+    {
+      "code": "GRAMMAR_MONOTONY",
+      "message": "Three consecutive subject beats use HOLD.",
+      "plan_indices": [
+        0,
+        2,
+        4
+      ]
+    }
+  ],
+  "source_comparison": null
+}

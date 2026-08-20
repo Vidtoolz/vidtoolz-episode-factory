@@ -217,6 +217,14 @@ function writeJob(packageDir, payload = {}, options = {}) {
       fs.writeFileSync(path.join(dir, 'journey-summary.md'), md);
       extraFiles.push('journey-summary.md');
     }
+    // Directorial provenance: the explicit plan the Director produced BEFORE
+    // any keyframe (beats, grammar, why), plus its story-level audit. Only
+    // present when the caller actually directed the journey — a hand-built
+    // journey keeps the exact pre-director file set.
+    if (payload.direction && typeof payload.direction === 'object') {
+      fs.writeFileSync(path.join(dir, 'direction.json'), `${JSON.stringify(payload.direction, null, 2)}\n`);
+      extraFiles.push('direction.json');
+    }
   }
   const meta = {
     jobName,
@@ -247,6 +255,7 @@ function writeJob(packageDir, payload = {}, options = {}) {
         movement_count: journeyCompiled.steps.length,
         compiled_description: description,
       },
+      ...(payload.direction && typeof payload.direction === 'object' ? { direction: 'direction.json' } : {}),
       camera_quality: 'camera-quality.json',
     } : {}),
     ...(continuationState ? { continuation_state: 'continuation-state.json' } : {}),

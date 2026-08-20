@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>DIRN-12-unequal-scale-comparison route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>Singapore</name>
+      <Point><coordinates>103.8198,1.3521,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Southeast Asia</name>
+      <Point><coordinates>105,12,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>DIRN-12-unequal-scale-comparison route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        103.8198,1.3521,0
+        105,12,0
+        105,12,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

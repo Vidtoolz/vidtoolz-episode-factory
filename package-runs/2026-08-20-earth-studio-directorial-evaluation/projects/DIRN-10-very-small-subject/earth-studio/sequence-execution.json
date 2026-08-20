@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "fingerprints": {
+    "direction_plan": "d4fc02bcc7d0b0ffb2afdb9495df13c04113451f51a1c0258c9f3a920b9e5aa9",
+    "shot_plan": "6aa803c8d44260cc0499c63075fb6e5c86ad83b4542c5139998f96ac616c8d92",
+    "job": "3aac3f62c8ad76f450219d7fde1804015508d4ad17a9fea41407850d0ce7ff50"
+  },
+  "mapping": {
+    "method": "semantic-beat-to-segment aggregation",
+    "confidence": "HIGH",
+    "plan_beats": 1,
+    "shot_segments": 1
+  },
+  "trace": [
+    {
+      "plan_index": 0,
+      "beat": "STARTING_CONTEXT",
+      "subject": "Eiffel Tower",
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "purpose": "INSPECT",
+      "grammar_planned": "half_orbit",
+      "grammar_actual": "ORBIT",
+      "planned_duration_seconds": 14,
+      "actual_duration_seconds": 14,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        1
+      ],
+      "segment_start_frame": 0,
+      "segment_end_frame": 420,
+      "mapping_method": "location+at-action",
+      "comparison_group": null,
+      "is_final": true,
+      "provenance": {
+        "subject": "user-specified",
+        "role": "planner-inferred",
+        "importance": "planner-inferred",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "emphasis": "computed"
+      }
+    }
+  ],
+  "timeline": {
+    "frame_rate": 30,
+    "total_frames": 420,
+    "compiled_end_frame": 420,
+    "total_duration_seconds": 14,
+    "frame_issues": []
+  },
+  "shares": {
+    "travel_seconds": 0,
+    "travel_fraction": 0,
+    "subject_seconds": 14,
+    "subject_fraction": 1
+  },
+  "grammar_pattern": [
+    "ORBIT"
+  ],
+  "comparisons": {},
+  "warnings": [],
+  "errors": [],
+  "execution_ok": true,
+  "directorial_review": [],
+  "source_comparison": null
+}

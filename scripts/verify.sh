@@ -53,6 +53,9 @@ node --check scripts/earth-studio-journey-browser-smoke.js
 node --check scripts/earth-studio-journey-import-gate.js
 node --check scripts/earth-studio-journey-canaries.js
 node --check scripts/earth-studio-director-canaries.js
+node --check scripts/earth-studio-directorial-evaluation.js
+node --check scripts/earth-studio-visual-review.js
+node --check earth-studio-visual-review.js
 node --check scripts/verify-earth-studio-proof.js
 node --check score-engine/score-schemas.js
 node --check score-engine/midi-writer.js

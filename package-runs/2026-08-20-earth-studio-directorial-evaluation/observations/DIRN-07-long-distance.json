@@ -1,0 +1,306 @@
+{
+  "id": "DIRN-07-long-distance",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-07-long-distance/earth-studio/earth-studio.esp",
+  "esp_sha256": "8b58ddfa4d5956f67b76dd777a2779c605f17d6b089c0c3cc7d7c85caf9158d1",
+  "expected": {
+    "total_frames": 960,
+    "duration_seconds": 32,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 960,
+    "totalFrames": 960,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-07-long-distance/DIRN-07-long-distance_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.16985491165934,
+        "longitude": 24.9384,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 60,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-07-long-distance/DIRN-07-long-distance_f00060_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 60,
+        "latitude": 60.16985491165934,
+        "longitude": 24.9384,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 120,
+      "label": "seg2-start",
+      "movement": "zoom_out",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-07-long-distance/DIRN-07-long-distance_f00120_seg2-start.png",
+      "earth_studio_camera": {
+        "frame": 120,
+        "latitude": 60.16985491165934,
+        "longitude": 24.9384,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Helsinki",
+        "altitude_m": 1330076,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 165,
+      "label": "seg2-mid",
+      "movement": "zoom_out",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-07-long-distance/DIRN-07-long-distance_f00165_seg2-mid.png",
+      "earth_studio_camera": {
+        "frame": 165,
+        "latitude": 60.16985491165934,
+        "longitude": 24.9384,
+        "altitude": 1156576.3715324674,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Helsinki",
+        "altitude_m": 1330076,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 210,
+      "label": "seg3-start",
+      "movement": "fly_to",
+      "place": "Tokyo",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-07-long-distance/DIRN-07-long-distance_f00210_seg3-start.png",
+      "earth_studio_camera": {
+        "frame": 210,
+        "latitude": 60.16985491165934,
+        "longitude": 24.9384,
+        "altitude": 1330063.723986642,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Tokyo",
+        "altitude_m": 1330076,
+        "tilt_deg": 0,
+        "target_lat": 35.6762,
+        "target_lng": 139.6503
+      }
+    },
+    {
+      "frame": 465,
+      "label": "seg3-mid",
+      "movement": "fly_to",
+      "place": "Tokyo",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-07-long-distance/DIRN-07-long-distance_f00465_seg3-mid.png",
+      "earth_studio_camera": {
+        "frame": 465,
+        "latitude": 48.39360368815332,
+        "longitude": 80.09048457942777,
+        "altitude": 1330063.7589303062,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Tokyo",
+        "altitude_m": 1330076,
+        "tilt_deg": 0,
+        "target_lat": 35.6762,
+        "target_lng": 139.6503
+      }
+    },
+    {
+      "frame": 720,
+      "label": "seg4-start",
+      "movement": "zoom_in",
+      "place": "Tokyo",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-07-long-distance/DIRN-07-long-distance_f00720_seg4-start.png",
+      "earth_studio_camera": {
+        "frame": 720,
+        "latitude": 35.676199795143695,
+        "longitude": 139.65029975826926,
+        "altitude": 1330063.602205169,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Tokyo",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 35.6762,
+        "target_lng": 139.6503
+      }
+    },
+    {
+      "frame": 765,
+      "label": "seg4-mid",
+      "movement": "zoom_in",
+      "place": "Tokyo",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-07-long-distance/DIRN-07-long-distance_f00765_seg4-mid.png",
+      "earth_studio_camera": {
+        "frame": 765,
+        "latitude": 35.676199795143695,
+        "longitude": 139.65029999999996,
+        "altitude": 706945.8491498558,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Tokyo",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 35.6762,
+        "target_lng": 139.6503
+      }
+    },
+    {
+      "frame": 810,
+      "label": "seg5-start",
+      "movement": "hover",
+      "place": "Tokyo",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-07-long-distance/DIRN-07-long-distance_f00810_seg5-start.png",
+      "earth_studio_camera": {
+        "frame": 810,
+        "latitude": 35.676199795143695,
+        "longitude": 139.65029999999996,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Tokyo",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 35.6762,
+        "target_lng": 139.6503
+      }
+    },
+    {
+      "frame": 885,
+      "label": "seg5-mid",
+      "movement": "hover",
+      "place": "Tokyo",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-07-long-distance/DIRN-07-long-distance_f00885_seg5-mid.png",
+      "earth_studio_camera": {
+        "frame": 885,
+        "latitude": 35.676199795143695,
+        "longitude": 139.65029999999996,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Tokyo",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 35.6762,
+        "target_lng": 139.6503
+      }
+    },
+    {
+      "frame": 959,
+      "label": "seg5-end",
+      "movement": "hover",
+      "place": "Tokyo",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-07-long-distance/DIRN-07-long-distance_f00959_seg5-end.png",
+      "earth_studio_camera": {
+        "frame": 959,
+        "latitude": 35.676199795143695,
+        "longitude": 139.65029999999996,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Tokyo",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 35.6762,
+        "target_lng": 139.6503
+      }
+    }
+  ],
+  "errors": []
+}

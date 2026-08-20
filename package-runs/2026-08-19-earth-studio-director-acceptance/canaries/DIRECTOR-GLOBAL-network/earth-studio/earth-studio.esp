@@ -7,7 +7,7 @@
       "width": 1920,
       "height": 1080
     },
-    "duration": 5250,
+    "duration": 2910,
     "timeFormat": "frames"
   },
   "scenes": [
@@ -20,7 +20,7 @@
         "logarithmic": false,
         "groupedPosition": true
       },
-      "duration": 5250,
+      "duration": 2910,
       "attributes": [
         {
           "type": "cameraGroup",
@@ -34,39 +34,39 @@
                   "type": "longitude",
                   "value": {
                     "relative": 0,
-                    "minValueRange": -118.563212
+                    "minValueRange": -118.56357
                   },
                   "keyframes": [
                     {
                       "time": 0,
-                      "value": 0.8039735049474211,
+                      "value": 0.8039737399978167,
                       "transitionOut": {
-                        "x": 0.017143,
+                        "x": 0.015464,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.06857142857142857,
-                      "value": 0.8039735049474211,
+                      "time": 0.061855670103092786,
+                      "value": 0.8039737399978167,
                       "transitionIn": {
-                        "x": -0.067886,
+                        "x": -0.061237,
                         "y": 0,
                         "influence": 0.99,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.058286,
+                        "x": 0.052577,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.26285714285714284,
-                      "value": 0.4135382627113483,
+                      "time": 0.23711340206185566,
+                      "value": 0.4135389659227346,
                       "transitionIn": {
-                        "x": -0.192343,
+                        "x": -0.173505,
                         "y": 0,
                         "influence": 0.99,
                         "type": "custom"
@@ -78,29 +78,76 @@
                       }
                     },
                     {
-                      "time": 0.38285714285714284,
-                      "value": 0.4135382627113483,
+                      "time": 0.32989690721649484,
+                      "value": 0.4135389659227346,
                       "transitionIn": {
-                        "x": -0.1188,
+                        "x": -0.091856,
                         "y": 0,
                         "influence": 0.99,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.058286,
+                        "x": 0.052577,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.5771428571428572,
-                      "value": 0.001070165335707833,
+                      "time": 0.5051546391752577,
+                      "value": 0.0010713631271222893,
                       "transitionIn": {
-                        "x": -0.192343,
+                        "x": -0.173505,
                         "y": 0,
                         "influence": 0.99,
                         "type": "custom"
+                      },
+                      "transitionOut": {
+                        "x": 0.007423,
+                        "y": 0,
+                        "influence": 0.43,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.5298969072164949,
+                      "value": 0.0013383715903450368,
+                      "transitionIn": {
+                        "x": -0.007423,
+                        "y": 0,
+                        "influence": 0.43,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.001856,
+                        "y": 0,
+                        "influence": 0.43,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.5360824742268041,
+                      "value": 0.0010713631271222893,
+                      "transitionIn": {
+                        "x": -0.001856,
+                        "y": 0,
+                        "influence": 0.43,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.003608,
+                        "y": 0,
+                        "influence": 0.43,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.5481099656357389,
+                      "value": 0.0008858917382318164,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
                       },
                       "transitionOut": {
                         "x": 0,
@@ -109,201 +156,234 @@
                       }
                     },
                     {
-                      "time": 0.64,
-                      "value": 0.001070165335707833,
+                      "time": 0.5601374570446735,
+                      "value": 0.0007060037498881604,
                       "transitionIn": {
-                        "x": -0.018857,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.004667,
+                        "x": 0,
                         "y": 0,
-                        "type": "easeOut"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.6586666666666666,
-                      "value": 0.0005350826678538926,
+                      "time": 0.5721649484536082,
+                      "value": 0.000537125142226817,
                       "transitionIn": {
-                        "x": -0.0056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.6771428571428572,
-                      "value": 0.00014337667294387314,
+                      "time": 0.584192439862543,
+                      "value": 0.00038434360896742444,
                       "transitionIn": {
-                        "x": -0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.0056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.6958095238095238,
+                      "time": 0.5962199312714777,
+                      "value": 0.00025229467881833,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6082474226804123,
+                      "value": 0.00014498084947200634,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6202749140893471,
+                      "value": 0.00006568450397346736,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6323024054982818,
+                      "value": 0.00001684733338365754,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6443298969072165,
                       "value": 0,
                       "transitionIn": {
-                        "x": -0.0056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.7142857142857143,
-                      "value": 0.00014337667294387314,
+                      "time": 0.6563573883161512,
+                      "value": 0.000015701848688376748,
                       "transitionIn": {
-                        "x": -0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.0056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.7329523809523809,
-                      "value": 0.0005350826678538926,
+                      "time": 0.6683848797250859,
+                      "value": 0.00006353085877155401,
                       "transitionIn": {
-                        "x": -0.0056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.7514285714285714,
-                      "value": 0.001070165335707833,
+                      "time": 0.6804123711340206,
+                      "value": 0.00014208029465883194,
                       "transitionIn": {
-                        "x": -0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.0056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.770095238095238,
-                      "value": 0.0016052480035617731,
+                      "time": 0.6924398625429553,
+                      "value": 0.0002489955489211359,
                       "transitionIn": {
-                        "x": -0.0056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.7885714285714286,
-                      "value": 0.0019969539984718405,
+                      "time": 0.7044673539518901,
+                      "value": 0.0003810478284406759,
                       "transitionIn": {
-                        "x": -0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.0056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.8072380952380952,
-                      "value": 0.0021403306714157136,
+                      "time": 0.7164948453608248,
+                      "value": 0.0005342245874136426,
                       "transitionIn": {
-                        "x": -0.0056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.8257142857142857,
-                      "value": 0.0019969539984718405,
+                      "time": 0.7285223367697594,
+                      "value": 0.0007038534540566926,
                       "transitionIn": {
-                        "x": -0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.0056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.8443809523809523,
-                      "value": 0.0016052480035617731,
+                      "time": 0.7405498281786942,
+                      "value": 0.0008847462535365356,
                       "transitionIn": {
-                        "x": -0.0056,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       }
                     },
                     {
-                      "time": 0.8628571428571429,
-                      "value": 0.001070165335707833,
+                      "time": 0.7525773195876289,
+                      "value": 0.0010713631271222893,
                       "transitionIn": {
-                        "x": -0.004619,
+                        "x": -0.003007,
                         "y": 0,
                         "influence": 0.4,
                         "type": "custom"
@@ -323,32 +403,32 @@
                       "time": 0,
                       "value": 0,
                       "transitionOut": {
-                        "x": 0.017143,
+                        "x": 0.015464,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.06857142857142857,
+                      "time": 0.061855670103092786,
                       "value": 0,
                       "transitionIn": {
-                        "x": -0.067886,
+                        "x": -0.061237,
                         "y": 0,
                         "influence": 0.99,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.058286,
+                        "x": 0.052577,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.26285714285714284,
+                      "time": 0.23711340206185566,
                       "value": 0.35966213824834614,
                       "transitionIn": {
-                        "x": -0.192343,
+                        "x": -0.173505,
                         "y": 0,
                         "influence": 0.99,
                         "type": "custom"
@@ -360,250 +440,327 @@
                       }
                     },
                     {
-                      "time": 0.38285714285714284,
+                      "time": 0.32989690721649484,
                       "value": 0.35966213824834614,
                       "transitionIn": {
-                        "x": -0.1188,
+                        "x": -0.091856,
                         "y": 0,
                         "influence": 0.99,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.058286,
+                        "x": 0.052577,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.5771428571428572,
+                      "time": 0.5051546391752577,
                       "value": 0.048014619803435785,
                       "transitionIn": {
-                        "x": -0.192343,
+                        "x": -0.173505,
                         "y": 0,
                         "influence": 0.99,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.018857,
+                        "x": 0.007423,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.64,
-                      "value": 0.043510182134981326,
+                      "time": 0.5298969072164949,
+                      "value": 0.0435046690806131,
                       "transitionIn": {
-                        "x": -0.018857,
+                        "x": -0.007423,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
-                        "x": 0.0056,
+                        "x": 0.001856,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.6586666666666666,
-                      "value": 0.0441136574011053,
+                      "time": 0.5360824742268041,
+                      "value": 0.04350511148621052,
                       "transitionIn": {
-                        "x": -0.0056,
+                        "x": -0.001856,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
-                        "x": 0.005543,
+                        "x": 0.003608,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.6771428571428572,
-                      "value": 0.045762400969208555,
+                      "time": 0.5481099656357389,
+                      "value": 0.043573412104217196,
                       "transitionIn": {
-                        "x": -0.005543,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
+                        "type": "linear"
                       },
                       "transitionOut": {
-                        "x": 0.0056,
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.5601374570446735,
+                      "value": 0.043776238055048856,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.5721649484536082,
+                      "value": 0.044107514769540716,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.584192439862543,
+                      "value": 0.04455723707495028,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.5962199312714777,
+                      "value": 0.045111843538155796,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6082474226804123,
+                      "value": 0.04575459080885356,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6202749140893471,
+                      "value": 0.04646606408755543,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6323024054982818,
+                      "value": 0.0472247216247856,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6443298969072165,
+                      "value": 0.048007575345076374,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6563573883161512,
+                      "value": 0.04879083743976473,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6683848797250859,
+                      "value": 0.0495507201001879,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6804123711340206,
+                      "value": 0.05026408211047884,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6924398625429553,
+                      "value": 0.05090912648716349,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.7044673539518901,
+                      "value": 0.05146618319675476,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.7164948453608248,
+                      "value": 0.05191820260815121,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.7285223367697594,
+                      "value": 0.05225135103863228,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.7405498281786942,
+                      "value": 0.05245540211265693,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.7525773195876289,
+                      "value": 0.052524128120661054,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0.058763,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.6958095238095238,
+                      "time": 0.9484536082474226,
                       "value": 0.048014619803435785,
                       "transitionIn": {
-                        "x": -0.0056,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.005543,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.7142857142857143,
-                      "value": 0.050266838637663014,
-                      "transitionIn": {
-                        "x": -0.005543,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.0056,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.7329523809523809,
-                      "value": 0.05191558220576627,
-                      "transitionIn": {
-                        "x": -0.0056,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.005543,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.7514285714285714,
-                      "value": 0.05251905747189024,
-                      "transitionIn": {
-                        "x": -0.005543,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.0056,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.770095238095238,
-                      "value": 0.05191558220576627,
-                      "transitionIn": {
-                        "x": -0.0056,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.005543,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.7885714285714286,
-                      "value": 0.050266838637663014,
-                      "transitionIn": {
-                        "x": -0.005543,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.0056,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.8072380952380952,
-                      "value": 0.048014619803435785,
-                      "transitionIn": {
-                        "x": -0.0056,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.005543,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.8257142857142857,
-                      "value": 0.045762400969208555,
-                      "transitionIn": {
-                        "x": -0.005543,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.0056,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.8443809523809523,
-                      "value": 0.0441136574011053,
-                      "transitionIn": {
-                        "x": -0.0056,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.005543,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.8628571428571429,
-                      "value": 0.043510182134981326,
-                      "transitionIn": {
-                        "x": -0.005543,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.032571,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.9714285714285714,
-                      "value": 0.048014619803435785,
-                      "transitionIn": {
-                        "x": -0.027143,
+                        "x": -0.048969,
                         "y": 0,
                         "influence": 0.4,
                         "type": "custom"
@@ -623,79 +780,31 @@
                       "time": 0,
                       "value": 0.0005225580036743703,
                       "transitionOut": {
-                        "x": 0.004286,
+                        "x": 0.007732,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.017142857142857144,
+                      "time": 0.030927835051546393,
                       "value": 0.0005225580036743703,
                       "transitionIn": {
-                        "x": -0.005143,
+                        "x": -0.009278,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
-                        "x": 0.003238,
+                        "x": 0.007732,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.030095238095238095,
-                      "value": 0.00406343057030238,
-                      "transitionIn": {
-                        "x": -0.003886,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.003829,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.04285714285714286,
-                      "value": 0.011853365573590352,
-                      "transitionIn": {
-                        "x": -0.003829,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.003886,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.05580952380952381,
-                      "value": 0.019643300576878322,
-                      "transitionIn": {
-                        "x": -0.003886,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.003829,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.06857142857142857,
+                      "time": 0.061855670103092786,
                       "value": 0.023184173143506334,
                       "transitionIn": {
-                        "x": -0.031905,
+                        "x": -0.07732,
                         "y": 0,
                         "influence": 1,
                         "type": "custom"
@@ -707,74 +816,26 @@
                       }
                     },
                     {
-                      "time": 0.26285714285714284,
+                      "time": 0.23711340206185566,
                       "value": 0.023184173143506334,
                       "transitionIn": {
-                        "x": -0.485714,
+                        "x": -0.438144,
                         "y": 0,
                         "influence": 1,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.003886,
+                        "x": 0.009278,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.2758095238095238,
-                      "value": 0.019643300576878322,
-                      "transitionIn": {
-                        "x": -0.003886,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.003829,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.2885714285714286,
-                      "value": 0.011853365573590352,
-                      "transitionIn": {
-                        "x": -0.003829,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.003886,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.3015238095238095,
-                      "value": 0.00406343057030238,
-                      "transitionIn": {
-                        "x": -0.003886,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.003829,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.3142857142857143,
+                      "time": 0.26804123711340205,
                       "value": 0.0005225580036743703,
                       "transitionIn": {
-                        "x": -0.031905,
+                        "x": -0.07732,
                         "y": 0,
                         "influence": 1,
                         "type": "custom"
@@ -786,73 +847,25 @@
                       }
                     },
                     {
-                      "time": 0.3314285714285714,
+                      "time": 0.29896907216494845,
                       "value": 0.0005225580036743703,
                       "transitionIn": {
-                        "x": -0.005143,
+                        "x": -0.009278,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
-                        "x": 0.003238,
+                        "x": 0.007732,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.3443809523809524,
-                      "value": 0.004090504443597253,
-                      "transitionIn": {
-                        "x": -0.003886,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.003829,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.35714285714285715,
-                      "value": 0.011939962040697433,
-                      "transitionIn": {
-                        "x": -0.003829,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.003886,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.3700952380952381,
-                      "value": 0.019789434994503963,
-                      "transitionIn": {
-                        "x": -0.003886,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.003829,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.38285714285714284,
+                      "time": 0.32989690721649484,
                       "value": 0.023357366077720498,
                       "transitionIn": {
-                        "x": -0.031905,
+                        "x": -0.07732,
                         "y": 0,
                         "influence": 1,
                         "type": "custom"
@@ -864,153 +877,57 @@
                       }
                     },
                     {
-                      "time": 0.5771428571428572,
+                      "time": 0.5051546391752577,
                       "value": 0.023357366077720498,
                       "transitionIn": {
-                        "x": -0.485714,
+                        "x": -0.438144,
                         "y": 0,
                         "influence": 1,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.004743,
+                        "x": 0.009278,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.5929523809523809,
-                      "value": 0.019748601512319584,
-                      "transitionIn": {
-                        "x": -0.004743,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.004686,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.6085714285714285,
-                      "value": 0.01180932253977884,
-                      "transitionIn": {
-                        "x": -0.004686,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.004743,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.6243809523809524,
-                      "value": 0.0038700435672380995,
-                      "transitionIn": {
-                        "x": -0.004743,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.004686,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.64,
+                      "time": 0.5360824742268041,
                       "value": 0.00026127900183718514,
                       "transitionIn": {
-                        "x": -0.00453,
+                        "x": -0.008969,
                         "y": 0,
                         "influence": 0.4,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.066857,
+                        "x": 0.064948,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.8628571428571429,
+                      "time": 0.7525773195876289,
                       "value": 0.00026127900183718514,
                       "transitionIn": {
-                        "x": -0.066857,
+                        "x": -0.064948,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
-                        "x": 0.00681,
+                        "x": 0.048969,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.890095238095238,
-                      "value": 0.08691802118134218,
-                      "transitionIn": {
-                        "x": -0.008171,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.008114,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.9171428571428571,
-                      "value": 0.2775628693329595,
-                      "transitionIn": {
-                        "x": -0.008114,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.008171,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.9443809523809524,
-                      "value": 0.4682077174845768,
-                      "transitionIn": {
-                        "x": -0.008171,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.008114,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.9714285714285714,
+                      "time": 0.9484536082474226,
                       "value": 0.5548644596640818,
                       "transitionIn": {
-                        "x": -0.007844,
+                        "x": -0.056804,
                         "y": 0,
                         "influence": 0.4,
                         "type": "custom"
@@ -1062,41 +979,278 @@
                   "value": {
                     "relative": 0,
                     "minValueRange": 0,
-                    "maxValueRange": 360
+                    "maxValueRange": 180
                   },
                   "keyframes": [
                     {
                       "time": 0,
                       "value": 0,
                       "transitionOut": {
-                        "x": 0.16,
+                        "x": 0.134021,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.64,
+                      "time": 0.5360824742268041,
                       "value": 0,
                       "transitionIn": {
-                        "x": -0.192,
+                        "x": -0.160825,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
-                        "x": 0.055714,
+                        "x": 0.003007,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.8628571428571429,
+                      "time": 0.5481099656357389,
+                      "value": 0.05555555555555555,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.5601374570446735,
+                      "value": 0.1111111111111111,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.5721649484536082,
+                      "value": 0.16666666666666666,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.584192439862543,
+                      "value": 0.2222222222222222,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.5962199312714777,
+                      "value": 0.2777777777777778,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6082474226804123,
+                      "value": 0.3333333333333333,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6202749140893471,
+                      "value": 0.3888888888888889,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6323024054982818,
+                      "value": 0.4444444444444444,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6443298969072165,
+                      "value": 0.5,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6563573883161512,
+                      "value": 0.5555555555555556,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6683848797250859,
+                      "value": 0.6111111111111112,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6804123711340206,
+                      "value": 0.6666666666666666,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.6924398625429553,
+                      "value": 0.7222222222222222,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.7044673539518901,
+                      "value": 0.7777777777777778,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.7164948453608248,
+                      "value": 0.8333333333333334,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.7285223367697594,
+                      "value": 0.8888888888888888,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.7405498281786942,
+                      "value": 0.9444444444444444,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      }
+                    },
+                    {
+                      "time": 0.7525773195876289,
                       "value": 1,
                       "transitionIn": {
-                        "x": -0.055714,
+                        "x": 0,
                         "y": 0,
-                        "influence": 0.4,
-                        "type": "custom"
+                        "type": "linear"
                       }
                     }
                   ],
@@ -1112,62 +1266,63 @@
                       "time": 0,
                       "value": 0,
                       "transitionOut": {
-                        "x": 0.152857,
+                        "x": 0.126289,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.6114285714285714,
+                      "time": 0.5051546391752577,
                       "value": 0,
                       "transitionIn": {
-                        "x": -0.183429,
+                        "x": -0.500103,
+                        "y": 0,
+                        "influence": 0.99,
+                        "type": "custom"
+                      },
+                      "transitionOut": {
+                        "x": 0.009278,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.007143,
-                        "y": 0,
-                        "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.64,
+                      "time": 0.5360824742268041,
                       "value": 0.3333333333333333,
                       "transitionIn": {
-                        "x": -0.007143,
+                        "x": -0.007732,
                         "y": 0,
                         "influence": 0.4,
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.066857,
+                        "x": 0.064948,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       }
                     },
                     {
-                      "time": 0.8628571428571429,
+                      "time": 0.7525773195876289,
                       "value": 0.3333333333333333,
                       "transitionIn": {
-                        "x": -0.066857,
+                        "x": -0.064948,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
                       },
                       "transitionOut": {
-                        "x": 0.027143,
+                        "x": 0.048969,
                         "y": 0,
                         "type": "easeOut"
                       }
                     },
                     {
-                      "time": 0.9714285714285714,
+                      "time": 0.9484536082474226,
                       "value": 0,
                       "transitionIn": {
-                        "x": -0.027143,
+                        "x": -0.048969,
                         "y": 0,
                         "influence": 0.4,
                         "type": "custom"
@@ -1284,7 +1439,7 @@
   "playbackManager": {
     "range": {
       "start": 0,
-      "end": 5250
+      "end": 2910
     }
   }
 }

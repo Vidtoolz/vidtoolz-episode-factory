@@ -1,0 +1,106 @@
+{
+  "id": "DIRN-02-landmark-push-in",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-02-landmark-push-in/earth-studio/earth-studio.esp",
+  "esp_sha256": "8bc331cb5b5f298ba696e36bd2e93714bba939c1d5c847cc6deda63edd612d1c",
+  "expected": {
+    "total_frames": 120,
+    "duration_seconds": 4,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 120,
+    "totalFrames": 120,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "zoom_in",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-02-landmark-push-in/DIRN-02-landmark-push-in_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.1704,
+        "longitude": 24.9522,
+        "altitude": 2500.9750465135867,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 0,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 60,
+      "label": "seg1-mid",
+      "movement": "zoom_in",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-02-landmark-push-in/DIRN-02-landmark-push-in_f00060_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 60,
+        "latitude": 60.1704,
+        "longitude": 24.9522,
+        "altitude": 1153.3770493390602,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 0,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 119,
+      "label": "seg1-end",
+      "movement": "zoom_in",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-02-landmark-push-in/DIRN-02-landmark-push-in_f00119_seg1-end.png",
+      "earth_studio_camera": {
+        "frame": 119,
+        "latitude": 60.1704,
+        "longitude": 24.9522,
+        "altitude": 700.9930130238043,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 0,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    }
+  ],
+  "errors": []
+}

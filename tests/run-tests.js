@@ -55,6 +55,7 @@ require("./earth-studio-journey.test.js");
 require("./earth-studio-camera-quality.test.js");
 require("./earth-studio-visual-review.test.js");
 require("./earth-studio-director.test.js");
+require("./earth-studio-directorial-plan.test.js");
 require("./comfyui-gateway.test.js");
 require("./comfyui-qualification.test.js");
 require("./earth-studio-proof.test.js");

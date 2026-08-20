@@ -14,7 +14,13 @@ const model = require('../earth-studio-visual-review.js');
 
 const DEFAULT_PORT = 37841;
 const ES_PORT = Number(process.env.ES_REVIEW_CDP_PORT || 9731);
-const SESSION_FILE = path.join(ROOT, 'package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/review-session.json');
+// --gate <package-run dir> reviews another evaluation package (e.g. the
+// directorial evaluation set). Defaults to the v2 journey acceptance gate.
+const argv = process.argv.slice(2);
+const GATE_ARG = argv.indexOf('--gate') >= 0 ? argv[argv.indexOf('--gate') + 1] : null;
+const GATE_DIR = GATE_ARG ? path.resolve(GATE_ARG) : null;
+const DEFAULT_SESSION_FILE = path.join(ROOT, 'package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/review-session.json');
+const SESSION_FILE = GATE_DIR ? path.join(GATE_DIR, 'review-session.json') : DEFAULT_SESSION_FILE;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function closeEarthTab(port) {
@@ -44,7 +50,7 @@ function html() {
 <script>
 const app=document.querySelector('#app');
 async function act(url){const r=await fetch(url,{method:'POST'});const x=await r.json();render(x);}
-function render(x){if(x.error){app.innerHTML='<div class="status fail"><b>'+x.error.code+'</b><br>'+x.error.message+'</div>';return}const r=x.current, s=x.session; if(!r){app.textContent='No project selected';return} const cls=r.state==='READY_TO_PLAY'?'ready':(r.state==='IMPORT_FAILED'?'fail':''); app.innerHTML='<div class="status '+cls+'"><b>'+r.state+'</b><br>'+r.title+'<br><span class="muted">'+r.category+' · '+r.duration_seconds+'s · '+r.esp+'</span></div><p><button '+(x.previous?'':'disabled')+' onclick="act(\'/api/previous\')">Previous</button><button onclick="act(\'/api/prepare\')">Prepare/Open</button><button '+(x.next?'':'disabled')+' onclick="act(\'/api/next\')">Next</button></p><p class="muted">When status is READY_TO_PLAY, switch to the Earth Studio tab and click Google's Play button. Playback is never started by this controller.</p><p>Human decision: <button onclick="decision(\'HUMAN_PASS\')">PASS</button><button onclick="decision(\'HUMAN_FAIL\')">FAIL</button></p><textarea id="notes" rows="4" style="width:100%;background:#222;color:#fff" placeholder="Mikko notes (optional)">'+(s.records[r.id].notes||'')+'</textarea>'}
+function render(x){if(x.error){app.innerHTML='<div class="status fail"><b>'+x.error.code+'</b><br>'+x.error.message+'</div>';return}const r=x.current, s=x.session; if(!r){app.textContent='No project selected';return} const cls=r.state==='READY_TO_PLAY'?'ready':(r.state==='IMPORT_FAILED'?'fail':''); app.innerHTML='<div class="status '+cls+'"><b>'+r.state+'</b><br>'+r.title+'<br><span class="muted">'+(r.category||r.question||'')+' · '+r.duration_seconds+'s · '+r.esp+'</span></div><p><button '+(x.previous?'':'disabled')+' onclick="act(\'/api/previous\')">Previous</button><button onclick="act(\'/api/prepare\')">Prepare/Open</button><button '+(x.next?'':'disabled')+' onclick="act(\'/api/next\')">Next</button></p><p class="muted">When status is READY_TO_PLAY, switch to the Earth Studio tab and click Google's Play button. Playback is never started by this controller.</p><p>Human decision: <button onclick="decision(\'HUMAN_PASS\')">PASS</button><button onclick="decision(\'HUMAN_FAIL\')">FAIL</button></p><textarea id="notes" rows="4" style="width:100%;background:#222;color:#fff" placeholder="Mikko notes (optional)">'+(s.records[r.id].notes||'')+'</textarea>'}
 async function decision(d){await fetch('/api/decision',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({decision:d,notes:document.querySelector('#notes').value})});poll()}
 async function poll(){const r=await fetch('/api/status');render(await r.json())} poll(); setInterval(poll,2000);
 </script>`;
@@ -100,8 +106,8 @@ async function browserReady(cdp, record) {
 }
 
 class ReviewServer {
-  constructor(port) {
-    this.port = port; this.manifest = model.loadManifest(ROOT); this.session = model.freshSession(this.manifest);
+  constructor(port, gateDir = null) {
+    this.port = port; this.manifest = model.loadManifest(ROOT, gateDir); this.session = model.freshSession(this.manifest);
     this.browser = null; this.earth = null; this.controller = null; this.chrome = null; this.server = null;
   }
   current() { return this.manifest.records.find((r) => r.id === this.session.current_id); }
@@ -188,7 +194,7 @@ class ReviewServer {
 
 async function main() {
   const port = Number(process.env.ES_REVIEW_PORT || DEFAULT_PORT);
-  const app = new ReviewServer(port);
+  const app = new ReviewServer(port, GATE_DIR);
   process.on('SIGINT', () => { app.stop(); process.exit(0); });
   process.on('SIGTERM', () => { app.stop(); process.exit(0); });
   try { await app.run(); } catch (error) { app.stop(); console.error(`${error.code || 'IMPORT_FAILED'} — ${error.message}`); process.exitCode = 1; }

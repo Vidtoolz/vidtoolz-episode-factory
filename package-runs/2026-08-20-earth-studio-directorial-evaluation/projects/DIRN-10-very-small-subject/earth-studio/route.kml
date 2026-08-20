@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>DIRN-10-very-small-subject route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>Eiffel Tower</name>
+      <Point><coordinates>2.2945,48.8584,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>DIRN-10-very-small-subject route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        2.2945,48.8584,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

@@ -1,0 +1,104 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": "16:9",
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Helsinki",
+    "story": {
+      "role": "ROUTE_POINT",
+      "importance": "LOW",
+      "purposes": [
+        "SHOW_ROUTE"
+      ]
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s47",
+      "type": "hold",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 0.75,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": [
+    {
+      "destination": {
+        "location": "Tallinn",
+        "story": {
+          "role": "ROUTE_POINT",
+          "importance": "LOW",
+          "purposes": [
+            "SHOW_ROUTE"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "high_transit",
+      "travel": [
+        {
+          "id": "s43",
+          "type": "climb_to_transit",
+          "duration_seconds": 1,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s44",
+          "type": "cruise",
+          "duration_seconds": 3.5,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s45",
+          "type": "descend",
+          "duration_seconds": 1,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s46",
+          "type": "hold",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 0.75,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    }
+  ]
+}

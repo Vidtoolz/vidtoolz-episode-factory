@@ -1,0 +1,83 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": null,
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Copenhagen",
+    "story": {
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "purposes": [
+        "ESTABLISH",
+        "ORIENT"
+      ]
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s1207",
+      "type": "hold",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 1.08,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": [
+    {
+      "destination": {
+        "location": "Berlin",
+        "story": {
+          "role": "DESTINATION",
+          "importance": "HIGH",
+          "purposes": [
+            "ARRIVE",
+            "ESTABLISH",
+            "INSPECT"
+          ]
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "direct",
+      "travel": [
+        {
+          "id": "s1205",
+          "type": "fly",
+          "duration_seconds": 30,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s1206",
+          "type": "hold",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 1.25,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    }
+  ]
+}

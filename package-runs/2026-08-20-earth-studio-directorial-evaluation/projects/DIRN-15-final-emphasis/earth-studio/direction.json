@@ -1,0 +1,326 @@
+{
+  "case": "DIRN-15-final-emphasis",
+  "title": "DIRN-15 — Copenhagen is the important destination",
+  "question": "Does an explicitly named primary destination get more emphasis than the earlier stops?",
+  "expected": "Helsinki/Stockholm restrained; Copenhagen gets the arrival emphasis (dwell, flourish, or inspection move).",
+  "generated_via": "parseIntent -> autoDirect -> journey model -> lane.writeJob (GUI path)",
+  "source_text": "Travel from Helsinki to Stockholm, then to Copenhagen. Copenhagen is the important destination.",
+  "parsed_intent": {
+    "stops": [
+      {
+        "location": "Helsinki"
+      },
+      {
+        "location": "Stockholm"
+      },
+      {
+        "location": "Copenhagen",
+        "role": "DESTINATION",
+        "importance": "HIGH"
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null
+  },
+  "plan": {
+    "plan_version": 1,
+    "director_version": 1,
+    "source_text": "Travel from Helsinki to Stockholm, then to Copenhagen. Copenhagen is the important destination.",
+    "beats": [
+      {
+        "beat": "STARTING_CONTEXT",
+        "subject": "Helsinki",
+        "role": "STARTING_CONTEXT",
+        "importance": "NORMAL",
+        "purpose": "ESTABLISH",
+        "purpose_label": "Establish",
+        "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.08,
+        "tilt_deg": null,
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 4,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      },
+      {
+        "beat": "TRAVEL",
+        "subject": "Helsinki → Stockholm",
+        "purpose": "TRAVEL",
+        "purpose_label": "Travel",
+        "viewer_should_understand": "that we are moving from one place to another",
+        "grammar": "style:high_transit",
+        "grammar_label": "High Transit",
+        "rarity": "SELECTIVE",
+        "angle": "top_down",
+        "why": "it gives the top-down view this purpose wants a selective move is earned here (WAYPOINT, importance LOW)",
+        "distance_m": 395820,
+        "duration_seconds": 9,
+        "provenance": {
+          "subject": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "duration": "computed"
+        }
+      },
+      {
+        "beat": "WAYPOINT",
+        "subject": "Stockholm",
+        "role": "WAYPOINT",
+        "importance": "LOW",
+        "purpose": "ESTABLISH",
+        "purpose_label": "Establish",
+        "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 0.88,
+        "tilt_deg": null,
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 4,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      },
+      {
+        "beat": "TRAVEL",
+        "subject": "Stockholm → Copenhagen",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "style:high_transit",
+        "grammar_label": "High Transit",
+        "rarity": "SELECTIVE",
+        "angle": "top_down",
+        "why": "a selective move is earned here (DESTINATION, importance HIGH) at about 317 km up the ground reads at 0.49 frame-widths per second",
+        "distance_m": 522129,
+        "duration_seconds": 9,
+        "provenance": {
+          "subject": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "duration": "computed"
+        }
+      },
+      {
+        "beat": "DESTINATION",
+        "subject": "Copenhagen",
+        "role": "DESTINATION",
+        "importance": "HIGH",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "slow_orbit",
+        "grammar_label": "Slow Orbit",
+        "rarity": "SELECTIVE",
+        "angle": "oblique",
+        "emphasis": 1.25,
+        "tilt_deg": null,
+        "why": "its primary purpose is INSPECT, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 21,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "user-specified",
+          "importance": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      }
+    ],
+    "globe": {
+      "allowed": false,
+      "justification": null,
+      "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+    },
+    "compare_match": null,
+    "continuation": null,
+    "notes": [
+      "Flourish budget for this sequence: 2 (from 3 stops; 0 hero, 1 high).",
+      "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "Special/selective moves used: High Transit, High Transit, Slow Orbit."
+    ],
+    "span_m": 917948,
+    "total_duration_seconds": 47
+  },
+  "audit": {
+    "findings": [],
+    "ok": true,
+    "beat_count": 5
+  },
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Helsinki",
+      "from": null,
+      "to": null,
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.08,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Zoom-To (native template)",
+        "Reveal",
+        "Pull Back"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Helsinki",
+      "to": "Stockholm",
+      "role": null,
+      "importance": null,
+      "movement": "style:high_transit",
+      "label": "High Transit",
+      "purpose": "TRAVEL",
+      "viewer_should_understand": "that we are moving from one place to another",
+      "why": "it gives the top-down view this purpose wants a selective move is earned here (WAYPOINT, importance LOW)",
+      "rarity": "SELECTIVE",
+      "emphasis": 0.75,
+      "angle": "top_down",
+      "communicates": [
+        "the whole route at once",
+        "distance as information"
+      ],
+      "alternatives": [
+        "Cinematic (pull back, travel, descend)",
+        "Direct Fly-To"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "at",
+      "place": "Stockholm",
+      "from": null,
+      "to": null,
+      "role": "WAYPOINT",
+      "importance": "LOW",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 0.88,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Pull Back",
+        "Zoom-To (native template)",
+        "Push In"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Stockholm",
+      "to": "Copenhagen",
+      "role": null,
+      "importance": null,
+      "movement": "style:high_transit",
+      "label": "High Transit",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "a selective move is earned here (DESTINATION, importance HIGH) at about 317 km up the ground reads at 0.49 frame-widths per second",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.25,
+      "angle": "top_down",
+      "communicates": [
+        "the whole route at once",
+        "distance as information"
+      ],
+      "alternatives": [
+        "Cinematic (pull back, travel, descend)",
+        "Low Approach"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "at",
+      "place": "Copenhagen",
+      "from": null,
+      "to": null,
+      "role": "DESTINATION",
+      "importance": "HIGH",
+      "movement": "slow_orbit",
+      "label": "Slow Orbit",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "its primary purpose is INSPECT, which is what this shot is for city framing is within its useful range",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.25,
+      "angle": "oblique",
+      "communicates": [
+        "three-dimensional form",
+        "importance",
+        "unhurried inspection"
+      ],
+      "alternatives": [
+        "Orbit",
+        "Half Orbit",
+        "Fly-To-and-Orbit (native template)"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    }
+  ],
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 2 (from 3 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: High Transit, High Transit, Slow Orbit."
+  ],
+  "explanation": [
+    "Helsinki (Starting context, NORMAL): Hold for Establish — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Helsinki → Stockholm: High Transit — it gives the top-down view this purpose wants a selective move is earned here (WAYPOINT, importance LOW)",
+    "Stockholm (Waypoint, LOW): Hold for Establish — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Stockholm → Copenhagen: High Transit — a selective move is earned here (DESTINATION, importance HIGH) at about 317 km up the ground reads at 0.49 frame-widths per second",
+    "Copenhagen (Destination, HIGH): Slow Orbit for Arrive — its primary purpose is INSPECT, which is what this shot is for city framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 3 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: High Transit, High Transit, Slow Orbit."
+  ]
+}

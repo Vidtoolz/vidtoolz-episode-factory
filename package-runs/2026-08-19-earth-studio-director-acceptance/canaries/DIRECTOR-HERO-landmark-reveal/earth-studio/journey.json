@@ -19,7 +19,7 @@
   },
   "start_movements": [
     {
-      "id": "s377",
+      "id": "s439",
       "type": "hold",
       "duration_seconds": null,
       "pace": null,
@@ -49,9 +49,9 @@
       "travel_style": "cinematic",
       "travel": [
         {
-          "id": "s373",
+          "id": "s435",
           "type": "pull_back",
-          "duration_seconds": null,
+          "duration_seconds": 1,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -61,9 +61,9 @@
           "revolutions": null
         },
         {
-          "id": "s374",
+          "id": "s436",
           "type": "cruise",
-          "duration_seconds": null,
+          "duration_seconds": 3,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -73,9 +73,9 @@
           "revolutions": null
         },
         {
-          "id": "s375",
+          "id": "s437",
           "type": "descend",
-          "duration_seconds": null,
+          "duration_seconds": 1,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -87,7 +87,7 @@
       ],
       "movements": [
         {
-          "id": "s376",
+          "id": "s438",
           "type": "slow_orbit",
           "duration_seconds": null,
           "pace": null,

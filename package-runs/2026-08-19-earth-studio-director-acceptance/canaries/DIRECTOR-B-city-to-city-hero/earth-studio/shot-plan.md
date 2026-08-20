@@ -1,8 +1,8 @@
 # Shot Plan: DIRECTOR-B-city-to-city-hero
 
-Total duration: 68 seconds
+Total duration: 56 seconds
 Frame rate: 30 fps
-Total frames: 2040
+Total frames: 1680
 Aspect: 16:9 (1920x1080)
 Frame convention: start_frame inclusive, end_frame exclusive
 
@@ -11,10 +11,10 @@ Frame convention: start_frame inclusive, end_frame exclusive
 | # | Action | Location | Alt (m) | Tilt | Time | start_frame | end_frame | Status |
 |---|---|---|---:|---:|---:|---:|---:|---|
 | 1 | hover | Helsinki | 34028 | 0 | 0-4s | 0 | 120 | resolved |
-| 2 | zoom_out | Helsinki | 155960 | 0 | 4-11s | 120 | 330 | resolved |
-| 3 | fly_to | Stockholm | 155960 | 0 | 11-20s | 330 | 600 | resolved |
-| 4 | zoom_in | Stockholm | 17014 | 60 | 20-27s | 600 | 810 | resolved |
-| 5 | orbit | Stockholm | 17014 | 60 | 27-68s | 810 | 2040 | resolved |
+| 2 | zoom_out | Helsinki | 155960 | 0 | 4-5.8s | 120 | 174 | resolved |
+| 3 | fly_to | Stockholm | 155960 | 0 | 5.8-13.2s | 174 | 396 | resolved |
+| 4 | zoom_in | Stockholm | 17014 | 60 | 13.2-15s | 396 | 450 | resolved |
+| 5 | orbit | Stockholm | 17014 | 60 | 15-56s | 450 | 1680 | resolved |
 
 ## Locations
 

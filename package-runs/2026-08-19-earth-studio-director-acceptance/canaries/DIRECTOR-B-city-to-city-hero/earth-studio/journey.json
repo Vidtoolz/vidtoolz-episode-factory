@@ -20,7 +20,7 @@
   },
   "start_movements": [
     {
-      "id": "s17",
+      "id": "s19",
       "type": "hold",
       "duration_seconds": null,
       "pace": null,
@@ -51,33 +51,33 @@
       "travel_style": "cinematic",
       "travel": [
         {
-          "id": "s13",
-          "type": "pull_back",
-          "duration_seconds": null,
-          "pace": null,
-          "emphasis": null,
-          "direction": 1,
-          "altitude_m": null,
-          "tilt_deg": null,
-          "framing": null,
-          "revolutions": null
-        },
-        {
-          "id": "s14",
-          "type": "cruise",
-          "duration_seconds": null,
-          "pace": null,
-          "emphasis": null,
-          "direction": 1,
-          "altitude_m": null,
-          "tilt_deg": null,
-          "framing": null,
-          "revolutions": null
-        },
-        {
           "id": "s15",
+          "type": "pull_back",
+          "duration_seconds": 1.8,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s16",
+          "type": "cruise",
+          "duration_seconds": 7.4,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s17",
           "type": "descend",
-          "duration_seconds": null,
+          "duration_seconds": 1.8,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -89,7 +89,7 @@
       ],
       "movements": [
         {
-          "id": "s16",
+          "id": "s18",
           "type": "slow_orbit",
           "duration_seconds": null,
           "pace": null,

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>DIRN-18-restraint route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>Copenhagen</name>
+      <Point><coordinates>12.5683,55.6761,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Berlin</name>
+      <Point><coordinates>13.405,52.52,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>DIRN-18-restraint route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        12.5683,55.6761,0
+        13.405,52.52,0
+        13.405,52.52,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

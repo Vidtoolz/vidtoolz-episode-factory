@@ -20,7 +20,7 @@
   },
   "start_movements": [
     {
-      "id": "s229",
+      "id": "s265",
       "type": "hold",
       "duration_seconds": null,
       "pace": null,
@@ -51,9 +51,9 @@
       "travel_style": "high_transit",
       "travel": [
         {
-          "id": "s217",
+          "id": "s253",
           "type": "climb_to_transit",
-          "duration_seconds": null,
+          "duration_seconds": 1.8,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -63,9 +63,9 @@
           "revolutions": null
         },
         {
-          "id": "s218",
+          "id": "s254",
           "type": "cruise",
-          "duration_seconds": null,
+          "duration_seconds": 5.4,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -75,9 +75,9 @@
           "revolutions": null
         },
         {
-          "id": "s219",
+          "id": "s255",
           "type": "descend",
-          "duration_seconds": null,
+          "duration_seconds": 1.8,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -89,7 +89,7 @@
       ],
       "movements": [
         {
-          "id": "s220",
+          "id": "s256",
           "type": "hold",
           "duration_seconds": null,
           "pace": null,
@@ -120,9 +120,9 @@
       "travel_style": "high_transit",
       "travel": [
         {
-          "id": "s221",
+          "id": "s257",
           "type": "climb_to_transit",
-          "duration_seconds": null,
+          "duration_seconds": 1.8,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -132,9 +132,9 @@
           "revolutions": null
         },
         {
-          "id": "s222",
+          "id": "s258",
           "type": "cruise",
-          "duration_seconds": null,
+          "duration_seconds": 5.4,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -144,9 +144,9 @@
           "revolutions": null
         },
         {
-          "id": "s223",
+          "id": "s259",
           "type": "descend",
-          "duration_seconds": null,
+          "duration_seconds": 1.8,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -158,7 +158,7 @@
       ],
       "movements": [
         {
-          "id": "s224",
+          "id": "s260",
           "type": "hold",
           "duration_seconds": null,
           "pace": null,
@@ -190,9 +190,9 @@
       "travel_style": "high_transit",
       "travel": [
         {
-          "id": "s225",
+          "id": "s261",
           "type": "climb_to_transit",
-          "duration_seconds": null,
+          "duration_seconds": 1.6,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -202,9 +202,9 @@
           "revolutions": null
         },
         {
-          "id": "s226",
+          "id": "s262",
           "type": "cruise",
-          "duration_seconds": null,
+          "duration_seconds": 4.8,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -214,9 +214,9 @@
           "revolutions": null
         },
         {
-          "id": "s227",
+          "id": "s263",
           "type": "descend",
-          "duration_seconds": null,
+          "duration_seconds": 1.6,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -228,7 +228,7 @@
       ],
       "movements": [
         {
-          "id": "s228",
+          "id": "s264",
           "type": "slow_orbit",
           "duration_seconds": null,
           "pace": null,
@@ -237,7 +237,7 @@
           "altitude_m": null,
           "tilt_deg": null,
           "framing": null,
-          "revolutions": null
+          "revolutions": 0.5
         }
       ]
     }

@@ -20,7 +20,7 @@
   },
   "start_movements": [
     {
-      "id": "s443",
+      "id": "s515",
       "type": "hold",
       "duration_seconds": null,
       "pace": null,
@@ -51,9 +51,9 @@
       "travel_style": "high_transit",
       "travel": [
         {
-          "id": "s433",
+          "id": "s505",
           "type": "climb_to_transit",
-          "duration_seconds": null,
+          "duration_seconds": 3,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -63,9 +63,9 @@
           "revolutions": null
         },
         {
-          "id": "s434",
+          "id": "s506",
           "type": "cruise",
-          "duration_seconds": null,
+          "duration_seconds": 17,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -75,9 +75,9 @@
           "revolutions": null
         },
         {
-          "id": "s435",
+          "id": "s507",
           "type": "descend",
-          "duration_seconds": null,
+          "duration_seconds": 3,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -89,7 +89,7 @@
       ],
       "movements": [
         {
-          "id": "s436",
+          "id": "s508",
           "type": "hold",
           "duration_seconds": null,
           "pace": null,
@@ -121,9 +121,9 @@
       "travel_style": "high_transit",
       "travel": [
         {
-          "id": "s437",
+          "id": "s509",
           "type": "climb_to_transit",
-          "duration_seconds": null,
+          "duration_seconds": 3,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -133,9 +133,9 @@
           "revolutions": null
         },
         {
-          "id": "s438",
+          "id": "s510",
           "type": "cruise",
-          "duration_seconds": null,
+          "duration_seconds": 17,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -145,9 +145,9 @@
           "revolutions": null
         },
         {
-          "id": "s439",
+          "id": "s511",
           "type": "descend",
-          "duration_seconds": null,
+          "duration_seconds": 3,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -159,7 +159,7 @@
       ],
       "movements": [
         {
-          "id": "s440",
+          "id": "s512",
           "type": "slow_orbit",
           "duration_seconds": null,
           "pace": null,
@@ -168,7 +168,7 @@
           "altitude_m": null,
           "tilt_deg": null,
           "framing": null,
-          "revolutions": null
+          "revolutions": 0.5
         }
       ]
     },
@@ -187,7 +187,7 @@
       "travel_style": "direct",
       "travel": [
         {
-          "id": "s441",
+          "id": "s513",
           "type": "pull_back",
           "duration_seconds": null,
           "pace": null,
@@ -201,7 +201,7 @@
       ],
       "movements": [
         {
-          "id": "s442",
+          "id": "s514",
           "type": "hold",
           "duration_seconds": null,
           "pace": null,

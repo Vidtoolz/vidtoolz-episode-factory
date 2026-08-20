@@ -1,15 +1,15 @@
 {
   "jobName": "DIRECTOR-GLOBAL-network",
   "slug": "director-global-network",
-  "description": "hover over Shanghai at 34028m tilted 0 degrees for 3 seconds then zoom out from Shanghai at 1509710m tilted 0 degrees for 9 seconds then fly to Amsterdam at 1509710m tilted 0 degrees for 34 seconds then zoom in on Amsterdam at 34028m tilted 0 degrees for 9 seconds then hover over Amsterdam for 3 seconds then zoom out from Amsterdam at 1520988m tilted 0 degrees for 9 seconds then fly to Los Angeles at 1520988m tilted 0 degrees for 34 seconds then zoom in on Los Angeles at 17014m tilted 60 degrees for 11 seconds then orbit Los Angeles once clockwise at 17014m tilted 60 degrees for 39 seconds then zoom out from Los Angeles at 36131736m tilted 0 degrees for 19 seconds then hover over Los Angeles for 5 seconds",
+  "description": "hover over Shanghai at 34028m tilted 0 degrees for 3 seconds then zoom out from Shanghai at 1509710m tilted 0 degrees for 3 seconds then fly to Amsterdam at 1509710m tilted 0 degrees for 17 seconds then zoom in on Amsterdam at 34028m tilted 0 degrees for 3 seconds then hover over Amsterdam for 3 seconds then zoom out from Amsterdam at 1520988m tilted 0 degrees for 3 seconds then fly to Los Angeles at 1520988m tilted 0 degrees for 17 seconds then zoom in on Los Angeles at 17014m tilted 60 degrees for 3 seconds then orbit Los Angeles half clockwise at 17014m tilted 60 degrees for 21 seconds then zoom out from Los Angeles at 36131736m tilted 0 degrees for 19 seconds then hover over Los Angeles for 5 seconds",
   "aspect": "16:9",
   "render_dimensions": {
     "width": 1920,
     "height": 1080
   },
   "frame_rate": 30,
-  "total_frames": 5250,
-  "total_duration_seconds": 175,
+  "total_frames": 2910,
+  "total_duration_seconds": 97,
   "unresolved_count": 0,
   "planner_version": "0.9.4",
   "motion_profile": {
@@ -31,7 +31,8 @@
     "start_source": "location",
     "stop_count": 4,
     "movement_count": 11,
-    "compiled_description": "hover over Shanghai at 34028m tilted 0 degrees for 3 seconds then zoom out from Shanghai at 1509710m tilted 0 degrees for 9 seconds then fly to Amsterdam at 1509710m tilted 0 degrees for 34 seconds then zoom in on Amsterdam at 34028m tilted 0 degrees for 9 seconds then hover over Amsterdam for 3 seconds then zoom out from Amsterdam at 1520988m tilted 0 degrees for 9 seconds then fly to Los Angeles at 1520988m tilted 0 degrees for 34 seconds then zoom in on Los Angeles at 17014m tilted 60 degrees for 11 seconds then orbit Los Angeles once clockwise at 17014m tilted 60 degrees for 39 seconds then zoom out from Los Angeles at 36131736m tilted 0 degrees for 19 seconds then hover over Los Angeles for 5 seconds"
+    "compiled_description": "hover over Shanghai at 34028m tilted 0 degrees for 3 seconds then zoom out from Shanghai at 1509710m tilted 0 degrees for 3 seconds then fly to Amsterdam at 1509710m tilted 0 degrees for 17 seconds then zoom in on Amsterdam at 34028m tilted 0 degrees for 3 seconds then hover over Amsterdam for 3 seconds then zoom out from Amsterdam at 1520988m tilted 0 degrees for 3 seconds then fly to Los Angeles at 1520988m tilted 0 degrees for 17 seconds then zoom in on Los Angeles at 17014m tilted 60 degrees for 3 seconds then orbit Los Angeles half clockwise at 17014m tilted 60 degrees for 21 seconds then zoom out from Los Angeles at 36131736m tilted 0 degrees for 19 seconds then hover over Los Angeles for 5 seconds"
   },
+  "camera_quality": "camera-quality.json",
   "continuation_state": "continuation-state.json"
 }

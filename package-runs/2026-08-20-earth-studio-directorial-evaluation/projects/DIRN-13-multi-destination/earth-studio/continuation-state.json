@@ -1,0 +1,44 @@
+{
+  "continuation_state_version": 1,
+  "generated_by": "earth-studio-journey",
+  "planner_version": "0.9.4",
+  "motion_profile_version": 4,
+  "source_animation": "DIRN-13-multi-destination",
+  "timestamp": "2026-08-20T09:00:00.000Z",
+  "aspect": "16:9",
+  "frame_rate": 30,
+  "total_frames": 930,
+  "ends_at_frame": 929,
+  "camera": {
+    "latitude": 55.6761,
+    "longitude": 12.5683,
+    "altitude_m": 34028,
+    "pan_deg": 0,
+    "heading_deg": 0,
+    "tilt_deg": 0
+  },
+  "esp_mapping": {
+    "longitude": "cameraPositionGroup.longitude",
+    "latitude": "cameraPositionGroup.latitude",
+    "altitude_m": "cameraPositionGroup.altitude",
+    "pan_deg": "cameraRotationGroup.rotationX",
+    "tilt_deg": "cameraRotationGroup.rotationY",
+    "not_keyframed": [
+      "rotationZ",
+      "fov",
+      "exposure",
+      "aperture",
+      "minFocusLength"
+    ]
+  },
+  "target": {
+    "name": "Copenhagen",
+    "latitude": 55.6761,
+    "longitude": 12.5683
+  },
+  "final_movement": {
+    "segment_id": 9,
+    "action": "hover",
+    "location_name": "Copenhagen"
+  }
+}

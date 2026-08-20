@@ -1,0 +1,1702 @@
+{
+  "schema_version": 1,
+  "gate": "earth-studio DIRECTORIAL evaluation — fresh 18-case set for human visual review",
+  "generated_at": "2026-08-20T09:00:00.000Z",
+  "director_version": 1,
+  "plan_version": 1,
+  "journey_version": 1,
+  "planner_version": "0.9.4",
+  "method": "parseIntent -> autoDirect -> journey model -> lane.writeJob (production GUI path)",
+  "aesthetic_status": "TECHNICALLY VALID ONLY — HUMAN VISUAL GATE OPEN, awaiting Mikko",
+  "records": [
+    {
+      "id": "DIRN-01-landmark-establish",
+      "title": "DIRN-01 — establish Helsinki Cathedral calmly",
+      "question": "Does a calm establish request produce a readable opening composition with no unnecessary movement?",
+      "expected": "A still or near-still opening on the cathedral at landmark distance. No orbit, no spiral, no travel.",
+      "aspect": "16:9",
+      "source_text": "Establish Helsinki Cathedral calmly.",
+      "structured_intent": false,
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-01-landmark-establish",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-01-landmark-establish/earth-studio/earth-studio.esp",
+      "esp_sha256": "8dc84bd6d2b8e58303164dea5f88dc67091d2645463e87fcf942ca57c764e07e",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-01-landmark-establish/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-01-landmark-establish/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-01-landmark-establish/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Helsinki Cathedral",
+          "seconds": 4
+        }
+      ],
+      "prose": [
+        "Start over Helsinki Cathedral with a landmark / building framing at 700 m.",
+        "Open on Helsinki Cathedral at 700 m (landmark / building framing) and hold for 4 seconds without moving the camera.",
+        "Estimated duration: 4 seconds (00:04) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Helsinki Cathedral",
+          "grammar": "hold",
+          "duration_seconds": 4
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 1
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Is the cathedral framed with visual presence?",
+        "Is the opening calm and readable?",
+        "Is any movement actually necessary?"
+      ]
+    },
+    {
+      "id": "DIRN-02-landmark-push-in",
+      "title": "DIRN-02 — start wide on Helsinki Cathedral, gently push in",
+      "question": "Does an explicit push-in request produce one clean A→B approach, and does the camera actually close distance?",
+      "expected": "Wider opening framing, one coherent push toward the landmark: stable heading, no ground-path wobble, sensible deceleration.",
+      "aspect": "16:9",
+      "source_text": "Start wide over Helsinki Cathedral and gently push in toward it.",
+      "structured_intent": false,
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-02-landmark-push-in",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-02-landmark-push-in/earth-studio/earth-studio.esp",
+      "esp_sha256": "8bc331cb5b5f298ba696e36bd2e93714bba939c1d5c847cc6deda63edd612d1c",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-02-landmark-push-in/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-02-landmark-push-in/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-02-landmark-push-in/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Push In · Helsinki Cathedral",
+          "seconds": 4
+        }
+      ],
+      "prose": [
+        "Start over Helsinki Cathedral with a landmark / building framing at 700 m.",
+        "Push in on Helsinki Cathedral over 4 seconds to a landmark / building framing at 700 m.",
+        "Estimated duration: 4 seconds (00:04) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Helsinki Cathedral",
+          "grammar": "zoom_in",
+          "duration_seconds": 4
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 1
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Does the camera genuinely approach (altitude decreases)?",
+        "Is the move one intention, start to finish?",
+        "Is the final framing close without crowding?"
+      ]
+    },
+    {
+      "id": "DIRN-03-landmark-orbit",
+      "title": "DIRN-03 — restrained orbit of the Colosseum",
+      "question": "Does an explicit orbit request produce a restrained, geometrically clean circle?",
+      "expected": "An orbit at the Colosseum: stable target, sensible radius, calm angular rate, no radius breathing.",
+      "aspect": "16:9",
+      "source_text": "Orbit the Colosseum in a restrained cinematic circle.",
+      "structured_intent": false,
+      "duration_seconds": 33,
+      "total_frames": 990,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-03-landmark-orbit",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-03-landmark-orbit/earth-studio/earth-studio.esp",
+      "esp_sha256": "af741606b21efa804a5fef9fc2ff057e19e3fd53fbcd9be6008f9092f835083c",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-03-landmark-orbit/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-03-landmark-orbit/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-03-landmark-orbit/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Slow Orbit · Colosseum",
+          "seconds": 33
+        }
+      ],
+      "prose": [
+        "Start over Colosseum with a landmark / building framing at 700 m.",
+        "Slowly orbit Colosseum for 33 seconds.",
+        "Estimated duration: 33 seconds (00:33) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Colosseum",
+          "grammar": "slow_orbit",
+          "duration_seconds": 33
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 1
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Does the Colosseum stay centred through the arc?",
+        "Is the arc restrained rather than a frantic spin?",
+        "Does the orbit start and stop without a jerk?"
+      ]
+    },
+    {
+      "id": "DIRN-04-orbit-inappropriate-route",
+      "title": "DIRN-04 — the Helsinki–Tallinn ferry route (orbit would be wrong)",
+      "question": "Does the director refuse orbit when the story is geographic explanation, not celebration?",
+      "expected": "Plain holds and one coherent crossing. No orbit at either port — a route story needs legibility, not ceremony.",
+      "aspect": "16:9",
+      "source_text": null,
+      "structured_intent": true,
+      "duration_seconds": 11.5,
+      "total_frames": 345,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-04-orbit-inappropriate-route",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-04-orbit-inappropriate-route/earth-studio/earth-studio.esp",
+      "esp_sha256": "36b3a58079f1f6e0c3da77a51cafd75050d32671a03e1a7c3e6bd23a1d7b17e3",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-04-orbit-inappropriate-route/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-04-orbit-inappropriate-route/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-04-orbit-inappropriate-route/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 3
+        },
+        {
+          "label": "Climb Out · Helsinki",
+          "seconds": 1
+        },
+        {
+          "label": "Cruise · Tallinn",
+          "seconds": 3.5
+        },
+        {
+          "label": "Descend · Tallinn",
+          "seconds": 1
+        },
+        {
+          "label": "Hold · Tallinn",
+          "seconds": 3
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 34.0 km.",
+        "Open on Helsinki at 34.0 km (city framing) and hold for 3 seconds without moving the camera.",
+        "Climb to 69.9 km over 1 second — high enough to see the whole route.",
+        "Cruise to Tallinn (82 km) over 3.5 seconds, holding 69.9 km.",
+        "Descend into Tallinn over 1 second, settling on a city framing at 34.0 km.",
+        "Hold on Tallinn for 3 seconds without moving the camera.",
+        "Estimated duration: 12 seconds (00:12) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "SHOW_ROUTE",
+          "subject": "Helsinki",
+          "grammar": "hold",
+          "duration_seconds": 3
+        },
+        {
+          "purpose": "SHOW_ROUTE",
+          "subject": "Helsinki → Tallinn",
+          "grammar": "style:high_transit",
+          "duration_seconds": 5.5
+        },
+        {
+          "purpose": "SHOW_ROUTE",
+          "subject": "Tallinn",
+          "grammar": "hold",
+          "duration_seconds": 3
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 3
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Are both ports shown plainly?",
+        "Is the crossing one clean trajectory?",
+        "Is there any decorative movement?"
+      ]
+    },
+    {
+      "id": "DIRN-05-local-point-to-point",
+      "title": "DIRN-05 — Helsinki Cathedral to Senate Square (local move)",
+      "question": "Does a short local move stay low, direct and coherent — no regional pullback for a two-block journey?",
+      "expected": "Low direct travel between the two landmarks. No high transit, no scale detour, stable arrival.",
+      "aspect": "16:9",
+      "source_text": "Go from Helsinki Cathedral to Senate Square.",
+      "structured_intent": false,
+      "duration_seconds": 14,
+      "total_frames": 420,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-05-local-point-to-point",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-05-local-point-to-point/earth-studio/earth-studio.esp",
+      "esp_sha256": "319135e28e94cb8060d2d35cdc1902f2790d2efe0b61acf76a69da47353fab05",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-05-local-point-to-point/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-05-local-point-to-point/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-05-local-point-to-point/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Helsinki Cathedral",
+          "seconds": 4
+        },
+        {
+          "label": "Fly To · Senate Square",
+          "seconds": 5
+        },
+        {
+          "label": "Hold · Senate Square",
+          "seconds": 5
+        }
+      ],
+      "prose": [
+        "Start over Helsinki Cathedral with a landmark / building framing at 700 m.",
+        "Open on Helsinki Cathedral at 700 m (landmark / building framing) and hold for 4 seconds without moving the camera.",
+        "Fly to Senate Square (100 m) over 5 seconds.",
+        "Hold on Senate Square for 5 seconds without moving the camera.",
+        "Estimated duration: 14 seconds (00:14) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Helsinki Cathedral",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Helsinki Cathedral → Senate Square",
+          "grammar": "style:direct",
+          "duration_seconds": 5
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Senate Square",
+          "grammar": "hold",
+          "duration_seconds": 5
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 3
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Does the camera stay at a local altitude?",
+        "Is departure → travel → arrival readable as one action?",
+        "Any direction reversals?"
+      ]
+    },
+    {
+      "id": "DIRN-06-city-to-city",
+      "title": "DIRN-06 — Helsinki to Tallinn (medium transit)",
+      "question": "Does a ~80 km crossing get a proportional transit altitude and duration, with a natural destination approach?",
+      "expected": "A shaped or direct crossing appropriate to ~80 km. Arrival framing fits Tallinn; no pointless flourish.",
+      "aspect": "16:9",
+      "source_text": "Travel from Helsinki to Tallinn.",
+      "structured_intent": false,
+      "duration_seconds": 14,
+      "total_frames": 420,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-06-city-to-city",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-06-city-to-city/earth-studio/earth-studio.esp",
+      "esp_sha256": "9210c905278c6a228b9df7624f2c3e54c1042801f232dd7b9b8fa044d0b40df8",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-06-city-to-city/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-06-city-to-city/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-06-city-to-city/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 4
+        },
+        {
+          "label": "Pull Back · Helsinki",
+          "seconds": 1
+        },
+        {
+          "label": "Cruise · Tallinn",
+          "seconds": 3
+        },
+        {
+          "label": "Descend · Tallinn",
+          "seconds": 1
+        },
+        {
+          "label": "Hold · Tallinn",
+          "seconds": 5
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 34.0 km.",
+        "Open on Helsinki at 34.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Pull back from Helsinki over 1 second before setting off.",
+        "Cruise to Tallinn (82 km) over 3 seconds, holding 156 km.",
+        "Descend into Tallinn over 1 second, settling on a city framing at 34.0 km.",
+        "Hold on Tallinn for 5 seconds without moving the camera.",
+        "Estimated duration: 14 seconds (00:14) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Helsinki",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Helsinki → Tallinn",
+          "grammar": "style:cinematic",
+          "duration_seconds": 5
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Tallinn",
+          "grammar": "hold",
+          "duration_seconds": 5
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 3
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Is the Gulf of Finland legible during the crossing?",
+        "Does altitude suit the distance?",
+        "Does the arrival feel intentional?"
+      ]
+    },
+    {
+      "id": "DIRN-07-long-distance",
+      "title": "DIRN-07 — Helsinki to Tokyo (intercontinental)",
+      "question": "Does a 7,000+ km journey get high-altitude strategy without a gratuitous globe shot or 40-second crossing?",
+      "expected": "High transit arc, efficient crossing, deliberate descent into Tokyo. No globe unless justified; duration compressed like a map animation, not proportional to kilometres.",
+      "aspect": "16:9",
+      "source_text": "Fly from Helsinki to Tokyo.",
+      "structured_intent": false,
+      "duration_seconds": 32,
+      "total_frames": 960,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-07-long-distance",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-07-long-distance/earth-studio/earth-studio.esp",
+      "esp_sha256": "8b58ddfa4d5956f67b76dd777a2779c605f17d6b089c0c3cc7d7c85caf9158d1",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-07-long-distance/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-07-long-distance/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-07-long-distance/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 4
+        },
+        {
+          "label": "Climb Out · Helsinki",
+          "seconds": 3
+        },
+        {
+          "label": "Cruise · Tokyo",
+          "seconds": 17
+        },
+        {
+          "label": "Descend · Tokyo",
+          "seconds": 3
+        },
+        {
+          "label": "Hold · Tokyo",
+          "seconds": 5
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 34.0 km.",
+        "Open on Helsinki at 34.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Climb to 1,330 km over 3 seconds — high enough to see the whole route.",
+        "Cruise to Tokyo (7,818 km) over 17 seconds, holding 1,330 km.",
+        "Descend into Tokyo over 3 seconds, settling on a city framing at 34.0 km.",
+        "Hold on Tokyo for 5 seconds without moving the camera.",
+        "Estimated duration: 32 seconds (00:32) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Helsinki",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Helsinki → Tokyo",
+          "grammar": "style:high_transit",
+          "duration_seconds": 23
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Tokyo",
+          "grammar": "hold",
+          "duration_seconds": 5
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "This journey is long (7,818 km), but distance alone is not a reason to show the planet. Declare a global reason (GLOBAL_CONTEXT, INTERCONTINENTAL_SCALE, WORLDWIDE_PHENOMENON, PLANETARY_COMPARISON, GLOBAL_NETWORK, GLOBAL_ORIGIN, GLOBAL_CONCLUSION) if the story is genuinely global.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 3
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Is the crossing readable without smearing?",
+        "Is the duration sane for video use?",
+        "Does Tokyo arrive as a destination, not just a stop?"
+      ]
+    },
+    {
+      "id": "DIRN-08-globe-inappropriate",
+      "title": "DIRN-08 — Gothenburg to Oslo (globe view would be ridiculous)",
+      "question": "Does the globe-justification gate suppress planetary scale for a ~250 km regional move?",
+      "expected": "Regional/city-scale treatment only. No globe shot, no space altitude.",
+      "aspect": "16:9",
+      "source_text": "Move from Gothenburg to Oslo.",
+      "structured_intent": false,
+      "duration_seconds": 17,
+      "total_frames": 510,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-08-globe-inappropriate",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-08-globe-inappropriate/earth-studio/earth-studio.esp",
+      "esp_sha256": "a7bdf53c5dd1dc064b5b9d83d99331cc91b910f9cfe9ec467110b168457e2527",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-08-globe-inappropriate/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-08-globe-inappropriate/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-08-globe-inappropriate/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Gothenburg",
+          "seconds": 4
+        },
+        {
+          "label": "Pull Back · Gothenburg",
+          "seconds": 1.6
+        },
+        {
+          "label": "Cruise · Oslo",
+          "seconds": 4.8
+        },
+        {
+          "label": "Descend · Oslo",
+          "seconds": 1.6
+        },
+        {
+          "label": "Hold · Oslo",
+          "seconds": 5
+        }
+      ],
+      "prose": [
+        "Start over Gothenburg with a city framing at 34.0 km.",
+        "Open on Gothenburg at 34.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Pull back from Gothenburg over 1.6 seconds before setting off.",
+        "Cruise to Oslo (255 km) over 4.8 seconds, holding 156 km.",
+        "Descend into Oslo over 1.6 seconds, settling on a city framing at 34.0 km.",
+        "Hold on Oslo for 5 seconds without moving the camera.",
+        "Estimated duration: 17 seconds (00:17) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Gothenburg",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Gothenburg → Oslo",
+          "grammar": "style:cinematic",
+          "duration_seconds": 8
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Oslo",
+          "grammar": "hold",
+          "duration_seconds": 5
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 3
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Is the framing regional at most?",
+        "Does the move stay comprehensible?",
+        "Any zoom out to absurd altitude?"
+      ]
+    },
+    {
+      "id": "DIRN-09-country-scale",
+      "title": "DIRN-09 — Finland as a country-scale subject",
+      "question": "Does a whole-country subject get country framing — not landmark framing, not continental?",
+      "expected": "A calm wide composition containing Finland. Altitude suits a country; no landmark-style close-up.",
+      "aspect": "16:9",
+      "source_text": "Show Finland so the viewer can take in the whole country.",
+      "structured_intent": false,
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-09-country-scale",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-09-country-scale/earth-studio/earth-studio.esp",
+      "esp_sha256": "d0441164c33375a9fd3b0946de64c9a485f5b16ac39ed86c8a4e834acb9d44b2",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-09-country-scale/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-09-country-scale/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-09-country-scale/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Finland",
+          "seconds": 4
+        }
+      ],
+      "prose": [
+        "Start over Finland with a country framing at 3,686 km.",
+        "Open on Finland at 3,686 km (country framing) and hold for 4 seconds without moving the camera.",
+        "Estimated duration: 4 seconds (00:04) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Finland",
+          "grammar": "hold",
+          "duration_seconds": 4
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 1
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Can the viewer take in the whole country?",
+        "Is the framing calm and readable?",
+        "Is altitude appropriate to country scale?"
+      ]
+    },
+    {
+      "id": "DIRN-10-very-small-subject",
+      "title": "DIRN-10 — study the Eiffel Tower up close",
+      "question": "Does the framing ladder go all the way down for a small landmark without hitting the floor or dwarfing it?",
+      "expected": "Close inspection framing at the tower. The subject has visual presence; no absurd distance.",
+      "aspect": "16:9",
+      "source_text": "Inspect the Eiffel Tower up close.",
+      "structured_intent": false,
+      "duration_seconds": 14,
+      "total_frames": 420,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-10-very-small-subject",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-10-very-small-subject/earth-studio/earth-studio.esp",
+      "esp_sha256": "5fba37939d368d135e01483181d0b903830262f7b88b1221c57bd5bdf93e4b9b",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-10-very-small-subject/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-10-very-small-subject/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-10-very-small-subject/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Half Orbit · Eiffel Tower",
+          "seconds": 14
+        }
+      ],
+      "prose": [
+        "Start over Eiffel Tower with a landmark / building framing at 1.0 km.",
+        "Swing halfway around Eiffel Tower over 14 seconds, finishing on the far side.",
+        "Estimated duration: 14 seconds (00:14) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "INSPECT",
+          "subject": "Eiffel Tower",
+          "grammar": "half_orbit",
+          "duration_seconds": 14
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 1
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Does the tower fill enough of the frame to study?",
+        "Is the camera close but not inside the structure?",
+        "Is the treatment appropriate to a monument?"
+      ]
+    },
+    {
+      "id": "DIRN-11-matched-comparison",
+      "title": "DIRN-11 — compare Helsinki and Stockholm (matched framing)",
+      "question": "Do explicitly compared cities get visually comparable shots — same scale, same emphasis, comparable duration?",
+      "expected": "Matched framing at both cities (compare_match recorded). The two shots feel like one repeated shot grammar.",
+      "aspect": "16:9",
+      "source_text": "Compare Helsinki and Stockholm from roughly the same scale.",
+      "structured_intent": false,
+      "duration_seconds": 19,
+      "total_frames": 570,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-11-matched-comparison",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-11-matched-comparison/earth-studio/earth-studio.esp",
+      "esp_sha256": "ddd9a4ba606836d00f4115d38d23d7712cc0b1a0cff29f168a1257237cd0f4b5",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-11-matched-comparison/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-11-matched-comparison/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-11-matched-comparison/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 5
+        },
+        {
+          "label": "Climb Out · Helsinki",
+          "seconds": 1.8
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 5.4
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 1.8
+        },
+        {
+          "label": "Hold · Stockholm",
+          "seconds": 5
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 34.0 km.",
+        "Open on Helsinki at 34.0 km (city framing) and hold for 5 seconds without moving the camera.",
+        "Climb to 241 km over 1.8 seconds — high enough to see the whole route.",
+        "Cruise to Stockholm (396 km) over 5.4 seconds, holding 241 km.",
+        "Descend into Stockholm over 1.8 seconds, settling on a city framing at 34.0 km.",
+        "Hold on Stockholm for 5 seconds without moving the camera.",
+        "Estimated duration: 19 seconds (00:19) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "COMPARE",
+          "subject": "Helsinki",
+          "grammar": "hold",
+          "duration_seconds": 5
+        },
+        {
+          "purpose": "COMPARE",
+          "subject": "Helsinki → Stockholm",
+          "grammar": "style:high_transit",
+          "duration_seconds": 9
+        },
+        {
+          "purpose": "COMPARE",
+          "subject": "Stockholm",
+          "grammar": "hold",
+          "duration_seconds": 5
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": {
+        "anchor": "Helsinki",
+        "scale": "city",
+        "stops": [
+          "Helsinki",
+          "Stockholm"
+        ]
+      },
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 3
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Do Helsinki and Stockholm look filmed the same way?",
+        "Is apparent subject size comparable?",
+        "Does the sequence read as a comparison, not a travelogue?"
+      ]
+    },
+    {
+      "id": "DIRN-12-unequal-scale-comparison",
+      "title": "DIRN-12 — tiny Singapore versus Southeast Asia (scale is the story)",
+      "question": "Does the director keep UNEQUAL framing when the size difference itself is the point?",
+      "expected": "Singapore close, Southeast Asia wide. compare_match must NOT force matching here.",
+      "aspect": "16:9",
+      "source_text": "Show how tiny Singapore is compared with Southeast Asia.",
+      "structured_intent": false,
+      "duration_seconds": 29,
+      "total_frames": 870,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-12-unequal-scale-comparison",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-12-unequal-scale-comparison/earth-studio/earth-studio.esp",
+      "esp_sha256": "4b3afb50adc020e87056ae835d76dbd115af8798a7ba7c4392c5d60b14e67916",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-12-unequal-scale-comparison/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-12-unequal-scale-comparison/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-12-unequal-scale-comparison/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Reveal · Singapore",
+          "seconds": 11
+        },
+        {
+          "label": "Fly To · Southeast Asia",
+          "seconds": 11
+        },
+        {
+          "label": "Pull Back · Southeast Asia",
+          "seconds": 7
+        }
+      ],
+      "prose": [
+        "Start over Singapore with a region framing at 992 km.",
+        "Pull back over 11 seconds to reveal Singapore at region scale (992 km).",
+        "Fly to Southeast Asia (1,191 km) over 11 seconds.",
+        "Pull back from Southeast Asia over 7 seconds to a continent framing at 14,178 km.",
+        "Estimated duration: 29 seconds (00:29) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "SHOW_SCALE",
+          "subject": "Singapore",
+          "grammar": "reveal",
+          "duration_seconds": 11
+        },
+        {
+          "purpose": "SHOW_SCALE",
+          "subject": "Singapore → Southeast Asia",
+          "grammar": "style:direct",
+          "duration_seconds": 11
+        },
+        {
+          "purpose": "SHOW_SCALE",
+          "subject": "Southeast Asia",
+          "grammar": "zoom_out",
+          "duration_seconds": 7
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 3
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Does the pull-back make Singapore feel small?",
+        "Is the scale difference visible and deliberate?",
+        "No forced matched framing?"
+      ]
+    },
+    {
+      "id": "DIRN-13-multi-destination",
+      "title": "DIRN-13 — Helsinki → Stockholm → Copenhagen (three destinations)",
+      "question": "Does a multi-stop journey keep continuity without camera resets, and reserve emphasis for what matters?",
+      "expected": "Each arrival becomes the next departure state. Middle stop restrained; variation without gratuitous variety.",
+      "aspect": "16:9",
+      "source_text": "Travel from Helsinki to Stockholm, then on to Copenhagen.",
+      "structured_intent": false,
+      "duration_seconds": 31.000000000000004,
+      "total_frames": 930,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-13-multi-destination",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-13-multi-destination/earth-studio/earth-studio.esp",
+      "esp_sha256": "8c0c9bee6d9d008e44dd57b9c4df3840e68ed58f84feedf891079bfdc48d26fd",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-13-multi-destination/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-13-multi-destination/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-13-multi-destination/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 4
+        },
+        {
+          "label": "Climb Out · Helsinki",
+          "seconds": 1.8
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 5.4
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 1.8
+        },
+        {
+          "label": "Hold · Stockholm",
+          "seconds": 4
+        },
+        {
+          "label": "Climb Out · Stockholm",
+          "seconds": 1.8
+        },
+        {
+          "label": "Cruise · Copenhagen",
+          "seconds": 5.4
+        },
+        {
+          "label": "Descend · Copenhagen",
+          "seconds": 1.8
+        },
+        {
+          "label": "Hold · Copenhagen",
+          "seconds": 5
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 34.0 km.",
+        "Open on Helsinki at 34.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Climb to 241 km over 1.8 seconds — high enough to see the whole route.",
+        "Cruise to Stockholm (396 km) over 5.4 seconds, holding 241 km.",
+        "Descend into Stockholm over 1.8 seconds, settling on a city framing at 34.0 km.",
+        "Hold on Stockholm for 4 seconds without moving the camera.",
+        "Climb to 317 km over 1.8 seconds — high enough to see the whole route.",
+        "Cruise to Copenhagen (522 km) over 5.4 seconds, holding 317 km.",
+        "Descend into Copenhagen over 1.8 seconds, settling on a city framing at 34.0 km.",
+        "Hold on Copenhagen for 5 seconds without moving the camera.",
+        "Estimated duration: 31 seconds (00:31) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Helsinki",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "TRAVEL",
+          "subject": "Helsinki → Stockholm",
+          "grammar": "style:high_transit",
+          "duration_seconds": 9
+        },
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Stockholm",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Stockholm → Copenhagen",
+          "grammar": "style:high_transit",
+          "duration_seconds": 9
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Copenhagen",
+          "grammar": "hold",
+          "duration_seconds": 5
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 5
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Do the legs connect without reset-like jumps?",
+        "Is Stockholm treated as a waypoint rather than a hero?",
+        "Does the ending land?"
+      ]
+    },
+    {
+      "id": "DIRN-14-return-conclusion",
+      "title": "DIRN-14 — Scandinavia → Helsinki → Stockholm → Scandinavia (return and conclude)",
+      "question": "Does the returning wide context feel like a conclusion rather than just another stop?",
+      "expected": "Opening orientation, two city beats, then a genuine pull-back to Scandinavia that resolves the story.",
+      "aspect": "16:9",
+      "source_text": "Start wide over Scandinavia, travel to Helsinki, continue to Stockholm, then pull back to end on Scandinavia.",
+      "structured_intent": false,
+      "duration_seconds": 46,
+      "total_frames": 1380,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-14-return-conclusion",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-14-return-conclusion/earth-studio/earth-studio.esp",
+      "esp_sha256": "2cd79de5f26fbb32a89233aff4845feca1c48e73b23b9dc7f3dd81cc995b8c5e",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-14-return-conclusion/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-14-return-conclusion/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-14-return-conclusion/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Scandinavia",
+          "seconds": 4
+        },
+        {
+          "label": "Climb Out · Scandinavia",
+          "seconds": 2
+        },
+        {
+          "label": "Cruise · Helsinki",
+          "seconds": 6
+        },
+        {
+          "label": "Descend · Helsinki",
+          "seconds": 2
+        },
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 4
+        },
+        {
+          "label": "Climb Out · Helsinki",
+          "seconds": 1.8
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 5.4
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 1.8
+        },
+        {
+          "label": "Hold · Stockholm",
+          "seconds": 4
+        },
+        {
+          "label": "Fly To · Scandinavia",
+          "seconds": 9
+        },
+        {
+          "label": "Pull Back · Scandinavia",
+          "seconds": 6
+        }
+      ],
+      "prose": [
+        "Start over Scandinavia with a region framing at 992 km.",
+        "Open on Scandinavia at 992 km (region framing) and hold for 4 seconds without moving the camera.",
+        "Climb to 992 km over 2 seconds — high enough to see the whole route.",
+        "Cruise to Helsinki (612 km) over 6 seconds, holding 992 km.",
+        "Descend into Helsinki over 2 seconds, settling on a city framing at 34.0 km.",
+        "Hold on Helsinki for 4 seconds without moving the camera.",
+        "Climb to 241 km over 1.8 seconds — high enough to see the whole route.",
+        "Cruise to Stockholm (396 km) over 5.4 seconds, holding 241 km.",
+        "Descend into Stockholm over 1.8 seconds, settling on a city framing at 34.0 km.",
+        "Hold on Stockholm for 4 seconds without moving the camera.",
+        "Fly to Scandinavia (440 km) over 9 seconds.",
+        "Pull back from Scandinavia over 6 seconds to a country framing at 3,686 km.",
+        "Estimated duration: 46 seconds (00:46) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Scandinavia",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "TRAVEL",
+          "subject": "Scandinavia → Helsinki",
+          "grammar": "style:high_transit",
+          "duration_seconds": 10
+        },
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Helsinki",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "TRAVEL",
+          "subject": "Helsinki → Stockholm",
+          "grammar": "style:high_transit",
+          "duration_seconds": 9
+        },
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Stockholm",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "SHOW_SCALE",
+          "subject": "Stockholm → Scandinavia",
+          "grammar": "style:direct",
+          "duration_seconds": 9
+        },
+        {
+          "purpose": "CONCLUDE",
+          "subject": "Scandinavia",
+          "grammar": "zoom_out",
+          "duration_seconds": 6
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 7
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Does the final wide shot feel final?",
+        "Is the return legible as context restored?",
+        "Any unnecessary orientation reset before the end?"
+      ]
+    },
+    {
+      "id": "DIRN-15-final-emphasis",
+      "title": "DIRN-15 — Copenhagen is the important destination",
+      "question": "Does an explicitly named primary destination get more emphasis than the earlier stops?",
+      "expected": "Helsinki/Stockholm restrained; Copenhagen gets the arrival emphasis (dwell, flourish, or inspection move).",
+      "aspect": "16:9",
+      "source_text": "Travel from Helsinki to Stockholm, then to Copenhagen. Copenhagen is the important destination.",
+      "structured_intent": false,
+      "duration_seconds": 47,
+      "total_frames": 1410,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-15-final-emphasis",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-15-final-emphasis/earth-studio/earth-studio.esp",
+      "esp_sha256": "42bdfe9ac4365dd6d293e84e9d879b8d90891e4e54e422d8bdc99cc552bd969d",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-15-final-emphasis/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-15-final-emphasis/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-15-final-emphasis/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 4
+        },
+        {
+          "label": "Climb Out · Helsinki",
+          "seconds": 1.8
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 5.4
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 1.8
+        },
+        {
+          "label": "Hold · Stockholm",
+          "seconds": 4
+        },
+        {
+          "label": "Climb Out · Stockholm",
+          "seconds": 1.8
+        },
+        {
+          "label": "Cruise · Copenhagen",
+          "seconds": 5.4
+        },
+        {
+          "label": "Descend · Copenhagen",
+          "seconds": 1.8
+        },
+        {
+          "label": "Slow Orbit · Copenhagen",
+          "seconds": 21
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 34.0 km.",
+        "Open on Helsinki at 34.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Climb to 241 km over 1.8 seconds — high enough to see the whole route.",
+        "Cruise to Stockholm (396 km) over 5.4 seconds, holding 241 km.",
+        "Descend into Stockholm over 1.8 seconds, settling on a city framing at 34.0 km.",
+        "Hold on Stockholm for 4 seconds without moving the camera.",
+        "Climb to 317 km over 1.8 seconds — high enough to see the whole route.",
+        "Cruise to Copenhagen (522 km) over 5.4 seconds, holding 317 km.",
+        "Descend into Copenhagen over 1.8 seconds, settling on a city framing at 17.0 km.",
+        "Slowly orbit Copenhagen for 21 seconds.",
+        "Estimated duration: 47 seconds (00:47) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Helsinki",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "TRAVEL",
+          "subject": "Helsinki → Stockholm",
+          "grammar": "style:high_transit",
+          "duration_seconds": 9
+        },
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Stockholm",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Stockholm → Copenhagen",
+          "grammar": "style:high_transit",
+          "duration_seconds": 9
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Copenhagen",
+          "grammar": "slow_orbit",
+          "duration_seconds": 21
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 5
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Does Copenhagen clearly matter more than the waypoints?",
+        "Is extra screen time or movement concentrated there?",
+        "Do the earlier stops stay plain?"
+      ]
+    },
+    {
+      "id": "DIRN-16a-continuation-source",
+      "title": "DIRN-16a — continuation source: Helsinki to Tallinn",
+      "question": "Produces the exact terminal camera state that DIRN-16b must pick up.",
+      "expected": "A normal Helsinki→Tallinn journey whose continuation-state.json becomes the next project's opening.",
+      "aspect": "16:9",
+      "source_text": "Travel from Helsinki to Tallinn.",
+      "structured_intent": false,
+      "duration_seconds": 14,
+      "total_frames": 420,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16a-continuation-source",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16a-continuation-source/earth-studio/earth-studio.esp",
+      "esp_sha256": "26149da9f17cc91b9e68a373a866d222d099274ac05bcc64b9d35061f91a51fe",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16a-continuation-source/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16a-continuation-source/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16a-continuation-source/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Helsinki",
+          "seconds": 4
+        },
+        {
+          "label": "Pull Back · Helsinki",
+          "seconds": 1
+        },
+        {
+          "label": "Cruise · Tallinn",
+          "seconds": 3
+        },
+        {
+          "label": "Descend · Tallinn",
+          "seconds": 1
+        },
+        {
+          "label": "Hold · Tallinn",
+          "seconds": 5
+        }
+      ],
+      "prose": [
+        "Start over Helsinki with a city framing at 34.0 km.",
+        "Open on Helsinki at 34.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Pull back from Helsinki over 1 second before setting off.",
+        "Cruise to Tallinn (82 km) over 3 seconds, holding 156 km.",
+        "Descend into Tallinn over 1 second, settling on a city framing at 34.0 km.",
+        "Hold on Tallinn for 5 seconds without moving the camera.",
+        "Estimated duration: 14 seconds (00:14) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Helsinki",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Helsinki → Tallinn",
+          "grammar": "style:cinematic",
+          "duration_seconds": 5
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Tallinn",
+          "grammar": "hold",
+          "duration_seconds": 5
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 3
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Record the final frame state; it must be DIRN-16b's exact starting state."
+      ]
+    },
+    {
+      "id": "DIRN-16b-continuation-target",
+      "title": "DIRN-16b — continuation target: pick up and fly gently to Stockholm",
+      "question": "Does the continuation begin at the EXACT terminal state — no reset, no approximation, no orbit at the cut?",
+      "expected": "Frame 0 identical to DIRN-16a's final state. A settle beat at the join, then a gentle leg to Stockholm. Continuation visible in direction.json.",
+      "aspect": "16:9",
+      "source_text": "Continue seamlessly from the previous animation and fly gently to Stockholm.",
+      "structured_intent": false,
+      "duration_seconds": 15.999999999999998,
+      "total_frames": 480,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16b-continuation-target",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16b-continuation-target/earth-studio/earth-studio.esp",
+      "esp_sha256": "44b4fa31cfb72d5d4bdf17f871a62ae56ae603d612b512b2e5240fb1ffcb64ac",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16b-continuation-target/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16b-continuation-target/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16b-continuation-target/earth-studio/continuation-state.json",
+      "continuation_from": "DIRN-16a-continuation-source",
+      "movements": [
+        {
+          "label": "Hold · Tallinn",
+          "seconds": 4
+        },
+        {
+          "label": "Climb Out · Tallinn",
+          "seconds": 1.6
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 4.8
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 1.6
+        },
+        {
+          "label": "Hold · Stockholm",
+          "seconds": 4
+        }
+      ],
+      "prose": [
+        "Begin exactly where the previous animation ended (over Tallinn): 34.0 km up, heading 0deg, tilted 0deg.",
+        "Open on Tallinn at 34.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Climb to 230 km over 1.6 seconds — high enough to see the whole route.",
+        "Cruise to Stockholm (379 km) over 4.8 seconds, holding 230 km.",
+        "Descend into Stockholm over 1.6 seconds, settling on a city framing at 34.0 km.",
+        "Hold on Stockholm for 4 seconds without moving the camera.",
+        "Estimated duration: 16 seconds (00:16) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "CONTINUE",
+          "subject": "Tallinn",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "TRAVEL",
+          "subject": "Tallinn → Stockholm",
+          "grammar": "style:high_transit",
+          "duration_seconds": 8
+        },
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Stockholm",
+          "grammar": "hold",
+          "duration_seconds": 4
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 3
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Is there any snap in position, heading, pitch or altitude at the join?",
+        "Does the camera settle before moving on?",
+        "Does direction.json record the exact carried state?"
+      ],
+      "continuation_exact": true
+    },
+    {
+      "id": "DIRN-17-nl-complex-story",
+      "title": "DIRN-17 — complex natural-language story (the flagship)",
+      "question": "Does one editorial sentence produce a coherent multi-beat plan: orientation, calm travel, inspection, matched comparison, resolved ending?",
+      "expected": "Clause attribution, pace \"calm\" honoured, compare semantics, closing re-mention produces a true conclusion beat.",
+      "aspect": "16:9",
+      "source_text": "Start wide on Scandinavia, travel calmly to Helsinki and inspect it, compare Helsinki with Stockholm, then end by pulling back to show Scandinavia again.",
+      "structured_intent": false,
+      "duration_seconds": 68,
+      "total_frames": 2040,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio/earth-studio.esp",
+      "esp_sha256": "1f0676872f652f8055ffe28a099a1718886fd522bfa8a60fa0c7581bc3e2c308",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Scandinavia",
+          "seconds": 4
+        },
+        {
+          "label": "Climb Out · Scandinavia",
+          "seconds": 2
+        },
+        {
+          "label": "Cruise · Helsinki",
+          "seconds": 6
+        },
+        {
+          "label": "Descend · Helsinki",
+          "seconds": 2
+        },
+        {
+          "label": "Half Orbit · Helsinki",
+          "seconds": 15
+        },
+        {
+          "label": "Climb Out · Helsinki",
+          "seconds": 1.8
+        },
+        {
+          "label": "Cruise · Stockholm",
+          "seconds": 5.4
+        },
+        {
+          "label": "Descend · Stockholm",
+          "seconds": 1.8
+        },
+        {
+          "label": "Half Orbit · Stockholm",
+          "seconds": 15
+        },
+        {
+          "label": "Fly To · Scandinavia",
+          "seconds": 9
+        },
+        {
+          "label": "Pull Back · Scandinavia",
+          "seconds": 6
+        }
+      ],
+      "prose": [
+        "Start over Scandinavia with a region framing at 992 km.",
+        "Open on Scandinavia at 992 km (region framing) and hold for 4 seconds without moving the camera.",
+        "Climb to 992 km over 2 seconds — high enough to see the whole route.",
+        "Cruise to Helsinki (612 km) over 6 seconds, holding 992 km.",
+        "Descend into Helsinki over 2 seconds, settling on a city framing at 17.0 km.",
+        "Swing halfway around Helsinki over 15 seconds, finishing on the far side.",
+        "Climb to 241 km over 1.8 seconds — high enough to see the whole route.",
+        "Cruise to Stockholm (396 km) over 5.4 seconds, holding 241 km.",
+        "Descend into Stockholm over 1.8 seconds, settling on a city framing at 17.0 km.",
+        "Swing halfway around Stockholm over 15 seconds, finishing on the far side.",
+        "Fly to Scandinavia (440 km) over 9 seconds.",
+        "Pull back from Scandinavia over 6 seconds to a country framing at 3,686 km.",
+        "Estimated duration: 68 seconds (01:08) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Scandinavia",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "COMPARE",
+          "subject": "Scandinavia → Helsinki",
+          "grammar": "style:high_transit",
+          "duration_seconds": 10
+        },
+        {
+          "purpose": "INSPECT",
+          "subject": "Helsinki",
+          "grammar": "half_orbit",
+          "duration_seconds": 15
+        },
+        {
+          "purpose": "COMPARE",
+          "subject": "Helsinki → Stockholm",
+          "grammar": "style:high_transit",
+          "duration_seconds": 9
+        },
+        {
+          "purpose": "COMPARE",
+          "subject": "Stockholm",
+          "grammar": "half_orbit",
+          "duration_seconds": 15
+        },
+        {
+          "purpose": "SHOW_SCALE",
+          "subject": "Stockholm → Scandinavia",
+          "grammar": "style:direct",
+          "duration_seconds": 9
+        },
+        {
+          "purpose": "CONCLUDE",
+          "subject": "Scandinavia",
+          "grammar": "zoom_out",
+          "duration_seconds": 6
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": {
+        "anchor": "Helsinki",
+        "scale": "city",
+        "stops": [
+          "Helsinki",
+          "Stockholm"
+        ]
+      },
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 7
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [
+        "orbit geometry: segment 5 Helsinki — it finishes circling 170° away from the direction it then travels to segment 7, so the next movement has to swing the camera round before it can leave",
+        "orbit geometry: segment 9 Stockholm — it finishes circling 76° away from the direction it then travels to segment 10, so the next movement has to swing the camera round before it can leave"
+      ],
+      "watch": [
+        "Does each clause of the sentence visibly shape a beat?",
+        "Is the sequence one story, not four unrelated shots?",
+        "Does it end resolved?"
+      ]
+    },
+    {
+      "id": "DIRN-18-restraint",
+      "title": "DIRN-18 — the restraint test (hold, direct move, hold)",
+      "question": "Can the director choose NOT to direct? Explicit holds and a direct move must stay exactly that simple.",
+      "expected": "Hold → Direct travel → Hold. No orbit, no spiral, no shaped transit, no orientation change invented.",
+      "aspect": "16:9",
+      "source_text": "Start over Copenhagen and hold. Then move directly to Berlin and hold again.",
+      "structured_intent": false,
+      "duration_seconds": 39,
+      "total_frames": 1170,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-18-restraint",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-18-restraint/earth-studio/earth-studio.esp",
+      "esp_sha256": "3cbb0b229ef46cae296b47e9bd3e8a31a498ee36b295c3b5f5c02ac4f83a678b",
+      "journey_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-18-restraint/earth-studio/journey.json",
+      "direction_json": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-18-restraint/earth-studio/direction.json",
+      "continuation_state": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-18-restraint/earth-studio/continuation-state.json",
+      "continuation_from": null,
+      "movements": [
+        {
+          "label": "Hold · Copenhagen",
+          "seconds": 4
+        },
+        {
+          "label": "Fly To · Berlin",
+          "seconds": 30
+        },
+        {
+          "label": "Hold · Berlin",
+          "seconds": 5
+        }
+      ],
+      "prose": [
+        "Start over Copenhagen with a city framing at 34.0 km.",
+        "Open on Copenhagen at 34.0 km (city framing) and hold for 4 seconds without moving the camera.",
+        "Fly to Berlin (355 km) over 30 seconds.",
+        "Hold on Berlin for 5 seconds without moving the camera.",
+        "Estimated duration: 39 seconds (00:39) at calm pace."
+      ],
+      "beats": [
+        {
+          "purpose": "ESTABLISH",
+          "subject": "Copenhagen",
+          "grammar": "hold",
+          "duration_seconds": 4
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Copenhagen → Berlin",
+          "grammar": "style:direct",
+          "duration_seconds": 30
+        },
+        {
+          "purpose": "ARRIVE",
+          "subject": "Berlin",
+          "grammar": "hold",
+          "duration_seconds": 5
+        }
+      ],
+      "globe_used": false,
+      "globe_reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "compare_match": null,
+      "audit": {
+        "findings": [],
+        "ok": true,
+        "beat_count": 3
+      },
+      "quality_verdict": "PASS_FOR_HUMAN_REVIEW",
+      "quality_errors": [],
+      "quality_warnings": [],
+      "watch": [
+        "Is the opening genuinely still?",
+        "Is the travel the simplest coherent crossing?",
+        "Is the ending a clean hold — nothing added?"
+      ]
+    }
+  ]
+}

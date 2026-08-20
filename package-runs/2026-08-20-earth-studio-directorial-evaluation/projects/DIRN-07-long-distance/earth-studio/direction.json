@@ -1,0 +1,219 @@
+{
+  "case": "DIRN-07-long-distance",
+  "title": "DIRN-07 — Helsinki to Tokyo (intercontinental)",
+  "question": "Does a 7,000+ km journey get high-altitude strategy without a gratuitous globe shot or 40-second crossing?",
+  "expected": "High transit arc, efficient crossing, deliberate descent into Tokyo. No globe unless justified; duration compressed like a map animation, not proportional to kilometres.",
+  "generated_via": "parseIntent -> autoDirect -> journey model -> lane.writeJob (GUI path)",
+  "source_text": "Fly from Helsinki to Tokyo.",
+  "parsed_intent": {
+    "stops": [
+      {
+        "location": "Helsinki"
+      },
+      {
+        "location": "Tokyo"
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null
+  },
+  "plan": {
+    "plan_version": 1,
+    "director_version": 1,
+    "source_text": "Fly from Helsinki to Tokyo.",
+    "beats": [
+      {
+        "beat": "STARTING_CONTEXT",
+        "subject": "Helsinki",
+        "role": "STARTING_CONTEXT",
+        "importance": "NORMAL",
+        "purpose": "ESTABLISH",
+        "purpose_label": "Establish",
+        "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.08,
+        "tilt_deg": null,
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 4,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      },
+      {
+        "beat": "TRAVEL",
+        "subject": "Helsinki → Tokyo",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "style:high_transit",
+        "grammar_label": "High Transit",
+        "rarity": "SELECTIVE",
+        "angle": "top_down",
+        "why": "a selective move is earned here (DESTINATION, importance HIGH) at about 1330 km up the ground reads at 0.49 frame-widths per second",
+        "distance_m": 7817608,
+        "duration_seconds": 23,
+        "provenance": {
+          "subject": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "duration": "computed"
+        }
+      },
+      {
+        "beat": "DESTINATION",
+        "subject": "Tokyo",
+        "role": "DESTINATION",
+        "importance": "HIGH",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.25,
+        "tilt_deg": null,
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 5,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      }
+    ],
+    "globe": {
+      "allowed": false,
+      "justification": null,
+      "reason": "This journey is long (7,818 km), but distance alone is not a reason to show the planet. Declare a global reason (GLOBAL_CONTEXT, INTERCONTINENTAL_SCALE, WORLDWIDE_PHENOMENON, PLANETARY_COMPARISON, GLOBAL_NETWORK, GLOBAL_ORIGIN, GLOBAL_CONCLUSION) if the story is genuinely global."
+    },
+    "compare_match": null,
+    "continuation": null,
+    "notes": [
+      "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+      "No globe shot: This journey is long (7,818 km), but distance alone is not a reason to show the planet. Declare a global reason (GLOBAL_CONTEXT, INTERCONTINENTAL_SCALE, WORLDWIDE_PHENOMENON, PLANETARY_COMPARISON, GLOBAL_NETWORK, GLOBAL_ORIGIN, GLOBAL_CONCLUSION) if the story is genuinely global.",
+      "Special/selective moves used: High Transit."
+    ],
+    "span_m": 7817608,
+    "total_duration_seconds": 32
+  },
+  "audit": {
+    "findings": [],
+    "ok": true,
+    "beat_count": 3
+  },
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Helsinki",
+      "from": null,
+      "to": null,
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.08,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Zoom-To (native template)",
+        "Reveal",
+        "Pull Back"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Helsinki",
+      "to": "Tokyo",
+      "role": null,
+      "importance": null,
+      "movement": "style:high_transit",
+      "label": "High Transit",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "a selective move is earned here (DESTINATION, importance HIGH) at about 1330 km up the ground reads at 0.49 frame-widths per second",
+      "rarity": "SELECTIVE",
+      "emphasis": 1.25,
+      "angle": "top_down",
+      "communicates": [
+        "the whole route at once",
+        "distance as information"
+      ],
+      "alternatives": [
+        "Cinematic (pull back, travel, descend)",
+        "Low Approach"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "at",
+      "place": "Tokyo",
+      "from": null,
+      "to": null,
+      "role": "DESTINATION",
+      "importance": "HIGH",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.25,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Push In",
+        "Reveal",
+        "Pull Back"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    }
+  ],
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "This journey is long (7,818 km), but distance alone is not a reason to show the planet. Declare a global reason (GLOBAL_CONTEXT, INTERCONTINENTAL_SCALE, WORLDWIDE_PHENOMENON, PLANETARY_COMPARISON, GLOBAL_NETWORK, GLOBAL_ORIGIN, GLOBAL_CONCLUSION) if the story is genuinely global."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: This journey is long (7,818 km), but distance alone is not a reason to show the planet. Declare a global reason (GLOBAL_CONTEXT, INTERCONTINENTAL_SCALE, WORLDWIDE_PHENOMENON, PLANETARY_COMPARISON, GLOBAL_NETWORK, GLOBAL_ORIGIN, GLOBAL_CONCLUSION) if the story is genuinely global.",
+    "Special/selective moves used: High Transit."
+  ],
+  "explanation": [
+    "Helsinki (Starting context, NORMAL): Hold for Establish — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Helsinki → Tokyo: High Transit — a selective move is earned here (DESTINATION, importance HIGH) at about 1330 km up the ground reads at 0.49 frame-widths per second",
+    "Tokyo (Destination, HIGH): Hold for Arrive — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: This journey is long (7,818 km), but distance alone is not a reason to show the planet. Declare a global reason (GLOBAL_CONTEXT, INTERCONTINENTAL_SCALE, WORLDWIDE_PHENOMENON, PLANETARY_COMPARISON, GLOBAL_NETWORK, GLOBAL_ORIGIN, GLOBAL_CONCLUSION) if the story is genuinely global.",
+    "Special/selective moves used: High Transit."
+  ]
+}

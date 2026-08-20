@@ -20,7 +20,7 @@
   },
   "start_movements": [
     {
-      "id": "s77",
+      "id": "s89",
       "type": "hold",
       "duration_seconds": null,
       "pace": null,
@@ -50,9 +50,9 @@
       "travel_style": "high_transit",
       "travel": [
         {
-          "id": "s73",
+          "id": "s85",
           "type": "climb_to_transit",
-          "duration_seconds": null,
+          "duration_seconds": 1.8,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -62,9 +62,9 @@
           "revolutions": null
         },
         {
-          "id": "s74",
+          "id": "s86",
           "type": "cruise",
-          "duration_seconds": null,
+          "duration_seconds": 5.4,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -74,9 +74,9 @@
           "revolutions": null
         },
         {
-          "id": "s75",
+          "id": "s87",
           "type": "descend",
-          "duration_seconds": null,
+          "duration_seconds": 1.8,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -88,7 +88,7 @@
       ],
       "movements": [
         {
-          "id": "s76",
+          "id": "s88",
           "type": "hold",
           "duration_seconds": null,
           "pace": null,

@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "fingerprints": {
+    "direction_plan": "618ddd3ecff72a31a0bdfc5a5a248cc5f1a3b85c3939b359a2ded79d535fb185",
+    "shot_plan": "79c9dc1855ef437c90e56509b8108e356a66d44f9689fe67ac24325f90d887e0",
+    "job": "a49c29c83120570024e8148a4aef44c983faa234994d5ec5d2970540717dab22"
+  },
+  "mapping": {
+    "method": "semantic-beat-to-segment aggregation",
+    "confidence": "MODERATE",
+    "plan_beats": 3,
+    "shot_segments": 3
+  },
+  "trace": [
+    {
+      "plan_index": 0,
+      "beat": "STARTING_CONTEXT",
+      "subject": "Singapore",
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "purpose": "SHOW_SCALE",
+      "grammar_planned": "reveal",
+      "grammar_actual": "PULL_BACK",
+      "planned_duration_seconds": 11,
+      "actual_duration_seconds": 11,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        1
+      ],
+      "segment_start_frame": 0,
+      "segment_end_frame": 330,
+      "mapping_method": "location-only",
+      "comparison_group": null,
+      "is_final": false,
+      "provenance": {
+        "subject": "user-specified",
+        "role": "planner-inferred",
+        "importance": "planner-inferred",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "emphasis": "computed"
+      }
+    },
+    {
+      "plan_index": 1,
+      "beat": "TRAVEL",
+      "subject": "Singapore → Southeast Asia",
+      "role": null,
+      "importance": null,
+      "purpose": "SHOW_SCALE",
+      "grammar_planned": "style:direct",
+      "grammar_actual": "FLY",
+      "planned_duration_seconds": 11,
+      "actual_duration_seconds": 11,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        2
+      ],
+      "segment_start_frame": 330,
+      "segment_end_frame": 660,
+      "mapping_method": "travel-until-destination-arrival",
+      "comparison_group": null,
+      "is_final": false,
+      "provenance": {
+        "subject": "user-specified",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "duration": "computed"
+      }
+    },
+    {
+      "plan_index": 2,
+      "beat": "DESTINATION",
+      "subject": "Southeast Asia",
+      "role": "DESTINATION",
+      "importance": "HIGH",
+      "purpose": "SHOW_SCALE",
+      "grammar_planned": "zoom_out",
+      "grammar_actual": "PULL_BACK",
+      "planned_duration_seconds": 7,
+      "actual_duration_seconds": 7,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        3
+      ],
+      "segment_start_frame": 660,
+      "segment_end_frame": 870,
+      "mapping_method": "location-only",
+      "comparison_group": null,
+      "is_final": true,
+      "provenance": {
+        "subject": "user-specified",
+        "role": "planner-inferred",
+        "importance": "planner-inferred",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "emphasis": "computed"
+      }
+    }
+  ],
+  "timeline": {
+    "frame_rate": 30,
+    "total_frames": 870,
+    "compiled_end_frame": 870,
+    "total_duration_seconds": 29,
+    "frame_issues": []
+  },
+  "shares": {
+    "travel_seconds": 11,
+    "travel_fraction": 0.3793103448275862,
+    "subject_seconds": 18,
+    "subject_fraction": 0.6206896551724138
+  },
+  "grammar_pattern": [
+    "PULL_BACK",
+    "FLY",
+    "PULL_BACK"
+  ],
+  "comparisons": {},
+  "warnings": [
+    {
+      "code": "LOW_MAPPING_CONFIDENCE",
+      "message": "Beat 1 used location-only mapping.",
+      "plan_index": 0
+    },
+    {
+      "code": "LOW_MAPPING_CONFIDENCE",
+      "message": "Beat 3 used location-only mapping.",
+      "plan_index": 2
+    }
+  ],
+  "errors": [],
+  "execution_ok": true,
+  "directorial_review": [
+    {
+      "code": "LOW_MAPPING_CONFIDENCE",
+      "message": "Beat 1 used location-only mapping.",
+      "plan_index": 0
+    },
+    {
+      "code": "LOW_MAPPING_CONFIDENCE",
+      "message": "Beat 3 used location-only mapping.",
+      "plan_index": 2
+    }
+  ],
+  "source_comparison": null
+}

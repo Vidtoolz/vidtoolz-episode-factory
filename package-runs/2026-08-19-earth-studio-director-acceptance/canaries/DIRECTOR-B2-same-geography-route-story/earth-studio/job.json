@@ -1,15 +1,15 @@
 {
   "jobName": "DIRECTOR-B2-same-geography-route-story",
   "slug": "director-b2-same-geography-route-story",
-  "description": "hover over Helsinki at 34028m tilted 0 degrees for 3 seconds then zoom out from Helsinki at 240515m tilted 0 degrees for 7 seconds then fly to Stockholm at 240515m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 34028m tilted 0 degrees for 7 seconds then hover over Stockholm for 3 seconds",
+  "description": "hover over Helsinki at 34028m tilted 0 degrees for 3 seconds then zoom out from Helsinki at 240515m tilted 0 degrees for 1.8 seconds then fly to Stockholm at 240515m tilted 0 degrees for 5.4 seconds then zoom in on Stockholm at 34028m tilted 0 degrees for 1.8 seconds then hover over Stockholm for 3 seconds",
   "aspect": "16:9",
   "render_dimensions": {
     "width": 1920,
     "height": 1080
   },
   "frame_rate": 30,
-  "total_frames": 870,
-  "total_duration_seconds": 29,
+  "total_frames": 450,
+  "total_duration_seconds": 15,
   "unresolved_count": 0,
   "planner_version": "0.9.4",
   "motion_profile": {
@@ -31,7 +31,8 @@
     "start_source": "location",
     "stop_count": 2,
     "movement_count": 5,
-    "compiled_description": "hover over Helsinki at 34028m tilted 0 degrees for 3 seconds then zoom out from Helsinki at 240515m tilted 0 degrees for 7 seconds then fly to Stockholm at 240515m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 34028m tilted 0 degrees for 7 seconds then hover over Stockholm for 3 seconds"
+    "compiled_description": "hover over Helsinki at 34028m tilted 0 degrees for 3 seconds then zoom out from Helsinki at 240515m tilted 0 degrees for 1.8 seconds then fly to Stockholm at 240515m tilted 0 degrees for 5.4 seconds then zoom in on Stockholm at 34028m tilted 0 degrees for 1.8 seconds then hover over Stockholm for 3 seconds"
   },
+  "camera_quality": "camera-quality.json",
   "continuation_state": "continuation-state.json"
 }

@@ -19,7 +19,7 @@
   },
   "start_movements": [
     {
-      "id": "s139",
+      "id": "s161",
       "type": "hold",
       "duration_seconds": null,
       "pace": null,
@@ -49,9 +49,9 @@
       "travel_style": "direct",
       "travel": [
         {
-          "id": "s133",
+          "id": "s155",
           "type": "fly",
-          "duration_seconds": null,
+          "duration_seconds": 5,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -63,7 +63,7 @@
       ],
       "movements": [
         {
-          "id": "s134",
+          "id": "s156",
           "type": "reveal",
           "duration_seconds": null,
           "pace": null,
@@ -93,9 +93,9 @@
       "travel_style": "direct",
       "travel": [
         {
-          "id": "s135",
+          "id": "s157",
           "type": "fly",
-          "duration_seconds": null,
+          "duration_seconds": 9,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -107,7 +107,7 @@
       ],
       "movements": [
         {
-          "id": "s136",
+          "id": "s158",
           "type": "zoom_out",
           "duration_seconds": null,
           "pace": null,
@@ -137,9 +137,9 @@
       "travel_style": "direct",
       "travel": [
         {
-          "id": "s137",
+          "id": "s159",
           "type": "fly",
-          "duration_seconds": null,
+          "duration_seconds": 12,
           "pace": null,
           "emphasis": null,
           "direction": 1,
@@ -151,7 +151,7 @@
       ],
       "movements": [
         {
-          "id": "s138",
+          "id": "s160",
           "type": "zoom_out",
           "duration_seconds": null,
           "pace": null,

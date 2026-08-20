@@ -1,0 +1,114 @@
+{
+  "case": "DIRN-02-landmark-push-in",
+  "title": "DIRN-02 — start wide on Helsinki Cathedral, gently push in",
+  "question": "Does an explicit push-in request produce one clean A→B approach, and does the camera actually close distance?",
+  "expected": "Wider opening framing, one coherent push toward the landmark: stable heading, no ground-path wobble, sensible deceleration.",
+  "generated_via": "parseIntent -> autoDirect -> journey model -> lane.writeJob (GUI path)",
+  "source_text": "Start wide over Helsinki Cathedral and gently push in toward it.",
+  "parsed_intent": {
+    "stops": [
+      {
+        "location": "Helsinki Cathedral",
+        "role": "STARTING_CONTEXT",
+        "importance": "NORMAL",
+        "explicit_grammar": "zoom_in"
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": "calm"
+  },
+  "plan": {
+    "plan_version": 1,
+    "director_version": 1,
+    "source_text": "Start wide over Helsinki Cathedral and gently push in toward it.",
+    "beats": [
+      {
+        "beat": "STARTING_CONTEXT",
+        "subject": "Helsinki Cathedral",
+        "role": "STARTING_CONTEXT",
+        "importance": "NORMAL",
+        "purpose": "ESTABLISH",
+        "purpose_label": "Establish",
+        "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+        "grammar": "zoom_in",
+        "grammar_label": "Push In",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.08,
+        "tilt_deg": null,
+        "why": "landmark framing is within its useful range the target is a compact subject whose form can carry a shot",
+        "angle_limitation": null,
+        "duration_seconds": 4,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "user-specified",
+          "importance": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      }
+    ],
+    "globe": {
+      "allowed": false,
+      "justification": null,
+      "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+    },
+    "compare_match": null,
+    "continuation": null,
+    "notes": [
+      "Flourish budget for this sequence: 1 (from 1 stop; 0 hero, 0 high).",
+      "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "No selective or special moves were used — nothing in this sequence earned one."
+    ],
+    "span_m": 0,
+    "total_duration_seconds": 4
+  },
+  "audit": {
+    "findings": [],
+    "ok": true,
+    "beat_count": 1
+  },
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Helsinki Cathedral",
+      "from": null,
+      "to": null,
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "movement": "zoom_in",
+      "label": "Push In",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "landmark framing is within its useful range the target is a compact subject whose form can carry a shot",
+      "rarity": "COMMON",
+      "emphasis": 1.08,
+      "angle": "top_down",
+      "communicates": [
+        "narrowing attention",
+        "context becoming subject"
+      ],
+      "alternatives": [],
+      "angle_limitation": null,
+      "continuation": false
+    }
+  ],
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 1 (from 1 stop; 0 hero, 0 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "No selective or special moves were used — nothing in this sequence earned one."
+  ],
+  "explanation": [
+    "Helsinki Cathedral (Starting context, NORMAL): Push In for Establish — landmark framing is within its useful range the target is a compact subject whose form can carry a shot",
+    "Flourish budget for this sequence: 1 (from 1 stop; 0 hero, 0 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "No selective or special moves were used — nothing in this sequence earned one."
+  ]
+}

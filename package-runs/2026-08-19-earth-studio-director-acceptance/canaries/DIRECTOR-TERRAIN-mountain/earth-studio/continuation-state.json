@@ -7,10 +7,10 @@
   "timestamp": "2026-08-19T13:00:00.000Z",
   "aspect": "16:9",
   "frame_rate": 30,
-  "total_frames": 3090,
-  "ends_at_frame": 3089,
+  "total_frames": 2640,
+  "ends_at_frame": 2639,
   "camera": {
-    "latitude": 45.796893,
+    "latitude": 45.796691,
     "longitude": 7.6585,
     "altitude_m": 6500,
     "pan_deg": 360,

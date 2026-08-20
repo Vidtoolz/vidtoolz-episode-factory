@@ -1,0 +1,206 @@
+{
+  "id": "DIRN-05-local-point-to-point",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-05-local-point-to-point/earth-studio/earth-studio.esp",
+  "esp_sha256": "319135e28e94cb8060d2d35cdc1902f2790d2efe0b61acf76a69da47353fab05",
+  "expected": {
+    "total_frames": 420,
+    "duration_seconds": 14,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 420,
+    "totalFrames": 420,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-05-local-point-to-point/DIRN-05-local-point-to-point_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.17039999698295,
+        "longitude": 24.9522,
+        "altitude": 700.9930130238043,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 0,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 60,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-05-local-point-to-point/DIRN-05-local-point-to-point_f00060_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 60,
+        "latitude": 60.17039999698295,
+        "longitude": 24.9522,
+        "altitude": 700.9930130238043,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 0,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 120,
+      "label": "seg2-start",
+      "movement": "fly_to",
+      "place": "Senate Square",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-05-local-point-to-point/DIRN-05-local-point-to-point_f00120_seg2-start.png",
+      "earth_studio_camera": {
+        "frame": 120,
+        "latitude": 60.17039999698295,
+        "longitude": 24.9522,
+        "altitude": 700.9930130238043,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Senate Square",
+        "altitude_m": 600,
+        "tilt_deg": 0,
+        "target_lat": 60.1695,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 195,
+      "label": "seg2-mid",
+      "movement": "fly_to",
+      "place": "Senate Square",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-05-local-point-to-point/DIRN-05-local-point-to-point_f00195_seg2-mid.png",
+      "earth_studio_camera": {
+        "frame": 195,
+        "latitude": 60.16987618946774,
+        "longitude": 24.9522,
+        "altitude": 642.7925638223325,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Senate Square",
+        "altitude_m": 600,
+        "tilt_deg": 0,
+        "target_lat": 60.1695,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 270,
+      "label": "seg3-start",
+      "movement": "hover",
+      "place": "Senate Square",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-05-local-point-to-point/DIRN-05-local-point-to-point_f00270_seg3-start.png",
+      "earth_studio_camera": {
+        "frame": 270,
+        "latitude": 60.1695,
+        "longitude": 24.9522,
+        "altitude": 600.9940111632608,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Senate Square",
+        "altitude_m": 600,
+        "tilt_deg": 0,
+        "target_lat": 60.1695,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 345,
+      "label": "seg3-mid",
+      "movement": "hover",
+      "place": "Senate Square",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-05-local-point-to-point/DIRN-05-local-point-to-point_f00345_seg3-mid.png",
+      "earth_studio_camera": {
+        "frame": 345,
+        "latitude": 60.1695,
+        "longitude": 24.9522,
+        "altitude": 600.9940111632608,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Senate Square",
+        "altitude_m": 600,
+        "tilt_deg": 0,
+        "target_lat": 60.1695,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 419,
+      "label": "seg3-end",
+      "movement": "hover",
+      "place": "Senate Square",
+      "png": "package-runs/2026-08-20-earth-studio-directorial-evaluation/observations/DIRN-05-local-point-to-point/DIRN-05-local-point-to-point_f00419_seg3-end.png",
+      "earth_studio_camera": {
+        "frame": 419,
+        "latitude": 60.1695,
+        "longitude": 24.9522,
+        "altitude": 600.9940111632608,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Senate Square",
+        "altitude_m": 600,
+        "tilt_deg": 0,
+        "target_lat": 60.1695,
+        "target_lng": 24.9522
+      }
+    }
+  ],
+  "errors": []
+}

@@ -33,5 +33,6 @@
     "movement_count": 1,
     "compiled_description": "orbit Senate Square once clockwise tilted 60 degrees for 42 seconds"
   },
+  "camera_quality": "camera-quality.json",
   "continuation_state": "continuation-state.json"
 }

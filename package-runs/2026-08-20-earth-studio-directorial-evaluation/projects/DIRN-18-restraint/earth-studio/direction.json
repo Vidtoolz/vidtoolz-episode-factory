@@ -1,0 +1,216 @@
+{
+  "case": "DIRN-18-restraint",
+  "title": "DIRN-18 — the restraint test (hold, direct move, hold)",
+  "question": "Can the director choose NOT to direct? Explicit holds and a direct move must stay exactly that simple.",
+  "expected": "Hold → Direct travel → Hold. No orbit, no spiral, no shaped transit, no orientation change invented.",
+  "generated_via": "parseIntent -> autoDirect -> journey model -> lane.writeJob (GUI path)",
+  "source_text": "Start over Copenhagen and hold. Then move directly to Berlin and hold again.",
+  "parsed_intent": {
+    "stops": [
+      {
+        "location": "Copenhagen",
+        "role": "STARTING_CONTEXT",
+        "importance": "NORMAL"
+      },
+      {
+        "location": "Berlin",
+        "explicit_grammar": "hold",
+        "explicit_travel_style": "style:direct"
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null
+  },
+  "plan": {
+    "plan_version": 1,
+    "director_version": 1,
+    "source_text": "Start over Copenhagen and hold. Then move directly to Berlin and hold again.",
+    "beats": [
+      {
+        "beat": "STARTING_CONTEXT",
+        "subject": "Copenhagen",
+        "role": "STARTING_CONTEXT",
+        "importance": "NORMAL",
+        "purpose": "ESTABLISH",
+        "purpose_label": "Establish",
+        "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.08,
+        "tilt_deg": null,
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 4,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "user-specified",
+          "importance": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      },
+      {
+        "beat": "TRAVEL",
+        "subject": "Copenhagen → Berlin",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "style:direct",
+        "grammar_label": "Direct Fly-To",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "why": "its primary purpose is TRAVEL, which is what this shot is for",
+        "distance_m": 355150,
+        "duration_seconds": 30,
+        "provenance": {
+          "subject": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "duration": "computed"
+        }
+      },
+      {
+        "beat": "DESTINATION",
+        "subject": "Berlin",
+        "role": "DESTINATION",
+        "importance": "HIGH",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.25,
+        "tilt_deg": null,
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 5,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      }
+    ],
+    "globe": {
+      "allowed": false,
+      "justification": null,
+      "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+    },
+    "compare_match": null,
+    "continuation": null,
+    "notes": [
+      "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+      "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "No selective or special moves were used — nothing in this sequence earned one."
+    ],
+    "span_m": 355150,
+    "total_duration_seconds": 39
+  },
+  "audit": {
+    "findings": [],
+    "ok": true,
+    "beat_count": 3
+  },
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Copenhagen",
+      "from": null,
+      "to": null,
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.08,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Zoom-To (native template)",
+        "Reveal",
+        "Half Orbit"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Copenhagen",
+      "to": "Berlin",
+      "role": null,
+      "importance": null,
+      "movement": "style:direct",
+      "label": "Direct Fly-To",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "its primary purpose is TRAVEL, which is what this shot is for",
+      "rarity": "COMMON",
+      "emphasis": 1.25,
+      "angle": "top_down",
+      "communicates": [
+        "we are going there",
+        "the geography between"
+      ],
+      "alternatives": [],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "at",
+      "place": "Berlin",
+      "from": null,
+      "to": null,
+      "role": "DESTINATION",
+      "importance": "HIGH",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.25,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [],
+      "angle_limitation": null,
+      "continuation": false
+    }
+  ],
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "No selective or special moves were used — nothing in this sequence earned one."
+  ],
+  "explanation": [
+    "Copenhagen (Starting context, NORMAL): Hold for Establish — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Copenhagen → Berlin: Direct Fly-To — its primary purpose is TRAVEL, which is what this shot is for",
+    "Berlin (Destination, HIGH): Hold for Arrive — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "No selective or special moves were used — nothing in this sequence earned one."
+  ]
+}

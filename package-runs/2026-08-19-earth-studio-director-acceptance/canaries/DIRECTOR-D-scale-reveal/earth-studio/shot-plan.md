@@ -1,8 +1,8 @@
 # Shot Plan: DIRECTOR-D-scale-reveal
 
-Total duration: 67 seconds
+Total duration: 56 seconds
 Frame rate: 30 fps
-Total frames: 2010
+Total frames: 1680
 Aspect: 16:9 (1920x1080)
 Frame convention: start_frame inclusive, end_frame exclusive
 
@@ -11,12 +11,12 @@ Frame convention: start_frame inclusive, end_frame exclusive
 | # | Action | Location | Alt (m) | Tilt | Time | start_frame | end_frame | Status |
 |---|---|---|---:|---:|---:|---:|---:|---|
 | 1 | hover | Senate Square | 600 | 0 | 0-5s | 0 | 150 | resolved |
-| 2 | fly_to | Helsinki | 34028 | 0 | 5-14s | 150 | 420 | resolved |
-| 3 | zoom_out | Helsinki | 992474 | 0 | 14-26s | 420 | 780 | resolved |
-| 4 | fly_to | Finland | 3686333 | 0 | 26-35s | 780 | 1050 | resolved |
-| 5 | zoom_out | Finland | 7089102 | 0 | 35-42s | 1050 | 1260 | resolved |
-| 6 | fly_to | Europe | 14178205 | 0 | 42-61s | 1260 | 1830 | resolved |
-| 7 | zoom_out | Europe | 36131736 | 0 | 61-67s | 1830 | 2010 | resolved |
+| 2 | fly_to | Helsinki | 34028 | 0 | 5-10s | 150 | 300 | resolved |
+| 3 | zoom_out | Helsinki | 992474 | 0 | 10-22s | 300 | 660 | resolved |
+| 4 | fly_to | Finland | 3686333 | 0 | 22-31s | 660 | 930 | resolved |
+| 5 | zoom_out | Finland | 7089102 | 0 | 31-38s | 930 | 1140 | resolved |
+| 6 | fly_to | Europe | 14178205 | 0 | 38-50s | 1140 | 1500 | resolved |
+| 7 | zoom_out | Europe | 36131736 | 0 | 50-56s | 1500 | 1680 | resolved |
 
 ## Locations
 

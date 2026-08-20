@@ -1,0 +1,219 @@
+{
+  "case": "DIRN-05-local-point-to-point",
+  "title": "DIRN-05 — Helsinki Cathedral to Senate Square (local move)",
+  "question": "Does a short local move stay low, direct and coherent — no regional pullback for a two-block journey?",
+  "expected": "Low direct travel between the two landmarks. No high transit, no scale detour, stable arrival.",
+  "generated_via": "parseIntent -> autoDirect -> journey model -> lane.writeJob (GUI path)",
+  "source_text": "Go from Helsinki Cathedral to Senate Square.",
+  "parsed_intent": {
+    "stops": [
+      {
+        "location": "Helsinki Cathedral"
+      },
+      {
+        "location": "Senate Square"
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null
+  },
+  "plan": {
+    "plan_version": 1,
+    "director_version": 1,
+    "source_text": "Go from Helsinki Cathedral to Senate Square.",
+    "beats": [
+      {
+        "beat": "STARTING_CONTEXT",
+        "subject": "Helsinki Cathedral",
+        "role": "STARTING_CONTEXT",
+        "importance": "NORMAL",
+        "purpose": "ESTABLISH",
+        "purpose_label": "Establish",
+        "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.08,
+        "tilt_deg": null,
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for landmark framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 4,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      },
+      {
+        "beat": "TRAVEL",
+        "subject": "Helsinki Cathedral → Senate Square",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "style:direct",
+        "grammar_label": "Direct Fly-To",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "why": "its primary purpose is TRAVEL, which is what this shot is for",
+        "distance_m": 100,
+        "duration_seconds": 5,
+        "provenance": {
+          "subject": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "duration": "computed"
+        }
+      },
+      {
+        "beat": "DESTINATION",
+        "subject": "Senate Square",
+        "role": "DESTINATION",
+        "importance": "HIGH",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.25,
+        "tilt_deg": null,
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for landmark framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 5,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      }
+    ],
+    "globe": {
+      "allowed": false,
+      "justification": null,
+      "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+    },
+    "compare_match": null,
+    "continuation": null,
+    "notes": [
+      "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+      "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "No selective or special moves were used — nothing in this sequence earned one."
+    ],
+    "span_m": 100,
+    "total_duration_seconds": 14
+  },
+  "audit": {
+    "findings": [],
+    "ok": true,
+    "beat_count": 3
+  },
+  "decisions": [
+    {
+      "kind": "at",
+      "place": "Helsinki Cathedral",
+      "from": null,
+      "to": null,
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ESTABLISH",
+      "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for landmark framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.08,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Zoom-To (native template)",
+        "Push In",
+        "Reveal"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "travel",
+      "place": null,
+      "from": "Helsinki Cathedral",
+      "to": "Senate Square",
+      "role": null,
+      "importance": null,
+      "movement": "style:direct",
+      "label": "Direct Fly-To",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "its primary purpose is TRAVEL, which is what this shot is for",
+      "rarity": "COMMON",
+      "emphasis": 1.25,
+      "angle": "top_down",
+      "communicates": [
+        "we are going there",
+        "the geography between"
+      ],
+      "alternatives": [
+        "Cinematic (pull back, travel, descend)",
+        "Low Approach"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    },
+    {
+      "kind": "at",
+      "place": "Senate Square",
+      "from": null,
+      "to": null,
+      "role": "DESTINATION",
+      "importance": "HIGH",
+      "movement": "hold",
+      "label": "Hold",
+      "purpose": "ARRIVE",
+      "viewer_should_understand": "that we have reached the place that matters",
+      "why": "its primary purpose is ESTABLISH, which is what this shot is for landmark framing is within its useful range",
+      "rarity": "COMMON",
+      "emphasis": 1.25,
+      "angle": "top_down",
+      "communicates": [
+        "this is the place",
+        "time to read the geography"
+      ],
+      "alternatives": [
+        "Push In",
+        "Zoom-To (native template)",
+        "Reveal"
+      ],
+      "angle_limitation": null,
+      "continuation": false
+    }
+  ],
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "notes": [
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "No selective or special moves were used — nothing in this sequence earned one."
+  ],
+  "explanation": [
+    "Helsinki Cathedral (Starting context, NORMAL): Hold for Establish — its primary purpose is ESTABLISH, which is what this shot is for landmark framing is within its useful range",
+    "Helsinki Cathedral → Senate Square: Direct Fly-To — its primary purpose is TRAVEL, which is what this shot is for",
+    "Senate Square (Destination, HIGH): Hold for Arrive — its primary purpose is ESTABLISH, which is what this shot is for landmark framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "No selective or special moves were used — nothing in this sequence earned one."
+  ]
+}

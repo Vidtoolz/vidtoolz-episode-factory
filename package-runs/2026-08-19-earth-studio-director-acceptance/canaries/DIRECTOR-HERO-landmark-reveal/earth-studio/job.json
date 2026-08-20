@@ -1,15 +1,15 @@
 {
   "jobName": "DIRECTOR-HERO-landmark-reveal",
   "slug": "director-hero-landmark-reveal",
-  "description": "hover over Paris at 34028m tilted 0 degrees for 4 seconds then zoom out from Paris at 155960m tilted 0 degrees for 7 seconds then fly to Eiffel Tower at 155960m tilted 0 degrees for 5 seconds then zoom in on Eiffel Tower tilted 60 degrees for 11 seconds then orbit Eiffel Tower once clockwise tilted 60 degrees for 43 seconds",
+  "description": "hover over Paris at 34028m tilted 0 degrees for 4 seconds then zoom out from Paris at 155960m tilted 0 degrees for 1 seconds then fly to Eiffel Tower at 155960m tilted 0 degrees for 3 seconds then zoom in on Eiffel Tower tilted 60 degrees for 1 seconds then orbit Eiffel Tower once clockwise tilted 60 degrees for 43 seconds",
   "aspect": "9:16",
   "render_dimensions": {
     "width": 1080,
     "height": 1920
   },
   "frame_rate": 30,
-  "total_frames": 2100,
-  "total_duration_seconds": 70,
+  "total_frames": 1560,
+  "total_duration_seconds": 52,
   "unresolved_count": 0,
   "planner_version": "0.9.4",
   "motion_profile": {
@@ -31,7 +31,8 @@
     "start_source": "location",
     "stop_count": 2,
     "movement_count": 5,
-    "compiled_description": "hover over Paris at 34028m tilted 0 degrees for 4 seconds then zoom out from Paris at 155960m tilted 0 degrees for 7 seconds then fly to Eiffel Tower at 155960m tilted 0 degrees for 5 seconds then zoom in on Eiffel Tower tilted 60 degrees for 11 seconds then orbit Eiffel Tower once clockwise tilted 60 degrees for 43 seconds"
+    "compiled_description": "hover over Paris at 34028m tilted 0 degrees for 4 seconds then zoom out from Paris at 155960m tilted 0 degrees for 1 seconds then fly to Eiffel Tower at 155960m tilted 0 degrees for 3 seconds then zoom in on Eiffel Tower tilted 60 degrees for 1 seconds then orbit Eiffel Tower once clockwise tilted 60 degrees for 43 seconds"
   },
+  "camera_quality": "camera-quality.json",
   "continuation_state": "continuation-state.json"
 }

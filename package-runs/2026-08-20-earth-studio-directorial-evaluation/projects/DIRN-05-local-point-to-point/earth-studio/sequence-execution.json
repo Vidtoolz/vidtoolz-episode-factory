@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "fingerprints": {
+    "direction_plan": "913247ca9492d2d7647cfaa22f0ea55f46f34c279caa7b30e22bf2dd848b70c2",
+    "shot_plan": "1d5fce4364bf1c55466285215e44fa56bde8cede5f72502ef95b18684a251275",
+    "job": "89bcbfd2a08d8e5cc1f5b513cbcff42c4ca5c4d2f7fe54ad5c90b20322fa937a"
+  },
+  "mapping": {
+    "method": "semantic-beat-to-segment aggregation",
+    "confidence": "HIGH",
+    "plan_beats": 3,
+    "shot_segments": 3
+  },
+  "trace": [
+    {
+      "plan_index": 0,
+      "beat": "STARTING_CONTEXT",
+      "subject": "Helsinki Cathedral",
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "purpose": "ESTABLISH",
+      "grammar_planned": "hold",
+      "grammar_actual": "HOLD",
+      "planned_duration_seconds": 4,
+      "actual_duration_seconds": 4,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        1
+      ],
+      "segment_start_frame": 0,
+      "segment_end_frame": 120,
+      "mapping_method": "location+at-action",
+      "comparison_group": null,
+      "is_final": false,
+      "provenance": {
+        "subject": "user-specified",
+        "role": "planner-inferred",
+        "importance": "planner-inferred",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "emphasis": "computed"
+      }
+    },
+    {
+      "plan_index": 1,
+      "beat": "TRAVEL",
+      "subject": "Helsinki Cathedral → Senate Square",
+      "role": null,
+      "importance": null,
+      "purpose": "ARRIVE",
+      "grammar_planned": "style:direct",
+      "grammar_actual": "FLY",
+      "planned_duration_seconds": 5,
+      "actual_duration_seconds": 5,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        2
+      ],
+      "segment_start_frame": 120,
+      "segment_end_frame": 270,
+      "mapping_method": "travel-until-destination-arrival",
+      "comparison_group": null,
+      "is_final": false,
+      "provenance": {
+        "subject": "user-specified",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "duration": "computed"
+      }
+    },
+    {
+      "plan_index": 2,
+      "beat": "DESTINATION",
+      "subject": "Senate Square",
+      "role": "DESTINATION",
+      "importance": "HIGH",
+      "purpose": "ARRIVE",
+      "grammar_planned": "hold",
+      "grammar_actual": "HOLD",
+      "planned_duration_seconds": 5,
+      "actual_duration_seconds": 5,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        3
+      ],
+      "segment_start_frame": 270,
+      "segment_end_frame": 420,
+      "mapping_method": "location+at-action",
+      "comparison_group": null,
+      "is_final": true,
+      "provenance": {
+        "subject": "user-specified",
+        "role": "planner-inferred",
+        "importance": "planner-inferred",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "emphasis": "computed"
+      }
+    }
+  ],
+  "timeline": {
+    "frame_rate": 30,
+    "total_frames": 420,
+    "compiled_end_frame": 420,
+    "total_duration_seconds": 14,
+    "frame_issues": []
+  },
+  "shares": {
+    "travel_seconds": 5,
+    "travel_fraction": 0.35714285714285715,
+    "subject_seconds": 9,
+    "subject_fraction": 0.6428571428571429
+  },
+  "grammar_pattern": [
+    "HOLD",
+    "FLY",
+    "HOLD"
+  ],
+  "comparisons": {},
+  "warnings": [],
+  "errors": [],
+  "execution_ok": true,
+  "directorial_review": [],
+  "source_comparison": null
+}

@@ -7,8 +7,8 @@
   "timestamp": "2026-08-19T13:00:00.000Z",
   "aspect": "16:9",
   "frame_rate": 30,
-  "total_frames": 2010,
-  "ends_at_frame": 2009,
+  "total_frames": 1680,
+  "ends_at_frame": 1679,
   "camera": {
     "latitude": 52,
     "longitude": 15,

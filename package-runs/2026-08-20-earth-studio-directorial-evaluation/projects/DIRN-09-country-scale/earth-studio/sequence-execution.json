@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "fingerprints": {
+    "direction_plan": "1a52f307cf57f9894d0780fd2d4cb94f03e1833f86e89562019e00c4e61c0b1f",
+    "shot_plan": "173637b7ac58559e461d108192c4f5446df4392f2c80d5dfcd51d0a8db373615",
+    "job": "41c2b7d01d088bebc1b1787ca2ec345b66e62b68daab7abb9c9723a9348768a1"
+  },
+  "mapping": {
+    "method": "semantic-beat-to-segment aggregation",
+    "confidence": "HIGH",
+    "plan_beats": 1,
+    "shot_segments": 1
+  },
+  "trace": [
+    {
+      "plan_index": 0,
+      "beat": "STARTING_CONTEXT",
+      "subject": "Finland",
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "purpose": "ESTABLISH",
+      "grammar_planned": "hold",
+      "grammar_actual": "HOLD",
+      "planned_duration_seconds": 4,
+      "actual_duration_seconds": 4,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        1
+      ],
+      "segment_start_frame": 0,
+      "segment_end_frame": 120,
+      "mapping_method": "location+at-action",
+      "comparison_group": null,
+      "is_final": true,
+      "provenance": {
+        "subject": "user-specified",
+        "role": "planner-inferred",
+        "importance": "planner-inferred",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "emphasis": "computed"
+      }
+    }
+  ],
+  "timeline": {
+    "frame_rate": 30,
+    "total_frames": 120,
+    "compiled_end_frame": 120,
+    "total_duration_seconds": 4,
+    "frame_issues": []
+  },
+  "shares": {
+    "travel_seconds": 0,
+    "travel_fraction": 0,
+    "subject_seconds": 4,
+    "subject_fraction": 1
+  },
+  "grammar_pattern": [
+    "HOLD"
+  ],
+  "comparisons": {},
+  "warnings": [],
+  "errors": [],
+  "execution_ok": true,
+  "directorial_review": [],
+  "source_comparison": null
+}

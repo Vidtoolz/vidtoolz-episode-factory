@@ -1,0 +1,203 @@
+{
+  "job_name": "DIRN-16a-continuation-source",
+  "version": "0.9.4",
+  "generated_at": "2026-08-20T09:00:00.000Z",
+  "source_description": "hover over Helsinki at 34028m tilted 0 degrees for 4 seconds then zoom out from Helsinki at 155960m tilted 0 degrees for 1 seconds then fly to Tallinn at 155960m tilted 0 degrees for 3 seconds then zoom in on Tallinn at 34028m tilted 0 degrees for 1 seconds then hover over Tallinn for 5 seconds",
+  "parser_strategy": "offline_regex_with_manual_review_fallback",
+  "frame_rate": 30,
+  "frame_convention": {
+    "start_frame": "inclusive",
+    "end_frame": "exclusive"
+  },
+  "aspect": "16:9",
+  "render_dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "total_duration_seconds": 14,
+  "total_frames": 420,
+  "motion_policy": {
+    "coherent_trajectory": true,
+    "dedupe_keyframes": true,
+    "source": "journey"
+  },
+  "locations": [
+    {
+      "name": "Helsinki",
+      "latitude": 60.1699,
+      "longitude": 24.9384,
+      "resolution_status": "resolved_fixture"
+    },
+    {
+      "name": "Tallinn",
+      "latitude": 59.437,
+      "longitude": 24.7536,
+      "resolution_status": "resolved_fixture"
+    }
+  ],
+  "segments": [
+    {
+      "segment_id": 1,
+      "source_text": "hover over Helsinki at 34028m tilted 0 degrees for 4 seconds",
+      "action": "hover",
+      "requested_action": "hover",
+      "location_name": "Helsinki",
+      "location": {
+        "name": "Helsinki",
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 34028,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 0,
+      "end_seconds": 4,
+      "duration_seconds": 4,
+      "start_frame": 0,
+      "end_frame": 120,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 2,
+      "source_text": "zoom out from Helsinki at 155960m tilted 0 degrees for 1 seconds",
+      "action": "zoom_out",
+      "requested_action": "zoom_out",
+      "location_name": "Helsinki",
+      "location": {
+        "name": "Helsinki",
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 155960,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 4,
+      "end_seconds": 5,
+      "duration_seconds": 1,
+      "start_frame": 120,
+      "end_frame": 150,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 3,
+      "source_text": "fly to Tallinn at 155960m tilted 0 degrees for 3 seconds",
+      "action": "fly_to",
+      "requested_action": "fly_to",
+      "location_name": "Tallinn",
+      "location": {
+        "name": "Tallinn",
+        "latitude": 59.437,
+        "longitude": 24.7536,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 155960,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 5,
+      "end_seconds": 8,
+      "duration_seconds": 3,
+      "start_frame": 150,
+      "end_frame": 240,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 4,
+      "source_text": "zoom in on Tallinn at 34028m tilted 0 degrees for 1 seconds",
+      "action": "zoom_in",
+      "requested_action": "zoom_in",
+      "location_name": "Tallinn",
+      "location": {
+        "name": "Tallinn",
+        "latitude": 59.437,
+        "longitude": 24.7536,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 34028,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 8,
+      "end_seconds": 9,
+      "duration_seconds": 1,
+      "start_frame": 240,
+      "end_frame": 270,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 5,
+      "source_text": "hover over Tallinn for 5 seconds",
+      "action": "hover",
+      "requested_action": "hover",
+      "location_name": "Tallinn",
+      "location": {
+        "name": "Tallinn",
+        "latitude": 59.437,
+        "longitude": 24.7536,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 34028,
+      "altitude_source": "carried_over",
+      "tilt_deg": 0,
+      "tilt_source": "carried_over",
+      "duration_source": "explicit",
+      "start_seconds": 9,
+      "end_seconds": 14,
+      "duration_seconds": 5,
+      "start_frame": 270,
+      "end_frame": 420,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": [
+        "hover holds the previous camera (altitude 34028m, tilt 0°)."
+      ],
+      "holds_camera": true
+    }
+  ],
+  "unresolved_items": [],
+  "motion_profile": {
+    "profile_version": 4,
+    "source": "config/earth-studio-motion/motion-profile.json",
+    "references": [
+      "darien-gap",
+      "mountkinabalu",
+      "radiator-untitled",
+      "servyx"
+    ],
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
+  },
+  "notes": [
+    "segment 5: hover holds the previous camera (altitude 34028m, tilt 0°).",
+    "camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
+  ],
+  "manual_earth_studio_steps": [
+    "Open Google Earth Studio manually.",
+    "Create or open the project manually; this planner does not log in, automate a browser, or control Earth Studio.",
+    "Use shot-plan.json coordinates as manual camera/search references.",
+    "Use route.kml only as a placemark/path reference asset.",
+    "Manually create, review, and adjust all camera keyframes.",
+    "Render manually only after Mikko reviews the camera move."
+  ],
+  "warnings": [
+    "KML is a reference asset only and does not create a finished Google Earth Studio camera animation.",
+    "Placemark use as camera targets is unverified in v1; manually search or set camera targets from shot-plan.json if needed.",
+    "This planner does not render video, manipulate .esp files, control Google Earth Studio, or approve footage.",
+    "Technical planning artifacts are not creative approval, rights clearance, or package-run evidence approval."
+  ]
+}

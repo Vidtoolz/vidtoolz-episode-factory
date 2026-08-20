@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "fingerprints": {
+    "direction_plan": "9ad9a9a34170a7d0cbc89b36b982958d0ae3092f9270181753a532033a29d307",
+    "shot_plan": "adcc3c47a3237e47f8f2e047cb9cfe9a909cf2e3e99df1e0093ddb3f31c79a8e",
+    "job": "a8489e7aa4c103d8ac460d4aa6e41d12f6787ec4137f8527316f163306eba29e"
+  },
+  "mapping": {
+    "method": "semantic-beat-to-segment aggregation",
+    "confidence": "MODERATE",
+    "plan_beats": 1,
+    "shot_segments": 1
+  },
+  "trace": [
+    {
+      "plan_index": 0,
+      "beat": "STARTING_CONTEXT",
+      "subject": "Helsinki Cathedral",
+      "role": "STARTING_CONTEXT",
+      "importance": "NORMAL",
+      "purpose": "ESTABLISH",
+      "grammar_planned": "zoom_in",
+      "grammar_actual": "PUSH",
+      "planned_duration_seconds": 4,
+      "actual_duration_seconds": 4,
+      "duration_delta_seconds": 0,
+      "segment_ids": [
+        1
+      ],
+      "segment_start_frame": 0,
+      "segment_end_frame": 120,
+      "mapping_method": "location-only",
+      "comparison_group": null,
+      "is_final": true,
+      "provenance": {
+        "subject": "user-specified",
+        "role": "user-specified",
+        "importance": "user-specified",
+        "purpose": "planner-inferred",
+        "grammar": "planner-inferred",
+        "emphasis": "computed"
+      }
+    }
+  ],
+  "timeline": {
+    "frame_rate": 30,
+    "total_frames": 120,
+    "compiled_end_frame": 120,
+    "total_duration_seconds": 4,
+    "frame_issues": []
+  },
+  "shares": {
+    "travel_seconds": 0,
+    "travel_fraction": 0,
+    "subject_seconds": 4,
+    "subject_fraction": 1
+  },
+  "grammar_pattern": [
+    "PUSH"
+  ],
+  "comparisons": {},
+  "warnings": [
+    {
+      "code": "LOW_MAPPING_CONFIDENCE",
+      "message": "Beat 1 used location-only mapping.",
+      "plan_index": 0
+    }
+  ],
+  "errors": [],
+  "execution_ok": true,
+  "directorial_review": [
+    {
+      "code": "LOW_MAPPING_CONFIDENCE",
+      "message": "Beat 1 used location-only mapping.",
+      "plan_index": 0
+    }
+  ],
+  "source_comparison": null
+}

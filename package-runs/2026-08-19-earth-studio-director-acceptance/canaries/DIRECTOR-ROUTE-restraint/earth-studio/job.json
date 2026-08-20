@@ -1,15 +1,15 @@
 {
   "jobName": "DIRECTOR-ROUTE-restraint",
   "slug": "director-route-restraint",
-  "description": "hover over Helsinki at 34028m tilted 0 degrees for 3 seconds then zoom out from Helsinki at 240515m tilted 0 degrees for 7 seconds then fly to Stockholm at 240515m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 34028m tilted 0 degrees for 7 seconds then hover over Stockholm for 3 seconds then zoom out from Stockholm at 317265m tilted 0 degrees for 7 seconds then fly to Copenhagen at 317265m tilted 0 degrees for 9 seconds then zoom in on Copenhagen at 34028m tilted 0 degrees for 7 seconds then hover over Copenhagen for 3 seconds then zoom out from Copenhagen at 251771m tilted 0 degrees for 7 seconds then fly to Berlin at 251771m tilted 0 degrees for 8 seconds then zoom in on Berlin at 17014m tilted 60 degrees for 8 seconds then orbit Berlin once clockwise at 17014m tilted 60 degrees for 42 seconds",
+  "description": "hover over Helsinki at 34028m tilted 0 degrees for 3 seconds then zoom out from Helsinki at 240515m tilted 0 degrees for 1.8 seconds then fly to Stockholm at 240515m tilted 0 degrees for 5.4 seconds then zoom in on Stockholm at 34028m tilted 0 degrees for 1.8 seconds then hover over Stockholm for 3 seconds then zoom out from Stockholm at 317265m tilted 0 degrees for 1.8 seconds then fly to Copenhagen at 317265m tilted 0 degrees for 5.4 seconds then zoom in on Copenhagen at 34028m tilted 0 degrees for 1.8 seconds then hover over Copenhagen for 3 seconds then zoom out from Copenhagen at 251771m tilted 0 degrees for 1.6 seconds then fly to Berlin at 251771m tilted 0 degrees for 4.8 seconds then zoom in on Berlin at 17014m tilted 60 degrees for 1.6 seconds then orbit Berlin half clockwise at 17014m tilted 60 degrees for 22 seconds",
   "aspect": "16:9",
   "render_dimensions": {
     "width": 1920,
     "height": 1080
   },
   "frame_rate": 30,
-  "total_frames": 3600,
-  "total_duration_seconds": 120,
+  "total_frames": 1710,
+  "total_duration_seconds": 57.00000000000001,
   "unresolved_count": 0,
   "planner_version": "0.9.4",
   "motion_profile": {
@@ -31,7 +31,8 @@
     "start_source": "location",
     "stop_count": 4,
     "movement_count": 13,
-    "compiled_description": "hover over Helsinki at 34028m tilted 0 degrees for 3 seconds then zoom out from Helsinki at 240515m tilted 0 degrees for 7 seconds then fly to Stockholm at 240515m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 34028m tilted 0 degrees for 7 seconds then hover over Stockholm for 3 seconds then zoom out from Stockholm at 317265m tilted 0 degrees for 7 seconds then fly to Copenhagen at 317265m tilted 0 degrees for 9 seconds then zoom in on Copenhagen at 34028m tilted 0 degrees for 7 seconds then hover over Copenhagen for 3 seconds then zoom out from Copenhagen at 251771m tilted 0 degrees for 7 seconds then fly to Berlin at 251771m tilted 0 degrees for 8 seconds then zoom in on Berlin at 17014m tilted 60 degrees for 8 seconds then orbit Berlin once clockwise at 17014m tilted 60 degrees for 42 seconds"
+    "compiled_description": "hover over Helsinki at 34028m tilted 0 degrees for 3 seconds then zoom out from Helsinki at 240515m tilted 0 degrees for 1.8 seconds then fly to Stockholm at 240515m tilted 0 degrees for 5.4 seconds then zoom in on Stockholm at 34028m tilted 0 degrees for 1.8 seconds then hover over Stockholm for 3 seconds then zoom out from Stockholm at 317265m tilted 0 degrees for 1.8 seconds then fly to Copenhagen at 317265m tilted 0 degrees for 5.4 seconds then zoom in on Copenhagen at 34028m tilted 0 degrees for 1.8 seconds then hover over Copenhagen for 3 seconds then zoom out from Copenhagen at 251771m tilted 0 degrees for 1.6 seconds then fly to Berlin at 251771m tilted 0 degrees for 4.8 seconds then zoom in on Berlin at 17014m tilted 60 degrees for 1.6 seconds then orbit Berlin half clockwise at 17014m tilted 60 degrees for 22 seconds"
   },
+  "camera_quality": "camera-quality.json",
   "continuation_state": "continuation-state.json"
 }
