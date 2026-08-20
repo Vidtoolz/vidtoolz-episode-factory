@@ -1,0 +1,137 @@
+[
+  {
+    "case": "OC-01-landmark-identity",
+    "kind": "landmark with obvious visual identity",
+    "strategy": "DEFAULT_RETAINED",
+    "confidence": "low",
+    "changed": false,
+    "identical": true,
+    "expected": "No route or geometry evidence: B should honestly keep the proven default (identical to A)."
+  },
+  {
+    "case": "OC-02-landmark-then-travel",
+    "kind": "landmark where a generic heading is visibly weak",
+    "strategy": "ROUTE_FORESHADOW",
+    "confidence": "high",
+    "changed": true,
+    "identical": false,
+    "expected": "B opens facing the departure direction (southwest) instead of due north."
+  },
+  {
+    "case": "OC-03-elongated-island",
+    "kind": "elongated island",
+    "strategy": "ROUTE_FORESHADOW",
+    "confidence": "high",
+    "changed": true,
+    "identical": false,
+    "expected": "No footprint polygon available; B uses the route axis (the one honest axis) — faces the departure."
+  },
+  {
+    "case": "OC-04-coastal-city",
+    "kind": "city on a coastline",
+    "strategy": "ROUTE_FORESHADOW",
+    "confidence": "high",
+    "changed": true,
+    "identical": false,
+    "expected": "B faces the strait toward Stockholm — the departure AND the coast."
+  },
+  {
+    "case": "OC-05-inland-city",
+    "kind": "inland city",
+    "strategy": "ROUTE_FORESHADOW",
+    "confidence": "high",
+    "changed": true,
+    "identical": false,
+    "expected": "B faces the outbound direction (north-northeast)."
+  },
+  {
+    "case": "OC-06-mountain",
+    "kind": "mountain",
+    "strategy": "ROUTE_FORESHADOW",
+    "confidence": "high",
+    "changed": true,
+    "identical": false,
+    "expected": "B faces the departure direction; tilt stays with the planner (no fake terrain knowledge)."
+  },
+  {
+    "case": "OC-07-elongated-natural",
+    "kind": "river / elongated natural feature",
+    "strategy": "ROUTE_FORESHADOW",
+    "confidence": "high",
+    "changed": true,
+    "identical": false,
+    "expected": "No river geometry available; B uses the route axis honestly."
+  },
+  {
+    "case": "OC-08-country-scale",
+    "kind": "country-scale subject, heading restrained",
+    "strategy": "DEFAULT_RETAINED",
+    "confidence": "low",
+    "changed": false,
+    "identical": true,
+    "expected": "Country scale: heading matters less than readability — B must retain the default (identical to A)."
+  },
+  {
+    "case": "OC-09-outbound-direction",
+    "kind": "city-to-city journey where outbound direction matters",
+    "strategy": "ROUTE_FORESHADOW",
+    "confidence": "high",
+    "changed": true,
+    "identical": false,
+    "expected": "B opens facing east-northeast — the intercontinental departure."
+  },
+  {
+    "case": "OC-10-landmark-then-immediate-travel",
+    "kind": "landmark followed immediately by travel",
+    "strategy": "ROUTE_FORESHADOW",
+    "confidence": "high",
+    "changed": true,
+    "identical": false,
+    "expected": "B orients the push-in toward the departure direction."
+  },
+  {
+    "case": "OC-11-opening-orbit",
+    "kind": "opening orbit",
+    "strategy": "ORBIT_STAGING_PLANNER",
+    "confidence": "medium",
+    "changed": false,
+    "identical": true,
+    "expected": "Orbit openings are planner-owned: B must defer (identical to A)."
+  },
+  {
+    "case": "OC-12-matched-comparison",
+    "kind": "matched city comparison",
+    "strategy": "COMPARISON_MATCHED",
+    "confidence": "medium",
+    "changed": false,
+    "identical": true,
+    "expected": "Comparison intent outranks glamour angles: B must keep the neutral policy (identical to A)."
+  },
+  {
+    "case": "OC-13-continuation",
+    "kind": "continuation — automatic re-heading must NOT occur",
+    "strategy": "CARRIED_OVER",
+    "confidence": "high",
+    "changed": false,
+    "identical": true,
+    "expected": "Exact hand-off wins: B must NOT re-frame (identical to A)."
+  },
+  {
+    "case": "OC-14-explicit-override",
+    "kind": "explicit user heading override",
+    "strategy": "USER_SPECIFIED",
+    "confidence": "high",
+    "changed": true,
+    "identical": false,
+    "expected": "Operator language wins: B opens facing east (camera on the west side)."
+  },
+  {
+    "case": "OC-15-low-confidence",
+    "kind": "low-confidence subject — safe default wins",
+    "strategy": "DEFAULT_RETAINED",
+    "confidence": "low",
+    "changed": false,
+    "identical": true,
+    "expected": "No evidence strong enough: B retains the default (identical to A)."
+  }
+]

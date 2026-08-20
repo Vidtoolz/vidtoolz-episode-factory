@@ -1,0 +1,306 @@
+{
+  "id": "OC-04-coastal-city-B",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-04-coastal-city-B-composed/earth-studio/earth-studio.esp",
+  "esp_sha256": "dc92f6858396d2992ea68f59d43aa22c34425ca6f6f6c4d07e3bab19c9efde7c",
+  "expected": {
+    "total_frames": 540,
+    "duration_seconds": 18,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 540,
+    "totalFrames": 540,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Copenhagen",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-04-coastal-city-B/OC-04-coastal-city-B_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 55.6761,
+        "longitude": 12.5683,
+        "altitude": 34028.66035310573,
+        "pan_deg": 40.3302601174513,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Copenhagen",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 55.6761,
+        "target_lng": 12.5683
+      }
+    },
+    {
+      "frame": 60,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Copenhagen",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-04-coastal-city-B/OC-04-coastal-city-B_f00060_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 60,
+        "latitude": 55.6761,
+        "longitude": 12.5683,
+        "altitude": 34028.66035310573,
+        "pan_deg": 40.3302601174513,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Copenhagen",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 55.6761,
+        "target_lng": 12.5683
+      }
+    },
+    {
+      "frame": 120,
+      "label": "seg2-start",
+      "movement": "zoom_out",
+      "place": "Copenhagen",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-04-coastal-city-B/OC-04-coastal-city-B_f00120_seg2-start.png",
+      "earth_studio_camera": {
+        "frame": 120,
+        "latitude": 55.6761,
+        "longitude": 12.5683,
+        "altitude": 34028.66035310573,
+        "pan_deg": 40.3302601174513,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Copenhagen",
+        "altitude_m": 317265,
+        "tilt_deg": 0,
+        "target_lat": 55.6761,
+        "target_lng": 12.5683
+      }
+    },
+    {
+      "frame": 147,
+      "label": "seg2-mid",
+      "movement": "zoom_out",
+      "place": "Copenhagen",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-04-coastal-city-B/OC-04-coastal-city-B_f00147_seg2-mid.png",
+      "earth_studio_camera": {
+        "frame": 147,
+        "latitude": 55.6761,
+        "longitude": 12.5683,
+        "altitude": 279349.08526893385,
+        "pan_deg": 40.3302601174513,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Copenhagen",
+        "altitude_m": 317265,
+        "tilt_deg": 0,
+        "target_lat": 55.6761,
+        "target_lng": 12.5683
+      }
+    },
+    {
+      "frame": 174,
+      "label": "seg3-start",
+      "movement": "fly_to",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-04-coastal-city-B/OC-04-coastal-city-B_f00174_seg3-start.png",
+      "earth_studio_camera": {
+        "frame": 174,
+        "latitude": 55.6761,
+        "longitude": 12.5683,
+        "altitude": 317262.83325285325,
+        "pan_deg": 40.3302601174513,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Stockholm",
+        "altitude_m": 317265,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 255,
+      "label": "seg3-mid",
+      "movement": "fly_to",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-04-coastal-city-B/OC-04-coastal-city-B_f00255_seg3-mid.png",
+      "earth_studio_camera": {
+        "frame": 255,
+        "latitude": 57.432509010832185,
+        "longitude": 15.21277728568917,
+        "altitude": 317262.85565409757,
+        "pan_deg": 40.3302601174513,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Stockholm",
+        "altitude_m": 317265,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 336,
+      "label": "seg4-start",
+      "movement": "zoom_in",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-04-coastal-city-B/OC-04-coastal-city-B_f00336_seg4-start.png",
+      "earth_studio_camera": {
+        "frame": 336,
+        "latitude": 59.32928933723962,
+        "longitude": 18.068600034214775,
+        "altitude": 317262.8292362135,
+        "pan_deg": 40.3302601174513,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Stockholm",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 363,
+      "label": "seg4-mid",
+      "movement": "zoom_in",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-04-coastal-city-B/OC-04-coastal-city-B_f00363_seg4-mid.png",
+      "earth_studio_camera": {
+        "frame": 363,
+        "latitude": 59.329289356687326,
+        "longitude": 18.0686,
+        "altitude": 181087.29228897876,
+        "pan_deg": 40.3302601174513,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Stockholm",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 390,
+      "label": "seg5-start",
+      "movement": "hover",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-04-coastal-city-B/OC-04-coastal-city-B_f00390_seg5-start.png",
+      "earth_studio_camera": {
+        "frame": 390,
+        "latitude": 59.329289356687326,
+        "longitude": 18.0686,
+        "altitude": 34028.66035310573,
+        "pan_deg": 40.3302601174513,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Stockholm",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 465,
+      "label": "seg5-mid",
+      "movement": "hover",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-04-coastal-city-B/OC-04-coastal-city-B_f00465_seg5-mid.png",
+      "earth_studio_camera": {
+        "frame": 465,
+        "latitude": 59.329289356687326,
+        "longitude": 18.0686,
+        "altitude": 34028.66035310573,
+        "pan_deg": 40.3302601174513,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Stockholm",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 539,
+      "label": "seg5-end",
+      "movement": "hover",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-04-coastal-city-B/OC-04-coastal-city-B_f00539_seg5-end.png",
+      "earth_studio_camera": {
+        "frame": 539,
+        "latitude": 59.329289356687326,
+        "longitude": 18.0686,
+        "altitude": 34028.66035310573,
+        "pan_deg": 40.3302601174513,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Stockholm",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    }
+  ],
+  "errors": []
+}

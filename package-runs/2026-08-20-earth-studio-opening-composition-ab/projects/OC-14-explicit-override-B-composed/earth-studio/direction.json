@@ -1,0 +1,86 @@
+{
+  "director_version": 1,
+  "plan_version": 1,
+  "plan": {
+    "plan_version": 1,
+    "director_version": 1,
+    "source_text": "Approach the Colosseum from the west.",
+    "beats": [
+      {
+        "beat": "STARTING_CONTEXT",
+        "subject": "Colosseum",
+        "role": "STARTING_CONTEXT",
+        "importance": "NORMAL",
+        "purpose": "ESTABLISH",
+        "purpose_label": "Establish",
+        "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+        "grammar": "zoom_in",
+        "grammar_label": "Push In",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.08,
+        "tilt_deg": null,
+        "why": "landmark framing is within its useful range the target is a compact subject whose form can carry a shot",
+        "angle_limitation": null,
+        "duration_seconds": 4,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      }
+    ],
+    "globe": {
+      "allowed": false,
+      "justification": null,
+      "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+    },
+    "opening_composition": {
+      "strategy": "USER_SPECIFIED",
+      "heading_source": "USER_SPECIFIED",
+      "subject_axis_deg": null,
+      "preferred_view_axis_deg": null,
+      "opening_heading_deg": 90,
+      "opening_tilt_deg": null,
+      "confidence": "high",
+      "reason": "Operator specified the opening (heading 90° — \"Approach the Colosseum from the west\"). Explicit direction outranks automatic composition."
+    },
+    "opening_camera": {
+      "pan_deg": 90
+    },
+    "compare_match": null,
+    "continuation": null,
+    "notes": [
+      "Flourish budget for this sequence: 1 (from 1 stop; 0 hero, 0 high).",
+      "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "No selective or special moves were used — nothing in this sequence earned one.",
+      "Opening composition [USER_SPECIFIED]: Operator specified the opening (heading 90° — \"Approach the Colosseum from the west\"). Explicit direction outranks automatic composition."
+    ],
+    "span_m": 0,
+    "total_duration_seconds": 4
+  },
+  "audit": {
+    "findings": [],
+    "ok": true,
+    "beat_count": 1
+  },
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "explanation": [
+    "Colosseum (Starting context, NORMAL): Push In for Establish — landmark framing is within its useful range the target is a compact subject whose form can carry a shot",
+    "Flourish budget for this sequence: 1 (from 1 stop; 0 hero, 0 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "No selective or special moves were used — nothing in this sequence earned one.",
+    "Opening composition [USER_SPECIFIED]: Operator specified the opening (heading 90° — \"Approach the Colosseum from the west\"). Explicit direction outranks automatic composition."
+  ],
+  "source": "earth-studio-director autoDirect (deterministic; no LLM)",
+  "opening_camera": {
+    "pan_deg": 90
+  }
+}

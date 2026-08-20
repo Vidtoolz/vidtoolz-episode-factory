@@ -1,0 +1,306 @@
+{
+  "id": "OC-02-landmark-then-travel-A",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-02-landmark-then-travel-A-default/earth-studio/earth-studio.esp",
+  "esp_sha256": "96cea347fbec642e92b6270068051714250349806c6bb4193aece57d59245d69",
+  "expected": {
+    "total_frames": 540,
+    "duration_seconds": 18,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 540,
+    "totalFrames": 540,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Colosseum",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-02-landmark-then-travel-A/OC-02-landmark-then-travel-A_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 41.8902,
+        "longitude": 12.4922,
+        "altitude": 700.9930130238043,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Colosseum",
+        "altitude_m": 700,
+        "tilt_deg": 0,
+        "target_lat": 41.8902,
+        "target_lng": 12.4922
+      }
+    },
+    {
+      "frame": 60,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Colosseum",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-02-landmark-then-travel-A/OC-02-landmark-then-travel-A_f00060_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 60,
+        "latitude": 41.8902,
+        "longitude": 12.4922,
+        "altitude": 700.9930130238043,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Colosseum",
+        "altitude_m": 700,
+        "tilt_deg": 0,
+        "target_lat": 41.8902,
+        "target_lng": 12.4922
+      }
+    },
+    {
+      "frame": 120,
+      "label": "seg2-start",
+      "movement": "zoom_out",
+      "place": "Colosseum",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-02-landmark-then-travel-A/OC-02-landmark-then-travel-A_f00120_seg2-start.png",
+      "earth_studio_camera": {
+        "frame": 120,
+        "latitude": 41.8902,
+        "longitude": 12.4922,
+        "altitude": 700.9930130238043,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Colosseum",
+        "altitude_m": 290376,
+        "tilt_deg": 0,
+        "target_lat": 41.8902,
+        "target_lng": 12.4922
+      }
+    },
+    {
+      "frame": 147,
+      "label": "seg2-mid",
+      "movement": "zoom_out",
+      "place": "Colosseum",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-02-landmark-then-travel-A/OC-02-landmark-then-travel-A_f00147_seg2-mid.png",
+      "earth_studio_camera": {
+        "frame": 147,
+        "latitude": 41.8902,
+        "longitude": 12.4922,
+        "altitude": 251598.43723082528,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Colosseum",
+        "altitude_m": 290376,
+        "tilt_deg": 0,
+        "target_lat": 41.8902,
+        "target_lng": 12.4922
+      }
+    },
+    {
+      "frame": 174,
+      "label": "seg3-start",
+      "movement": "fly_to",
+      "place": "Milan",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-02-landmark-then-travel-A/OC-02-landmark-then-travel-A_f00174_seg3-start.png",
+      "earth_studio_camera": {
+        "frame": 174,
+        "latitude": 41.8902,
+        "longitude": 12.4922,
+        "altitude": 290374.10164257174,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Milan",
+        "altitude_m": 290376,
+        "tilt_deg": 0,
+        "target_lat": 45.4642,
+        "target_lng": 9.19
+      }
+    },
+    {
+      "frame": 255,
+      "label": "seg3-mid",
+      "movement": "fly_to",
+      "place": "Milan",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-02-landmark-then-travel-A/OC-02-landmark-then-travel-A_f00255_seg3-mid.png",
+      "earth_studio_camera": {
+        "frame": 255,
+        "latitude": 43.60853207320533,
+        "longitude": 10.904542450710043,
+        "altitude": 290374.10418333916,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Milan",
+        "altitude_m": 290376,
+        "tilt_deg": 0,
+        "target_lat": 45.4642,
+        "target_lng": 9.19
+      }
+    },
+    {
+      "frame": 336,
+      "label": "seg4-start",
+      "movement": "zoom_in",
+      "place": "Milan",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-02-landmark-then-travel-A/OC-02-landmark-then-travel-A_f00336_seg4-start.png",
+      "earth_studio_camera": {
+        "frame": 336,
+        "latitude": 45.46419266362506,
+        "longitude": 9.189999998227648,
+        "altitude": 290374.0948935596,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Milan",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 45.4642,
+        "target_lng": 9.19
+      }
+    },
+    {
+      "frame": 363,
+      "label": "seg4-mid",
+      "movement": "zoom_in",
+      "place": "Milan",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-02-landmark-then-travel-A/OC-02-landmark-then-travel-A_f00363_seg4-mid.png",
+      "earth_studio_camera": {
+        "frame": 363,
+        "latitude": 45.46419257116013,
+        "longitude": 9.189999999999998,
+        "altitude": 167126.33537260213,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Milan",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 45.4642,
+        "target_lng": 9.19
+      }
+    },
+    {
+      "frame": 390,
+      "label": "seg5-start",
+      "movement": "hover",
+      "place": "Milan",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-02-landmark-then-travel-A/OC-02-landmark-then-travel-A_f00390_seg5-start.png",
+      "earth_studio_camera": {
+        "frame": 390,
+        "latitude": 45.46419257116013,
+        "longitude": 9.189999999999998,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Milan",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 45.4642,
+        "target_lng": 9.19
+      }
+    },
+    {
+      "frame": 465,
+      "label": "seg5-mid",
+      "movement": "hover",
+      "place": "Milan",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-02-landmark-then-travel-A/OC-02-landmark-then-travel-A_f00465_seg5-mid.png",
+      "earth_studio_camera": {
+        "frame": 465,
+        "latitude": 45.46419257116013,
+        "longitude": 9.189999999999998,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Milan",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 45.4642,
+        "target_lng": 9.19
+      }
+    },
+    {
+      "frame": 539,
+      "label": "seg5-end",
+      "movement": "hover",
+      "place": "Milan",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-02-landmark-then-travel-A/OC-02-landmark-then-travel-A_f00539_seg5-end.png",
+      "earth_studio_camera": {
+        "frame": 539,
+        "latitude": 45.46419257116013,
+        "longitude": 9.189999999999998,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Milan",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 45.4642,
+        "target_lng": 9.19
+      }
+    }
+  ],
+  "errors": []
+}

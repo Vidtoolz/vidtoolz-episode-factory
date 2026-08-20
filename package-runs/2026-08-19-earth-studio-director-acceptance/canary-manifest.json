@@ -50,7 +50,7 @@
         "height": 1080
       },
       "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B-city-to-city-hero/earth-studio/earth-studio.esp",
-      "esp_sha256": "564755db33a15d29f4ef0bbf10a28bce6c1f2cc828be27ce5e8092da08599604",
+      "esp_sha256": "71ceb6f2204f31e8d54c9e5b3518adf575f8c221362e509d187a17f9df3dd401",
       "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B-city-to-city-hero/earth-studio/journey.json",
       "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B-city-to-city-hero/earth-studio/direction.json",
       "compiled_description": "hover over Helsinki at 34028m tilted 0 degrees for 4 seconds then zoom out from Helsinki at 155960m tilted 0 degrees for 1.8 seconds then fly to Stockholm at 155960m tilted 0 degrees for 7.4 seconds then zoom in on Stockholm at 17014m tilted 60 degrees for 1.8 seconds then orbit Stockholm once clockwise at 17014m tilted 60 degrees for 41 seconds",
@@ -216,7 +216,7 @@
         "height": 1080
       },
       "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-ROUTE-restraint/earth-studio/earth-studio.esp",
-      "esp_sha256": "192d30853966022b22ec478efb6e132046de4153e8a902da9bbcb9a56e512f25",
+      "esp_sha256": "8c16e6a33eb1b024f4dc5d87263b6bd3464f608e7d008ab08208e43e17aad2cc",
       "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-ROUTE-restraint/earth-studio/journey.json",
       "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-ROUTE-restraint/earth-studio/direction.json",
       "compiled_description": "hover over Helsinki at 34028m tilted 0 degrees for 3 seconds then zoom out from Helsinki at 240515m tilted 0 degrees for 1.8 seconds then fly to Stockholm at 240515m tilted 0 degrees for 5.4 seconds then zoom in on Stockholm at 34028m tilted 0 degrees for 1.8 seconds then hover over Stockholm for 3 seconds then zoom out from Stockholm at 317265m tilted 0 degrees for 1.8 seconds then fly to Copenhagen at 317265m tilted 0 degrees for 5.4 seconds then zoom in on Copenhagen at 34028m tilted 0 degrees for 1.8 seconds then hover over Copenhagen for 3 seconds then zoom out from Copenhagen at 251771m tilted 0 degrees for 1.6 seconds then fly to Berlin at 251771m tilted 0 degrees for 4.8 seconds then zoom in on Berlin at 17014m tilted 60 degrees for 1.6 seconds then orbit Berlin half clockwise at 17014m tilted 60 degrees for 22 seconds",
@@ -308,7 +308,7 @@
         "height": 1920
       },
       "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-HERO-landmark-reveal/earth-studio/earth-studio.esp",
-      "esp_sha256": "7198193c55114a00b402e31d96c975e4dbe3999c70180601d30d3ee8ef09dc6d",
+      "esp_sha256": "ed3753ff0dab85a0dd3365941570d5fb5dd8567fd4ab8d86c734d2e395304c3d",
       "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-HERO-landmark-reveal/earth-studio/journey.json",
       "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-HERO-landmark-reveal/earth-studio/direction.json",
       "compiled_description": "hover over Paris at 34028m tilted 0 degrees for 4 seconds then zoom out from Paris at 155960m tilted 0 degrees for 1 seconds then fly to Eiffel Tower at 155960m tilted 0 degrees for 3 seconds then zoom in on Eiffel Tower tilted 60 degrees for 1 seconds then orbit Eiffel Tower once clockwise tilted 60 degrees for 43 seconds",
@@ -442,7 +442,7 @@
         "height": 1080
       },
       "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/earth-studio.esp",
-      "esp_sha256": "a19ea29991a746e3b8e6341e0226775359ec111d851a95c13e87140f500746b5",
+      "esp_sha256": "b03d581f7468bbda59de5f8116ea9098cd9776be10da15004bb2f8b9b02ef480",
       "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/journey.json",
       "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/direction.json",
       "compiled_description": "hover over Zurich at 34028m tilted 0 degrees for 4 seconds then zoom out from Zurich at 155960m tilted 0 degrees for 1.4 seconds then fly to Matterhorn at 155960m tilted 0 degrees for 4.2 seconds then zoom in on Matterhorn tilted 72 degrees for 1.4 seconds then orbit Matterhorn once clockwise tilted 72 degrees for 77 seconds",

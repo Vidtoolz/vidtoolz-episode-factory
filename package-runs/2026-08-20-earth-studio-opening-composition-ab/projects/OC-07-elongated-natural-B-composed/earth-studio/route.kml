@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>OC-07-elongated-natural route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>Grand Canyon</name>
+      <Point><coordinates>-112.1401,36.0544,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Los Angeles</name>
+      <Point><coordinates>-118.2437,34.0522,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>OC-07-elongated-natural route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        -112.1401,36.0544,0
+        -112.1401,36.0544,0
+        -118.2437,34.0522,0
+        -118.2437,34.0522,0
+        -118.2437,34.0522,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

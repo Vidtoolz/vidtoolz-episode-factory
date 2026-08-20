@@ -1,0 +1,144 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": null,
+  "preset": null,
+  "start": {
+    "source": "continuation",
+    "location": "Helsinki Cathedral",
+    "story": {
+      "role": null,
+      "importance": null,
+      "purposes": []
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null,
+    "continuation": {
+      "continuation_state_version": 1,
+      "generated_by": "earth-studio-journey",
+      "planner_version": "0.9.4",
+      "motion_profile_version": 4,
+      "source_animation": "OC-13-continuation-source",
+      "timestamp": "2026-08-20T12:00:00.000Z",
+      "aspect": "16:9",
+      "frame_rate": 30,
+      "total_frames": 120,
+      "ends_at_frame": 119,
+      "camera": {
+        "latitude": 60.1704,
+        "longitude": 24.9522,
+        "altitude_m": 700,
+        "pan_deg": 0,
+        "heading_deg": 0,
+        "tilt_deg": 0
+      },
+      "esp_mapping": {
+        "longitude": "cameraPositionGroup.longitude",
+        "latitude": "cameraPositionGroup.latitude",
+        "altitude_m": "cameraPositionGroup.altitude",
+        "pan_deg": "cameraRotationGroup.rotationX",
+        "tilt_deg": "cameraRotationGroup.rotationY",
+        "not_keyframed": [
+          "rotationZ",
+          "fov",
+          "exposure",
+          "aperture",
+          "minFocusLength"
+        ]
+      },
+      "target": {
+        "name": "Helsinki Cathedral",
+        "latitude": 60.1704,
+        "longitude": 24.9522
+      },
+      "final_movement": {
+        "segment_id": 1,
+        "action": "zoom_in",
+        "location_name": "Helsinki Cathedral"
+      }
+    }
+  },
+  "start_movements": [
+    {
+      "id": "s681",
+      "type": "hold",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 0.95,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": [
+    {
+      "destination": {
+        "location": "Stockholm",
+        "story": {
+          "role": null,
+          "importance": null,
+          "purposes": []
+        },
+        "framing": "auto",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "cinematic",
+      "travel": [
+        {
+          "id": "s677",
+          "type": "pull_back",
+          "duration_seconds": 1.8,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s678",
+          "type": "cruise",
+          "duration_seconds": 7.4,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s679",
+          "type": "descend",
+          "duration_seconds": 1.8,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s680",
+          "type": "hold",
+          "duration_seconds": null,
+          "pace": null,
+          "emphasis": 1.25,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    }
+  ]
+}

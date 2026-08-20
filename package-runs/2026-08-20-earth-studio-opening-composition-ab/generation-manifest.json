@@ -1,0 +1,717 @@
+{
+  "gate": "earth-studio opening-composition A/B evaluation — is the first frame chosen, not defaulted?",
+  "generated_at": "2026-08-20T12:00:00.000Z",
+  "director_version": 1,
+  "journey_version": 1,
+  "planner_version": "0.9.4",
+  "records": [
+    {
+      "id": "OC-01-landmark-identity-A",
+      "pair": "OC-01-landmark-identity",
+      "variant": "A",
+      "title": "OC-01-landmark-identity A — landmark with obvious visual identity",
+      "category": "landmark with obvious visual identity",
+      "question": "Does either opening look accidental? If identical, the system correctly declined to invent an angle.",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": false,
+      "strategy": "DEFAULT_RETAINED",
+      "confidence": "low",
+      "reason": "Colosseum (landmark): no route, explicit direction, or geometry evidence strong enough to beat the proven default opening. Retaining the planner default rather than inventing a composition.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-01-landmark-identity-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "a77282542335c4c5cd0419810f799f13c453ecbcebf638415186530253e2f719"
+    },
+    {
+      "id": "OC-01-landmark-identity-B",
+      "pair": "OC-01-landmark-identity",
+      "variant": "B",
+      "title": "OC-01-landmark-identity B — landmark with obvious visual identity",
+      "category": "landmark with obvious visual identity",
+      "question": "Does either opening look accidental? If identical, the system correctly declined to invent an angle.",
+      "expect": "NEW subject-aware opening: DEFAULT_RETAINED.",
+      "changed": false,
+      "strategy": "DEFAULT_RETAINED",
+      "confidence": "low",
+      "reason": "Colosseum (landmark): no route, explicit direction, or geometry evidence strong enough to beat the proven default opening. Retaining the planner default rather than inventing a composition.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-01-landmark-identity-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "a77282542335c4c5cd0419810f799f13c453ecbcebf638415186530253e2f719"
+    },
+    {
+      "id": "OC-02-landmark-then-travel-A",
+      "pair": "OC-02-landmark-then-travel",
+      "variant": "A",
+      "title": "OC-02-landmark-then-travel A — landmark where a generic heading is visibly weak",
+      "category": "landmark where a generic heading is visibly weak",
+      "question": "Does B flow into the departure without a corrective swing? Does A look arbitrary by comparison?",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Milan (478 km > 2 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 18,
+      "total_frames": 540,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-02-landmark-then-travel-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "96cea347fbec642e92b6270068051714250349806c6bb4193aece57d59245d69"
+    },
+    {
+      "id": "OC-02-landmark-then-travel-B",
+      "pair": "OC-02-landmark-then-travel",
+      "variant": "B",
+      "title": "OC-02-landmark-then-travel B — landmark where a generic heading is visibly weak",
+      "category": "landmark where a generic heading is visibly weak",
+      "question": "Does B flow into the departure without a corrective swing? Does A look arbitrary by comparison?",
+      "expect": "NEW subject-aware opening: ROUTE_FORESHADOW.",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Milan (478 km > 2 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": {
+        "pan_deg": 325.4793109604062
+      },
+      "aspect": "16:9",
+      "duration_seconds": 18,
+      "total_frames": 540,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-02-landmark-then-travel-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "07b8f48fad6111fe97332770fac9da849098b77e5a5857ba1db6a004740abc1f"
+    },
+    {
+      "id": "OC-03-elongated-island-A",
+      "pair": "OC-03-elongated-island",
+      "variant": "A",
+      "title": "OC-03-elongated-island A — elongated island",
+      "category": "elongated island",
+      "question": "Does the opening orientation give the archipelago a readable direction of travel?",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Oslo (933 km > 350 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 19,
+      "total_frames": 570,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-03-elongated-island-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "3d06e375baa63b06765c35065dac76c62683681ac2a09e99843cb3dffb12090a"
+    },
+    {
+      "id": "OC-03-elongated-island-B",
+      "pair": "OC-03-elongated-island",
+      "variant": "B",
+      "title": "OC-03-elongated-island B — elongated island",
+      "category": "elongated island",
+      "question": "Does the opening orientation give the archipelago a readable direction of travel?",
+      "expect": "NEW subject-aware opening: ROUTE_FORESHADOW.",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Oslo (933 km > 350 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": {
+        "pan_deg": 187.26241488947934
+      },
+      "aspect": "16:9",
+      "duration_seconds": 19,
+      "total_frames": 570,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-03-elongated-island-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "4c75720ac1043b143d5927b2d55d705fb89e31dff23abb789e56f939727931c9"
+    },
+    {
+      "id": "OC-04-coastal-city-A",
+      "pair": "OC-04-coastal-city",
+      "variant": "A",
+      "title": "OC-04-coastal-city A — city on a coastline",
+      "category": "city on a coastline",
+      "question": "Does B read as a coastal departure rather than a map default?",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Stockholm (522 km > 12 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 18,
+      "total_frames": 540,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-04-coastal-city-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "46c4c5f23d13c93ae58ba3ab68dc2abd484b83215455e16b9c85a67a92562eda"
+    },
+    {
+      "id": "OC-04-coastal-city-B",
+      "pair": "OC-04-coastal-city",
+      "variant": "B",
+      "title": "OC-04-coastal-city B — city on a coastline",
+      "category": "city on a coastline",
+      "question": "Does B read as a coastal departure rather than a map default?",
+      "expect": "NEW subject-aware opening: ROUTE_FORESHADOW.",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Stockholm (522 km > 12 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": {
+        "pan_deg": 40.3302601174513
+      },
+      "aspect": "16:9",
+      "duration_seconds": 18,
+      "total_frames": 540,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-04-coastal-city-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "dc92f6858396d2992ea68f59d43aa22c34425ca6f6f6c4d07e3bab19c9efde7c"
+    },
+    {
+      "id": "OC-05-inland-city-A",
+      "pair": "OC-05-inland-city",
+      "variant": "A",
+      "title": "OC-05-inland-city A — inland city",
+      "category": "inland city",
+      "question": "Does the opening composition flow naturally into the first movement?",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Berlin (504 km > 12 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 22,
+      "total_frames": 660,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-05-inland-city-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "ec124bae983e889a18d1d3900d3fc240f008605bc93cbb6de04c888c4dfe6e0d"
+    },
+    {
+      "id": "OC-05-inland-city-B",
+      "pair": "OC-05-inland-city",
+      "variant": "B",
+      "title": "OC-05-inland-city B — inland city",
+      "category": "inland city",
+      "question": "Does the opening composition flow naturally into the first movement?",
+      "expect": "NEW subject-aware opening: ROUTE_FORESHADOW.",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Berlin (504 km > 12 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": {
+        "pan_deg": 15.507120725045809
+      },
+      "aspect": "16:9",
+      "duration_seconds": 22,
+      "total_frames": 660,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-05-inland-city-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "64f1a093edb6a2ee1e120b9d0b320cbca3847ee463e02fd38c959d03a3d7f01c"
+    },
+    {
+      "id": "OC-06-mountain-A",
+      "pair": "OC-06-mountain",
+      "variant": "A",
+      "title": "OC-06-mountain A — mountain",
+      "category": "mountain",
+      "question": "Does the mountain opening still respect terrain framing while orienting toward the journey?",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Zurich (170 km > 3 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 16,
+      "total_frames": 480,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-06-mountain-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "583c4a51060bd1be7eac7c4e85bd4dd1fcf95220f580e4c289e3b85216343362"
+    },
+    {
+      "id": "OC-06-mountain-B",
+      "pair": "OC-06-mountain",
+      "variant": "B",
+      "title": "OC-06-mountain B — mountain",
+      "category": "mountain",
+      "question": "Does the mountain opening still respect terrain framing while orienting toward the journey?",
+      "expect": "NEW subject-aware opening: ROUTE_FORESHADOW.",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Zurich (170 km > 3 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": {
+        "pan_deg": 23.66887572163023
+      },
+      "aspect": "16:9",
+      "duration_seconds": 16,
+      "total_frames": 480,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-06-mountain-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "fc13b329751d593b9387e705110b150faef43fb8ee620e6f26e54c4c696a2a4a"
+    },
+    {
+      "id": "OC-07-elongated-natural-A",
+      "pair": "OC-07-elongated-natural",
+      "variant": "A",
+      "title": "OC-07-elongated-natural A — river / elongated natural feature",
+      "category": "river / elongated natural feature",
+      "question": "Is the opening orientation defensible, or does it fight the feature?",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Los Angeles (598 km > 350 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 18,
+      "total_frames": 540,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-07-elongated-natural-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "03577a5d44152f0f514cf15ca89522a17636f2d9d971d84b46ff77a1ecd256ca"
+    },
+    {
+      "id": "OC-07-elongated-natural-B",
+      "pair": "OC-07-elongated-natural",
+      "variant": "B",
+      "title": "OC-07-elongated-natural B — river / elongated natural feature",
+      "category": "river / elongated natural feature",
+      "question": "Is the opening orientation defensible, or does it fight the feature?",
+      "expect": "NEW subject-aware opening: ROUTE_FORESHADOW.",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Los Angeles (598 km > 350 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": {
+        "pan_deg": 247.91491094447153
+      },
+      "aspect": "16:9",
+      "duration_seconds": 18,
+      "total_frames": 540,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-07-elongated-natural-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "f9f58a949c10567cf5e67f0afd43a3bf54dfc116c80544de1210f0b0228da610"
+    },
+    {
+      "id": "OC-08-country-scale-A",
+      "pair": "OC-08-country-scale",
+      "variant": "A",
+      "title": "OC-08-country-scale A — country-scale subject, heading restrained",
+      "category": "country-scale subject, heading restrained",
+      "question": "If identical, the restraint is correct: no artificial directional drama for a country.",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": false,
+      "strategy": "DEFAULT_RETAINED",
+      "confidence": "low",
+      "reason": "Finland (country): no route, explicit direction, or geometry evidence strong enough to beat the proven default opening. Retaining the planner default rather than inventing a composition.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-08-country-scale-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "63f73ecaca48fe1c16c71cf54a5190a3fafa62f70e8ed2a23c52578bb7356220"
+    },
+    {
+      "id": "OC-08-country-scale-B",
+      "pair": "OC-08-country-scale",
+      "variant": "B",
+      "title": "OC-08-country-scale B — country-scale subject, heading restrained",
+      "category": "country-scale subject, heading restrained",
+      "question": "If identical, the restraint is correct: no artificial directional drama for a country.",
+      "expect": "NEW subject-aware opening: DEFAULT_RETAINED.",
+      "changed": false,
+      "strategy": "DEFAULT_RETAINED",
+      "confidence": "low",
+      "reason": "Finland (country): no route, explicit direction, or geometry evidence strong enough to beat the proven default opening. Retaining the planner default rather than inventing a composition.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-08-country-scale-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "63f73ecaca48fe1c16c71cf54a5190a3fafa62f70e8ed2a23c52578bb7356220"
+    },
+    {
+      "id": "OC-09-outbound-direction-A",
+      "pair": "OC-09-outbound-direction",
+      "variant": "A",
+      "title": "OC-09-outbound-direction A — city-to-city journey where outbound direction matters",
+      "category": "city-to-city journey where outbound direction matters",
+      "question": "Does the first frame already point where the camera is going?",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Tokyo (7818 km > 12 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 32,
+      "total_frames": 960,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-09-outbound-direction-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "c24603a102f635caa6e3aac772733f94ac2527bc56c5eea983759107d0ec486a"
+    },
+    {
+      "id": "OC-09-outbound-direction-B",
+      "pair": "OC-09-outbound-direction",
+      "variant": "B",
+      "title": "OC-09-outbound-direction B — city-to-city journey where outbound direction matters",
+      "category": "city-to-city journey where outbound direction matters",
+      "question": "Does the first frame already point where the camera is going?",
+      "expect": "NEW subject-aware opening: ROUTE_FORESHADOW.",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Tokyo (7818 km > 12 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": {
+        "pan_deg": 113.23161263965903
+      },
+      "aspect": "16:9",
+      "duration_seconds": 32,
+      "total_frames": 960,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-09-outbound-direction-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "93400362fe652b2c935520c0c788f34e5e4685e3767c7962a421f53dc281c980"
+    },
+    {
+      "id": "OC-10-landmark-then-immediate-travel-A",
+      "pair": "OC-10-landmark-then-immediate-travel",
+      "variant": "A",
+      "title": "OC-10-landmark-then-immediate-travel A — landmark followed immediately by travel",
+      "category": "landmark followed immediately by travel",
+      "question": "Does the opening push-in and the following travel read as one intention?",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Tallinn (82 km > 2 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 14.5,
+      "total_frames": 435,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-10-landmark-then-immediate-travel-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "9c622146a421bd2b0748315a59026154acfcaed4d62a4c035019100c2af54cad"
+    },
+    {
+      "id": "OC-10-landmark-then-immediate-travel-B",
+      "pair": "OC-10-landmark-then-immediate-travel",
+      "variant": "B",
+      "title": "OC-10-landmark-then-immediate-travel B — landmark followed immediately by travel",
+      "category": "landmark followed immediately by travel",
+      "question": "Does the opening push-in and the following travel read as one intention?",
+      "expect": "NEW subject-aware opening: ROUTE_FORESHADOW.",
+      "changed": true,
+      "strategy": "ROUTE_FORESHADOW",
+      "confidence": "high",
+      "reason": "First action is travel to Tallinn (82 km > 2 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it.",
+      "opening_camera": {
+        "pan_deg": 187.67149454116628
+      },
+      "aspect": "16:9",
+      "duration_seconds": 14.5,
+      "total_frames": 435,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-10-landmark-then-immediate-travel-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "c56f885ae4b1ad282354db2d0f0eb07760b2fcb038945900a333ce645c97a818"
+    },
+    {
+      "id": "OC-11-opening-orbit-A",
+      "pair": "OC-11-opening-orbit",
+      "variant": "A",
+      "title": "OC-11-opening-orbit A — opening orbit",
+      "category": "opening orbit",
+      "question": "If identical, the deference is correct — the planner stages the ring; composition must not fight it.",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": false,
+      "strategy": "ORBIT_STAGING_PLANNER",
+      "confidence": "medium",
+      "reason": "The opening belongs to an orbit (or stages one): the planner owns ring placement and exit-aligned phase. Composition defers rather than fight the orbit geometry.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 33,
+      "total_frames": 990,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-11-opening-orbit-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "a15e91e4b245ade265c4786c91a1971d5934257bed762496d8eb47c2412159ee"
+    },
+    {
+      "id": "OC-11-opening-orbit-B",
+      "pair": "OC-11-opening-orbit",
+      "variant": "B",
+      "title": "OC-11-opening-orbit B — opening orbit",
+      "category": "opening orbit",
+      "question": "If identical, the deference is correct — the planner stages the ring; composition must not fight it.",
+      "expect": "NEW subject-aware opening: ORBIT_STAGING_PLANNER.",
+      "changed": false,
+      "strategy": "ORBIT_STAGING_PLANNER",
+      "confidence": "medium",
+      "reason": "The opening belongs to an orbit (or stages one): the planner owns ring placement and exit-aligned phase. Composition defers rather than fight the orbit geometry.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 33,
+      "total_frames": 990,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-11-opening-orbit-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "a15e91e4b245ade265c4786c91a1971d5934257bed762496d8eb47c2412159ee"
+    },
+    {
+      "id": "OC-12-matched-comparison-A",
+      "pair": "OC-12-matched-comparison",
+      "variant": "A",
+      "title": "OC-12-matched-comparison A — matched city comparison",
+      "category": "matched city comparison",
+      "question": "Do both cities still read as one repeated, comparable shot?",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": false,
+      "strategy": "COMPARISON_MATCHED",
+      "confidence": "medium",
+      "reason": "Matched comparison: the opening must stay comparable to the other city's framing, so the neutral default composition wins over any route foreshadowing.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 19,
+      "total_frames": 570,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-12-matched-comparison-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "3bb0b050c2e0b79e49ec6d12ef96dfa3be91adc583772eb96fe85c3e95064377"
+    },
+    {
+      "id": "OC-12-matched-comparison-B",
+      "pair": "OC-12-matched-comparison",
+      "variant": "B",
+      "title": "OC-12-matched-comparison B — matched city comparison",
+      "category": "matched city comparison",
+      "question": "Do both cities still read as one repeated, comparable shot?",
+      "expect": "NEW subject-aware opening: COMPARISON_MATCHED.",
+      "changed": false,
+      "strategy": "COMPARISON_MATCHED",
+      "confidence": "medium",
+      "reason": "Matched comparison: the opening must stay comparable to the other city's framing, so the neutral default composition wins over any route foreshadowing.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 19,
+      "total_frames": 570,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-12-matched-comparison-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "3bb0b050c2e0b79e49ec6d12ef96dfa3be91adc583772eb96fe85c3e95064377"
+    },
+    {
+      "id": "OC-13-continuation-A",
+      "pair": "OC-13-continuation",
+      "variant": "A",
+      "title": "OC-13-continuation A — continuation — automatic re-heading must NOT occur",
+      "category": "continuation — automatic re-heading must NOT occur",
+      "question": "Does the continuation still begin exactly where the source ended?",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": false,
+      "strategy": "CARRIED_OVER",
+      "confidence": "high",
+      "reason": "Continuation: the opening is the previous animation's exact terminal camera state. Automatic composition never re-frames a hand-off.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 20,
+      "total_frames": 600,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-13-continuation-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "af86df644ebc8f089afdb914a16344f9c7e1505253f3f9f074d82c1aae11a44b"
+    },
+    {
+      "id": "OC-13-continuation-B",
+      "pair": "OC-13-continuation",
+      "variant": "B",
+      "title": "OC-13-continuation B — continuation — automatic re-heading must NOT occur",
+      "category": "continuation — automatic re-heading must NOT occur",
+      "question": "Does the continuation still begin exactly where the source ended?",
+      "expect": "NEW subject-aware opening: CARRIED_OVER.",
+      "changed": false,
+      "strategy": "CARRIED_OVER",
+      "confidence": "high",
+      "reason": "Continuation: the opening is the previous animation's exact terminal camera state. Automatic composition never re-frames a hand-off.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 20,
+      "total_frames": 600,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-13-continuation-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "af86df644ebc8f089afdb914a16344f9c7e1505253f3f9f074d82c1aae11a44b"
+    },
+    {
+      "id": "OC-14-explicit-override-A",
+      "pair": "OC-14-explicit-override",
+      "variant": "A",
+      "title": "OC-14-explicit-override A — explicit user heading override",
+      "category": "explicit user heading override",
+      "question": "Does B respect the stated direction exactly?",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": true,
+      "strategy": "USER_SPECIFIED",
+      "confidence": "high",
+      "reason": "Operator specified the opening (heading 90° — \"Approach the Colosseum from the west\"). Explicit direction outranks automatic composition.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-14-explicit-override-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "40df9451cad954b2c9bfe7fdb592cc93ca2b7e8007766e9c2c29c83d1a745187"
+    },
+    {
+      "id": "OC-14-explicit-override-B",
+      "pair": "OC-14-explicit-override",
+      "variant": "B",
+      "title": "OC-14-explicit-override B — explicit user heading override",
+      "category": "explicit user heading override",
+      "question": "Does B respect the stated direction exactly?",
+      "expect": "NEW subject-aware opening: USER_SPECIFIED.",
+      "changed": true,
+      "strategy": "USER_SPECIFIED",
+      "confidence": "high",
+      "reason": "Operator specified the opening (heading 90° — \"Approach the Colosseum from the west\"). Explicit direction outranks automatic composition.",
+      "opening_camera": {
+        "pan_deg": 90
+      },
+      "aspect": "16:9",
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-14-explicit-override-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "18c756becf8a19e5de976d97ae5cc9b4baa5e9cdabcab9f0c61824a6d2e0843c"
+    },
+    {
+      "id": "OC-15-low-confidence-A",
+      "pair": "OC-15-low-confidence",
+      "variant": "A",
+      "title": "OC-15-low-confidence A — low-confidence subject — safe default wins",
+      "category": "low-confidence subject — safe default wins",
+      "question": "If identical, the graceful degradation is correct.",
+      "expect": "OLD/default opening (planner default, no composition seed).",
+      "changed": false,
+      "strategy": "DEFAULT_RETAINED",
+      "confidence": "low",
+      "reason": "Helsinki Cathedral (landmark): no route, explicit direction, or geometry evidence strong enough to beat the proven default opening. Retaining the planner default rather than inventing a composition.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-15-low-confidence-A-default/earth-studio/earth-studio.esp",
+      "esp_sha256": "9dbacd1b6e1efb5258b2c9e6cc06d4c10494f3a5eb011a39ee88ee0dd99e1293"
+    },
+    {
+      "id": "OC-15-low-confidence-B",
+      "pair": "OC-15-low-confidence",
+      "variant": "B",
+      "title": "OC-15-low-confidence B — low-confidence subject — safe default wins",
+      "category": "low-confidence subject — safe default wins",
+      "question": "If identical, the graceful degradation is correct.",
+      "expect": "NEW subject-aware opening: DEFAULT_RETAINED.",
+      "changed": false,
+      "strategy": "DEFAULT_RETAINED",
+      "confidence": "low",
+      "reason": "Helsinki Cathedral (landmark): no route, explicit direction, or geometry evidence strong enough to beat the proven default opening. Retaining the planner default rather than inventing a composition.",
+      "opening_camera": null,
+      "aspect": "16:9",
+      "duration_seconds": 4,
+      "total_frames": 120,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-15-low-confidence-B-composed/earth-studio/earth-studio.esp",
+      "esp_sha256": "9dbacd1b6e1efb5258b2c9e6cc06d4c10494f3a5eb011a39ee88ee0dd99e1293"
+    }
+  ]
+}

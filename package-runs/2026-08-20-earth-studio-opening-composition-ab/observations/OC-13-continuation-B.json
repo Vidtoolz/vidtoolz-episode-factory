@@ -1,0 +1,306 @@
+{
+  "id": "OC-13-continuation-B",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-13-continuation-B-composed/earth-studio/earth-studio.esp",
+  "esp_sha256": "af86df644ebc8f089afdb914a16344f9c7e1505253f3f9f074d82c1aae11a44b",
+  "expected": {
+    "total_frames": 600,
+    "duration_seconds": 20,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 600,
+    "totalFrames": 600,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-13-continuation-B/OC-13-continuation-B_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.17039725764329,
+        "longitude": 24.9522,
+        "altitude": 700.9930130238043,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 0,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 60,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-13-continuation-B/OC-13-continuation-B_f00060_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 60,
+        "latitude": 60.17039725764329,
+        "longitude": 24.9522,
+        "altitude": 700.9930130238043,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 0,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 120,
+      "label": "seg2-start",
+      "movement": "zoom_out",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-13-continuation-B/OC-13-continuation-B_f00120_seg2-start.png",
+      "earth_studio_camera": {
+        "frame": 120,
+        "latitude": 60.17039725764329,
+        "longitude": 24.9522,
+        "altitude": 700.9930130238043,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 151967,
+        "tilt_deg": 0,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 147,
+      "label": "seg2-mid",
+      "movement": "zoom_out",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-13-continuation-B/OC-13-continuation-B_f00147_seg2-mid.png",
+      "earth_studio_camera": {
+        "frame": 147,
+        "latitude": 60.17039725764329,
+        "longitude": 24.9522,
+        "altitude": 131718.07311111348,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_out",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 151967,
+        "tilt_deg": 0,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 174,
+      "label": "seg3-start",
+      "movement": "fly_to",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-13-continuation-B/OC-13-continuation-B_f00174_seg3-start.png",
+      "earth_studio_camera": {
+        "frame": 174,
+        "latitude": 60.17039725764329,
+        "longitude": 24.9522,
+        "altitude": 151966.4831574121,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Stockholm",
+        "altitude_m": 151967,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 285,
+      "label": "seg3-mid",
+      "movement": "fly_to",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-13-continuation-B/OC-13-continuation-B_f00285_seg3-mid.png",
+      "earth_studio_camera": {
+        "frame": 285,
+        "latitude": 59.766007941190395,
+        "longitude": 21.642648953398293,
+        "altitude": 151966.47671888146,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "fly_to",
+        "place": "Stockholm",
+        "altitude_m": 151967,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 396,
+      "label": "seg4-start",
+      "movement": "zoom_in",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-13-continuation-B/OC-13-continuation-B_f00396_seg4-start.png",
+      "earth_studio_camera": {
+        "frame": 396,
+        "latitude": 59.32929997758579,
+        "longitude": 18.06859999381956,
+        "altitude": 151966.4893474958,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Stockholm",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 423,
+      "label": "seg4-mid",
+      "movement": "zoom_in",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-13-continuation-B/OC-13-continuation-B_f00423_seg4-mid.png",
+      "earth_studio_camera": {
+        "frame": 423,
+        "latitude": 59.32929997758579,
+        "longitude": 18.068600000000004,
+        "altitude": 95263.41425843952,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "zoom_in",
+        "place": "Stockholm",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 450,
+      "label": "seg5-start",
+      "movement": "hover",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-13-continuation-B/OC-13-continuation-B_f00450_seg5-start.png",
+      "earth_studio_camera": {
+        "frame": 450,
+        "latitude": 59.32929997758579,
+        "longitude": 18.068600000000004,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Stockholm",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 525,
+      "label": "seg5-mid",
+      "movement": "hover",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-13-continuation-B/OC-13-continuation-B_f00525_seg5-mid.png",
+      "earth_studio_camera": {
+        "frame": 525,
+        "latitude": 59.32929997758579,
+        "longitude": 18.068600000000004,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Stockholm",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    },
+    {
+      "frame": 599,
+      "label": "seg5-end",
+      "movement": "hover",
+      "place": "Stockholm",
+      "png": "package-runs/2026-08-20-earth-studio-opening-composition-ab/observations/OC-13-continuation-B/OC-13-continuation-B_f00599_seg5-end.png",
+      "earth_studio_camera": {
+        "frame": 599,
+        "latitude": 59.32929997758579,
+        "longitude": 18.068600000000004,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Stockholm",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 59.3293,
+        "target_lng": 18.0686
+      }
+    }
+  ],
+  "errors": []
+}

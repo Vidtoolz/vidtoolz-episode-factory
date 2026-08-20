@@ -44,7 +44,8 @@
   "notes": [
     "Flourish budget for this sequence: 2 (from 4 stops; 0 hero, 1 high).",
     "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
-    "Special/selective moves used: Reveal."
+    "Special/selective moves used: Reveal.",
+    "Opening composition [DEFAULT_RETAINED]: Senate Square (landmark): no route, explicit direction, or geometry evidence strong enough to beat the proven default opening. Retaining the planner default rather than inventing a composition."
   ],
   "decisions": [
     {
@@ -236,6 +237,7 @@
     "Europe (Geographic context, NORMAL): Pull Back for Show the scale — its primary purpose is SHOW_SCALE, which is what this shot is for continent framing is within its useful range",
     "Flourish budget for this sequence: 2 (from 4 stops; 0 hero, 1 high).",
     "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
-    "Special/selective moves used: Reveal."
+    "Special/selective moves used: Reveal.",
+    "Opening composition [DEFAULT_RETAINED]: Senate Square (landmark): no route, explicit direction, or geometry evidence strong enough to beat the proven default opening. Retaining the planner default rather than inventing a composition."
   ]
 }
