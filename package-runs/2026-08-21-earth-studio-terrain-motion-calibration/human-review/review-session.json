@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "operator_authority": "Mikko",
+  "started_at": "2026-08-21T16:06:35+03:00",
+  "completed_at": "2026-08-21T16:06:35+03:00",
+  "operator_statement": "on all orbit stabilities: the orbit is better, but there is a small wobble after the beginning and a bit before the ending of the clips. all the reveal launches still dont have a visibly clam starting.",
+  "choices": [
+    {
+      "family": "ORBIT",
+      "subject": "Grand Canyon",
+      "winner": "NONE_GOOD",
+      "note": "The orbit is better, but there is a small wobble after the beginning and a bit before the ending of the clip.",
+      "reviewed_at": "2026-08-21T16:06:35+03:00"
+    },
+    {
+      "family": "ORBIT",
+      "subject": "Geirangerfjord",
+      "winner": "NONE_GOOD",
+      "note": "The orbit is better, but there is a small wobble after the beginning and a bit before the ending of the clip.",
+      "reviewed_at": "2026-08-21T16:06:35+03:00"
+    },
+    {
+      "family": "ORBIT",
+      "subject": "Matterhorn",
+      "winner": "NONE_GOOD",
+      "note": "The orbit is better, but there is a small wobble after the beginning and a bit before the ending of the clip.",
+      "reviewed_at": "2026-08-21T16:06:35+03:00"
+    },
+    {
+      "family": "ORBIT",
+      "subject": "Mount Fuji",
+      "winner": "NONE_GOOD",
+      "note": "The orbit is better, but there is a small wobble after the beginning and a bit before the ending of the clip.",
+      "reviewed_at": "2026-08-21T16:06:35+03:00"
+    },
+    {
+      "family": "REVEAL",
+      "subject": "Grand Canyon",
+      "winner": "NONE_GOOD",
+      "note": "The reveal launch still does not have a visibly calm start.",
+      "reviewed_at": "2026-08-21T16:06:35+03:00"
+    },
+    {
+      "family": "REVEAL",
+      "subject": "The Alps",
+      "winner": "NONE_GOOD",
+      "note": "The reveal launch still does not have a visibly calm start.",
+      "reviewed_at": "2026-08-21T16:06:35+03:00"
+    },
+    {
+      "family": "REVEAL",
+      "subject": "Yosemite",
+      "winner": "NONE_GOOD",
+      "note": "The reveal launch still does not have a visibly calm start.",
+      "reviewed_at": "2026-08-21T16:06:35+03:00"
+    }
+  ]
+}
