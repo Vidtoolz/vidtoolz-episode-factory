@@ -9,6 +9,7 @@ const { assert, fs, path, test } = require("./_helpers.js");
 const planner = require("../earth-studio-job-planner.js");
 const journey = require("../earth-studio-journey.js");
 const director = require("../earth-studio-director.js");
+const terrainMorphology = require("../earth-studio-terrain-morphology.js");
 
 const at = (over) => director.recommend({ slot: "at", ...over });
 const keysOf = (r) => [r.recommended && r.recommended.key].concat(r.alternatives.map((a) => a.key)).filter(Boolean);
@@ -686,7 +687,7 @@ test("semantics: a spiral is still available where the camera is NOT arriving", 
   assert.match(director.CAMERA_GRAMMAR.spiral_in.teaching, /circle an arrival instead/i);
 });
 
-test("semantics: showing terrain uses a lower, raking angle than inspecting a city", () => {
+test("terrain morphology: terrain rake is semantic, human-calibrated, and preserves the legacy orbit footprint", () => {
   const angleAt = (intent, place) => {
     const r = director.autoDirect(intent);
     const c = journey.compileJourney(r.journey);
@@ -698,11 +699,101 @@ test("semantics: showing terrain uses a lower, raking angle than inspecting a ci
   const terrain = angleAt({ stops: [{ location: "Zurich" },
     { location: "Matterhorn", role: "FINAL_REVEAL", importance: "HERO", purposes: ["SHOW_TERRAIN", "REVEAL"] }] }, "Matterhorn");
   assert.ok(terrain > city, `terrain ${terrain}deg should rake lower than city inspection ${city}deg`);
-  assert.equal(terrain, director.TERRAIN_OBLIQUE_TILT_DEG);
+  assert.equal(terrain, 74);
   // and the angle must still let the orbit face its target
   const c = journey.compileJourney(director.autoDirect({ stops: [{ location: "Zurich" },
     { location: "Matterhorn", role: "FINAL_REVEAL", importance: "HERO", purposes: ["SHOW_TERRAIN", "REVEAL"] }] }).journey);
   const orbit = c.steps[c.steps.length - 1];
   assert.equal(orbit.action, "orbit");
   assert.ok(journey.orbitCanFaceTarget(orbit.altitude_m, orbit.tilt_deg), "the raking orbit must still face the mountain");
+  const legacyRadius = terrainMorphology.referenceRadius(planner.resolveLocation("Matterhorn").altitude_m);
+  assert.ok(Math.abs(planner.orbitRadiusMeters(orbit.altitude_m, orbit.tilt_deg) - legacyRadius) < 2,
+    "the morphology angle must preserve the accepted 72-degree orbit footprint");
+});
+
+test("terrain morphology: policy maps semantic form rather than place names", () => {
+  const decide = (terrain_morphology) => terrainMorphology.terrainTiltDecision({ terrain_morphology });
+  assert.equal(decide("sharp_peak").final_tilt_deg, 74);
+  assert.equal(decide("volcanic_cone").final_tilt_deg, 45);
+  assert.equal(decide("canyon").final_tilt_deg, 74);
+  assert.equal(decide("fjord_channel").final_tilt_deg, 65);
+  assert.equal(decide(null).final_tilt_deg, 65);
+  assert.equal(decide("unknown_landform").morphology, "GENERIC_TERRAIN");
+  assert.equal(decide("unknown_landform").fallback, true);
+  assert.equal(terrainMorphology.referenceRadius(null), null, "missing altitude must not become a zero-radius camera");
+  assert.equal(decide("sharp_peak").final_tilt_deg, decide("sharp_peak").final_tilt_deg,
+    "the policy has no subject-name input and is deterministic");
+});
+
+test("terrain morphology: Matterhorn and Fuji diverge because their gazetteer morphology diverges", () => {
+  const run = (place) => director.autoDirect(director.parseIntent(`Show the terrain of ${place}.`));
+  const matterhorn = run("Matterhorn");
+  const fuji = run("Mount Fuji");
+  const md = matterhorn.decisions[0].decision;
+  const fd = fuji.decisions[0].decision;
+  assert.equal(md.terrain_policy.morphology, "SHARP_PEAK");
+  assert.equal(fd.terrain_policy.morphology, "VOLCANIC_CONE");
+  assert.equal(md.tilt_deg, 74);
+  assert.equal(fd.tilt_deg, 45);
+  assert.notEqual(md.tilt_deg, fd.tilt_deg);
+  assert.equal(planner.resolveLocation("Matterhorn").terrain_morphology, "sharp_peak");
+  assert.equal(planner.resolveLocation("Mount Fuji").terrain_morphology, "volcanic_cone");
+});
+
+test("terrain morphology: all four human calibration anchors map to the recorded winner for an orbit-family shot", () => {
+  const cases = [
+    ["Matterhorn", "sharp_peak", 74],
+    ["Mount Fuji", "volcanic_cone", 45],
+    ["Grand Canyon", "canyon", 74],
+    ["Geirangerfjord", "fjord_channel", 65],
+  ];
+  cases.forEach(([place, morphology, tilt]) => {
+    const resolved = planner.resolveLocation(place);
+    assert.equal(resolved.terrain_morphology, morphology, place);
+    const d = director.recommend({ slot: "at", role: "PRIMARY_SUBJECT", importance: "HIGH",
+      purposes: ["SHOW_TERRAIN"], scale: "district", place,
+      terrain_morphology: resolved.terrain_morphology, morphology_source: resolved.morphology_source,
+      terrain_altitude_m: resolved.altitude_m, terrain_min_altitude_m: resolved.min_altitude_m }).recommended;
+    assert.match(d.movement, /orbit/);
+    assert.equal(d.tilt_deg, tilt, place);
+  });
+});
+
+test("terrain morphology: unseen fixtures generalize and unknown terrain uses the conservative fallback", () => {
+  const natural = (place) => director.autoDirect(director.parseIntent(`Show the terrain of ${place}.`)).decisions[0].decision;
+  assert.deepEqual([natural("Mont Blanc").terrain_policy.morphology, natural("Mont Blanc").tilt_deg], ["SHARP_PEAK", 74]);
+  assert.deepEqual([natural("Kilimanjaro").terrain_policy.morphology, natural("Kilimanjaro").tilt_deg], ["VOLCANIC_CONE", 45]);
+  const fallback = terrainMorphology.terrainTiltDecision({ terrain_morphology: "mountain_range", altitude_m: 5000 });
+  assert.equal(fallback.morphology, "GENERIC_TERRAIN");
+  assert.equal(fallback.final_tilt_deg, 65);
+  assert.equal(fallback.fallback, true);
+});
+
+test("terrain morphology: safety floor reduces an infeasible rake and records why", () => {
+  const r = director.autoDirect(director.parseIntent("Show the terrain of Mount Everest."));
+  const d = r.decisions[0].decision;
+  assert.equal(d.terrain_policy.requested_tilt_deg, 74);
+  assert.equal(d.tilt_deg, 73.35);
+  assert.ok(d.altitude_m >= 9200);
+  assert.equal(d.terrain_policy.safety_clamp.code, "TERRAIN_SAFETY_FLOOR");
+  assert.equal(d.terrain_policy.safety_clamp.min_altitude_m, 9200);
+});
+
+test("terrain morphology: explicit tilt wins and non-terrain intent does not activate morphology", () => {
+  const explicit = director.autoDirect(director.parseIntent("Show the terrain of Matterhorn at 55 degrees."));
+  assert.equal(explicit.decisions[0].decision.tilt_deg, 55);
+  assert.equal(explicit.decisions[0].decision.terrain_policy.overridden_by, "EXPLICIT_OPERATOR_TILT");
+  assert.equal(explicit.journey.start_movements[0].altitude_m, null,
+    "the morphology-coupled altitude must not survive an explicit angle override");
+
+  const orient = director.autoDirect(director.parseIntent("Show where Mount Fuji is in Japan."));
+  assert.equal(orient.decisions[0].decision.terrain_policy, undefined);
+  assert.notEqual(orient.decisions[0].decision.tilt_deg, 45);
+});
+
+test("terrain morphology: region reveal remains honest and does not invent an orbit", () => {
+  const canyon = director.autoDirect(director.parseIntent("Show the terrain of Grand Canyon."));
+  assert.equal(canyon.decisions[0].decision.movement, "reveal");
+  assert.equal(canyon.decisions[0].decision.terrain_policy, undefined);
+  assert.equal(canyon.journey.start_movements[0].tilt_deg, null);
 });

@@ -41,6 +41,12 @@
     if (typeof require === "function") return require("./earth-studio-opening-composition.js");
     throw new Error("earth-studio-director: opening-composition module unavailable");
   }
+  function loadTerrainMorphology(injected) {
+    if (injected) return injected;
+    if (globalScope && globalScope.EarthStudioTerrainMorphology) return globalScope.EarthStudioTerrainMorphology;
+    if (typeof require === "function") return require("./earth-studio-terrain-morphology.js");
+    throw new Error("earth-studio-director: terrain-morphology module unavailable");
+  }
 
   // ── Shot purpose — why does this shot exist? ───────────────────────────────
   // `angle` is the viewing angle the purpose WANTS. Whether it can be delivered
@@ -225,11 +231,10 @@
   // A journey must also actually be big enough for the planet to read.
   const INTERCONTINENTAL_DISTANCE_M = 4000000;
 
-  // Showing the SHAPE of the land wants a lower, raking angle than inspecting a
-  // building or a city centre: a near-horizon view reads relief, a 60-degree view
-  // reads plan. This is the motivated difference between a terrain story and a
-  // city story once both are circling an arrival.
-  const TERRAIN_OBLIQUE_TILT_DEG = 72;
+  // Compatibility/export value for callers that need one terrain default. The
+  // production decision is no longer global: semantic gazetteer morphology
+  // selects the human-calibrated angle. 65° is the explicit generic fallback.
+  const TERRAIN_OBLIQUE_TILT_DEG = 65;
 
   const SMALL_SCALES = ["landmark", "neighborhood", "district"];
   const MID_SCALES = ["city", "metro"];
@@ -826,6 +831,10 @@
       explicit_grammar: raw.explicit_grammar || null,
       explicit_style: raw.explicit_style || null,
       negatives: Array.isArray(raw.negatives) ? raw.negatives : [],
+      terrain_morphology: raw.terrain_morphology || null,
+      morphology_source: raw.morphology_source || null,
+      terrain_altitude_m: Number.isFinite(raw.terrain_altitude_m) ? raw.terrain_altitude_m : null,
+      terrain_min_altitude_m: Number.isFinite(raw.terrain_min_altitude_m) ? raw.terrain_min_altitude_m : null,
       // Whether the operator actually stated purposes/role (as opposed to the
       // Director inferring them from position) — earned-intent evidence for the
       // orbit-restraint rule. Direct recommend()/scoreCandidate() callers state
@@ -867,13 +876,23 @@
     if (positives.length) why.push(positives[0].why);
     if (positives.length > 1) why.push(positives[1].why);
     if (!why.length) why.push(`it is the least unsuitable option for ${purpose}`);
-    const terrainTilt = ctx.purposes.includes("SHOW_TERRAIN")
+    const terrainPolicy = ctx.purposes.includes("SHOW_TERRAIN")
       && ["orbit", "slow_orbit", "orbit_twice", "half_orbit"].includes(g.movement)
-      ? TERRAIN_OBLIQUE_TILT_DEG : null;
+      ? loadTerrainMorphology().terrainTiltDecision({
+        terrain_morphology: ctx.terrain_morphology,
+        morphology_source: ctx.morphology_source,
+        altitude_m: ctx.terrain_altitude_m,
+        min_altitude_m: ctx.terrain_min_altitude_m,
+      }) : null;
     return {
       key: s.key, label: g.label, kind: g.kind,
       movement: g.movement || null, template: g.template || null, framing: g.framing || null,
-      ...(terrainTilt ? { tilt_deg: terrainTilt, tilt_reason: "showing the shape of the land wants a raking angle, not a plan view" } : {}),
+      ...(terrainPolicy ? {
+        tilt_deg: terrainPolicy.final_tilt_deg,
+        altitude_m: terrainPolicy.altitude_m,
+        tilt_reason: terrainPolicy.explanation,
+        terrain_policy: terrainPolicy,
+      } : {}),
       purpose, purpose_label: (SHOT_PURPOSES[purpose] || {}).label || purpose,
       viewer_should_understand: (SHOT_PURPOSES[purpose] || {}).viewer_should_understand || null,
       angle: g.angle, rarity: g.rarity, communicates: g.communicates,
@@ -1199,6 +1218,10 @@
         templates_allowed: options.templates_allowed !== false,
         explicit_grammar: first.explicit_grammar, negatives: intent.negatives || [],
         purposes_explicit: first.purposes_explicit, role_explicit: first.role_explicit,
+        terrain_morphology: first.resolved && first.resolved.terrain_morphology,
+        morphology_source: first.resolved && first.resolved.morphology_source,
+        terrain_altitude_m: first.resolved && first.resolved.altitude_m,
+        terrain_min_altitude_m: first.resolved && first.resolved.min_altitude_m,
       };
       opening = recommend(openCtx);
       openDec = opening.recommended;
@@ -1218,6 +1241,13 @@
       if (openDec && !continuationState) {
         const OCO = loadComposition(options.composition);
         const explicitOpening = intent.opening || null;
+        const terrainOpeningPolicy = first.purposes.includes("SHOW_TERRAIN")
+          ? loadTerrainMorphology().terrainTiltDecision({
+            terrain_morphology: first.resolved && first.resolved.terrain_morphology,
+            morphology_source: first.resolved && first.resolved.morphology_source,
+            altitude_m: first.resolved && first.resolved.altitude_m,
+            min_altitude_m: first.resolved && first.resolved.min_altitude_m,
+          }) : null;
         openingObliquity = OCO.planOpeningObliquity({
           opening_beat: openDec.movement,
           next_beat: null, // a director opening is followed only by travel
@@ -1241,7 +1271,8 @@
           continuation: !!continuationState,
           config: {
             orbit_default_tilt_deg: planner.DEFAULT_TILT_DEG.orbit,
-            terrain_oblique_tilt_deg: TERRAIN_OBLIQUE_TILT_DEG,
+            terrain_oblique_tilt_deg: terrainOpeningPolicy
+              ? terrainOpeningPolicy.final_tilt_deg : TERRAIN_OBLIQUE_TILT_DEG,
           },
         });
         if (openingObliquity.action === "PROMOTE_TO_RING") {
@@ -1253,7 +1284,9 @@
             angle: g2.angle, rarity: g2.rarity, communicates: g2.communicates,
             teaching: g2.teaching,
             tilt_deg: openingObliquity.tilt_deg,
+            altitude_m: terrainOpeningPolicy ? terrainOpeningPolicy.altitude_m : null,
             tilt_reason: openingObliquity.reason,
+            terrain_policy: terrainOpeningPolicy,
             obliquity: {
               action: "PROMOTE_TO_RING",
               promoted_from: promotedFrom,
@@ -1266,7 +1299,17 @@
           openDec = {
             ...openDec,
             tilt_deg: openingObliquity.tilt_deg,
+            // An explicit angle is operator authority. Do not retain the
+            // morphology policy's coupled altitude, which was computed for a
+            // different angle; the journey's existing framing law owns it.
+            altitude_m: null,
             tilt_reason: openingObliquity.reason,
+            terrain_policy: openDec.terrain_policy ? {
+              ...openDec.terrain_policy,
+              overridden_by: "EXPLICIT_OPERATOR_TILT",
+              applied_tilt_deg: openingObliquity.tilt_deg,
+              altitude_m: null,
+            } : null,
             obliquity: { action: "APPLY_TILT", promoted_from: null, tilt_band: openingObliquity.tilt_band, source: openingObliquity.source || "USER_SPECIFIED", reason: openingObliquity.reason },
           };
         } else {
@@ -1375,6 +1418,10 @@
         is_arrival: true,
         explicit_grammar: to.explicit_grammar, negatives: intent.negatives || [],
         purposes_explicit: to.purposes_explicit, role_explicit: to.role_explicit,
+        terrain_morphology: to.resolved && to.resolved.terrain_morphology,
+        morphology_source: to.resolved && to.resolved.morphology_source,
+        terrain_altitude_m: to.resolved && to.resolved.altitude_m,
+        terrain_min_altitude_m: to.resolved && to.resolved.min_altitude_m,
       };
       const arrival = recommend(atCtx);
       let atDec = arrival.recommended;
@@ -1388,7 +1435,8 @@
           if (anchor && anchor.key !== atDec.key && !(to.explicit_grammar)) {
             atDec = { ...atDec, key: anchor.key, movement: anchor.movement,
               label: anchor.label, rarity: anchor.rarity,
-              tilt_deg: anchor.tilt_deg || null, compare_mirrored: true };
+              tilt_deg: anchor.tilt_deg || null, altitude_m: anchor.altitude_m || null,
+              terrain_policy: anchor.terrain_policy || null, compare_mirrored: true };
           }
           atDec.emphasis = compareEmphasis;
         }
@@ -1416,6 +1464,7 @@
         movements: atDec
           ? [J.normalizeStep({ type: atDec.movement, emphasis: atDec.emphasis,
               tilt_deg: atDec.tilt_deg || null,
+              altitude_m: atDec.altitude_m || null,
               revolutions: orbitRevolutionsFor(atDec, to) }, "at")]
           : [],
       });
@@ -1497,6 +1546,7 @@
       start_movements: openDec
         ? [J.normalizeStep({ type: openDec.movement, emphasis: openDec.emphasis,
             tilt_deg: openDec.tilt_deg || null,
+            altitude_m: openDec.altitude_m || null,
             revolutions: orbitRevolutionsFor(openDec, first) }, "at")]
         : [],
       legs,
@@ -1595,6 +1645,8 @@
           angle: dec.angle || null,
           emphasis: dec.emphasis == null ? null : dec.emphasis,
           tilt_deg: dec.tilt_deg == null ? null : dec.tilt_deg,
+          altitude_m: dec.altitude_m == null ? null : dec.altitude_m,
+          terrain_policy: dec.terrain_policy || null,
           // Opening-obliquity provenance: promotion, applied operator tilt,
           // or the honest reason the opening was left flat.
           obliquity: dec.obliquity || null,
@@ -1851,7 +1903,7 @@
   // wish without inventing a number. Deliberately coarse — robust common
   // forms only, no NLP.
   const OPENING_TOPDOWN_PHRASE = /\btop-?\s?down\b|\bstraight\s+down\b|\bfrom\s+directly\s+above\b|\bdirectly\s+overhead\b/i;
-  const OPENING_TILT_DEGREES_PHRASE = /\b(?:opening\s+tilt|tilt(?:ed)?(?:\s+(?:of|at|to))?|start(?:ing)?\s+at)\s+(\d{1,2}(?:\.\d+)?)\s*(?:°|deg(?:rees)?)/i;
+  const OPENING_TILT_DEGREES_PHRASE = /\b(?:opening\s+tilt|tilt(?:ed)?(?:\s+(?:of|at|to))?|start(?:ing)?\s+at|at)\s+(\d{1,2}(?:\.\d+)?)\s*(?:°|deg(?:rees)?)/i;
   const OPENING_OBLIQUE_BAND_PHRASE = /\b(high|low)\s+oblique\b/i;
   const OPENING_OBLIQUE_PHRASE = /\boblique\b|\bangled\s+view\b|\bat\s+an\s+angle\b/i;
 
@@ -2086,6 +2138,7 @@
     dwellFor,
     isSubjectLike,
     scaleBand,
+    _loadTerrainMorphology: loadTerrainMorphology,
     _loadJourney: loadJourney,
     _loadPlanner: loadPlanner,
   };

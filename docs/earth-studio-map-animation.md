@@ -282,8 +282,12 @@ that governs ceremony.
 anything, so it is refused at an arrival: a subject the camera travelled *to* is circled instead.
 Importance buys a longer, slower circle, not a second revolution — the dwell reward saturates, so a
 hero landmark gets one generous orbit rather than two. Terrain reads as terrain only from a grazing
-angle, so a `SHOW_TERRAIN` orbit rakes at `TERRAIN_OBLIQUE_TILT_DEG` (72°) where a city hero sits at
-the accepted 60°.
+angle, but the 2026-08-21 human calibration falsified one global 72° treatment: a sharp peak and a
+canyon use 74°, a broad volcanic cone 45°, a fjord/channel 65°, and unclassified terrain falls back
+to 65°. These deterministic choices come from curated semantic morphology (never place-name camera
+answers), apply only to `SHOW_TERRAIN` orbit-family shots, preserve the previous orbit footprint by
+coupling altitude to tilt, and reduce the angle when a terrain safety floor makes it infeasible.
+Explicit operator tilt remains authoritative.
 
 **Calm pacing.** Suggested durations are the planner's magnitude-scaled `defaultDuration()` — the
 law real Earth Studio playback validated across acceptance rounds 2–4 — multiplied by a pace

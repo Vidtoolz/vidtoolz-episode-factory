@@ -67,7 +67,7 @@ test('terrain tilt calibration generates four subjects by five legal fixed-radiu
   }
 });
 
-test('terrain 72-degree review candidate exactly retains each fixture production altitude', () => {
+test('terrain 72-degree historical review candidate retains its baseline altitude after the authorized policy change', () => {
   const experiment = terrainGenerator.buildExperiment();
   for (const subject of terrainGenerator.SUBJECTS) {
     const current = experiment.candidates.find((candidate) => candidate.subject === subject.name && candidate.tilt_deg === 72);
@@ -76,7 +76,9 @@ test('terrain 72-degree review candidate exactly retains each fixture production
     assert.equal(current.current_policy, true);
   }
   const directed = director.autoDirect(director.parseIntent('Show the terrain of the Matterhorn.'));
-  assert.equal(directed.decisions[0].decision.tilt_deg, 72, 'experiment must not alter live SHOW_TERRAIN policy');
+  assert.equal(directed.decisions[0].decision.tilt_deg, 74,
+    'the completed human review now authorizes the morphology-calibrated production result');
+  assert.equal(directed.decisions[0].decision.terrain_policy.morphology, 'SHARP_PEAK');
 });
 
 test('terrain review package is deterministic, explicit about 78-degree substitution, and non-production', () => {
