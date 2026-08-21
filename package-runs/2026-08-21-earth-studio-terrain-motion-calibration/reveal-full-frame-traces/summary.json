@@ -1,0 +1,489 @@
+{
+  "generated_at": "2026-08-21T11:07:28.682Z",
+  "authority": "authenticated Google Earth Studio scene.getCurrentWorldValues full-frame readback",
+  "kind": "reveal",
+  "attempted": 5,
+  "successful": 5,
+  "results": [
+    {
+      "id": "TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO",
+      "subject": "Grand Canyon",
+      "movement": "zoom_out",
+      "error": null,
+      "analysis": {
+        "authority": "real Earth Studio scene.getCurrentWorldValues full-frame readback",
+        "frame_count": 480,
+        "duration_seconds": 15.966667,
+        "start": {
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 2700.973,
+          "tilt_deg": 0
+        },
+        "end": {
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 7089032.241,
+          "tilt_deg": 0
+        },
+        "total_path_m": 7086331.268,
+        "path_progress_percent": {
+          "at_0_5s": 0.68151,
+          "at_1s": 2.546243,
+          "at_2s": 8.942814,
+          "at_3s": 17.780854,
+          "at_5s": 39.024984
+        },
+        "translational_speed_mps": {
+          "count": 479,
+          "min": 0,
+          "max": 787883.39946295,
+          "mean": 443820.32992645,
+          "spread": 787883.39946295,
+          "spread_percent": 177.523053
+        },
+        "first_1s_speed_mps": {
+          "count": 30,
+          "min": 6879.19254858,
+          "max": 332173.22443448,
+          "mean": 180435.20092983,
+          "spread": 325294.03188589,
+          "spread_percent": 180.283021
+        },
+        "first_2s_speed_mps": {
+          "count": 60,
+          "min": 6879.19254858,
+          "max": 550701.13403468,
+          "mean": 316858.71599249,
+          "spread": 543821.9414861,
+          "spread_percent": 171.629156
+        },
+        "acceleration_mps2": {
+          "count": 478,
+          "min": -161593.19687476,
+          "max": 408792.59654076,
+          "mean": -431.74848631,
+          "spread": 570385.79341552,
+          "spread_percent": 132110.66431
+        },
+        "first_2s_acceleration_mps2": {
+          "count": 60,
+          "min": 170710.82539377,
+          "max": 408792.59654076,
+          "mean": 274756.15116628,
+          "spread": 238081.77114699,
+          "spread_percent": 86.652026
+        },
+        "first_2s_abs_acceleration_p95_mps2": 391448.88583693,
+        "altitude_m": {
+          "count": 480,
+          "min": 2700.97305023,
+          "max": 7089032.24087582,
+          "mean": 4361163.78249851,
+          "spread": 7086331.26782559,
+          "spread_percent": 162.487162
+        },
+        "pan_deg": {
+          "count": 480,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "tilt_deg": {
+          "count": 480,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        }
+      }
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO",
+      "subject": "The Alps",
+      "movement": "zoom_out",
+      "error": null,
+      "analysis": {
+        "authority": "real Earth Studio scene.getCurrentWorldValues full-frame readback",
+        "frame_count": 270,
+        "duration_seconds": 8.966667,
+        "start": {
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "altitude_m": 2500.975,
+          "tilt_deg": 0
+        },
+        "end": {
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "altitude_m": 7089032.241,
+          "tilt_deg": 0
+        },
+        "total_path_m": 7086531.266,
+        "path_progress_percent": {
+          "at_0_5s": 2.256781,
+          "at_1s": 7.985555,
+          "at_2s": 25.397852,
+          "at_3s": 45.967268,
+          "at_5s": 82.757503
+        },
+        "translational_speed_mps": {
+          "count": 269,
+          "min": 0,
+          "max": 1477313.35244267,
+          "mean": 790319.47202557,
+          "spread": 1477313.35244267,
+          "spread_percent": 186.926098
+        },
+        "first_1s_speed_mps": {
+          "count": 30,
+          "min": 24083.80520137,
+          "max": 986007.58855101,
+          "mean": 565898.84054306,
+          "spread": 961923.78334964,
+          "spread_percent": 169.981579
+        },
+        "first_2s_speed_mps": {
+          "count": 60,
+          "min": 24083.80520137,
+          "max": 1396998.59056942,
+          "mean": 899913.35985099,
+          "spread": 1372914.78536805,
+          "spread_percent": 152.560774
+        },
+        "acceleration_mps2": {
+          "count": 268,
+          "min": -566831.46383492,
+          "max": 1419192.83211779,
+          "mean": -2695.94834344,
+          "spread": 1986024.29595272,
+          "spread_percent": 73667.001105
+        },
+        "first_2s_acceleration_mps2": {
+          "count": 60,
+          "min": 210324.42258226,
+          "max": 1419192.83211779,
+          "mean": 689962.79972706,
+          "spread": 1208868.40953553,
+          "spread_percent": 175.207766
+        },
+        "first_2s_abs_acceleration_p95_mps2": 1308565.14656815,
+        "altitude_m": {
+          "count": 270,
+          "min": 2500.97504651,
+          "max": 7089032.24087582,
+          "mean": 4496411.65385546,
+          "spread": 7086531.26582931,
+          "spread_percent": 157.604148
+        },
+        "pan_deg": {
+          "count": 270,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "tilt_deg": {
+          "count": 270,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        }
+      }
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO",
+      "subject": "The Himalayas",
+      "movement": "zoom_out",
+      "error": null,
+      "analysis": {
+        "authority": "real Earth Studio scene.getCurrentWorldValues full-frame readback",
+        "frame_count": 270,
+        "duration_seconds": 8.966667,
+        "start": {
+          "latitude": 29.3,
+          "longitude": 84.5,
+          "altitude_m": 2500.975,
+          "tilt_deg": 0
+        },
+        "end": {
+          "latitude": 29.3,
+          "longitude": 84.5,
+          "altitude_m": 7089032.241,
+          "tilt_deg": 0
+        },
+        "total_path_m": 7086531.266,
+        "path_progress_percent": {
+          "at_0_5s": 2.256781,
+          "at_1s": 7.985555,
+          "at_2s": 25.397852,
+          "at_3s": 45.967268,
+          "at_5s": 82.757503
+        },
+        "translational_speed_mps": {
+          "count": 269,
+          "min": 0,
+          "max": 1477313.35244267,
+          "mean": 790319.47202557,
+          "spread": 1477313.35244267,
+          "spread_percent": 186.926098
+        },
+        "first_1s_speed_mps": {
+          "count": 30,
+          "min": 24083.80520137,
+          "max": 986007.58855101,
+          "mean": 565898.84054306,
+          "spread": 961923.78334964,
+          "spread_percent": 169.981579
+        },
+        "first_2s_speed_mps": {
+          "count": 60,
+          "min": 24083.80520137,
+          "max": 1396998.59056942,
+          "mean": 899913.35985099,
+          "spread": 1372914.78536805,
+          "spread_percent": 152.560774
+        },
+        "acceleration_mps2": {
+          "count": 268,
+          "min": -566831.46383492,
+          "max": 1419192.83211779,
+          "mean": -2695.94834344,
+          "spread": 1986024.29595272,
+          "spread_percent": 73667.001105
+        },
+        "first_2s_acceleration_mps2": {
+          "count": 60,
+          "min": 210324.42258226,
+          "max": 1419192.83211779,
+          "mean": 689962.79972706,
+          "spread": 1208868.40953553,
+          "spread_percent": 175.207766
+        },
+        "first_2s_abs_acceleration_p95_mps2": 1308565.14656815,
+        "altitude_m": {
+          "count": 270,
+          "min": 2500.97504651,
+          "max": 7089032.24087582,
+          "mean": 4496411.65385546,
+          "spread": 7086531.26582931,
+          "spread_percent": 157.604148
+        },
+        "pan_deg": {
+          "count": 270,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "tilt_deg": {
+          "count": 270,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        }
+      }
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO",
+      "subject": "Yosemite",
+      "movement": "zoom_out",
+      "error": null,
+      "analysis": {
+        "authority": "real Earth Studio scene.getCurrentWorldValues full-frame readback",
+        "frame_count": 480,
+        "duration_seconds": 15.966667,
+        "start": {
+          "latitude": 37.8651,
+          "longitude": -119.5383,
+          "altitude_m": 2800.972,
+          "tilt_deg": 0
+        },
+        "end": {
+          "latitude": 37.8651,
+          "longitude": -119.5383,
+          "altitude_m": 7089032.241,
+          "tilt_deg": 0
+        },
+        "total_path_m": 7086231.269,
+        "path_progress_percent": {
+          "at_0_5s": 0.68151,
+          "at_1s": 2.546243,
+          "at_2s": 8.942814,
+          "at_3s": 17.780854,
+          "at_5s": 39.024984
+        },
+        "translational_speed_mps": {
+          "count": 479,
+          "min": 0,
+          "max": 787872.28121983,
+          "mean": 443814.06694094,
+          "spread": 787872.28121983,
+          "spread_percent": 177.523053
+        },
+        "first_1s_speed_mps": {
+          "count": 30,
+          "min": 6879.09547263,
+          "max": 332168.53696086,
+          "mean": 180432.65471243,
+          "spread": 325289.44148823,
+          "spread_percent": 180.283021
+        },
+        "first_2s_speed_mps": {
+          "count": 60,
+          "min": 6879.09547263,
+          "max": 550693.36279712,
+          "mean": 316854.24463007,
+          "spread": 543814.2673245,
+          "spread_percent": 171.629156
+        },
+        "acceleration_mps2": {
+          "count": 478,
+          "min": -161590.91654867,
+          "max": 408786.82785029,
+          "mean": -431.74239368,
+          "spread": 570377.74439896,
+          "spread_percent": 132110.66431
+        },
+        "first_2s_acceleration_mps2": {
+          "count": 60,
+          "min": 170708.41640221,
+          "max": 408786.82785029,
+          "mean": 274752.27393562,
+          "spread": 238078.41144808,
+          "spread_percent": 86.652026
+        },
+        "first_2s_abs_acceleration_p95_mps2": 391443.36189282,
+        "altitude_m": {
+          "count": 480,
+          "min": 2800.9720521,
+          "max": 7089032.24087582,
+          "mean": 4361202.27690594,
+          "spread": 7086231.26882373,
+          "spread_percent": 162.483435
+        },
+        "pan_deg": {
+          "count": 480,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "tilt_deg": {
+          "count": 480,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        }
+      }
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO",
+      "subject": "Yellowstone",
+      "movement": "zoom_out",
+      "error": null,
+      "analysis": {
+        "authority": "real Earth Studio scene.getCurrentWorldValues full-frame readback",
+        "frame_count": 480,
+        "duration_seconds": 15.966667,
+        "start": {
+          "latitude": 44.428,
+          "longitude": -110.5885,
+          "altitude_m": 3200.968,
+          "tilt_deg": 0
+        },
+        "end": {
+          "latitude": 44.428,
+          "longitude": -110.5885,
+          "altitude_m": 7089032.241,
+          "tilt_deg": 0
+        },
+        "total_path_m": 7085831.273,
+        "path_progress_percent": {
+          "at_0_5s": 0.68151,
+          "at_1s": 2.546243,
+          "at_2s": 8.942814,
+          "at_3s": 17.780854,
+          "at_5s": 39.024984
+        },
+        "translational_speed_mps": {
+          "count": 479,
+          "min": 0,
+          "max": 787827.80824757,
+          "mean": 443789.01499893,
+          "spread": 787827.80824757,
+          "spread_percent": 177.523053
+        },
+        "first_1s_speed_mps": {
+          "count": 30,
+          "min": 6878.7071688,
+          "max": 332149.78706637,
+          "mean": 180422.46984282,
+          "spread": 325271.07989757,
+          "spread_percent": 180.283021
+        },
+        "first_2s_speed_mps": {
+          "count": 60,
+          "min": 6878.7071688,
+          "max": 550662.27784687,
+          "mean": 316836.35918039,
+          "spread": 543783.57067807,
+          "spread_percent": 171.629156
+        },
+        "acceleration_mps2": {
+          "count": 478,
+          "min": -161581.79523423,
+          "max": 408763.75308843,
+          "mean": -431.71802315,
+          "spread": 570345.54832266,
+          "spread_percent": 132110.66431
+        },
+        "first_2s_acceleration_mps2": {
+          "count": 60,
+          "min": 170698.78043609,
+          "max": 408763.75308843,
+          "mean": 274736.76501297,
+          "spread": 238064.97265234,
+          "spread_percent": 86.652026
+        },
+        "first_2s_abs_acceleration_p95_mps2": 391421.26611639,
+        "altitude_m": {
+          "count": 480,
+          "min": 3200.96805954,
+          "max": 7089032.24087582,
+          "mean": 4361356.25453568,
+          "spread": 7085831.27281629,
+          "spread_percent": 162.468527
+        },
+        "pan_deg": {
+          "count": 480,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "tilt_deg": {
+          "count": 480,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,619 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-21T11:45:34.425Z",
+  "production_motion_changed": false,
+  "production_terrain_grammar_changed": false,
+  "production_morphology_changed": false,
+  "orbit_root_cause": "opening and closing eased coordinate spans leave the constant-radius ring; interior hard-linear samples remain stable",
+  "reveal_hypothesis": "the 0.25-gap departure handle reaches visually large absolute speed too early on multi-million-metre altitude reveals",
+  "candidates": [
+    {
+      "id": "ORBIT-GRAND-CANYON-CURRENT",
+      "family": "ORBIT",
+      "subject": "Grand Canyon",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-GRAND-CANYON-CURRENT.esp",
+      "esp_sha256": "09148c16e05626adf615b88c24afa56890fe89589c9dc735eff10f6eeec75d7f",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 3530,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "none; exact reviewed terrain-form ESP trajectory"
+    },
+    {
+      "id": "ORBIT-GRAND-CANYON-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Grand Canyon",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-GRAND-CANYON-TANGENT_ENVELOPE.esp",
+      "esp_sha256": "c4fb6fbd4e94d49213a112177f24dfaa8530e9c92f1e469711d9fa4cc0d439b5",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 3530,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "opening and closing ring samples meet the adjacent cruise tangent; keyframe count, geometry and global ease endpoints unchanged"
+    },
+    {
+      "id": "ORBIT-GEIRANGERFJORD-CURRENT",
+      "family": "ORBIT",
+      "subject": "Geirangerfjord",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-GEIRANGERFJORD-CURRENT.esp",
+      "esp_sha256": "9d1f67015e4a04eae9c6eca27e9ef3f6d8359d466df2767e4b4806f4a98dec15",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3588,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "none; exact reviewed terrain-form ESP trajectory"
+    },
+    {
+      "id": "ORBIT-GEIRANGERFJORD-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Geirangerfjord",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-GEIRANGERFJORD-TANGENT_ENVELOPE.esp",
+      "esp_sha256": "81617170037bb4d343194c638764ae3841101062b1b1ede6385bd470903972ff",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3588,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "opening and closing ring samples meet the adjacent cruise tangent; keyframe count, geometry and global ease endpoints unchanged"
+    },
+    {
+      "id": "ORBIT-MATTERHORN-CURRENT",
+      "family": "ORBIT",
+      "subject": "Matterhorn",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-MATTERHORN-CURRENT.esp",
+      "esp_sha256": "3d538af1c1aa6964ebc94c26792918019d9de46fa318ff7155925ac98dff40d2",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "none; exact reviewed terrain-form ESP trajectory"
+    },
+    {
+      "id": "ORBIT-MATTERHORN-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Matterhorn",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-MATTERHORN-TANGENT_ENVELOPE.esp",
+      "esp_sha256": "ea79f4e9a20ba5d79472c5b03709ea5d926ba470b928cb7d79748c9a0598115a",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "opening and closing ring samples meet the adjacent cruise tangent; keyframe count, geometry and global ease endpoints unchanged"
+    },
+    {
+      "id": "ORBIT-MOUNT-FUJI-CURRENT",
+      "family": "ORBIT",
+      "subject": "Mount Fuji",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-MOUNT-FUJI-CURRENT.esp",
+      "esp_sha256": "7bda46ddda139ca63409ddbf2835f366aebde8a793c006c4237bcab4a088de65",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 12,
+        "frame_rate": 30,
+        "total_frames": 360,
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "none; exact reviewed terrain-form ESP trajectory"
+    },
+    {
+      "id": "ORBIT-MOUNT-FUJI-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Mount Fuji",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-MOUNT-FUJI-TANGENT_ENVELOPE.esp",
+      "esp_sha256": "2517bd0191cf425b45573592226aaf935d171d01ace1ff7fb5e01eb8a6ae5d18",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 12,
+        "frame_rate": 30,
+        "total_frames": 360,
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "opening and closing ring samples meet the adjacent cruise tangent; keyframe count, geometry and global ease endpoints unchanged"
+    },
+    {
+      "id": "REVEAL-GRAND-CANYON-CURRENT",
+      "family": "REVEAL",
+      "subject": "Grand Canyon",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-GRAND-CANYON-CURRENT.esp",
+      "esp_sha256": "130ed4718714256af5483b25d041cb9ed89e280450206bf776b773873a8e85a7",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.25,
+      "controlled_change": "none; exact reviewed production reveal trajectory"
+    },
+    {
+      "id": "REVEAL-GRAND-CANYON-CALM_START_A",
+      "family": "REVEAL",
+      "subject": "Grand Canyon",
+      "variant": "CALM_START_A",
+      "label": "CALM START A",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-GRAND-CANYON-CALM_START_A.esp",
+      "esp_sha256": "86eb89b7365488a70559ebef6951367649af886f31a3e7c01e7d37672a98ed1a",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.35,
+      "controlled_change": "altitude departure handle increased from 0.25 to 0.35; final state, move-end frame and total duration unchanged"
+    },
+    {
+      "id": "REVEAL-GRAND-CANYON-CALM_START_B",
+      "family": "REVEAL",
+      "subject": "Grand Canyon",
+      "variant": "CALM_START_B",
+      "label": "CALM START B",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-GRAND-CANYON-CALM_START_B.esp",
+      "esp_sha256": "6e54826bd1a9b27b753c6716fd1f8028214349e6030198b23055b82f6195cae6",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.45,
+      "controlled_change": "altitude departure handle increased from 0.25 to 0.45; final state, move-end frame and total duration unchanged"
+    },
+    {
+      "id": "REVEAL-GRAND-CANYON-CALM_START_C",
+      "family": "REVEAL",
+      "subject": "Grand Canyon",
+      "variant": "CALM_START_C",
+      "label": "CALM START C",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-GRAND-CANYON-CALM_START_C.esp",
+      "esp_sha256": "6ed6e76559c44111c356adcc84a35d40e7171abcf6d504dbc9002e4cdc557287",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.6,
+      "controlled_change": "altitude departure handle increased from 0.25 to 0.6; final state, move-end frame and total duration unchanged"
+    },
+    {
+      "id": "REVEAL-THE-ALPS-CURRENT",
+      "family": "REVEAL",
+      "subject": "The Alps",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-THE-ALPS-CURRENT.esp",
+      "esp_sha256": "fc677fe33b7f6f83ad2bc39fb94514a817cfd1b8c1caccf0a58bf3078e63b0f4",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 9,
+        "frame_rate": 30,
+        "total_frames": 270,
+        "target": {
+          "name": "The Alps",
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "scale": "region",
+          "terrain_morphology": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.25,
+      "controlled_change": "none; exact reviewed production reveal trajectory"
+    },
+    {
+      "id": "REVEAL-THE-ALPS-CALM_START_A",
+      "family": "REVEAL",
+      "subject": "The Alps",
+      "variant": "CALM_START_A",
+      "label": "CALM START A",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-THE-ALPS-CALM_START_A.esp",
+      "esp_sha256": "e9b55604e32d5fdea930128ed52acba62df3d78f2a9983ea42599e89dcb19ac7",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 9,
+        "frame_rate": 30,
+        "total_frames": 270,
+        "target": {
+          "name": "The Alps",
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "scale": "region",
+          "terrain_morphology": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.35,
+      "controlled_change": "altitude departure handle increased from 0.25 to 0.35; final state, move-end frame and total duration unchanged"
+    },
+    {
+      "id": "REVEAL-THE-ALPS-CALM_START_B",
+      "family": "REVEAL",
+      "subject": "The Alps",
+      "variant": "CALM_START_B",
+      "label": "CALM START B",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-THE-ALPS-CALM_START_B.esp",
+      "esp_sha256": "a0059e8b5f9e590806f130cb7e495972ae663dd004acd1202954dc606745b340",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 9,
+        "frame_rate": 30,
+        "total_frames": 270,
+        "target": {
+          "name": "The Alps",
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "scale": "region",
+          "terrain_morphology": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.45,
+      "controlled_change": "altitude departure handle increased from 0.25 to 0.45; final state, move-end frame and total duration unchanged"
+    },
+    {
+      "id": "REVEAL-THE-ALPS-CALM_START_C",
+      "family": "REVEAL",
+      "subject": "The Alps",
+      "variant": "CALM_START_C",
+      "label": "CALM START C",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-THE-ALPS-CALM_START_C.esp",
+      "esp_sha256": "a269a65dba20c431b6c37c3cba93e407a2ccb0dd725c3c29752b0ced00e7008d",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 9,
+        "frame_rate": 30,
+        "total_frames": 270,
+        "target": {
+          "name": "The Alps",
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "scale": "region",
+          "terrain_morphology": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.6,
+      "controlled_change": "altitude departure handle increased from 0.25 to 0.6; final state, move-end frame and total duration unchanged"
+    },
+    {
+      "id": "REVEAL-YOSEMITE-CURRENT",
+      "family": "REVEAL",
+      "subject": "Yosemite",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-YOSEMITE-CURRENT.esp",
+      "esp_sha256": "ad1ce64ee1902569fa91568cbe32663c489fa1c02b3df052d822119e8c2b869f",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Yosemite",
+          "latitude": 37.8651,
+          "longitude": -119.5383,
+          "altitude_m": 4500,
+          "min_altitude_m": 2800,
+          "terrain_morphology": "valley",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.25,
+      "controlled_change": "none; exact reviewed production reveal trajectory"
+    },
+    {
+      "id": "REVEAL-YOSEMITE-CALM_START_A",
+      "family": "REVEAL",
+      "subject": "Yosemite",
+      "variant": "CALM_START_A",
+      "label": "CALM START A",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-YOSEMITE-CALM_START_A.esp",
+      "esp_sha256": "77cf7b61c46a47c543059579da84f9ec948746cef188b4aacadaa78667c21fec",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Yosemite",
+          "latitude": 37.8651,
+          "longitude": -119.5383,
+          "altitude_m": 4500,
+          "min_altitude_m": 2800,
+          "terrain_morphology": "valley",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.35,
+      "controlled_change": "altitude departure handle increased from 0.25 to 0.35; final state, move-end frame and total duration unchanged"
+    },
+    {
+      "id": "REVEAL-YOSEMITE-CALM_START_B",
+      "family": "REVEAL",
+      "subject": "Yosemite",
+      "variant": "CALM_START_B",
+      "label": "CALM START B",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-YOSEMITE-CALM_START_B.esp",
+      "esp_sha256": "b66354eed5307e732c50327a138f3cfc0463427ac3f4d46dfb225e4c3fefe993",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Yosemite",
+          "latitude": 37.8651,
+          "longitude": -119.5383,
+          "altitude_m": 4500,
+          "min_altitude_m": 2800,
+          "terrain_morphology": "valley",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.45,
+      "controlled_change": "altitude departure handle increased from 0.25 to 0.45; final state, move-end frame and total duration unchanged"
+    },
+    {
+      "id": "REVEAL-YOSEMITE-CALM_START_C",
+      "family": "REVEAL",
+      "subject": "Yosemite",
+      "variant": "CALM_START_C",
+      "label": "CALM START C",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-YOSEMITE-CALM_START_C.esp",
+      "esp_sha256": "22e9663cdc1a6d4c462bf4dad8d60997ce4853a2958c84e04b197015d15a62af",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Yosemite",
+          "latitude": 37.8651,
+          "longitude": -119.5383,
+          "altitude_m": 4500,
+          "min_altitude_m": 2800,
+          "terrain_morphology": "valley",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "departure_handle_fraction": 0.6,
+      "controlled_change": "altitude departure handle increased from 0.25 to 0.6; final state, move-end frame and total duration unchanged"
+    }
+  ]
+}

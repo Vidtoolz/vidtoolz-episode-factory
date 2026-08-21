@@ -1,0 +1,29 @@
+{
+  "production_motion_changed": false,
+  "gate3_v094_controls": {
+    "affected": false,
+    "expected": "byte-identical"
+  },
+  "director_canaries": {
+    "affected": false,
+    "expected": "8/8 byte-identical"
+  },
+  "journey_v2_canaries": {
+    "affected": false
+  },
+  "morphology_and_obliquity_evidence": {
+    "affected": false
+  },
+  "terminal_settle_evidence": {
+    "affected": false
+  },
+  "terrain_grammar_evidence": {
+    "affected": false,
+    "note": "source package is immutable; new candidates live only in this motion-calibration run"
+  },
+  "candidate_esps": {
+    "affected": true,
+    "accepted_contract": false,
+    "human_review_required": true
+  }
+}

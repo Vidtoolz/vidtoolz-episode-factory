@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "operator_authority": "Mikko",
+  "started_at": null,
+  "completed_at": null,
+  "choices": [
+    {
+      "family": "ORBIT",
+      "subject": "Grand Canyon",
+      "winner": null,
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "family": "ORBIT",
+      "subject": "Geirangerfjord",
+      "winner": null,
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "family": "ORBIT",
+      "subject": "Matterhorn",
+      "winner": null,
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "family": "ORBIT",
+      "subject": "Mount Fuji",
+      "winner": null,
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "family": "REVEAL",
+      "subject": "Grand Canyon",
+      "winner": null,
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "family": "REVEAL",
+      "subject": "The Alps",
+      "winner": null,
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "family": "REVEAL",
+      "subject": "Yosemite",
+      "winner": null,
+      "note": "",
+      "reviewed_at": null
+    }
+  ]
+}
