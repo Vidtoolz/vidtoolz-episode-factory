@@ -1,0 +1,120 @@
+{
+  "id": "TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM",
+  "subject": "Matterhorn",
+  "treatment": "TERRAIN_FORM",
+  "imported": true,
+  "import_index": 6,
+  "earth_studio_project": {
+    "duration": 900,
+    "totalFrames": 900,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "total_frames": 900,
+    "frame_rate": 30,
+    "tilt_deg": 74
+  },
+  "observed": {
+    "opening_tilt_deg": 74,
+    "opening_altitude_m": 5736.942746720773,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "finite_camera_state": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 46.15649818603813,
+        "longitude": 7.6585,
+        "altitude": 5736.942746720773,
+        "pan_deg": 180,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20003.766,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM_f0000.png"
+    },
+    {
+      "frame": 449,
+      "camera": {
+        "frame": 449,
+        "latitude": 45.97693254315709,
+        "longitude": 7.917365566718884,
+        "altitude": 5736.942746720773,
+        "pan_deg": 269.8,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20003.84,
+        "position_bearing_around_target_deg": 89.80101912,
+        "camera_to_target_bearing_deg": 269.98715864
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM_f0449.png"
+    },
+    {
+      "frame": 897,
+      "camera": {
+        "frame": 897,
+        "latitude": 45.79670751006865,
+        "longitude": 7.658722896340148,
+        "altitude": 5736.942746720773,
+        "pan_deg": 359.93064947181176,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20003.14,
+        "position_bearing_around_target_deg": 179.95050351,
+        "camera_to_target_bearing_deg": 359.95066354
+      }
+    },
+    {
+      "frame": 898,
+      "camera": {
+        "frame": 898,
+        "latitude": 45.79670385300141,
+        "longitude": 7.6585986839155185,
+        "altitude": 5736.942746720773,
+        "pan_deg": 359.968395565581,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20003.54,
+        "position_bearing_around_target_deg": 179.97808663,
+        "camera_to_target_bearing_deg": 359.97815748
+      }
+    },
+    {
+      "frame": 899,
+      "camera": {
+        "frame": 899,
+        "latitude": 45.79670170330285,
+        "longitude": 7.658524571339436,
+        "altitude": 5736.942746720773,
+        "pan_deg": 359.9918901709601,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20003.778,
+        "position_bearing_around_target_deg": 179.99454385,
+        "camera_to_target_bearing_deg": 359.99456149
+      }
+    }
+  ]
+}

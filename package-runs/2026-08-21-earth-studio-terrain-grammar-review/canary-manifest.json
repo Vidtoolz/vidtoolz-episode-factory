@@ -1,0 +1,1574 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-21T18:00:00.000Z",
+  "purpose": "Controlled human calibration of terrain camera grammar: contextual reveal versus target-locked terrain-form inspection.",
+  "production_policy_changed": false,
+  "production_director_files_changed": false,
+  "terrain_tilt_policy_changed": false,
+  "terrain_purpose_model": {
+    "TERRAIN_CONTEXT": "geographic extent, location, relationship or scale is the information",
+    "TERRAIN_FORM": "three-dimensional relief, shape, walls or depth is the information",
+    "status": "experiment-only; not wired into production grammar selection"
+  },
+  "candidate_treatments": [
+    "CURRENT_AUTO",
+    "TERRAIN_FORM"
+  ],
+  "oblique_reveal": {
+    "supported": false,
+    "reason": "No existing at-location primitive is both oblique and target-locked except the orbit family. reveal/zoom_out are top-down; fly_low is oblique but deliberately points past its target."
+  },
+  "ring_limit_m": 80000,
+  "local_inspection_scale": "district",
+  "review_display_order": [
+    "CURRENT_AUTO",
+    "TERRAIN_FORM"
+  ],
+  "canaries": [
+    {
+      "id": "TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO",
+      "subject": "Grand Canyon",
+      "subject_slug": "grand-canyon",
+      "terrain_class": "CANYON",
+      "morphology": "CANYON",
+      "prompt": "Show the terrain of Grand Canyon.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "CURRENT_AUTO",
+      "candidate_label": "CURRENT",
+      "production_output": true,
+      "production_policy_changed": false,
+      "natural_scale": "region",
+      "candidate_scale": "region",
+      "feasibility": "NATURAL_SCALE",
+      "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+      "decision": {
+        "key": "reveal",
+        "movement": "reveal",
+        "tilt_deg": null,
+        "altitude_m": null,
+        "morphology": null,
+        "terrain_policy": null,
+        "why": "region framing is within its useful range a selective move is earned here (STARTING_CONTEXT, importance NORMAL)",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Grand Canyon",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ]
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Grand Canyon."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/earth-studio.esp",
+      "esp_sha256": "e4b276a8e128635cd172aa75549ad94e9f2c68f1fd3269e28ea654703e108962",
+      "trajectory_sha256": "a7733d5b624491acea2fd48b07fa40a9d0cd890483a345f370699334b3329438",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/candidate-metadata.json"
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM",
+      "subject": "Grand Canyon",
+      "subject_slug": "grand-canyon",
+      "terrain_class": "CANYON",
+      "morphology": "CANYON",
+      "prompt": "Show the terrain of Grand Canyon.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "TERRAIN_FORM",
+      "candidate_label": "TERRAIN FORM",
+      "production_output": false,
+      "production_policy_changed": false,
+      "natural_scale": "region",
+      "candidate_scale": "district",
+      "feasibility": "LOCAL_INSPECTION_STRESS_TEST",
+      "feasibility_note": "The fixture is region-scale. The ring is bounded to district framing around the fixture centre and does not claim to represent the full region.",
+      "decision": {
+        "key": "slow_orbit",
+        "movement": "slow_orbit",
+        "tilt_deg": 74,
+        "altitude_m": 3530.046212,
+        "morphology": "CANYON",
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "CANYON",
+          "morphology_metadata_value": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 74,
+          "final_tilt_deg": 74,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 3530.046212,
+          "reference_orbit_radius_m": 12310.734149,
+          "treatment": "strong terrain rake",
+          "reason": "a depressed landform needs a raking view to expose walls and depth",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "canyon → strong terrain rake → 74°"
+        },
+        "why": "district framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 3530,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Grand Canyon",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ],
+            "framing": "district"
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Grand Canyon."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/earth-studio.esp",
+      "esp_sha256": "2bc615737cf2e71a2ee332ec61b8090044eb1044e0788b5aa276fd58bbd0afaa",
+      "trajectory_sha256": "e8466e3555915483f986315a9456cbb1d6646f478e4c3af3dca20ab15e57cc72",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/candidate-metadata.json",
+      "byte_equivalent_to_current": false,
+      "camera_trajectory_equivalent_to_current": false
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO",
+      "subject": "Geirangerfjord",
+      "subject_slug": "geirangerfjord",
+      "terrain_class": "FJORD",
+      "morphology": "FJORD_CHANNEL",
+      "prompt": "Show the terrain of Geirangerfjord.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "CURRENT_AUTO",
+      "candidate_label": "CURRENT",
+      "production_output": true,
+      "production_policy_changed": false,
+      "natural_scale": "district",
+      "candidate_scale": "district",
+      "feasibility": "NATURAL_SCALE",
+      "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+      "decision": {
+        "key": "slow_orbit",
+        "movement": "slow_orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3587.868507,
+        "morphology": "FJORD_CHANNEL",
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "FJORD_CHANNEL",
+          "morphology_metadata_value": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 65,
+          "final_tilt_deg": 65,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 3587.868507,
+          "reference_orbit_radius_m": 7694.208843,
+          "treatment": "medium-strong terrain rake",
+          "reason": "an elongated deep channel needs wall relief without losing corridor readability",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "fjord_channel → medium-strong terrain rake → 65°"
+        },
+        "why": "district framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3588,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Geirangerfjord",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ]
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Geirangerfjord."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO/earth-studio/earth-studio.esp",
+      "esp_sha256": "797c14115cf4aabeaf2b765aad74c2a63a0750a4bcd866c51ac7865d58ffee82",
+      "trajectory_sha256": "0a5c4d2a8bb1790a19a7a27252770343a3fcea9eae9c5b816b133198ab8386af",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO/earth-studio/candidate-metadata.json"
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM",
+      "subject": "Geirangerfjord",
+      "subject_slug": "geirangerfjord",
+      "terrain_class": "FJORD",
+      "morphology": "FJORD_CHANNEL",
+      "prompt": "Show the terrain of Geirangerfjord.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "TERRAIN_FORM",
+      "candidate_label": "TERRAIN FORM",
+      "production_output": false,
+      "production_policy_changed": false,
+      "natural_scale": "district",
+      "candidate_scale": "district",
+      "feasibility": "NATURAL_SCALE",
+      "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+      "decision": {
+        "key": "slow_orbit",
+        "movement": "slow_orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3587.868507,
+        "morphology": "FJORD_CHANNEL",
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "FJORD_CHANNEL",
+          "morphology_metadata_value": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 65,
+          "final_tilt_deg": 65,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 3587.868507,
+          "reference_orbit_radius_m": 7694.208843,
+          "treatment": "medium-strong terrain rake",
+          "reason": "an elongated deep channel needs wall relief without losing corridor readability",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "fjord_channel → medium-strong terrain rake → 65°"
+        },
+        "why": "district framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3588,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Geirangerfjord",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ]
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Geirangerfjord."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/earth-studio.esp",
+      "esp_sha256": "2c953b600679f72051d4f49656b5c6c46342f0a19ec9fa46a904e49786138c8d",
+      "trajectory_sha256": "0a5c4d2a8bb1790a19a7a27252770343a3fcea9eae9c5b816b133198ab8386af",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/candidate-metadata.json",
+      "byte_equivalent_to_current": false,
+      "camera_trajectory_equivalent_to_current": true
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO",
+      "subject": "Matterhorn",
+      "subject_slug": "matterhorn",
+      "terrain_class": "SHARP_ISOLATED_PEAK",
+      "morphology": "SHARP_PEAK",
+      "prompt": "Show the terrain of Matterhorn.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "CURRENT_AUTO",
+      "candidate_label": "CURRENT",
+      "production_output": true,
+      "production_policy_changed": false,
+      "natural_scale": "neighborhood",
+      "candidate_scale": "neighborhood",
+      "feasibility": "NATURAL_SCALE",
+      "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+      "decision": {
+        "key": "slow_orbit",
+        "movement": "slow_orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736.325095,
+        "morphology": "SHARP_PEAK",
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "SHARP_PEAK",
+          "morphology_metadata_value": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 74,
+          "final_tilt_deg": 74,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 5736.325095,
+          "reference_orbit_radius_m": 20004.942992,
+          "treatment": "strong terrain rake",
+          "reason": "a sharp isolated summit reads through steep profile and relief",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "sharp_peak → strong terrain rake → 74°"
+        },
+        "why": "neighborhood framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Matterhorn",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ]
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Matterhorn."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/earth-studio.esp",
+      "esp_sha256": "4c29e6c4572ffcc26a4eba1eb038d2d158d9806fcf1be297b290ccb588aa563c",
+      "trajectory_sha256": "1c52e49a39baf06c1b6d3364f2a482c1954ef529ed3d64ecdf26f603c92773f2",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/candidate-metadata.json"
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM",
+      "subject": "Matterhorn",
+      "subject_slug": "matterhorn",
+      "terrain_class": "SHARP_ISOLATED_PEAK",
+      "morphology": "SHARP_PEAK",
+      "prompt": "Show the terrain of Matterhorn.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "TERRAIN_FORM",
+      "candidate_label": "TERRAIN FORM",
+      "production_output": false,
+      "production_policy_changed": false,
+      "natural_scale": "neighborhood",
+      "candidate_scale": "neighborhood",
+      "feasibility": "NATURAL_SCALE",
+      "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+      "decision": {
+        "key": "slow_orbit",
+        "movement": "slow_orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736.325095,
+        "morphology": "SHARP_PEAK",
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "SHARP_PEAK",
+          "morphology_metadata_value": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 74,
+          "final_tilt_deg": 74,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 5736.325095,
+          "reference_orbit_radius_m": 20004.942992,
+          "treatment": "strong terrain rake",
+          "reason": "a sharp isolated summit reads through steep profile and relief",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "sharp_peak → strong terrain rake → 74°"
+        },
+        "why": "neighborhood framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Matterhorn",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ]
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Matterhorn."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/earth-studio/earth-studio.esp",
+      "esp_sha256": "500501ddb826d259178d7009fd573f07f053b3d6193c5e1b461814510033c246",
+      "trajectory_sha256": "1c52e49a39baf06c1b6d3364f2a482c1954ef529ed3d64ecdf26f603c92773f2",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/earth-studio/candidate-metadata.json",
+      "byte_equivalent_to_current": false,
+      "camera_trajectory_equivalent_to_current": true
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO",
+      "subject": "Mount Fuji",
+      "subject_slug": "mount-fuji",
+      "terrain_class": "VOLCANIC_CONE",
+      "morphology": "VOLCANIC_CONE",
+      "prompt": "Show the terrain of Mount Fuji.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "CURRENT_AUTO",
+      "candidate_label": "CURRENT",
+      "production_output": true,
+      "production_policy_changed": false,
+      "natural_scale": "neighborhood",
+      "candidate_scale": "neighborhood",
+      "feasibility": "NATURAL_SCALE",
+      "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+      "decision": {
+        "key": "slow_orbit",
+        "movement": "slow_orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927.259454,
+        "morphology": "VOLCANIC_CONE",
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "VOLCANIC_CONE",
+          "morphology_metadata_value": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 45,
+          "final_tilt_deg": 45,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 16927.259454,
+          "reference_orbit_radius_m": 16927.259454,
+          "treatment": "restrained high oblique",
+          "reason": "a broad symmetric cone needs geographic context to preserve its silhouette and base",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "volcanic_cone → restrained high oblique → 45°"
+        },
+        "why": "neighborhood framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 12,
+        "frame_rate": 30,
+        "total_frames": 360,
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Mount Fuji",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ]
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Mount Fuji."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO/earth-studio/earth-studio.esp",
+      "esp_sha256": "5ea7dceaee653df36899367f4cf18c764e5722bb5498be63199a8d7075bacba0",
+      "trajectory_sha256": "b9b0674b8c5d14bd8076513eb408f6abd09be8a893661f4478a40febe4295246",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO/earth-studio/candidate-metadata.json"
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM",
+      "subject": "Mount Fuji",
+      "subject_slug": "mount-fuji",
+      "terrain_class": "VOLCANIC_CONE",
+      "morphology": "VOLCANIC_CONE",
+      "prompt": "Show the terrain of Mount Fuji.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "TERRAIN_FORM",
+      "candidate_label": "TERRAIN FORM",
+      "production_output": false,
+      "production_policy_changed": false,
+      "natural_scale": "neighborhood",
+      "candidate_scale": "neighborhood",
+      "feasibility": "NATURAL_SCALE",
+      "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+      "decision": {
+        "key": "slow_orbit",
+        "movement": "slow_orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927.259454,
+        "morphology": "VOLCANIC_CONE",
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "VOLCANIC_CONE",
+          "morphology_metadata_value": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 45,
+          "final_tilt_deg": 45,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 16927.259454,
+          "reference_orbit_radius_m": 16927.259454,
+          "treatment": "restrained high oblique",
+          "reason": "a broad symmetric cone needs geographic context to preserve its silhouette and base",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "volcanic_cone → restrained high oblique → 45°"
+        },
+        "why": "neighborhood framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 12,
+        "frame_rate": 30,
+        "total_frames": 360,
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Mount Fuji",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ]
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Mount Fuji."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/earth-studio.esp",
+      "esp_sha256": "3a57ba9cd09c8430d0535502c32b16645b6f3a5630cee4e47509d8a282c44536",
+      "trajectory_sha256": "b9b0674b8c5d14bd8076513eb408f6abd09be8a893661f4478a40febe4295246",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/candidate-metadata.json",
+      "byte_equivalent_to_current": false,
+      "camera_trajectory_equivalent_to_current": true
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO",
+      "subject": "The Alps",
+      "subject_slug": "the-alps",
+      "terrain_class": "BROAD_MOUNTAIN_RANGE",
+      "morphology": "GENERIC_TERRAIN",
+      "prompt": "Show the terrain of The Alps.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "CURRENT_AUTO",
+      "candidate_label": "CURRENT",
+      "production_output": true,
+      "production_policy_changed": false,
+      "natural_scale": "region",
+      "candidate_scale": "region",
+      "feasibility": "NATURAL_SCALE",
+      "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+      "decision": {
+        "key": "reveal",
+        "movement": "reveal",
+        "tilt_deg": null,
+        "altitude_m": null,
+        "morphology": null,
+        "terrain_policy": null,
+        "why": "region framing is within its useful range a selective move is earned here (STARTING_CONTEXT, importance NORMAL)",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 9,
+        "frame_rate": 30,
+        "total_frames": 270,
+        "target": {
+          "name": "The Alps",
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "scale": "region",
+          "terrain_morphology": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "The Alps",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ]
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of The Alps."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/earth-studio.esp",
+      "esp_sha256": "53e788d5bbee7fcc99f016b62f5808501809bd9e57619275f3cc0b44f22795e9",
+      "trajectory_sha256": "0f8b11dd1f97f4577315f3159457269989f8223363cc160461d340a0911b44b4",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/candidate-metadata.json"
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM",
+      "subject": "The Alps",
+      "subject_slug": "the-alps",
+      "terrain_class": "BROAD_MOUNTAIN_RANGE",
+      "morphology": "GENERIC_TERRAIN",
+      "prompt": "Show the terrain of The Alps.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "TERRAIN_FORM",
+      "candidate_label": "TERRAIN FORM",
+      "production_output": false,
+      "production_policy_changed": false,
+      "natural_scale": "region",
+      "candidate_scale": "district",
+      "feasibility": "LOCAL_INSPECTION_STRESS_TEST",
+      "feasibility_note": "The fixture is region-scale. The ring is bounded to district framing around the fixture centre and does not claim to represent the full region.",
+      "decision": {
+        "key": "slow_orbit",
+        "movement": "slow_orbit",
+        "tilt_deg": 65,
+        "altitude_m": null,
+        "morphology": "GENERIC_TERRAIN",
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "GENERIC_TERRAIN",
+          "morphology_metadata_value": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 65,
+          "final_tilt_deg": 65,
+          "baseline_tilt_deg": 72,
+          "altitude_m": null,
+          "reference_orbit_radius_m": null,
+          "treatment": "generic terrain fallback",
+          "reason": "65 degrees is the reviewed middle-rake candidate: enough relief without defaulting to the falsified 72-degree extreme",
+          "confidence": "CONSERVATIVE_FALLBACK",
+          "fallback": true,
+          "safety_clamp": null,
+          "explanation": "generic_terrain → generic terrain fallback → 65°"
+        },
+        "why": "district framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 9587,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "The Alps",
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "scale": "region",
+          "terrain_morphology": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "The Alps",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ],
+            "framing": "district"
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of The Alps."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/earth-studio.esp",
+      "esp_sha256": "6219ad2591df6fd81a4902f07402d828bb646d814a3f3f31c67a05e891fb9734",
+      "trajectory_sha256": "d8bdab8422d9afd81bff4974d61090c404f6c6b5b2cf85a62f5755df03251e7a",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/candidate-metadata.json",
+      "byte_equivalent_to_current": false,
+      "camera_trajectory_equivalent_to_current": false
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO",
+      "subject": "The Himalayas",
+      "subject_slug": "the-himalayas",
+      "terrain_class": "VERY_LARGE_MOUNTAIN_RANGE",
+      "morphology": "GENERIC_TERRAIN",
+      "prompt": "Show the terrain of The Himalayas.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "CURRENT_AUTO",
+      "candidate_label": "CURRENT",
+      "production_output": true,
+      "production_policy_changed": false,
+      "natural_scale": "region",
+      "candidate_scale": "region",
+      "feasibility": "NATURAL_SCALE",
+      "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+      "decision": {
+        "key": "reveal",
+        "movement": "reveal",
+        "tilt_deg": null,
+        "altitude_m": null,
+        "morphology": null,
+        "terrain_policy": null,
+        "why": "region framing is within its useful range a selective move is earned here (STARTING_CONTEXT, importance NORMAL)",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 9,
+        "frame_rate": 30,
+        "total_frames": 270,
+        "target": {
+          "name": "The Himalayas",
+          "latitude": 29.3,
+          "longitude": 84.5,
+          "scale": "region",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "The Himalayas",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ]
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of The Himalayas."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/earth-studio.esp",
+      "esp_sha256": "6ff61f32b37733c63eedb86204339bc5322449b5c3c88c0340164941faf36482",
+      "trajectory_sha256": "be28265fa29da4c73adf50edb5f05e1d20c1b67700d58399cdf67c7d2d90a4e8",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/candidate-metadata.json"
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM",
+      "subject": "The Himalayas",
+      "subject_slug": "the-himalayas",
+      "terrain_class": "VERY_LARGE_MOUNTAIN_RANGE",
+      "morphology": "GENERIC_TERRAIN",
+      "prompt": "Show the terrain of The Himalayas.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "TERRAIN_FORM",
+      "candidate_label": "TERRAIN FORM",
+      "production_output": false,
+      "production_policy_changed": false,
+      "natural_scale": "region",
+      "candidate_scale": "district",
+      "feasibility": "LOCAL_INSPECTION_STRESS_TEST",
+      "feasibility_note": "The fixture is region-scale. The ring is bounded to district framing around the fixture centre and does not claim to represent the full region.",
+      "decision": {
+        "key": "slow_orbit",
+        "movement": "slow_orbit",
+        "tilt_deg": 65,
+        "altitude_m": null,
+        "morphology": "GENERIC_TERRAIN",
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "GENERIC_TERRAIN",
+          "morphology_metadata_value": null,
+          "morphology_source": "generic_fallback",
+          "requested_tilt_deg": 65,
+          "final_tilt_deg": 65,
+          "baseline_tilt_deg": 72,
+          "altitude_m": null,
+          "reference_orbit_radius_m": null,
+          "treatment": "generic terrain fallback",
+          "reason": "65 degrees is the reviewed middle-rake candidate: enough relief without defaulting to the falsified 72-degree extreme",
+          "confidence": "CONSERVATIVE_FALLBACK",
+          "fallback": true,
+          "safety_clamp": null,
+          "explanation": "generic_terrain → generic terrain fallback → 65°"
+        },
+        "why": "district framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 9587,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "The Himalayas",
+          "latitude": 29.3,
+          "longitude": 84.5,
+          "scale": "region",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "The Himalayas",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ],
+            "framing": "district"
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of The Himalayas."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/earth-studio/earth-studio.esp",
+      "esp_sha256": "37365e6edf7505ab4974e579936099f420be89f8f786fda95efd028d96f56918",
+      "trajectory_sha256": "0b2b467249fde3fd58e1b911d12b7790ddd37935a47cbe40fd8689c22dcebb7e",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/earth-studio/candidate-metadata.json",
+      "byte_equivalent_to_current": false,
+      "camera_trajectory_equivalent_to_current": false
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO",
+      "subject": "Yosemite",
+      "subject_slug": "yosemite",
+      "terrain_class": "VALLEY",
+      "morphology": "GENERIC_TERRAIN",
+      "prompt": "Show the terrain of Yosemite.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "CURRENT_AUTO",
+      "candidate_label": "CURRENT",
+      "production_output": true,
+      "production_policy_changed": false,
+      "natural_scale": "region",
+      "candidate_scale": "region",
+      "feasibility": "NATURAL_SCALE",
+      "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+      "decision": {
+        "key": "reveal",
+        "movement": "reveal",
+        "tilt_deg": null,
+        "altitude_m": null,
+        "morphology": null,
+        "terrain_policy": null,
+        "why": "region framing is within its useful range a selective move is earned here (STARTING_CONTEXT, importance NORMAL)",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Yosemite",
+          "latitude": 37.8651,
+          "longitude": -119.5383,
+          "altitude_m": 4500,
+          "min_altitude_m": 2800,
+          "terrain_morphology": "valley",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Yosemite",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ]
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Yosemite."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/earth-studio.esp",
+      "esp_sha256": "a9bf58ff006f8f7357c34bc9eac082e5622d7e8fd92fdd9adbd0c9e835d3d3f4",
+      "trajectory_sha256": "6a0274429b090c003e8f7da7e54748606992759a76baf955669524bab35a4af3",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/candidate-metadata.json"
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM",
+      "subject": "Yosemite",
+      "subject_slug": "yosemite",
+      "terrain_class": "VALLEY",
+      "morphology": "GENERIC_TERRAIN",
+      "prompt": "Show the terrain of Yosemite.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "TERRAIN_FORM",
+      "candidate_label": "TERRAIN FORM",
+      "production_output": false,
+      "production_policy_changed": false,
+      "natural_scale": "region",
+      "candidate_scale": "district",
+      "feasibility": "LOCAL_INSPECTION_STRESS_TEST",
+      "feasibility_note": "The fixture is region-scale. The ring is bounded to district framing around the fixture centre and does not claim to represent the full region.",
+      "decision": {
+        "key": "slow_orbit",
+        "movement": "slow_orbit",
+        "tilt_deg": 65,
+        "altitude_m": 6458.163312,
+        "morphology": "GENERIC_TERRAIN",
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "GENERIC_TERRAIN",
+          "morphology_metadata_value": "valley",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 65,
+          "final_tilt_deg": 65,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 6458.163312,
+          "reference_orbit_radius_m": 13849.575917,
+          "treatment": "generic terrain fallback",
+          "reason": "65 degrees is the reviewed middle-rake candidate: enough relief without defaulting to the falsified 72-degree extreme",
+          "confidence": "CONSERVATIVE_FALLBACK",
+          "fallback": true,
+          "safety_clamp": null,
+          "explanation": "generic_terrain → generic terrain fallback → 65°"
+        },
+        "why": "district framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 6458,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Yosemite",
+          "latitude": 37.8651,
+          "longitude": -119.5383,
+          "altitude_m": 4500,
+          "min_altitude_m": 2800,
+          "terrain_morphology": "valley",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Yosemite",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ],
+            "framing": "district"
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Yosemite."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/earth-studio/earth-studio.esp",
+      "esp_sha256": "6700c83cf802ac84cc588c8d56e2592dd184867c98b6ecb7c6d749204f639857",
+      "trajectory_sha256": "76cf352f054e4a827738f6b0c5cf9ed6d816f0a9300973bb1d68aabccd8fa7cb",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/earth-studio/candidate-metadata.json",
+      "byte_equivalent_to_current": false,
+      "camera_trajectory_equivalent_to_current": false
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO",
+      "subject": "Yellowstone",
+      "subject_slug": "yellowstone",
+      "terrain_class": "GENERIC_TERRAIN_REGION",
+      "morphology": "GENERIC_TERRAIN",
+      "prompt": "Show the terrain of Yellowstone.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "CURRENT_AUTO",
+      "candidate_label": "CURRENT",
+      "production_output": true,
+      "production_policy_changed": false,
+      "natural_scale": "region",
+      "candidate_scale": "region",
+      "feasibility": "NATURAL_SCALE",
+      "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+      "decision": {
+        "key": "reveal",
+        "movement": "reveal",
+        "tilt_deg": null,
+        "altitude_m": null,
+        "morphology": null,
+        "terrain_policy": null,
+        "why": "region framing is within its useful range a selective move is earned here (STARTING_CONTEXT, importance NORMAL)",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Yellowstone",
+          "latitude": 44.428,
+          "longitude": -110.5885,
+          "altitude_m": 5000,
+          "min_altitude_m": 3200,
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Yellowstone",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ]
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Yellowstone."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/earth-studio.esp",
+      "esp_sha256": "de08e397ef540ebdd24cf60a46127ab7a722d9eb458cd471771e2a3a288fa35b",
+      "trajectory_sha256": "f84b1ba73f4bc55bb01b0066da882b86c4f4967550f5863a3b65b7b52d774013",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/candidate-metadata.json"
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM",
+      "subject": "Yellowstone",
+      "subject_slug": "yellowstone",
+      "terrain_class": "GENERIC_TERRAIN_REGION",
+      "morphology": "GENERIC_TERRAIN",
+      "prompt": "Show the terrain of Yellowstone.",
+      "terrain_purpose": "TERRAIN_FORM",
+      "treatment": "TERRAIN_FORM",
+      "candidate_label": "TERRAIN FORM",
+      "production_output": false,
+      "production_policy_changed": false,
+      "natural_scale": "region",
+      "candidate_scale": "district",
+      "feasibility": "LOCAL_INSPECTION_STRESS_TEST",
+      "feasibility_note": "The fixture is region-scale. The ring is bounded to district framing around the fixture centre and does not claim to represent the full region.",
+      "decision": {
+        "key": "slow_orbit",
+        "movement": "slow_orbit",
+        "tilt_deg": 65,
+        "altitude_m": 7175.737014,
+        "morphology": "GENERIC_TERRAIN",
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "GENERIC_TERRAIN",
+          "morphology_metadata_value": null,
+          "morphology_source": "generic_fallback",
+          "requested_tilt_deg": 65,
+          "final_tilt_deg": 65,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 7175.737014,
+          "reference_orbit_radius_m": 15388.417686,
+          "treatment": "generic terrain fallback",
+          "reason": "65 degrees is the reviewed middle-rake candidate: enough relief without defaulting to the falsified 72-degree extreme",
+          "confidence": "CONSERVATIVE_FALLBACK",
+          "fallback": true,
+          "safety_clamp": null,
+          "explanation": "generic_terrain → generic terrain fallback → 65°"
+        },
+        "why": "district framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null
+      },
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 7176,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Yellowstone",
+          "latitude": 44.428,
+          "longitude": -110.5885,
+          "altitude_m": 5000,
+          "min_altitude_m": 3200,
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "warnings": [],
+        "finite_camera_state": true,
+        "target_stable": true,
+        "roll_authored": false,
+        "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+      },
+      "intent": {
+        "stops": [
+          {
+            "location": "Yellowstone",
+            "purposes": [
+              "SHOW_TERRAIN"
+            ],
+            "framing": "district"
+          }
+        ],
+        "globe_justification": null,
+        "continuation_requested": false,
+        "pace": null,
+        "aspect": null,
+        "source_text": "Show the terrain of Yellowstone."
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/earth-studio.esp",
+      "esp_sha256": "9d2aea1369ecbd691d15e70efd94eaabbbb2a6c84df808b9048c4dca829b2471",
+      "trajectory_sha256": "c2395b88d0a1edc81184eb5f2b6b25e10b7ed30b2b74b557ecf8d52c18e56ca6",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/camera-quality.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/direction.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ],
+      "metadata": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/candidate-metadata.json",
+      "byte_equivalent_to_current": false,
+      "camera_trajectory_equivalent_to_current": false
+    }
+  ]
+}

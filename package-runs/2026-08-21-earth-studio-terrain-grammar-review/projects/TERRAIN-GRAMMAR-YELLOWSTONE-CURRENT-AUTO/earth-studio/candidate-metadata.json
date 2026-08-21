@@ -1,0 +1,82 @@
+{
+  "id": "TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO",
+  "subject": "Yellowstone",
+  "subject_slug": "yellowstone",
+  "terrain_class": "GENERIC_TERRAIN_REGION",
+  "morphology": "GENERIC_TERRAIN",
+  "prompt": "Show the terrain of Yellowstone.",
+  "terrain_purpose": "TERRAIN_FORM",
+  "treatment": "CURRENT_AUTO",
+  "candidate_label": "CURRENT",
+  "production_output": true,
+  "production_policy_changed": false,
+  "natural_scale": "region",
+  "candidate_scale": "region",
+  "feasibility": "NATURAL_SCALE",
+  "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+  "decision": {
+    "key": "reveal",
+    "movement": "reveal",
+    "tilt_deg": null,
+    "altitude_m": null,
+    "morphology": null,
+    "terrain_policy": null,
+    "why": "region framing is within its useful range a selective move is earned here (STARTING_CONTEXT, importance NORMAL)",
+    "angle_limitation": null
+  },
+  "authored": {
+    "movement": "zoom_out",
+    "tilt_deg": 0,
+    "altitude_m": 7089102,
+    "orbit_degrees": null,
+    "orbit_direction": null,
+    "duration_seconds": 16,
+    "frame_rate": 30,
+    "total_frames": 480,
+    "target": {
+      "name": "Yellowstone",
+      "latitude": 44.428,
+      "longitude": -110.5885,
+      "altitude_m": 5000,
+      "min_altitude_m": 3200,
+      "source": "gazetteer_fixture"
+    }
+  },
+  "technical": {
+    "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+    "errors": [],
+    "warnings": [],
+    "finite_camera_state": true,
+    "target_stable": true,
+    "roll_authored": false,
+    "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+  },
+  "intent": {
+    "stops": [
+      {
+        "location": "Yellowstone",
+        "purposes": [
+          "SHOW_TERRAIN"
+        ]
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null,
+    "aspect": null,
+    "source_text": "Show the terrain of Yellowstone."
+  },
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/earth-studio.esp",
+  "esp_sha256": "de08e397ef540ebdd24cf60a46127ab7a722d9eb458cd471771e2a3a288fa35b",
+  "trajectory_sha256": "f84b1ba73f4bc55bb01b0066da882b86c4f4967550f5863a3b65b7b52d774013",
+  "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/shot-plan.json",
+  "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/camera-quality.json",
+  "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/direction.json",
+  "generated_files": [
+    "camera-quality.json",
+    "direction.json",
+    "earth-studio.esp",
+    "journey.json",
+    "shot-plan.json"
+  ]
+}

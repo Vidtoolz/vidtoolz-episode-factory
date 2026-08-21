@@ -1,0 +1,100 @@
+{
+  "id": "TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM",
+  "subject": "The Alps",
+  "subject_slug": "the-alps",
+  "terrain_class": "BROAD_MOUNTAIN_RANGE",
+  "morphology": "GENERIC_TERRAIN",
+  "prompt": "Show the terrain of The Alps.",
+  "terrain_purpose": "TERRAIN_FORM",
+  "treatment": "TERRAIN_FORM",
+  "candidate_label": "TERRAIN FORM",
+  "production_output": false,
+  "production_policy_changed": false,
+  "natural_scale": "region",
+  "candidate_scale": "district",
+  "feasibility": "LOCAL_INSPECTION_STRESS_TEST",
+  "feasibility_note": "The fixture is region-scale. The ring is bounded to district framing around the fixture centre and does not claim to represent the full region.",
+  "decision": {
+    "key": "slow_orbit",
+    "movement": "slow_orbit",
+    "tilt_deg": 65,
+    "altitude_m": null,
+    "morphology": "GENERIC_TERRAIN",
+    "terrain_policy": {
+      "policy_version": 1,
+      "morphology": "GENERIC_TERRAIN",
+      "morphology_metadata_value": "mountain_range",
+      "morphology_source": "curated_gazetteer",
+      "requested_tilt_deg": 65,
+      "final_tilt_deg": 65,
+      "baseline_tilt_deg": 72,
+      "altitude_m": null,
+      "reference_orbit_radius_m": null,
+      "treatment": "generic terrain fallback",
+      "reason": "65 degrees is the reviewed middle-rake candidate: enough relief without defaulting to the falsified 72-degree extreme",
+      "confidence": "CONSERVATIVE_FALLBACK",
+      "fallback": true,
+      "safety_clamp": null,
+      "explanation": "generic_terrain → generic terrain fallback → 65°"
+    },
+    "why": "district framing is within its useful range it gives the oblique view this purpose wants",
+    "angle_limitation": null
+  },
+  "authored": {
+    "movement": "orbit",
+    "tilt_deg": 65,
+    "altitude_m": 9587,
+    "orbit_degrees": 180,
+    "orbit_direction": 1,
+    "duration_seconds": 22,
+    "frame_rate": 30,
+    "total_frames": 660,
+    "target": {
+      "name": "The Alps",
+      "latitude": 46.6,
+      "longitude": 10.2,
+      "scale": "region",
+      "terrain_morphology": "mountain_range",
+      "morphology_source": "curated_gazetteer",
+      "source": "gazetteer_fixture"
+    }
+  },
+  "technical": {
+    "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+    "errors": [],
+    "warnings": [],
+    "finite_camera_state": true,
+    "target_stable": true,
+    "roll_authored": false,
+    "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+  },
+  "intent": {
+    "stops": [
+      {
+        "location": "The Alps",
+        "purposes": [
+          "SHOW_TERRAIN"
+        ],
+        "framing": "district"
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null,
+    "aspect": null,
+    "source_text": "Show the terrain of The Alps."
+  },
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/earth-studio.esp",
+  "esp_sha256": "6219ad2591df6fd81a4902f07402d828bb646d814a3f3f31c67a05e891fb9734",
+  "trajectory_sha256": "d8bdab8422d9afd81bff4974d61090c404f6c6b5b2cf85a62f5755df03251e7a",
+  "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/shot-plan.json",
+  "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/camera-quality.json",
+  "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/direction.json",
+  "generated_files": [
+    "camera-quality.json",
+    "direction.json",
+    "earth-studio.esp",
+    "journey.json",
+    "shot-plan.json"
+  ]
+}

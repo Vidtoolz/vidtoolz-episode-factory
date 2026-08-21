@@ -1,0 +1,120 @@
+{
+  "id": "TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO",
+  "subject": "The Himalayas",
+  "treatment": "CURRENT_AUTO",
+  "imported": true,
+  "import_index": 11,
+  "earth_studio_project": {
+    "duration": 270,
+    "totalFrames": 270,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "total_frames": 270,
+    "frame_rate": 30,
+    "tilt_deg": 0
+  },
+  "observed": {
+    "opening_tilt_deg": 0,
+    "opening_altitude_m": 2500.9750465135867,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "finite_camera_state": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 29.3,
+        "longitude": 84.5,
+        "altitude": 2500.9750465135867,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 0,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 0
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO_f0000.png"
+    },
+    {
+      "frame": 134,
+      "camera": {
+        "frame": 134,
+        "latitude": 29.300000356338984,
+        "longitude": 84.49999997433085,
+        "altitude": 5267908.924258397,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 0.04,
+        "position_bearing_around_target_deg": 356.40539644,
+        "camera_to_target_bearing_deg": 176.40539643
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO_f0134.png"
+    },
+    {
+      "frame": 267,
+      "camera": {
+        "frame": 267,
+        "latitude": 29.3,
+        "longitude": 84.5,
+        "altitude": 7089032.240875823,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 0,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 0
+      }
+    },
+    {
+      "frame": 268,
+      "camera": {
+        "frame": 268,
+        "latitude": 29.3,
+        "longitude": 84.5,
+        "altitude": 7089032.240875823,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 0,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 0
+      }
+    },
+    {
+      "frame": 269,
+      "camera": {
+        "frame": 269,
+        "latitude": 29.3,
+        "longitude": 84.5,
+        "altitude": 7089032.240875823,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 0,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "id": "TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM",
+  "subject": "Geirangerfjord",
+  "treatment": "TERRAIN_FORM",
+  "imported": true,
+  "import_index": 4,
+  "earth_studio_project": {
+    "duration": 660,
+    "totalFrames": 660,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "total_frames": 660,
+    "frame_rate": 30,
+    "tilt_deg": 65
+  },
+  "observed": {
+    "opening_tilt_deg": 65,
+    "opening_altitude_m": 3588.9641867562996,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "finite_camera_state": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 62.174097505097535,
+        "longitude": 7.2054,
+        "altitude": 3588.9641867562996,
+        "pan_deg": 180,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 7694.412,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM_f0000.png"
+    },
+    {
+      "frame": 329,
+      "camera": {
+        "frame": 329,
+        "latitude": 62.10514856628607,
+        "longitude": 7.353305140909163,
+        "altitude": 3588.9641867562996,
+        "pan_deg": 269.72727272727275,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 7694.488,
+        "position_bearing_around_target_deg": 89.72882822,
+        "camera_to_target_bearing_deg": 269.85954778
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM_f0329.png"
+    },
+    {
+      "frame": 657,
+      "camera": {
+        "frame": 657,
+        "latitude": 62.035706861535964,
+        "longitude": 7.205635767344036,
+        "altitude": 3588.9641867562996,
+        "pan_deg": 359.8754085387336,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 7693.936,
+        "position_bearing_around_target_deg": 179.90845326,
+        "camera_to_target_bearing_deg": 359.90866157
+      }
+    },
+    {
+      "frame": 658,
+      "camera": {
+        "frame": 658,
+        "latitude": 62.03570412165215,
+        "longitude": 7.205504266376837,
+        "altitude": 3588.9641867562996,
+        "pan_deg": 359.9427830302776,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 7694.233,
+        "position_bearing_around_target_deg": 179.9595157,
+        "camera_to_target_bearing_deg": 359.95960782
+      }
+    },
+    {
+      "frame": 659,
+      "camera": {
+        "frame": 659,
+        "latitude": 62.03570252082368,
+        "longitude": 7.205425927895859,
+        "altitude": 3588.9641867562996,
+        "pan_deg": 359.9851936816673,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 7694.409,
+        "position_bearing_around_target_deg": 179.98993301,
+        "camera_to_target_bearing_deg": 359.98995592
+      }
+    }
+  ]
+}

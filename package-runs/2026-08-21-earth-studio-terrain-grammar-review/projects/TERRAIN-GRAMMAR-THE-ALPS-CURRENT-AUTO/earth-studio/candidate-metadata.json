@@ -1,0 +1,83 @@
+{
+  "id": "TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO",
+  "subject": "The Alps",
+  "subject_slug": "the-alps",
+  "terrain_class": "BROAD_MOUNTAIN_RANGE",
+  "morphology": "GENERIC_TERRAIN",
+  "prompt": "Show the terrain of The Alps.",
+  "terrain_purpose": "TERRAIN_FORM",
+  "treatment": "CURRENT_AUTO",
+  "candidate_label": "CURRENT",
+  "production_output": true,
+  "production_policy_changed": false,
+  "natural_scale": "region",
+  "candidate_scale": "region",
+  "feasibility": "NATURAL_SCALE",
+  "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+  "decision": {
+    "key": "reveal",
+    "movement": "reveal",
+    "tilt_deg": null,
+    "altitude_m": null,
+    "morphology": null,
+    "terrain_policy": null,
+    "why": "region framing is within its useful range a selective move is earned here (STARTING_CONTEXT, importance NORMAL)",
+    "angle_limitation": null
+  },
+  "authored": {
+    "movement": "zoom_out",
+    "tilt_deg": 0,
+    "altitude_m": 7089102,
+    "orbit_degrees": null,
+    "orbit_direction": null,
+    "duration_seconds": 9,
+    "frame_rate": 30,
+    "total_frames": 270,
+    "target": {
+      "name": "The Alps",
+      "latitude": 46.6,
+      "longitude": 10.2,
+      "scale": "region",
+      "terrain_morphology": "mountain_range",
+      "morphology_source": "curated_gazetteer",
+      "source": "gazetteer_fixture"
+    }
+  },
+  "technical": {
+    "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+    "errors": [],
+    "warnings": [],
+    "finite_camera_state": true,
+    "target_stable": true,
+    "roll_authored": false,
+    "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+  },
+  "intent": {
+    "stops": [
+      {
+        "location": "The Alps",
+        "purposes": [
+          "SHOW_TERRAIN"
+        ]
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null,
+    "aspect": null,
+    "source_text": "Show the terrain of The Alps."
+  },
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/earth-studio.esp",
+  "esp_sha256": "53e788d5bbee7fcc99f016b62f5808501809bd9e57619275f3cc0b44f22795e9",
+  "trajectory_sha256": "0f8b11dd1f97f4577315f3159457269989f8223363cc160461d340a0911b44b4",
+  "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/shot-plan.json",
+  "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/camera-quality.json",
+  "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/direction.json",
+  "generated_files": [
+    "camera-quality.json",
+    "direction.json",
+    "earth-studio.esp",
+    "journey.json",
+    "shot-plan.json"
+  ]
+}

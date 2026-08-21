@@ -1,0 +1,120 @@
+{
+  "id": "TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM",
+  "subject": "Mount Fuji",
+  "treatment": "TERRAIN_FORM",
+  "imported": true,
+  "import_index": 8,
+  "earth_studio_project": {
+    "duration": 360,
+    "totalFrames": 360,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "total_frames": 360,
+    "frame_rate": 30,
+    "tilt_deg": 45
+  },
+  "observed": {
+    "opening_tilt_deg": 45,
+    "opening_altitude_m": 16927.831044934195,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "finite_camera_state": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 35.51282744433846,
+        "longitude": 138.7274,
+        "altitude": 16927.831044934195,
+        "pan_deg": 180,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 16926.92,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM_f0000.png"
+    },
+    {
+      "frame": 179,
+      "camera": {
+        "frame": 179,
+        "latitude": 35.36177835620184,
+        "longitude": 138.9140590410595,
+        "altitude": 16927.831044934195,
+        "pan_deg": 269.5,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 16927.061,
+        "position_bearing_around_target_deg": 89.50247431,
+        "camera_to_target_bearing_deg": 269.61049935
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM_f0179.png"
+    },
+    {
+      "frame": 357,
+      "camera": {
+        "frame": 357,
+        "latitude": 35.20840867771809,
+        "longitude": 138.72842073501698,
+        "altitude": 16927.831044934195,
+        "pan_deg": 359.6086255000298,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 16923.157,
+        "position_bearing_around_target_deg": 179.6860243,
+        "camera_to_target_bearing_deg": 359.68661392
+      }
+    },
+    {
+      "frame": 358,
+      "camera": {
+        "frame": 358,
+        "latitude": 35.208387741065515,
+        "longitude": 138.7278502725231,
+        "altitude": 16927.831044934195,
+        "pan_deg": 359.8162711579965,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 16925.28,
+        "position_bearing_around_target_deg": 179.86151513,
+        "camera_to_target_bearing_deg": 359.86177522
+      }
+    },
+    {
+      "frame": 359,
+      "camera": {
+        "frame": 359,
+        "latitude": 35.208375799419215,
+        "longitude": 138.72751156282507,
+        "altitude": 16927.831044934195,
+        "pan_deg": 359.9512387734809,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 16926.562,
+        "position_bearing_around_target_deg": 179.9656906,
+        "camera_to_target_bearing_deg": 359.96575504
+      }
+    }
+  ]
+}

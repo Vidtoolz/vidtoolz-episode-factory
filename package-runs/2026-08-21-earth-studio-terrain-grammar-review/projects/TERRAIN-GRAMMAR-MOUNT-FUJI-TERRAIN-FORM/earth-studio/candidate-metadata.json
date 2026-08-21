@@ -1,0 +1,100 @@
+{
+  "id": "TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM",
+  "subject": "Mount Fuji",
+  "subject_slug": "mount-fuji",
+  "terrain_class": "VOLCANIC_CONE",
+  "morphology": "VOLCANIC_CONE",
+  "prompt": "Show the terrain of Mount Fuji.",
+  "terrain_purpose": "TERRAIN_FORM",
+  "treatment": "TERRAIN_FORM",
+  "candidate_label": "TERRAIN FORM",
+  "production_output": false,
+  "production_policy_changed": false,
+  "natural_scale": "neighborhood",
+  "candidate_scale": "neighborhood",
+  "feasibility": "NATURAL_SCALE",
+  "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+  "decision": {
+    "key": "slow_orbit",
+    "movement": "slow_orbit",
+    "tilt_deg": 45,
+    "altitude_m": 16927.259454,
+    "morphology": "VOLCANIC_CONE",
+    "terrain_policy": {
+      "policy_version": 1,
+      "morphology": "VOLCANIC_CONE",
+      "morphology_metadata_value": "volcanic_cone",
+      "morphology_source": "curated_gazetteer",
+      "requested_tilt_deg": 45,
+      "final_tilt_deg": 45,
+      "baseline_tilt_deg": 72,
+      "altitude_m": 16927.259454,
+      "reference_orbit_radius_m": 16927.259454,
+      "treatment": "restrained high oblique",
+      "reason": "a broad symmetric cone needs geographic context to preserve its silhouette and base",
+      "confidence": "CALIBRATED_SINGLE_SUBJECT",
+      "fallback": false,
+      "safety_clamp": null,
+      "explanation": "volcanic_cone → restrained high oblique → 45°"
+    },
+    "why": "neighborhood framing is within its useful range it gives the oblique view this purpose wants",
+    "angle_limitation": null
+  },
+  "authored": {
+    "movement": "orbit",
+    "tilt_deg": 45,
+    "altitude_m": 16927,
+    "orbit_degrees": 180,
+    "orbit_direction": 1,
+    "duration_seconds": 12,
+    "frame_rate": 30,
+    "total_frames": 360,
+    "target": {
+      "name": "Mount Fuji",
+      "latitude": 35.3606,
+      "longitude": 138.7274,
+      "altitude_m": 5500,
+      "min_altitude_m": 4300,
+      "terrain_morphology": "volcanic_cone",
+      "morphology_source": "curated_gazetteer",
+      "source": "gazetteer_fixture"
+    }
+  },
+  "technical": {
+    "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+    "errors": [],
+    "warnings": [],
+    "finite_camera_state": true,
+    "target_stable": true,
+    "roll_authored": false,
+    "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+  },
+  "intent": {
+    "stops": [
+      {
+        "location": "Mount Fuji",
+        "purposes": [
+          "SHOW_TERRAIN"
+        ]
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null,
+    "aspect": null,
+    "source_text": "Show the terrain of Mount Fuji."
+  },
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/earth-studio.esp",
+  "esp_sha256": "3a57ba9cd09c8430d0535502c32b16645b6f3a5630cee4e47509d8a282c44536",
+  "trajectory_sha256": "b9b0674b8c5d14bd8076513eb408f6abd09be8a893661f4478a40febe4295246",
+  "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/shot-plan.json",
+  "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/camera-quality.json",
+  "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/direction.json",
+  "generated_files": [
+    "camera-quality.json",
+    "direction.json",
+    "earth-studio.esp",
+    "journey.json",
+    "shot-plan.json"
+  ]
+}

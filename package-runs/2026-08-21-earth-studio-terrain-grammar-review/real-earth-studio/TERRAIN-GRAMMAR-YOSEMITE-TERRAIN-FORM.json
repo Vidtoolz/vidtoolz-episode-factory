@@ -1,0 +1,120 @@
+{
+  "id": "TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM",
+  "subject": "Yosemite",
+  "treatment": "TERRAIN_FORM",
+  "imported": true,
+  "import_index": 14,
+  "earth_studio_project": {
+    "duration": 660,
+    "totalFrames": 660,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "total_frames": 660,
+    "frame_rate": 30,
+    "tilt_deg": 65
+  },
+  "observed": {
+    "opening_tilt_deg": 65,
+    "opening_altitude_m": 6458.935540153898,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "finite_camera_state": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 37.98964852334362,
+        "longitude": -119.5383,
+        "altitude": 6458.935540153898,
+        "pan_deg": 180,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 13849.164,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM_f0000.png"
+    },
+    {
+      "frame": 329,
+      "camera": {
+        "frame": 329,
+        "latitude": 37.86558476849045,
+        "longitude": -119.38053529377842,
+        "altitude": 6458.935540153898,
+        "pan_deg": 269.72727272727275,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 13849.233,
+        "position_bearing_around_target_deg": 89.72857513,
+        "camera_to_target_bearing_deg": 269.82541237
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM_f0329.png"
+    },
+    {
+      "frame": 657,
+      "camera": {
+        "frame": 657,
+        "latitude": 37.74055974665409,
+        "longitude": -119.53804837626431,
+        "altitude": 6458.935540153898,
+        "pan_deg": 359.8754085387336,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 13848.262,
+        "position_bearing_around_target_deg": 179.90845685,
+        "camera_to_target_bearing_deg": 359.90861108
+      }
+    },
+    {
+      "frame": 658,
+      "camera": {
+        "frame": 658,
+        "latitude": 37.74055481710014,
+        "longitude": -119.53818872126007,
+        "altitude": 6458.935540153898,
+        "pan_deg": 359.9427830302776,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 13848.796,
+        "position_bearing_around_target_deg": 179.95951729,
+        "camera_to_target_bearing_deg": 359.9595855
+      }
+    },
+    {
+      "frame": 659,
+      "camera": {
+        "frame": 659,
+        "latitude": 37.74055193700335,
+        "longitude": -119.53827232834387,
+        "altitude": 6458.935540153898,
+        "pan_deg": 359.9851936816673,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 13849.113,
+        "position_bearing_around_target_deg": 179.9899334,
+        "camera_to_target_bearing_deg": 359.98995037
+      }
+    }
+  ]
+}

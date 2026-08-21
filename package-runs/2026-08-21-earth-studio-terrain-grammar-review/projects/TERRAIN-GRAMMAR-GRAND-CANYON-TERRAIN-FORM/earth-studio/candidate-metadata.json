@@ -1,0 +1,101 @@
+{
+  "id": "TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM",
+  "subject": "Grand Canyon",
+  "subject_slug": "grand-canyon",
+  "terrain_class": "CANYON",
+  "morphology": "CANYON",
+  "prompt": "Show the terrain of Grand Canyon.",
+  "terrain_purpose": "TERRAIN_FORM",
+  "treatment": "TERRAIN_FORM",
+  "candidate_label": "TERRAIN FORM",
+  "production_output": false,
+  "production_policy_changed": false,
+  "natural_scale": "region",
+  "candidate_scale": "district",
+  "feasibility": "LOCAL_INSPECTION_STRESS_TEST",
+  "feasibility_note": "The fixture is region-scale. The ring is bounded to district framing around the fixture centre and does not claim to represent the full region.",
+  "decision": {
+    "key": "slow_orbit",
+    "movement": "slow_orbit",
+    "tilt_deg": 74,
+    "altitude_m": 3530.046212,
+    "morphology": "CANYON",
+    "terrain_policy": {
+      "policy_version": 1,
+      "morphology": "CANYON",
+      "morphology_metadata_value": "canyon",
+      "morphology_source": "curated_gazetteer",
+      "requested_tilt_deg": 74,
+      "final_tilt_deg": 74,
+      "baseline_tilt_deg": 72,
+      "altitude_m": 3530.046212,
+      "reference_orbit_radius_m": 12310.734149,
+      "treatment": "strong terrain rake",
+      "reason": "a depressed landform needs a raking view to expose walls and depth",
+      "confidence": "CALIBRATED_SINGLE_SUBJECT",
+      "fallback": false,
+      "safety_clamp": null,
+      "explanation": "canyon → strong terrain rake → 74°"
+    },
+    "why": "district framing is within its useful range it gives the oblique view this purpose wants",
+    "angle_limitation": null
+  },
+  "authored": {
+    "movement": "orbit",
+    "tilt_deg": 74,
+    "altitude_m": 3530,
+    "orbit_degrees": 180,
+    "orbit_direction": 1,
+    "duration_seconds": 30,
+    "frame_rate": 30,
+    "total_frames": 900,
+    "target": {
+      "name": "Grand Canyon",
+      "latitude": 36.0544,
+      "longitude": -112.1401,
+      "altitude_m": 4000,
+      "min_altitude_m": 2700,
+      "terrain_morphology": "canyon",
+      "morphology_source": "curated_gazetteer",
+      "source": "gazetteer_fixture"
+    }
+  },
+  "technical": {
+    "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+    "errors": [],
+    "warnings": [],
+    "finite_camera_state": true,
+    "target_stable": true,
+    "roll_authored": false,
+    "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+  },
+  "intent": {
+    "stops": [
+      {
+        "location": "Grand Canyon",
+        "purposes": [
+          "SHOW_TERRAIN"
+        ],
+        "framing": "district"
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null,
+    "aspect": null,
+    "source_text": "Show the terrain of Grand Canyon."
+  },
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/earth-studio.esp",
+  "esp_sha256": "2bc615737cf2e71a2ee332ec61b8090044eb1044e0788b5aa276fd58bbd0afaa",
+  "trajectory_sha256": "e8466e3555915483f986315a9456cbb1d6646f478e4c3af3dca20ab15e57cc72",
+  "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/shot-plan.json",
+  "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/camera-quality.json",
+  "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/direction.json",
+  "generated_files": [
+    "camera-quality.json",
+    "direction.json",
+    "earth-studio.esp",
+    "journey.json",
+    "shot-plan.json"
+  ]
+}

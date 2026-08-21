@@ -1,0 +1,100 @@
+{
+  "id": "TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM",
+  "subject": "Geirangerfjord",
+  "subject_slug": "geirangerfjord",
+  "terrain_class": "FJORD",
+  "morphology": "FJORD_CHANNEL",
+  "prompt": "Show the terrain of Geirangerfjord.",
+  "terrain_purpose": "TERRAIN_FORM",
+  "treatment": "TERRAIN_FORM",
+  "candidate_label": "TERRAIN FORM",
+  "production_output": false,
+  "production_policy_changed": false,
+  "natural_scale": "district",
+  "candidate_scale": "district",
+  "feasibility": "NATURAL_SCALE",
+  "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+  "decision": {
+    "key": "slow_orbit",
+    "movement": "slow_orbit",
+    "tilt_deg": 65,
+    "altitude_m": 3587.868507,
+    "morphology": "FJORD_CHANNEL",
+    "terrain_policy": {
+      "policy_version": 1,
+      "morphology": "FJORD_CHANNEL",
+      "morphology_metadata_value": "fjord_channel",
+      "morphology_source": "curated_gazetteer",
+      "requested_tilt_deg": 65,
+      "final_tilt_deg": 65,
+      "baseline_tilt_deg": 72,
+      "altitude_m": 3587.868507,
+      "reference_orbit_radius_m": 7694.208843,
+      "treatment": "medium-strong terrain rake",
+      "reason": "an elongated deep channel needs wall relief without losing corridor readability",
+      "confidence": "CALIBRATED_SINGLE_SUBJECT",
+      "fallback": false,
+      "safety_clamp": null,
+      "explanation": "fjord_channel → medium-strong terrain rake → 65°"
+    },
+    "why": "district framing is within its useful range it gives the oblique view this purpose wants",
+    "angle_limitation": null
+  },
+  "authored": {
+    "movement": "orbit",
+    "tilt_deg": 65,
+    "altitude_m": 3588,
+    "orbit_degrees": 180,
+    "orbit_direction": 1,
+    "duration_seconds": 22,
+    "frame_rate": 30,
+    "total_frames": 660,
+    "target": {
+      "name": "Geirangerfjord",
+      "latitude": 62.1049,
+      "longitude": 7.2054,
+      "altitude_m": 2500,
+      "min_altitude_m": 1000,
+      "terrain_morphology": "fjord_channel",
+      "morphology_source": "curated_gazetteer",
+      "source": "gazetteer_fixture"
+    }
+  },
+  "technical": {
+    "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+    "errors": [],
+    "warnings": [],
+    "finite_camera_state": true,
+    "target_stable": true,
+    "roll_authored": false,
+    "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+  },
+  "intent": {
+    "stops": [
+      {
+        "location": "Geirangerfjord",
+        "purposes": [
+          "SHOW_TERRAIN"
+        ]
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null,
+    "aspect": null,
+    "source_text": "Show the terrain of Geirangerfjord."
+  },
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/earth-studio.esp",
+  "esp_sha256": "2c953b600679f72051d4f49656b5c6c46342f0a19ec9fa46a904e49786138c8d",
+  "trajectory_sha256": "0a5c4d2a8bb1790a19a7a27252770343a3fcea9eae9c5b816b133198ab8386af",
+  "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/shot-plan.json",
+  "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/camera-quality.json",
+  "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/direction.json",
+  "generated_files": [
+    "camera-quality.json",
+    "direction.json",
+    "earth-studio.esp",
+    "journey.json",
+    "shot-plan.json"
+  ]
+}

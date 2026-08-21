@@ -1,0 +1,120 @@
+{
+  "id": "TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM",
+  "subject": "The Himalayas",
+  "treatment": "TERRAIN_FORM",
+  "imported": true,
+  "import_index": 12,
+  "earth_studio_project": {
+    "duration": 660,
+    "totalFrames": 660,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "total_frames": 660,
+    "frame_rate": 30,
+    "tilt_deg": 65
+  },
+  "observed": {
+    "opening_tilt_deg": 65,
+    "opening_altitude_m": 9587.904308370302,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "finite_camera_state": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 29.48489439264082,
+        "longitude": 84.5,
+        "altitude": 9587.904308370302,
+        "pan_deg": 180,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20559.318,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM_f0000.png"
+    },
+    {
+      "frame": 329,
+      "camera": {
+        "frame": 329,
+        "latitude": 29.30070858054172,
+        "longitude": 84.71201772543746,
+        "altitude": 9587.904717665635,
+        "pan_deg": 269.7272727302701,
+        "tilt_deg": 64.99999999392956,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20559.368,
+        "position_bearing_around_target_deg": 89.72854313,
+        "camera_to_target_bearing_deg": 269.83230212
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM_f0329.png"
+    },
+    {
+      "frame": 657,
+      "camera": {
+        "frame": 657,
+        "latitude": 29.1151179929271,
+        "longitude": 84.50033812072623,
+        "altitude": 9587.904308370302,
+        "pan_deg": 359.8754085387336,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20557.967,
+        "position_bearing_around_target_deg": 179.90845501,
+        "camera_to_target_bearing_deg": 359.90862
+      }
+    },
+    {
+      "frame": 658,
+      "camera": {
+        "frame": 658,
+        "latitude": 29.115110670285997,
+        "longitude": 84.50014953154107,
+        "altitude": 9587.904308370302,
+        "pan_deg": 359.9427830302776,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20558.761,
+        "position_bearing_around_target_deg": 179.95951644,
+        "camera_to_target_bearing_deg": 359.9595894
+      }
+    },
+    {
+      "frame": 659,
+      "camera": {
+        "frame": 659,
+        "latitude": 29.11510639193459,
+        "longitude": 84.50003718400694,
+        "altitude": 9587.904308370302,
+        "pan_deg": 359.9851936816673,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20559.232,
+        "position_bearing_around_target_deg": 179.98993318,
+        "camera_to_target_bearing_deg": 359.98995133
+      }
+    }
+  ]
+}

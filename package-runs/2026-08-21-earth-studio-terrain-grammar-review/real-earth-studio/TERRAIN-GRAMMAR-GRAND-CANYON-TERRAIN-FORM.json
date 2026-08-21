@@ -1,0 +1,120 @@
+{
+  "id": "TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM",
+  "subject": "Grand Canyon",
+  "treatment": "TERRAIN_FORM",
+  "imported": true,
+  "import_index": 2,
+  "earth_studio_project": {
+    "duration": 900,
+    "totalFrames": 900,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "total_frames": 900,
+    "frame_rate": 30,
+    "tilt_deg": 74
+  },
+  "observed": {
+    "opening_tilt_deg": 74,
+    "opening_altitude_m": 3530.9647656771845,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "finite_camera_state": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 36.16511159038271,
+        "longitude": -112.1401,
+        "altitude": 3530.9647656771845,
+        "pan_deg": 180,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 12310.567,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM_f0000.png"
+    },
+    {
+      "frame": 449,
+      "camera": {
+        "frame": 449,
+        "latitude": 36.054706395152536,
+        "longitude": -112.00315803609448,
+        "altitude": 3530.9647656771845,
+        "pan_deg": 269.8,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 12310.624,
+        "position_bearing_around_target_deg": 89.80113515,
+        "camera_to_target_bearing_deg": 269.88173309
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM_f0449.png"
+    },
+    {
+      "frame": 897,
+      "camera": {
+        "frame": 897,
+        "latitude": 35.943692013808864,
+        "longitude": -112.13998186564454,
+        "altitude": 3530.9647656771845,
+        "pan_deg": 359.93064947181176,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 12310.171,
+        "position_bearing_around_target_deg": 179.95050202,
+        "camera_to_target_bearing_deg": 359.95057146
+      }
+    },
+    {
+      "frame": 898,
+      "camera": {
+        "frame": 898,
+        "latitude": 35.94368975903158,
+        "longitude": -112.14004769782895,
+        "altitude": 3530.9647656771845,
+        "pan_deg": 359.968395565581,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 12310.418,
+        "position_bearing_around_target_deg": 179.97808597,
+        "camera_to_target_bearing_deg": 359.97811671
+      }
+    },
+    {
+      "frame": 899,
+      "camera": {
+        "frame": 899,
+        "latitude": 35.94368843362524,
+        "longitude": -112.14008697726406,
+        "altitude": 3530.9647656771845,
+        "pan_deg": 359.9918901709601,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 12310.565,
+        "position_bearing_around_target_deg": 179.99454368,
+        "camera_to_target_bearing_deg": 359.99455134
+      }
+    }
+  ]
+}

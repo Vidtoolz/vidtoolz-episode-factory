@@ -3,6 +3,8 @@ const review = require('../earth-studio-visual-review.js');
 const importGate = require('../scripts/earth-studio-journey-import-gate.js');
 const terrainGenerator = require('../scripts/earth-studio-terrain-tilt-generate.js');
 const terrainReview = require('../scripts/earth-studio-terrain-tilt-review.js');
+const grammarGenerator = require('../scripts/earth-studio-terrain-grammar-generate.js');
+const grammarReview = require('../scripts/earth-studio-terrain-grammar-review.js');
 const director = require('../earth-studio-director.js');
 const vm = require('node:vm');
 
@@ -118,6 +120,75 @@ test('terrain review browser controller contains valid executable JavaScript', (
   const html = terrainReview.page();
   const script = html.match(/<script>([\s\S]*)<\/script>/);
   assert.ok(script, 'controller must contain its browser script');
+  assert.doesNotThrow(() => new vm.Script(script[1]));
+  assert.match(script[1], /addEventListener\('click'/);
+});
+
+test('terrain grammar calibration separates context evidence from terrain-form evidence', () => {
+  assert.equal(grammarGenerator.terrainPurpose('Show where the Grand Canyon is within Arizona.'), 'TERRAIN_CONTEXT');
+  assert.equal(grammarGenerator.terrainPurpose('Show the walls and depth of the Grand Canyon.'), 'TERRAIN_FORM');
+  assert.equal(grammarGenerator.terrainPurpose('Show the terrain in regional context.'), 'MIXED_REQUIRES_OPERATOR_GRAMMAR');
+});
+
+test('terrain grammar current candidates are exact live production decisions', () => {
+  for (const subject of grammarGenerator.SUBJECTS) {
+    const direct = director.autoDirect(director.parseIntent(grammarGenerator.promptFor(subject)));
+    const expected = direct.decisions.find((row) => row.kind === 'at').decision;
+    const actual = grammarGenerator.directionFor(subject, grammarGenerator.TREATMENTS.CURRENT_AUTO).at.decision;
+    assert.equal(actual.key, expected.key);
+    assert.equal(actual.tilt_deg, expected.tilt_deg);
+  }
+});
+
+test('terrain-form experiment keeps morphology tilts and bounds region fixtures locally', () => {
+  const expected = new Map([['Grand Canyon', 74], ['Geirangerfjord', 65], ['Matterhorn', 74], ['Mount Fuji', 45]]);
+  for (const subject of grammarGenerator.SUBJECTS) {
+    const result = grammarGenerator.directionFor(subject, grammarGenerator.TREATMENTS.TERRAIN_FORM);
+    assert.match(result.at.decision.movement, /orbit/);
+    assert.equal(result.at.decision.terrain_policy.morphology, subject.morphology);
+    if (expected.has(subject.name)) assert.equal(result.at.decision.tilt_deg, expected.get(subject.name));
+    const natural = director.autoDirect(director.parseIntent(grammarGenerator.promptFor(subject))).stops[0].scale;
+    if (natural === 'region') assert.equal(result.directed.stops[0].scale, 'district');
+  }
+});
+
+test('terrain-form experiment cannot bypass explicit no-orbit or top-down authority', () => {
+  const subject = grammarGenerator.SUBJECTS.find((row) => row.name === 'Grand Canyon');
+  assert.throws(() => grammarGenerator.terrainFormIntent(subject, 'Show the terrain of Grand Canyon, but don\'t orbit.'), /no-orbit/);
+  assert.throws(() => grammarGenerator.terrainFormIntent(subject, 'Show the terrain of Grand Canyon top-down.'), /top-down/);
+});
+
+test('terrain grammar package is deterministic, compact, and production-neutral', () => {
+  const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'es-terrain-grammar-')), 'package');
+  const manifest = grammarGenerator.buildExperiment(tmp);
+  assert.equal(manifest.canaries.length, 16);
+  assert.equal(manifest.production_policy_changed, false);
+  assert.equal(manifest.terrain_tilt_policy_changed, false);
+  assert.equal(manifest.oblique_reveal.supported, false);
+  assert.ok(manifest.canaries.every((record) => record.technical.camera_quality === 'PASS_FOR_HUMAN_REVIEW'));
+  assert.ok(manifest.canaries.every((record) => fs.existsSync(path.join(ROOT, record.esp))));
+  assert.throws(() => grammarGenerator.buildExperiment(tmp), /refusing to overwrite/);
+});
+
+test('terrain grammar review persists only valid operator choices', () => {
+  const pkg = grammarReview.loadPackage();
+  const session = grammarReview.freshSession(pkg, '2026-08-21T18:00:00.000Z');
+  grammarReview.applyChoice(pkg, session, {
+    subject: 'Grand Canyon', winner: 'TERRAIN_FORM', second_best: 'CURRENT_AUTO',
+    unacceptable_treatments: ['CURRENT_AUTO'], note: 'relief reads better',
+  }, '2026-08-21T18:01:00.000Z');
+  assert.equal(session.choices[0].winner, 'TERRAIN_FORM');
+  assert.equal(session.choices[0].second_best, 'CURRENT_AUTO');
+  assert.deepEqual(session.choices[0].unacceptable_treatments, ['CURRENT_AUTO']);
+  assert.throws(() => grammarReview.applyChoice(pkg, session, { subject: 'Grand Canyon', winner: 'OBLIQUE_REVEAL' }), /invalid grammar treatment/);
+});
+
+test('terrain grammar review foregrounds controls and ships valid browser JavaScript', async () => {
+  const calls = [];
+  await grammarReview.bringToFront({ send: async (method) => calls.push(method) });
+  assert.deepEqual(calls, ['Page.bringToFront']);
+  const script = grammarReview.page().match(/<script>([\s\S]*)<\/script>/);
+  assert.ok(script);
   assert.doesNotThrow(() => new vm.Script(script[1]));
   assert.match(script[1], /addEventListener\('click'/);
 });

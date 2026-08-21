@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "production_grammar_changed": false,
+  "production_morphology_tilts_changed": false,
+  "accepted_artifacts": [
+    {
+      "contract": "Gate3 frozen v0.9.4 controls",
+      "impact": "UNCHANGED",
+      "verification": "22/22 Gate3 tests pass including BYTE-STABILITY"
+    },
+    {
+      "contract": "8 director acceptance canaries on disk",
+      "impact": "UNCHANGED",
+      "verification": "all manifest hashes remain valid; no accepted artifact is staged"
+    },
+    {
+      "contract": "journey v2 acceptance",
+      "impact": "UNCHANGED",
+      "verification": "no package or production source touched by this mission"
+    },
+    {
+      "contract": "terrain morphology production evidence",
+      "impact": "UNCHANGED",
+      "verification": "accepted morphology mapping remains 74/45/74/65/65"
+    },
+    {
+      "contract": "historical obliquity, density, and terminal-settle evidence",
+      "impact": "UNCHANGED",
+      "verification": "new files are isolated under this package"
+    }
+  ],
+  "new_artifacts": "16 experiment-only ESPs and their compact review/import evidence"
+}

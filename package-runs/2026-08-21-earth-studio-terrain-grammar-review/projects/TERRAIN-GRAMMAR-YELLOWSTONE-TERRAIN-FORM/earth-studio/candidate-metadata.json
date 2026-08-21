@@ -1,0 +1,99 @@
+{
+  "id": "TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM",
+  "subject": "Yellowstone",
+  "subject_slug": "yellowstone",
+  "terrain_class": "GENERIC_TERRAIN_REGION",
+  "morphology": "GENERIC_TERRAIN",
+  "prompt": "Show the terrain of Yellowstone.",
+  "terrain_purpose": "TERRAIN_FORM",
+  "treatment": "TERRAIN_FORM",
+  "candidate_label": "TERRAIN FORM",
+  "production_output": false,
+  "production_policy_changed": false,
+  "natural_scale": "region",
+  "candidate_scale": "district",
+  "feasibility": "LOCAL_INSPECTION_STRESS_TEST",
+  "feasibility_note": "The fixture is region-scale. The ring is bounded to district framing around the fixture centre and does not claim to represent the full region.",
+  "decision": {
+    "key": "slow_orbit",
+    "movement": "slow_orbit",
+    "tilt_deg": 65,
+    "altitude_m": 7175.737014,
+    "morphology": "GENERIC_TERRAIN",
+    "terrain_policy": {
+      "policy_version": 1,
+      "morphology": "GENERIC_TERRAIN",
+      "morphology_metadata_value": null,
+      "morphology_source": "generic_fallback",
+      "requested_tilt_deg": 65,
+      "final_tilt_deg": 65,
+      "baseline_tilt_deg": 72,
+      "altitude_m": 7175.737014,
+      "reference_orbit_radius_m": 15388.417686,
+      "treatment": "generic terrain fallback",
+      "reason": "65 degrees is the reviewed middle-rake candidate: enough relief without defaulting to the falsified 72-degree extreme",
+      "confidence": "CONSERVATIVE_FALLBACK",
+      "fallback": true,
+      "safety_clamp": null,
+      "explanation": "generic_terrain → generic terrain fallback → 65°"
+    },
+    "why": "district framing is within its useful range it gives the oblique view this purpose wants",
+    "angle_limitation": null
+  },
+  "authored": {
+    "movement": "orbit",
+    "tilt_deg": 65,
+    "altitude_m": 7176,
+    "orbit_degrees": 180,
+    "orbit_direction": 1,
+    "duration_seconds": 22,
+    "frame_rate": 30,
+    "total_frames": 660,
+    "target": {
+      "name": "Yellowstone",
+      "latitude": 44.428,
+      "longitude": -110.5885,
+      "altitude_m": 5000,
+      "min_altitude_m": 3200,
+      "source": "gazetteer_fixture"
+    }
+  },
+  "technical": {
+    "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+    "errors": [],
+    "warnings": [],
+    "finite_camera_state": true,
+    "target_stable": true,
+    "roll_authored": false,
+    "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+  },
+  "intent": {
+    "stops": [
+      {
+        "location": "Yellowstone",
+        "purposes": [
+          "SHOW_TERRAIN"
+        ],
+        "framing": "district"
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null,
+    "aspect": null,
+    "source_text": "Show the terrain of Yellowstone."
+  },
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/earth-studio.esp",
+  "esp_sha256": "9d2aea1369ecbd691d15e70efd94eaabbbb2a6c84df808b9048c4dca829b2471",
+  "trajectory_sha256": "c2395b88d0a1edc81184eb5f2b6b25e10b7ed30b2b74b557ecf8d52c18e56ca6",
+  "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/shot-plan.json",
+  "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/camera-quality.json",
+  "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/direction.json",
+  "generated_files": [
+    "camera-quality.json",
+    "direction.json",
+    "earth-studio.esp",
+    "journey.json",
+    "shot-plan.json"
+  ]
+}

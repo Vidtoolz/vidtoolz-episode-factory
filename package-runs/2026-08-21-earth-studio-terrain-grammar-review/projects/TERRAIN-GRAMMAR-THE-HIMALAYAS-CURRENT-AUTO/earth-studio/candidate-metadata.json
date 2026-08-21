@@ -1,0 +1,81 @@
+{
+  "id": "TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO",
+  "subject": "The Himalayas",
+  "subject_slug": "the-himalayas",
+  "terrain_class": "VERY_LARGE_MOUNTAIN_RANGE",
+  "morphology": "GENERIC_TERRAIN",
+  "prompt": "Show the terrain of The Himalayas.",
+  "terrain_purpose": "TERRAIN_FORM",
+  "treatment": "CURRENT_AUTO",
+  "candidate_label": "CURRENT",
+  "production_output": true,
+  "production_policy_changed": false,
+  "natural_scale": "region",
+  "candidate_scale": "region",
+  "feasibility": "NATURAL_SCALE",
+  "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+  "decision": {
+    "key": "reveal",
+    "movement": "reveal",
+    "tilt_deg": null,
+    "altitude_m": null,
+    "morphology": null,
+    "terrain_policy": null,
+    "why": "region framing is within its useful range a selective move is earned here (STARTING_CONTEXT, importance NORMAL)",
+    "angle_limitation": null
+  },
+  "authored": {
+    "movement": "zoom_out",
+    "tilt_deg": 0,
+    "altitude_m": 7089102,
+    "orbit_degrees": null,
+    "orbit_direction": null,
+    "duration_seconds": 9,
+    "frame_rate": 30,
+    "total_frames": 270,
+    "target": {
+      "name": "The Himalayas",
+      "latitude": 29.3,
+      "longitude": 84.5,
+      "scale": "region",
+      "source": "gazetteer_fixture"
+    }
+  },
+  "technical": {
+    "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+    "errors": [],
+    "warnings": [],
+    "finite_camera_state": true,
+    "target_stable": true,
+    "roll_authored": false,
+    "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+  },
+  "intent": {
+    "stops": [
+      {
+        "location": "The Himalayas",
+        "purposes": [
+          "SHOW_TERRAIN"
+        ]
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null,
+    "aspect": null,
+    "source_text": "Show the terrain of The Himalayas."
+  },
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/earth-studio.esp",
+  "esp_sha256": "6ff61f32b37733c63eedb86204339bc5322449b5c3c88c0340164941faf36482",
+  "trajectory_sha256": "be28265fa29da4c73adf50edb5f05e1d20c1b67700d58399cdf67c7d2d90a4e8",
+  "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/shot-plan.json",
+  "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/camera-quality.json",
+  "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/direction.json",
+  "generated_files": [
+    "camera-quality.json",
+    "direction.json",
+    "earth-studio.esp",
+    "journey.json",
+    "shot-plan.json"
+  ]
+}

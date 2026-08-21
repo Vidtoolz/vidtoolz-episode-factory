@@ -1,0 +1,120 @@
+{
+  "id": "TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM",
+  "subject": "The Alps",
+  "treatment": "TERRAIN_FORM",
+  "imported": true,
+  "import_index": 10,
+  "earth_studio_project": {
+    "duration": 660,
+    "totalFrames": 660,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "total_frames": 660,
+    "frame_rate": 30,
+    "tilt_deg": 65
+  },
+  "observed": {
+    "opening_tilt_deg": 65,
+    "opening_altitude_m": 9587.904308370302,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "finite_camera_state": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 46.78489415156386,
+        "longitude": 10.2,
+        "altitude": 9587.904308370302,
+        "pan_deg": 180,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20559.292,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM_f0000.png"
+    },
+    {
+      "frame": 329,
+      "camera": {
+        "frame": 329,
+        "latitude": 46.600560464704785,
+        "longitude": 10.469100649733505,
+        "altitude": 9587.904308370302,
+        "pan_deg": 269.72727272727275,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20559.441,
+        "position_bearing_around_target_deg": 89.72856084,
+        "camera_to_target_bearing_deg": 269.92408363
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM_f0329.png"
+    },
+    {
+      "frame": 657,
+      "camera": {
+        "frame": 657,
+        "latitude": 46.41511796467974,
+        "longitude": 10.200428454418882,
+        "altitude": 9587.904308370302,
+        "pan_deg": 359.8754085387336,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20557.971,
+        "position_bearing_around_target_deg": 179.90845764,
+        "camera_to_target_bearing_deg": 359.90876846
+      }
+    },
+    {
+      "frame": 658,
+      "camera": {
+        "frame": 658,
+        "latitude": 46.41511065789496,
+        "longitude": 10.200189480794975,
+        "altitude": 9587.904308370302,
+        "pan_deg": 359.9427830302776,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20558.762,
+        "position_bearing_around_target_deg": 179.95951763,
+        "camera_to_target_bearing_deg": 359.9596551
+      }
+    },
+    {
+      "frame": 659,
+      "camera": {
+        "frame": 659,
+        "latitude": 46.41510638887747,
+        "longitude": 10.200047118140148,
+        "altitude": 9587.904308370302,
+        "pan_deg": 359.9851936816673,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20559.232,
+        "position_bearing_around_target_deg": 179.98993349,
+        "camera_to_target_bearing_deg": 359.98996767
+      }
+    }
+  ]
+}

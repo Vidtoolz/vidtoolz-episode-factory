@@ -1,0 +1,378 @@
+{
+  "authority": "authenticated Google Earth Studio scene.getCurrentWorldValues readback",
+  "generated_at": "2026-08-21T08:45:01.123Z",
+  "attempted": 16,
+  "imported_successfully": 16,
+  "screenshots": 32,
+  "all_checks_pass": true,
+  "records": [
+    {
+      "id": "TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO",
+      "subject": "Grand Canyon",
+      "treatment": "CURRENT_AUTO",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 0,
+        "opening_altitude_m": 2700.973050234674,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM",
+      "subject": "Grand Canyon",
+      "treatment": "TERRAIN_FORM",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 74,
+        "opening_altitude_m": 3530.9647656771845,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO",
+      "subject": "Geirangerfjord",
+      "treatment": "CURRENT_AUTO",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 65,
+        "opening_altitude_m": 3588.9641867562996,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM",
+      "subject": "Geirangerfjord",
+      "treatment": "TERRAIN_FORM",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 65,
+        "opening_altitude_m": 3588.9641867562996,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO",
+      "subject": "Matterhorn",
+      "treatment": "CURRENT_AUTO",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 74,
+        "opening_altitude_m": 5736.942746720773,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM",
+      "subject": "Matterhorn",
+      "treatment": "TERRAIN_FORM",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 74,
+        "opening_altitude_m": 5736.942746720773,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO",
+      "subject": "Mount Fuji",
+      "treatment": "CURRENT_AUTO",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 45.00000000179194,
+        "opening_altitude_m": 16927.83098665085,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM",
+      "subject": "Mount Fuji",
+      "treatment": "TERRAIN_FORM",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 45,
+        "opening_altitude_m": 16927.831044934195,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO",
+      "subject": "The Alps",
+      "treatment": "CURRENT_AUTO",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 0,
+        "opening_altitude_m": 2500.9750465135867,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM",
+      "subject": "The Alps",
+      "treatment": "TERRAIN_FORM",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 65,
+        "opening_altitude_m": 9587.904308370302,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO",
+      "subject": "The Himalayas",
+      "treatment": "CURRENT_AUTO",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 0,
+        "opening_altitude_m": 2500.9750465135867,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM",
+      "subject": "The Himalayas",
+      "treatment": "TERRAIN_FORM",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 65,
+        "opening_altitude_m": 9587.904308370302,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO",
+      "subject": "Yosemite",
+      "treatment": "CURRENT_AUTO",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 0,
+        "opening_altitude_m": 2800.9720520952174,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM",
+      "subject": "Yosemite",
+      "treatment": "TERRAIN_FORM",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 65,
+        "opening_altitude_m": 6458.935540153898,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO",
+      "subject": "Yellowstone",
+      "treatment": "CURRENT_AUTO",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 0,
+        "opening_altitude_m": 3200.968059537391,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM",
+      "subject": "Yellowstone",
+      "treatment": "TERRAIN_FORM",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "finite_camera_state": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 65,
+        "opening_altitude_m": 7176.928373512599,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    }
+  ]
+}

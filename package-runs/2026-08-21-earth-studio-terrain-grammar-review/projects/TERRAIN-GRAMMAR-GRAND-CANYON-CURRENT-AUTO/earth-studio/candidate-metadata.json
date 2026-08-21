@@ -1,0 +1,84 @@
+{
+  "id": "TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO",
+  "subject": "Grand Canyon",
+  "subject_slug": "grand-canyon",
+  "terrain_class": "CANYON",
+  "morphology": "CANYON",
+  "prompt": "Show the terrain of Grand Canyon.",
+  "terrain_purpose": "TERRAIN_FORM",
+  "treatment": "CURRENT_AUTO",
+  "candidate_label": "CURRENT",
+  "production_output": true,
+  "production_policy_changed": false,
+  "natural_scale": "region",
+  "candidate_scale": "region",
+  "feasibility": "NATURAL_SCALE",
+  "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+  "decision": {
+    "key": "reveal",
+    "movement": "reveal",
+    "tilt_deg": null,
+    "altitude_m": null,
+    "morphology": null,
+    "terrain_policy": null,
+    "why": "region framing is within its useful range a selective move is earned here (STARTING_CONTEXT, importance NORMAL)",
+    "angle_limitation": null
+  },
+  "authored": {
+    "movement": "zoom_out",
+    "tilt_deg": 0,
+    "altitude_m": 7089102,
+    "orbit_degrees": null,
+    "orbit_direction": null,
+    "duration_seconds": 16,
+    "frame_rate": 30,
+    "total_frames": 480,
+    "target": {
+      "name": "Grand Canyon",
+      "latitude": 36.0544,
+      "longitude": -112.1401,
+      "altitude_m": 4000,
+      "min_altitude_m": 2700,
+      "terrain_morphology": "canyon",
+      "morphology_source": "curated_gazetteer",
+      "source": "gazetteer_fixture"
+    }
+  },
+  "technical": {
+    "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+    "errors": [],
+    "warnings": [],
+    "finite_camera_state": true,
+    "target_stable": true,
+    "roll_authored": false,
+    "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+  },
+  "intent": {
+    "stops": [
+      {
+        "location": "Grand Canyon",
+        "purposes": [
+          "SHOW_TERRAIN"
+        ]
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null,
+    "aspect": null,
+    "source_text": "Show the terrain of Grand Canyon."
+  },
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/earth-studio.esp",
+  "esp_sha256": "e4b276a8e128635cd172aa75549ad94e9f2c68f1fd3269e28ea654703e108962",
+  "trajectory_sha256": "a7733d5b624491acea2fd48b07fa40a9d0cd890483a345f370699334b3329438",
+  "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/shot-plan.json",
+  "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/camera-quality.json",
+  "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/direction.json",
+  "generated_files": [
+    "camera-quality.json",
+    "direction.json",
+    "earth-studio.esp",
+    "journey.json",
+    "shot-plan.json"
+  ]
+}

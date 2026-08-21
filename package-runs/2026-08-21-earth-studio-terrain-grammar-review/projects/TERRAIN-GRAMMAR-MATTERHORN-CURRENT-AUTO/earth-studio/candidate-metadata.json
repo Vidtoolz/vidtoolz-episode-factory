@@ -1,0 +1,100 @@
+{
+  "id": "TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO",
+  "subject": "Matterhorn",
+  "subject_slug": "matterhorn",
+  "terrain_class": "SHARP_ISOLATED_PEAK",
+  "morphology": "SHARP_PEAK",
+  "prompt": "Show the terrain of Matterhorn.",
+  "terrain_purpose": "TERRAIN_FORM",
+  "treatment": "CURRENT_AUTO",
+  "candidate_label": "CURRENT",
+  "production_output": true,
+  "production_policy_changed": false,
+  "natural_scale": "neighborhood",
+  "candidate_scale": "neighborhood",
+  "feasibility": "NATURAL_SCALE",
+  "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+  "decision": {
+    "key": "slow_orbit",
+    "movement": "slow_orbit",
+    "tilt_deg": 74,
+    "altitude_m": 5736.325095,
+    "morphology": "SHARP_PEAK",
+    "terrain_policy": {
+      "policy_version": 1,
+      "morphology": "SHARP_PEAK",
+      "morphology_metadata_value": "sharp_peak",
+      "morphology_source": "curated_gazetteer",
+      "requested_tilt_deg": 74,
+      "final_tilt_deg": 74,
+      "baseline_tilt_deg": 72,
+      "altitude_m": 5736.325095,
+      "reference_orbit_radius_m": 20004.942992,
+      "treatment": "strong terrain rake",
+      "reason": "a sharp isolated summit reads through steep profile and relief",
+      "confidence": "CALIBRATED_SINGLE_SUBJECT",
+      "fallback": false,
+      "safety_clamp": null,
+      "explanation": "sharp_peak → strong terrain rake → 74°"
+    },
+    "why": "neighborhood framing is within its useful range it gives the oblique view this purpose wants",
+    "angle_limitation": null
+  },
+  "authored": {
+    "movement": "orbit",
+    "tilt_deg": 74,
+    "altitude_m": 5736,
+    "orbit_degrees": 180,
+    "orbit_direction": 1,
+    "duration_seconds": 30,
+    "frame_rate": 30,
+    "total_frames": 900,
+    "target": {
+      "name": "Matterhorn",
+      "latitude": 45.9766,
+      "longitude": 7.6585,
+      "altitude_m": 6500,
+      "min_altitude_m": 5500,
+      "terrain_morphology": "sharp_peak",
+      "morphology_source": "curated_gazetteer",
+      "source": "gazetteer_fixture"
+    }
+  },
+  "technical": {
+    "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+    "errors": [],
+    "warnings": [],
+    "finite_camera_state": true,
+    "target_stable": true,
+    "roll_authored": false,
+    "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+  },
+  "intent": {
+    "stops": [
+      {
+        "location": "Matterhorn",
+        "purposes": [
+          "SHOW_TERRAIN"
+        ]
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null,
+    "aspect": null,
+    "source_text": "Show the terrain of Matterhorn."
+  },
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/earth-studio.esp",
+  "esp_sha256": "4c29e6c4572ffcc26a4eba1eb038d2d158d9806fcf1be297b290ccb588aa563c",
+  "trajectory_sha256": "1c52e49a39baf06c1b6d3364f2a482c1954ef529ed3d64ecdf26f603c92773f2",
+  "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/shot-plan.json",
+  "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/camera-quality.json",
+  "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/direction.json",
+  "generated_files": [
+    "camera-quality.json",
+    "direction.json",
+    "earth-studio.esp",
+    "journey.json",
+    "shot-plan.json"
+  ]
+}

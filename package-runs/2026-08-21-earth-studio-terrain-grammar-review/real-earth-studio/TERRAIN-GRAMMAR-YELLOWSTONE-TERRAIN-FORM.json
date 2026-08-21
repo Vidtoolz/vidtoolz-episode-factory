@@ -1,0 +1,120 @@
+{
+  "id": "TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM",
+  "subject": "Yellowstone",
+  "treatment": "TERRAIN_FORM",
+  "imported": true,
+  "import_index": 16,
+  "earth_studio_project": {
+    "duration": 660,
+    "totalFrames": 660,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "total_frames": 660,
+    "frame_rate": 30,
+    "tilt_deg": 65
+  },
+  "observed": {
+    "opening_tilt_deg": 65,
+    "opening_altitude_m": 7176.928373512599,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "finite_camera_state": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 44.56639539446597,
+        "longitude": -110.5885,
+        "altitude": 7176.928373512599,
+        "pan_deg": 180,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 15388.866,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM_f0000.png"
+    },
+    {
+      "frame": 329,
+      "camera": {
+        "frame": 329,
+        "latitude": 44.42849131219801,
+        "longitude": -110.39470275313806,
+        "altitude": 7176.928373512599,
+        "pan_deg": 269.72727272727275,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 15389.024,
+        "position_bearing_around_target_deg": 89.72876778,
+        "camera_to_target_bearing_deg": 269.86442892
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/screenshots/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM_f0329.png"
+    },
+    {
+      "frame": 657,
+      "camera": {
+        "frame": 657,
+        "latitude": 44.289613709352125,
+        "longitude": -110.58819112063952,
+        "altitude": 7176.928373512599,
+        "pan_deg": 359.8754085387336,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 15387.873,
+        "position_bearing_around_target_deg": 179.90845768,
+        "camera_to_target_bearing_deg": 359.90867363
+      }
+    },
+    {
+      "frame": 658,
+      "camera": {
+        "frame": 658,
+        "latitude": 44.28960823721001,
+        "longitude": -110.58836340041425,
+        "altitude": 7176.928373512599,
+        "pan_deg": 359.9427830302776,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 15388.466,
+        "position_bearing_around_target_deg": 179.95951766,
+        "camera_to_target_bearing_deg": 359.95961317
+      }
+    },
+    {
+      "frame": 659,
+      "camera": {
+        "frame": 659,
+        "latitude": 44.289605040125494,
+        "longitude": -110.58846603182305,
+        "altitude": 7176.928373512599,
+        "pan_deg": 359.9851936816673,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 15388.818,
+        "position_bearing_around_target_deg": 179.9899335,
+        "camera_to_target_bearing_deg": 359.98995725
+      }
+    }
+  ]
+}

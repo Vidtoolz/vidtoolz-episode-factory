@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "operator_authority": "Mikko",
+  "started_at": null,
+  "completed_at": null,
+  "choices": [
+    {
+      "subject": "Grand Canyon",
+      "morphology": "CANYON",
+      "terrain_class": "CANYON",
+      "natural_scale": "region",
+      "current_grammar": "reveal",
+      "winner": null,
+      "second_best": null,
+      "unacceptable_treatments": [],
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "subject": "Geirangerfjord",
+      "morphology": "FJORD_CHANNEL",
+      "terrain_class": "FJORD",
+      "natural_scale": "district",
+      "current_grammar": "slow_orbit",
+      "winner": null,
+      "second_best": null,
+      "unacceptable_treatments": [],
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "subject": "Matterhorn",
+      "morphology": "SHARP_PEAK",
+      "terrain_class": "SHARP_ISOLATED_PEAK",
+      "natural_scale": "neighborhood",
+      "current_grammar": "slow_orbit",
+      "winner": null,
+      "second_best": null,
+      "unacceptable_treatments": [],
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "subject": "Mount Fuji",
+      "morphology": "VOLCANIC_CONE",
+      "terrain_class": "VOLCANIC_CONE",
+      "natural_scale": "neighborhood",
+      "current_grammar": "slow_orbit",
+      "winner": null,
+      "second_best": null,
+      "unacceptable_treatments": [],
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "subject": "The Alps",
+      "morphology": "GENERIC_TERRAIN",
+      "terrain_class": "BROAD_MOUNTAIN_RANGE",
+      "natural_scale": "region",
+      "current_grammar": "reveal",
+      "winner": null,
+      "second_best": null,
+      "unacceptable_treatments": [],
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "subject": "The Himalayas",
+      "morphology": "GENERIC_TERRAIN",
+      "terrain_class": "VERY_LARGE_MOUNTAIN_RANGE",
+      "natural_scale": "region",
+      "current_grammar": "reveal",
+      "winner": null,
+      "second_best": null,
+      "unacceptable_treatments": [],
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "subject": "Yosemite",
+      "morphology": "GENERIC_TERRAIN",
+      "terrain_class": "VALLEY",
+      "natural_scale": "region",
+      "current_grammar": "reveal",
+      "winner": null,
+      "second_best": null,
+      "unacceptable_treatments": [],
+      "note": "",
+      "reviewed_at": null
+    },
+    {
+      "subject": "Yellowstone",
+      "morphology": "GENERIC_TERRAIN",
+      "terrain_class": "GENERIC_TERRAIN_REGION",
+      "natural_scale": "region",
+      "current_grammar": "reveal",
+      "winner": null,
+      "second_best": null,
+      "unacceptable_treatments": [],
+      "note": "",
+      "reviewed_at": null
+    }
+  ]
+}

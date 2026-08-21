@@ -1,0 +1,84 @@
+{
+  "id": "TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO",
+  "subject": "Yosemite",
+  "subject_slug": "yosemite",
+  "terrain_class": "VALLEY",
+  "morphology": "GENERIC_TERRAIN",
+  "prompt": "Show the terrain of Yosemite.",
+  "terrain_purpose": "TERRAIN_FORM",
+  "treatment": "CURRENT_AUTO",
+  "candidate_label": "CURRENT",
+  "production_output": true,
+  "production_policy_changed": false,
+  "natural_scale": "region",
+  "candidate_scale": "region",
+  "feasibility": "NATURAL_SCALE",
+  "feasibility_note": "The subject fits the existing target-locked orbit grammar at its natural framing scale.",
+  "decision": {
+    "key": "reveal",
+    "movement": "reveal",
+    "tilt_deg": null,
+    "altitude_m": null,
+    "morphology": null,
+    "terrain_policy": null,
+    "why": "region framing is within its useful range a selective move is earned here (STARTING_CONTEXT, importance NORMAL)",
+    "angle_limitation": null
+  },
+  "authored": {
+    "movement": "zoom_out",
+    "tilt_deg": 0,
+    "altitude_m": 7089102,
+    "orbit_degrees": null,
+    "orbit_direction": null,
+    "duration_seconds": 16,
+    "frame_rate": 30,
+    "total_frames": 480,
+    "target": {
+      "name": "Yosemite",
+      "latitude": 37.8651,
+      "longitude": -119.5383,
+      "altitude_m": 4500,
+      "min_altitude_m": 2800,
+      "terrain_morphology": "valley",
+      "morphology_source": "curated_gazetteer",
+      "source": "gazetteer_fixture"
+    }
+  },
+  "technical": {
+    "camera_quality": "PASS_FOR_HUMAN_REVIEW",
+    "errors": [],
+    "warnings": [],
+    "finite_camera_state": true,
+    "target_stable": true,
+    "roll_authored": false,
+    "terminal_settle": "covered by camera-quality and terminal-settle authoritative regressions"
+  },
+  "intent": {
+    "stops": [
+      {
+        "location": "Yosemite",
+        "purposes": [
+          "SHOW_TERRAIN"
+        ]
+      }
+    ],
+    "globe_justification": null,
+    "continuation_requested": false,
+    "pace": null,
+    "aspect": null,
+    "source_text": "Show the terrain of Yosemite."
+  },
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/earth-studio.esp",
+  "esp_sha256": "a9bf58ff006f8f7357c34bc9eac082e5622d7e8fd92fdd9adbd0c9e835d3d3f4",
+  "trajectory_sha256": "6a0274429b090c003e8f7da7e54748606992759a76baf955669524bab35a4af3",
+  "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/shot-plan.json",
+  "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/camera-quality.json",
+  "direction": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/direction.json",
+  "generated_files": [
+    "camera-quality.json",
+    "direction.json",
+    "earth-studio.esp",
+    "journey.json",
+    "shot-plan.json"
+  ]
+}
