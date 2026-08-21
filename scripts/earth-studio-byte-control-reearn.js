@@ -40,6 +40,11 @@ const planner = require(path.join(ROOT, 'earth-studio-job-planner.js'));
 const CONTROL = '2026-08-12-earth-studio-space-zoom-v094-candidate';
 const SRC = path.join(ROOT, 'package-runs', CONTROL, 'earth-studio');
 const OUT = path.join(ROOT, 'package-runs/2026-08-20-earth-studio-byte-control-reearn');
+const CONTROL_MANIFEST = path.join(ROOT, 'package-runs/2026-08-18-earth-studio-native-templates/controls/v094-byte-control-manifest.json');
+const DECISION_FILE = path.join(OUT, 'GATE-3-HUMAN-REVIEW.md');
+const VERDICT = 'NO_MEANINGFUL_DIFFERENCE_APPROVE_TECHNICAL_IMPROVEMENT';
+const OLD_SHA = 'd732a6169edacbfbf6129740c4007478ba5131f74c91713658926255604c4bf6';
+const ACCEPTED_REL = 'package-runs/2026-08-20-earth-studio-byte-control-reearn/projects/R-space-zoom-regenerated/earth-studio/earth-studio.esp';
 
 const job = JSON.parse(fs.readFileSync(path.join(SRC, 'job.json'), 'utf8'));
 const frozenPlan = JSON.parse(fs.readFileSync(path.join(SRC, 'shot-plan.json'), 'utf8'));
@@ -88,10 +93,59 @@ fs.writeFileSync(path.join(OUT, 'canary-manifest.json'), `${JSON.stringify({
   }],
 }, null, 2)}\n`);
 
+if (process.argv.includes('--apply')) {
+  const decision = fs.readFileSync(DECISION_FILE, 'utf8');
+  if (!decision.includes(`Verdict: \`${VERDICT}\``) || !decision.includes('Mikko Pakkala')) {
+    throw new Error('Refusing re-earn: exact authorized human verdict/operator record is absent');
+  }
+  const frozenSha = sha(frozenEsp);
+  const regeneratedSha = sha(Buffer.from(artifacts['earth-studio.esp']));
+  if (frozenSha !== OLD_SHA) throw new Error(`Refusing re-earn: historical control drifted (${frozenSha})`);
+  if (regeneratedSha !== '10258c3a5e1b64a63d6bc8e48b449743ab8f976b1e2f0060b67c9c0197d30647') {
+    throw new Error(`Refusing re-earn: regenerated spherical output drifted (${regeneratedSha})`);
+  }
+  const manifest = JSON.parse(fs.readFileSync(CONTROL_MANIFEST, 'utf8'));
+  const affected = manifest.controls.filter((c) => c.plan === CONTROL && c.artifact === 'earth-studio.esp');
+  if (affected.length !== 1) throw new Error(`Refusing re-earn: expected one affected manifest entry, found ${affected.length}`);
+  if (affected[0].sha256 !== OLD_SHA || affected[0].path !== `package-runs/${CONTROL}/earth-studio/earth-studio.esp`) {
+    throw new Error('Refusing re-earn: affected manifest entry is not the reviewed historical control');
+  }
+  affected[0].path = ACCEPTED_REL;
+  affected[0].sha256 = regeneratedSha;
+  manifest.reearn_history = [...(manifest.reearn_history || []), {
+    control_plan: CONTROL,
+    artifact: 'earth-studio.esp',
+    old_path: `package-runs/${CONTROL}/earth-studio/earth-studio.esp`,
+    old_sha256: OLD_SHA,
+    accepted_path: ACCEPTED_REL,
+    accepted_sha256: regeneratedSha,
+    shot_plan_sha256: sha(Buffer.from(artifacts['shot-plan.json'])),
+    verdict: VERDICT,
+    human_authority: 'Mikko Pakkala, operator',
+    recorded_at: '2026-08-21',
+    evidence_package: 'package-runs/2026-08-20-earth-studio-byte-control-reearn',
+    rationale: 'Both variants import and behave correctly; spherical destination geometry is technically superior; the isolated difference is not visually meaningful.',
+  }];
+  fs.writeFileSync(CONTROL_MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
+  fs.writeFileSync(path.join(OUT, 'RE-EARN-RECORD.json'), `${JSON.stringify(manifest.reearn_history.at(-1), null, 2)}\n`);
+  const evidence = JSON.parse(fs.readFileSync(path.join(OUT, 'canary-manifest.json'), 'utf8'));
+  evidence.human_decision = {
+    verdict: VERDICT,
+    human_authority: 'Mikko Pakkala, operator',
+    recorded_at: '2026-08-21',
+    authorized_control_only: CONTROL,
+  };
+  evidence.reearn = { applied: true, accepted_path: ACCEPTED_REL, accepted_sha256: regeneratedSha,
+    historical_path: `package-runs/${CONTROL}/earth-studio/earth-studio.esp`, historical_sha256: OLD_SHA };
+  evidence.note = 'Single-control re-earn applied under recorded human authority. Historical frozen artifact and OLD/NEW comparison evidence are retained.';
+  fs.writeFileSync(path.join(OUT, 'canary-manifest.json'), `${JSON.stringify(evidence, null, 2)}\n`);
+}
+
 console.log(JSON.stringify({
   ok: true, output: path.relative(ROOT, OUT),
   frozen_sha: sha(frozenEsp).slice(0, 12),
   regenerated_sha: sha(Buffer.from(artifacts['earth-studio.esp'])).slice(0, 12),
   shot_plan_byte_identical: sha(Buffer.from(artifacts['shot-plan.json'])) === sha(fs.readFileSync(path.join(SRC, 'shot-plan.json'))),
   frames: plan.total_frames,
+  applied: process.argv.includes('--apply'),
 }, null, 2));

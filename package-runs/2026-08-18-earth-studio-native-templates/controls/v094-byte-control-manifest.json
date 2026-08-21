@@ -45,8 +45,8 @@
     {
       "plan": "2026-08-12-earth-studio-space-zoom-v094-candidate",
       "artifact": "earth-studio.esp",
-      "path": "package-runs/2026-08-12-earth-studio-space-zoom-v094-candidate/earth-studio/earth-studio.esp",
-      "sha256": "d732a6169edacbfbf6129740c4007478ba5131f74c91713658926255604c4bf6"
+      "path": "package-runs/2026-08-20-earth-studio-byte-control-reearn/projects/R-space-zoom-regenerated/earth-studio/earth-studio.esp",
+      "sha256": "10258c3a5e1b64a63d6bc8e48b449743ab8f976b1e2f0060b67c9c0197d30647"
     },
     {
       "plan": "2026-08-12-earth-studio-space-zoom-v094-candidate",
@@ -71,6 +71,22 @@
       "artifact": "earth-studio.esp (pinned historical)",
       "path": "package-runs/2026-06-27-london-proof/earth-studio/earth-studio.esp",
       "sha256": "33eab695b82e60fefd6d52aa8c06ddcd630aa92c3d10a9aba9a0433eed9d58d6"
+    }
+  ],
+  "reearn_history": [
+    {
+      "control_plan": "2026-08-12-earth-studio-space-zoom-v094-candidate",
+      "artifact": "earth-studio.esp",
+      "old_path": "package-runs/2026-08-12-earth-studio-space-zoom-v094-candidate/earth-studio/earth-studio.esp",
+      "old_sha256": "d732a6169edacbfbf6129740c4007478ba5131f74c91713658926255604c4bf6",
+      "accepted_path": "package-runs/2026-08-20-earth-studio-byte-control-reearn/projects/R-space-zoom-regenerated/earth-studio/earth-studio.esp",
+      "accepted_sha256": "10258c3a5e1b64a63d6bc8e48b449743ab8f976b1e2f0060b67c9c0197d30647",
+      "shot_plan_sha256": "d4df7dd8ef139347337505c4ee639d0d1780b05ead13ac2e8159046eefdc644d",
+      "verdict": "NO_MEANINGFUL_DIFFERENCE_APPROVE_TECHNICAL_IMPROVEMENT",
+      "human_authority": "Mikko Pakkala, operator",
+      "recorded_at": "2026-08-21",
+      "evidence_package": "package-runs/2026-08-20-earth-studio-byte-control-reearn",
+      "rationale": "Both variants import and behave correctly; spherical destination geometry is technically superior; the isolated difference is not visually meaningful."
     }
   ]
 }

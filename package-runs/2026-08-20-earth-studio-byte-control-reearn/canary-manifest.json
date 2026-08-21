@@ -1,0 +1,48 @@
+{
+  "gate": "byte-control re-earn evidence — regenerated space-zoom control, real-import observation",
+  "generated_at": "2026-08-20T15:30:00.000Z",
+  "planner_version": "0.9.4",
+  "control_plan": "2026-08-12-earth-studio-space-zoom-v094-candidate",
+  "frozen_esp_sha256": "d732a6169edacbfbf6129740c4007478ba5131f74c91713658926255604c4bf6",
+  "regenerated_esp_sha256": "10258c3a5e1b64a63d6bc8e48b449743ab8f976b1e2f0060b67c9c0197d30647",
+  "shot_plan_unchanged": true,
+  "note": "Single-control re-earn applied under recorded human authority. Historical frozen artifact and OLD/NEW comparison evidence are retained.",
+  "canaries": [
+    {
+      "id": "R-space-zoom-regenerated",
+      "title": "R — space-zoom v0.9.4 control, regenerated with current geometry",
+      "aspect": "9:16",
+      "esp": "package-runs/2026-08-20-earth-studio-byte-control-reearn/projects/R-space-zoom-regenerated/earth-studio/earth-studio.esp",
+      "esp_sha256": "10258c3a5e1b64a63d6bc8e48b449743ab8f976b1e2f0060b67c9c0197d30647",
+      "total_frames": 2130,
+      "duration_seconds": 71,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "project_dir": "package-runs/2026-08-20-earth-studio-byte-control-reearn/projects/R-space-zoom-regenerated",
+      "category": "byte-control re-earn",
+      "intended_behavior": "Identical to the 2026-08-12 accepted control except for ring positions, which are up to 5.8 m different and measurably closer to the intended radius. The recorded observation must still hold: import clean, flight correct, two counterclockwise revolutions, target facing, no snap at ring entry.",
+      "visual_questions": [
+        "Does the import still succeed with no Earth Studio warnings?",
+        "Are both counterclockwise revolutions still present?",
+        "Does the camera still face the target throughout the orbit?",
+        "Is there any snap at fly-to-orbit ring entry?"
+      ],
+      "description": "fly to Helsinki in 5 seconds, then fly to Paris at 2 km tilted 35 degrees in 18 seconds, then orbit twice counterclockwise for 36 seconds, then zoom out to space in 12 seconds"
+    }
+  ],
+  "human_decision": {
+    "verdict": "NO_MEANINGFUL_DIFFERENCE_APPROVE_TECHNICAL_IMPROVEMENT",
+    "human_authority": "Mikko Pakkala, operator",
+    "recorded_at": "2026-08-21",
+    "authorized_control_only": "2026-08-12-earth-studio-space-zoom-v094-candidate"
+  },
+  "reearn": {
+    "applied": true,
+    "accepted_path": "package-runs/2026-08-20-earth-studio-byte-control-reearn/projects/R-space-zoom-regenerated/earth-studio/earth-studio.esp",
+    "accepted_sha256": "10258c3a5e1b64a63d6bc8e48b449743ab8f976b1e2f0060b67c9c0197d30647",
+    "historical_path": "package-runs/2026-08-12-earth-studio-space-zoom-v094-candidate/earth-studio/earth-studio.esp",
+    "historical_sha256": "d732a6169edacbfbf6129740c4007478ba5131f74c91713658926255604c4bf6"
+  }
+}
