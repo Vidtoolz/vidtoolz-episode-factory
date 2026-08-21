@@ -1,0 +1,10 @@
+{
+  "production_changed": false,
+  "gate3": "unaffected",
+  "director_canaries": "unaffected",
+  "journey_v2": "unaffected",
+  "morphology": "unaffected",
+  "terminal_settle": "unaffected",
+  "terrain_grammar": "unaffected",
+  "experiment_candidates": "intentionally different; not accepted contracts"
+}

@@ -6,6 +6,7 @@ const candidates = require('../scripts/earth-studio-terrain-motion-candidates');
 const review = require('../scripts/earth-studio-terrain-motion-review');
 const round2 = require('../scripts/earth-studio-terrain-motion-round2');
 const finalists = require('../scripts/earth-studio-terrain-motion-finalists');
+const transition = require('../scripts/earth-studio-orbit-transition-calibration');
 const fs = require('node:fs');
 
 test('terrain motion diagnostic computes stable orbit channels without inventing pumping', () => {
@@ -124,4 +125,81 @@ test('finalist target-lock candidate densifies pan only and preserves position t
     assert.deepEqual(candidates.findAttribute(result.scenes[0].attributes, type).keyframes,
       candidates.findAttribute(source.scenes[0].attributes, type).keyframes);
   }
+});
+
+test('orbit transition candidate preserves geometry and applies custom C1 boundary handles', () => {
+  const source = JSON.parse(fs.readFileSync('package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-GRAND-CANYON-CURRENT.esp'));
+  const result = transition.derivativeMatchedEnvelope(source);
+  for (const type of ['latitude', 'longitude', 'rotationX']) {
+    const before = candidates.findAttribute(source.scenes[0].attributes, type).keyframes;
+    const after = candidates.findAttribute(result.scenes[0].attributes, type).keyframes;
+    assert.deepEqual(after.map((key) => [key.time, key.value]), before.map((key) => [key.time, key.value]));
+    assert.equal(after[0].transitionOut.type, 'custom');
+    assert.equal(after[1].transitionIn.type, 'custom');
+    assert.equal(after.at(-2).transitionOut.type, 'custom');
+    assert.equal(after.at(-1).transitionIn.type, 'custom');
+    const cruiseSlope = (after[2].value - after[1].value) / (after[2].time - after[1].time);
+    assert.ok(Math.abs((after[1].transitionIn.y / after[1].transitionIn.x) - cruiseSlope) < 1e-4);
+  }
+});
+
+test('orbit transition analysis identifies exact first and penultimate key boundaries', () => {
+  const trace = JSON.parse(fs.readFileSync('package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidate-orbit-traces/ORBIT-GRAND-CANYON-TANGENT_ENVELOPE.json'));
+  const esp = JSON.parse(fs.readFileSync('package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-GRAND-CANYON-TANGENT_ENVELOPE.esp'));
+  const result = transition.analyzeTrace(trace, esp);
+  assert.equal(result.launch_to_cruise.envelope_end_frame, 50);
+  assert.equal(result.cruise_to_settle.settle_start_frame, 850);
+  assert.equal(result.cruise_to_settle.terminal_frame, 899);
+  assert.equal(result.continuity.c0.startsWith('continuous'), true);
+});
+
+test('global orbit phase retimes existing samples without changing geometry or duration', () => {
+  const source = JSON.parse(fs.readFileSync('package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-GRAND-CANYON-CURRENT.esp'));
+  const result = transition.globalProgressOrbit(source, 'trapezoid');
+  assert.equal(result.settings.duration, source.settings.duration);
+  for (const type of ['latitude', 'longitude', 'rotationX']) {
+    const before = candidates.findAttribute(source.scenes[0].attributes, type).keyframes;
+    const after = candidates.findAttribute(result.scenes[0].attributes, type).keyframes;
+    assert.deepEqual(after.map((key) => key.value), before.map((key) => key.value));
+    assert.equal(after.length, before.length);
+    assert.equal(after[0].time, 0);
+    assert.equal(after.at(-1).time, 1);
+    assert.ok(after.every((key, index) => index === 0 || key.time > after[index - 1].time));
+    assert.equal(after[1].transitionIn.type, 'auto');
+    assert.equal(after.at(-2).transitionOut.type, 'auto');
+  }
+});
+
+test('global orbit progress laws are monotonic and preserve endpoints', () => {
+  for (const law of [transition.cosineProgress, (time) => transition.trapezoidProgress(time, 0.18)]) {
+    const values = Array.from({ length: 101 }, (_, index) => law(index / 100));
+    assert.equal(values[0], 0);
+    assert.equal(values.at(-1), 1);
+    assert.ok(values.every((value, index) => index === 0 || value > values[index - 1]));
+  }
+});
+
+test('local orbit retime preserves values, count, endpoints and shared track timing', () => {
+  const source = JSON.parse(fs.readFileSync('package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-GRAND-CANYON-CURRENT.esp'));
+  const result = transition.localEndpointRetime(source, 1.06, 1.10);
+  const times = candidates.findAttribute(result.scenes[0].attributes, 'rotationX').keyframes.map((key) => key.time);
+  assert.equal(times[0], 0);
+  assert.equal(times.at(-1), 1);
+  assert.ok(times.every((time, index) => index === 0 || time > times[index - 1]));
+  for (const type of ['latitude', 'longitude', 'rotationX']) {
+    const before = candidates.findAttribute(source.scenes[0].attributes, type).keyframes;
+    const after = candidates.findAttribute(result.scenes[0].attributes, type).keyframes;
+    assert.deepEqual(after.map((key) => key.value), before.map((key) => key.value));
+    assert.deepEqual(after.map((key) => key.time), times);
+  }
+});
+
+test('orbit transition review exposes only technically filtered candidates', () => {
+  const pkg = review.loadPackage(transition.OUT || 'package-runs/2026-08-21-earth-studio-orbit-transition-calibration', { transition: true });
+  assert.deepEqual([...new Set(pkg.manifest.candidates.map((row) => row.variant))].sort(),
+    ['CURRENT', 'LOCAL_MATCH_MILD', 'TANGENT_ENVELOPE']);
+  assert.equal(pkg.manifest.candidates.length, 12);
+  const session = review.freshSession(pkg, '2026-08-21T12:00:00.000Z');
+  review.applyChoice(pkg, session, { family: 'ORBIT', subject: 'Grand Canyon', winner: 'LOCAL_MATCH_MILD', note: 'test' }, '2026-08-21T12:01:00.000Z');
+  assert.equal(session.choices[0].winner, 'LOCAL_MATCH_MILD');
 });

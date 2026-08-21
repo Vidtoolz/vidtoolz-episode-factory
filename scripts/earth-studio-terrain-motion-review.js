@@ -11,17 +11,20 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, 'package-runs/2026-08-21-earth-studio-terrain-motion-calibration');
+const TRANSITION_OUT = path.join(ROOT, 'package-runs/2026-08-21-earth-studio-orbit-transition-calibration');
 const gate = require(path.join(ROOT, 'scripts/earth-studio-journey-import-gate.js'));
 const terrainImport = require(path.join(ROOT, 'scripts/earth-studio-terrain-tilt-import.js'));
 
-function loadPackage(out = OUT, { round2 = false, finalists = false } = {}) {
-  const manifest = JSON.parse(fs.readFileSync(path.join(out, finalists ? 'candidates-finalists/manifest.json' : round2 ? 'candidates-round2/manifest.json' : 'candidates/manifest.json'), 'utf8'));
-  const template = JSON.parse(fs.readFileSync(path.join(out, finalists ? 'human-review/review-session-finalists-template.json' : round2 ? 'human-review/review-session-round2-template.json' : 'human-review/review-session-template.json'), 'utf8'));
+function loadPackage(out = OUT, { round2 = false, finalists = false, transition = false } = {}) {
+  let manifest = JSON.parse(fs.readFileSync(path.join(out, transition ? 'candidate-manifest.json' : finalists ? 'candidates-finalists/manifest.json' : round2 ? 'candidates-round2/manifest.json' : 'candidates/manifest.json'), 'utf8'));
+  if (transition) manifest = { ...manifest, candidates: manifest.candidates
+    .filter((candidate) => ['CURRENT', 'TANGENT_ENVELOPE', 'LOCAL_MATCH_MILD'].includes(candidate.variant)) };
+  const template = JSON.parse(fs.readFileSync(path.join(out, transition ? 'human-review-template.json' : finalists ? 'human-review/review-session-finalists-template.json' : round2 ? 'human-review/review-session-round2-template.json' : 'human-review/review-session-template.json'), 'utf8'));
   if (manifest.production_motion_changed !== false || !manifest.candidates.length) throw new Error('unexpected terrain motion package');
   for (const candidate of manifest.candidates) {
     if (!fs.existsSync(path.join(ROOT, candidate.esp))) throw new Error(`missing ESP: ${candidate.esp}`);
   }
-  return { out, manifest, template, sessionPath: path.join(out, finalists ? 'human-review/review-session-finalists.json' : round2 ? 'human-review/review-session-round2.json' : 'human-review/review-session.json') };
+  return { out, manifest, template, sessionPath: path.join(out, transition ? 'human-review.json' : finalists ? 'human-review/review-session-finalists.json' : round2 ? 'human-review/review-session-round2.json' : 'human-review/review-session.json') };
 }
 
 function freshSession(pkg, now = new Date().toISOString()) {
@@ -77,7 +80,7 @@ function page() {
   function showFamily(value){family=value;el('orbit').className=family==='ORBIT'?'active':'';el('reveal').className=family==='REVEAL'?'active':'';el('cases').replaceChildren();for(const name of familySubjects()){const b=document.createElement('button');b.textContent=name;b.onclick=()=>choose(name);el('cases').appendChild(b)}choose(familySubjects()[0])}
   function choose(name){subject=name;const rows=state.manifest.candidates.filter(c=>c.family===family&&c.subject===name);const saved=state.session.choices.find(c=>c.family===family&&c.subject===name);el('title').textContent=family+' — '+name;el('question').textContent=family==='ORBIT'?'Which orbit feels most stable, without pumping or mechanical jitter?':'Which launch feels calm and deliberate without making the reveal sluggish or causing a later rush?';el('shots').replaceChildren();el('winner').replaceChildren(new Option('—',''),...rows.map(r=>new Option(r.label,r.variant)),new Option('NONE GOOD','NONE_GOOD'));for(const row of rows){const b=document.createElement('button');b.textContent='Play '+row.label;b.onclick=()=>prepare(row.id);el('shots').appendChild(b)}el('winner').value=saved.winner||'';el('note').value=saved.note||''}
   async function prepare(id){el('status').textContent='Importing '+id+'…';try{await api('/api/prepare',{id});el('status').innerHTML='<span class="ok">Ready in Earth Studio: '+id+'</span>'}catch(e){el('status').innerHTML='<span class="warn">'+e.message+'</span>'}}
-  async function save(){try{state.session=(await api('/api/choice',{family,subject,winner:el('winner').value,note:el('note').value})).session;const names=familySubjects(),i=names.indexOf(subject);if(i+1<names.length)choose(names[i+1]);else if(family==='ORBIT')showFamily('REVEAL');el('status').innerHTML='<span class="ok">Choice saved.</span>'}catch(e){el('status').innerHTML='<span class="warn">'+e.message+'</span>'}}
+  async function save(){try{state.session=(await api('/api/choice',{family,subject,winner:el('winner').value,note:el('note').value})).session;const names=familySubjects(),i=names.indexOf(subject);if(i+1<names.length)choose(names[i+1]);else if(family==='ORBIT'&&state.manifest.candidates.some(c=>c.family==='REVEAL'))showFamily('REVEAL');el('status').innerHTML='<span class="ok">Choice saved.</span>'}catch(e){el('status').innerHTML='<span class="warn">'+e.message+'</span>'}}
   async function init(){state=await api('/api/state');el('orbit').onclick=()=>showFamily('ORBIT');el('reveal').onclick=()=>showFamily('REVEAL');el('save').onclick=save;showFamily('ORBIT')}init();
   </script></main></body></html>`;
 }
@@ -108,7 +111,8 @@ function createController(pkg, { cdp = null } = {}) {
 }
 
 async function main() {
-  const pkg = loadPackage(OUT, { round2: process.argv.includes('--round2'), finalists: process.argv.includes('--finalists') });
+  const transition = process.argv.includes('--transition');
+  const pkg = loadPackage(transition ? TRANSITION_OUT : OUT, { round2: process.argv.includes('--round2'), finalists: process.argv.includes('--finalists'), transition });
   if (process.argv.includes('--reveal-only')) {
     pkg.manifest = { ...pkg.manifest, candidates: pkg.manifest.candidates.filter((row) => row.family === 'REVEAL') };
     pkg.template = { ...pkg.template, choices: pkg.template.choices.filter((row) => row.family === 'REVEAL') };
@@ -130,4 +134,4 @@ async function main() {
 
 if (require.main === module) main().catch((error) => { console.error(error.message); process.exitCode = 1; });
 
-module.exports = { OUT, loadPackage, freshSession, applyChoice, writeSession, page, createController };
+module.exports = { OUT, TRANSITION_OUT, loadPackage, freshSession, applyChoice, writeSession, page, createController };

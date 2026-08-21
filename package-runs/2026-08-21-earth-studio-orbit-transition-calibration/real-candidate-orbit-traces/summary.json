@@ -1,0 +1,517 @@
+{
+  "generated_at": "2026-08-21T15:05:01.938Z",
+  "authority": "authenticated Google Earth Studio scene.getCurrentWorldValues full-frame readback",
+  "kind": "orbit",
+  "attempted": 4,
+  "successful": 4,
+  "results": [
+    {
+      "id": "ORBIT-TRANSITION-GRAND-CANYON-LOCAL_MATCH_STRONG",
+      "subject": "Grand Canyon",
+      "movement": "orbit",
+      "error": null,
+      "analysis": {
+        "authority": "real Earth Studio scene.getCurrentWorldValues full-frame readback",
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        },
+        "frame_count": 900,
+        "radius_m": {
+          "count": 900,
+          "min": 12292.826154,
+          "max": 12312.678668,
+          "mean": 12310.29493204,
+          "spread": 19.852514,
+          "spread_percent": 0.161268
+        },
+        "altitude_m": {
+          "count": 900,
+          "min": 3530.96476568,
+          "max": 3530.96476568,
+          "mean": 3530.96476568,
+          "spread": 0,
+          "spread_percent": 0
+        },
+        "tilt_deg": {
+          "count": 900,
+          "min": 74,
+          "max": 74,
+          "mean": 74,
+          "spread": 0,
+          "spread_percent": 0
+        },
+        "roll_deg": {
+          "count": 900,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "target_aim_error_deg": {
+          "count": 900,
+          "min": 0,
+          "max": 0.16318219,
+          "mean": 0.05786161,
+          "spread": 0.16318219,
+          "spread_percent": 282.021531
+        },
+        "normalized_apparent_scale_proxy": {
+          "count": 900,
+          "min": 0.99987547,
+          "max": 1.00136725,
+          "mean": 1.00005445,
+          "spread": 0.00149178,
+          "spread_percent": 0.14917
+        },
+        "angular_velocity_dps": {
+          "count": 899,
+          "min": 0.32163822,
+          "max": 7.2676581,
+          "mean": 6.00654963,
+          "spread": 6.94601988,
+          "spread_percent": 115.640764
+        },
+        "cruise_abs_angular_velocity_dps": {
+          "count": 629,
+          "min": 6.07681398,
+          "max": 6.12324342,
+          "mean": 6.10663836,
+          "spread": 0.04642944,
+          "spread_percent": 0.760311
+        },
+        "cruise_angular_velocity_cv_percent": 0.23182,
+        "angular_acceleration_dps2": {
+          "count": 898,
+          "min": -7.2045009,
+          "max": 17.8689366,
+          "mean": 0.00052556,
+          "spread": 25.0734375,
+          "spread_percent": 4770759.319908
+        },
+        "angular_acceleration_abs_p95_dps2": 4.452417,
+        "radial_velocity_mps": {
+          "count": 899,
+          "min": -29.82642,
+          "max": 29.78145,
+          "mean": 0.0006035,
+          "spread": 59.60787,
+          "spread_percent": 9876965.280786
+        },
+        "radial_acceleration_mps2": {
+          "count": 898,
+          "min": -158.2956,
+          "max": 88.6212,
+          "mean": 0.17008196,
+          "spread": 246.9168,
+          "spread_percent": 145175.185029
+        },
+        "altitude_velocity_mps": {
+          "count": 899,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "altitude_acceleration_mps2": {
+          "count": 898,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "radial_spread_fraction_of_nominal_percent": 0.161268
+      }
+    },
+    {
+      "id": "ORBIT-TRANSITION-GEIRANGERFJORD-LOCAL_MATCH_STRONG",
+      "subject": "Geirangerfjord",
+      "movement": "orbit",
+      "error": null,
+      "analysis": {
+        "authority": "real Earth Studio scene.getCurrentWorldValues full-frame readback",
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        },
+        "frame_count": 660,
+        "radius_m": {
+          "count": 660,
+          "min": 7682.383452,
+          "max": 7696.989663,
+          "mean": 7694.27417575,
+          "spread": 14.606211,
+          "spread_percent": 0.189832
+        },
+        "altitude_m": {
+          "count": 660,
+          "min": 3588.96418676,
+          "max": 3588.96418676,
+          "mean": 3588.96418676,
+          "spread": 0,
+          "spread_percent": 0
+        },
+        "tilt_deg": {
+          "count": 660,
+          "min": 65,
+          "max": 65,
+          "mean": 65,
+          "spread": 0,
+          "spread_percent": 0
+        },
+        "roll_deg": {
+          "count": 660,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "target_aim_error_deg": {
+          "count": 660,
+          "min": 0,
+          "max": 0.164036,
+          "mean": 0.08781358,
+          "spread": 0.164036,
+          "spread_percent": 186.800266
+        },
+        "normalized_apparent_scale_proxy": {
+          "count": 660,
+          "min": 0.99974123,
+          "max": 1.00130174,
+          "mean": 1.0000311,
+          "spread": 0.00156052,
+          "spread_percent": 0.156047
+        },
+        "angular_velocity_dps": {
+          "count": 659,
+          "min": 0.59955936,
+          "max": 9.99721827,
+          "mean": 8.19391217,
+          "spread": 9.39765891,
+          "spread_percent": 114.690745
+        },
+        "cruise_abs_angular_velocity_dps": {
+          "count": 461,
+          "min": 8.13618087,
+          "max": 8.4618804,
+          "mean": 8.33361813,
+          "spread": 0.32569953,
+          "spread_percent": 3.908261
+        },
+        "cruise_angular_velocity_cv_percent": 1.407072,
+        "angular_acceleration_dps2": {
+          "count": 658,
+          "min": -13.5915471,
+          "max": 32.4428139,
+          "mean": 0.0018412,
+          "spread": 46.034361,
+          "spread_percent": 2500234.58633
+        },
+        "angular_acceleration_abs_p95_dps2": 8.5057902,
+        "radial_velocity_mps": {
+          "count": 659,
+          "min": -27.41907,
+          "max": 27.30294,
+          "mean": 0.00089909,
+          "spread": 54.72201,
+          "spread_percent": 6086380.521682
+        },
+        "radial_acceleration_mps2": {
+          "count": 658,
+          "min": -178.0812,
+          "max": 110.1978,
+          "mean": 0.29502903,
+          "spread": 288.279,
+          "spread_percent": 97712.08026
+        },
+        "altitude_velocity_mps": {
+          "count": 659,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "altitude_acceleration_mps2": {
+          "count": 658,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "radial_spread_fraction_of_nominal_percent": 0.189832
+      }
+    },
+    {
+      "id": "ORBIT-TRANSITION-MATTERHORN-LOCAL_MATCH_STRONG",
+      "subject": "Matterhorn",
+      "movement": "orbit",
+      "error": null,
+      "analysis": {
+        "authority": "real Earth Studio scene.getCurrentWorldValues full-frame readback",
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        },
+        "frame_count": 900,
+        "radius_m": {
+          "count": 900,
+          "min": 19974.948251,
+          "max": 20007.210498,
+          "mean": 20003.35168194,
+          "spread": 32.262247,
+          "spread_percent": 0.161284
+        },
+        "altitude_m": {
+          "count": 900,
+          "min": 5736.94274672,
+          "max": 5736.94274672,
+          "mean": 5736.94274672,
+          "spread": 0,
+          "spread_percent": 0
+        },
+        "tilt_deg": {
+          "count": 900,
+          "min": 74,
+          "max": 74,
+          "mean": 74,
+          "spread": 0,
+          "spread_percent": 0
+        },
+        "roll_deg": {
+          "count": 900,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "target_aim_error_deg": {
+          "count": 900,
+          "min": 0,
+          "max": 0.19117127,
+          "mean": 0.12150959,
+          "spread": 0.19117127,
+          "spread_percent": 157.330187
+        },
+        "normalized_apparent_scale_proxy": {
+          "count": 900,
+          "min": 0.99991225,
+          "max": 1.00140427,
+          "mean": 1.00009057,
+          "spread": 0.00149202,
+          "spread_percent": 0.149188
+        },
+        "angular_velocity_dps": {
+          "count": 899,
+          "min": 0.32164308,
+          "max": 7.26759663,
+          "mean": 6.00654964,
+          "spread": 6.94595355,
+          "spread_percent": 115.63966
+        },
+        "cruise_abs_angular_velocity_dps": {
+          "count": 629,
+          "min": 6.07670202,
+          "max": 6.1232745,
+          "mean": 6.10662907,
+          "spread": 0.04657248,
+          "spread_percent": 0.762654
+        },
+        "cruise_angular_velocity_cv_percent": 0.231754,
+        "angular_acceleration_dps2": {
+          "count": 898,
+          "min": -7.2042642,
+          "max": 17.8691652,
+          "mean": 0.00052498,
+          "spread": 25.0734294,
+          "spread_percent": 4776067.586563
+        },
+        "angular_acceleration_abs_p95_dps2": 4.4524998,
+        "radial_velocity_mps": {
+          "count": 899,
+          "min": -48.48225,
+          "max": 48.53052,
+          "mean": 0.00153397,
+          "spread": 97.01277,
+          "spread_percent": 6324289.377091
+        },
+        "radial_acceleration_mps2": {
+          "count": 898,
+          "min": -257.8986,
+          "max": 143.7192,
+          "mean": 0.27618775,
+          "spread": 401.6178,
+          "spread_percent": 145414.77643
+        },
+        "altitude_velocity_mps": {
+          "count": 899,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "altitude_acceleration_mps2": {
+          "count": 898,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "radial_spread_fraction_of_nominal_percent": 0.161284
+      }
+    },
+    {
+      "id": "ORBIT-TRANSITION-MOUNT-FUJI-LOCAL_MATCH_STRONG",
+      "subject": "Mount Fuji",
+      "movement": "orbit",
+      "error": null,
+      "analysis": {
+        "authority": "real Earth Studio scene.getCurrentWorldValues full-frame readback",
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        },
+        "frame_count": 360,
+        "radius_m": {
+          "count": 360,
+          "min": 16902.559616,
+          "max": 16929.839892,
+          "mean": 16926.59519049,
+          "spread": 27.280276,
+          "spread_percent": 0.161168
+        },
+        "altitude_m": {
+          "count": 360,
+          "min": 16927.83104493,
+          "max": 16927.83104493,
+          "mean": 16927.83104493,
+          "spread": 0,
+          "spread_percent": 0
+        },
+        "tilt_deg": {
+          "count": 360,
+          "min": 45,
+          "max": 45,
+          "mean": 45,
+          "spread": 0,
+          "spread_percent": 0
+        },
+        "roll_deg": {
+          "count": 360,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "target_aim_error_deg": {
+          "count": 360,
+          "min": 0,
+          "max": 0.16928416,
+          "mean": 0.07441062,
+          "spread": 0.16928416,
+          "spread_percent": 227.500005
+        },
+        "normalized_apparent_scale_proxy": {
+          "count": 360,
+          "min": 0.9999849,
+          "max": 1.00079099,
+          "mean": 1.00008076,
+          "spread": 0.00080609,
+          "spread_percent": 0.080603
+        },
+        "angular_velocity_dps": {
+          "count": 359,
+          "min": 1.90087281,
+          "max": 18.15837348,
+          "mean": 15.03982366,
+          "spread": 16.25750067,
+          "spread_percent": 108.096352
+        },
+        "cruise_abs_angular_velocity_dps": {
+          "count": 251,
+          "min": 15.19538982,
+          "max": 15.30815109,
+          "mean": 15.26647591,
+          "spread": 0.11276127,
+          "spread_percent": 0.73862
+        },
+        "cruise_angular_velocity_cv_percent": 0.230582,
+        "angular_acceleration_dps2": {
+          "count": 358,
+          "min": -44.9721846,
+          "max": 95.3357634,
+          "mean": 0.01962575,
+          "spread": 140.307948,
+          "spread_percent": 714917.565041
+        },
+        "angular_acceleration_abs_p95_dps2": 25.9061868,
+        "radial_velocity_mps": {
+          "count": 359,
+          "min": -102.05889,
+          "max": 102.30429,
+          "mean": -0.0148978,
+          "spread": 204.36318,
+          "spread_percent": 1371767.560601
+        },
+        "radial_acceleration_mps2": {
+          "count": 358,
+          "min": -1108.962,
+          "max": 754.9605,
+          "mean": 3.64225978,
+          "spread": 1863.9225,
+          "spread_percent": 51174.891808
+        },
+        "altitude_velocity_mps": {
+          "count": 359,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "altitude_acceleration_mps2": {
+          "count": 358,
+          "min": 0,
+          "max": 0,
+          "mean": 0,
+          "spread": 0,
+          "spread_percent": null
+        },
+        "radial_spread_fraction_of_nominal_percent": 0.161168
+      }
+    }
+  ]
+}

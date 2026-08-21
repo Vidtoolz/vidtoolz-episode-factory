@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "production_changed": false,
+  "rejected_before_review": [
+    {
+      "strategy": "CUSTOM_C1",
+      "reason": "custom boundary handles amplified the real pan acceleration seam"
+    },
+    {
+      "strategy": "BLENDED_C1",
+      "reason": "blended custom handles amplified pan acceleration further"
+    },
+    {
+      "strategy": "GLOBAL_LINEAR",
+      "reason": "global retiming without target-lock tangents regressed real aim error to about 0.74–0.79 degrees"
+    },
+    {
+      "strategy": "GLOBAL_AUTO",
+      "reason": "global retiming retained large pan acceleration and the same aim-error regression"
+    },
+    {
+      "strategy": "LOCAL_MATCH_STRONG",
+      "reason": "mixed result: lower position acceleration but larger local pan spikes in Grand Canyon and Matterhorn, plus larger position/pan phase mismatch"
+    }
+  ],
+  "review_candidates": [
+    "CURRENT",
+    "TANGENT_ENVELOPE",
+    "LOCAL_MATCH_MILD"
+  ],
+  "rationale": "LOCAL_MATCH_MILD consistently reduces real position and pan boundary acceleration across all four cases while retaining less than 0.2 degree maximum aim error"
+}

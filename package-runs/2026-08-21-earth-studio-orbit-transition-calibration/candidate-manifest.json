@@ -1,0 +1,474 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-21T15:06:08.753Z",
+  "production_motion_changed": false,
+  "density_changed": false,
+  "morphology_changed": false,
+  "reveal_changed": false,
+  "candidates": [
+    {
+      "id": "ORBIT-TRANSITION-GRAND-CANYON-CURRENT",
+      "family": "ORBIT",
+      "subject": "Grand Canyon",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 3530,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-GRAND-CANYON-CURRENT.esp",
+      "controlled_change": "unchanged production control"
+    },
+    {
+      "id": "ORBIT-TRANSITION-GRAND-CANYON-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Grand Canyon",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 3530,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-GRAND-CANYON-TANGENT_ENVELOPE.esp",
+      "controlled_change": "prior human-better but rejected control"
+    },
+    {
+      "id": "ORBIT-TRANSITION-GRAND-CANYON-LOCAL_MATCH_MILD",
+      "family": "ORBIT",
+      "subject": "Grand Canyon",
+      "variant": "LOCAL_MATCH_MILD",
+      "label": "LOCAL MATCH MILD",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 3530,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-GRAND-CANYON-LOCAL_MATCH_MILD.esp",
+      "controlled_change": "shared position/pan endpoint timing: launch 1.06x and settle 1.10x nominal segment duration"
+    },
+    {
+      "id": "ORBIT-TRANSITION-GRAND-CANYON-LOCAL_MATCH_STRONG",
+      "family": "ORBIT",
+      "subject": "Grand Canyon",
+      "variant": "LOCAL_MATCH_STRONG",
+      "label": "LOCAL MATCH STRONG",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 3530,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-GRAND-CANYON-LOCAL_MATCH_STRONG.esp",
+      "controlled_change": "shared position/pan endpoint timing: launch 1.10x and settle 1.18x nominal segment duration"
+    },
+    {
+      "id": "ORBIT-TRANSITION-GEIRANGERFJORD-CURRENT",
+      "family": "ORBIT",
+      "subject": "Geirangerfjord",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3588,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-GEIRANGERFJORD-CURRENT.esp",
+      "controlled_change": "unchanged production control"
+    },
+    {
+      "id": "ORBIT-TRANSITION-GEIRANGERFJORD-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Geirangerfjord",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3588,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-GEIRANGERFJORD-TANGENT_ENVELOPE.esp",
+      "controlled_change": "prior human-better but rejected control"
+    },
+    {
+      "id": "ORBIT-TRANSITION-GEIRANGERFJORD-LOCAL_MATCH_MILD",
+      "family": "ORBIT",
+      "subject": "Geirangerfjord",
+      "variant": "LOCAL_MATCH_MILD",
+      "label": "LOCAL MATCH MILD",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3588,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-GEIRANGERFJORD-LOCAL_MATCH_MILD.esp",
+      "controlled_change": "shared position/pan endpoint timing: launch 1.06x and settle 1.10x nominal segment duration"
+    },
+    {
+      "id": "ORBIT-TRANSITION-GEIRANGERFJORD-LOCAL_MATCH_STRONG",
+      "family": "ORBIT",
+      "subject": "Geirangerfjord",
+      "variant": "LOCAL_MATCH_STRONG",
+      "label": "LOCAL MATCH STRONG",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3588,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-GEIRANGERFJORD-LOCAL_MATCH_STRONG.esp",
+      "controlled_change": "shared position/pan endpoint timing: launch 1.10x and settle 1.18x nominal segment duration"
+    },
+    {
+      "id": "ORBIT-TRANSITION-MATTERHORN-CURRENT",
+      "family": "ORBIT",
+      "subject": "Matterhorn",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-MATTERHORN-CURRENT.esp",
+      "controlled_change": "unchanged production control"
+    },
+    {
+      "id": "ORBIT-TRANSITION-MATTERHORN-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Matterhorn",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-MATTERHORN-TANGENT_ENVELOPE.esp",
+      "controlled_change": "prior human-better but rejected control"
+    },
+    {
+      "id": "ORBIT-TRANSITION-MATTERHORN-LOCAL_MATCH_MILD",
+      "family": "ORBIT",
+      "subject": "Matterhorn",
+      "variant": "LOCAL_MATCH_MILD",
+      "label": "LOCAL MATCH MILD",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-MATTERHORN-LOCAL_MATCH_MILD.esp",
+      "controlled_change": "shared position/pan endpoint timing: launch 1.06x and settle 1.10x nominal segment duration"
+    },
+    {
+      "id": "ORBIT-TRANSITION-MATTERHORN-LOCAL_MATCH_STRONG",
+      "family": "ORBIT",
+      "subject": "Matterhorn",
+      "variant": "LOCAL_MATCH_STRONG",
+      "label": "LOCAL MATCH STRONG",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-MATTERHORN-LOCAL_MATCH_STRONG.esp",
+      "controlled_change": "shared position/pan endpoint timing: launch 1.10x and settle 1.18x nominal segment duration"
+    },
+    {
+      "id": "ORBIT-TRANSITION-MOUNT-FUJI-CURRENT",
+      "family": "ORBIT",
+      "subject": "Mount Fuji",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 12,
+        "frame_rate": 30,
+        "total_frames": 360,
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-MOUNT-FUJI-CURRENT.esp",
+      "controlled_change": "unchanged production control"
+    },
+    {
+      "id": "ORBIT-TRANSITION-MOUNT-FUJI-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Mount Fuji",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 12,
+        "frame_rate": 30,
+        "total_frames": 360,
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-MOUNT-FUJI-TANGENT_ENVELOPE.esp",
+      "controlled_change": "prior human-better but rejected control"
+    },
+    {
+      "id": "ORBIT-TRANSITION-MOUNT-FUJI-LOCAL_MATCH_MILD",
+      "family": "ORBIT",
+      "subject": "Mount Fuji",
+      "variant": "LOCAL_MATCH_MILD",
+      "label": "LOCAL MATCH MILD",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 12,
+        "frame_rate": 30,
+        "total_frames": 360,
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-MOUNT-FUJI-LOCAL_MATCH_MILD.esp",
+      "controlled_change": "shared position/pan endpoint timing: launch 1.06x and settle 1.10x nominal segment duration"
+    },
+    {
+      "id": "ORBIT-TRANSITION-MOUNT-FUJI-LOCAL_MATCH_STRONG",
+      "family": "ORBIT",
+      "subject": "Mount Fuji",
+      "variant": "LOCAL_MATCH_STRONG",
+      "label": "LOCAL MATCH STRONG",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 12,
+        "frame_rate": 30,
+        "total_frames": 360,
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-transition-calibration/candidates/ORBIT-TRANSITION-MOUNT-FUJI-LOCAL_MATCH_STRONG.esp",
+      "controlled_change": "shared position/pan endpoint timing: launch 1.10x and settle 1.18x nominal segment duration"
+    }
+  ]
+}
