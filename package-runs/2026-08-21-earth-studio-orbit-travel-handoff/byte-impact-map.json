@@ -1,0 +1,17 @@
+{
+  "production_changed": false,
+  "status": "experiment_only_awaiting_human_authority",
+  "contracts": {
+    "gate3_v094_controls": "UNAFFECTED",
+    "director_canaries_8": "UNAFFECTED_BYTE_IDENTICAL",
+    "journey_v2_canaries": "UNAFFECTED",
+    "directorial_evaluation": "READ_ONLY_SOURCE; NOT_REGENERATED",
+    "obliquity": "UNAFFECTED",
+    "terrain_morphology": "UNAFFECTED",
+    "terrain_grammar": "UNAFFECTED",
+    "terminal_settle": "UNAFFECTED",
+    "boundary_continuity_calibration": "PRESERVED_READ_ONLY"
+  },
+  "candidate_bytes": "NEW_UNPINNED_EXPERIMENT_ARTIFACTS_ONLY",
+  "reearn_authority": false
+}

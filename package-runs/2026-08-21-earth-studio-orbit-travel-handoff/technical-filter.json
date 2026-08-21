@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "authority": "authenticated Google Earth Studio consecutive-frame scene-model playback",
+  "production_changed": false,
+  "baseline": {
+    "maximum_one_frame_turn_deg": 73.11913302848893,
+    "pan_acceleration_peak_dps2": 360.00000000008185,
+    "classification": "CONFIRMED_DEFECT"
+  },
+  "candidates": [
+    {
+      "variant": "TANGENT_DEPARTURE",
+      "maximum_one_frame_turn_deg": 4.960792066386375,
+      "altitude_speed_peak_mps": 1889035.8770261598,
+      "classification": "REJECTED_BEFORE_HUMAN_REVIEW",
+      "reason": "Dense position samples coupled into altitude interpolation and produced a severe launch spike; the direction seam was reduced but camera coordination was worse."
+    },
+    {
+      "variant": "SETTLE_THEN_LAUNCH",
+      "maximum_one_frame_turn_deg_above_100_mps": 0.013756142633724266,
+      "pan_acceleration_peak_dps2": 51.428997540165255,
+      "hold_frames": 15,
+      "classification": "READY_FOR_HUMAN_REVIEW",
+      "reason": "Position and pan decelerate coherently to rest, then the existing travel launches after a bounded 0.5-second hold."
+    }
+  ]
+}

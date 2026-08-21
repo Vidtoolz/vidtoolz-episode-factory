@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "operator": "Mikko",
+  "authority": "human visual review",
+  "started_at": null,
+  "completed_at": null,
+  "verdict": null,
+  "note": "",
+  "allowed_verdicts": [
+    "BASELINE_BETTER",
+    "TANGENT_DEPARTURE",
+    "SETTLE_THEN_LAUNCH",
+    "NONE_GOOD"
+  ]
+}

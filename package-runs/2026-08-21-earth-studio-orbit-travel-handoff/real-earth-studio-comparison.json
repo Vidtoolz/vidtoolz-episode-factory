@@ -1,0 +1,116 @@
+{
+  "generated_at": "2026-08-21T18:12:24.181Z",
+  "cases": [
+    {
+      "id": "DIRN17-BASELINE",
+      "variant": "BASELINE",
+      "imported": true,
+      "frame_count": 181,
+      "analysis": {
+        "ground_direction": {
+          "incoming_median_deg": 265.03897821999715,
+          "outgoing_median_deg": 338.16346343889234,
+          "maximum_one_frame_turn_deg": 73.11913302848893,
+          "maximum_one_frame_turn_frame": 1591
+        },
+        "speed": {
+          "incoming_median_mps": 6171.121835646956,
+          "outgoing_median_mps": 6799.097609012432,
+          "minimum_mps": 350.7183519346199,
+          "maximum_mps": 85414.72422782688,
+          "maximum_acceleration_mps2": 174620.65584573091
+        },
+        "pan": {
+          "incoming_median_dps": 11.999999999999318,
+          "outgoing_median_dps": 0,
+          "maximum_acceleration_dps2": 360.00000000008185
+        },
+        "altitude": {
+          "maximum_speed_mps": 433181.6459826316
+        },
+        "tilt": {
+          "maximum_speed_dps": 10.006423365608867
+        },
+        "target_facing": {
+          "stockholm_max_error_deg": 154.196976621202,
+          "scandinavia_max_error_deg": 19.403552578637914
+        }
+      },
+      "errors": []
+    },
+    {
+      "id": "DIRN17-TANGENT-DEPARTURE",
+      "variant": "TANGENT_DEPARTURE",
+      "imported": true,
+      "frame_count": 181,
+      "analysis": {
+        "ground_direction": {
+          "incoming_median_deg": 265.03897821999715,
+          "outgoing_median_deg": 270,
+          "maximum_one_frame_turn_deg": 4.960792066386375,
+          "maximum_one_frame_turn_frame": 1591
+        },
+        "speed": {
+          "incoming_median_mps": 6171.121835646956,
+          "outgoing_median_mps": 9815.3675905541,
+          "minimum_mps": 1501.5541058376486,
+          "maximum_mps": 85170.03160181394,
+          "maximum_acceleration_mps2": 1616206.1482447549
+        },
+        "pan": {
+          "incoming_median_dps": 11.999999999999318,
+          "outgoing_median_dps": 0,
+          "maximum_acceleration_dps2": 360.00000000008185
+        },
+        "altitude": {
+          "maximum_speed_mps": 1889035.8770261598
+        },
+        "tilt": {
+          "maximum_speed_dps": 10.006423365608867
+        },
+        "target_facing": {
+          "stockholm_max_error_deg": 147.29778450671824,
+          "scandinavia_max_error_deg": 19.352243151322455
+        }
+      },
+      "errors": []
+    },
+    {
+      "id": "DIRN17-SETTLE-THEN-LAUNCH",
+      "variant": "SETTLE_THEN_LAUNCH",
+      "imported": true,
+      "frame_count": 181,
+      "analysis": {
+        "ground_direction": {
+          "incoming_median_deg": 265.0390800452929,
+          "outgoing_median_deg": null,
+          "maximum_one_frame_turn_deg": 0.013756142633724266,
+          "maximum_one_frame_turn_frame": 1708
+        },
+        "speed": {
+          "incoming_median_mps": 6026.432495822256,
+          "outgoing_median_mps": 0,
+          "minimum_mps": 0,
+          "maximum_mps": 82813.54924379695,
+          "maximum_acceleration_mps2": 68104.10424646949
+        },
+        "pan": {
+          "incoming_median_dps": 11.718405708814998,
+          "outgoing_median_dps": 0,
+          "maximum_acceleration_dps2": 51.428997540165255
+        },
+        "altitude": {
+          "maximum_speed_mps": 458824.99678134714
+        },
+        "tilt": {
+          "maximum_speed_dps": 10.595117263250415
+        },
+        "target_facing": {
+          "stockholm_max_error_deg": 154.8447691535706,
+          "scandinavia_max_error_deg": 19.41250041327862
+        }
+      },
+      "errors": []
+    }
+  ]
+}

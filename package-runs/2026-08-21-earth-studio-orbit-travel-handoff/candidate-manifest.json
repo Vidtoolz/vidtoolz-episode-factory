@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "production_changed": false,
+  "boundary_frame": 1590,
+  "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio",
+  "candidates": [
+    {
+      "id": "DIRN17-BASELINE",
+      "label": "PRODUCTION BASELINE",
+      "variant": "BASELINE",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-BASELINE/earth-studio.esp",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-BASELINE/shot-plan.json",
+      "esp_sha256": "1f0676872f652f8055ffe28a099a1718886fd522bfa8a60fa0c7581bc3e2c308",
+      "metrics": {
+        "evaluator_verdict": "FAIL",
+        "boundary_defects": [
+          {
+            "defect_class": "BOUNDARY_DIRECTION_SNAP",
+            "parameter": "ground_velocity_vector",
+            "segment_id": 9,
+            "primitive_before": "orbit",
+            "primitive_after": "fly_to",
+            "frame_start": 1589,
+            "frame_end": 1591,
+            "measured_value": 72.55073599911589,
+            "threshold": 30,
+            "explanation": "orbit→fly_to changes ground-velocity direction 72.6° in one frame while both primitives are moving",
+            "severity": "error"
+          }
+        ],
+        "boundary_warnings": [
+          {
+            "defect_class": "BOUNDARY_CHANNEL_PHASE_UNCERTAIN",
+            "parameter": "coordinated_camera_tracks",
+            "segment_id": 9,
+            "primitive_before": "orbit",
+            "primitive_after": "fly_to",
+            "frame_start": 1575,
+            "frame_end": 1605,
+            "measured_value": 14,
+            "threshold": 8,
+            "explanation": "orbit→fly_to has modeled channel-acceleration peaks separated by 14 frames; custom playback authority remains advisory",
+            "severity": "warning"
+          },
+          {
+            "defect_class": "BOUNDARY_VELOCITY_DISCONTINUITY",
+            "parameter": "pan_speed",
+            "segment_id": 9,
+            "primitive_before": "orbit",
+            "primitive_after": "fly_to",
+            "frame_start": 1589,
+            "frame_end": 1591,
+            "measured_value": 1,
+            "threshold": 0.65,
+            "explanation": "orbit→fly_to changes normalized pan_speed rate abruptly at an interior boundary",
+            "severity": "warning"
+          }
+        ],
+        "incoming_bearing_deg": 265.040728,
+        "first_outgoing_bearing_deg": 337.591464,
+        "first_frame_redirect_deg": 72.550736,
+        "local_max_one_frame_turn_deg": 72.550736,
+        "local_max_turn_frame": 1591,
+        "incoming_speed_mps": 6164.473157,
+        "first_outgoing_speed_mps": 16583.297662,
+        "window_min_speed_mps": 6164.444685,
+        "window_max_speed_mps": 67781.563041
+      }
+    },
+    {
+      "id": "DIRN17-TANGENT-DEPARTURE",
+      "label": "TANGENT DEPARTURE",
+      "variant": "TANGENT_DEPARTURE",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-TANGENT-DEPARTURE/earth-studio.esp",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-TANGENT-DEPARTURE/shot-plan.json",
+      "esp_sha256": "818779571c529e8c3deec6cd0fc143f71d04fd53a5ed2404813207bf951faaac",
+      "metrics": {
+        "evaluator_verdict": "FAIL",
+        "boundary_defects": [],
+        "boundary_warnings": [
+          {
+            "defect_class": "BOUNDARY_CHANNEL_PHASE_UNCERTAIN",
+            "parameter": "coordinated_camera_tracks",
+            "segment_id": 9,
+            "primitive_before": "orbit",
+            "primitive_after": "fly_to",
+            "frame_start": 1575,
+            "frame_end": 1605,
+            "measured_value": 14,
+            "threshold": 8,
+            "explanation": "orbit→fly_to has modeled channel-acceleration peaks separated by 14 frames; custom playback authority remains advisory",
+            "severity": "warning"
+          },
+          {
+            "defect_class": "BOUNDARY_VELOCITY_DISCONTINUITY",
+            "parameter": "pan_speed",
+            "segment_id": 9,
+            "primitive_before": "orbit",
+            "primitive_after": "fly_to",
+            "frame_start": 1589,
+            "frame_end": 1591,
+            "measured_value": 1,
+            "threshold": 0.65,
+            "explanation": "orbit→fly_to changes normalized pan_speed rate abruptly at an interior boundary",
+            "severity": "warning"
+          }
+        ],
+        "incoming_bearing_deg": 265.040728,
+        "first_outgoing_bearing_deg": 265.102822,
+        "first_frame_redirect_deg": 0.062094,
+        "local_max_one_frame_turn_deg": 2.545291,
+        "local_max_turn_frame": 1651,
+        "incoming_speed_mps": 6164.473157,
+        "first_outgoing_speed_mps": 6198.13573,
+        "window_min_speed_mps": 6164.444685,
+        "window_max_speed_mps": 87143.709627
+      }
+    },
+    {
+      "id": "DIRN17-SETTLE-THEN-LAUNCH",
+      "label": "SETTLE THEN LAUNCH",
+      "variant": "SETTLE_THEN_LAUNCH",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-SETTLE-THEN-LAUNCH/earth-studio.esp",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-SETTLE-THEN-LAUNCH/shot-plan.json",
+      "esp_sha256": "2e27fdcdff5d8844dcbe9c5df26da6b3e56497d20d9506b9ee41db5d20d507e9",
+      "metrics": {
+        "evaluator_verdict": "FAIL",
+        "boundary_defects": [],
+        "boundary_warnings": [
+          {
+            "defect_class": "BOUNDARY_VELOCITY_DISCONTINUITY",
+            "parameter": "altitude_speed",
+            "segment_id": 9,
+            "primitive_before": "orbit",
+            "primitive_after": "fly_to",
+            "frame_start": 1589,
+            "frame_end": 1591,
+            "measured_value": 1,
+            "threshold": 0.65,
+            "explanation": "orbit→fly_to changes normalized altitude_speed rate abruptly at an interior boundary",
+            "severity": "warning"
+          }
+        ],
+        "incoming_bearing_deg": 85.038458,
+        "first_outgoing_bearing_deg": 85.05175,
+        "first_frame_redirect_deg": 0.013293,
+        "local_max_one_frame_turn_deg": 85.05175,
+        "local_max_turn_frame": 1592,
+        "incoming_speed_mps": 3016.454036,
+        "first_outgoing_speed_mps": 0.000172,
+        "window_min_speed_mps": 0,
+        "window_max_speed_mps": 73152.36837
+      }
+    }
+  ]
+}
