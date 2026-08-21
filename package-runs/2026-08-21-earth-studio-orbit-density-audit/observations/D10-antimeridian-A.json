@@ -1,0 +1,156 @@
+{
+  "id": "D10-antimeridian-A",
+  "aspect": "9:16",
+  "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/A-coarse-30deg/earth-studio/earth-studio.esp",
+  "esp_sha256": "ab756b9892eefe292db41e559e939cb0b645e26779d333edf5eec2fa2b41b7c7",
+  "expected": {
+    "total_frames": 600,
+    "duration_seconds": 20,
+    "render_dimensions": {
+      "width": 1080,
+      "height": 1920
+    }
+  },
+  "import": {
+    "duration": 600,
+    "totalFrames": 600,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "orbit",
+      "place": "10.0000, 179.9900",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D10-antimeridian-A/D10-antimeridian-A_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 10.031153003011601,
+        "longitude": 179.989999918611,
+        "altitude": 2000.8914191359427,
+        "pan_deg": 180.00000003209496,
+        "tilt_deg": 59.99999991913625,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "10.0000, 179.9900",
+        "altitude_m": 2000,
+        "tilt_deg": 60,
+        "target_lat": 10,
+        "target_lng": 179.99
+      }
+    },
+    {
+      "frame": 150,
+      "label": "seg1-quarter",
+      "movement": "orbit",
+      "place": "10.0000, 179.9900",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D10-antimeridian-A/D10-antimeridian-A_f00150_seg1-quarter.png",
+      "earth_studio_camera": {
+        "frame": 150,
+        "latitude": 9.999998961075159,
+        "longitude": -179.978366,
+        "altitude": 2000.9800372108693,
+        "pan_deg": 270,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "10.0000, 179.9900",
+        "altitude_m": 2000,
+        "tilt_deg": 60,
+        "target_lat": 10,
+        "target_lng": 179.99
+      }
+    },
+    {
+      "frame": 300,
+      "label": "seg1-mid",
+      "movement": "orbit",
+      "place": "10.0000, 179.9900",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D10-antimeridian-A/D10-antimeridian-A_f00300_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 300,
+        "latitude": 9.968847,
+        "longitude": 179.99000000000004,
+        "altitude": 2000.9800372108693,
+        "pan_deg": 360,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "10.0000, 179.9900",
+        "altitude_m": 2000,
+        "tilt_deg": 60,
+        "target_lat": 10,
+        "target_lng": 179.99
+      }
+    },
+    {
+      "frame": 450,
+      "label": "seg1-three-quarter",
+      "movement": "orbit",
+      "place": "10.0000, 179.9900",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D10-antimeridian-A/D10-antimeridian-A_f00450_seg1-three-quarter.png",
+      "earth_studio_camera": {
+        "frame": 450,
+        "latitude": 9.999998961075159,
+        "longitude": 179.95836599999998,
+        "altitude": 2000.9800372108693,
+        "pan_deg": 450,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "10.0000, 179.9900",
+        "altitude_m": 2000,
+        "tilt_deg": 60,
+        "target_lat": 10,
+        "target_lng": 179.99
+      }
+    },
+    {
+      "frame": 599,
+      "label": "seg1-end",
+      "movement": "orbit",
+      "place": "10.0000, 179.9900",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D10-antimeridian-A/D10-antimeridian-A_f00599_seg1-end.png",
+      "earth_studio_camera": {
+        "frame": 599,
+        "latitude": 10.03115170108416,
+        "longitude": 179.9899907795631,
+        "altitude": 2000.9800372108693,
+        "pan_deg": 539.9756705128804,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "10.0000, 179.9900",
+        "altitude_m": 2000,
+        "tilt_deg": 60,
+        "target_lat": 10,
+        "target_lng": 179.99
+      }
+    }
+  ],
+  "errors": []
+}

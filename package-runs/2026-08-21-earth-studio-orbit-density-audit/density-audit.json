@@ -1,0 +1,1061 @@
+{
+  "generated_at": "2026-08-21T18:00:00.000Z",
+  "provenance": "INTERNAL EVALUATOR over serialized ESP tracks; A is an isolated one-constant planner copy, B is live production",
+  "production_changed": false,
+  "accepted_contracts_changed": false,
+  "law": {
+    "chord_midpoint_radius": "R * cos(delta_theta / 2)",
+    "relative_inward_deviation": "1 - cos(delta_theta / 2)",
+    "coarse_30deg_analytic_pct": 3.407417,
+    "live_10deg_analytic_pct": 0.38053
+  },
+  "hover_negative_control": {
+    "intent": "Hover over Helsinki Cathedral.",
+    "actions": [
+      "hover"
+    ],
+    "max_position_drift_m": 0,
+    "pan_sweep_deg": 0,
+    "tilt_sweep_deg": 0
+  },
+  "pairs": [
+    {
+      "id": "D01-helsinki-half",
+      "label": "small landmark half-orbit",
+      "A": {
+        "id": "D01-helsinki-half",
+        "label": "small landmark half-orbit",
+        "variant": "A-coarse-30deg",
+        "sample_step_deg": 30,
+        "description": "orbit Helsinki Cathedral 180 degrees over 16 seconds",
+        "directorial": null,
+        "target": {
+          "name": "Helsinki Cathedral",
+          "latitude": 60.1704,
+          "longitude": 24.9522
+        },
+        "orbit": {
+          "angular_span_deg": 180,
+          "direction": 1,
+          "duration_seconds": 16,
+          "start_frame": 0,
+          "end_frame": 480,
+          "frame_count": 481,
+          "altitude_m": 700,
+          "tilt_deg": 60,
+          "nominal_radius_m": 1212.436
+        },
+        "metrics": {
+          "position_pan_keyframes": 7,
+          "angular_spacing_deg": 30,
+          "keyframe_radius_min_m": 1212.385,
+          "keyframe_radius_max_m": 1212.469,
+          "keyframe_radius_spread_pct": 0.006972,
+          "interpolated_radius_min_m": 1171.07,
+          "interpolated_radius_max_m": 1216.19,
+          "inter_sample_inward_deviation_m": 41.366,
+          "inter_sample_inward_deviation_pct": 3.411769,
+          "interpolated_radius_spread_pct": 3.72147,
+          "max_target_aim_error_deg": 0.135878,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 5,
+          "playback_model_max_reverse_step_deg": 0.25819011,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 80,
+          "keyframe_gap_max_frames": 80,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 15204,
+          "esp_sha256": "b0f83ae0df7d87a688d0524003debc1ac004d84384cda197876045acd83314d2"
+        }
+      },
+      "B": {
+        "id": "D01-helsinki-half",
+        "label": "small landmark half-orbit",
+        "variant": "B-live-10deg",
+        "sample_step_deg": 10,
+        "description": "orbit Helsinki Cathedral 180 degrees over 16 seconds",
+        "directorial": null,
+        "target": {
+          "name": "Helsinki Cathedral",
+          "latitude": 60.1704,
+          "longitude": 24.9522
+        },
+        "orbit": {
+          "angular_span_deg": 180,
+          "direction": 1,
+          "duration_seconds": 16,
+          "start_frame": 0,
+          "end_frame": 480,
+          "frame_count": 481,
+          "altitude_m": 700,
+          "tilt_deg": 60,
+          "nominal_radius_m": 1212.436
+        },
+        "metrics": {
+          "position_pan_keyframes": 19,
+          "angular_spacing_deg": 10,
+          "keyframe_radius_min_m": 1212.385,
+          "keyframe_radius_max_m": 1212.469,
+          "keyframe_radius_spread_pct": 0.006972,
+          "interpolated_radius_min_m": 1207.675,
+          "interpolated_radius_max_m": 1212.899,
+          "inter_sample_inward_deviation_m": 4.76,
+          "inter_sample_inward_deviation_pct": 0.392639,
+          "interpolated_radius_spread_pct": 0.430869,
+          "max_target_aim_error_deg": 0.007079,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 2,
+          "playback_model_max_reverse_step_deg": 0.190647764,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 26,
+          "keyframe_gap_max_frames": 27,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 32621,
+          "esp_sha256": "405fc9fb71d2e41b243080050e6ba7fee43f01bc5b8e345e82fe9bf8499dfec8"
+        }
+      },
+      "improvement": {
+        "inward_deviation_reduction_pct": 88.492,
+        "esp_byte_growth_pct": 114.555,
+        "added_position_pan_keyframes": 12
+      }
+    },
+    {
+      "id": "D02-promoted-helsinki-establish",
+      "label": "promoted oblique landmark establish",
+      "A": {
+        "id": "D02-promoted-helsinki-establish",
+        "label": "promoted oblique landmark establish",
+        "variant": "A-coarse-30deg",
+        "sample_step_deg": 30,
+        "description": "orbit Helsinki Cathedral half clockwise tilted 50 degrees for 9 seconds",
+        "directorial": {
+          "intent": "Show Helsinki Cathedral.",
+          "movement": "half_orbit",
+          "opening_camera": null
+        },
+        "target": {
+          "name": "Helsinki Cathedral",
+          "latitude": 60.1704,
+          "longitude": 24.9522
+        },
+        "orbit": {
+          "angular_span_deg": 180,
+          "direction": 1,
+          "duration_seconds": 9,
+          "start_frame": 0,
+          "end_frame": 270,
+          "frame_count": 271,
+          "altitude_m": 700,
+          "tilt_deg": 50,
+          "nominal_radius_m": 834.228
+        },
+        "metrics": {
+          "position_pan_keyframes": 7,
+          "angular_spacing_deg": 30,
+          "keyframe_radius_min_m": 834.184,
+          "keyframe_radius_max_m": 834.253,
+          "keyframe_radius_spread_pct": 0.008253,
+          "interpolated_radius_min_m": 805.776,
+          "interpolated_radius_max_m": 836.749,
+          "inter_sample_inward_deviation_m": 28.452,
+          "inter_sample_inward_deviation_pct": 3.410559,
+          "interpolated_radius_spread_pct": 3.712865,
+          "max_target_aim_error_deg": 0.136158,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 3,
+          "playback_model_max_reverse_step_deg": 0.407911289,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 45,
+          "keyframe_gap_max_frames": 45,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 15220,
+          "esp_sha256": "9819c99cfd0e73da4293cb6deb0d509262d73d71a89076cb02cd9e82738f621b"
+        }
+      },
+      "B": {
+        "id": "D02-promoted-helsinki-establish",
+        "label": "promoted oblique landmark establish",
+        "variant": "B-live-10deg",
+        "sample_step_deg": 10,
+        "description": "orbit Helsinki Cathedral half clockwise tilted 50 degrees for 9 seconds",
+        "directorial": {
+          "intent": "Show Helsinki Cathedral.",
+          "movement": "half_orbit",
+          "opening_camera": null
+        },
+        "target": {
+          "name": "Helsinki Cathedral",
+          "latitude": 60.1704,
+          "longitude": 24.9522
+        },
+        "orbit": {
+          "angular_span_deg": 180,
+          "direction": 1,
+          "duration_seconds": 9,
+          "start_frame": 0,
+          "end_frame": 270,
+          "frame_count": 271,
+          "altitude_m": 700,
+          "tilt_deg": 50,
+          "nominal_radius_m": 834.228
+        },
+        "metrics": {
+          "position_pan_keyframes": 19,
+          "angular_spacing_deg": 10,
+          "keyframe_radius_min_m": 834.175,
+          "keyframe_radius_max_m": 834.263,
+          "keyframe_radius_spread_pct": 0.010463,
+          "interpolated_radius_min_m": 831.011,
+          "interpolated_radius_max_m": 834.476,
+          "inter_sample_inward_deviation_m": 3.216,
+          "inter_sample_inward_deviation_pct": 0.385562,
+          "interpolated_radius_spread_pct": 0.415312,
+          "max_target_aim_error_deg": 0.007548,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 1,
+          "playback_model_max_reverse_step_deg": 0.22483466,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 15,
+          "keyframe_gap_max_frames": 15,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 32814,
+          "esp_sha256": "663b924ccc212488c769c6da61cbbea63df116c7fdb3737975d9c287dba2f352"
+        }
+      },
+      "improvement": {
+        "inward_deviation_reduction_pct": 88.695,
+        "esp_byte_growth_pct": 115.598,
+        "added_position_pan_keyframes": 12
+      }
+    },
+    {
+      "id": "D03-helsinki-explicit-full",
+      "label": "explicit landmark full orbit",
+      "A": {
+        "id": "D03-helsinki-explicit-full",
+        "label": "explicit landmark full orbit",
+        "variant": "A-coarse-30deg",
+        "sample_step_deg": 30,
+        "description": "orbit Helsinki Cathedral for 20 seconds",
+        "directorial": null,
+        "target": {
+          "name": "Helsinki Cathedral",
+          "latitude": 60.1704,
+          "longitude": 24.9522
+        },
+        "orbit": {
+          "angular_span_deg": 360,
+          "direction": 1,
+          "duration_seconds": 20,
+          "start_frame": 0,
+          "end_frame": 600,
+          "frame_count": 601,
+          "altitude_m": 700,
+          "tilt_deg": 60,
+          "nominal_radius_m": 1212.436
+        },
+        "metrics": {
+          "position_pan_keyframes": 13,
+          "angular_spacing_deg": 30,
+          "keyframe_radius_min_m": 1212.385,
+          "keyframe_radius_max_m": 1212.469,
+          "keyframe_radius_spread_pct": 0.006972,
+          "interpolated_radius_min_m": 1171.07,
+          "interpolated_radius_max_m": 1216.177,
+          "inter_sample_inward_deviation_m": 41.366,
+          "inter_sample_inward_deviation_pct": 3.411769,
+          "interpolated_radius_spread_pct": 3.720346,
+          "max_target_aim_error_deg": 0.135781,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 3,
+          "playback_model_max_reverse_step_deg": 0.377231284,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 50,
+          "keyframe_gap_max_frames": 50,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 23917,
+          "esp_sha256": "414b7abb1a4c70e7233437df75802264d0d0c2dd93a76af7ff07f6ce7e41e89e"
+        }
+      },
+      "B": {
+        "id": "D03-helsinki-explicit-full",
+        "label": "explicit landmark full orbit",
+        "variant": "B-live-10deg",
+        "sample_step_deg": 10,
+        "description": "orbit Helsinki Cathedral for 20 seconds",
+        "directorial": null,
+        "target": {
+          "name": "Helsinki Cathedral",
+          "latitude": 60.1704,
+          "longitude": 24.9522
+        },
+        "orbit": {
+          "angular_span_deg": 360,
+          "direction": 1,
+          "duration_seconds": 20,
+          "start_frame": 0,
+          "end_frame": 600,
+          "frame_count": 601,
+          "altitude_m": 700,
+          "tilt_deg": 60,
+          "nominal_radius_m": 1212.436
+        },
+        "metrics": {
+          "position_pan_keyframes": 37,
+          "angular_spacing_deg": 10,
+          "keyframe_radius_min_m": 1212.385,
+          "keyframe_radius_max_m": 1212.469,
+          "keyframe_radius_spread_pct": 0.006972,
+          "interpolated_radius_min_m": 1207.601,
+          "interpolated_radius_max_m": 1212.907,
+          "inter_sample_inward_deviation_m": 4.835,
+          "inter_sample_inward_deviation_pct": 0.39876,
+          "interpolated_radius_spread_pct": 0.437683,
+          "max_target_aim_error_deg": 0.006907,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 1,
+          "playback_model_max_reverse_step_deg": 0.227241129,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 16,
+          "keyframe_gap_max_frames": 17,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 58763,
+          "esp_sha256": "a59ddce557941eca60971c58d47c19026cc16dc468b720e7add413f810ab8b90"
+        }
+      },
+      "improvement": {
+        "inward_deviation_reduction_pct": 88.312,
+        "esp_byte_growth_pct": 145.696,
+        "added_position_pan_keyframes": 24
+      }
+    },
+    {
+      "id": "D04-santorini-half",
+      "label": "compact district half-orbit",
+      "A": {
+        "id": "D04-santorini-half",
+        "label": "compact district half-orbit",
+        "variant": "A-coarse-30deg",
+        "sample_step_deg": 30,
+        "description": "orbit Santorini 180 degrees over 16 seconds",
+        "directorial": null,
+        "target": {
+          "name": "Santorini",
+          "latitude": 36.3932,
+          "longitude": 25.4615
+        },
+        "orbit": {
+          "angular_span_deg": 180,
+          "direction": 1,
+          "duration_seconds": 16,
+          "start_frame": 0,
+          "end_frame": 480,
+          "frame_count": 481,
+          "altitude_m": 3000,
+          "tilt_deg": 60,
+          "nominal_radius_m": 5196.152
+        },
+        "metrics": {
+          "position_pan_keyframes": 7,
+          "angular_spacing_deg": 30,
+          "keyframe_radius_min_m": 5196.115,
+          "keyframe_radius_max_m": 5196.194,
+          "keyframe_radius_spread_pct": 0.001506,
+          "interpolated_radius_min_m": 5018.997,
+          "interpolated_radius_max_m": 5212.075,
+          "inter_sample_inward_deviation_m": 177.155,
+          "inter_sample_inward_deviation_pct": 3.409354,
+          "interpolated_radius_spread_pct": 3.715784,
+          "max_target_aim_error_deg": 0.13445,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 5,
+          "playback_model_max_reverse_step_deg": 0.25819011,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 80,
+          "keyframe_gap_max_frames": 80,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 15201,
+          "esp_sha256": "73b89730e29778f46e048b3fada06bcc633f2fe9a169d3eb44bb317465949b4b"
+        }
+      },
+      "B": {
+        "id": "D04-santorini-half",
+        "label": "compact district half-orbit",
+        "variant": "B-live-10deg",
+        "sample_step_deg": 10,
+        "description": "orbit Santorini 180 degrees over 16 seconds",
+        "directorial": null,
+        "target": {
+          "name": "Santorini",
+          "latitude": 36.3932,
+          "longitude": 25.4615
+        },
+        "orbit": {
+          "angular_span_deg": 180,
+          "direction": 1,
+          "duration_seconds": 16,
+          "start_frame": 0,
+          "end_frame": 480,
+          "frame_count": 481,
+          "altitude_m": 3000,
+          "tilt_deg": 60,
+          "nominal_radius_m": 5196.152
+        },
+        "metrics": {
+          "position_pan_keyframes": 19,
+          "angular_spacing_deg": 10,
+          "keyframe_radius_min_m": 5196.098,
+          "keyframe_radius_max_m": 5196.194,
+          "keyframe_radius_spread_pct": 0.001837,
+          "interpolated_radius_min_m": 5175.865,
+          "interpolated_radius_max_m": 5197.976,
+          "inter_sample_inward_deviation_m": 20.287,
+          "inter_sample_inward_deviation_pct": 0.390427,
+          "interpolated_radius_spread_pct": 0.425525,
+          "max_target_aim_error_deg": 0.005486,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 2,
+          "playback_model_max_reverse_step_deg": 0.190647764,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 26,
+          "keyframe_gap_max_frames": 27,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 32615,
+          "esp_sha256": "6149e622903c7199e7620aefcafa7bb9f7212516b915d8b439e7fbc15e1387cb"
+        }
+      },
+      "improvement": {
+        "inward_deviation_reduction_pct": 88.548,
+        "esp_byte_growth_pct": 114.558,
+        "added_position_pan_keyframes": 12
+      }
+    },
+    {
+      "id": "D05-matterhorn-terrain",
+      "label": "terrain orbit (72-degree policy held)",
+      "A": {
+        "id": "D05-matterhorn-terrain",
+        "label": "terrain orbit (72-degree policy held)",
+        "variant": "A-coarse-30deg",
+        "sample_step_deg": 30,
+        "description": "orbit Matterhorn 180 degrees tilted 72 degrees over 16 seconds",
+        "directorial": null,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585
+        },
+        "orbit": {
+          "angular_span_deg": 180,
+          "direction": 1,
+          "duration_seconds": 16,
+          "start_frame": 0,
+          "end_frame": 480,
+          "frame_count": 481,
+          "altitude_m": 6500,
+          "tilt_deg": 72,
+          "nominal_radius_m": 20004.943
+        },
+        "metrics": {
+          "position_pan_keyframes": 7,
+          "angular_spacing_deg": 30,
+          "keyframe_radius_min_m": 20004.906,
+          "keyframe_radius_max_m": 20004.991,
+          "keyframe_radius_spread_pct": 0.000425,
+          "interpolated_radius_min_m": 19320.99,
+          "interpolated_radius_max_m": 20066.174,
+          "inter_sample_inward_deviation_m": 683.953,
+          "inter_sample_inward_deviation_pct": 3.418922,
+          "interpolated_radius_spread_pct": 3.724999,
+          "max_target_aim_error_deg": 0.135896,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 5,
+          "playback_model_max_reverse_step_deg": 0.25819011,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 80,
+          "keyframe_gap_max_frames": 80,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 15178,
+          "esp_sha256": "857a8b0d84cb4df0ce0b927a197f776d886d617ae3c3fe5645873e6ccef98d73"
+        }
+      },
+      "B": {
+        "id": "D05-matterhorn-terrain",
+        "label": "terrain orbit (72-degree policy held)",
+        "variant": "B-live-10deg",
+        "sample_step_deg": 10,
+        "description": "orbit Matterhorn 180 degrees tilted 72 degrees over 16 seconds",
+        "directorial": null,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585
+        },
+        "orbit": {
+          "angular_span_deg": 180,
+          "direction": 1,
+          "duration_seconds": 16,
+          "start_frame": 0,
+          "end_frame": 480,
+          "frame_count": 481,
+          "altitude_m": 6500,
+          "tilt_deg": 72,
+          "nominal_radius_m": 20004.943
+        },
+        "metrics": {
+          "position_pan_keyframes": 19,
+          "angular_spacing_deg": 10,
+          "keyframe_radius_min_m": 20004.884,
+          "keyframe_radius_max_m": 20004.991,
+          "keyframe_radius_spread_pct": 0.000534,
+          "interpolated_radius_min_m": 19926.667,
+          "interpolated_radius_max_m": 20012.026,
+          "inter_sample_inward_deviation_m": 78.276,
+          "inter_sample_inward_deviation_pct": 0.391284,
+          "interpolated_radius_spread_pct": 0.426692,
+          "max_target_aim_error_deg": 0.005306,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 2,
+          "playback_model_max_reverse_step_deg": 0.190647764,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 26,
+          "keyframe_gap_max_frames": 27,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 32577,
+          "esp_sha256": "237fbb28e324ee5da717433c53a928c861c4266e615a1961e7e253879678ccbd"
+        }
+      },
+      "improvement": {
+        "inward_deviation_reduction_pct": 88.555,
+        "esp_byte_growth_pct": 114.633,
+        "added_position_pan_keyframes": 12
+      }
+    },
+    {
+      "id": "D06-paris-space-scale",
+      "label": "large Paris two-revolution orbit",
+      "A": {
+        "id": "D06-paris-space-scale",
+        "label": "large Paris two-revolution orbit",
+        "variant": "A-coarse-30deg",
+        "sample_step_deg": 30,
+        "description": "orbit Paris twice at 2 km tilted 35 degrees for 36 seconds",
+        "directorial": null,
+        "target": {
+          "name": "Paris",
+          "latitude": 48.8566,
+          "longitude": 2.3522
+        },
+        "orbit": {
+          "angular_span_deg": 720,
+          "direction": 1,
+          "duration_seconds": 36,
+          "start_frame": 0,
+          "end_frame": 1080,
+          "frame_count": 1081,
+          "altitude_m": 2000,
+          "tilt_deg": 35,
+          "nominal_radius_m": 1400.415
+        },
+        "metrics": {
+          "position_pan_keyframes": 25,
+          "angular_spacing_deg": 30,
+          "keyframe_radius_min_m": 1400.388,
+          "keyframe_radius_max_m": 1400.462,
+          "keyframe_radius_spread_pct": 0.005246,
+          "interpolated_radius_min_m": 1352.705,
+          "interpolated_radius_max_m": 1404.695,
+          "inter_sample_inward_deviation_m": 47.71,
+          "inter_sample_inward_deviation_pct": 3.406843,
+          "interpolated_radius_spread_pct": 3.712442,
+          "max_target_aim_error_deg": 0.135048,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 3,
+          "playback_model_max_reverse_step_deg": 0.407904917,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 45,
+          "keyframe_gap_max_frames": 45,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 41258,
+          "esp_sha256": "84581ad3788c97029602a19627601108ee12d9725d08c0448fa5777eab88a30f"
+        }
+      },
+      "B": {
+        "id": "D06-paris-space-scale",
+        "label": "large Paris two-revolution orbit",
+        "variant": "B-live-10deg",
+        "sample_step_deg": 10,
+        "description": "orbit Paris twice at 2 km tilted 35 degrees for 36 seconds",
+        "directorial": null,
+        "target": {
+          "name": "Paris",
+          "latitude": 48.8566,
+          "longitude": 2.3522
+        },
+        "orbit": {
+          "angular_span_deg": 720,
+          "direction": 1,
+          "duration_seconds": 36,
+          "start_frame": 0,
+          "end_frame": 1080,
+          "frame_count": 1081,
+          "altitude_m": 2000,
+          "tilt_deg": 35,
+          "nominal_radius_m": 1400.415
+        },
+        "metrics": {
+          "position_pan_keyframes": 73,
+          "angular_spacing_deg": 10,
+          "keyframe_radius_min_m": 1400.386,
+          "keyframe_radius_max_m": 1400.462,
+          "keyframe_radius_spread_pct": 0.005382,
+          "interpolated_radius_min_m": 1395.079,
+          "interpolated_radius_max_m": 1400.877,
+          "inter_sample_inward_deviation_m": 5.336,
+          "inter_sample_inward_deviation_pct": 0.38104,
+          "interpolated_radius_spread_pct": 0.414031,
+          "max_target_aim_error_deg": 0.007072,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 1,
+          "playback_model_max_reverse_step_deg": 0.224834473,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 15,
+          "keyframe_gap_max_frames": 15,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 111642,
+          "esp_sha256": "977472ad08018de538c56c08ecbb399b80bf8091c1105df2e3a9383c8b4db3dc"
+        }
+      },
+      "improvement": {
+        "inward_deviation_reduction_pct": 88.815,
+        "esp_byte_growth_pct": 170.595,
+        "added_position_pan_keyframes": 48
+      }
+    },
+    {
+      "id": "D07-equator",
+      "label": "equatorial full orbit",
+      "A": {
+        "id": "D07-equator",
+        "label": "equatorial full orbit",
+        "variant": "A-coarse-30deg",
+        "sample_step_deg": 30,
+        "description": "orbit 0,20 at 2 km tilted 60 degrees for 20 seconds",
+        "directorial": null,
+        "target": {
+          "name": "0.0000, 20.0000",
+          "latitude": 0,
+          "longitude": 20
+        },
+        "orbit": {
+          "angular_span_deg": 360,
+          "direction": 1,
+          "duration_seconds": 20,
+          "start_frame": 0,
+          "end_frame": 600,
+          "frame_count": 601,
+          "altitude_m": 2000,
+          "tilt_deg": 60,
+          "nominal_radius_m": 3464.102
+        },
+        "metrics": {
+          "position_pan_keyframes": 13,
+          "angular_spacing_deg": 30,
+          "keyframe_radius_min_m": 3464.056,
+          "keyframe_radius_max_m": 3464.152,
+          "keyframe_radius_spread_pct": 0.002777,
+          "interpolated_radius_min_m": 3346.066,
+          "interpolated_radius_max_m": 3474.638,
+          "inter_sample_inward_deviation_m": 118.036,
+          "inter_sample_inward_deviation_pct": 3.407393,
+          "interpolated_radius_spread_pct": 3.711545,
+          "max_target_aim_error_deg": 0.133983,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 3,
+          "playback_model_max_reverse_step_deg": 0.377231284,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 50,
+          "keyframe_gap_max_frames": 50,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 23900,
+          "esp_sha256": "704227afa68b6f8134e8aa89faba9ea3f567e9ea40ad5c23b29fabcd7858b704"
+        }
+      },
+      "B": {
+        "id": "D07-equator",
+        "label": "equatorial full orbit",
+        "variant": "B-live-10deg",
+        "sample_step_deg": 10,
+        "description": "orbit 0,20 at 2 km tilted 60 degrees for 20 seconds",
+        "directorial": null,
+        "target": {
+          "name": "0.0000, 20.0000",
+          "latitude": 0,
+          "longitude": 20
+        },
+        "orbit": {
+          "angular_span_deg": 360,
+          "direction": 1,
+          "duration_seconds": 20,
+          "start_frame": 0,
+          "end_frame": 600,
+          "frame_count": 601,
+          "altitude_m": 2000,
+          "tilt_deg": 60,
+          "nominal_radius_m": 3464.102
+        },
+        "metrics": {
+          "position_pan_keyframes": 37,
+          "angular_spacing_deg": 10,
+          "keyframe_radius_min_m": 3464.056,
+          "keyframe_radius_max_m": 3464.152,
+          "keyframe_radius_spread_pct": 0.002777,
+          "interpolated_radius_min_m": 3450.364,
+          "interpolated_radius_max_m": 3465.301,
+          "inter_sample_inward_deviation_m": 13.737,
+          "inter_sample_inward_deviation_pct": 0.396557,
+          "interpolated_radius_spread_pct": 0.43119,
+          "max_target_aim_error_deg": 0.005499,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 1,
+          "playback_model_max_reverse_step_deg": 0.227241129,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 16,
+          "keyframe_gap_max_frames": 17,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 58743,
+          "esp_sha256": "2abc35039970a1ba335158e379f26e9ed78c8fb0b58a3ccdbcf580d69c3d9a7f"
+        }
+      },
+      "improvement": {
+        "inward_deviation_reduction_pct": 88.362,
+        "esp_byte_growth_pct": 145.787,
+        "added_position_pan_keyframes": 24
+      }
+    },
+    {
+      "id": "D08-lat80",
+      "label": "80-degree latitude full orbit",
+      "A": {
+        "id": "D08-lat80",
+        "label": "80-degree latitude full orbit",
+        "variant": "A-coarse-30deg",
+        "sample_step_deg": 30,
+        "description": "orbit 80,20 at 2 km tilted 60 degrees for 20 seconds",
+        "directorial": null,
+        "target": {
+          "name": "80.0000, 20.0000",
+          "latitude": 80,
+          "longitude": 20
+        },
+        "orbit": {
+          "angular_span_deg": 360,
+          "direction": 1,
+          "duration_seconds": 20,
+          "start_frame": 0,
+          "end_frame": 600,
+          "frame_count": 601,
+          "altitude_m": 2000,
+          "tilt_deg": 60,
+          "nominal_radius_m": 3464.102
+        },
+        "metrics": {
+          "position_pan_keyframes": 13,
+          "angular_spacing_deg": 30,
+          "keyframe_radius_min_m": 3464.056,
+          "keyframe_radius_max_m": 3464.141,
+          "keyframe_radius_spread_pct": 0.002473,
+          "interpolated_radius_min_m": 3345.715,
+          "interpolated_radius_max_m": 3474.668,
+          "inter_sample_inward_deviation_m": 118.386,
+          "inter_sample_inward_deviation_pct": 3.417513,
+          "interpolated_radius_spread_pct": 3.72254,
+          "max_target_aim_error_deg": 0.13617,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 3,
+          "playback_model_max_reverse_step_deg": 0.377231284,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 50,
+          "keyframe_gap_max_frames": 50,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 23880,
+          "esp_sha256": "cbb3d4866ff500df881dc04ed6a887c3e24f724689228c42d7fdecff32abad33"
+        }
+      },
+      "B": {
+        "id": "D08-lat80",
+        "label": "80-degree latitude full orbit",
+        "variant": "B-live-10deg",
+        "sample_step_deg": 10,
+        "description": "orbit 80,20 at 2 km tilted 60 degrees for 20 seconds",
+        "directorial": null,
+        "target": {
+          "name": "80.0000, 20.0000",
+          "latitude": 80,
+          "longitude": 20
+        },
+        "orbit": {
+          "angular_span_deg": 360,
+          "direction": 1,
+          "duration_seconds": 20,
+          "start_frame": 0,
+          "end_frame": 600,
+          "frame_count": 601,
+          "altitude_m": 2000,
+          "tilt_deg": 60,
+          "nominal_radius_m": 3464.102
+        },
+        "metrics": {
+          "position_pan_keyframes": 37,
+          "angular_spacing_deg": 10,
+          "keyframe_radius_min_m": 3464.056,
+          "keyframe_radius_max_m": 3464.153,
+          "keyframe_radius_spread_pct": 0.002808,
+          "interpolated_radius_min_m": 3450.349,
+          "interpolated_radius_max_m": 3465.304,
+          "inter_sample_inward_deviation_m": 13.752,
+          "inter_sample_inward_deviation_pct": 0.396998,
+          "interpolated_radius_spread_pct": 0.431704,
+          "max_target_aim_error_deg": 0.005655,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 1,
+          "playback_model_max_reverse_step_deg": 0.227241129,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 16,
+          "keyframe_gap_max_frames": 17,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": false,
+          "esp_bytes": 58686,
+          "esp_sha256": "99cebbcc72d1004feb4ea82ab7166dc2d25f0c7e9f66a443aabf48d33d06ca25"
+        }
+      },
+      "improvement": {
+        "inward_deviation_reduction_pct": 88.383,
+        "esp_byte_growth_pct": 145.754,
+        "added_position_pan_keyframes": 24
+      }
+    },
+    {
+      "id": "D09-near-pole",
+      "label": "89-degree latitude full orbit",
+      "A": {
+        "id": "D09-near-pole",
+        "label": "89-degree latitude full orbit",
+        "variant": "A-coarse-30deg",
+        "sample_step_deg": 30,
+        "description": "orbit 89,179 at 2 km tilted 60 degrees for 20 seconds",
+        "directorial": null,
+        "target": {
+          "name": "89.0000, 179.0000",
+          "latitude": 89,
+          "longitude": 179
+        },
+        "orbit": {
+          "angular_span_deg": 360,
+          "direction": 1,
+          "duration_seconds": 20,
+          "start_frame": 0,
+          "end_frame": 600,
+          "frame_count": 601,
+          "altitude_m": 2000,
+          "tilt_deg": 60,
+          "nominal_radius_m": 3464.102
+        },
+        "metrics": {
+          "position_pan_keyframes": 13,
+          "angular_spacing_deg": 30,
+          "keyframe_radius_min_m": 3464.056,
+          "keyframe_radius_max_m": 3464.125,
+          "keyframe_radius_spread_pct": 0.001998,
+          "interpolated_radius_min_m": 3342.177,
+          "interpolated_radius_max_m": 3474.953,
+          "inter_sample_inward_deviation_m": 121.925,
+          "inter_sample_inward_deviation_pct": 3.51967,
+          "interpolated_radius_spread_pct": 3.83293,
+          "max_target_aim_error_deg": 0.155071,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 3,
+          "playback_model_max_reverse_step_deg": 0.377231284,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 50,
+          "keyframe_gap_max_frames": 50,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": true,
+          "esp_bytes": 23839,
+          "esp_sha256": "225dc06294f0648c7f417e320b64e17e0b63de7272fea2c7bc2a3ecee34f5e17"
+        }
+      },
+      "B": {
+        "id": "D09-near-pole",
+        "label": "89-degree latitude full orbit",
+        "variant": "B-live-10deg",
+        "sample_step_deg": 10,
+        "description": "orbit 89,179 at 2 km tilted 60 degrees for 20 seconds",
+        "directorial": null,
+        "target": {
+          "name": "89.0000, 179.0000",
+          "latitude": 89,
+          "longitude": 179
+        },
+        "orbit": {
+          "angular_span_deg": 360,
+          "direction": 1,
+          "duration_seconds": 20,
+          "start_frame": 0,
+          "end_frame": 600,
+          "frame_count": 601,
+          "altitude_m": 2000,
+          "tilt_deg": 60,
+          "nominal_radius_m": 3464.102
+        },
+        "metrics": {
+          "position_pan_keyframes": 37,
+          "angular_spacing_deg": 10,
+          "keyframe_radius_min_m": 3464.056,
+          "keyframe_radius_max_m": 3464.129,
+          "keyframe_radius_spread_pct": 0.002122,
+          "interpolated_radius_min_m": 3449.905,
+          "interpolated_radius_max_m": 3465.342,
+          "inter_sample_inward_deviation_m": 14.196,
+          "inter_sample_inward_deviation_pct": 0.409814,
+          "interpolated_radius_spread_pct": 0.445615,
+          "max_target_aim_error_deg": 0.007474,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 1,
+          "playback_model_max_reverse_step_deg": 0.227241129,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 16,
+          "keyframe_gap_max_frames": 17,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": true,
+          "esp_bytes": 58567,
+          "esp_sha256": "85a9a5b3a1921a39991106e5322bf3dd0d84e741254e8b9416fe3727e0181871"
+        }
+      },
+      "improvement": {
+        "inward_deviation_reduction_pct": 88.356,
+        "esp_byte_growth_pct": 145.677,
+        "added_position_pan_keyframes": 24
+      }
+    },
+    {
+      "id": "D10-antimeridian",
+      "label": "antimeridian-crossing full orbit",
+      "A": {
+        "id": "D10-antimeridian",
+        "label": "antimeridian-crossing full orbit",
+        "variant": "A-coarse-30deg",
+        "sample_step_deg": 30,
+        "description": "orbit 10,179.99 at 2 km tilted 60 degrees for 20 seconds",
+        "directorial": null,
+        "target": {
+          "name": "10.0000, 179.9900",
+          "latitude": 10,
+          "longitude": 179.99
+        },
+        "orbit": {
+          "angular_span_deg": 360,
+          "direction": 1,
+          "duration_seconds": 20,
+          "start_frame": 0,
+          "end_frame": 600,
+          "frame_count": 601,
+          "altitude_m": 2000,
+          "tilt_deg": 60,
+          "nominal_radius_m": 3464.102
+        },
+        "metrics": {
+          "position_pan_keyframes": 13,
+          "angular_spacing_deg": 30,
+          "keyframe_radius_min_m": 3464.056,
+          "keyframe_radius_max_m": 3464.155,
+          "keyframe_radius_spread_pct": 0.002867,
+          "interpolated_radius_min_m": 3346.037,
+          "interpolated_radius_max_m": 3474.64,
+          "inter_sample_inward_deviation_m": 118.065,
+          "inter_sample_inward_deviation_pct": 3.408236,
+          "interpolated_radius_spread_pct": 3.71246,
+          "max_target_aim_error_deg": 0.134513,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 3,
+          "playback_model_max_reverse_step_deg": 0.377231284,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 50,
+          "keyframe_gap_max_frames": 50,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": true,
+          "esp_bytes": 23867,
+          "esp_sha256": "ab756b9892eefe292db41e559e939cb0b645e26779d333edf5eec2fa2b41b7c7"
+        }
+      },
+      "B": {
+        "id": "D10-antimeridian",
+        "label": "antimeridian-crossing full orbit",
+        "variant": "B-live-10deg",
+        "sample_step_deg": 10,
+        "description": "orbit 10,179.99 at 2 km tilted 60 degrees for 20 seconds",
+        "directorial": null,
+        "target": {
+          "name": "10.0000, 179.9900",
+          "latitude": 10,
+          "longitude": 179.99
+        },
+        "orbit": {
+          "angular_span_deg": 360,
+          "direction": 1,
+          "duration_seconds": 20,
+          "start_frame": 0,
+          "end_frame": 600,
+          "frame_count": 601,
+          "altitude_m": 2000,
+          "tilt_deg": 60,
+          "nominal_radius_m": 3464.102
+        },
+        "metrics": {
+          "position_pan_keyframes": 37,
+          "angular_spacing_deg": 10,
+          "keyframe_radius_min_m": 3464.042,
+          "keyframe_radius_max_m": 3464.155,
+          "keyframe_radius_spread_pct": 0.003264,
+          "interpolated_radius_min_m": 3450.363,
+          "interpolated_radius_max_m": 3465.301,
+          "inter_sample_inward_deviation_m": 13.739,
+          "inter_sample_inward_deviation_pct": 0.396609,
+          "interpolated_radius_spread_pct": 0.431241,
+          "max_target_aim_error_deg": 0.005949,
+          "keyframe_heading_reversal_steps": 0,
+          "playback_model_heading_reversal_steps": 1,
+          "playback_model_max_reverse_step_deg": 0.227241129,
+          "duplicate_keyframe_frames": 0,
+          "keyframe_gap_min_frames": 16,
+          "keyframe_gap_max_frames": 17,
+          "non_finite_samples": 0,
+          "crosses_antimeridian": true,
+          "esp_bytes": 58655,
+          "esp_sha256": "866dc619504d815428821f3c81093db5ac7fd38d13d4befc93e3b486b155d601"
+        }
+      },
+      "improvement": {
+        "inward_deviation_reduction_pct": 88.363,
+        "esp_byte_growth_pct": 145.758,
+        "added_position_pan_keyframes": 24
+      }
+    }
+  ]
+}

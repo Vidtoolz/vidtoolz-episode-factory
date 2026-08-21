@@ -1,0 +1,156 @@
+{
+  "id": "D01-helsinki-half-B",
+  "aspect": "9:16",
+  "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D01-helsinki-half/B-live-10deg/earth-studio/earth-studio.esp",
+  "esp_sha256": "405fc9fb71d2e41b243080050e6ba7fee43f01bc5b8e345e82fe9bf8499dfec8",
+  "expected": {
+    "total_frames": 480,
+    "duration_seconds": 16,
+    "render_dimensions": {
+      "width": 1080,
+      "height": 1920
+    }
+  },
+  "import": {
+    "duration": 480,
+    "totalFrames": 480,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "orbit",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D01-helsinki-half-B/D01-helsinki-half-B_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.18130392691812,
+        "longitude": 24.9522,
+        "altitude": 700.9930130238043,
+        "pan_deg": 180,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 60,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 120,
+      "label": "seg1-quarter",
+      "movement": "orbit",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D01-helsinki-half-B/D01-helsinki-half-B_f00120_seg1-quarter.png",
+      "earth_studio_camera": {
+        "frame": 120,
+        "latitude": 60.17811176378516,
+        "longitude": 24.967708345515966,
+        "altitude": 700.9930130238043,
+        "pan_deg": 225,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 60,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 240,
+      "label": "seg1-mid",
+      "movement": "orbit",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D01-helsinki-half-B/D01-helsinki-half-B_f00240_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 240,
+        "latitude": 60.17039796346576,
+        "longitude": 24.97412,
+        "altitude": 700.9930130238043,
+        "pan_deg": 270,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 60,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 360,
+      "label": "seg1-three-quarter",
+      "movement": "orbit",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D01-helsinki-half-B/D01-helsinki-half-B_f00360_seg1-three-quarter.png",
+      "earth_studio_camera": {
+        "frame": 360,
+        "latitude": 60.16268672752454,
+        "longitude": 24.96770128112918,
+        "altitude": 700.9930130238043,
+        "pan_deg": 315,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 60,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 479,
+      "label": "seg1-end",
+      "movement": "orbit",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D01-helsinki-half-B/D01-helsinki-half-B_f00479_seg1-end.png",
+      "earth_studio_camera": {
+        "frame": 479,
+        "latitude": 60.15949615847139,
+        "longitude": 24.95220726774438,
+        "altitude": 700.9930130238043,
+        "pan_deg": 359.9724612475993,
+        "tilt_deg": 60,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 60,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    }
+  ],
+  "errors": []
+}

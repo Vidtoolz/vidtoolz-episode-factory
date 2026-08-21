@@ -1,0 +1,156 @@
+{
+  "id": "D05-matterhorn-terrain-B",
+  "aspect": "9:16",
+  "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/B-live-10deg/earth-studio/earth-studio.esp",
+  "esp_sha256": "237fbb28e324ee5da717433c53a928c861c4266e615a1961e7e253879678ccbd",
+  "expected": {
+    "total_frames": 480,
+    "duration_seconds": 16,
+    "render_dimensions": {
+      "width": 1080,
+      "height": 1920
+    }
+  },
+  "import": {
+    "duration": 480,
+    "totalFrames": 480,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "orbit",
+      "place": "Matterhorn",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D05-matterhorn-terrain-B/D05-matterhorn-terrain-B_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 46.15650818599307,
+        "longitude": 7.6585,
+        "altitude": 6500.935120935325,
+        "pan_deg": 180,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Matterhorn",
+        "altitude_m": 6500,
+        "tilt_deg": 72,
+        "target_lat": 45.9766,
+        "target_lng": 7.6585
+      }
+    },
+    {
+      "frame": 120,
+      "label": "seg1-quarter",
+      "movement": "orbit",
+      "place": "Matterhorn",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D05-matterhorn-terrain-B/D05-matterhorn-terrain-B_f00120_seg1-quarter.png",
+      "earth_studio_camera": {
+        "frame": 120,
+        "latitude": 46.10370621890735,
+        "longitude": 7.842032911903072,
+        "altitude": 6500.935120935325,
+        "pan_deg": 225,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Matterhorn",
+        "altitude_m": 6500,
+        "tilt_deg": 72,
+        "target_lat": 45.9766,
+        "target_lng": 7.6585
+      }
+    },
+    {
+      "frame": 240,
+      "label": "seg1-mid",
+      "movement": "orbit",
+      "place": "Matterhorn",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D05-matterhorn-terrain-B/D05-matterhorn-terrain-B_f00240_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 240,
+        "latitude": 45.97630759365712,
+        "longitude": 7.917378,
+        "altitude": 6500.935120935325,
+        "pan_deg": 270,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Matterhorn",
+        "altitude_m": 6500,
+        "tilt_deg": 72,
+        "target_lat": 45.9766,
+        "target_lng": 7.6585
+      }
+    },
+    {
+      "frame": 360,
+      "label": "seg1-three-quarter",
+      "movement": "orbit",
+      "place": "Matterhorn",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D05-matterhorn-terrain-B/D05-matterhorn-terrain-B_f00360_seg1-three-quarter.png",
+      "earth_studio_camera": {
+        "frame": 360,
+        "latitude": 45.84920096757998,
+        "longitude": 7.841190970228699,
+        "altitude": 6500.935120935325,
+        "pan_deg": 315,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Matterhorn",
+        "altitude_m": 6500,
+        "tilt_deg": 72,
+        "target_lat": 45.9766,
+        "target_lng": 7.6585
+      }
+    },
+    {
+      "frame": 479,
+      "label": "seg1-end",
+      "movement": "orbit",
+      "place": "Matterhorn",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D05-matterhorn-terrain-B/D05-matterhorn-terrain-B_f00479_seg1-end.png",
+      "earth_studio_camera": {
+        "frame": 479,
+        "latitude": 45.79669360164572,
+        "longitude": 7.658585590435018,
+        "altitude": 6500.935120935325,
+        "pan_deg": 359.9724612475993,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Matterhorn",
+        "altitude_m": 6500,
+        "tilt_deg": 72,
+        "target_lat": 45.9766,
+        "target_lng": 7.6585
+      }
+    }
+  ],
+  "errors": []
+}

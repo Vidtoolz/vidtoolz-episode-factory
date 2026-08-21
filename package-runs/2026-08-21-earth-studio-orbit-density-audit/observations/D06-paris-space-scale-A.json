@@ -1,0 +1,156 @@
+{
+  "id": "D06-paris-space-scale-A",
+  "aspect": "9:16",
+  "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/A-coarse-30deg/earth-studio/earth-studio.esp",
+  "esp_sha256": "84581ad3788c97029602a19627601108ee12d9725d08c0448fa5777eab88a30f",
+  "expected": {
+    "total_frames": 1080,
+    "duration_seconds": 36,
+    "render_dimensions": {
+      "width": 1080,
+      "height": 1920
+    }
+  },
+  "import": {
+    "duration": 1080,
+    "totalFrames": 1080,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "orbit",
+      "place": "Paris",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D06-paris-space-scale-A/D06-paris-space-scale-A_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 48.86919393879871,
+        "longitude": 2.3522,
+        "altitude": 2000.9800372108693,
+        "pan_deg": 180,
+        "tilt_deg": 35,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Paris",
+        "altitude_m": 2000,
+        "tilt_deg": 35,
+        "target_lat": 48.8566,
+        "target_lng": 2.3522
+      }
+    },
+    {
+      "frame": 270,
+      "label": "seg1-quarter",
+      "movement": "orbit",
+      "place": "Paris",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D06-paris-space-scale-A/D06-paris-space-scale-A_f00270_seg1-quarter.png",
+      "earth_studio_camera": {
+        "frame": 270,
+        "latitude": 48.844006,
+        "longitude": 2.3522,
+        "altitude": 2000.9800372108693,
+        "pan_deg": 360,
+        "tilt_deg": 35,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Paris",
+        "altitude_m": 2000,
+        "tilt_deg": 35,
+        "target_lat": 48.8566,
+        "target_lng": 2.3522
+      }
+    },
+    {
+      "frame": 540,
+      "label": "seg1-mid",
+      "movement": "orbit",
+      "place": "Paris",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D06-paris-space-scale-A/D06-paris-space-scale-A_f00540_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 540,
+        "latitude": 48.86919393879871,
+        "longitude": 2.3522,
+        "altitude": 2000.9800372108693,
+        "pan_deg": 540,
+        "tilt_deg": 35,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Paris",
+        "altitude_m": 2000,
+        "tilt_deg": 35,
+        "target_lat": 48.8566,
+        "target_lng": 2.3522
+      }
+    },
+    {
+      "frame": 810,
+      "label": "seg1-three-quarter",
+      "movement": "orbit",
+      "place": "Paris",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D06-paris-space-scale-A/D06-paris-space-scale-A_f00810_seg1-three-quarter.png",
+      "earth_studio_camera": {
+        "frame": 810,
+        "latitude": 48.844006,
+        "longitude": 2.3522,
+        "altitude": 2000.9800372108693,
+        "pan_deg": 720,
+        "tilt_deg": 35,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Paris",
+        "altitude_m": 2000,
+        "tilt_deg": 35,
+        "target_lat": 48.8566,
+        "target_lng": 2.3522
+      }
+    },
+    {
+      "frame": 1079,
+      "label": "seg1-end",
+      "movement": "orbit",
+      "place": "Paris",
+      "png": "package-runs/2026-08-21-earth-studio-orbit-density-audit/observations/D06-paris-space-scale-A/D06-paris-space-scale-A_f01079_seg1-end.png",
+      "earth_studio_camera": {
+        "frame": 1079,
+        "latitude": 48.86919332912359,
+        "longitude": 2.3521931078482496,
+        "altitude": 2000.9800372108693,
+        "pan_deg": 899.9700520797114,
+        "tilt_deg": 35,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Paris",
+        "altitude_m": 2000,
+        "tilt_deg": 35,
+        "target_lat": 48.8566,
+        "target_lng": 2.3522
+      }
+    }
+  ],
+  "errors": []
+}

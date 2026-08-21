@@ -195,13 +195,22 @@ async function gotoFrame(cdp, frame, settleMs = 5500) {
 }
 
 // Watch frames: the boundary and midpoint of every resolved segment, plus the
-// very last frame. Derived from the plan, so they line up with real movements.
+// very last frame. Orbit segments also get quarter and three-quarter samples;
+// those are the minimum useful checkpoints for exposing chord-induced radial
+// breathing in a real Earth Studio readback. Derived from the plan, so they
+// line up with real movements.
 function watchFrames(plan) {
   const segs = plan.segments.filter((s) => s.location && s.duration_seconds > 0);
   const out = [];
   segs.forEach((s, i) => {
     out.push({ frame: s.start_frame, label: `seg${s.segment_id}-start`, movement: s.action, place: s.location_name });
+    if (s.action === 'orbit') {
+      out.push({ frame: Math.round(s.start_frame + (s.end_frame - s.start_frame) * 0.25), label: `seg${s.segment_id}-quarter`, movement: s.action, place: s.location_name });
+    }
     out.push({ frame: Math.round((s.start_frame + s.end_frame) / 2), label: `seg${s.segment_id}-mid`, movement: s.action, place: s.location_name });
+    if (s.action === 'orbit') {
+      out.push({ frame: Math.round(s.start_frame + (s.end_frame - s.start_frame) * 0.75), label: `seg${s.segment_id}-three-quarter`, movement: s.action, place: s.location_name });
+    }
     if (i === segs.length - 1) out.push({ frame: Math.max(0, s.end_frame - 1), label: `seg${s.segment_id}-end`, movement: s.action, place: s.location_name });
   });
   const seen = new Set();

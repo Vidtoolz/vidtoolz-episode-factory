@@ -1,0 +1,23 @@
+{
+  "observed_at": "2026-08-21",
+  "projects_imported": 8,
+  "pairs": 4,
+  "checkpoints_per_project": 5,
+  "checkpoint_labels": ["start", "quarter", "mid", "three-quarter", "end"],
+  "all_duration_exact": true,
+  "all_frame_rate_30": true,
+  "all_body_has_error_false": true,
+  "all_observation_errors_empty": true,
+  "note_on_imported_field": "The gate's DOM text probe records imported=false after a project is loaded, including established historical gates. Successful load is established by the exact live scene duration, 30 fps, scene-model camera readbacks, screenshots, bodyHasError=false and empty errors.",
+  "measurements": [
+    {"id":"D01-helsinki-half-A","sample_step_deg":30,"frames":480,"radius_min_m":1212.258,"radius_max_m":1212.461,"observed_radius_spread_pct":0.016739,"max_aim_error_deg":0.003086,"altitude_spread_m":0,"tilt_spread_deg":0},
+    {"id":"D01-helsinki-half-B","sample_step_deg":10,"frames":480,"radius_min_m":1212.413,"radius_max_m":1212.821,"observed_radius_spread_pct":0.033612,"max_aim_error_deg":0.008536,"altitude_spread_m":0,"tilt_spread_deg":0},
+    {"id":"D05-matterhorn-terrain-A","sample_step_deg":30,"frames":480,"radius_min_m":20002.338,"radius_max_m":20004.906,"observed_radius_spread_pct":0.012836,"max_aim_error_deg":0.003086,"altitude_spread_m":0,"tilt_spread_deg":0},
+    {"id":"D05-matterhorn-terrain-B","sample_step_deg":10,"frames":480,"radius_min_m":20004.680,"radius_max_m":20011.003,"observed_radius_spread_pct":0.031608,"max_aim_error_deg":0.008534,"altitude_spread_m":0,"tilt_spread_deg":0},
+    {"id":"D06-paris-space-scale-A","sample_step_deg":30,"frames":1080,"radius_min_m":1400.314,"radius_max_m":1400.389,"observed_radius_spread_pct":0.005320,"max_aim_error_deg":0.009322,"altitude_spread_m":0,"tilt_spread_deg":0},
+    {"id":"D06-paris-space-scale-B","sample_step_deg":10,"frames":1080,"radius_min_m":1400.320,"radius_max_m":1400.389,"observed_radius_spread_pct":0.004912,"max_aim_error_deg":0.023729,"altitude_spread_m":0,"tilt_spread_deg":0},
+    {"id":"D10-antimeridian-A","sample_step_deg":30,"frames":600,"radius_min_m":3463.911,"radius_max_m":3464.101,"observed_radius_spread_pct":0.005476,"max_aim_error_deg":0.007630,"altitude_spread_m":0.088618,"tilt_spread_deg":0},
+    {"id":"D10-antimeridian-B","sample_step_deg":10,"frames":600,"radius_min_m":3463.915,"radius_max_m":3464.101,"observed_radius_spread_pct":0.005368,"max_aim_error_deg":0.019603,"altitude_spread_m":0.088618,"tilt_spread_deg":0}
+  ],
+  "conclusion": "The piecewise-linear evaluator's 3.4% coarse chord prediction does not describe real Earth Studio playback for these projects. Both densities stayed within 0.034% radius spread at the five real-product checkpoints. Density unification is not justified by measured real-product improvement."
+}

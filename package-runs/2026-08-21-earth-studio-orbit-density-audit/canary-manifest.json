@@ -1,0 +1,193 @@
+{
+  "gate": "orbit sampling-density technical A/B — 30-degree isolated baseline vs live 10-degree policy",
+  "generated_at": "2026-08-21T18:00:00.000Z",
+  "planner_version": "0.9.4",
+  "production_changed": false,
+  "human_review_status": "PENDING",
+  "canaries": [
+    {
+      "id": "D01-helsinki-half-A",
+      "title": "small landmark half-orbit — A-coarse-30deg",
+      "aspect": "9:16",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D01-helsinki-half/A-coarse-30deg/earth-studio/earth-studio.esp",
+      "esp_sha256": "b0f83ae0df7d87a688d0524003debc1ac004d84384cda197876045acd83314d2",
+      "total_frames": 480,
+      "duration_seconds": 16,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "project_dir": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D01-helsinki-half/A-coarse-30deg",
+      "category": "orbit sampling-density A/B",
+      "intended_behavior": "Same target, radius, altitude, tilt, span, direction and duration as its pair; only the ring sample step differs (30 degrees).",
+      "visual_questions": [
+        "Does the subject remain target-locked throughout?",
+        "Is there any subject-size push-in/pull-out or radial breathing?",
+        "Is there any heading wobble or terminal reversal?",
+        "Does B feel steadier without feeling mechanically over-sampled?"
+      ],
+      "description": "orbit Helsinki Cathedral 180 degrees over 16 seconds"
+    },
+    {
+      "id": "D01-helsinki-half-B",
+      "title": "small landmark half-orbit — B-live-10deg",
+      "aspect": "9:16",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D01-helsinki-half/B-live-10deg/earth-studio/earth-studio.esp",
+      "esp_sha256": "405fc9fb71d2e41b243080050e6ba7fee43f01bc5b8e345e82fe9bf8499dfec8",
+      "total_frames": 480,
+      "duration_seconds": 16,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "project_dir": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D01-helsinki-half/B-live-10deg",
+      "category": "orbit sampling-density A/B",
+      "intended_behavior": "Same target, radius, altitude, tilt, span, direction and duration as its pair; only the ring sample step differs (10 degrees).",
+      "visual_questions": [
+        "Does the subject remain target-locked throughout?",
+        "Is there any subject-size push-in/pull-out or radial breathing?",
+        "Is there any heading wobble or terminal reversal?",
+        "Does B feel steadier without feeling mechanically over-sampled?"
+      ],
+      "description": "orbit Helsinki Cathedral 180 degrees over 16 seconds"
+    },
+    {
+      "id": "D05-matterhorn-terrain-A",
+      "title": "terrain orbit (72-degree policy held) — A-coarse-30deg",
+      "aspect": "9:16",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/A-coarse-30deg/earth-studio/earth-studio.esp",
+      "esp_sha256": "857a8b0d84cb4df0ce0b927a197f776d886d617ae3c3fe5645873e6ccef98d73",
+      "total_frames": 480,
+      "duration_seconds": 16,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "project_dir": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/A-coarse-30deg",
+      "category": "orbit sampling-density A/B",
+      "intended_behavior": "Same target, radius, altitude, tilt, span, direction and duration as its pair; only the ring sample step differs (30 degrees).",
+      "visual_questions": [
+        "Does the subject remain target-locked throughout?",
+        "Is there any subject-size push-in/pull-out or radial breathing?",
+        "Is there any heading wobble or terminal reversal?",
+        "Does B feel steadier without feeling mechanically over-sampled?"
+      ],
+      "description": "orbit Matterhorn 180 degrees tilted 72 degrees over 16 seconds"
+    },
+    {
+      "id": "D05-matterhorn-terrain-B",
+      "title": "terrain orbit (72-degree policy held) — B-live-10deg",
+      "aspect": "9:16",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/B-live-10deg/earth-studio/earth-studio.esp",
+      "esp_sha256": "237fbb28e324ee5da717433c53a928c861c4266e615a1961e7e253879678ccbd",
+      "total_frames": 480,
+      "duration_seconds": 16,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "project_dir": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/B-live-10deg",
+      "category": "orbit sampling-density A/B",
+      "intended_behavior": "Same target, radius, altitude, tilt, span, direction and duration as its pair; only the ring sample step differs (10 degrees).",
+      "visual_questions": [
+        "Does the subject remain target-locked throughout?",
+        "Is there any subject-size push-in/pull-out or radial breathing?",
+        "Is there any heading wobble or terminal reversal?",
+        "Does B feel steadier without feeling mechanically over-sampled?"
+      ],
+      "description": "orbit Matterhorn 180 degrees tilted 72 degrees over 16 seconds"
+    },
+    {
+      "id": "D06-paris-space-scale-A",
+      "title": "large Paris two-revolution orbit — A-coarse-30deg",
+      "aspect": "9:16",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/A-coarse-30deg/earth-studio/earth-studio.esp",
+      "esp_sha256": "84581ad3788c97029602a19627601108ee12d9725d08c0448fa5777eab88a30f",
+      "total_frames": 1080,
+      "duration_seconds": 36,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "project_dir": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/A-coarse-30deg",
+      "category": "orbit sampling-density A/B",
+      "intended_behavior": "Same target, radius, altitude, tilt, span, direction and duration as its pair; only the ring sample step differs (30 degrees).",
+      "visual_questions": [
+        "Does the subject remain target-locked throughout?",
+        "Is there any subject-size push-in/pull-out or radial breathing?",
+        "Is there any heading wobble or terminal reversal?",
+        "Does B feel steadier without feeling mechanically over-sampled?"
+      ],
+      "description": "orbit Paris twice at 2 km tilted 35 degrees for 36 seconds"
+    },
+    {
+      "id": "D06-paris-space-scale-B",
+      "title": "large Paris two-revolution orbit — B-live-10deg",
+      "aspect": "9:16",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/B-live-10deg/earth-studio/earth-studio.esp",
+      "esp_sha256": "977472ad08018de538c56c08ecbb399b80bf8091c1105df2e3a9383c8b4db3dc",
+      "total_frames": 1080,
+      "duration_seconds": 36,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "project_dir": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/B-live-10deg",
+      "category": "orbit sampling-density A/B",
+      "intended_behavior": "Same target, radius, altitude, tilt, span, direction and duration as its pair; only the ring sample step differs (10 degrees).",
+      "visual_questions": [
+        "Does the subject remain target-locked throughout?",
+        "Is there any subject-size push-in/pull-out or radial breathing?",
+        "Is there any heading wobble or terminal reversal?",
+        "Does B feel steadier without feeling mechanically over-sampled?"
+      ],
+      "description": "orbit Paris twice at 2 km tilted 35 degrees for 36 seconds"
+    },
+    {
+      "id": "D10-antimeridian-A",
+      "title": "antimeridian-crossing full orbit — A-coarse-30deg",
+      "aspect": "9:16",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/A-coarse-30deg/earth-studio/earth-studio.esp",
+      "esp_sha256": "ab756b9892eefe292db41e559e939cb0b645e26779d333edf5eec2fa2b41b7c7",
+      "total_frames": 600,
+      "duration_seconds": 20,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "project_dir": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/A-coarse-30deg",
+      "category": "orbit sampling-density A/B",
+      "intended_behavior": "Same target, radius, altitude, tilt, span, direction and duration as its pair; only the ring sample step differs (30 degrees).",
+      "visual_questions": [
+        "Does the subject remain target-locked throughout?",
+        "Is there any subject-size push-in/pull-out or radial breathing?",
+        "Is there any heading wobble or terminal reversal?",
+        "Does B feel steadier without feeling mechanically over-sampled?"
+      ],
+      "description": "orbit 10,179.99 at 2 km tilted 60 degrees for 20 seconds"
+    },
+    {
+      "id": "D10-antimeridian-B",
+      "title": "antimeridian-crossing full orbit — B-live-10deg",
+      "aspect": "9:16",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/B-live-10deg/earth-studio/earth-studio.esp",
+      "esp_sha256": "866dc619504d815428821f3c81093db5ac7fd38d13d4befc93e3b486b155d601",
+      "total_frames": 600,
+      "duration_seconds": 20,
+      "render_dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "project_dir": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/B-live-10deg",
+      "category": "orbit sampling-density A/B",
+      "intended_behavior": "Same target, radius, altitude, tilt, span, direction and duration as its pair; only the ring sample step differs (10 degrees).",
+      "visual_questions": [
+        "Does the subject remain target-locked throughout?",
+        "Is there any subject-size push-in/pull-out or radial breathing?",
+        "Is there any heading wobble or terminal reversal?",
+        "Does B feel steadier without feeling mechanically over-sampled?"
+      ],
+      "description": "orbit 10,179.99 at 2 km tilted 60 degrees for 20 seconds"
+    }
+  ]
+}
