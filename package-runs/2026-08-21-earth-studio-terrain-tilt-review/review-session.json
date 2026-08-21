@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "operator_authority": "Mikko",
+  "started_at": "2026-08-21T06:43:40.671Z",
+  "completed_at": "2026-08-21T06:56:29.945Z",
+  "overall_verdict": "CHANGE_GLOBAL_TERRAIN_TILT",
+  "allowed_overall_verdicts": [
+    "KEEP_72_GLOBAL",
+    "CHANGE_GLOBAL_TERRAIN_TILT",
+    "USE_TERRAIN_CLASS_POLICY",
+    "NO_CANDIDATE_ACCEPTABLE"
+  ],
+  "choices": [
+    {
+      "subject": "Matterhorn",
+      "terrain_class": "PEAK",
+      "chosen_tilt_deg": 74,
+      "second_best_tilt_deg": 72,
+      "unacceptable_tilts_deg": [],
+      "note": "",
+      "reviewed_at": "2026-08-21T06:56:03.844Z"
+    },
+    {
+      "subject": "Mount Fuji",
+      "terrain_class": "PEAK",
+      "chosen_tilt_deg": 45,
+      "second_best_tilt_deg": 55,
+      "unacceptable_tilts_deg": [],
+      "note": "",
+      "reviewed_at": "2026-08-21T06:52:31.442Z"
+    },
+    {
+      "subject": "Grand Canyon",
+      "terrain_class": "VALLEY_CANYON",
+      "chosen_tilt_deg": 74,
+      "second_best_tilt_deg": 72,
+      "unacceptable_tilts_deg": [],
+      "note": "",
+      "reviewed_at": "2026-08-21T06:50:48.290Z"
+    },
+    {
+      "subject": "Geirangerfjord",
+      "terrain_class": "FJORD_DEEP_CHANNEL",
+      "chosen_tilt_deg": 65,
+      "second_best_tilt_deg": 55,
+      "unacceptable_tilts_deg": [],
+      "note": "",
+      "reviewed_at": "2026-08-21T06:46:34.676Z"
+    }
+  ]
+}
