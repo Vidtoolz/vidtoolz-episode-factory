@@ -1,0 +1,312 @@
+{
+  "authority": "authenticated Google Earth Studio scene.getCurrentWorldValues readback",
+  "generated_at": "2026-08-21T05:06:29.578Z",
+  "production_policy_changed": false,
+  "attempted": 20,
+  "imported_successfully": 20,
+  "screenshots": 60,
+  "terminal_pan_reversal_cases": [],
+  "terminal_position_reversal_cases": [],
+  "records": [
+    {
+      "id": "TERRAIN-MATTERHORN-45",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.18619678,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.8003,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-MATTERHORN-55",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.18619678,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.8602,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-MATTERHORN-65",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.18619678,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9069,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-MATTERHORN-72",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.18619678,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9351,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-MATTERHORN-74",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.18619678,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9427,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-MOUNT-FUJI-45",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.10831587,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.831,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-MOUNT-FUJI-55",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.10831587,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.8817,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-MOUNT-FUJI-65",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.10831587,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9212,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-MOUNT-FUJI-72",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.10831587,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9451,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-MOUNT-FUJI-74",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.10831587,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9516,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-GRAND-CANYON-45",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.10081696,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.8771,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-GRAND-CANYON-55",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.10081696,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.914,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-GRAND-CANYON-65",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.10081696,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9427,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-GRAND-CANYON-72",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.10081696,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9601,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-GRAND-CANYON-74",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.10081696,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9648,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-GEIRANGERFJORD-45",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.13097596,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9232,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-GEIRANGERFJORD-55",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.13097596,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9462,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-GEIRANGERFJORD-65",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.13097596,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.9642,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-GEIRANGERFJORD-72",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.13097599,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.975,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    },
+    {
+      "id": "TERRAIN-GEIRANGERFJORD-74",
+      "analysis": {
+        "import_ok": true,
+        "opening_tilt_spread_deg": 0,
+        "opening_altitude_spread_m": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0,
+        "max_pan_target_error_deg": 0.13097576,
+        "tilt_readback_error_deg": 0,
+        "altitude_readback_offset_m": 0.978,
+        "roll_max_abs_deg": 0
+      },
+      "errors": []
+    }
+  ]
+}

@@ -1,0 +1,327 @@
+{
+  "id": "TERRAIN-GRAND-CANYON-72",
+  "subject": "Grand Canyon",
+  "terrain_class": "VALLEY_CANYON",
+  "tilt_deg": 72,
+  "current_policy": true,
+  "altitude_m": 4000,
+  "orbit_radius_m": 12310.734149,
+  "esp": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-72/earth-studio/earth-studio.esp",
+  "esp_sha256": "0f86b304fad62514d07e62bf33f535635abaed91a0c5e3e073d1c4ddacff684f",
+  "import": {
+    "duration": 900,
+    "totalFrames": 900,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 850,
+    "height": 478
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "opening-0",
+      "kind": "opening",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 36.16511259037902,
+        "longitude": -112.1401,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 180,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180,
+        "radius_m": 12310.678365823753,
+        "pan_target_error_deg": 0
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/screenshots/TERRAIN-GRAND-CANYON-72/TERRAIN-GRAND-CANYON-72_f0000_opening-0.png"
+    },
+    {
+      "frame": 1,
+      "label": "opening-1",
+      "kind": "opening",
+      "earth_studio_camera": {
+        "frame": 1,
+        "latitude": 36.16511152474271,
+        "longitude": -112.14006813739353,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 180.01903200617957,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 0.0133124185070983,
+        "camera_to_target_bearing_deg": 180.01333119623072,
+        "radius_m": 12310.560205231097,
+        "pan_target_error_deg": 0.005700809948848473
+      }
+    },
+    {
+      "frame": 2,
+      "label": "opening-2",
+      "kind": "opening",
+      "earth_studio_camera": {
+        "frame": 2,
+        "latitude": 36.16510843947015,
+        "longitude": -112.13997774999251,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 180.06903454093657,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 0.05107831596046708,
+        "camera_to_target_bearing_deg": 180.05115036206826,
+        "radius_m": 12310.221704458108,
+        "pan_target_error_deg": 0.017884178868371237
+      }
+    },
+    {
+      "frame": 225,
+      "label": "quarter",
+      "kind": "visual",
+      "earth_studio_camera": {
+        "frame": 225,
+        "latitude": 36.132659644172094,
+        "longitude": -112.04315323145248,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 225,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 45.00028942672316,
+        "camera_to_target_bearing_deg": 225.05740128574624,
+        "radius_m": 12312.789986274744,
+        "pan_target_error_deg": 0.057401285746209396
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/screenshots/TERRAIN-GRAND-CANYON-72/TERRAIN-GRAND-CANYON-72_f0225_quarter.png"
+    },
+    {
+      "frame": 450,
+      "label": "midpoint",
+      "kind": "visual",
+      "earth_studio_camera": {
+        "frame": 450,
+        "latitude": 36.0543217953338,
+        "longitude": -112.003157,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 270,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 90.00017314736266,
+        "camera_to_target_bearing_deg": 270.0807713262212,
+        "radius_m": 12310.703114475868,
+        "pan_target_error_deg": 0.08077132622122463
+      },
+      "png": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/screenshots/TERRAIN-GRAND-CANYON-72/TERRAIN-GRAND-CANYON-72_f0450_midpoint.png"
+    },
+    {
+      "frame": 890,
+      "label": "terminal-890",
+      "kind": "terminal",
+      "earth_studio_camera": {
+        "frame": 890,
+        "latitude": 35.94373616855111,
+        "longitude": -112.13876042511332,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 359.3384862594353,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 179.43851585315917,
+        "camera_to_target_bearing_deg": 359.439303218262,
+        "radius_m": 12305.846682727153,
+        "pan_target_error_deg": 0.10081695882672648
+      }
+    },
+    {
+      "frame": 891,
+      "label": "terminal-891",
+      "kind": "terminal",
+      "earth_studio_camera": {
+        "frame": 891,
+        "latitude": 35.94372628166196,
+        "longitude": -112.13901720259672,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 359.4534941464994,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 179.5461798519092,
+        "camera_to_target_bearing_deg": 359.54681629022707,
+        "radius_m": 12306.741491157696,
+        "pan_target_error_deg": 0.09332214372761882
+      }
+    },
+    {
+      "frame": 892,
+      "label": "terminal-892",
+      "kind": "terminal",
+      "earth_studio_camera": {
+        "frame": 892,
+        "latitude": 35.94371761042987,
+        "longitude": -112.13924649575618,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 359.55931678486166,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 179.6423059569588,
+        "camera_to_target_bearing_deg": 359.64280762305725,
+        "radius_m": 12307.559690960934,
+        "pan_target_error_deg": 0.08349083819553016
+      }
+    },
+    {
+      "frame": 893,
+      "label": "terminal-893",
+      "kind": "terminal",
+      "earth_studio_camera": {
+        "frame": 893,
+        "latitude": 35.94371011230244,
+        "longitude": -112.1394482795229,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 359.6554416898002,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 179.72688826668582,
+        "camera_to_target_bearing_deg": 359.72727132985386,
+        "radius_m": 12308.293577297423,
+        "pan_target_error_deg": 0.07182964005369286
+      }
+    },
+    {
+      "frame": 894,
+      "label": "terminal-894",
+      "kind": "terminal",
+      "earth_studio_camera": {
+        "frame": 894,
+        "latitude": 35.94370374502887,
+        "longitude": -112.13962259070821,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 359.74130254386216,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 179.79994637101004,
+        "camera_to_target_bearing_deg": 359.80022697889063,
+        "radius_m": 12308.936876531296,
+        "pan_target_error_deg": 0.05892443502852984
+      }
+    },
+    {
+      "frame": 895,
+      "label": "terminal-895",
+      "kind": "terminal",
+      "earth_studio_camera": {
+        "frame": 895,
+        "latitude": 35.94369846683258,
+        "longitude": -112.13976952231893,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 359.8162711579965,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 179.86152290636733,
+        "camera_to_target_bearing_deg": 359.8617171519284,
+        "radius_m": 12309.484761309366,
+        "pan_target_error_deg": 0.045445993931934936
+      }
+    },
+    {
+      "frame": 896,
+      "label": "terminal-896",
+      "kind": "terminal",
+      "earth_studio_camera": {
+        "frame": 896,
+        "latitude": 35.94369423656028,
+        "longitude": -112.13988921804062,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 359.8796478005617,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 179.91168119766962,
+        "camera_to_target_bearing_deg": 359.9118050894186,
+        "radius_m": 12309.933848976516,
+        "pan_target_error_deg": 0.03215728885686531
+      }
+    },
+    {
+      "frame": 897,
+      "label": "terminal-897",
+      "kind": "terminal",
+      "earth_studio_camera": {
+        "frame": 897,
+        "latitude": 35.94369101380886,
+        "longitude": -112.13998186693775,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 359.93064947181176,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 179.95050300806315,
+        "camera_to_target_bearing_deg": 359.9505724433752,
+        "radius_m": 12310.282185540695,
+        "pan_target_error_deg": 0.019922971563460123
+      }
+    },
+    {
+      "frame": 898,
+      "label": "terminal-898",
+      "kind": "terminal",
+      "earth_studio_camera": {
+        "frame": 898,
+        "latitude": 35.94368875903157,
+        "longitude": -112.14004769840686,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 359.968395565581,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 179.97808641079985,
+        "camera_to_target_bearing_deg": 359.9781171522136,
+        "radius_m": 12310.529217334153,
+        "pan_target_error_deg": 0.009721586632622348
+      }
+    },
+    {
+      "frame": 899,
+      "label": "terminal-899",
+      "kind": "terminal",
+      "earth_studio_camera": {
+        "frame": 899,
+        "latitude": 35.943687433625236,
+        "longitude": -112.14008697740925,
+        "altitude": 4000.9600744217387,
+        "pan_deg": 359.9918901709601,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20,
+        "position_bearing_around_target_deg": 179.99454379322765,
+        "camera_to_target_bearing_deg": 359.99455144754216,
+        "radius_m": 12310.675752414338,
+        "pan_target_error_deg": 0.0026612765821028006
+      }
+    }
+  ],
+  "errors": [],
+  "analysis": {
+    "import_ok": true,
+    "opening_tilt_spread_deg": 0,
+    "opening_altitude_spread_m": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0,
+    "max_pan_target_error_deg": 0.10081696,
+    "tilt_readback_error_deg": 0,
+    "altitude_readback_offset_m": 0.9601,
+    "roll_max_abs_deg": 0
+  }
+}

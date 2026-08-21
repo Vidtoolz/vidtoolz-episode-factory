@@ -1,0 +1,60 @@
+{
+  "id": "TERRAIN-GEIRANGERFJORD-45",
+  "subject": "Geirangerfjord",
+  "subject_slug": "geirangerfjord",
+  "terrain_class": "FJORD_DEEP_CHANNEL",
+  "tilt_deg": 45,
+  "current_policy": false,
+  "reference_altitude_m": 2500,
+  "altitude_m": 7694.208842938133,
+  "min_altitude_m": 1000,
+  "altitude_margin_m": 6694.208842938133,
+  "orbit_radius_m": 7694.208842938132,
+  "reference_orbit_radius_m": 7694.208842938132,
+  "slant_distance_m": 10881.254497414106,
+  "angle_from_horizontal_deg": 45,
+  "horizon_context": "geometric context only: horizon exposure becomes more likely as angle_from_horizontal approaches zero",
+  "target": {
+    "latitude": 62.1049,
+    "longitude": 7.2054
+  },
+  "controlled": {
+    "start_bearing_deg": 0,
+    "direction": "clockwise",
+    "orbit_span_deg": 180,
+    "duration_seconds": 30,
+    "frame_rate": 30,
+    "easing": "live coherent-trajectory policy",
+    "keyframe_density": "live modern orbit sampling",
+    "grammar": "explicit half-orbit calibration equivalent to SHOW_TERRAIN orbit family",
+    "primary_variable": "tilt_deg",
+    "coupled_variable": "altitude_m derived to freeze current 72° ground radius"
+  },
+  "directorial_input": "Show the terrain of the Geirangerfjord.",
+  "description": "orbit Geirangerfjord half clockwise tilted 45 degrees at 7694.208843 meters for 30 seconds",
+  "technical": {
+    "finite_camera_state": true,
+    "unique_keyframe_times": true,
+    "total_frames": 900,
+    "frame_rate": 30,
+    "duration_seconds": 30,
+    "serialized_pan_monotonic": true,
+    "modeled_position_bearing_monotonic": true,
+    "terminal_settle_status": "TERMINAL_SETTLE_CLEAN_SERIALIZED_AND_MODELED",
+    "tilt_spread_deg": 0,
+    "altitude_spread_m": 0,
+    "modeled_radius_min_m": 7664.805,
+    "modeled_radius_max_m": 7694.244,
+    "target_stable": true,
+    "roll_authored": false,
+    "orbit_degrees": 180,
+    "orbit_direction": 1,
+    "keyframe_counts": {
+      "lat": 19,
+      "lng": 19,
+      "alt": 1,
+      "pan": 19,
+      "tilt": 1
+    }
+  }
+}

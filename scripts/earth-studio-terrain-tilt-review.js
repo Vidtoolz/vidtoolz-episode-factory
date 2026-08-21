@@ -1,0 +1,163 @@
+#!/usr/bin/env node
+'use strict';
+
+// Human terrain-tilt review controller. It imports one experiment-only ESP at
+// a time into the operator's authenticated Earth Studio session and persists
+// Mikko's explicit choices. It never edits production camera policy.
+
+const fs = require('node:fs');
+const http = require('node:http');
+const path = require('node:path');
+
+const ROOT = path.resolve(__dirname, '..');
+const DEFAULT_GATE = path.join(ROOT, 'package-runs/2026-08-21-earth-studio-terrain-tilt-review');
+const importGate = require(path.join(ROOT, 'scripts/earth-studio-journey-import-gate.js'));
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function resetToImportScreen(cdp) {
+  await cdp.send('Page.navigate', { url: 'https://earth.google.com/studio/' });
+  await cdp.waitFor(`Array.from(document.querySelectorAll('div')).some(e=>e.children.length===0 && /^Import \\.esp file$/i.test((e.textContent||'').trim()))`, 60000);
+  await delay(500);
+}
+
+function loadPackage(gateDir = DEFAULT_GATE) {
+  const manifestPath = path.join(gateDir, 'canary-manifest.json');
+  const templatePath = path.join(gateDir, 'review-session-template.json');
+  if (!fs.existsSync(manifestPath) || !fs.existsSync(templatePath)) {
+    throw new Error(`terrain review package incomplete: ${path.relative(ROOT, gateDir)}`);
+  }
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const template = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
+  if (manifest.production_policy_changed !== false || manifest.canaries.length !== 20) {
+    throw new Error('terrain review manifest is not the expected 20-case experiment-only package');
+  }
+  for (const record of manifest.canaries) {
+    if (!fs.existsSync(path.join(ROOT, record.esp))) throw new Error(`missing ESP: ${record.esp}`);
+  }
+  return { manifest, template, gateDir, sessionPath: path.join(gateDir, 'review-session.json') };
+}
+
+function freshSession(pkg, now = new Date().toISOString()) {
+  return { ...JSON.parse(JSON.stringify(pkg.template)), started_at: now };
+}
+
+function validateTilt(value, allowed, { nullable = false, noneGood = false } = {}) {
+  if ((value === null || value === '' || value === undefined) && nullable) return null;
+  if (noneGood && value === 'NONE_GOOD') return 'NONE_GOOD';
+  const number = Number(value);
+  if (!allowed.includes(number)) throw new Error(`invalid candidate tilt: ${value}`);
+  return number;
+}
+
+function applyChoice(pkg, session, body, now = new Date().toISOString()) {
+  const subject = String(body.subject || '');
+  const row = session.choices.find((choice) => choice.subject === subject);
+  if (!row) throw new Error(`unknown terrain subject: ${subject}`);
+  const allowed = pkg.manifest.canaries.filter((candidate) => candidate.subject === subject).map((candidate) => candidate.tilt_deg);
+  const chosen = validateTilt(body.chosen_tilt_deg, allowed, { noneGood: true });
+  const second = validateTilt(body.second_best_tilt_deg, allowed, { nullable: true });
+  const unacceptable = Array.isArray(body.unacceptable_tilts_deg)
+    ? [...new Set(body.unacceptable_tilts_deg.map((value) => validateTilt(value, allowed)))]
+    : [];
+  if (chosen !== 'NONE_GOOD' && second === chosen) throw new Error('second-best must differ from winner');
+  row.chosen_tilt_deg = chosen;
+  row.second_best_tilt_deg = second;
+  row.unacceptable_tilts_deg = unacceptable;
+  row.note = String(body.note || '').slice(0, 2000);
+  row.reviewed_at = now;
+  return session;
+}
+
+function applyOverall(pkg, session, body, now = new Date().toISOString()) {
+  const verdict = String(body.overall_verdict || '');
+  if (!session.allowed_overall_verdicts.includes(verdict)) throw new Error(`invalid overall verdict: ${verdict}`);
+  if (session.choices.some((choice) => choice.chosen_tilt_deg === null)) throw new Error('review every subject before recording the overall verdict');
+  session.overall_verdict = verdict;
+  session.completed_at = now;
+  return session;
+}
+
+function writeSession(pkg, session) {
+  fs.writeFileSync(pkg.sessionPath, `${JSON.stringify(session, null, 2)}\n`);
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.setEncoding('utf8');
+    req.on('data', (chunk) => { data += chunk; if (data.length > 100000) req.destroy(); });
+    req.on('end', () => { try { resolve(data ? JSON.parse(data) : {}); } catch (error) { reject(error); } });
+    req.on('error', reject);
+  });
+}
+
+function json(res, status, value) {
+  const body = `${JSON.stringify(value, null, 2)}\n`;
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(body) });
+  res.end(body);
+}
+
+function page() {
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Terrain Tilt Review</title><style>
+  body{font:16px system-ui;background:#101418;color:#edf2f4;margin:0}main{max-width:1100px;margin:auto;padding:28px}h1{margin:0 0 8px}.muted{color:#a9b4bd}.subjects,.angles{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}button,select,input,textarea{font:inherit}button{padding:10px 14px;border:1px solid #65727c;border-radius:7px;background:#222b31;color:#fff;cursor:pointer}button.current{border-color:#d8b04b}.card{background:#192127;border:1px solid #35424b;border-radius:10px;padding:18px;margin-top:16px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}label{display:grid;gap:6px}textarea{min-height:80px}.ok{color:#7ee787}.warn{color:#e3b341}code{color:#9cdcfe}</style></head><body><main>
+  <h1>Earth Studio terrain-tilt calibration</h1><p class="muted">Experiment only. Production remains 72° until Mikko records authority.</p>
+  <div class="subjects" id="subjects"></div><div class="card"><h2 id="title">Choose a subject</h2><p id="meta"></p><div class="angles" id="angles"></div><p id="status" class="muted"></p></div>
+  <div class="card"><h2>Record subject choice</h2><div class="grid"><label>Winner<select id="winner"></select></label><label>Second best<select id="second"></select></label></div><label>Unacceptable angles (comma-separated)<input id="bad"></label><label>Optional note<textarea id="note"></textarea></label><button onclick="saveChoice()">Save and next</button></div>
+  <div class="card"><h2>Overall authority</h2><select id="overall"><option value="">Choose only after all subjects</option><option>KEEP_72_GLOBAL</option><option>CHANGE_GLOBAL_TERRAIN_TILT</option><option>USE_TERRAIN_CLASS_POLICY</option><option>NO_CANDIDATE_ACCEPTABLE</option></select> <button onclick="saveOverall()">Record overall verdict</button></div>
+  <script>
+  let state,subject; const api=(url,body)=>fetch(url,{method:body?'POST':'GET',headers:{'content-type':'application/json'},body:body?JSON.stringify(body):undefined}).then(async r=>{const x=await r.json();if(!r.ok)throw Error(x.error);return x});
+  async function init(){state=await api('/api/state');const names=[...new Set(state.manifest.canaries.map(x=>x.subject))];document.querySelector('#subjects').innerHTML=names.map(n=>'<button onclick=\'choose('+JSON.stringify(n)+')\'>'+n+'</button>').join('');choose(names[0])}
+  function choose(name){subject=name;const cs=state.manifest.canaries.filter(x=>x.subject===name).sort((a,b)=>state.manifest.review_display_order_deg.indexOf(a.tilt_deg)-state.manifest.review_display_order_deg.indexOf(b.tilt_deg));const saved=state.session.choices.find(x=>x.subject===name);document.querySelector('#title').textContent=name+' — '+cs[0].terrain_class;document.querySelector('#meta').textContent='Fixed ground radius '+cs[0].orbit_radius_m.toFixed(1)+' m · 180° clockwise · 30 s · altitude varies with tilt';document.querySelector('#angles').innerHTML=cs.map(c=>'<button class="'+(c.current_policy?'current':'')+'" onclick=\'prepare('+JSON.stringify(c.id)+')\'>Play '+c.tilt_deg+'°'+(c.current_policy?' CURRENT':'')+'<br><small>'+c.altitude_m.toFixed(0)+' m altitude</small></button>').join('');const opts='<option value="">—</option><option value="NONE_GOOD">NONE GOOD</option>'+cs.sort((a,b)=>a.tilt_deg-b.tilt_deg).map(c=>'<option value="'+c.tilt_deg+'">'+c.tilt_deg+'°</option>').join('');winner.innerHTML=opts;second.innerHTML='<option value="">—</option>'+cs.map(c=>'<option value="'+c.tilt_deg+'">'+c.tilt_deg+'°</option>').join('');winner.value=saved.chosen_tilt_deg??'';second.value=saved.second_best_tilt_deg??'';bad.value=saved.unacceptable_tilts_deg.join(',');note.value=saved.note||''}
+  async function prepare(id){status.textContent='Importing '+id+'…';try{await api('/api/prepare',{id});status.innerHTML='<span class="ok">Ready in Earth Studio: '+id+'</span>'}catch(e){status.innerHTML='<span class="warn">'+e.message+'</span>'}}
+  async function saveChoice(){try{state.session=(await api('/api/choice',{subject,chosen_tilt_deg:winner.value,second_best_tilt_deg:second.value,unacceptable_tilts_deg:bad.value.split(',').map(x=>x.trim()).filter(Boolean),note:note.value})).session;const names=[...new Set(state.manifest.canaries.map(x=>x.subject))];choose(names[Math.min(names.indexOf(subject)+1,names.length-1)]);status.innerHTML='<span class="ok">Choice saved.</span>'}catch(e){status.innerHTML='<span class="warn">'+e.message+'</span>'}}
+  async function saveOverall(){try{state.session=(await api('/api/overall',{overall_verdict:overall.value})).session;status.innerHTML='<span class="ok">Human authority recorded.</span>'}catch(e){status.innerHTML='<span class="warn">'+e.message+'</span>'}}
+  init();</script></main></body></html>`;
+}
+
+function createController(pkg, { cdp = null } = {}) {
+  let session = fs.existsSync(pkg.sessionPath)
+    ? JSON.parse(fs.readFileSync(pkg.sessionPath, 'utf8'))
+    : freshSession(pkg);
+  return http.createServer(async (req, res) => {
+    try {
+      if (req.method === 'GET' && req.url === '/') { const body = page(); res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(body); }
+      if (req.method === 'GET' && req.url === '/api/state') return json(res, 200, { manifest: pkg.manifest, session });
+      if (req.method === 'POST' && req.url === '/api/prepare') {
+        if (!cdp) throw new Error('Earth Studio browser is not attached');
+        const body = await readBody(req);
+        const candidate = pkg.manifest.canaries.find((item) => item.id === body.id);
+        if (!candidate) throw new Error(`unknown candidate: ${body.id}`);
+        await resetToImportScreen(cdp);
+        await importGate.importEsp(cdp, path.join(ROOT, candidate.esp));
+        return json(res, 200, { ok: true, id: candidate.id });
+      }
+      if (req.method === 'POST' && req.url === '/api/choice') {
+        session = applyChoice(pkg, session, await readBody(req)); writeSession(pkg, session);
+        return json(res, 200, { ok: true, session });
+      }
+      if (req.method === 'POST' && req.url === '/api/overall') {
+        session = applyOverall(pkg, session, await readBody(req)); writeSession(pkg, session);
+        return json(res, 200, { ok: true, session });
+      }
+      return json(res, 404, { error: 'not found' });
+    } catch (error) { return json(res, 400, { error: error.message }); }
+  });
+}
+
+async function main() {
+  const pkg = loadPackage();
+  const port = Number(process.env.ES_TERRAIN_REVIEW_PORT || 37843);
+  const browser = await importGate.launch({ port: 9743, headless: false, display: process.env.DISPLAY || ':1', width: 1600, height: 1000 });
+  const es = await importGate.newTab(browser.port, 'https://earth.google.com/studio/');
+  const server = createController(pkg, { cdp: es });
+  await new Promise((resolve, reject) => server.listen(port, '127.0.0.1', (error) => error ? reject(error) : resolve()));
+  await importGate.newTab(browser.port, `http://127.0.0.1:${port}/`);
+  console.log(`Terrain review ready: http://127.0.0.1:${port}/`);
+  console.log(`Choices: ${path.relative(ROOT, pkg.sessionPath)}`);
+  const stop = () => { server.close(); try { browser.chrome.kill('SIGTERM'); } catch (_) {} };
+  process.on('SIGINT', stop); process.on('SIGTERM', stop);
+}
+
+if (require.main === module) main().catch((error) => { console.error(error.message); process.exitCode = 1; });
+
+module.exports = { DEFAULT_GATE, loadPackage, freshSession, applyChoice, applyOverall, writeSession, createController, resetToImportScreen };

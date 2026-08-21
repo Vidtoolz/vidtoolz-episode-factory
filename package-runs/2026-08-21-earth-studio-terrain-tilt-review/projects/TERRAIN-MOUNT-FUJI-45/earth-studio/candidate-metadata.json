@@ -1,0 +1,60 @@
+{
+  "id": "TERRAIN-MOUNT-FUJI-45",
+  "subject": "Mount Fuji",
+  "subject_slug": "mount-fuji",
+  "terrain_class": "PEAK",
+  "tilt_deg": 45,
+  "current_policy": false,
+  "reference_altitude_m": 5500,
+  "altitude_m": 16927.259454463892,
+  "min_altitude_m": 4300,
+  "altitude_margin_m": 12627.259454463892,
+  "orbit_radius_m": 16927.25945446389,
+  "reference_orbit_radius_m": 16927.25945446389,
+  "slant_distance_m": 23938.75989431103,
+  "angle_from_horizontal_deg": 45,
+  "horizon_context": "geometric context only: horizon exposure becomes more likely as angle_from_horizontal approaches zero",
+  "target": {
+    "latitude": 35.3606,
+    "longitude": 138.7274
+  },
+  "controlled": {
+    "start_bearing_deg": 0,
+    "direction": "clockwise",
+    "orbit_span_deg": 180,
+    "duration_seconds": 30,
+    "frame_rate": 30,
+    "easing": "live coherent-trajectory policy",
+    "keyframe_density": "live modern orbit sampling",
+    "grammar": "explicit half-orbit calibration equivalent to SHOW_TERRAIN orbit family",
+    "primary_variable": "tilt_deg",
+    "coupled_variable": "altitude_m derived to freeze current 72° ground radius"
+  },
+  "directorial_input": "Show the terrain of the Mount Fuji.",
+  "description": "orbit Mount Fuji half clockwise tilted 45 degrees at 16927.259454 meters for 30 seconds",
+  "technical": {
+    "finite_camera_state": true,
+    "unique_keyframe_times": true,
+    "total_frames": 900,
+    "frame_rate": 30,
+    "duration_seconds": 30,
+    "serialized_pan_monotonic": true,
+    "modeled_position_bearing_monotonic": true,
+    "terminal_settle_status": "TERMINAL_SETTLE_CLEAN_SERIALIZED_AND_MODELED",
+    "tilt_spread_deg": 0,
+    "altitude_spread_m": 0,
+    "modeled_radius_min_m": 16862.692,
+    "modeled_radius_max_m": 16927.315,
+    "target_stable": true,
+    "roll_authored": false,
+    "orbit_degrees": 180,
+    "orbit_direction": 1,
+    "keyframe_counts": {
+      "lat": 19,
+      "lng": 19,
+      "alt": 1,
+      "pan": 19,
+      "tilt": 1
+    }
+  }
+}
