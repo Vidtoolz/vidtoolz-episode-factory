@@ -41,7 +41,7 @@ test("composition: route foreshadow faces the departure direction", () => {
 test("composition: short local travel keeps the proven default", () => {
   // 300 m between landmark-scale stops: below the 3x-span / 1.5 km floor.
   const out = OC.planOpening({
-    subject: { name: "Helsinki Cathedral", latitude: 60.1699, longitude: 24.9522, span_m: 500, scale: "landmark" },
+    subject: { name: "Helsinki Cathedral", latitude: 60.1704, longitude: 24.9522, span_m: 500, scale: "landmark" },
     opening_beat: "hold",
     first_travel: { to: { name: "Senate Square", latitude: 60.1698, longitude: 24.9521 }, distance_m: 300 },
   });
@@ -560,21 +560,24 @@ test("promoted opening: frame 0 is already the intended oblique ring state (no c
     for (let i = 1; i < pans.length; i += 1) {
       assert.ok(pans[i] >= pans[i - 1] - 1e-9, "no heading reversal (no corrective swing)");
     }
-    // ring: the camera is ON the ring from frame 0. The engine's ring is
-    // drawn in degree space, so its metric radius varies smoothly with
-    // bearing (established orbit geometry, identical for an explicit orbit at
-    // HEAD) — what zero-bump forbids is a fast frame-0 CORRECTION: a radial
-    // jump between adjacent keyframes, or a settle-then-stable shape.
-    const subject = { latitude: 60.1699, longitude: 24.9522 };
+    // ring: the camera is ON the ring from frame 0, and the ring is
+    // METRICALLY CONSTANT — the planner's spherical offsetPoint places every
+    // sample at the same geodesic distance from the ring centre. Measure
+    // against the planner's OWN fixture for the subject (60.1704, 24.9522).
+    // An earlier revision of this test measured against Helsinki's CITY
+    // latitude (60.1699) — 55 m south of the true centre — which made the
+    // constant ring read as a phantom ~12% radial taper. The residual
+    // tolerance below covers only round6 coordinate quantization (~0.1 m).
+    const subject = { latitude: 60.1704, longitude: 24.9522 };
     const radii = tracks.lat.map((kf, i) => MC.haversineMeters(
       { latitude: kf.value, longitude: tracks.lng[i].value }, subject));
     const mean = radii.reduce((a, b) => a + b, 0) / radii.length;
-    for (let i = 1; i < radii.length; i += 1) {
-      assert.ok(Math.abs(radii[i] - radii[i - 1]) < mean * 0.02,
-        `no radial jump between keyframes (${Math.round(radii[i - 1])} -> ${Math.round(radii[i])} m)`);
-    }
-    assert.ok(Math.abs(radii[1] - radii[0]) <= Math.abs(radii[Math.floor(radii.length / 2)] - radii[0]),
-      "the first step is not a settle: radius change is smooth, not front-loaded");
+    const min = Math.min(...radii);
+    const max = Math.max(...radii);
+    assert.ok((max - min) < mean * 0.001,
+      `ring radius is metrically constant (min ${min.toFixed(1)} m, max ${max.toFixed(1)} m, mean ${mean.toFixed(1)} m)`);
+    assert.ok(Math.abs(radii[0] - mean) < mean * 0.001,
+      "frame 0 already sits on the metric ring — no initial radial correction");
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
