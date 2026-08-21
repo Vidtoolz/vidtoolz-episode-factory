@@ -109,12 +109,100 @@ function page() {
   <div class="card"><h2>Record subject choice</h2><div class="grid"><label>Winner<select id="winner"></select></label><label>Second best<select id="second"></select></label></div><label>Unacceptable angles (comma-separated)<input id="bad"></label><label>Optional note<textarea id="note"></textarea></label><button onclick="saveChoice()">Save and next</button></div>
   <div class="card"><h2>Overall authority</h2><select id="overall"><option value="">Choose only after all subjects</option><option>KEEP_72_GLOBAL</option><option>CHANGE_GLOBAL_TERRAIN_TILT</option><option>USE_TERRAIN_CLASS_POLICY</option><option>NO_CANDIDATE_ACCEPTABLE</option></select> <button onclick="saveOverall()">Record overall verdict</button></div>
   <script>
-  let state,subject; const api=(url,body)=>fetch(url,{method:body?'POST':'GET',headers:{'content-type':'application/json'},body:body?JSON.stringify(body):undefined}).then(async r=>{const x=await r.json();if(!r.ok)throw Error(x.error);return x});
-  async function init(){state=await api('/api/state');const names=[...new Set(state.manifest.canaries.map(x=>x.subject))];document.querySelector('#subjects').innerHTML=names.map(n=>'<button onclick=\'choose('+JSON.stringify(n)+')\'>'+n+'</button>').join('');choose(names[0])}
-  function choose(name){subject=name;const cs=state.manifest.canaries.filter(x=>x.subject===name).sort((a,b)=>state.manifest.review_display_order_deg.indexOf(a.tilt_deg)-state.manifest.review_display_order_deg.indexOf(b.tilt_deg));const saved=state.session.choices.find(x=>x.subject===name);document.querySelector('#title').textContent=name+' — '+cs[0].terrain_class;document.querySelector('#meta').textContent='Fixed ground radius '+cs[0].orbit_radius_m.toFixed(1)+' m · 180° clockwise · 30 s · altitude varies with tilt';document.querySelector('#angles').innerHTML=cs.map(c=>'<button class="'+(c.current_policy?'current':'')+'" onclick=\'prepare('+JSON.stringify(c.id)+')\'>Play '+c.tilt_deg+'°'+(c.current_policy?' CURRENT':'')+'<br><small>'+c.altitude_m.toFixed(0)+' m altitude</small></button>').join('');const opts='<option value="">—</option><option value="NONE_GOOD">NONE GOOD</option>'+cs.sort((a,b)=>a.tilt_deg-b.tilt_deg).map(c=>'<option value="'+c.tilt_deg+'">'+c.tilt_deg+'°</option>').join('');winner.innerHTML=opts;second.innerHTML='<option value="">—</option>'+cs.map(c=>'<option value="'+c.tilt_deg+'">'+c.tilt_deg+'°</option>').join('');winner.value=saved.chosen_tilt_deg??'';second.value=saved.second_best_tilt_deg??'';bad.value=saved.unacceptable_tilts_deg.join(',');note.value=saved.note||''}
-  async function prepare(id){status.textContent='Importing '+id+'…';try{await api('/api/prepare',{id});status.innerHTML='<span class="ok">Ready in Earth Studio: '+id+'</span>'}catch(e){status.innerHTML='<span class="warn">'+e.message+'</span>'}}
-  async function saveChoice(){try{state.session=(await api('/api/choice',{subject,chosen_tilt_deg:winner.value,second_best_tilt_deg:second.value,unacceptable_tilts_deg:bad.value.split(',').map(x=>x.trim()).filter(Boolean),note:note.value})).session;const names=[...new Set(state.manifest.canaries.map(x=>x.subject))];choose(names[Math.min(names.indexOf(subject)+1,names.length-1)]);status.innerHTML='<span class="ok">Choice saved.</span>'}catch(e){status.innerHTML='<span class="warn">'+e.message+'</span>'}}
-  async function saveOverall(){try{state.session=(await api('/api/overall',{overall_verdict:overall.value})).session;status.innerHTML='<span class="ok">Human authority recorded.</span>'}catch(e){status.innerHTML='<span class="warn">'+e.message+'</span>'}}
+  let state, subject;
+  const el = (id) => document.getElementById(id);
+  const api = (url, body) => fetch(url, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'content-type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(async (response) => {
+    const value = await response.json();
+    if (!response.ok) throw Error(value.error);
+    return value;
+  });
+  const option = (value, label) => {
+    const node = document.createElement('option');
+    node.value = value;
+    node.textContent = label;
+    return node;
+  };
+  async function init() {
+    state = await api('/api/state');
+    const names = [...new Set(state.manifest.canaries.map((candidate) => candidate.subject))];
+    for (const name of names) {
+      const button = document.createElement('button');
+      button.textContent = name;
+      button.addEventListener('click', () => choose(name));
+      el('subjects').appendChild(button);
+    }
+    choose(names[0]);
+  }
+  function choose(name) {
+    subject = name;
+    const candidates = state.manifest.canaries
+      .filter((candidate) => candidate.subject === name)
+      .sort((a, b) => state.manifest.review_display_order_deg.indexOf(a.tilt_deg)
+        - state.manifest.review_display_order_deg.indexOf(b.tilt_deg));
+    const saved = state.session.choices.find((choice) => choice.subject === name);
+    el('title').textContent = name + ' — ' + candidates[0].terrain_class;
+    el('meta').textContent = 'Fixed ground radius ' + candidates[0].orbit_radius_m.toFixed(1)
+      + ' m · 180° clockwise · 30 s · altitude varies with tilt';
+    el('angles').replaceChildren();
+    for (const candidate of candidates) {
+      const button = document.createElement('button');
+      if (candidate.current_policy) button.className = 'current';
+      button.append('Play ' + candidate.tilt_deg + '°' + (candidate.current_policy ? ' CURRENT' : ''));
+      button.appendChild(document.createElement('br'));
+      const detail = document.createElement('small');
+      detail.textContent = candidate.altitude_m.toFixed(0) + ' m altitude';
+      button.appendChild(detail);
+      button.addEventListener('click', () => prepare(candidate.id));
+      el('angles').appendChild(button);
+    }
+    el('winner').replaceChildren(option('', '—'), option('NONE_GOOD', 'NONE GOOD'));
+    el('second').replaceChildren(option('', '—'));
+    for (const candidate of [...candidates].sort((a, b) => a.tilt_deg - b.tilt_deg)) {
+      el('winner').appendChild(option(candidate.tilt_deg, candidate.tilt_deg + '°'));
+      el('second').appendChild(option(candidate.tilt_deg, candidate.tilt_deg + '°'));
+    }
+    el('winner').value = saved.chosen_tilt_deg ?? '';
+    el('second').value = saved.second_best_tilt_deg ?? '';
+    el('bad').value = saved.unacceptable_tilts_deg.join(',');
+    el('note').value = saved.note || '';
+  }
+  async function prepare(id) {
+    el('status').textContent = 'Importing ' + id + '…';
+    try {
+      await api('/api/prepare', { id });
+      el('status').innerHTML = '<span class="ok">Ready in Earth Studio: ' + id + '</span>';
+    } catch (error) {
+      el('status').innerHTML = '<span class="warn">' + error.message + '</span>';
+    }
+  }
+  async function saveChoice() {
+    try {
+      state.session = (await api('/api/choice', {
+        subject,
+        chosen_tilt_deg: el('winner').value,
+        second_best_tilt_deg: el('second').value,
+        unacceptable_tilts_deg: el('bad').value.split(',').map((value) => value.trim()).filter(Boolean),
+        note: el('note').value,
+      })).session;
+      const names = [...new Set(state.manifest.canaries.map((candidate) => candidate.subject))];
+      choose(names[Math.min(names.indexOf(subject) + 1, names.length - 1)]);
+      el('status').innerHTML = '<span class="ok">Choice saved.</span>';
+    } catch (error) {
+      el('status').innerHTML = '<span class="warn">' + error.message + '</span>';
+    }
+  }
+  async function saveOverall() {
+    try {
+      state.session = (await api('/api/overall', { overall_verdict: el('overall').value })).session;
+      el('status').innerHTML = '<span class="ok">Human authority recorded.</span>';
+    } catch (error) {
+      el('status').innerHTML = '<span class="warn">' + error.message + '</span>';
+    }
+  }
   init();</script></main></body></html>`;
 }
 
@@ -179,5 +267,5 @@ if (require.main === module) main().catch((error) => { console.error(error.messa
 
 module.exports = {
   DEFAULT_GATE, loadPackage, freshSession, applyChoice, applyOverall,
-  writeSession, createController, resetToImportScreen, bringToFront,
+  writeSession, createController, resetToImportScreen, bringToFront, page,
 };

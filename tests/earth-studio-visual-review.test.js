@@ -4,6 +4,7 @@ const importGate = require('../scripts/earth-studio-journey-import-gate.js');
 const terrainGenerator = require('../scripts/earth-studio-terrain-tilt-generate.js');
 const terrainReview = require('../scripts/earth-studio-terrain-tilt-review.js');
 const director = require('../earth-studio-director.js');
+const vm = require('node:vm');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -109,4 +110,12 @@ test('terrain review explicitly foregrounds the active operator tab', async () =
   const calls = [];
   await terrainReview.bringToFront({ send: async (method) => calls.push(method) });
   assert.deepEqual(calls, ['Page.bringToFront']);
+});
+
+test('terrain review browser controller contains valid executable JavaScript', () => {
+  const html = terrainReview.page();
+  const script = html.match(/<script>([\s\S]*)<\/script>/);
+  assert.ok(script, 'controller must contain its browser script');
+  assert.doesNotThrow(() => new vm.Script(script[1]));
+  assert.match(script[1], /addEventListener\('click'/);
 });
