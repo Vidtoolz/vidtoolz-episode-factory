@@ -1,0 +1,170 @@
+{
+  "cases": [
+    {
+      "id": "H-EIFFEL-FLY-ORBIT",
+      "pair": "fly_to->orbit",
+      "original_warning": [
+        {
+          "parameter": "pan_speed",
+          "score": 1
+        }
+      ],
+      "offline_direction_defect": null,
+      "real_one_frame_direction_change_deg": 0.5473203541281464,
+      "real_speed_discontinuity": 0.5210849145104431,
+      "real_channel_peak_span_frames": 2,
+      "classification": "MODEL_FALSE_POSITIVE"
+    },
+    {
+      "id": "D-NEW-YORK-APPROACH-ORBIT",
+      "pair": "zoom_in->orbit",
+      "original_warning": [
+        {
+          "parameter": "altitude_speed",
+          "score": 1
+        }
+      ],
+      "offline_direction_defect": null,
+      "real_one_frame_direction_change_deg": 0.4472072658240904,
+      "real_speed_discontinuity": 0.4472960607825529,
+      "real_channel_peak_span_frames": 2,
+      "classification": "MODEL_FALSE_POSITIVE"
+    },
+    {
+      "id": "F2-COPENHAGEN-APPROACH-ORBIT",
+      "pair": "zoom_in->orbit",
+      "original_warning": [
+        {
+          "parameter": "altitude_speed",
+          "score": 1
+        }
+      ],
+      "offline_direction_defect": null,
+      "real_one_frame_direction_change_deg": 0.33829576837445074,
+      "real_speed_discontinuity": 0.15149419433434347,
+      "real_channel_peak_span_frames": 2,
+      "classification": "MODEL_FALSE_POSITIVE"
+    },
+    {
+      "id": "DIRN17-AMSTERDAM-APPROACH-ORBIT",
+      "pair": "zoom_in->orbit",
+      "original_warning": [
+        {
+          "parameter": "altitude_speed",
+          "score": 1.0588327139776395
+        }
+      ],
+      "offline_direction_defect": {
+        "defect_class": "BOUNDARY_DIRECTION_SNAP",
+        "parameter": "ground_velocity_vector",
+        "segment_id": 9,
+        "primitive_before": "orbit",
+        "primitive_after": "fly_to",
+        "frame_start": 1589,
+        "frame_end": 1591,
+        "measured_value": 72.55073599911589,
+        "threshold": 30,
+        "explanation": "orbit→fly_to changes ground-velocity direction 72.6° in one frame while both primitives are moving",
+        "severity": "error"
+      },
+      "real_one_frame_direction_change_deg": 4.902453906055825,
+      "real_speed_discontinuity": 0.396669776529288,
+      "real_channel_peak_span_frames": 13,
+      "classification": "INSUFFICIENT_AUTHORITY"
+    },
+    {
+      "id": "DIRN17-ROTTERDAM-APPROACH-ORBIT",
+      "pair": "zoom_in->orbit",
+      "original_warning": [
+        {
+          "parameter": "altitude_speed",
+          "score": 1.0537780154033176
+        }
+      ],
+      "offline_direction_defect": {
+        "defect_class": "BOUNDARY_DIRECTION_SNAP",
+        "parameter": "ground_velocity_vector",
+        "segment_id": 9,
+        "primitive_before": "orbit",
+        "primitive_after": "fly_to",
+        "frame_start": 1589,
+        "frame_end": 1591,
+        "measured_value": 72.55073599911589,
+        "threshold": 30,
+        "explanation": "orbit→fly_to changes ground-velocity direction 72.6° in one frame while both primitives are moving",
+        "severity": "error"
+      },
+      "real_one_frame_direction_change_deg": 5.09600794139692,
+      "real_speed_discontinuity": 0.3636438492219175,
+      "real_channel_peak_span_frames": 12,
+      "classification": "INSUFFICIENT_AUTHORITY"
+    },
+    {
+      "id": "DIRN17-ROTTERDAM-ORBIT-TRAVEL",
+      "pair": "orbit->fly_to",
+      "original_warning": [
+        {
+          "parameter": "pan_speed",
+          "score": 1
+        }
+      ],
+      "offline_direction_defect": {
+        "defect_class": "BOUNDARY_DIRECTION_SNAP",
+        "parameter": "ground_velocity_vector",
+        "segment_id": 9,
+        "primitive_before": "orbit",
+        "primitive_after": "fly_to",
+        "frame_start": 1589,
+        "frame_end": 1591,
+        "measured_value": 72.55073599911589,
+        "threshold": 30,
+        "explanation": "orbit→fly_to changes ground-velocity direction 72.6° in one frame while both primitives are moving",
+        "severity": "error"
+      },
+      "real_one_frame_direction_change_deg": 73.11913302848893,
+      "real_speed_discontinuity": 0.09236163524598809,
+      "real_channel_peak_span_frames": 14,
+      "classification": "TRUE_SEAM"
+    },
+    {
+      "id": "A-LOCAL-TRAVEL-HOLD",
+      "pair": "fly_to->hover",
+      "original_warning": [],
+      "offline_direction_defect": null,
+      "real_one_frame_direction_change_deg": 0,
+      "real_speed_discontinuity": 1,
+      "real_channel_peak_span_frames": 15,
+      "classification": "INTENTIONAL_TRANSITION"
+    },
+    {
+      "id": "B-CITY-APPROACH-HOLD",
+      "pair": "zoom_in->hover",
+      "original_warning": [
+        {
+          "parameter": "altitude_speed",
+          "score": 1
+        }
+      ],
+      "offline_direction_defect": null,
+      "real_one_frame_direction_change_deg": 0,
+      "real_speed_discontinuity": 0,
+      "real_channel_peak_span_frames": 0,
+      "classification": "INTENTIONAL_TRANSITION"
+    },
+    {
+      "id": "T09-ORBIT-HOLD",
+      "pair": "orbit->hover",
+      "original_warning": [
+        {
+          "parameter": "position_speed",
+          "score": 1
+        }
+      ],
+      "offline_direction_defect": null,
+      "real_one_frame_direction_change_deg": 95.0685018684689,
+      "real_speed_discontinuity": 1,
+      "real_channel_peak_span_frames": 16,
+      "classification": "INTENTIONAL_TRANSITION"
+    }
+  ]
+}

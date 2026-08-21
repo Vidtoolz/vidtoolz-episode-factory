@@ -1,0 +1,322 @@
+{
+  "generated_at": "2026-08-21T17:17:21.071Z",
+  "cases": [
+    {
+      "id": "H-EIFFEL-FLY-ORBIT",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/H-fly-into-orbit-eiffel-16x9/earth-studio",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/H-fly-into-orbit-eiffel-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "9c1e3fa7b41913bf4d2baab0af074819877aa613a04e7620aa83717d9bfa7556",
+      "boundary_frame": 300,
+      "primitive_before": "fly_to",
+      "primitive_after": "orbit",
+      "target_before": {
+        "name": "Eiffel Tower",
+        "latitude": 48.8584,
+        "longitude": 2.2945,
+        "altitude_m": 1000,
+        "source": "gazetteer_fixture"
+      },
+      "target_after": {
+        "name": "Eiffel Tower",
+        "latitude": 48.8584,
+        "longitude": 2.2945,
+        "altitude_m": 1000,
+        "source": "gazetteer_fixture"
+      },
+      "evaluator_advisories": [
+        {
+          "defect_class": "BOUNDARY_VELOCITY_DISCONTINUITY",
+          "parameter": "pan_speed",
+          "segment_id": 2,
+          "primitive_before": "fly_to",
+          "primitive_after": "orbit",
+          "frame_start": 299,
+          "frame_end": 301,
+          "measured_value": 1,
+          "threshold": 0.65,
+          "explanation": "fly_to→orbit changes normalized pan_speed rate abruptly at an interior boundary",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "D-NEW-YORK-APPROACH-ORBIT",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9/earth-studio",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "404a2f162c2d37899bc897a0611cbb4d67f14987218e9c16a309b3566482fa57",
+      "boundary_frame": 4110,
+      "primitive_before": "zoom_in",
+      "primitive_after": "orbit",
+      "target_before": {
+        "name": "New York",
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "source": "gazetteer_fixture"
+      },
+      "target_after": {
+        "name": "New York",
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "source": "gazetteer_fixture"
+      },
+      "evaluator_advisories": [
+        {
+          "defect_class": "BOUNDARY_VELOCITY_DISCONTINUITY",
+          "parameter": "altitude_speed",
+          "segment_id": 4,
+          "primitive_before": "zoom_in",
+          "primitive_after": "orbit",
+          "frame_start": 4109,
+          "frame_end": 4111,
+          "measured_value": 1,
+          "threshold": 0.65,
+          "explanation": "zoom_in→orbit changes normalized altitude_speed rate abruptly at an interior boundary",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "F2-COPENHAGEN-APPROACH-ORBIT",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9/earth-studio",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "6cda225cfb746e5338672693908507f76a4482d3e8e50aaab8e27338dc7e8569",
+      "boundary_frame": 810,
+      "primitive_before": "zoom_in",
+      "primitive_after": "orbit",
+      "target_before": {
+        "name": "Copenhagen",
+        "latitude": 55.6761,
+        "longitude": 12.5683,
+        "source": "gazetteer_fixture"
+      },
+      "target_after": {
+        "name": "Copenhagen",
+        "latitude": 55.6761,
+        "longitude": 12.5683,
+        "source": "gazetteer_fixture"
+      },
+      "evaluator_advisories": [
+        {
+          "defect_class": "BOUNDARY_VELOCITY_DISCONTINUITY",
+          "parameter": "altitude_speed",
+          "segment_id": 4,
+          "primitive_before": "zoom_in",
+          "primitive_after": "orbit",
+          "frame_start": 809,
+          "frame_end": 811,
+          "measured_value": 1,
+          "threshold": 0.65,
+          "explanation": "zoom_in→orbit changes normalized altitude_speed rate abruptly at an interior boundary",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "DIRN17-AMSTERDAM-APPROACH-ORBIT",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio/earth-studio.esp",
+      "esp_sha256": "1f0676872f652f8055ffe28a099a1718886fd522bfa8a60fa0c7581bc3e2c308",
+      "boundary_frame": 420,
+      "primitive_before": "zoom_in",
+      "primitive_after": "orbit",
+      "target_before": {
+        "name": "Helsinki",
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "source": "gazetteer_fixture"
+      },
+      "target_after": {
+        "name": "Helsinki",
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "source": "gazetteer_fixture"
+      },
+      "evaluator_advisories": [
+        {
+          "defect_class": "BOUNDARY_VELOCITY_DISCONTINUITY",
+          "parameter": "altitude_speed",
+          "segment_id": 4,
+          "primitive_before": "zoom_in",
+          "primitive_after": "orbit",
+          "frame_start": 419,
+          "frame_end": 421,
+          "measured_value": 1.0588327139776395,
+          "threshold": 0.65,
+          "explanation": "zoom_in→orbit changes normalized altitude_speed rate abruptly at an interior boundary",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "DIRN17-ROTTERDAM-APPROACH-ORBIT",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio/earth-studio.esp",
+      "esp_sha256": "1f0676872f652f8055ffe28a099a1718886fd522bfa8a60fa0c7581bc3e2c308",
+      "boundary_frame": 1140,
+      "primitive_before": "zoom_in",
+      "primitive_after": "orbit",
+      "target_before": {
+        "name": "Stockholm",
+        "latitude": 59.3293,
+        "longitude": 18.0686,
+        "source": "gazetteer_fixture"
+      },
+      "target_after": {
+        "name": "Stockholm",
+        "latitude": 59.3293,
+        "longitude": 18.0686,
+        "source": "gazetteer_fixture"
+      },
+      "evaluator_advisories": [
+        {
+          "defect_class": "BOUNDARY_VELOCITY_DISCONTINUITY",
+          "parameter": "altitude_speed",
+          "segment_id": 8,
+          "primitive_before": "zoom_in",
+          "primitive_after": "orbit",
+          "frame_start": 1139,
+          "frame_end": 1141,
+          "measured_value": 1.0537780154033176,
+          "threshold": 0.65,
+          "explanation": "zoom_in→orbit changes normalized altitude_speed rate abruptly at an interior boundary",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "DIRN17-ROTTERDAM-ORBIT-TRAVEL",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio",
+      "esp": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio/earth-studio.esp",
+      "esp_sha256": "1f0676872f652f8055ffe28a099a1718886fd522bfa8a60fa0c7581bc3e2c308",
+      "boundary_frame": 1590,
+      "primitive_before": "orbit",
+      "primitive_after": "fly_to",
+      "target_before": {
+        "name": "Stockholm",
+        "latitude": 59.3293,
+        "longitude": 18.0686,
+        "source": "gazetteer_fixture"
+      },
+      "target_after": {
+        "name": "Scandinavia",
+        "latitude": 63,
+        "longitude": 15,
+        "scale": "region",
+        "source": "gazetteer_fixture"
+      },
+      "evaluator_advisories": [
+        {
+          "defect_class": "BOUNDARY_VELOCITY_DISCONTINUITY",
+          "parameter": "pan_speed",
+          "segment_id": 9,
+          "primitive_before": "orbit",
+          "primitive_after": "fly_to",
+          "frame_start": 1589,
+          "frame_end": 1591,
+          "measured_value": 1,
+          "threshold": 0.65,
+          "explanation": "orbit→fly_to changes normalized pan_speed rate abruptly at an interior boundary",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "A-LOCAL-TRAVEL-HOLD",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9/earth-studio",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "0b254d0d66010f0a7b469e7c096a37c2b175adea94eacefde0a1a5ae3bf8eb82",
+      "boundary_frame": 360,
+      "primitive_before": "fly_to",
+      "primitive_after": "hover",
+      "target_before": {
+        "name": "Helsinki Cathedral",
+        "latitude": 60.1704,
+        "longitude": 24.9522,
+        "altitude_m": 700,
+        "source": "gazetteer_fixture"
+      },
+      "target_after": {
+        "name": "Helsinki Cathedral",
+        "latitude": 60.1704,
+        "longitude": 24.9522,
+        "altitude_m": 700,
+        "source": "gazetteer_fixture"
+      },
+      "evaluator_advisories": []
+    },
+    {
+      "id": "B-CITY-APPROACH-HOLD",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9/earth-studio",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "017ed90da85159fb257a89eb4e3ea3faffb218d65d341b76713ebd10a0cb0c4e",
+      "boundary_frame": 2310,
+      "primitive_before": "zoom_in",
+      "primitive_after": "hover",
+      "target_before": {
+        "name": "Stockholm",
+        "latitude": 59.3293,
+        "longitude": 18.0686,
+        "source": "gazetteer_fixture"
+      },
+      "target_after": {
+        "name": "Stockholm",
+        "latitude": 59.3293,
+        "longitude": 18.0686,
+        "source": "gazetteer_fixture"
+      },
+      "evaluator_advisories": [
+        {
+          "defect_class": "BOUNDARY_VELOCITY_DISCONTINUITY",
+          "parameter": "altitude_speed",
+          "segment_id": 4,
+          "primitive_before": "zoom_in",
+          "primitive_after": "hover",
+          "frame_start": 2309,
+          "frame_end": 2311,
+          "measured_value": 1,
+          "threshold": 0.65,
+          "explanation": "zoom_in→hover changes normalized altitude_speed rate abruptly at an interior boundary",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "T09-ORBIT-HOLD",
+      "source": "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T09-helsinki-orbit-to-hold/earth-studio",
+      "esp": "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T09-helsinki-orbit-to-hold/earth-studio/earth-studio.esp",
+      "esp_sha256": "04bcf7d7602fa325915c1521848be02ea9e6163016aad3381eb7a4201382aa8b",
+      "boundary_frame": 480,
+      "primitive_before": "orbit",
+      "primitive_after": "hover",
+      "target_before": {
+        "name": "Helsinki Cathedral",
+        "latitude": 60.1704,
+        "longitude": 24.9522,
+        "altitude_m": 700,
+        "source": "gazetteer_fixture"
+      },
+      "target_after": {
+        "name": "Helsinki Cathedral",
+        "latitude": 60.1704,
+        "longitude": 24.9522,
+        "altitude_m": 700,
+        "source": "gazetteer_fixture"
+      },
+      "evaluator_advisories": [
+        {
+          "defect_class": "BOUNDARY_VELOCITY_DISCONTINUITY",
+          "parameter": "position_speed",
+          "segment_id": 1,
+          "primitive_before": "orbit",
+          "primitive_after": "hover",
+          "frame_start": 479,
+          "frame_end": 481,
+          "measured_value": 1,
+          "threshold": 0.65,
+          "explanation": "orbit→hover changes normalized position_speed rate abruptly at an interior boundary",
+          "severity": "warning"
+        }
+      ]
+    }
+  ]
+}
