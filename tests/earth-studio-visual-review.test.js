@@ -104,3 +104,9 @@ test('terrain review persists only valid Mikko choices and requires all subjects
   assert.throws(() => terrainReview.applyChoice(pkg, session, { subject: 'Matterhorn', chosen_tilt_deg: 78 }), /invalid candidate tilt/);
   assert.throws(() => terrainReview.applyOverall(pkg, session, { overall_verdict: 'KEEP_72_GLOBAL' }), /review every subject/);
 });
+
+test('terrain review explicitly foregrounds the active operator tab', async () => {
+  const calls = [];
+  await terrainReview.bringToFront({ send: async (method) => calls.push(method) });
+  assert.deepEqual(calls, ['Page.bringToFront']);
+});

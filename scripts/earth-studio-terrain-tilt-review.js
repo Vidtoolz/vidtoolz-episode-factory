@@ -14,6 +14,10 @@ const DEFAULT_GATE = path.join(ROOT, 'package-runs/2026-08-21-earth-studio-terra
 const importGate = require(path.join(ROOT, 'scripts/earth-studio-journey-import-gate.js'));
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function bringToFront(cdp) {
+  return cdp.send('Page.bringToFront');
+}
+
 async function resetToImportScreen(cdp) {
   await cdp.send('Page.navigate', { url: 'https://earth.google.com/studio/' });
   await cdp.waitFor(`Array.from(document.querySelectorAll('div')).some(e=>e.children.length===0 && /^Import \\.esp file$/i.test((e.textContent||'').trim()))`, 60000);
@@ -129,6 +133,9 @@ function createController(pkg, { cdp = null } = {}) {
         if (!candidate) throw new Error(`unknown candidate: ${body.id}`);
         await resetToImportScreen(cdp);
         await importGate.importEsp(cdp, path.join(ROOT, candidate.esp));
+        // The choice is made in the local controller, but playback happens in
+        // Earth Studio. Put the imported project in front once it is ready.
+        await bringToFront(cdp);
         return json(res, 200, { ok: true, id: candidate.id });
       }
       if (req.method === 'POST' && req.url === '/api/choice') {
@@ -151,13 +158,26 @@ async function main() {
   const es = await importGate.newTab(browser.port, 'https://earth.google.com/studio/');
   const server = createController(pkg, { cdp: es });
   await new Promise((resolve, reject) => server.listen(port, '127.0.0.1', (error) => error ? reject(error) : resolve()));
-  await importGate.newTab(browser.port, `http://127.0.0.1:${port}/`);
+  const controllerTab = await importGate.newTab(browser.port, `http://127.0.0.1:${port}/`);
+  await controllerTab.waitFor(`document.title === 'Terrain Tilt Review'`, 15000);
+  // DevTools' /json/new endpoint does not guarantee foreground activation.
+  // Explicitly foreground the controls so launching the command never strands
+  // the operator on Earth Studio's opening page with the controller hidden.
+  await bringToFront(controllerTab);
   console.log(`Terrain review ready: http://127.0.0.1:${port}/`);
   console.log(`Choices: ${path.relative(ROOT, pkg.sessionPath)}`);
-  const stop = () => { server.close(); try { browser.chrome.kill('SIGTERM'); } catch (_) {} };
+  const stop = () => {
+    server.close();
+    try { controllerTab.close(); } catch (_) {}
+    try { es.close(); } catch (_) {}
+    try { browser.chrome.kill('SIGTERM'); } catch (_) {}
+  };
   process.on('SIGINT', stop); process.on('SIGTERM', stop);
 }
 
 if (require.main === module) main().catch((error) => { console.error(error.message); process.exitCode = 1; });
 
-module.exports = { DEFAULT_GATE, loadPackage, freshSession, applyChoice, applyOverall, writeSession, createController, resetToImportScreen };
+module.exports = {
+  DEFAULT_GATE, loadPackage, freshSession, applyChoice, applyOverall,
+  writeSession, createController, resetToImportScreen, bringToFront,
+};
