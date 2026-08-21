@@ -1,0 +1,87 @@
+{
+  "plan": {
+    "plan_version": 1,
+    "director_version": 1,
+    "source_text": "Show the terrain of Matterhorn.",
+    "beats": [
+      {
+        "beat": "PRIMARY_SUBJECT",
+        "subject": "Matterhorn",
+        "role": "PRIMARY_SUBJECT",
+        "importance": "HIGH",
+        "purpose": "SHOW_TERRAIN",
+        "purpose_label": "Show the terrain",
+        "viewer_should_understand": "the physical shape of the land",
+        "grammar": "slow_orbit",
+        "grammar_label": "Slow Orbit",
+        "rarity": "SELECTIVE",
+        "angle": "oblique",
+        "emphasis": 1.38,
+        "tilt_deg": 74,
+        "altitude_m": 5736.325095,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "SHARP_PEAK",
+          "morphology_metadata_value": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 74,
+          "final_tilt_deg": 74,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 5736.325095,
+          "reference_orbit_radius_m": 20004.942992,
+          "treatment": "strong terrain rake",
+          "reason": "a sharp isolated summit reads through steep profile and relief",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "sharp_peak → strong terrain rake → 74°"
+        },
+        "obliquity": {
+          "action": "KEEP_FLAT",
+          "promoted_from": null,
+          "tilt_band": null,
+          "source": "USER_SPECIFIED",
+          "reason": "The operator explicitly specified the opening movement (\"slow_orbit\"). Automatic directing may fill unspecified camera behavior, but it never replaces an explicitly specified movement primitive."
+        },
+        "why": "neighborhood framing is within its useful range it gives the oblique view this purpose wants",
+        "angle_limitation": null,
+        "duration_seconds": 75,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "user-specified",
+          "importance": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      }
+    ],
+    "globe": {
+      "allowed": false,
+      "justification": null,
+      "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+    },
+    "opening_composition": {
+      "strategy": "ORBIT_STAGING_PLANNER",
+      "heading_source": "DEFAULTED",
+      "subject_axis_deg": null,
+      "preferred_view_axis_deg": null,
+      "opening_heading_deg": null,
+      "opening_tilt_deg": null,
+      "confidence": "medium",
+      "reason": "The opening belongs to an orbit (or stages one): the planner owns ring placement and exit-aligned phase. Composition defers rather than fight the orbit geometry."
+    },
+    "opening_camera": null,
+    "compare_match": null,
+    "continuation": null,
+    "notes": [
+      "Flourish budget for this sequence: 2 (from 1 stop; 0 hero, 1 high).",
+      "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "Special/selective moves used: Slow Orbit.",
+      "Opening composition [ORBIT_STAGING_PLANNER]: The opening belongs to an orbit (or stages one): the planner owns ring placement and exit-aligned phase. Composition defers rather than fight the orbit geometry."
+    ],
+    "span_m": 0,
+    "total_duration_seconds": 75
+  },
+  "opening_camera": null
+}

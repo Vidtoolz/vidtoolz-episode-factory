@@ -1,0 +1,120 @@
+{
+  "id": "MORPH-UNSEEN-KILIMANJARO",
+  "subject": "Kilimanjaro",
+  "imported": true,
+  "earth_studio_project": {
+    "duration": 750,
+    "totalFrames": 750,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "tilt_deg": 45,
+    "altitude_m": 21544,
+    "total_frames": 750
+  },
+  "observed": {
+    "opening_tilt_deg": 45,
+    "opening_altitude_m": 21544.784960835485,
+    "tilt_error_deg": 0,
+    "altitude_offset_m": 0.785,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "altitude_legal": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": -2.8736504154999163,
+        "longitude": 37.3556,
+        "altitude": 21544.784960835485,
+        "pan_deg": 180,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 21543.971,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      }
+    },
+    {
+      "frame": 374,
+      "camera": {
+        "frame": 374,
+        "latitude": -3.2611442693148938,
+        "longitude": 37.357218524453124,
+        "altitude": 21544.784960835485,
+        "pan_deg": 359.52,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 21544.129,
+        "position_bearing_around_target_deg": 179.52214082,
+        "camera_to_target_bearing_deg": 359.52205148
+      }
+    },
+    {
+      "frame": 747,
+      "camera": {
+        "frame": 747,
+        "latitude": -2.8736933276204017,
+        "longitude": 37.35462921963004,
+        "altitude": 21544.784960835485,
+        "pan_deg": 539.639462726858,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 21539.469,
+        "position_bearing_around_target_deg": 359.7132194,
+        "camera_to_target_bearing_deg": 179.71326971
+      }
+    },
+    {
+      "frame": 748,
+      "camera": {
+        "frame": 748,
+        "latitude": -2.87366886301091,
+        "longitude": 37.355171688589344,
+        "altitude": 21544.784960835485,
+        "pan_deg": 539.8310996227193,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 21541.972,
+        "position_bearing_around_target_deg": 359.87348661,
+        "camera_to_target_bearing_deg": 179.8735088
+      }
+    },
+    {
+      "frame": 749,
+      "camera": {
+        "frame": 749,
+        "latitude": -2.8736548757537337,
+        "longitude": 37.35549384303786,
+        "altitude": 21544.784960835485,
+        "pan_deg": 539.955284846493,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 21543.478,
+        "position_bearing_around_target_deg": 359.96864588,
+        "camera_to_target_bearing_deg": 179.96865138
+      }
+    }
+  ],
+  "screenshot": null,
+  "import_index": 6
+}

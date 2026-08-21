@@ -1,0 +1,120 @@
+{
+  "id": "MORPH-CAL-MATTERHORN",
+  "subject": "Matterhorn",
+  "imported": true,
+  "earth_studio_project": {
+    "duration": 2250,
+    "totalFrames": 2250,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "tilt_deg": 74,
+    "altitude_m": 5736,
+    "total_frames": 2250
+  },
+  "observed": {
+    "opening_tilt_deg": 74,
+    "opening_altitude_m": 5736.942746720773,
+    "tilt_error_deg": 0,
+    "altitude_offset_m": 0.9427,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "altitude_legal": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 46.15649818603813,
+        "longitude": 7.6585,
+        "altitude": 5736.942746720773,
+        "pan_deg": 180,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20003.766,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      }
+    },
+    {
+      "frame": 1124,
+      "camera": {
+        "frame": 1124,
+        "latitude": 45.796701,
+        "longitude": 7.6592170942594615,
+        "altitude": 5736.942746720773,
+        "pan_deg": 359.84,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20003.933,
+        "position_bearing_around_target_deg": 179.84076773,
+        "camera_to_target_bearing_deg": 359.84128258
+      }
+    },
+    {
+      "frame": 2247,
+      "camera": {
+        "frame": 2247,
+        "latitude": 46.15649409750586,
+        "longitude": 7.658355548312764,
+        "altitude": 5736.942746720773,
+        "pan_deg": 539.9546074939044,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20003.314,
+        "position_bearing_around_target_deg": 359.96813099,
+        "camera_to_target_bearing_deg": 179.96802696
+      }
+    },
+    {
+      "frame": 2248,
+      "camera": {
+        "frame": 2248,
+        "latitude": 46.15649638986982,
+        "longitude": 7.658436003260751,
+        "altitude": 5736.942746720773,
+        "pan_deg": 539.9794057944365,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20003.566,
+        "position_bearing_around_target_deg": 359.98588118,
+        "camera_to_target_bearing_deg": 179.9858351
+      }
+    },
+    {
+      "frame": 2249,
+      "camera": {
+        "frame": 2249,
+        "latitude": 46.15649774217211,
+        "longitude": 7.658484053596548,
+        "altitude": 5736.942746720773,
+        "pan_deg": 539.9947407216515,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20003.716,
+        "position_bearing_around_target_deg": 359.99648197,
+        "camera_to_target_bearing_deg": 179.99647048
+      }
+    }
+  ],
+  "screenshot": "package-runs/2026-08-21-earth-studio-terrain-morphology/screenshots/MORPH-CAL-MATTERHORN-frame-0.png",
+  "import_index": 1
+}

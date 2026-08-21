@@ -1,0 +1,195 @@
+{
+  "authority": "authenticated Google Earth Studio scene.getCurrentWorldValues readback",
+  "generated_at": "2026-08-21T07:45:31.157Z",
+  "attempted": 8,
+  "imported_successfully": 8,
+  "calibration_imports": 4,
+  "unseen_imports": 4,
+  "all_checks_pass": true,
+  "records": [
+    {
+      "id": "MORPH-CAL-MATTERHORN",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "altitude_legal": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 74,
+        "opening_altitude_m": 5736.942746720773,
+        "tilt_error_deg": 0,
+        "altitude_offset_m": 0.9427,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "MORPH-CAL-MOUNT-FUJI",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "altitude_legal": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 45,
+        "opening_altitude_m": 16927.831044934195,
+        "tilt_error_deg": 0,
+        "altitude_offset_m": 0.831,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "MORPH-CAL-GRAND-CANYON",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "altitude_legal": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 74,
+        "opening_altitude_m": 3530.9647656771845,
+        "tilt_error_deg": 0,
+        "altitude_offset_m": 0.9648,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "MORPH-CAL-GEIRANGERFJORD",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "altitude_legal": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 65,
+        "opening_altitude_m": 3588.9641867562996,
+        "tilt_error_deg": 0,
+        "altitude_offset_m": 0.9642,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "MORPH-UNSEEN-MONT-BLANC",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "altitude_legal": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 74,
+        "opening_altitude_m": 6178.938334944375,
+        "tilt_error_deg": 0,
+        "altitude_offset_m": 0.9383,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "MORPH-UNSEEN-KILIMANJARO",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "altitude_legal": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 45,
+        "opening_altitude_m": 21544.784960835485,
+        "tilt_error_deg": 0,
+        "altitude_offset_m": 0.785,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "MORPH-UNSEEN-EVEREST",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "altitude_legal": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 73.35,
+        "opening_altitude_m": 9204.908131244421,
+        "tilt_error_deg": 0,
+        "altitude_offset_m": 0.9081,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    },
+    {
+      "id": "MORPH-UNSEEN-ALPS",
+      "imported": true,
+      "checks": {
+        "duration_match": true,
+        "frame_rate_match": true,
+        "tilt_match": true,
+        "altitude_legal": true,
+        "no_roll": true,
+        "terminal_pan_monotonic": true,
+        "terminal_position_monotonic": true
+      },
+      "observed": {
+        "opening_tilt_deg": 65,
+        "opening_altitude_m": 9587.904308370302,
+        "tilt_error_deg": 0,
+        "altitude_offset_m": 0.9043,
+        "max_abs_roll_deg": 0,
+        "terminal_pan_reverse_steps": 0,
+        "terminal_position_reverse_steps": 0
+      },
+      "error": null
+    }
+  ]
+}

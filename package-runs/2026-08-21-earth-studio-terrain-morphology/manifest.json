@@ -1,0 +1,710 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-21T15:00:00.000Z",
+  "human_authority_commit": "472a4287cd76e33a53cff8f218147bd77d0fa170",
+  "policy": "deterministic human-calibrated terrain morphology; no name-to-angle rules",
+  "production_policy_changed": true,
+  "camera_mechanics_changed": false,
+  "historical_evidence_overwritten": false,
+  "calibration_before_after": [
+    {
+      "subject": "Matterhorn",
+      "old_tilt_deg": 72,
+      "old_review_esp": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-72/earth-studio/earth-studio.esp",
+      "new_tilt_deg": 74,
+      "new_esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MATTERHORN/earth-studio/earth-studio.esp"
+    },
+    {
+      "subject": "Mount Fuji",
+      "old_tilt_deg": 72,
+      "old_review_esp": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-72/earth-studio/earth-studio.esp",
+      "new_tilt_deg": 45,
+      "new_esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MOUNT-FUJI/earth-studio/earth-studio.esp"
+    },
+    {
+      "subject": "Grand Canyon",
+      "old_tilt_deg": 72,
+      "old_review_esp": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-72/earth-studio/earth-studio.esp",
+      "new_tilt_deg": 74,
+      "new_esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GRAND-CANYON/earth-studio/earth-studio.esp"
+    },
+    {
+      "subject": "Geirangerfjord",
+      "old_tilt_deg": 72,
+      "old_review_esp": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-72/earth-studio/earth-studio.esp",
+      "new_tilt_deg": 65,
+      "new_esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GEIRANGERFJORD/earth-studio/earth-studio.esp"
+    }
+  ],
+  "byte_impact": {
+    "gate3_v094_controls": "UNAFFECTED",
+    "director_canaries_on_disk": "UNCHANGED_8_OF_8",
+    "director_terrain_canary_if_regenerated": {
+      "status": "EXPECTED_BYTE_CHANGE_NOT_REPINNED",
+      "accepted_esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/earth-studio.esp",
+      "accepted_sha256": "b03d581f7468bbda59de5f8116ea9098cd9776be10da15004bb2f8b9b02ef480",
+      "regenerated_sha256": "d0b7780aad3989234463193eb8a224e7e9aa0b99e3ade13e0ab182195aa173aa",
+      "reason": "Matterhorn terrain tilt/altitude now follow authorized SHARP_PEAK policy"
+    },
+    "journey_v2_canaries": "UNAFFECTED_NO_SHOW_TERRAIN_INPUT",
+    "historical_obliquity_and_terrain_review": "UNCHANGED"
+  },
+  "records": [
+    {
+      "id": "MORPH-CAL-MATTERHORN",
+      "subject": "Matterhorn",
+      "morphology": "SHARP_PEAK",
+      "expected_tilt_deg": 74,
+      "calibration": true,
+      "natural_prompt_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 74,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "SHARP_PEAK",
+          "morphology_metadata_value": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 74,
+          "final_tilt_deg": 74,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 5736.325095,
+          "reference_orbit_radius_m": 20004.942992,
+          "treatment": "strong terrain rake",
+          "reason": "a sharp isolated summit reads through steep profile and relief",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "sharp_peak → strong terrain rake → 74°"
+        }
+      },
+      "production_orbit_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736,
+        "policy_altitude_m": 5736.325095,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "SHARP_PEAK",
+          "morphology_metadata_value": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 74,
+          "final_tilt_deg": 74,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 5736.325095,
+          "reference_orbit_radius_m": 20004.942992,
+          "treatment": "strong terrain rake",
+          "reason": "a sharp isolated summit reads through steep profile and relief",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "sharp_peak → strong terrain rake → 74°"
+        },
+        "duration_seconds": 75,
+        "orbit_degrees": 360,
+        "orbit_direction": 1,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "quality_status": "PASS_FOR_HUMAN_REVIEW",
+        "quality_errors": [],
+        "quality_warnings": [],
+        "total_frames": 2250,
+        "frame_rate": 30,
+        "unresolved_items": []
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MATTERHORN/earth-studio/earth-studio.esp",
+      "esp_sha256": "dc8e12b9f1b79b928ac538098372d7256fea3d29ac91f0a358d74cd45c037e43",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MATTERHORN/earth-studio/shot-plan.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MATTERHORN/earth-studio/direction.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MATTERHORN/earth-studio/camera-quality.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ]
+    },
+    {
+      "id": "MORPH-CAL-MOUNT-FUJI",
+      "subject": "Mount Fuji",
+      "morphology": "VOLCANIC_CONE",
+      "expected_tilt_deg": 45,
+      "calibration": true,
+      "natural_prompt_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 45,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "VOLCANIC_CONE",
+          "morphology_metadata_value": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 45,
+          "final_tilt_deg": 45,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 16927.259454,
+          "reference_orbit_radius_m": 16927.259454,
+          "treatment": "restrained high oblique",
+          "reason": "a broad symmetric cone needs geographic context to preserve its silhouette and base",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "volcanic_cone → restrained high oblique → 45°"
+        }
+      },
+      "production_orbit_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927,
+        "policy_altitude_m": 16927.259454,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "VOLCANIC_CONE",
+          "morphology_metadata_value": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 45,
+          "final_tilt_deg": 45,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 16927.259454,
+          "reference_orbit_radius_m": 16927.259454,
+          "treatment": "restrained high oblique",
+          "reason": "a broad symmetric cone needs geographic context to preserve its silhouette and base",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "volcanic_cone → restrained high oblique → 45°"
+        },
+        "duration_seconds": 25,
+        "orbit_degrees": 360,
+        "orbit_direction": 1,
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "quality_status": "PASS_FOR_HUMAN_REVIEW",
+        "quality_errors": [],
+        "quality_warnings": [],
+        "total_frames": 750,
+        "frame_rate": 30,
+        "unresolved_items": []
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MOUNT-FUJI/earth-studio/earth-studio.esp",
+      "esp_sha256": "df8f361aa83eb0d43ae8617134d079302d17d3269270013493de7adfd5d42858",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MOUNT-FUJI/earth-studio/shot-plan.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MOUNT-FUJI/earth-studio/direction.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MOUNT-FUJI/earth-studio/camera-quality.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ]
+    },
+    {
+      "id": "MORPH-CAL-GRAND-CANYON",
+      "subject": "Grand Canyon",
+      "morphology": "CANYON",
+      "expected_tilt_deg": 74,
+      "calibration": true,
+      "framing": "district",
+      "natural_prompt_result": {
+        "movement": "reveal",
+        "tilt_deg": null,
+        "terrain_policy": null
+      },
+      "production_orbit_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 74,
+        "altitude_m": 3530,
+        "policy_altitude_m": 3530.046212,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "CANYON",
+          "morphology_metadata_value": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 74,
+          "final_tilt_deg": 74,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 3530.046212,
+          "reference_orbit_radius_m": 12310.734149,
+          "treatment": "strong terrain rake",
+          "reason": "a depressed landform needs a raking view to expose walls and depth",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "canyon → strong terrain rake → 74°"
+        },
+        "duration_seconds": 75,
+        "orbit_degrees": 360,
+        "orbit_direction": 1,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "quality_status": "PASS_FOR_HUMAN_REVIEW",
+        "quality_errors": [],
+        "quality_warnings": [],
+        "total_frames": 2250,
+        "frame_rate": 30,
+        "unresolved_items": []
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GRAND-CANYON/earth-studio/earth-studio.esp",
+      "esp_sha256": "b9fd98a61630925974bf554de243c86d021d5c0301336f7d60c515216d965961",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GRAND-CANYON/earth-studio/shot-plan.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GRAND-CANYON/earth-studio/direction.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GRAND-CANYON/earth-studio/camera-quality.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ]
+    },
+    {
+      "id": "MORPH-CAL-GEIRANGERFJORD",
+      "subject": "Geirangerfjord",
+      "morphology": "FJORD_CHANNEL",
+      "expected_tilt_deg": 65,
+      "calibration": true,
+      "natural_prompt_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 65,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "FJORD_CHANNEL",
+          "morphology_metadata_value": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 65,
+          "final_tilt_deg": 65,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 3587.868507,
+          "reference_orbit_radius_m": 7694.208843,
+          "treatment": "medium-strong terrain rake",
+          "reason": "an elongated deep channel needs wall relief without losing corridor readability",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "fjord_channel → medium-strong terrain rake → 65°"
+        }
+      },
+      "production_orbit_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3588,
+        "policy_altitude_m": 3587.868507,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "FJORD_CHANNEL",
+          "morphology_metadata_value": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 65,
+          "final_tilt_deg": 65,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 3587.868507,
+          "reference_orbit_radius_m": 7694.208843,
+          "treatment": "medium-strong terrain rake",
+          "reason": "an elongated deep channel needs wall relief without losing corridor readability",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "fjord_channel → medium-strong terrain rake → 65°"
+        },
+        "duration_seconds": 53,
+        "orbit_degrees": 360,
+        "orbit_direction": 1,
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "quality_status": "PASS_FOR_HUMAN_REVIEW",
+        "quality_errors": [],
+        "quality_warnings": [],
+        "total_frames": 1590,
+        "frame_rate": 30,
+        "unresolved_items": []
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GEIRANGERFJORD/earth-studio/earth-studio.esp",
+      "esp_sha256": "821dca67188db5434b22a2d13e97a210c0b2b92a2e004005854c04fedaa7ba93",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GEIRANGERFJORD/earth-studio/shot-plan.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GEIRANGERFJORD/earth-studio/direction.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GEIRANGERFJORD/earth-studio/camera-quality.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ]
+    },
+    {
+      "id": "MORPH-UNSEEN-MONT-BLANC",
+      "subject": "Mont Blanc",
+      "morphology": "SHARP_PEAK",
+      "expected_tilt_deg": 74,
+      "calibration": false,
+      "natural_prompt_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 74,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "SHARP_PEAK",
+          "morphology_metadata_value": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 74,
+          "final_tilt_deg": 74,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 6177.580872,
+          "reference_orbit_radius_m": 21543.78476,
+          "treatment": "strong terrain rake",
+          "reason": "a sharp isolated summit reads through steep profile and relief",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "sharp_peak → strong terrain rake → 74°"
+        }
+      },
+      "production_orbit_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 74,
+        "altitude_m": 6178,
+        "policy_altitude_m": 6177.580872,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "SHARP_PEAK",
+          "morphology_metadata_value": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 74,
+          "final_tilt_deg": 74,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 6177.580872,
+          "reference_orbit_radius_m": 21543.78476,
+          "treatment": "strong terrain rake",
+          "reason": "a sharp isolated summit reads through steep profile and relief",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "sharp_peak → strong terrain rake → 74°"
+        },
+        "duration_seconds": 75,
+        "orbit_degrees": 360,
+        "orbit_direction": 1,
+        "target": {
+          "name": "Mont Blanc",
+          "latitude": 45.8326,
+          "longitude": 6.8652,
+          "altitude_m": 7000,
+          "min_altitude_m": 6000,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "quality_status": "PASS_FOR_HUMAN_REVIEW",
+        "quality_errors": [],
+        "quality_warnings": [],
+        "total_frames": 2250,
+        "frame_rate": 30,
+        "unresolved_items": []
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-MONT-BLANC/earth-studio/earth-studio.esp",
+      "esp_sha256": "46bf5bfdcfd538b59b62581c9bc2e5e75e8f592d93ccf2d5ee546b38ee8a6922",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-MONT-BLANC/earth-studio/shot-plan.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-MONT-BLANC/earth-studio/direction.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-MONT-BLANC/earth-studio/camera-quality.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ]
+    },
+    {
+      "id": "MORPH-UNSEEN-KILIMANJARO",
+      "subject": "Kilimanjaro",
+      "morphology": "VOLCANIC_CONE",
+      "expected_tilt_deg": 45,
+      "calibration": false,
+      "natural_prompt_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 45,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "VOLCANIC_CONE",
+          "morphology_metadata_value": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 45,
+          "final_tilt_deg": 45,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 21543.78476,
+          "reference_orbit_radius_m": 21543.78476,
+          "treatment": "restrained high oblique",
+          "reason": "a broad symmetric cone needs geographic context to preserve its silhouette and base",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "volcanic_cone → restrained high oblique → 45°"
+        }
+      },
+      "production_orbit_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 45,
+        "altitude_m": 21544,
+        "policy_altitude_m": 21543.78476,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "VOLCANIC_CONE",
+          "morphology_metadata_value": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 45,
+          "final_tilt_deg": 45,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 21543.78476,
+          "reference_orbit_radius_m": 21543.78476,
+          "treatment": "restrained high oblique",
+          "reason": "a broad symmetric cone needs geographic context to preserve its silhouette and base",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": null,
+          "explanation": "volcanic_cone → restrained high oblique → 45°"
+        },
+        "duration_seconds": 25,
+        "orbit_degrees": 360,
+        "orbit_direction": 1,
+        "target": {
+          "name": "Kilimanjaro",
+          "latitude": -3.0674,
+          "longitude": 37.3556,
+          "altitude_m": 7000,
+          "min_altitude_m": 6300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "quality_status": "PASS_FOR_HUMAN_REVIEW",
+        "quality_errors": [],
+        "quality_warnings": [],
+        "total_frames": 750,
+        "frame_rate": 30,
+        "unresolved_items": []
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-KILIMANJARO/earth-studio/earth-studio.esp",
+      "esp_sha256": "da3765fd9d964686ae05cf2052a4e2469b28f0ea0a3b60dded6a956a5219ebd3",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-KILIMANJARO/earth-studio/shot-plan.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-KILIMANJARO/earth-studio/direction.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-KILIMANJARO/earth-studio/camera-quality.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ]
+    },
+    {
+      "id": "MORPH-UNSEEN-EVEREST",
+      "subject": "Mount Everest",
+      "morphology": "SHARP_PEAK",
+      "expected_tilt_deg": null,
+      "calibration": false,
+      "safety_clamp": true,
+      "natural_prompt_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 73.35,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "SHARP_PEAK",
+          "morphology_metadata_value": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 74,
+          "final_tilt_deg": 73.35,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 9204.225476,
+          "reference_orbit_radius_m": 30776.835372,
+          "treatment": "strong terrain rake",
+          "reason": "a sharp isolated summit reads through steep profile and relief",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": {
+            "code": "TERRAIN_SAFETY_FLOOR",
+            "requested_tilt_deg": 74,
+            "highest_legal_tilt_deg": 73.357221,
+            "applied_tilt_deg": 73.35,
+            "min_altitude_m": 9200,
+            "reason": "the preferred rake at the preserved orbit radius would put the camera below the terrain safety floor"
+          },
+          "explanation": "sharp_peak → strong terrain rake → 73.35° (terrain-floor clamped)"
+        }
+      },
+      "production_orbit_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 73.35,
+        "altitude_m": 9204,
+        "policy_altitude_m": 9204.225476,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "SHARP_PEAK",
+          "morphology_metadata_value": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 74,
+          "final_tilt_deg": 73.35,
+          "baseline_tilt_deg": 72,
+          "altitude_m": 9204.225476,
+          "reference_orbit_radius_m": 30776.835372,
+          "treatment": "strong terrain rake",
+          "reason": "a sharp isolated summit reads through steep profile and relief",
+          "confidence": "CALIBRATED_SINGLE_SUBJECT",
+          "fallback": false,
+          "safety_clamp": {
+            "code": "TERRAIN_SAFETY_FLOOR",
+            "requested_tilt_deg": 74,
+            "highest_legal_tilt_deg": 73.357221,
+            "applied_tilt_deg": 73.35,
+            "min_altitude_m": 9200,
+            "reason": "the preferred rake at the preserved orbit radius would put the camera below the terrain safety floor"
+          },
+          "explanation": "sharp_peak → strong terrain rake → 73.35° (terrain-floor clamped)"
+        },
+        "duration_seconds": 75,
+        "orbit_degrees": 360,
+        "orbit_direction": 1,
+        "target": {
+          "name": "Mount Everest",
+          "latitude": 27.9881,
+          "longitude": 86.925,
+          "altitude_m": 10000,
+          "min_altitude_m": 9200,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "quality_status": "PASS_FOR_HUMAN_REVIEW",
+        "quality_errors": [],
+        "quality_warnings": [],
+        "total_frames": 2250,
+        "frame_rate": 30,
+        "unresolved_items": []
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-EVEREST/earth-studio/earth-studio.esp",
+      "esp_sha256": "2290b1437a3d737bd657c25fc835fe5aafa8d3a8737f606c422892ef1f0fcae0",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-EVEREST/earth-studio/shot-plan.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-EVEREST/earth-studio/direction.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-EVEREST/earth-studio/camera-quality.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ]
+    },
+    {
+      "id": "MORPH-UNSEEN-ALPS",
+      "subject": "The Alps",
+      "morphology": "GENERIC_TERRAIN",
+      "expected_tilt_deg": 65,
+      "calibration": false,
+      "framing": "district",
+      "natural_prompt_result": {
+        "movement": "reveal",
+        "tilt_deg": null,
+        "terrain_policy": null
+      },
+      "production_orbit_result": {
+        "movement": "slow_orbit",
+        "tilt_deg": 65,
+        "altitude_m": 9587,
+        "policy_altitude_m": null,
+        "terrain_policy": {
+          "policy_version": 1,
+          "morphology": "GENERIC_TERRAIN",
+          "morphology_metadata_value": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "requested_tilt_deg": 65,
+          "final_tilt_deg": 65,
+          "baseline_tilt_deg": 72,
+          "altitude_m": null,
+          "reference_orbit_radius_m": null,
+          "treatment": "generic terrain fallback",
+          "reason": "65 degrees is the reviewed middle-rake candidate: enough relief without defaulting to the falsified 72-degree extreme",
+          "confidence": "CONSERVATIVE_FALLBACK",
+          "fallback": true,
+          "safety_clamp": null,
+          "explanation": "generic_terrain → generic terrain fallback → 65°"
+        },
+        "duration_seconds": 53,
+        "orbit_degrees": 360,
+        "orbit_direction": 1,
+        "target": {
+          "name": "The Alps",
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "scale": "region",
+          "terrain_morphology": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "technical": {
+        "quality_status": "PASS_FOR_HUMAN_REVIEW",
+        "quality_errors": [],
+        "quality_warnings": [],
+        "total_frames": 1590,
+        "frame_rate": 30,
+        "unresolved_items": []
+      },
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-ALPS/earth-studio/earth-studio.esp",
+      "esp_sha256": "3234af73d1a44b4017cde22a17cbe06034b32a7ffa33a5fc5c187954f180a99d",
+      "shot_plan": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-ALPS/earth-studio/shot-plan.json",
+      "direction": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-ALPS/earth-studio/direction.json",
+      "camera_quality": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-ALPS/earth-studio/camera-quality.json",
+      "generated_files": [
+        "camera-quality.json",
+        "direction.json",
+        "earth-studio.esp",
+        "journey.json",
+        "shot-plan.json"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "id": "MORPH-UNSEEN-ALPS",
+  "subject": "The Alps",
+  "imported": true,
+  "earth_studio_project": {
+    "duration": 1590,
+    "totalFrames": 1590,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "tilt_deg": 65,
+    "altitude_m": 9587,
+    "total_frames": 1590
+  },
+  "observed": {
+    "opening_tilt_deg": 65,
+    "opening_altitude_m": 9587.904308370302,
+    "tilt_error_deg": 0,
+    "altitude_offset_m": 0.9043,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "altitude_legal": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 46.78489415156386,
+        "longitude": 10.2,
+        "altitude": 9587.904308370302,
+        "pan_deg": 180,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20559.292,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      }
+    },
+    {
+      "frame": 794,
+      "camera": {
+        "frame": 794,
+        "latitude": 46.415106201033296,
+        "longitude": 10.201054835328202,
+        "altitude": 9587.904308370302,
+        "pan_deg": 359.7735849056604,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20559.411,
+        "position_bearing_around_target_deg": 179.77464211,
+        "camera_to_target_bearing_deg": 359.77540736
+      }
+    },
+    {
+      "frame": 1587,
+      "camera": {
+        "frame": 1587,
+        "latitude": 46.784885476679115,
+        "longitude": 10.199699456354047,
+        "altitude": 9587.904308370302,
+        "pan_deg": 539.9116695228056,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20558.34,
+        "position_bearing_around_target_deg": 359.93622459,
+        "camera_to_target_bearing_deg": 179.93600589
+      }
+    },
+    {
+      "frame": 1588,
+      "camera": {
+        "frame": 1588,
+        "latitude": 46.78489035714938,
+        "longitude": 10.199866998134118,
+        "altitude": 9587.904308370302,
+        "pan_deg": 539.9596232928338,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20558.872,
+        "position_bearing_around_target_deg": 359.97177772,
+        "camera_to_target_bearing_deg": 179.97168094
+      }
+    },
+    {
+      "frame": 1589,
+      "camera": {
+        "frame": 1589,
+        "latitude": 46.784893217989534,
+        "longitude": 10.199966900570235,
+        "altitude": 9587.904308370302,
+        "pan_deg": 539.9896048019091,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 20559.188,
+        "position_bearing_around_target_deg": 359.99297659,
+        "camera_to_target_bearing_deg": 179.9929525
+      }
+    }
+  ],
+  "screenshot": null,
+  "import_index": 8
+}

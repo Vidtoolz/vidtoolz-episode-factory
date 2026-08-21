@@ -1,0 +1,120 @@
+{
+  "id": "MORPH-CAL-GEIRANGERFJORD",
+  "subject": "Geirangerfjord",
+  "imported": true,
+  "earth_studio_project": {
+    "duration": 1590,
+    "totalFrames": 1590,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "tilt_deg": 65,
+    "altitude_m": 3588,
+    "total_frames": 1590
+  },
+  "observed": {
+    "opening_tilt_deg": 65,
+    "opening_altitude_m": 3588.9641867562996,
+    "tilt_error_deg": 0,
+    "altitude_offset_m": 0.9642,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "altitude_legal": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 62.174097505097535,
+        "longitude": 7.2054,
+        "altitude": 3588.9641867562996,
+        "pan_deg": 180,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 7694.412,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      }
+    },
+    {
+      "frame": 794,
+      "camera": {
+        "frame": 794,
+        "latitude": 62.035702450212504,
+        "longitude": 7.205980412242319,
+        "altitude": 3588.9641867562996,
+        "pan_deg": 359.7735849056604,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 7694.476,
+        "position_bearing_around_target_deg": 179.77464547,
+        "camera_to_target_bearing_deg": 359.77515827
+      }
+    },
+    {
+      "frame": 1587,
+      "camera": {
+        "frame": 1587,
+        "latitude": 62.17409425834013,
+        "longitude": 7.205235004078491,
+        "altitude": 3588.9641867562996,
+        "pan_deg": 539.9116695228056,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 7694.055,
+        "position_bearing_around_target_deg": 359.93622594,
+        "camera_to_target_bearing_deg": 179.93608007
+      }
+    },
+    {
+      "frame": 1588,
+      "camera": {
+        "frame": 1588,
+        "latitude": 62.17409608493302,
+        "longitude": 7.205326983215061,
+        "altitude": 3588.9641867562996,
+        "pan_deg": 539.9596232928338,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 7694.255,
+        "position_bearing_around_target_deg": 359.97177836,
+        "camera_to_target_bearing_deg": 179.97171381
+      }
+    },
+    {
+      "frame": 1589,
+      "camera": {
+        "frame": 1589,
+        "latitude": 62.174097155675355,
+        "longitude": 7.205381828750129,
+        "altitude": 3588.9641867562996,
+        "pan_deg": 539.9896048019091,
+        "tilt_deg": 65,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 7694.373,
+        "position_bearing_around_target_deg": 359.99297676,
+        "camera_to_target_bearing_deg": 179.99296069
+      }
+    }
+  ],
+  "screenshot": "package-runs/2026-08-21-earth-studio-terrain-morphology/screenshots/MORPH-CAL-GEIRANGERFJORD-frame-0.png",
+  "import_index": 4
+}

@@ -1,0 +1,120 @@
+{
+  "id": "MORPH-CAL-GRAND-CANYON",
+  "subject": "Grand Canyon",
+  "imported": true,
+  "earth_studio_project": {
+    "duration": 2250,
+    "totalFrames": 2250,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "tilt_deg": 74,
+    "altitude_m": 3530,
+    "total_frames": 2250
+  },
+  "observed": {
+    "opening_tilt_deg": 74,
+    "opening_altitude_m": 3530.9647656771845,
+    "tilt_error_deg": 0,
+    "altitude_offset_m": 0.9648,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "altitude_legal": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 36.16511159038271,
+        "longitude": -112.1401,
+        "altitude": 3530.9647656771845,
+        "pan_deg": 180,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 12310.567,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      }
+    },
+    {
+      "frame": 1124,
+      "camera": {
+        "frame": 1124,
+        "latitude": 35.943688,
+        "longitude": -112.13971995923305,
+        "altitude": 3530.9647656771845,
+        "pan_deg": 359.84,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 12310.66,
+        "position_bearing_around_target_deg": 179.84077007,
+        "camera_to_target_bearing_deg": 359.84099344
+      }
+    },
+    {
+      "frame": 2247,
+      "camera": {
+        "frame": 2247,
+        "latitude": 36.165109078780574,
+        "longitude": -112.14017627100885,
+        "altitude": 3530.9647656771845,
+        "pan_deg": 539.9546074939044,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 12310.29,
+        "position_bearing_around_target_deg": 359.96813274,
+        "camera_to_target_bearing_deg": 179.96808779
+      }
+    },
+    {
+      "frame": 2248,
+      "camera": {
+        "frame": 2248,
+        "latitude": 36.16511048698929,
+        "longitude": -112.14013379045929,
+        "altitude": 3530.9647656771845,
+        "pan_deg": 539.9794057944365,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 12310.445,
+        "position_bearing_around_target_deg": 359.98588198,
+        "camera_to_target_bearing_deg": 179.98586206
+      }
+    },
+    {
+      "frame": 2249,
+      "camera": {
+        "frame": 2249,
+        "latitude": 36.16511131771406,
+        "longitude": -112.14010841973409,
+        "altitude": 3530.9647656771845,
+        "pan_deg": 539.9947407216515,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 12310.537,
+        "position_bearing_around_target_deg": 359.99648217,
+        "camera_to_target_bearing_deg": 179.99647721
+      }
+    }
+  ],
+  "screenshot": "package-runs/2026-08-21-earth-studio-terrain-morphology/screenshots/MORPH-CAL-GRAND-CANYON-frame-0.png",
+  "import_index": 3
+}

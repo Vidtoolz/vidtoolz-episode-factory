@@ -1,0 +1,33 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": null,
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Grand Canyon",
+    "story": {
+      "role": null,
+      "importance": null,
+      "purposes": []
+    },
+    "framing": "district",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s27",
+      "type": "slow_orbit",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 1.38,
+      "direction": 1,
+      "altitude_m": 3530.046212,
+      "tilt_deg": 74,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": []
+}

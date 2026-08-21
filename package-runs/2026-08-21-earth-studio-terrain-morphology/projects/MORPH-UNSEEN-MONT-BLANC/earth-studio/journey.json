@@ -1,0 +1,33 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": null,
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Mont Blanc",
+    "story": {
+      "role": null,
+      "importance": null,
+      "purposes": []
+    },
+    "framing": "auto",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s53",
+      "type": "slow_orbit",
+      "duration_seconds": null,
+      "pace": null,
+      "emphasis": 1.38,
+      "direction": 1,
+      "altitude_m": 6177.580872,
+      "tilt_deg": 74,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": []
+}

@@ -1,0 +1,120 @@
+{
+  "id": "MORPH-CAL-MOUNT-FUJI",
+  "subject": "Mount Fuji",
+  "imported": true,
+  "earth_studio_project": {
+    "duration": 750,
+    "totalFrames": 750,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "tilt_deg": 45,
+    "altitude_m": 16927,
+    "total_frames": 750
+  },
+  "observed": {
+    "opening_tilt_deg": 45,
+    "opening_altitude_m": 16927.831044934195,
+    "tilt_error_deg": 0,
+    "altitude_offset_m": 0.831,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "altitude_legal": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 35.51282744433846,
+        "longitude": 138.7274,
+        "altitude": 16927.831044934195,
+        "pan_deg": 180,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 16926.92,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      }
+    },
+    {
+      "frame": 374,
+      "camera": {
+        "frame": 374,
+        "latitude": 35.20837649261904,
+        "longitude": 138.72895390320718,
+        "altitude": 16927.831044934195,
+        "pan_deg": 359.52,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 16927.069,
+        "position_bearing_around_target_deg": 179.52213016,
+        "camera_to_target_bearing_deg": 359.52302776
+      }
+    },
+    {
+      "frame": 747,
+      "camera": {
+        "frame": 747,
+        "latitude": 35.51279365586414,
+        "longitude": 138.72646401667473,
+        "altitude": 16927.831044934195,
+        "pan_deg": 539.639462726858,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 16923.375,
+        "position_bearing_around_target_deg": 359.713181,
+        "camera_to_target_bearing_deg": 179.71263832
+      }
+    },
+    {
+      "frame": 748,
+      "camera": {
+        "frame": 748,
+        "latitude": 35.512812918898646,
+        "longitude": 138.72698702940184,
+        "altitude": 16927.831044934195,
+        "pan_deg": 539.8310996227193,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 16925.346,
+        "position_bearing_around_target_deg": 359.87346613,
+        "camera_to_target_bearing_deg": 179.87322669
+      }
+    },
+    {
+      "frame": 749,
+      "camera": {
+        "frame": 749,
+        "latitude": 35.512823932343096,
+        "longitude": 138.72729764229328,
+        "altitude": 16927.831044934195,
+        "pan_deg": 539.955284846493,
+        "tilt_deg": 45,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 16926.532,
+        "position_bearing_around_target_deg": 359.9686399,
+        "camera_to_target_bearing_deg": 179.96858056
+      }
+    }
+  ],
+  "screenshot": "package-runs/2026-08-21-earth-studio-terrain-morphology/screenshots/MORPH-CAL-MOUNT-FUJI-frame-0.png",
+  "import_index": 2
+}

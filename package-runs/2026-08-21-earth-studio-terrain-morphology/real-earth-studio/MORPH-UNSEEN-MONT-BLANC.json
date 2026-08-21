@@ -1,0 +1,120 @@
+{
+  "id": "MORPH-UNSEEN-MONT-BLANC",
+  "subject": "Mont Blanc",
+  "imported": true,
+  "earth_studio_project": {
+    "duration": 2250,
+    "totalFrames": 2250,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "expected": {
+    "tilt_deg": 74,
+    "altitude_m": 6178,
+    "total_frames": 2250
+  },
+  "observed": {
+    "opening_tilt_deg": 74,
+    "opening_altitude_m": 6178.938334944375,
+    "tilt_error_deg": 0,
+    "altitude_offset_m": 0.9383,
+    "max_abs_roll_deg": 0,
+    "terminal_pan_reverse_steps": 0,
+    "terminal_position_reverse_steps": 0
+  },
+  "checks": {
+    "duration_match": true,
+    "frame_rate_match": true,
+    "tilt_match": true,
+    "altitude_legal": true,
+    "no_roll": true,
+    "terminal_pan_monotonic": true,
+    "terminal_position_monotonic": true
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "camera": {
+        "frame": 0,
+        "latitude": 46.026360126438554,
+        "longitude": 6.8652,
+        "altitude": 6178.938334944375,
+        "pan_deg": 180,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 21545.143,
+        "position_bearing_around_target_deg": 0,
+        "camera_to_target_bearing_deg": 180
+      }
+    },
+    {
+      "frame": 1124,
+      "camera": {
+        "frame": 1124,
+        "latitude": 45.638839,
+        "longitude": 6.865970178790666,
+        "altitude": 6178.938334944375,
+        "pan_deg": 359.84,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 21545.323,
+        "position_bearing_around_target_deg": 179.84076599,
+        "camera_to_target_bearing_deg": 359.84131754
+      }
+    },
+    {
+      "frame": 2247,
+      "camera": {
+        "frame": 2247,
+        "latitude": 46.026355724663645,
+        "longitude": 6.865044787181025,
+        "altitude": 6178.938334944375,
+        "pan_deg": 539.9546074939044,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 21544.657,
+        "position_bearing_around_target_deg": 359.96813156,
+        "camera_to_target_bearing_deg": 179.96802004
+      }
+    },
+    {
+      "frame": 2248,
+      "camera": {
+        "frame": 2248,
+        "latitude": 46.02635819266974,
+        "longitude": 6.865131235724639,
+        "altitude": 6178.938334944375,
+        "pan_deg": 539.9794057944365,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 21544.929,
+        "position_bearing_around_target_deg": 359.98588144,
+        "camera_to_target_bearing_deg": 179.98583203
+      }
+    },
+    {
+      "frame": 2249,
+      "camera": {
+        "frame": 2249,
+        "latitude": 46.02635964857208,
+        "longitude": 6.865182865642297,
+        "altitude": 6178.938334944375,
+        "pan_deg": 539.9947407216515,
+        "tilt_deg": 74,
+        "roll_deg": 0,
+        "fov": 20,
+        "radius_m": 21545.09,
+        "position_bearing_around_target_deg": 359.99648203,
+        "camera_to_target_bearing_deg": 179.99646972
+      }
+    }
+  ],
+  "screenshot": null,
+  "import_index": 5
+}
