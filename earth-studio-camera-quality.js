@@ -559,6 +559,17 @@ const SMOOTHNESS_TOLERANCES = Object.freeze({
   boundary_position_floor_mps: 1,
   boundary_altitude_floor_mps: 0.5,
   boundary_angle_floor_dps: 0.05,
+  // Degrees between consecutive ground-velocity vectors. Authenticated Earth
+  // Studio travel→orbit handoffs measured 0.34–5.10° per frame, while the
+  // confirmed orbit→travel seam measured 73.12° and its offline proxy 72.55°.
+  boundary_direction_snap_deg: 30,
+  // Metres/second. Direction is undefined at rest; both sides must exceed this
+  // floor before a velocity-vector angle can become a hard defect.
+  boundary_direction_speed_floor_mps: 1,
+  // Frames. Cross-track acceleration peaks within two frames on calibrated
+  // clean handoffs. Larger offsets remain advisory because custom-handle
+  // playback is only approximately reconstructed offline.
+  boundary_channel_phase_warning_frames: 8,
   // Degrees. Normal VIDTOOLZ motion has zero roll; this ignores only encoded
   // numerical residue while still rejecting any intentional-looking roll key.
   roll_noise_deg: 0.01,
@@ -809,17 +820,87 @@ function boundaryTransitionTypes(rawTracks, normalizedTime) {
   return types;
 }
 
+function boundaryVectorMetrics(trace, boundary, frameRate = 30) {
+  const beforeSpeed = trace.speed[boundary];
+  const afterSpeed = trace.speed[boundary + 1];
+  const beforeBearing = trace.bearing[boundary];
+  const afterBearing = trace.bearing[boundary + 1];
+  const directionSnap = [beforeSpeed, afterSpeed, beforeBearing, afterBearing].every(Number.isFinite)
+    && beforeSpeed > SMOOTHNESS_TOLERANCES.boundary_direction_speed_floor_mps
+    && afterSpeed > SMOOTHNESS_TOLERANCES.boundary_direction_speed_floor_mps
+    ? Math.abs(motionContinuity.angleDeltaDeg(beforeBearing, afterBearing)) : null;
+  const derivative = (rates, frame) => frame > 0 && Number.isFinite(rates[frame]) && Number.isFinite(rates[frame - 1])
+    ? (rates[frame] - rates[frame - 1]) * frameRate : null;
+  const series = {
+    position: (frame) => trace.acceleration[frame],
+    pan: (frame) => derivative(trace.panRate, frame),
+    altitude: (frame) => derivative(trace.altitudeRate, frame),
+    tilt: (frame) => derivative(trace.tiltRate, frame),
+  };
+  const floors = { position: 1, pan: 0.05, altitude: 0.5, tilt: 0.05 };
+  const peakFrames = {};
+  for (const [name, valueAtFrame] of Object.entries(series)) {
+    let peak = null;
+    for (let frame = Math.max(1, boundary - 15); frame <= Math.min(trace.frames.length - 1, boundary + 15); frame += 1) {
+      const value = valueAtFrame(frame);
+      if (!Number.isFinite(value) || Math.abs(value) <= floors[name]) continue;
+      if (!peak || Math.abs(value) > peak.value) peak = { frame, value: Math.abs(value) };
+    }
+    peakFrames[name] = peak ? peak.frame : null;
+  }
+  const finitePeaks = Object.values(peakFrames).filter(Number.isFinite);
+  return {
+    before_speed_mps: beforeSpeed,
+    after_speed_mps: afterSpeed,
+    before_bearing_deg: beforeBearing,
+    after_bearing_deg: afterBearing,
+    direction_snap_deg: directionSnap,
+    acceleration_peak_frames: peakFrames,
+    channel_phase_span_frames: finitePeaks.length > 1 ? Math.max(...finitePeaks) - Math.min(...finitePeaks) : 0,
+  };
+}
+
 function boundaryContinuityDefects({ plan, esp, tracks }) {
   const defects = [];
   const warnings = [];
   if (!plan || !(plan.total_frames > 0)) return { defects, warnings };
   const decoded = motionContinuity.extractEspCameraTracks(esp);
+  const trace = motionContinuity.playbackPositionTrace(decoded, plan.total_frames, plan.frame_rate || 30);
   const segments = (plan.segments || []).filter((segment) => segment && segment.duration_seconds > 0);
   for (let index = 0; index < segments.length - 1; index += 1) {
     const before = segments[index];
     const after = segments[index + 1];
     if (before.hard_transition || after.hard_transition || before.transition === 'hard' || after.transition === 'hard') continue;
     const boundary = before.end_frame;
+    const metadata = boundaryTransitionTypes(tracks, boundary / plan.total_frames);
+    const positionHasLinearBoundary = metadata.some((row) => ['longitude', 'latitude'].includes(row.parameter)
+      && (row.incoming === 'linear' || row.outgoing === 'linear'));
+    const vector = boundaryVectorMetrics(trace, boundary, plan.frame_rate || 30);
+    const movingToMoving = !['hold', 'hover'].includes(before.action) && !['hold', 'hover'].includes(after.action);
+    const boundaryPair = `${before.action}->${after.action}`;
+    const calibratedVectorPair = ['fly_to->orbit', 'zoom_in->orbit', 'orbit->fly_to'].includes(boundaryPair);
+    if (movingToMoving && Number.isFinite(vector.direction_snap_deg)
+        && vector.direction_snap_deg > SMOOTHNESS_TOLERANCES.boundary_direction_snap_deg
+        && positionHasLinearBoundary) {
+      const record = defectRecord({ defectClass: calibratedVectorPair
+        ? 'BOUNDARY_DIRECTION_SNAP' : 'BOUNDARY_DIRECTION_SNAP_UNCALIBRATED', parameter: 'ground_velocity_vector',
+        segment: before, before: before.action, after: after.action,
+        frameStart: boundary - 1, frameEnd: boundary + 1, measured: vector.direction_snap_deg,
+        threshold: SMOOTHNESS_TOLERANCES.boundary_direction_snap_deg,
+        explanation: calibratedVectorPair
+          ? `${before.action}→${after.action} changes ground-velocity direction ${vector.direction_snap_deg.toFixed(1)}° in one frame while both primitives are moving`
+          : `${before.action}→${after.action} has a ${vector.direction_snap_deg.toFixed(1)}° modeled vector change, but this boundary family lacks real-playback calibration`,
+        severity: calibratedVectorPair ? 'error' : 'warning' });
+      (calibratedVectorPair ? defects : warnings).push(record);
+    }
+    if (movingToMoving && vector.channel_phase_span_frames > SMOOTHNESS_TOLERANCES.boundary_channel_phase_warning_frames) {
+      warnings.push(defectRecord({ defectClass: 'BOUNDARY_CHANNEL_PHASE_UNCERTAIN', parameter: 'coordinated_camera_tracks',
+        segment: before, before: before.action, after: after.action,
+        frameStart: boundary - 15, frameEnd: boundary + 15, measured: vector.channel_phase_span_frames,
+        threshold: SMOOTHNESS_TOLERANCES.boundary_channel_phase_warning_frames,
+        explanation: `${before.action}→${after.action} has modeled channel-acceleration peaks separated by ${vector.channel_phase_span_frames} frames; custom playback authority remains advisory`,
+        severity: 'warning' }));
+    }
     const report = motionContinuity.playbackBoundaryRates(decoded, boundary, plan.total_frames, plan.frame_rate || 30);
     const candidates = [
       { parameter: 'position_speed', before: report.before.speed_mps, after: report.after.speed_mps,
@@ -834,7 +915,6 @@ function boundaryContinuityDefects({ plan, esp, tracks }) {
       .filter((row) => Number.isFinite(row.score));
     const worst = candidates.sort((a, b) => b.score - a.score)[0];
     if (!worst || worst.score <= SMOOTHNESS_TOLERANCES.boundary_velocity_discontinuity) continue;
-    const metadata = boundaryTransitionTypes(tracks, boundary / plan.total_frames);
     const movingLinear = metadata.some((row) => row.incoming === 'linear' && row.outgoing === 'linear');
     const record = defectRecord({ defectClass: 'BOUNDARY_VELOCITY_DISCONTINUITY', parameter: worst.parameter,
       segment: before, before: before.action, after: after.action,
@@ -992,4 +1072,4 @@ function evaluate({ plan, esp }) {
 module.exports = { cameraTracks, evaluate, coherenceReport, orbitReport, deadOrbitReport, deadMovementReport,
   rollReport, sortedTimedSamples, timeAwareDerivatives, motionEnvelope,
   scalarPumpDefects, radiusAndTargetDefects, headingDefects, trajectoryDefects, boundaryContinuityDefects,
-  smoothnessDoctrineReport, SMOOTHNESS_TOLERANCES, POSITION_DIRECTION_TOLERANCE };
+  boundaryVectorMetrics, smoothnessDoctrineReport, SMOOTHNESS_TOLERANCES, POSITION_DIRECTION_TOLERANCE };

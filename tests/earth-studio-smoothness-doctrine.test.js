@@ -257,7 +257,7 @@ test('smoothness doctrine: C1-matched custom travel-to-orbit boundary passes', (
   const fixture = boundaryFixture({ middle: 'custom', afterLat: 0.002 });
   const report = quality.boundaryContinuityDefects({ plan: fixture.plan, esp: fixture.esp,
     tracks: quality.cameraTracks(fixture.esp) });
-  assert.equal(report.defects.length, 0);
+  assert.equal(report.defects.length, 0, JSON.stringify(report.defects));
 });
 
 test('smoothness doctrine: settled orbit-to-hold boundary passes', () => {
@@ -265,6 +265,68 @@ test('smoothness doctrine: settled orbit-to-hold boundary passes', () => {
   const report = quality.boundaryContinuityDefects({ plan: fixture.plan, esp: fixture.esp,
     tracks: quality.cameraTracks(fixture.esp) });
   assert.equal(report.defects.length, 0);
+});
+
+function vectorBoundaryFixture({ settleThenLaunch = false, hard = false, delayedPan = false } = {}) {
+  const latitude = settleThenLaunch
+    ? [[0, 0], [0.4, 0], [0.5, 0], [0.6, 0.001], [1, 0.002]]
+    : [[0, 0], [0.5, 0], [1, 0.002]];
+  const longitude = settleThenLaunch
+    ? [[0, 0], [0.4, 0.001], [0.5, 0.001], [1, 0.001]]
+    : [[0, 0], [0.5, 0.001], [1, 0.001]];
+  const times = [...new Set([...latitude, ...longitude].map((row) => row[0]))].sort((a, b) => a - b);
+  const pan = delayedPan ? [[0, 0], [0.5, 0], [0.54, 0], [0.58, 90], [1, 120]] : times.map((time) => [time, time * 90]);
+  const still = times.map((time) => [time, 0]);
+  const options = { first: 'easeOut', middle: settleThenLaunch ? 'custom' : 'linear', last: 'custom' };
+  const esp = espFromTracks({ latitude, longitude, altitude: times.map((time) => [time, 1000]),
+    pan, tilt: still, options });
+  const first = { segment_id: 1, action: 'fly_to', location: TARGET, altitude_m: 1000, tilt_deg: 0,
+    start_frame: 0, end_frame: 150, duration_seconds: 5, ...(hard ? { transition: 'hard' } : {}) };
+  const second = { ...orbitSegment({ segment_id: 2 }), start_frame: 150, end_frame: 300, duration_seconds: 5 };
+  return { plan: planFor([first, second]), esp };
+}
+
+test('smoothness doctrine: calibrated abrupt moving-to-moving direction snap fails', () => {
+  const fixture = vectorBoundaryFixture();
+  const report = quality.boundaryContinuityDefects({ ...fixture, tracks: quality.cameraTracks(fixture.esp) });
+  const defect = report.defects.find((row) => row.defect_class === 'BOUNDARY_DIRECTION_SNAP');
+  assert.ok(defect);
+  assert.ok(defect.measured_value > defect.threshold);
+});
+
+test('smoothness doctrine: settle-then-launch may redirect after reaching rest', () => {
+  const fixture = vectorBoundaryFixture({ settleThenLaunch: true });
+  const report = quality.boundaryContinuityDefects({ ...fixture, tracks: quality.cameraTracks(fixture.esp) });
+  assert.equal(report.defects.some((row) => row.defect_class === 'BOUNDARY_DIRECTION_SNAP'), false);
+});
+
+test('smoothness doctrine: explicit hard transition exempts vector boundary doctrine', () => {
+  const fixture = vectorBoundaryFixture({ hard: true });
+  const report = quality.boundaryContinuityDefects({ ...fixture, tracks: quality.cameraTracks(fixture.esp) });
+  assert.equal(report.defects.length, 0);
+  assert.equal(report.warnings.length, 0);
+});
+
+test('smoothness doctrine: modeled pan-position phase lag remains advisory', () => {
+  const fixture = vectorBoundaryFixture({ settleThenLaunch: true, delayedPan: true });
+  const report = quality.boundaryContinuityDefects({ ...fixture, tracks: quality.cameraTracks(fixture.esp) });
+  assert.equal(report.defects.some((row) => row.defect_class === 'BOUNDARY_CHANNEL_PHASE_UNCERTAIN'), false);
+  assert.ok(report.warnings.some((row) => row.defect_class === 'BOUNDARY_CHANNEL_PHASE_UNCERTAIN'));
+});
+
+test('smoothness doctrine: uncertain custom velocity mismatch stays advisory', () => {
+  const fixture = boundaryFixture({ middle: 'custom', afterLat: 0.0012 });
+  const report = quality.boundaryContinuityDefects({ ...fixture, tracks: quality.cameraTracks(fixture.esp) });
+  assert.equal(report.defects.length, 0, JSON.stringify(report.defects));
+  assert.ok(report.warnings.some((row) => row.defect_class === 'BOUNDARY_VELOCITY_DISCONTINUITY'));
+});
+
+test('smoothness doctrine: accepted real travel-to-orbit fixture has no vector snap', () => {
+  const root = 'package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/H-fly-into-orbit-eiffel-16x9/earth-studio';
+  const plan = JSON.parse(fs.readFileSync(`${root}/shot-plan.json`, 'utf8'));
+  const esp = JSON.parse(fs.readFileSync(`${root}/earth-studio.esp`, 'utf8'));
+  const report = quality.boundaryContinuityDefects({ plan, esp, tracks: quality.cameraTracks(esp) });
+  assert.equal(report.defects.some((row) => row.defect_class === 'BOUNDARY_DIRECTION_SNAP'), false);
 });
 
 test('smoothness doctrine: uncontrolled roll oscillation fails structurally', () => {

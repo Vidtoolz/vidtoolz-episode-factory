@@ -285,6 +285,17 @@ residue is filtered with unit-specific tolerances.
 Passing this gate means only that the authored camera motion is structurally coherent enough for
 human review. It is not an aesthetic or compositional approval.
 
+Boundary severity is calibrated against authenticated consecutive-frame Earth Studio playback.
+Scalar rate mismatches from approximate custom-handle reconstruction remain advisory when the real
+application spreads the change progressively. For the calibrated travel/approach→orbit and
+orbit→fly families, a ground-velocity direction change is a hard defect only when the offline path
+changes by more than 30° in one frame, both sides are actually moving, and the authored position
+boundary contains linear evidence; the calibration set separated accepted 0.34–5.10° turns from a
+confirmed 73.12° orbit→travel snap. Other boundary families remain advisory until measured. Direction is ignored
+after a movement has settled to rest, so orbit→hold and travel→hold do not manufacture an angle from
+a zero vector. Cross-track acceleration timing remains advisory where custom playback authority is
+incomplete.
+
 **Motivated tilt.** Tilt is not decoration: it changes only because the shot that follows needs it.
 A descent into a destination stays level and the camera leans over only as the circling shot begins,
 at no more than `ORBIT_ENTRY_TILT_MAX_RATE_DEG_PER_S` (12°/s), so the lean reads as entering the
