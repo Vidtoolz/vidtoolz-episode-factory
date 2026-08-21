@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "operator_authority": "Mikko",
+  "started_at": "2026-08-21T13:27:15.710Z",
+  "completed_at": "2026-08-21T16:42:41+03:00",
+  "operator_statement": "the reveal launch of grand canyon calm ramp B was the only acceptable reveal launch",
+  "choices": [
+    {
+      "family": "REVEAL",
+      "subject": "Grand Canyon",
+      "winner": "CALM_RAMP_B",
+      "note": "this is the best version",
+      "reviewed_at": "2026-08-21T13:41:36.988Z"
+    },
+    {
+      "family": "REVEAL",
+      "subject": "The Alps",
+      "winner": "NONE_GOOD",
+      "note": "No candidate was acceptable; Grand Canyon CALM RAMP B was the only acceptable reveal launch in this review.",
+      "reviewed_at": "2026-08-21T16:42:41+03:00"
+    },
+    {
+      "family": "REVEAL",
+      "subject": "Yosemite",
+      "winner": "NONE_GOOD",
+      "note": "No candidate was acceptable; Grand Canyon CALM RAMP B was the only acceptable reveal launch in this review.",
+      "reviewed_at": "2026-08-21T16:42:41+03:00"
+    }
+  ]
+}

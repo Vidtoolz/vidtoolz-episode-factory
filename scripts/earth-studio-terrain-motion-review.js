@@ -14,14 +14,14 @@ const OUT = path.join(ROOT, 'package-runs/2026-08-21-earth-studio-terrain-motion
 const gate = require(path.join(ROOT, 'scripts/earth-studio-journey-import-gate.js'));
 const terrainImport = require(path.join(ROOT, 'scripts/earth-studio-terrain-tilt-import.js'));
 
-function loadPackage(out = OUT) {
-  const manifest = JSON.parse(fs.readFileSync(path.join(out, 'candidates/manifest.json'), 'utf8'));
-  const template = JSON.parse(fs.readFileSync(path.join(out, 'human-review/review-session-template.json'), 'utf8'));
-  if (manifest.production_motion_changed !== false || manifest.candidates.length !== 20) throw new Error('unexpected terrain motion package');
+function loadPackage(out = OUT, { round2 = false, finalists = false } = {}) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(out, finalists ? 'candidates-finalists/manifest.json' : round2 ? 'candidates-round2/manifest.json' : 'candidates/manifest.json'), 'utf8'));
+  const template = JSON.parse(fs.readFileSync(path.join(out, finalists ? 'human-review/review-session-finalists-template.json' : round2 ? 'human-review/review-session-round2-template.json' : 'human-review/review-session-template.json'), 'utf8'));
+  if (manifest.production_motion_changed !== false || !manifest.candidates.length) throw new Error('unexpected terrain motion package');
   for (const candidate of manifest.candidates) {
     if (!fs.existsSync(path.join(ROOT, candidate.esp))) throw new Error(`missing ESP: ${candidate.esp}`);
   }
-  return { out, manifest, template, sessionPath: path.join(out, 'human-review/review-session.json') };
+  return { out, manifest, template, sessionPath: path.join(out, finalists ? 'human-review/review-session-finalists.json' : round2 ? 'human-review/review-session-round2.json' : 'human-review/review-session.json') };
 }
 
 function freshSession(pkg, now = new Date().toISOString()) {
@@ -108,7 +108,12 @@ function createController(pkg, { cdp = null } = {}) {
 }
 
 async function main() {
-  const pkg = loadPackage();
+  const pkg = loadPackage(OUT, { round2: process.argv.includes('--round2'), finalists: process.argv.includes('--finalists') });
+  if (process.argv.includes('--reveal-only')) {
+    pkg.manifest = { ...pkg.manifest, candidates: pkg.manifest.candidates.filter((row) => row.family === 'REVEAL') };
+    pkg.template = { ...pkg.template, choices: pkg.template.choices.filter((row) => row.family === 'REVEAL') };
+    pkg.sessionPath = path.join(OUT, 'human-review/review-session-reveal-round2.json');
+  }
   const port = Number(process.env.ES_TERRAIN_MOTION_REVIEW_PORT || 37846);
   const browser = await gate.launch({ port: 9746, headless: false, display: process.env.DISPLAY || ':1', width: 1600, height: 1000 });
   const es = await gate.newTab(browser.port, 'https://earth.google.com/studio/');

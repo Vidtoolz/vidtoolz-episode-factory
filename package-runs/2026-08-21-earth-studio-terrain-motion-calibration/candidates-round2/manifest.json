@@ -1,0 +1,499 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-21T13:09:34.196Z",
+  "production_motion_changed": false,
+  "production_terrain_grammar_changed": false,
+  "previous_review": "all candidates NONE_GOOD",
+  "candidates": [
+    {
+      "id": "ORBIT2-GRAND-CANYON-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Grand Canyon",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/orbit/ORBIT2-GRAND-CANYON-TANGENT_ENVELOPE.esp",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 3530,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "first-round better control"
+    },
+    {
+      "id": "ORBIT2-GRAND-CANYON-COHERENT_TANGENTS",
+      "family": "ORBIT",
+      "subject": "Grand Canyon",
+      "variant": "COHERENT_TANGENTS",
+      "label": "COHERENT TANGENTS",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/orbit/ORBIT2-GRAND-CANYON-COHERENT_TANGENTS.esp",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 3530,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "continuous central tangents at every interior geometry sample"
+    },
+    {
+      "id": "ORBIT2-GEIRANGERFJORD-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Geirangerfjord",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/orbit/ORBIT2-GEIRANGERFJORD-TANGENT_ENVELOPE.esp",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3588,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "first-round better control"
+    },
+    {
+      "id": "ORBIT2-GEIRANGERFJORD-COHERENT_TANGENTS",
+      "family": "ORBIT",
+      "subject": "Geirangerfjord",
+      "variant": "COHERENT_TANGENTS",
+      "label": "COHERENT TANGENTS",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/orbit/ORBIT2-GEIRANGERFJORD-COHERENT_TANGENTS.esp",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 65,
+        "altitude_m": 3588,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 22,
+        "frame_rate": 30,
+        "total_frames": 660,
+        "target": {
+          "name": "Geirangerfjord",
+          "latitude": 62.1049,
+          "longitude": 7.2054,
+          "altitude_m": 2500,
+          "min_altitude_m": 1000,
+          "terrain_morphology": "fjord_channel",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "continuous central tangents at every interior geometry sample"
+    },
+    {
+      "id": "ORBIT2-MATTERHORN-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Matterhorn",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/orbit/ORBIT2-MATTERHORN-TANGENT_ENVELOPE.esp",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "first-round better control"
+    },
+    {
+      "id": "ORBIT2-MATTERHORN-COHERENT_TANGENTS",
+      "family": "ORBIT",
+      "subject": "Matterhorn",
+      "variant": "COHERENT_TANGENTS",
+      "label": "COHERENT TANGENTS",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/orbit/ORBIT2-MATTERHORN-COHERENT_TANGENTS.esp",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 74,
+        "altitude_m": 5736,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 30,
+        "frame_rate": 30,
+        "total_frames": 900,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "terrain_morphology": "sharp_peak",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "continuous central tangents at every interior geometry sample"
+    },
+    {
+      "id": "ORBIT2-MOUNT-FUJI-TANGENT_ENVELOPE",
+      "family": "ORBIT",
+      "subject": "Mount Fuji",
+      "variant": "TANGENT_ENVELOPE",
+      "label": "TANGENT ENVELOPE",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/orbit/ORBIT2-MOUNT-FUJI-TANGENT_ENVELOPE.esp",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 12,
+        "frame_rate": 30,
+        "total_frames": 360,
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "first-round better control"
+    },
+    {
+      "id": "ORBIT2-MOUNT-FUJI-COHERENT_TANGENTS",
+      "family": "ORBIT",
+      "subject": "Mount Fuji",
+      "variant": "COHERENT_TANGENTS",
+      "label": "COHERENT TANGENTS",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/orbit/ORBIT2-MOUNT-FUJI-COHERENT_TANGENTS.esp",
+      "authored": {
+        "movement": "orbit",
+        "tilt_deg": 45,
+        "altitude_m": 16927,
+        "orbit_degrees": 180,
+        "orbit_direction": 1,
+        "duration_seconds": 12,
+        "frame_rate": 30,
+        "total_frames": 360,
+        "target": {
+          "name": "Mount Fuji",
+          "latitude": 35.3606,
+          "longitude": 138.7274,
+          "altitude_m": 5500,
+          "min_altitude_m": 4300,
+          "terrain_morphology": "volcanic_cone",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "continuous central tangents at every interior geometry sample"
+    },
+    {
+      "id": "REVEAL2-GRAND-CANYON-CURRENT",
+      "family": "REVEAL",
+      "subject": "Grand Canyon",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/reveal/REVEAL2-GRAND-CANYON-CURRENT.esp",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "reviewed production control"
+    },
+    {
+      "id": "REVEAL2-GRAND-CANYON-CALM_RAMP_A",
+      "family": "REVEAL",
+      "subject": "Grand Canyon",
+      "variant": "CALM_RAMP_A",
+      "label": "CALM RAMP A",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/reveal/REVEAL2-GRAND-CANYON-CALM_RAMP_A.esp",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "explicit monotone launch ramp [{\"seconds\":1,\"progress\":0.001},{\"seconds\":2,\"progress\":0.01}]"
+    },
+    {
+      "id": "REVEAL2-GRAND-CANYON-CALM_RAMP_B",
+      "family": "REVEAL",
+      "subject": "Grand Canyon",
+      "variant": "CALM_RAMP_B",
+      "label": "CALM RAMP B",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/reveal/REVEAL2-GRAND-CANYON-CALM_RAMP_B.esp",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Grand Canyon",
+          "latitude": 36.0544,
+          "longitude": -112.1401,
+          "altitude_m": 4000,
+          "min_altitude_m": 2700,
+          "terrain_morphology": "canyon",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "explicit monotone launch ramp [{\"seconds\":1.5,\"progress\":0.0005},{\"seconds\":3,\"progress\":0.005}]"
+    },
+    {
+      "id": "REVEAL2-THE-ALPS-CURRENT",
+      "family": "REVEAL",
+      "subject": "The Alps",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/reveal/REVEAL2-THE-ALPS-CURRENT.esp",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 9,
+        "frame_rate": 30,
+        "total_frames": 270,
+        "target": {
+          "name": "The Alps",
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "scale": "region",
+          "terrain_morphology": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "reviewed production control"
+    },
+    {
+      "id": "REVEAL2-THE-ALPS-CALM_RAMP_A",
+      "family": "REVEAL",
+      "subject": "The Alps",
+      "variant": "CALM_RAMP_A",
+      "label": "CALM RAMP A",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/reveal/REVEAL2-THE-ALPS-CALM_RAMP_A.esp",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 9,
+        "frame_rate": 30,
+        "total_frames": 270,
+        "target": {
+          "name": "The Alps",
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "scale": "region",
+          "terrain_morphology": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "explicit monotone launch ramp [{\"seconds\":1,\"progress\":0.001},{\"seconds\":2,\"progress\":0.01}]"
+    },
+    {
+      "id": "REVEAL2-THE-ALPS-CALM_RAMP_B",
+      "family": "REVEAL",
+      "subject": "The Alps",
+      "variant": "CALM_RAMP_B",
+      "label": "CALM RAMP B",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/reveal/REVEAL2-THE-ALPS-CALM_RAMP_B.esp",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 9,
+        "frame_rate": 30,
+        "total_frames": 270,
+        "target": {
+          "name": "The Alps",
+          "latitude": 46.6,
+          "longitude": 10.2,
+          "scale": "region",
+          "terrain_morphology": "mountain_range",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "explicit monotone launch ramp [{\"seconds\":1.5,\"progress\":0.0005},{\"seconds\":3,\"progress\":0.005}]"
+    },
+    {
+      "id": "REVEAL2-YOSEMITE-CURRENT",
+      "family": "REVEAL",
+      "subject": "Yosemite",
+      "variant": "CURRENT",
+      "label": "CURRENT",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/reveal/REVEAL2-YOSEMITE-CURRENT.esp",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Yosemite",
+          "latitude": 37.8651,
+          "longitude": -119.5383,
+          "altitude_m": 4500,
+          "min_altitude_m": 2800,
+          "terrain_morphology": "valley",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "reviewed production control"
+    },
+    {
+      "id": "REVEAL2-YOSEMITE-CALM_RAMP_A",
+      "family": "REVEAL",
+      "subject": "Yosemite",
+      "variant": "CALM_RAMP_A",
+      "label": "CALM RAMP A",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/reveal/REVEAL2-YOSEMITE-CALM_RAMP_A.esp",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Yosemite",
+          "latitude": 37.8651,
+          "longitude": -119.5383,
+          "altitude_m": 4500,
+          "min_altitude_m": 2800,
+          "terrain_morphology": "valley",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "explicit monotone launch ramp [{\"seconds\":1,\"progress\":0.001},{\"seconds\":2,\"progress\":0.01}]"
+    },
+    {
+      "id": "REVEAL2-YOSEMITE-CALM_RAMP_B",
+      "family": "REVEAL",
+      "subject": "Yosemite",
+      "variant": "CALM_RAMP_B",
+      "label": "CALM RAMP B",
+      "esp": "package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates-round2/reveal/REVEAL2-YOSEMITE-CALM_RAMP_B.esp",
+      "authored": {
+        "movement": "zoom_out",
+        "tilt_deg": 0,
+        "altitude_m": 7089102,
+        "orbit_degrees": null,
+        "orbit_direction": null,
+        "duration_seconds": 16,
+        "frame_rate": 30,
+        "total_frames": 480,
+        "target": {
+          "name": "Yosemite",
+          "latitude": 37.8651,
+          "longitude": -119.5383,
+          "altitude_m": 4500,
+          "min_altitude_m": 2800,
+          "terrain_morphology": "valley",
+          "morphology_source": "curated_gazetteer",
+          "source": "gazetteer_fixture"
+        }
+      },
+      "controlled_change": "explicit monotone launch ramp [{\"seconds\":1.5,\"progress\":0.0005},{\"seconds\":3,\"progress\":0.005}]"
+    }
+  ]
+}

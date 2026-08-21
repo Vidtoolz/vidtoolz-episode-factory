@@ -205,7 +205,9 @@ async function main() {
   const kind = kindArg >= 0 ? process.argv[kindArg + 1] : 'all';
   if (!['orbit', 'reveal', 'all'].includes(kind)) throw new Error('--kind must be orbit, reveal or all');
   const candidateMode = process.argv.includes('--candidates');
-  const outDir = path.join(OUT, candidateMode ? `candidate-${kind}-traces`
+  const round2 = process.argv.includes('--round2');
+  const finalists = process.argv.includes('--finalists');
+  const outDir = path.join(OUT, candidateMode ? `${finalists ? 'finalist-' : round2 ? 'round2-' : ''}candidate-${kind}-traces`
     : (kind === 'all' ? 'full-frame-traces' : `${kind}-full-frame-traces`));
   if (fs.existsSync(outDir) && !process.argv.includes('--refresh')) throw new Error(`refusing to overwrite ${path.relative(ROOT, outDir)} without --refresh`);
   fs.mkdirSync(outDir, { recursive: true });
@@ -216,7 +218,7 @@ async function main() {
   const subjectArg = process.argv.indexOf('--subject');
   const wantedSubject = subjectArg >= 0 ? process.argv[subjectArg + 1] : null;
   const pool = candidateMode
-    ? JSON.parse(fs.readFileSync(path.join(OUT, 'candidates/manifest.json'), 'utf8')).candidates
+    ? JSON.parse(fs.readFileSync(path.join(OUT, finalists ? 'candidates-finalists/manifest.json' : round2 ? 'candidates-round2/manifest.json' : 'candidates/manifest.json'), 'utf8')).candidates
       .filter((record) => kind === 'all' || record.family.toLowerCase() === kind)
       .map((record) => ({ ...record, treatment: record.variant }))
     : selectedRecords(kind);

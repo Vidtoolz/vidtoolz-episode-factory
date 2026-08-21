@@ -4,6 +4,8 @@ const { assert, test } = require('./_helpers.js');
 const probe = require('../scripts/earth-studio-terrain-motion-probe');
 const candidates = require('../scripts/earth-studio-terrain-motion-candidates');
 const review = require('../scripts/earth-studio-terrain-motion-review');
+const round2 = require('../scripts/earth-studio-terrain-motion-round2');
+const finalists = require('../scripts/earth-studio-terrain-motion-finalists');
 const fs = require('node:fs');
 
 test('terrain motion diagnostic computes stable orbit channels without inventing pumping', () => {
@@ -86,4 +88,40 @@ test('terrain motion human review keeps orbit and reveal authority separate', ()
   assert.equal(session.choices.find((row) => row.family === 'REVEAL' && row.subject === 'Grand Canyon').winner, 'CALM_START_B');
   assert.equal(session.completed_at, null);
   assert.throws(() => review.applyChoice(pkg, session, { family: 'ORBIT', subject: 'Matterhorn', winner: 'CALM_START_B' }), /invalid ORBIT/);
+});
+
+test('round-two orbit candidate gives every interior sample a continuous tangent pair', () => {
+  const source = JSON.parse(fs.readFileSync('package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-GRAND-CANYON-CURRENT.esp'));
+  const result = round2.coherentTangents(source);
+  const keys = candidates.findAttribute(result.scenes[0].attributes, 'rotationX').keyframes;
+  for (const key of keys.slice(1, -1)) {
+    assert.equal(key.transitionIn.type, 'auto');
+    assert.equal(key.transitionOut.type, 'auto');
+    assert.ok(Math.abs((key.transitionIn.y / key.transitionIn.x) - (key.transitionOut.y / key.transitionOut.x)) < 1e-8);
+  }
+});
+
+test('round-two reveal ramp is monotone and preserves duration and endpoints', () => {
+  const source = JSON.parse(fs.readFileSync('package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/reveal/REVEAL-GRAND-CANYON-CURRENT.esp'));
+  const result = round2.explicitCalmRamp(source, [{ seconds: 1, progress: 0.001 }, { seconds: 2, progress: 0.01 }]);
+  const before = candidates.findAttribute(source.scenes[0].attributes, 'altitude').keyframes;
+  const after = candidates.findAttribute(result.scenes[0].attributes, 'altitude').keyframes;
+  assert.equal(after.length, 4);
+  assert.deepEqual([after[0].time, after[0].value], [before[0].time, before[0].value]);
+  assert.deepEqual([after.at(-1).time, after.at(-1).value], [before.at(-1).time, before.at(-1).value]);
+  assert.ok(after.every((key, index) => !index || key.time > after[index - 1].time));
+  assert.ok(after.every((key, index) => !index || key.value > after[index - 1].value));
+});
+
+test('finalist target-lock candidate densifies pan only and preserves position tracks', () => {
+  const source = JSON.parse(fs.readFileSync('package-runs/2026-08-21-earth-studio-terrain-motion-calibration/candidates/orbit/ORBIT-GRAND-CANYON-TANGENT_ENVELOPE.esp'));
+  const target = { latitude: 36.0544, longitude: -112.1401 };
+  const result = finalists.addTargetLockPan(source, target);
+  const panBefore = candidates.findAttribute(source.scenes[0].attributes, 'rotationX').keyframes;
+  const panAfter = candidates.findAttribute(result.scenes[0].attributes, 'rotationX').keyframes;
+  assert.ok(panAfter.length > panBefore.length);
+  for (const type of ['latitude', 'longitude']) {
+    assert.deepEqual(candidates.findAttribute(result.scenes[0].attributes, type).keyframes,
+      candidates.findAttribute(source.scenes[0].attributes, type).keyframes);
+  }
 });
