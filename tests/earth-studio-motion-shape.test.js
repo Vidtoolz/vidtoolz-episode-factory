@@ -22,6 +22,73 @@ const journey = require('../earth-studio-journey.js');
 
 const JOURNEY_POLICY = { coherent_trajectory: true, dedupe_keyframes: true, source: 'journey' };
 
+test('terminal settle detector unwraps clockwise zero crossing', () => {
+  const report = continuity.angularDirectionReport([350, 355, 359, 1, 5], { expectedSign: 1 });
+  assert.equal(report.reverse_step_count, 0);
+  assert.deepEqual(report.unwrapped_values, [350, 355, 359, 361, 365]);
+});
+
+test('terminal settle detector unwraps counter-clockwise zero crossing', () => {
+  const report = continuity.angularDirectionReport([5, 1, 359, 355, 350], { expectedSign: -1 });
+  assert.equal(report.reverse_step_count, 0);
+  assert.deepEqual(report.unwrapped_values, [5, 1, -1, -5, -10]);
+});
+
+test('terminal settle detector preserves multi-revolution motion', () => {
+  const values = Array.from({ length: 73 }, (_, index) => index * 10);
+  const report = continuity.angularDirectionReport(values, { expectedSign: 1 });
+  assert.equal(report.reverse_step_count, 0);
+  assert.equal(report.unwrapped_values.at(-1), 720);
+});
+
+test('terminal settle detector accepts equality and floating-point noise', () => {
+  const report = continuity.angularDirectionReport(
+    [10, 10.5, 11, 11, 10.99999999],
+    { expectedSign: 1, toleranceDeg: 1e-6 });
+  assert.equal(report.reverse_step_count, 0);
+});
+
+test('terminal settle detector reports a genuine sign reversal', () => {
+  const report = continuity.angularDirectionReport([10, 11, 11.5, 11.4, 11.4], { expectedSign: 1 });
+  assert.equal(report.reverse_step_count, 1);
+  assert.ok(Math.abs(report.reverse_displacement_deg - 0.1) < 1e-9);
+});
+
+test('terminal settle diagnostic degrades approximate-only reversal to uncertain', () => {
+  const report = continuity.terminalSettleDiagnostic({
+    serializedValues: [0, 10, 20, 30],
+    modeledValues: [0, 10, 20, 30.1, 29.9],
+    expectedSign: 1,
+  });
+  assert.equal(report.status, 'TERMINAL_SETTLE_MODEL_UNCERTAIN');
+  assert.equal(report.serialized.reverse_step_count, 0);
+  assert.equal(report.modeled.reverse_step_count, 1);
+});
+
+test('terminal settle diagnostic lets real scene-model playback decide', () => {
+  const clean = continuity.terminalSettleDiagnostic({
+    serializedValues: [0, 10, 20, 30], modeledValues: [0, 10, 20, 30.1, 29.9],
+    realValues: [20, 25, 28, 29.5, 30], expectedSign: 1,
+  });
+  assert.equal(clean.status, 'TERMINAL_SETTLE_CLEAN');
+  const reversed = continuity.terminalSettleDiagnostic({
+    serializedValues: [0, 10, 20, 30], modeledValues: [0, 10, 20, 30.1, 29.9],
+    realValues: [20, 25, 30, 29.95], expectedSign: 1,
+  });
+  assert.equal(reversed.status, 'REAL_REVERSAL_DETECTED');
+});
+
+test('playback evaluator does not extrapolate a terminal custom handle past its endpoint', () => {
+  const trace = continuity.samplePlaybackTrack([
+    { time: 0, value: 0, transitionOut: { x: 0.25, y: 0, type: 'easeOut' } },
+    { time: 1, value: 90, transitionIn: { x: -0.25, y: 0, influence: 0.4, type: 'custom' } },
+  ], 60, 30);
+  const report = continuity.angularDirectionReport(trace.values, { expectedSign: 1 });
+  assert.equal(report.reverse_step_count, 0,
+    'real Earth Studio terminal scene-model readback is monotonic; the evaluator must not invent overshoot');
+  assert.equal(trace.values.at(-1), 90);
+});
+
 // Speed profile of one segment, read off the repo's own playback evaluator.
 function segmentShape(description, trackName, segmentIndex) {
   const plan = planner.buildShotPlan('t', description, '2026-08-19T14:00:00.000Z',

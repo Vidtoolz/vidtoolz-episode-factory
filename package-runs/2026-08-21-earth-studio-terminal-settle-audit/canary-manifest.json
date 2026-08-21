@@ -1,0 +1,201 @@
+{
+  "generated_at": "2026-08-21T12:00:00.000Z",
+  "canaries": [
+    {
+      "id": "T01-promoted-helsinki-half",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D02-promoted-helsinki-establish/B-live-10deg/earth-studio/earth-studio.esp",
+      "plan": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D02-promoted-helsinki-establish/B-live-10deg/earth-studio/shot-plan.json",
+      "esp_sha256": "663b924ccc212488c769c6da61cbbea63df116c7fdb3737975d9c287dba2f352",
+      "total_frames": 270,
+      "frame_rate": 30,
+      "orbit": {
+        "start_frame": 0,
+        "end_frame": 270,
+        "angular_span_deg": 180,
+        "direction": 1,
+        "target": {
+          "name": "Helsinki Cathedral",
+          "latitude": 60.1704,
+          "longitude": 24.9522,
+          "altitude_m": 700,
+          "source": "gazetteer_fixture"
+        },
+        "followed_by_hold": false
+      }
+    },
+    {
+      "id": "T02-helsinki-explicit-full",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D03-helsinki-explicit-full/B-live-10deg/earth-studio/earth-studio.esp",
+      "plan": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D03-helsinki-explicit-full/B-live-10deg/earth-studio/shot-plan.json",
+      "esp_sha256": "a59ddce557941eca60971c58d47c19026cc16dc468b720e7add413f810ab8b90",
+      "total_frames": 600,
+      "frame_rate": 30,
+      "orbit": {
+        "start_frame": 0,
+        "end_frame": 600,
+        "angular_span_deg": 360,
+        "direction": 1,
+        "target": {
+          "name": "Helsinki Cathedral",
+          "latitude": 60.1704,
+          "longitude": 24.9522,
+          "altitude_m": 700,
+          "source": "gazetteer_fixture"
+        },
+        "followed_by_hold": false
+      }
+    },
+    {
+      "id": "T04-matterhorn-terrain",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/B-live-10deg/earth-studio/earth-studio.esp",
+      "plan": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/B-live-10deg/earth-studio/shot-plan.json",
+      "esp_sha256": "237fbb28e324ee5da717433c53a928c861c4266e615a1961e7e253879678ccbd",
+      "total_frames": 480,
+      "frame_rate": 30,
+      "orbit": {
+        "start_frame": 0,
+        "end_frame": 480,
+        "angular_span_deg": 180,
+        "direction": 1,
+        "target": {
+          "name": "Matterhorn",
+          "latitude": 45.9766,
+          "longitude": 7.6585,
+          "altitude_m": 6500,
+          "min_altitude_m": 5500,
+          "source": "gazetteer_fixture"
+        },
+        "followed_by_hold": false
+      }
+    },
+    {
+      "id": "T05-santorini-half",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D04-santorini-half/B-live-10deg/earth-studio/earth-studio.esp",
+      "plan": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D04-santorini-half/B-live-10deg/earth-studio/shot-plan.json",
+      "esp_sha256": "6149e622903c7199e7620aefcafa7bb9f7212516b915d8b439e7fbc15e1387cb",
+      "total_frames": 480,
+      "frame_rate": 30,
+      "orbit": {
+        "start_frame": 0,
+        "end_frame": 480,
+        "angular_span_deg": 180,
+        "direction": 1,
+        "target": {
+          "name": "Santorini",
+          "latitude": 36.3932,
+          "longitude": 25.4615,
+          "altitude_m": 3000,
+          "source": "gazetteer_fixture"
+        },
+        "followed_by_hold": false
+      }
+    },
+    {
+      "id": "T06-paris-two-revolution",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/B-live-10deg/earth-studio/earth-studio.esp",
+      "plan": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/B-live-10deg/earth-studio/shot-plan.json",
+      "esp_sha256": "977472ad08018de538c56c08ecbb399b80bf8091c1105df2e3a9383c8b4db3dc",
+      "total_frames": 1080,
+      "frame_rate": 30,
+      "orbit": {
+        "start_frame": 0,
+        "end_frame": 1080,
+        "angular_span_deg": 720,
+        "direction": 1,
+        "target": {
+          "name": "Paris",
+          "latitude": 48.8566,
+          "longitude": 2.3522,
+          "source": "gazetteer_fixture"
+        },
+        "followed_by_hold": false
+      }
+    },
+    {
+      "id": "T07-high-latitude",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D08-lat80/B-live-10deg/earth-studio/earth-studio.esp",
+      "plan": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D08-lat80/B-live-10deg/earth-studio/shot-plan.json",
+      "esp_sha256": "99cebbcc72d1004feb4ea82ab7166dc2d25f0c7e9f66a443aabf48d33d06ca25",
+      "total_frames": 600,
+      "frame_rate": 30,
+      "orbit": {
+        "start_frame": 0,
+        "end_frame": 600,
+        "angular_span_deg": 360,
+        "direction": 1,
+        "target": {
+          "name": "80.0000, 20.0000",
+          "latitude": 80,
+          "longitude": 20,
+          "source": "explicit_coordinates"
+        },
+        "followed_by_hold": false
+      }
+    },
+    {
+      "id": "T08-antimeridian",
+      "esp": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/B-live-10deg/earth-studio/earth-studio.esp",
+      "plan": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/B-live-10deg/earth-studio/shot-plan.json",
+      "esp_sha256": "866dc619504d815428821f3c81093db5ac7fd38d13d4befc93e3b486b155d601",
+      "total_frames": 600,
+      "frame_rate": 30,
+      "orbit": {
+        "start_frame": 0,
+        "end_frame": 600,
+        "angular_span_deg": 360,
+        "direction": 1,
+        "target": {
+          "name": "10.0000, 179.9900",
+          "latitude": 10,
+          "longitude": 179.99,
+          "source": "explicit_coordinates"
+        },
+        "followed_by_hold": false
+      }
+    },
+    {
+      "id": "T03-colosseum-explicit-full",
+      "esp": "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T03-colosseum-explicit-full/earth-studio/earth-studio.esp",
+      "plan": "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T03-colosseum-explicit-full/earth-studio/shot-plan.json",
+      "esp_sha256": "5c5fae9670a477ed88fcff96bf560daa082469725acb2524278aa816f1b54272",
+      "total_frames": 600,
+      "frame_rate": 30,
+      "orbit": {
+        "start_frame": 0,
+        "end_frame": 600,
+        "angular_span_deg": 360,
+        "direction": 1,
+        "target": {
+          "name": "Colosseum",
+          "latitude": 41.8902,
+          "longitude": 12.4922,
+          "altitude_m": 700,
+          "source": "gazetteer_fixture"
+        },
+        "followed_by_hold": false
+      }
+    },
+    {
+      "id": "T09-helsinki-orbit-to-hold",
+      "esp": "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T09-helsinki-orbit-to-hold/earth-studio/earth-studio.esp",
+      "plan": "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T09-helsinki-orbit-to-hold/earth-studio/shot-plan.json",
+      "esp_sha256": "04bcf7d7602fa325915c1521848be02ea9e6163016aad3381eb7a4201382aa8b",
+      "total_frames": 540,
+      "frame_rate": 30,
+      "orbit": {
+        "start_frame": 0,
+        "end_frame": 480,
+        "angular_span_deg": 180,
+        "direction": 1,
+        "target": {
+          "name": "Helsinki Cathedral",
+          "latitude": 60.1704,
+          "longitude": 24.9522,
+          "altitude_m": 700,
+          "source": "gazetteer_fixture"
+        },
+        "followed_by_hold": true
+      }
+    }
+  ]
+}

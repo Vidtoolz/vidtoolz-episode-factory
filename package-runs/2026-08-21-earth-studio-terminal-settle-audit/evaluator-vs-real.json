@@ -1,0 +1,398 @@
+{
+  "verdict": "TERMINAL SETTLE CLEAN — EVALUATOR FIXED",
+  "production_camera_changed": false,
+  "density_changed": false,
+  "real_authority": "authenticated Google Earth Studio scene.getCurrentWorldValues consecutive-frame readback",
+  "tolerance_deg": 0.00001,
+  "root_cause": [
+    "the approximate evaluator extrapolated terminal custom/influence value control points beyond their authored endpoints",
+    "the evaluator samples the authored terminal key at totalFrames while playable Earth Studio frames end at duration-1",
+    "Matterhorn and Santorini disproved a timeline-only explanation: the old model reversed on playable frame 479 while real frame 479 remained forward"
+  ],
+  "cases": [
+    {
+      "id": "T01-promoted-helsinki-half",
+      "angular_span_deg": 180,
+      "real_frames": 60,
+      "original_model": {
+        "reverse_steps": 1,
+        "reverse_displacement_deg": 0.2248346597908153,
+        "max_reverse_step_deg": 0.2248346597908153,
+        "reverse_step_indices": [
+          {
+            "from_index": 269,
+            "to_index": 270,
+            "delta_deg": -0.2248346597908153
+          }
+        ]
+      },
+      "serialized_reverse_steps": 0,
+      "corrected_model_reverse_steps": 0,
+      "real_pan_reverse_steps": 0,
+      "real_pan_reverse_displacement_deg": 0,
+      "real_position_reverse_steps": 0,
+      "real_position_reverse_displacement_deg": 0,
+      "final_five_pan_steps_deg": [
+        0.5991549727932011,
+        0.5269761095452168,
+        0.444023043022014,
+        0.34674582860793635,
+        0.22984399563176794
+      ],
+      "final_five_position_bearing_steps_deg": [
+        0.6799759912280479,
+        0.5650579629653976,
+        0.44147496044331547,
+        0.3139563451993581,
+        0.1862677503801251
+      ],
+      "final_five_pan_steps_decelerate_without_reversal": true,
+      "max_pan_vs_target_bearing_error_deg": 0.6362498244957351,
+      "status": "TERMINAL_SETTLE_CLEAN"
+    },
+    {
+      "id": "T02-helsinki-explicit-full",
+      "angular_span_deg": 360,
+      "real_frames": 60,
+      "original_model": {
+        "reverse_steps": 1,
+        "reverse_displacement_deg": 0.22724112871048874,
+        "max_reverse_step_deg": 0.22724112871048874,
+        "reverse_step_indices": [
+          {
+            "from_index": 599,
+            "to_index": 600,
+            "delta_deg": -0.22724112871048874
+          }
+        ]
+      },
+      "serialized_reverse_steps": 0,
+      "corrected_model_reverse_steps": 0,
+      "real_pan_reverse_steps": 0,
+      "real_pan_reverse_displacement_deg": 0,
+      "real_position_reverse_steps": 0,
+      "real_position_reverse_displacement_deg": 0,
+      "final_five_pan_steps_deg": [
+        0.49826229857637827,
+        0.4362394715525397,
+        0.3654921218566187,
+        0.2834074422419235,
+        0.18619625830081077
+      ],
+      "final_five_position_bearing_steps_deg": [
+        0.5462124433269651,
+        0.45031214248268725,
+        0.35020926173757516,
+        0.24855973876287862,
+        0.14746516498865958
+      ],
+      "final_five_pan_steps_decelerate_without_reversal": true,
+      "max_pan_vs_target_bearing_error_deg": 0.6556164728524436,
+      "status": "TERMINAL_SETTLE_CLEAN"
+    },
+    {
+      "id": "T04-matterhorn-terrain",
+      "angular_span_deg": 180,
+      "real_frames": 60,
+      "original_model": {
+        "reverse_steps": 2,
+        "reverse_displacement_deg": 0.2251457683352669,
+        "max_reverse_step_deg": 0.19064776436647435,
+        "reverse_step_indices": [
+          {
+            "from_index": 478,
+            "to_index": 479,
+            "delta_deg": -0.034498003968792545
+          },
+          {
+            "from_index": 479,
+            "to_index": 480,
+            "delta_deg": -0.19064776436647435
+          }
+        ]
+      },
+      "serialized_reverse_steps": 0,
+      "corrected_model_reverse_steps": 0,
+      "real_pan_reverse_steps": 0,
+      "real_pan_reverse_displacement_deg": 0,
+      "real_position_reverse_steps": 0,
+      "real_position_reverse_displacement_deg": 0,
+      "final_five_pan_steps_deg": [
+        0.22684884058264743,
+        0.19535740972571602,
+        0.16050265446506273,
+        0.12158172429883507,
+        0.07767297527618666
+      ],
+      "final_five_position_bearing_steps_deg": [
+        0.2165956130900213,
+        0.17658039626383015,
+        0.136553036135183,
+        0.0967996309574346,
+        0.05755450644949178
+      ],
+      "final_five_pan_steps_decelerate_without_reversal": true,
+      "max_pan_vs_target_bearing_error_deg": 0.6515820443876237,
+      "status": "TERMINAL_SETTLE_CLEAN"
+    },
+    {
+      "id": "T05-santorini-half",
+      "angular_span_deg": 180,
+      "real_frames": 60,
+      "original_model": {
+        "reverse_steps": 2,
+        "reverse_displacement_deg": 0.2251457683352669,
+        "max_reverse_step_deg": 0.19064776436647435,
+        "reverse_step_indices": [
+          {
+            "from_index": 478,
+            "to_index": 479,
+            "delta_deg": -0.034498003968792545
+          },
+          {
+            "from_index": 479,
+            "to_index": 480,
+            "delta_deg": -0.19064776436647435
+          }
+        ]
+      },
+      "serialized_reverse_steps": 0,
+      "corrected_model_reverse_steps": 0,
+      "real_pan_reverse_steps": 0,
+      "real_pan_reverse_displacement_deg": 0,
+      "real_position_reverse_steps": 0,
+      "real_position_reverse_displacement_deg": 0,
+      "final_five_pan_steps_deg": [
+        0.22684884058264743,
+        0.19535740972571602,
+        0.16050265446506273,
+        0.12158172429883507,
+        0.07767297527618666
+      ],
+      "final_five_position_bearing_steps_deg": [
+        0.21658799896454184,
+        0.17657407076774234,
+        0.1365480654573048,
+        0.09679606313341083,
+        0.05755236691709342
+      ],
+      "final_five_pan_steps_decelerate_without_reversal": true,
+      "max_pan_vs_target_bearing_error_deg": 0.6513171552519452,
+      "status": "TERMINAL_SETTLE_CLEAN"
+    },
+    {
+      "id": "T06-paris-two-revolution",
+      "angular_span_deg": 720,
+      "real_frames": 60,
+      "original_model": {
+        "reverse_steps": 1,
+        "reverse_displacement_deg": 0.2248344734746297,
+        "max_reverse_step_deg": 0.2248344734746297,
+        "reverse_step_indices": [
+          {
+            "from_index": 1079,
+            "to_index": 1080,
+            "delta_deg": -0.2248344734746297
+          }
+        ]
+      },
+      "serialized_reverse_steps": 0,
+      "corrected_model_reverse_steps": 0,
+      "real_pan_reverse_steps": 0,
+      "real_pan_reverse_displacement_deg": 0,
+      "real_position_reverse_steps": 0,
+      "real_position_reverse_displacement_deg": 0,
+      "final_five_pan_steps_deg": [
+        0.5991549727932579,
+        0.5269761095452168,
+        0.44402304302195716,
+        0.34674582860793635,
+        0.22984399563176794
+      ],
+      "final_five_position_bearing_steps_deg": [
+        0.6801709395706439,
+        0.5652295082101091,
+        0.4416153007903745,
+        0.31405988340833346,
+        0.18633097128684994
+      ],
+      "final_five_pan_steps_decelerate_without_reversal": true,
+      "max_pan_vs_target_bearing_error_deg": 0.6380036329456971,
+      "status": "TERMINAL_SETTLE_CLEAN"
+    },
+    {
+      "id": "T07-high-latitude",
+      "angular_span_deg": 360,
+      "real_frames": 60,
+      "original_model": {
+        "reverse_steps": 1,
+        "reverse_displacement_deg": 0.22724112871048874,
+        "max_reverse_step_deg": 0.22724112871048874,
+        "reverse_step_indices": [
+          {
+            "from_index": 599,
+            "to_index": 600,
+            "delta_deg": -0.22724112871048874
+          }
+        ]
+      },
+      "serialized_reverse_steps": 0,
+      "corrected_model_reverse_steps": 0,
+      "real_pan_reverse_steps": 0,
+      "real_pan_reverse_displacement_deg": 0,
+      "real_position_reverse_steps": 0,
+      "real_position_reverse_displacement_deg": 0,
+      "final_five_pan_steps_deg": [
+        0.49826229857637827,
+        0.4362394715525397,
+        0.3654921218566187,
+        0.2834074422419235,
+        0.18619625830081077
+      ],
+      "final_five_position_bearing_steps_deg": [
+        0.5462565006808404,
+        0.4503555710001024,
+        0.35024802542665157,
+        0.24859038417071133,
+        0.14748494272220114
+      ],
+      "final_five_pan_steps_decelerate_without_reversal": true,
+      "max_pan_vs_target_bearing_error_deg": 0.6558060392530933,
+      "status": "TERMINAL_SETTLE_CLEAN"
+    },
+    {
+      "id": "T08-antimeridian",
+      "angular_span_deg": 360,
+      "real_frames": 60,
+      "original_model": {
+        "reverse_steps": 1,
+        "reverse_displacement_deg": 0.22724112871048874,
+        "max_reverse_step_deg": 0.22724112871048874,
+        "reverse_step_indices": [
+          {
+            "from_index": 599,
+            "to_index": 600,
+            "delta_deg": -0.22724112871048874
+          }
+        ]
+      },
+      "serialized_reverse_steps": 0,
+      "corrected_model_reverse_steps": 0,
+      "real_pan_reverse_steps": 0,
+      "real_pan_reverse_displacement_deg": 0,
+      "real_position_reverse_steps": 0,
+      "real_position_reverse_displacement_deg": 0,
+      "final_five_pan_steps_deg": [
+        0.49826229857637827,
+        0.4362394715526534,
+        0.36549212185650504,
+        0.2834074422419235,
+        0.18619625830092446
+      ],
+      "final_five_position_bearing_steps_deg": [
+        0.5461701663476788,
+        0.45028046906361396,
+        0.3501866513807954,
+        0.24854474272149218,
+        0.14745664031153183
+      ],
+      "final_five_pan_steps_decelerate_without_reversal": true,
+      "max_pan_vs_target_bearing_error_deg": 0.6549009212645842,
+      "status": "TERMINAL_SETTLE_CLEAN"
+    },
+    {
+      "id": "T03-colosseum-explicit-full",
+      "angular_span_deg": 360,
+      "real_frames": 60,
+      "original_model": {
+        "reverse_steps": 1,
+        "reverse_displacement_deg": 0.22724112871048874,
+        "max_reverse_step_deg": 0.22724112871048874,
+        "reverse_step_indices": [
+          {
+            "from_index": 599,
+            "to_index": 600,
+            "delta_deg": -0.22724112871048874
+          }
+        ]
+      },
+      "serialized_reverse_steps": 0,
+      "corrected_model_reverse_steps": 0,
+      "real_pan_reverse_steps": 0,
+      "real_pan_reverse_displacement_deg": 0,
+      "real_position_reverse_steps": 0,
+      "real_position_reverse_displacement_deg": 0,
+      "final_five_pan_steps_deg": [
+        0.49826229857637827,
+        0.4362394715525397,
+        0.3654921218566187,
+        0.2834074422419235,
+        0.18619625830081077
+      ],
+      "final_five_position_bearing_steps_deg": [
+        0.5461800720520955,
+        0.4502861250570618,
+        0.350189490564901,
+        0.24854599576656256,
+        0.14745716045837298
+      ],
+      "final_five_pan_steps_decelerate_without_reversal": true,
+      "max_pan_vs_target_bearing_error_deg": 0.6551384608217177,
+      "status": "TERMINAL_SETTLE_CLEAN"
+    },
+    {
+      "id": "T09-helsinki-orbit-to-hold",
+      "angular_span_deg": 180,
+      "real_frames": 71,
+      "original_model": {
+        "reverse_steps": 0,
+        "reverse_displacement_deg": 0,
+        "max_reverse_step_deg": 0,
+        "reverse_step_indices": []
+      },
+      "serialized_reverse_steps": 0,
+      "corrected_model_reverse_steps": 0,
+      "real_pan_reverse_steps": 0,
+      "real_pan_reverse_displacement_deg": 0,
+      "real_position_reverse_steps": 0,
+      "real_position_reverse_displacement_deg": 0,
+      "final_five_pan_steps_deg": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "final_five_position_bearing_steps_deg": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "final_five_pan_steps_decelerate_without_reversal": true,
+      "max_pan_vs_target_bearing_error_deg": 1.80468344150961,
+      "status": "TERMINAL_SETTLE_CLEAN"
+    }
+  ],
+  "final_hold": {
+    "observed_frames": [
+      480,
+      481,
+      482,
+      483,
+      484,
+      485,
+      486,
+      487,
+      488,
+      489,
+      490
+    ],
+    "pan_spread_deg": 0,
+    "latitude_spread_deg": 0,
+    "longitude_spread_deg": 0,
+    "altitude_spread_m": 0,
+    "tilt_spread_deg": 0
+  }
+}

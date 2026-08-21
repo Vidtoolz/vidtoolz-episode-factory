@@ -1,0 +1,114 @@
+{
+  "probed_at": "2026-08-21T04:25:33.093Z",
+  "authority": "authenticated Google Earth Studio scene.getCurrentWorldValues consecutive-frame readback",
+  "cases": [
+    {
+      "id": "T01-promoted-helsinki-half",
+      "imported": true,
+      "frames": 60,
+      "errors": [],
+      "status": "TERMINAL_SETTLE_CLEAN",
+      "pan_reverse_displacement_deg": 0,
+      "pan_max_reverse_step_deg": 0,
+      "position_reverse_displacement_deg": 0,
+      "position_max_reverse_step_deg": 0,
+      "screenshots": []
+    },
+    {
+      "id": "T02-helsinki-explicit-full",
+      "imported": true,
+      "frames": 60,
+      "errors": [],
+      "status": "TERMINAL_SETTLE_CLEAN",
+      "pan_reverse_displacement_deg": 0,
+      "pan_max_reverse_step_deg": 0,
+      "position_reverse_displacement_deg": 0,
+      "position_max_reverse_step_deg": 0,
+      "screenshots": []
+    },
+    {
+      "id": "T04-matterhorn-terrain",
+      "imported": true,
+      "frames": 60,
+      "errors": [],
+      "status": "TERMINAL_SETTLE_CLEAN",
+      "pan_reverse_displacement_deg": 0,
+      "pan_max_reverse_step_deg": 0,
+      "position_reverse_displacement_deg": 0,
+      "position_max_reverse_step_deg": 0,
+      "screenshots": []
+    },
+    {
+      "id": "T05-santorini-half",
+      "imported": true,
+      "frames": 60,
+      "errors": [],
+      "status": "TERMINAL_SETTLE_CLEAN",
+      "pan_reverse_displacement_deg": 0,
+      "pan_max_reverse_step_deg": 0,
+      "position_reverse_displacement_deg": 0,
+      "position_max_reverse_step_deg": 0,
+      "screenshots": []
+    },
+    {
+      "id": "T06-paris-two-revolution",
+      "imported": true,
+      "frames": 60,
+      "errors": [],
+      "status": "TERMINAL_SETTLE_CLEAN",
+      "pan_reverse_displacement_deg": 0,
+      "pan_max_reverse_step_deg": 0,
+      "position_reverse_displacement_deg": 0,
+      "position_max_reverse_step_deg": 0,
+      "screenshots": []
+    },
+    {
+      "id": "T07-high-latitude",
+      "imported": true,
+      "frames": 60,
+      "errors": [],
+      "status": "TERMINAL_SETTLE_CLEAN",
+      "pan_reverse_displacement_deg": 0,
+      "pan_max_reverse_step_deg": 0,
+      "position_reverse_displacement_deg": 0,
+      "position_max_reverse_step_deg": 0,
+      "screenshots": []
+    },
+    {
+      "id": "T08-antimeridian",
+      "imported": true,
+      "frames": 60,
+      "errors": [],
+      "status": "TERMINAL_SETTLE_CLEAN",
+      "pan_reverse_displacement_deg": 0,
+      "pan_max_reverse_step_deg": 0,
+      "position_reverse_displacement_deg": 0,
+      "position_max_reverse_step_deg": 0,
+      "screenshots": []
+    },
+    {
+      "id": "T03-colosseum-explicit-full",
+      "imported": true,
+      "frames": 60,
+      "errors": [],
+      "status": "TERMINAL_SETTLE_CLEAN",
+      "pan_reverse_displacement_deg": 0,
+      "pan_max_reverse_step_deg": 0,
+      "position_reverse_displacement_deg": 0,
+      "position_max_reverse_step_deg": 0,
+      "screenshots": []
+    },
+    {
+      "id": "T09-helsinki-orbit-to-hold",
+      "imported": true,
+      "frames": 71,
+      "errors": [],
+      "status": "TERMINAL_SETTLE_CLEAN",
+      "pan_reverse_displacement_deg": 0,
+      "pan_max_reverse_step_deg": 0,
+      "position_reverse_displacement_deg": 0,
+      "position_max_reverse_step_deg": 0,
+      "screenshots": []
+    }
+  ]
+}

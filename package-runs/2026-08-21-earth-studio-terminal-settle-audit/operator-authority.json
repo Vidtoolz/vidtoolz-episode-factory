@@ -1,0 +1,63 @@
+{
+  "cases": [
+    {
+      "intent": "Hover over Helsinki Cathedral.",
+      "actions": [
+        "hover"
+      ],
+      "decision_movement": "hold",
+      "pan_sweep_deg": 0,
+      "position_sweep_m": 0,
+      "tilt_sweep_deg": 0
+    },
+    {
+      "intent": "Show Helsinki Cathedral.",
+      "actions": [
+        "orbit"
+      ],
+      "decision_movement": "half_orbit",
+      "pan_sweep_deg": 180,
+      "position_sweep_m": 1668.3686793751995,
+      "tilt_sweep_deg": 0
+    },
+    {
+      "intent": "Orbit Helsinki Cathedral.",
+      "actions": [
+        "orbit"
+      ],
+      "decision_movement": "slow_orbit",
+      "pan_sweep_deg": 360,
+      "position_sweep_m": 2424.9389602656966,
+      "tilt_sweep_deg": 0
+    },
+    {
+      "intent": "Show Helsinki Cathedral, don't orbit.",
+      "actions": [
+        "hover"
+      ],
+      "decision_movement": "hold",
+      "pan_sweep_deg": 0,
+      "position_sweep_m": 0,
+      "tilt_sweep_deg": 0
+    }
+  ],
+  "continuation": {
+    "exported_camera": {
+      "latitude": 60.130958,
+      "longitude": 24.9384,
+      "altitude_m": 2500,
+      "pan_deg": 720,
+      "heading_deg": 0,
+      "tilt_deg": 60
+    },
+    "continued_first_camera": {
+      "latitude": 60.130958,
+      "longitude": 24.9384,
+      "altitude_m": 2500,
+      "pan_deg": 720,
+      "tilt_deg": 60
+    },
+    "start_source": "continuation",
+    "exact": true
+  }
+}

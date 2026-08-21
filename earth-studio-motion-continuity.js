@@ -25,6 +25,75 @@ function unwrapDegrees(values) {
   return out;
 }
 
+// Describe directional angular motion without mistaking wraparound for a
+// reversal. Callers provide the intended sign when the shot semantics know it;
+// otherwise the first non-noise step establishes direction. Values may already
+// be unwrapped (including multi-revolution values) or may cross +/-180/360.
+function angularDirectionReport(values, { expectedSign = 0, toleranceDeg = 1e-7 } = {}) {
+  const unwrapped = unwrapDegrees(values || []);
+  const steps = unwrapped.slice(1).map((value, index) => ({
+    from_index: index,
+    to_index: index + 1,
+    delta_deg: value - unwrapped[index],
+  }));
+  const meaningful = steps.filter((step) => Math.abs(step.delta_deg) > toleranceDeg);
+  const direction = Math.sign(expectedSign) || (meaningful.length ? Math.sign(meaningful[0].delta_deg) : 0);
+  const reverse_steps = direction === 0 ? [] : meaningful.filter((step) => Math.sign(step.delta_deg) !== direction);
+  return {
+    expected_sign: direction,
+    tolerance_deg: toleranceDeg,
+    sample_count: unwrapped.length,
+    reverse_step_count: reverse_steps.length,
+    reverse_displacement_deg: reverse_steps.reduce((sum, step) => sum + Math.abs(step.delta_deg), 0),
+    max_reverse_step_deg: reverse_steps.reduce((max, step) => Math.max(max, Math.abs(step.delta_deg)), 0),
+    reverse_steps,
+    monotonic: reverse_steps.length === 0,
+    unwrapped_values: unwrapped,
+  };
+}
+
+// A playback approximation is evidence, not authority. In particular, this
+// repository cannot exactly reconstruct every Earth Studio custom/influence
+// handle. If authored keys are monotonic but only that approximate model turns
+// around, report uncertainty until real scene-model readback is supplied.
+function terminalSettleDiagnostic({
+  serializedValues,
+  modeledValues,
+  realValues,
+  expectedSign = 0,
+  toleranceDeg = 1e-7,
+} = {}) {
+  const options = { expectedSign, toleranceDeg };
+  const serialized = angularDirectionReport(serializedValues || [], options);
+  const modeled = angularDirectionReport(modeledValues || [], options);
+  const real = Array.isArray(realValues) ? angularDirectionReport(realValues, options) : null;
+  let status;
+  let authority;
+  if (!serialized.monotonic) {
+    status = 'SERIALIZED_REVERSAL_DETECTED';
+    authority = 'serialized_keyframes';
+  } else if (real) {
+    status = real.monotonic ? 'TERMINAL_SETTLE_CLEAN' : 'REAL_REVERSAL_DETECTED';
+    authority = 'real_earth_studio_scene_model';
+  } else if (!modeled.monotonic) {
+    status = 'TERMINAL_SETTLE_MODEL_UNCERTAIN';
+    authority = 'approximate_internal_model';
+  } else {
+    status = 'TERMINAL_SETTLE_CLEAN_SERIALIZED_AND_MODELED';
+    authority = 'serialized_keyframes_and_approximate_internal_model';
+  }
+  return {
+    status,
+    authority,
+    serialized,
+    modeled,
+    real,
+    model_limitation: !modeled.monotonic && serialized.monotonic
+      ? 'custom/influence handle playback is approximate; require real Earth Studio scene-model readback'
+      : null,
+  };
+}
+
 function angleDeltaDeg(from, to) {
   return ((((Number(to) - Number(from)) + 540) % 360) + 360) % 360 - 180;
 }
@@ -261,13 +330,13 @@ function playbackValueAt(keyframes, time) {
 
       // Real Earth Studio does not treat an authored `auto` handle with y=0
       // as a zero-value tangent. It derives a tangent from adjacent values.
-      // Likewise, the generated custom arrival handles use influence to place
-      // the value control point slightly beyond the endpoint. Calibration
-      // against the authenticated H fly→orbit import (15 frame samples,
-      // 30fps) showed that a half-influence extrapolation is a useful scoped
-      // approximation for the handle families VIDTOOLZ emits. This keeps the
-      // evaluator honest about the generated project without pretending to
-      // implement every Earth Studio handle mode.
+      // Interior custom arrival handles still use the scoped half-influence
+      // approximation calibrated against the authenticated H fly→orbit import
+      // (15-frame samples, 30fps). Terminal custom handles do NOT: consecutive
+      // scene-model readback across eight real orbit imports showed monotonic
+      // final motion, while extrapolating their value control point beyond the
+      // endpoint invented a 0.19-0.23 degree reversal. Keep those at the authored
+      // y=0 endpoint. This remains a diagnostic model, not a replacement renderer.
       const aIndex = i - 1;
       if (out && out.type === "auto") {
         p1y += autoTangentSlope(keyframes, aIndex, "out")
@@ -283,7 +352,8 @@ function playbackValueAt(keyframes, time) {
         p2y -= autoTangentSlope(keyframes, i, "in")
           * Math.abs(Number(incoming.x || 0)) / 3;
       }
-      if (incoming && incoming.type === "custom" && finite(incoming.influence)) {
+      if (incoming && incoming.type === "custom" && finite(incoming.influence)
+          && i < keyframes.length - 1) {
         p2y += (Number(b.value) - Number(a.value)) * Number(incoming.influence) * 0.5;
       }
       const t = bezierParameterForX(x, p1x, p2x);
@@ -563,6 +633,8 @@ function settlingTimes(trace, thresholds = {}) {
 module.exports = {
   angleDeltaDeg,
   unwrapDegrees,
+  angularDirectionReport,
+  terminalSettleDiagnostic,
   valueAt,
   oneSidedDerivative,
   positionDerivative,
