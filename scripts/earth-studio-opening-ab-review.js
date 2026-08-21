@@ -74,7 +74,9 @@ class AbReviewServer {
   }
   loadSession() {
     if (fs.existsSync(SESSION_FILE)) { try { return JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8')); } catch (_) {} }
-    return { schema_version: 1, pairs: Object.fromEntries(this.pairs.map((p) => [p.id, { state: 'NOT_PREPARED', human_decision: null, notes: '' }])), current_id: this.pairs[0] ? this.pairs[0].id : null };
+    // NOTE: keyed as `records` — prepare/decision read this.session.records;
+    // the original `pairs` key crashed the first prepare of a fresh session.
+    return { schema_version: 1, records: Object.fromEntries(this.pairs.map((p) => [p.id, { state: 'NOT_PREPARED', human_decision: null, notes: '' }])), current_id: this.pairs[0] ? this.pairs[0].id : null };
   }
   persist() { fs.writeFileSync(SESSION_FILE, `${JSON.stringify(this.session, null, 2)}\n`); }
   currentPair() { return this.pairs.find((p) => p.id === this.session.current_id) || this.pairs[0]; }

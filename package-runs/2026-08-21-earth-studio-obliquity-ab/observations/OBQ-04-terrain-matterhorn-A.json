@@ -1,0 +1,106 @@
+{
+  "id": "OBQ-04-terrain-matterhorn-A",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-04-terrain-matterhorn-A-baseline/earth-studio/earth-studio.esp",
+  "esp_sha256": "69094fc8b1d9864b63c5d2d0d844d0206c713688d4787d548b37e880d798a367",
+  "expected": {
+    "total_frames": 900,
+    "duration_seconds": 30,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 900,
+    "totalFrames": 900,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "orbit",
+      "place": "Matterhorn",
+      "png": "package-runs/2026-08-21-earth-studio-obliquity-ab/observations/OBQ-04-terrain-matterhorn-A/OBQ-04-terrain-matterhorn-A_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 46.15650818599307,
+        "longitude": 7.6585,
+        "altitude": 6500.935120935325,
+        "pan_deg": 180,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Matterhorn",
+        "altitude_m": 6500,
+        "tilt_deg": 72,
+        "target_lat": 45.9766,
+        "target_lng": 7.6585
+      }
+    },
+    {
+      "frame": 450,
+      "label": "seg1-mid",
+      "movement": "orbit",
+      "place": "Matterhorn",
+      "png": "package-runs/2026-08-21-earth-studio-obliquity-ab/observations/OBQ-04-terrain-matterhorn-A/OBQ-04-terrain-matterhorn-A_f00450_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 450,
+        "latitude": 45.97630759365712,
+        "longitude": 7.917378,
+        "altitude": 6500.935120935325,
+        "pan_deg": 270,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Matterhorn",
+        "altitude_m": 6500,
+        "tilt_deg": 72,
+        "target_lat": 45.9766,
+        "target_lng": 7.6585
+      }
+    },
+    {
+      "frame": 899,
+      "label": "seg1-end",
+      "movement": "orbit",
+      "place": "Matterhorn",
+      "png": "package-runs/2026-08-21-earth-studio-obliquity-ab/observations/OBQ-04-terrain-matterhorn-A/OBQ-04-terrain-matterhorn-A_f00899_seg1-end.png",
+      "earth_studio_camera": {
+        "frame": 899,
+        "latitude": 45.796691703302855,
+        "longitude": 7.658524573116646,
+        "altitude": 6500.935120935325,
+        "pan_deg": 359.9918901709601,
+        "tilt_deg": 72,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Matterhorn",
+        "altitude_m": 6500,
+        "tilt_deg": 72,
+        "target_lat": 45.9766,
+        "target_lng": 7.6585
+      }
+    }
+  ],
+  "errors": []
+}

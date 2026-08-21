@@ -1,0 +1,106 @@
+{
+  "id": "OBQ-18-explicit-oblique-B",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-18-explicit-oblique-B-obliquity/earth-studio/earth-studio.esp",
+  "esp_sha256": "a7dc36e4f9824c206255fcc6563969319f4e71cc7ac90f9ee1bb5d8818bc08dd",
+  "expected": {
+    "total_frames": 270,
+    "duration_seconds": 9,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 270,
+    "totalFrames": 270,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "orbit",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-21-earth-studio-obliquity-ab/observations/OBQ-18-explicit-oblique-B/OBQ-18-explicit-oblique-B_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.177901949713615,
+        "longitude": 24.9522,
+        "altitude": 700.9930130238043,
+        "pan_deg": 180,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 50,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 135,
+      "label": "seg1-mid",
+      "movement": "orbit",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-21-earth-studio-obliquity-ab/observations/OBQ-18-explicit-oblique-B/OBQ-18-explicit-oblique-B_f00135_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 135,
+        "latitude": 60.17039897486016,
+        "longitude": 24.967283,
+        "altitude": 700.9930130238043,
+        "pan_deg": 270,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 50,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    },
+    {
+      "frame": 269,
+      "label": "seg1-end",
+      "movement": "orbit",
+      "place": "Helsinki Cathedral",
+      "png": "package-runs/2026-08-21-earth-studio-obliquity-ab/observations/OBQ-18-explicit-oblique-B/OBQ-18-explicit-oblique-B_f00269_seg1-end.png",
+      "earth_studio_camera": {
+        "frame": 269,
+        "latitude": 60.16289833858196,
+        "longitude": 24.952216098257008,
+        "altitude": 700.9930130238043,
+        "pan_deg": 359.915076083675,
+        "tilt_deg": 50,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "orbit",
+        "place": "Helsinki Cathedral",
+        "altitude_m": 700,
+        "tilt_deg": 50,
+        "target_lat": 60.1704,
+        "target_lng": 24.9522
+      }
+    }
+  ],
+  "errors": []
+}

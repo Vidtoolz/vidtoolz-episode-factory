@@ -1,0 +1,142 @@
+{
+  "director_version": 1,
+  "plan_version": 1,
+  "plan": {
+    "plan_version": 1,
+    "director_version": 1,
+    "source_text": "Travel from Helsinki to Stockholm, then inspect Stockholm.",
+    "beats": [
+      {
+        "beat": "STARTING_CONTEXT",
+        "subject": "Helsinki",
+        "role": "STARTING_CONTEXT",
+        "importance": "NORMAL",
+        "purpose": "ESTABLISH",
+        "purpose_label": "Establish",
+        "viewer_should_understand": "that we are now at this place, and what kind of place it is",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.08,
+        "tilt_deg": null,
+        "obliquity": {
+          "action": "KEEP_FLAT",
+          "promoted_from": null,
+          "tilt_band": null,
+          "source": "POLICY",
+          "reason": "The shot departs from this subject — a flat opening faces the departure and flows into the first movement instead of circling."
+        },
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 4,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      },
+      {
+        "beat": "TRAVEL",
+        "subject": "Helsinki → Stockholm",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "style:cinematic",
+        "grammar_label": "Cinematic (pull back, travel, descend)",
+        "rarity": "SELECTIVE",
+        "angle": "top_down",
+        "why": "its primary purpose is ARRIVE, which is what this shot is for a selective move is earned here (DESTINATION, importance HIGH)",
+        "distance_m": 395820,
+        "duration_seconds": 11.000000000000002,
+        "provenance": {
+          "subject": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "duration": "computed"
+        }
+      },
+      {
+        "beat": "DESTINATION",
+        "subject": "Stockholm",
+        "role": "DESTINATION",
+        "importance": "HIGH",
+        "purpose": "INSPECT",
+        "purpose_label": "Inspect",
+        "viewer_should_understand": "what this place physically looks like",
+        "grammar": "slow_orbit",
+        "grammar_label": "Slow Orbit",
+        "rarity": "SELECTIVE",
+        "angle": "oblique",
+        "emphasis": 1.35,
+        "tilt_deg": null,
+        "obliquity": null,
+        "why": "its primary purpose is INSPECT, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 42,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      }
+    ],
+    "globe": {
+      "allowed": false,
+      "justification": null,
+      "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+    },
+    "opening_composition": {
+      "strategy": "ROUTE_FORESHADOW",
+      "heading_source": "GEOMETRY_DERIVED",
+      "subject_axis_deg": 256.18032105722847,
+      "preferred_view_axis_deg": 256.18032105722847,
+      "opening_heading_deg": 256.18032105722847,
+      "opening_tilt_deg": null,
+      "confidence": "high",
+      "reason": "First action is travel to Stockholm (396 km > 12 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it."
+    },
+    "opening_camera": {
+      "pan_deg": 256.18032105722847
+    },
+    "compare_match": null,
+    "continuation": null,
+    "notes": [
+      "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+      "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "Special/selective moves used: Cinematic (pull back, travel, descend), Slow Orbit.",
+      "Opening composition [ROUTE_FORESHADOW]: First action is travel to Stockholm (396 km > 12 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it."
+    ],
+    "span_m": 395820,
+    "total_duration_seconds": 57
+  },
+  "audit": {
+    "findings": [],
+    "ok": true,
+    "beat_count": 3
+  },
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "explanation": [
+    "Helsinki (Starting context, NORMAL): Hold for Establish — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Helsinki → Stockholm: Cinematic (pull back, travel, descend) — its primary purpose is ARRIVE, which is what this shot is for a selective move is earned here (DESTINATION, importance HIGH)",
+    "Stockholm (Destination, HIGH): Slow Orbit for Inspect — its primary purpose is INSPECT, which is what this shot is for city framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Cinematic (pull back, travel, descend), Slow Orbit.",
+    "Opening composition [ROUTE_FORESHADOW]: First action is travel to Stockholm (396 km > 12 km threshold). Opening faces the departure direction so frame one flows directly into the first movement instead of correcting toward it."
+  ],
+  "opening_camera": {
+    "pan_deg": 256.18032105722847
+  },
+  "source": "earth-studio-director autoDirect — live obliquity policy"
+}

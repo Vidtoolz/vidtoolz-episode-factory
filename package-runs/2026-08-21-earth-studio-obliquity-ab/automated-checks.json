@@ -1,0 +1,233 @@
+[
+  {
+    "case": "OBQ-01-landmark-establish",
+    "kind": "landmark establish",
+    "label": "CHANGED",
+    "movement_a": "hold",
+    "movement_b": "half_orbit",
+    "tilt_b": 50,
+    "obliquity_action": "PROMOTE_TO_RING",
+    "obliquity_source": "AUTOMATIC",
+    "expected": "B promotes the flat hold to a 50° half-orbit ring (establish_presence)."
+  },
+  {
+    "case": "OBQ-02-landmark-inspect",
+    "kind": "landmark inspect",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "half_orbit",
+    "movement_b": "half_orbit",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "INSPECT already earns an orbit-class move from the ordinary grammar; obliquity defers. Identical."
+  },
+  {
+    "case": "OBQ-03-landmark-emphasize",
+    "kind": "landmark emphasize",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "orbit",
+    "movement_b": "orbit",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "EMPHASIZE earns its own orbit from the ordinary grammar; obliquity defers. Identical."
+  },
+  {
+    "case": "OBQ-04-terrain-matterhorn",
+    "kind": "mountain / terrain (72° raking case)",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "slow_orbit",
+    "movement_b": "slow_orbit",
+    "tilt_b": 72,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "SHOW_TERRAIN earns a 72° raking orbit from the ordinary grammar; obliquity defers. Identical."
+  },
+  {
+    "case": "OBQ-05-city-establish",
+    "kind": "city establish",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "City-scale meaning is 2D layout — no promotion. Identical."
+  },
+  {
+    "case": "OBQ-06-city-orient",
+    "kind": "city orient",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "ORIENT wants the map view — no promotion. Identical."
+  },
+  {
+    "case": "OBQ-07-city-arrival-inspect",
+    "kind": "city arrival + inspect",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "The opening departs; obliquity only governs openings. Identical."
+  },
+  {
+    "case": "OBQ-08-compact-island",
+    "kind": "compact island (district scale)",
+    "label": "CHANGED",
+    "movement_a": "hold",
+    "movement_b": "half_orbit",
+    "tilt_b": 50,
+    "obliquity_action": "PROMOTE_TO_RING",
+    "obliquity_source": "AUTOMATIC",
+    "expected": "District scale with form: B promotes to a 50° ring."
+  },
+  {
+    "case": "OBQ-09-country-orient",
+    "kind": "country orient",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "Country scale keeps the map view. Identical."
+  },
+  {
+    "case": "OBQ-10-large-country",
+    "kind": "large country",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "Large-country scale keeps the map view. Identical."
+  },
+  {
+    "case": "OBQ-11-continent",
+    "kind": "continent",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "Continent scale keeps the map view. Identical."
+  },
+  {
+    "case": "OBQ-12-landmark-then-travel",
+    "kind": "landmark → immediate travel",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "Departure-first: the flat route-facing opening wins. Identical."
+  },
+  {
+    "case": "OBQ-13-explicit-hover",
+    "kind": "EXPLICIT HOVER (operator authority)",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "USER_SPECIFIED",
+    "expected": "Operator movement authority: hover stays a hover. Identical."
+  },
+  {
+    "case": "OBQ-14-explicit-orbit",
+    "kind": "explicit orbit",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "slow_orbit",
+    "movement_b": "slow_orbit",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "USER_SPECIFIED",
+    "expected": "Orbit remains orbit in both variants. Identical."
+  },
+  {
+    "case": "OBQ-15-matched-comparison",
+    "kind": "matched comparison",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "Matched framing outranks glamour. Identical."
+  },
+  {
+    "case": "OBQ-16-continuation",
+    "kind": "continuation",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": null,
+    "obliquity_source": null,
+    "expected": "The exact hand-off is never re-framed. Identical."
+  },
+  {
+    "case": "OBQ-17-explicit-topdown",
+    "kind": "explicit top-down",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "USER_SPECIFIED",
+    "expected": "Explicit top-down pins the plan view. Identical."
+  },
+  {
+    "case": "OBQ-18-explicit-oblique",
+    "kind": "explicit oblique request",
+    "label": "CHANGED",
+    "movement_a": "hold",
+    "movement_b": "half_orbit",
+    "tilt_b": 50,
+    "obliquity_action": "PROMOTE_TO_RING",
+    "obliquity_source": "USER_SPECIFIED",
+    "expected": "B honours the requested low-oblique band with a 50° ring; A stays flat."
+  },
+  {
+    "case": "OBQ-19-explicit-degrees",
+    "kind": "explicit numeric tilt",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "USER_SPECIFIED",
+    "expected": "An explicit numeric tilt outranks the automatic bands in BOTH variants (seeded literally). Identical."
+  },
+  {
+    "case": "OBQ-20-route-restraint",
+    "kind": "restraint: route story stays flat",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "reveal",
+    "movement_b": "reveal",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "POLICY",
+    "expected": "SHOW_ROUTE wants the map view. Identical."
+  },
+  {
+    "case": "OBQ-21-hover-oblique-conflict",
+    "kind": "CONFLICT: explicit hover + oblique",
+    "label": "INTENTIONALLY_IDENTICAL",
+    "movement_a": "hold",
+    "movement_b": "hold",
+    "tilt_b": null,
+    "obliquity_action": "KEEP_FLAT",
+    "obliquity_source": "USER_SPECIFIED",
+    "expected": "Hover wins; the un-holdable oblique is declined and recorded. Identical."
+  }
+]

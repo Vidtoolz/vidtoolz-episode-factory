@@ -55,6 +55,7 @@ node --check scripts/earth-studio-journey-canaries.js
 node --check scripts/earth-studio-director-canaries.js
 node --check scripts/earth-studio-directorial-evaluation.js
 node --check scripts/earth-studio-opening-ab-evaluation.js
+node --check scripts/earth-studio-obliquity-ab-evaluation.js
 node --check scripts/earth-studio-opening-ab-review.js
 node --check earth-studio-opening-composition.js
 node --check scripts/earth-studio-visual-review.js

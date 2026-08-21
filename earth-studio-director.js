@@ -1202,6 +1202,91 @@
       };
       opening = recommend(openCtx);
       openDec = opening.recommended;
+
+      // ── Subject-aware opening OBLIQUITY and visual presence ──────────────
+      // A centered hold frames its subject only near-nadir (the generator's
+      // optical limit), which is exactly the "Google Maps rotated" look. When
+      // the opening place is a compact subject whose purpose wants form, the
+      // opening is promoted to a half-orbit RING opening — the only engine
+      // geometry that keeps the subject framed at an oblique tilt, stable from
+      // frame 0. Policy order: editorial purpose -> subject class/scale ->
+      // geometry/evidence -> movement context -> camera configuration; an
+      // explicit operator tilt outranks the automatic bands. Runs BEFORE
+      // decisions.push/spend so the SELECTIVE cost is accounted exactly and
+      // every later beat scores against the true remaining budget.
+      let openingObliquity = null;
+      if (openDec && !continuationState) {
+        const OCO = loadComposition(options.composition);
+        const explicitOpening = intent.opening || null;
+        openingObliquity = OCO.planOpeningObliquity({
+          opening_beat: openDec.movement,
+          next_beat: null, // a director opening is followed only by travel
+                           // away (multi-stop) or nothing (single stop) — a
+                           // staged orbit never follows it
+          purposes: first.purposes,
+          role: first.role,
+          importance: first.importance,
+          scale: first.scale,
+          span_m: (J.FRAMING_SCALES[first.scale] || {}).span_m || null,
+          single_stop: stops.length === 1,
+          departs: stops.length > 1,
+          scale_story_ahead: stops.slice(1).some((s) => (s.purposes || []).includes("SHOW_SCALE")),
+          flourish_budget: budget,
+          negatives: intent.negatives || [],
+          // OPERATOR MOVEMENT AUTHORITY: a movement primitive the operator
+          // named ("hover over X", "orbit X") must never be replaced by an
+          // automatic promotion — hover stays hover.
+          explicit_movement: first.explicit_grammar || null,
+          explicit_opening: explicitOpening,
+          continuation: !!continuationState,
+          config: {
+            orbit_default_tilt_deg: planner.DEFAULT_TILT_DEG.orbit,
+            terrain_oblique_tilt_deg: TERRAIN_OBLIQUE_TILT_DEG,
+          },
+        });
+        if (openingObliquity.action === "PROMOTE_TO_RING") {
+          const g2 = CAMERA_GRAMMAR[openingObliquity.movement];
+          const promotedFrom = openDec.key;
+          openDec = {
+            ...openDec,
+            key: g2.key, label: g2.label, movement: g2.movement,
+            angle: g2.angle, rarity: g2.rarity, communicates: g2.communicates,
+            teaching: g2.teaching,
+            tilt_deg: openingObliquity.tilt_deg,
+            tilt_reason: openingObliquity.reason,
+            obliquity: {
+              action: "PROMOTE_TO_RING",
+              promoted_from: promotedFrom,
+              tilt_band: openingObliquity.tilt_band,
+              source: openingObliquity.source || "AUTOMATIC",
+              reason: openingObliquity.reason,
+            },
+          };
+        } else if (openingObliquity.action === "APPLY_TILT") {
+          openDec = {
+            ...openDec,
+            tilt_deg: openingObliquity.tilt_deg,
+            tilt_reason: openingObliquity.reason,
+            obliquity: { action: "APPLY_TILT", promoted_from: null, tilt_band: openingObliquity.tilt_band, source: openingObliquity.source || "USER_SPECIFIED", reason: openingObliquity.reason },
+          };
+        } else {
+          // The block is itself provenance: WHY automatic obliquity left this
+          // opening alone (operator authority, editorial policy, restraint
+          // budget, or geometry) rides on the decision and the plan beat, so
+          // no directorial choice is ever hidden.
+          openDec = {
+            ...openDec,
+            obliquity: {
+              action: "KEEP_FLAT",
+              promoted_from: null,
+              tilt_band: null,
+              source: openingObliquity.source || "POLICY",
+              reason: openingObliquity.reason,
+            },
+          };
+        }
+      }
+
       if (openDec && first.role === "COMPARISON_LOCATION") compareAnchorDecision = openDec;
       if (openDec) { decisions.push({ stop: 0, kind: "at", place: first.location, role: first.role, importance: first.importance, decision: openDec, alternatives: opening.alternatives, rejected: opening.rejected }); spend(openDec); }
     }
@@ -1510,6 +1595,9 @@
           angle: dec.angle || null,
           emphasis: dec.emphasis == null ? null : dec.emphasis,
           tilt_deg: dec.tilt_deg == null ? null : dec.tilt_deg,
+          // Opening-obliquity provenance: promotion, applied operator tilt,
+          // or the honest reason the opening was left flat.
+          obliquity: dec.obliquity || null,
           why: dec.why || null,
           angle_limitation: dec.angle_limitation || null,
           duration_seconds: seconds,
@@ -1716,7 +1804,10 @@
     [/\b(circle|orbit|encircle)\b/i, "slow_orbit"],
     [/\bpush\s+in\b|\bmove\s+closer\b|\bcome\s+closer\b|\bapproach\b|\bclose\s+in\s+on\b/i, "zoom_in"],
     [/\bpull\s+(back|out|away)\b|\bzoom\s+out\b|\bwiden\s+(out)?\b/i, "zoom_out"],
-    [/\b(hold|stay)\s+(still|here|put)?\b|\bremains?\s+still\b|\bsteady\s+on\b/i, "hold"],
+    // Stationary semantics are OPERATOR AUTHORITY over the opening movement:
+    // "hover over X" is a named movement primitive (a stationary hold), not an
+    // invitation to direct. The obliquity policy must see it as explicit.
+    [/\bhover(ing)?\b|\b(hold|stay)\s+(still|here|put)?\b|\bremains?\s+(still|stationary)\b|\b(static|stationary)\b|\bsteady\s+on\b/i, "hold"],
   ];
   // Explicit travel-shape language applies to the leg travelling TO the place
   // named in the same clause ("then move directly to Berlin").
@@ -1753,33 +1844,73 @@
     // numeric: "heading 220", "open at bearing 45 degrees"
     [/\b(?:heading|bearing)\s+(?:of\s+)?(\d{1,3})\s*(?:°|deg(?:rees)?)?\b/i, "numeric"],
   ];
-  const OPENING_TOPDOWN_PHRASE = /\btop-?\s?down\s+open(?:ing)?\b|\bopen(?:ing)?\s+top-?\s?down\b|\bstart\s+top-?\s?down\b/i;
+  // Explicit TILT language. Top-down phrasing pins the plan view; explicit
+  // degrees are literal; "high/low oblique" name a band (aerial-photography
+  // convention: low oblique = no horizon, moderate tilt; high oblique =
+  // strong, near-horizon tilt); a bare "oblique"/"angled view" records the
+  // wish without inventing a number. Deliberately coarse — robust common
+  // forms only, no NLP.
+  const OPENING_TOPDOWN_PHRASE = /\btop-?\s?down\b|\bstraight\s+down\b|\bfrom\s+directly\s+above\b|\bdirectly\s+overhead\b/i;
+  const OPENING_TILT_DEGREES_PHRASE = /\b(?:opening\s+tilt|tilt(?:ed)?(?:\s+(?:of|at|to))?|start(?:ing)?\s+at)\s+(\d{1,2}(?:\.\d+)?)\s*(?:°|deg(?:rees)?)/i;
+  const OPENING_OBLIQUE_BAND_PHRASE = /\b(high|low)\s+oblique\b/i;
+  const OPENING_OBLIQUE_PHRASE = /\boblique\b|\bangled\s+view\b|\bat\s+an\s+angle\b/i;
 
   // Parse explicit opening direction out of raw intent text. Returns
-  // { heading_deg?, tilt_deg?, source_text } or null. Deterministic, and
-  // deliberately literal: what the operator says is what gets recorded.
+  // { heading_deg?, tilt_deg?, oblique?, oblique_band?, source_text } or
+  // null. Deterministic, and deliberately literal: what the operator says is
+  // what gets recorded. Heading and tilt language compose ("approach from the
+  // south, tilt 45 degrees" carries both).
   function parseExplicitOpening(text) {
+    const s = String(text);
+    const out = {};
+    const sources = [];
     for (const [re, kind] of OPENING_HEADING_PHRASES) {
-      const m = String(text).match(re);
+      const m = s.match(re);
       if (!m) continue;
       if (kind === "numeric") {
         const h = Number(m[1]);
         if (Number.isFinite(h) && h >= 0 && h <= 360) {
-          return { heading_deg: ((h % 360) + 360) % 360, source_text: m[0].trim() };
+          out.heading_deg = ((h % 360) + 360) % 360;
+          sources.push(m[0].trim());
+          break;
         }
         continue;
       }
       const base = COMPASS_WORDS[m[1].toLowerCase()];
       if (typeof base === "number") {
         // camera ON the south side looks north: the heading is opposite.
-        const heading = kind === "side" ? (base + 180) % 360 : base;
-        return { heading_deg: heading, source_text: m[0].trim() };
+        out.heading_deg = kind === "side" ? (base + 180) % 360 : base;
+        sources.push(m[0].trim());
+        break;
       }
     }
-    if (OPENING_TOPDOWN_PHRASE.test(String(text))) {
-      return { tilt_deg: 0, source_text: "top-down opening" };
+    if (OPENING_TOPDOWN_PHRASE.test(s)) {
+      out.tilt_deg = 0;
+      sources.push("top-down opening");
+    } else {
+      const mt = s.match(OPENING_TILT_DEGREES_PHRASE);
+      const t = mt ? Number(mt[1]) : NaN;
+      if (mt && Number.isFinite(t) && t >= 0 && t <= 90) {
+        out.tilt_deg = t;
+        sources.push(mt[0].trim());
+      } else {
+        const mb = s.match(OPENING_OBLIQUE_BAND_PHRASE);
+        if (mb) {
+          out.oblique = true;
+          out.oblique_band = mb[1].toLowerCase();
+          sources.push(mb[0].trim());
+        } else {
+          const mo = s.match(OPENING_OBLIQUE_PHRASE);
+          if (mo) {
+            out.oblique = true;
+            sources.push(mo[0].trim());
+          }
+        }
+      }
     }
-    return null;
+    if (!sources.length) return null;
+    out.source_text = sources.join("; ");
+    return out;
   }
 
   // Split intent text into sentences, then into CLAUSES, and attribute each
@@ -1861,7 +1992,12 @@
         // clause with no place name applies to the most recent place, same as
         // purposes. Travel-shape words ("move directly to Berlin") govern the
         // leg arriving at the clause's destination.
-        const grammarHit = GRAMMAR_PHRASES.find(([re]) => re.test(clause));
+        // A movement word inside a NEGATIVE clause ("don't orbit", "no
+        // spiral") is a constraint, not a request — extracting it as explicit
+        // grammar would demand the very move the operator ruled out and
+        // disqualify every candidate.
+        const negatedClause = NEGATIVE_PHRASES.some(([re]) => re.test(clause));
+        const grammarHit = negatedClause ? null : GRAMMAR_PHRASES.find(([re]) => re.test(clause));
         const styleHit = TRAVEL_STYLE_PHRASES.find(([re]) => re.test(clause));
         targets.forEach((stop) => {
           if (roleHit && !stop.role) { stop.role = roleHit[1].role; stop.importance = roleHit[1].importance; }

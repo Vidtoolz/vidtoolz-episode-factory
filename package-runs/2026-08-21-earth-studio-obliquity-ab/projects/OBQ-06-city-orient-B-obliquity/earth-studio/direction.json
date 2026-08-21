@@ -1,0 +1,89 @@
+{
+  "director_version": 1,
+  "plan_version": 1,
+  "plan": {
+    "plan_version": 1,
+    "director_version": 1,
+    "source_text": "Orient the viewer over Helsinki.",
+    "beats": [
+      {
+        "beat": "STARTING_CONTEXT",
+        "subject": "Helsinki",
+        "role": "STARTING_CONTEXT",
+        "importance": "NORMAL",
+        "purpose": "ORIENT",
+        "purpose_label": "Orient",
+        "viewer_should_understand": "roughly where in the world we are",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1,
+        "tilt_deg": null,
+        "obliquity": {
+          "action": "KEEP_FLAT",
+          "promoted_from": null,
+          "tilt_band": null,
+          "source": "POLICY",
+          "reason": "The opening purpose ORIENT wants a map view — a plan reading is what the shot is for."
+        },
+        "why": "city framing is within its useful range it gives the top-down view this purpose wants",
+        "angle_limitation": null,
+        "duration_seconds": 4,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      }
+    ],
+    "globe": {
+      "allowed": false,
+      "justification": null,
+      "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+    },
+    "opening_composition": {
+      "strategy": "DEFAULT_RETAINED",
+      "heading_source": "DEFAULTED",
+      "subject_axis_deg": null,
+      "preferred_view_axis_deg": null,
+      "opening_heading_deg": null,
+      "opening_tilt_deg": null,
+      "confidence": "low",
+      "reason": "Helsinki (city): no route, explicit direction, or geometry evidence strong enough to beat the proven default opening. Retaining the planner default rather than inventing a composition."
+    },
+    "opening_camera": null,
+    "compare_match": null,
+    "continuation": null,
+    "notes": [
+      "Flourish budget for this sequence: 1 (from 1 stop; 0 hero, 0 high).",
+      "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "No selective or special moves were used — nothing in this sequence earned one.",
+      "Opening composition [DEFAULT_RETAINED]: Helsinki (city): no route, explicit direction, or geometry evidence strong enough to beat the proven default opening. Retaining the planner default rather than inventing a composition."
+    ],
+    "span_m": 0,
+    "total_duration_seconds": 4
+  },
+  "audit": {
+    "findings": [],
+    "ok": true,
+    "beat_count": 1
+  },
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "explanation": [
+    "Helsinki (Starting context, NORMAL): Hold for Orient — city framing is within its useful range it gives the top-down view this purpose wants",
+    "Flourish budget for this sequence: 1 (from 1 stop; 0 hero, 0 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "No selective or special moves were used — nothing in this sequence earned one.",
+    "Opening composition [DEFAULT_RETAINED]: Helsinki (city): no route, explicit direction, or geometry evidence strong enough to beat the proven default opening. Retaining the planner default rather than inventing a composition."
+  ],
+  "opening_camera": null,
+  "source": "earth-studio-director autoDirect — live obliquity policy"
+}

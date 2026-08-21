@@ -1,0 +1,106 @@
+{
+  "id": "OBQ-05-city-establish-B",
+  "aspect": "16:9",
+  "esp": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-05-city-establish-B-obliquity/earth-studio/earth-studio.esp",
+  "esp_sha256": "d337a32a6ffed32970e85ae1036f3e13db348027c742123a457bc91e650b61a1",
+  "expected": {
+    "total_frames": 120,
+    "duration_seconds": 4,
+    "render_dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "import": {
+    "duration": 120,
+    "totalFrames": 120,
+    "frameRate": 30,
+    "loading": false,
+    "bodyHasError": false,
+    "imported": false
+  },
+  "render_rect": {
+    "x": 535,
+    "y": 81,
+    "width": 1490,
+    "height": 838
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "label": "seg1-start",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-21-earth-studio-obliquity-ab/observations/OBQ-05-city-establish-B/OBQ-05-city-establish-B_f00000_seg1-start.png",
+      "earth_studio_camera": {
+        "frame": 0,
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 60,
+      "label": "seg1-mid",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-21-earth-studio-obliquity-ab/observations/OBQ-05-city-establish-B/OBQ-05-city-establish-B_f00060_seg1-mid.png",
+      "earth_studio_camera": {
+        "frame": 60,
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    },
+    {
+      "frame": 119,
+      "label": "seg1-end",
+      "movement": "hover",
+      "place": "Helsinki",
+      "png": "package-runs/2026-08-21-earth-studio-obliquity-ab/observations/OBQ-05-city-establish-B/OBQ-05-city-establish-B_f00119_seg1-end.png",
+      "earth_studio_camera": {
+        "frame": 119,
+        "latitude": 60.1699,
+        "longitude": 24.9384,
+        "altitude": 34028.66035310573,
+        "pan_deg": 0,
+        "tilt_deg": 0,
+        "roll_deg": 0,
+        "fov": 20
+      },
+      "intended": {
+        "action": "hover",
+        "place": "Helsinki",
+        "altitude_m": 34028,
+        "tilt_deg": 0,
+        "target_lat": 60.1699,
+        "target_lng": 24.9384
+      }
+    }
+  ],
+  "errors": []
+}

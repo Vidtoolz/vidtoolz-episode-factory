@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>OBQ-13-explicit-hover route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>Helsinki Cathedral</name>
+      <Point><coordinates>24.9522,60.1704,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>OBQ-13-explicit-hover route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        24.9522,60.1704,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

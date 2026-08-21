@@ -1,0 +1,148 @@
+{
+  "director_version": 1,
+  "plan_version": 1,
+  "plan": {
+    "plan_version": 1,
+    "director_version": 1,
+    "source_text": null,
+    "beats": [
+      {
+        "beat": "CONTINUE",
+        "subject": "Helsinki Cathedral",
+        "role": "GEOGRAPHIC_CONTEXT",
+        "importance": "NORMAL",
+        "purpose": "CONTINUE",
+        "purpose_label": "Continue",
+        "viewer_should_understand": "that the camera is picking up exactly where a previous animation left it",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 0.95,
+        "tilt_deg": null,
+        "obliquity": null,
+        "why": "the camera picks up the exact terminal state of the previous animation; a brief settle makes the join seamless instead of sliding onto a ring at the cut",
+        "angle_limitation": null,
+        "duration_seconds": 4,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      },
+      {
+        "beat": "TRAVEL",
+        "subject": "Helsinki → Stockholm",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "style:cinematic",
+        "grammar_label": "Cinematic (pull back, travel, descend)",
+        "rarity": "SELECTIVE",
+        "angle": "top_down",
+        "why": "its primary purpose is ARRIVE, which is what this shot is for a selective move is earned here (DESTINATION, importance HIGH)",
+        "distance_m": 395820,
+        "duration_seconds": 11.000000000000002,
+        "provenance": {
+          "subject": "user-specified",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "duration": "computed"
+        }
+      },
+      {
+        "beat": "DESTINATION",
+        "subject": "Stockholm",
+        "role": "DESTINATION",
+        "importance": "HIGH",
+        "purpose": "ARRIVE",
+        "purpose_label": "Arrive",
+        "viewer_should_understand": "that we have reached the place that matters",
+        "grammar": "hold",
+        "grammar_label": "Hold",
+        "rarity": "COMMON",
+        "angle": "top_down",
+        "emphasis": 1.25,
+        "tilt_deg": null,
+        "obliquity": null,
+        "why": "its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+        "angle_limitation": null,
+        "duration_seconds": 5,
+        "provenance": {
+          "subject": "user-specified",
+          "role": "planner-inferred",
+          "importance": "planner-inferred",
+          "purpose": "planner-inferred",
+          "grammar": "planner-inferred",
+          "emphasis": "computed"
+        }
+      }
+    ],
+    "globe": {
+      "allowed": false,
+      "justification": null,
+      "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+    },
+    "opening_composition": {
+      "strategy": "CARRIED_OVER",
+      "heading_source": "CARRIED_OVER",
+      "subject_axis_deg": null,
+      "preferred_view_axis_deg": null,
+      "opening_heading_deg": null,
+      "opening_tilt_deg": null,
+      "confidence": "high",
+      "reason": "Continuation: the opening is the previous animation's exact terminal camera state. Automatic composition never re-frames a hand-off."
+    },
+    "opening_camera": null,
+    "compare_match": null,
+    "continuation": {
+      "source_animation": "OBQ-16-continuation-source",
+      "ends_at_frame": 119,
+      "camera": {
+        "latitude": 60.1704,
+        "longitude": 24.9522,
+        "altitude_m": 700,
+        "pan_deg": 0,
+        "heading_deg": 0,
+        "tilt_deg": 0
+      },
+      "provenance": "carried-over"
+    },
+    "notes": [
+      "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+      "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+      "Special/selective moves used: Cinematic (pull back, travel, descend).",
+      "This animation begins from the exact terminal camera state of a previous animation — no hidden reset.",
+      "Opening composition [CARRIED_OVER]: Continuation: the opening is the previous animation's exact terminal camera state. Automatic composition never re-frames a hand-off.",
+      "OPENING_CONTINUITY — opening heading 0° diverges 104° from the first travel direction 256° (> 90°): the subject sits behind the departure vector, so playback begins with a visible corrective swing."
+    ],
+    "span_m": 395820,
+    "total_duration_seconds": 20
+  },
+  "audit": {
+    "findings": [],
+    "ok": true,
+    "beat_count": 3
+  },
+  "globe": {
+    "allowed": false,
+    "justification": null,
+    "reason": "Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given."
+  },
+  "explanation": [
+    "Helsinki Cathedral (Geographic context, NORMAL): Hold for Continue — the camera picks up the exact terminal state of the previous animation; a brief settle makes the join seamless instead of sliding onto a ring at the cut",
+    "Helsinki → Stockholm: Cinematic (pull back, travel, descend) — its primary purpose is ARRIVE, which is what this shot is for a selective move is earned here (DESTINATION, importance HIGH)",
+    "Stockholm (Destination, HIGH): Hold for Arrive — its primary purpose is ESTABLISH, which is what this shot is for city framing is within its useful range",
+    "Flourish budget for this sequence: 2 (from 2 stops; 0 hero, 1 high).",
+    "No globe shot: Showing the whole planet would exaggerate the geographic scale without adding useful information. No global narrative reason was given.",
+    "Special/selective moves used: Cinematic (pull back, travel, descend).",
+    "This animation begins from the exact terminal camera state of a previous animation — no hidden reset.",
+    "Opening composition [CARRIED_OVER]: Continuation: the opening is the previous animation's exact terminal camera state. Automatic composition never re-frames a hand-off.",
+    "OPENING_CONTINUITY — opening heading 0° diverges 104° from the first travel direction 256° (> 90°): the subject sits behind the departure vector, so playback begins with a visible corrective swing."
+  ],
+  "opening_camera": null,
+  "source": "earth-studio-director autoDirect — live obliquity policy"
+}
