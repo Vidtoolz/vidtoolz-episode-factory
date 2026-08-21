@@ -265,6 +265,26 @@ engine honours (freeform jobs do not, which is what keeps the byte-frozen path b
   that stops gets a gentle arrival; boundaries where motion continues ease across the join instead of
   cornering. Nothing starts or changes direction linearly.
 
+**Motion-coherence quality gate.** Camera position, heading, tilt, altitude, target distance and
+roll are evaluated as one planned movement rather than as independent decorative tracks. The gate
+uses actual keyframe times, unwraps angular tracks, and compares local motion with the segment's
+declared envelope. A steady orbit is checked for radius breathing; a pull-back is allowed to grow
+monotonically; a descending orbit is allowed to descend. Unknown intent produces review evidence
+rather than an invented constant-radius contract. Stable framing is preferred to corrective pan,
+pitch, altitude or target nudges.
+
+The machine-readable smoothness report identifies altitude/tilt pumping, radius breathing, heading
+oscillation or reversal, target drift, roll instability, route reversal and repeated speed pulses.
+It also checks primitive joins: ordinary moving boundaries require approximately C1-continuous
+velocity, while movement into a hold must settle to zero. A moving linear join, hard launch or hard
+stop is a defect unless the plan explicitly declares hard-transition semantics. Acceleration
+continuity is supporting evidence, not a brittle universal gate: one launch, one cruise and one
+settle are valid, whereas repeated local acceleration/deceleration cycles are not. Small numerical
+residue is filtered with unit-specific tolerances.
+
+Passing this gate means only that the authored camera motion is structurally coherent enough for
+human review. It is not an aesthetic or compositional approval.
+
 **Motivated tilt.** Tilt is not decoration: it changes only because the shot that follows needs it.
 A descent into a destination stays level and the camera leans over only as the circling shot begins,
 at no more than `ORBIT_ENTRY_TILT_MAX_RATE_DEG_PER_S` (12°/s), so the lean reads as entering the

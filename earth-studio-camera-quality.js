@@ -1,5 +1,7 @@
 'use strict';
 
+const motionContinuity = require('./earth-studio-motion-continuity.js');
+
 // Machine-checkable continuity evidence for generated Earth Studio jobs. This
 // is additive and does not claim aesthetic approval.
 const FINITE_TRACKS = ['longitude', 'latitude', 'altitude', 'rotationX', 'rotationY'];
@@ -60,15 +62,22 @@ const POSITION_DIRECTION_TOLERANCE = 1;
 const TRAVEL_ACTIONS = ['fly_to', 'zoom_in', 'zoom_out'];
 
 function rollReport(esp) {
-  let rollKeyframes = null;
+  let rollTrack = null;
   walk(esp, (node) => {
-    if (node.type === 'rotationZ' && Array.isArray(node.keyframes)) rollKeyframes = node.keyframes;
+    if (node.type === 'rotationZ' && Array.isArray(node.keyframes)) rollTrack = node;
   });
   // rotationZ is never keyframed by this generator; if it appears at all it
   // was injected, and any non-zero value is camera roll — a defect by doctrine.
-  if (rollKeyframes === null) return { present: false, non_zero: 0, keyframes: 0 };
-  const nonZero = rollKeyframes.filter((k) => Math.abs(Number(k.value)) > 1e-9).length;
-  return { present: true, non_zero: nonZero, keyframes: rollKeyframes.length };
+  if (rollTrack === null) return { present: false, non_zero: 0, keyframes: 0, max_abs_deg: 0 };
+  const min = rollTrack.value ? Number(rollTrack.value.minValueRange) || 0 : 0;
+  const max = rollTrack.value ? Number(rollTrack.value.maxValueRange) : NaN;
+  const degrees = rollTrack.keyframes.map((keyframe) => {
+    const raw = Number(keyframe.value);
+    return Number.isFinite(max) ? raw * (max - min) + min : raw;
+  });
+  const nonZero = degrees.filter((value) => Math.abs(value) > SMOOTHNESS_TOLERANCES.roll_noise_deg).length;
+  return { present: true, non_zero: nonZero, keyframes: rollTrack.keyframes.length,
+    max_abs_deg: degrees.length ? Math.max(...degrees.map(Math.abs)) : 0 };
 }
 
 function directionChanges(nums) {
@@ -509,6 +518,380 @@ function orbitReport({ plan, tracks }) {
 // the camera lurching mid-move. Boundaries between movements are legitimate
 // turning points and are not counted.
 const SCALAR_TRACK_TOLERANCE = 1;
+
+// ── Production-wide smoothness doctrine ───────────────────────────────────
+// Units matter. These are deliberately separate rather than one magic wobble
+// number shared by metres, degrees and normalized rates.
+const SMOOTHNESS_TOLERANCES = Object.freeze({
+  // Metres. Sub-metre altitude changes are below useful authored camera
+  // precision and should not turn floating noise into an altitude correction.
+  altitude_noise_m: 0.5,
+  // Fraction of a segment's intentional altitude range. A reversal must exceed
+  // both this relative floor and the absolute metre floor to be a pump.
+  altitude_reversal_fraction: 0.0025,
+  // Degrees. Two hundredths is well below a visible pitch correction while
+  // remaining above serialized/keyframe rounding noise.
+  tilt_noise_deg: 0.02,
+  // Fraction of intentional tilt range used with the absolute degree floor.
+  tilt_reversal_fraction: 0.005,
+  // Percent of mean ground radius. Accepted 10-degree rings measure about
+  // 0.38%; 4% sits above that evidence and above the old 30-degree chord model.
+  radius_breathing_hard_pct: 4,
+  // Metres. Radial reversals smaller than this are geometry/rounding noise.
+  radius_reversal_noise_m: 5,
+  // Degrees. Existing accepted target-locked orbits stay below 2 degrees; five
+  // degrees is a hard structural miss rather than a composition preference.
+  target_drift_hard_deg: 5,
+  // Degrees. Serialized angular steps below this are treated as equality/noise.
+  angular_reversal_noise_deg: 0.001,
+  // Degrees/second. Absolute floor for changes in heading speed.
+  heading_speed_noise_dps: 0.05,
+  // Fraction of median cruise speed. Smaller fluctuations are not counted as
+  // a new acceleration/deceleration phase.
+  heading_speed_pulse_fraction: 0.12,
+  // Count of meaningful acceleration-direction changes inside cruise. A normal
+  // launch→cruise→settle has at most one; two indicates repeated pulsing.
+  heading_speed_pulse_changes: 2,
+  // Dimensionless |after-before| / local speed scale. Calibration fixtures
+  // tolerate small representation differences; a 65% rate seam is substantial.
+  boundary_velocity_discontinuity: 0.65,
+  // Unit-specific rate floors prevent divisions by numerical zero.
+  boundary_position_floor_mps: 1,
+  boundary_altitude_floor_mps: 0.5,
+  boundary_angle_floor_dps: 0.05,
+  // Degrees. Normal VIDTOOLZ motion has zero roll; this ignores only encoded
+  // numerical residue while still rejecting any intentional-looking roll key.
+  roll_noise_deg: 0.01,
+});
+
+function defectRecord({ defectClass, parameter, segment, before = null, after = null,
+  frameStart, frameEnd, measured, threshold, explanation, severity = 'error' }) {
+  return {
+    defect_class: defectClass,
+    parameter,
+    segment_id: segment && segment.segment_id != null ? segment.segment_id : null,
+    primitive_before: before || (segment && segment.action) || null,
+    primitive_after: after || (segment && segment.action) || null,
+    frame_start: Math.max(0, Math.round(Number(frameStart) || 0)),
+    frame_end: Math.max(0, Math.round(Number(frameEnd) || 0)),
+    measured_value: measured,
+    threshold,
+    explanation,
+    severity,
+  };
+}
+
+function motionEnvelope(segment) {
+  const explicit = String(segment && (segment.motion_envelope || segment.radius_envelope
+    || segment.altitude_envelope) || '').toLowerCase();
+  const action = String(segment && segment.action || '').toLowerCase();
+  if (action === 'hold' || action === 'hover') return 'HOLD';
+  if (action === 'orbit') {
+    if (/descend|fall|lower/.test(explicit)) return 'DESCENDING_ORBIT';
+    if (/ascend|climb|rise/.test(explicit)) return 'ASCENDING_ORBIT';
+    if (/pull|increas|outward/.test(explicit)) return 'PULLBACK_ORBIT';
+    if (/approach|decreas|inward/.test(explicit)) return 'APPROACH_ORBIT';
+    return 'CONSTANT_RADIUS_ORBIT';
+  }
+  if (action === 'zoom_out') return 'REVEAL';
+  if (action === 'zoom_in') return 'APPROACH';
+  if (action === 'fly_to') return 'STRAIGHT_TRAVEL';
+  return 'UNKNOWN';
+}
+
+function sortedTimedSamples(samples, { angular = false } = {}) {
+  const sorted = (samples || []).map((sample) => ({ ...sample, time: Number(sample.time), value: Number(sample.value) }))
+    .filter((sample) => Number.isFinite(sample.time) && Number.isFinite(sample.value))
+    .sort((a, b) => a.time - b.time)
+    .filter((sample, index, rows) => index === 0 || sample.time > rows[index - 1].time);
+  const values = angular ? motionContinuity.unwrapDegrees(sorted.map((sample) => sample.value))
+    : sorted.map((sample) => sample.value);
+  return sorted.map((sample, index) => ({ ...sample, value: values[index] }));
+}
+
+function timeAwareDerivatives(samples) {
+  const rows = sortedTimedSamples(samples);
+  const velocity = [];
+  for (let index = 1; index < rows.length; index += 1) {
+    const dt = rows[index].time - rows[index - 1].time;
+    if (!(dt > 0)) continue;
+    velocity.push({
+      time: (rows[index].time + rows[index - 1].time) / 2,
+      frame_start: rows[index - 1].frame,
+      frame_end: rows[index].frame,
+      value: (rows[index].value - rows[index - 1].value) / dt,
+    });
+  }
+  const acceleration = [];
+  for (let index = 1; index < velocity.length; index += 1) {
+    const dt = velocity[index].time - velocity[index - 1].time;
+    if (!(dt > 0)) continue;
+    acceleration.push({
+      time: (velocity[index].time + velocity[index - 1].time) / 2,
+      frame_start: velocity[index - 1].frame_end,
+      frame_end: velocity[index].frame_end,
+      value: (velocity[index].value - velocity[index - 1].value) / dt,
+    });
+  }
+  return { samples: rows, velocity, acceleration };
+}
+
+function segmentSamples(leaf, kind, segment, plan, angular = false) {
+  if (!leaf || !plan || !(plan.total_frames > 0) || !(plan.total_duration_seconds > 0)) return [];
+  const decoded = denormalized(leaf, kind);
+  const t0 = segment.start_frame / plan.total_frames;
+  const t1 = segment.end_frame / plan.total_frames;
+  if (!(t1 > t0) || !decoded.length) return [];
+  const times = [t0, ...decoded.filter((key) => key.time > t0 + 1e-9 && key.time < t1 - 1e-9)
+    .map((key) => key.time), t1];
+  const values = times.map((time) => valueAt(decoded, time));
+  const unwrapped = angular ? motionContinuity.unwrapDegrees(values) : values;
+  return times.map((time, index) => ({
+    time: time * plan.total_duration_seconds,
+    frame: time * plan.total_frames,
+    value: unwrapped[index],
+  }));
+}
+
+function reversalEvents(samples, absoluteNoise, relativeNoise = 0) {
+  if (samples.length < 3) return [];
+  const values = samples.map((sample) => sample.value);
+  const range = Math.max(...values) - Math.min(...values);
+  const tolerance = Math.max(absoluteNoise, range * relativeNoise);
+  let direction = 0;
+  const events = [];
+  for (let index = 1; index < samples.length; index += 1) {
+    const delta = samples[index].value - samples[index - 1].value;
+    if (Math.abs(delta) <= tolerance) continue;
+    const sign = Math.sign(delta);
+    if (direction && sign !== direction) events.push({ index, delta, tolerance,
+      frame_start: samples[index - 1].frame, frame_end: samples[index].frame });
+    direction = sign;
+  }
+  return events;
+}
+
+function scalarPumpDefects({ plan, tracks }) {
+  const defects = [];
+  const segments = (plan && plan.segments) || [];
+  for (const segment of segments) {
+    if (!(segment.duration_seconds > 0)) continue;
+    const envelope = motionEnvelope(segment);
+    for (const spec of [
+      { track: 'altitude', kind: 'altitude', parameter: 'altitude', defect: 'ALTITUDE_PUMP',
+        absolute: SMOOTHNESS_TOLERANCES.altitude_noise_m, relative: SMOOTHNESS_TOLERANCES.altitude_reversal_fraction },
+      { track: 'rotationY', kind: 'tilt', parameter: 'tilt', defect: 'TILT_PUMP',
+        absolute: SMOOTHNESS_TOLERANCES.tilt_noise_deg, relative: SMOOTHNESS_TOLERANCES.tilt_reversal_fraction },
+    ]) {
+      const samples = segmentSamples(tracks[spec.track], spec.kind, segment, plan);
+      if (samples.length < 3) continue;
+      const events = reversalEvents(samples, spec.absolute, spec.relative);
+      for (const event of events) {
+        defects.push(defectRecord({ defectClass: spec.defect, parameter: spec.parameter, segment,
+          frameStart: event.frame_start, frameEnd: event.frame_end,
+          measured: Math.abs(event.delta), threshold: event.tolerance,
+          explanation: `${spec.parameter} reverses locally inside the ${envelope} envelope instead of following one coherent progression` }));
+      }
+    }
+  }
+  return defects;
+}
+
+function radiusAndTargetDefects({ plan, tracks }) {
+  const defects = [];
+  for (const segment of ((plan && plan.segments) || []).filter((row) => row.action === 'orbit' && row.location)) {
+    const phase = orbitPhases({ plan, tracks, segment });
+    if (!phase || phase.rows.length < 4) continue;
+    const envelope = motionEnvelope(segment);
+    const explicitRadialEnvelope = envelope === 'PULLBACK_ORBIT' || envelope === 'APPROACH_ORBIT';
+    const explicitConstant = String(segment.radius_envelope || '').toLowerCase() === 'constant';
+    const rows = explicitRadialEnvelope || explicitConstant ? phase.rows : phase.rows.slice(Math.max(phase.acquired, 1));
+    if (rows.length < 4) continue;
+    const radii = rows.map((row) => row.radius);
+    const mean = radii.reduce((sum, value) => sum + value, 0) / radii.length;
+    if (explicitRadialEnvelope) {
+      const samples = radii.map((value, index) => ({ value, frame: segment.start_frame
+        + (segment.end_frame - segment.start_frame) * index / Math.max(1, radii.length - 1) }));
+      const events = reversalEvents(samples, SMOOTHNESS_TOLERANCES.radius_reversal_noise_m, 0.0025);
+      for (const event of events) defects.push(defectRecord({ defectClass: 'RADIUS_BREATHING', parameter: 'camera_target_radius', segment,
+        frameStart: event.frame_start, frameEnd: event.frame_end, measured: Math.abs(event.delta), threshold: event.tolerance,
+        explanation: `radius reverses inside the intentional ${envelope} progression` }));
+    } else if (mean > 1) {
+      const spread = 100 * (Math.max(...radii) - Math.min(...radii)) / mean;
+      if (spread > SMOOTHNESS_TOLERANCES.radius_breathing_hard_pct) defects.push(defectRecord({
+        defectClass: 'RADIUS_BREATHING', parameter: 'camera_target_radius', segment,
+        frameStart: segment.start_frame, frameEnd: segment.end_frame, measured: spread,
+        threshold: SMOOTHNESS_TOLERANCES.radius_breathing_hard_pct,
+        explanation: 'constant-radius orbit departs materially from its planned ring',
+      }));
+    }
+    const aims = rows.map((row) => row.aim).filter(Number.isFinite);
+    const maxAim = aims.length ? Math.max(...aims) : 0;
+    if (maxAim > SMOOTHNESS_TOLERANCES.target_drift_hard_deg) defects.push(defectRecord({
+      defectClass: 'TARGET_DRIFT', parameter: 'pan_target_alignment', segment,
+      frameStart: segment.start_frame, frameEnd: segment.end_frame, measured: maxAim,
+      threshold: SMOOTHNESS_TOLERANCES.target_drift_hard_deg,
+      explanation: 'camera heading drifts materially away from the fixed orbit target',
+    }));
+  }
+  return defects;
+}
+
+function headingDefects({ plan, tracks }) {
+  const defects = [];
+  for (const segment of ((plan && plan.segments) || []).filter((row) => row.action === 'orbit')) {
+    const samples = segmentSamples(tracks.rotationX, 'pan', segment, plan, true);
+    if (samples.length < 4) continue;
+    const direction = motionContinuity.angularDirectionReport(samples.map((sample) => sample.value), {
+      expectedSign: Number(segment.orbit_direction) || 0,
+      toleranceDeg: SMOOTHNESS_TOLERANCES.angular_reversal_noise_deg,
+    });
+    if (!direction.monotonic) defects.push(defectRecord({ defectClass: 'HEADING_REVERSAL', parameter: 'pan', segment,
+      frameStart: samples[direction.reverse_steps[0].from_index].frame,
+      frameEnd: samples[direction.reverse_steps.at(-1).to_index].frame,
+      measured: direction.reverse_displacement_deg,
+      threshold: SMOOTHNESS_TOLERANCES.angular_reversal_noise_deg,
+      explanation: 'unwrapped orbit heading reverses against the intended orbit direction' }));
+    const derivatives = timeAwareDerivatives(samples);
+    const span = segment.end_frame - segment.start_frame;
+    const cruise = derivatives.velocity.filter((row) => {
+      const middle = ((row.frame_start + row.frame_end) / 2 - segment.start_frame) / span;
+      return middle >= 0.2 && middle <= 0.8;
+    });
+    const speeds = cruise.map((row) => Math.abs(row.value));
+    if (speeds.length < 4) continue;
+    const sorted = [...speeds].sort((a, b) => a - b);
+    const medianSpeed = sorted[Math.floor(sorted.length / 2)];
+    const noise = Math.max(SMOOTHNESS_TOLERANCES.heading_speed_noise_dps,
+      medianSpeed * SMOOTHNESS_TOLERANCES.heading_speed_pulse_fraction);
+    const changes = speeds.slice(1).map((value, index) => value - speeds[index])
+      .filter((value) => Math.abs(value) > noise);
+    if (signChanges(changes) >= SMOOTHNESS_TOLERANCES.heading_speed_pulse_changes) defects.push(defectRecord({
+      defectClass: 'HEADING_SPEED_PULSE', parameter: 'pan_angular_speed', segment,
+      frameStart: cruise[0].frame_start, frameEnd: cruise.at(-1).frame_end,
+      measured: signChanges(changes), threshold: SMOOTHNESS_TOLERANCES.heading_speed_pulse_changes,
+      explanation: 'cruise repeatedly accelerates and decelerates instead of maintaining one coherent motion phase',
+    }));
+  }
+  return defects;
+}
+
+function trajectoryDefects({ plan, tracks }) {
+  const defects = [];
+  for (const segment of ((plan && plan.segments) || []).filter((row) => TRAVEL_ACTIONS.includes(row.action))) {
+    for (const [track, kind] of [['latitude', 'latitude'], ['longitude', 'longitude']]) {
+      const samples = segmentSamples(tracks[track], kind, segment, plan, kind === 'longitude');
+      const events = reversalEvents(samples, kind === 'longitude' ? 1e-7 : 1e-7, 0.001);
+      if (events.length <= POSITION_DIRECTION_TOLERANCE) continue;
+      defects.push(defectRecord({ defectClass: 'TRAJECTORY_REVERSAL', parameter: kind, segment,
+        frameStart: events[0].frame_start, frameEnd: events.at(-1).frame_end,
+        measured: events.length, threshold: POSITION_DIRECTION_TOLERANCE,
+        explanation: `${kind} repeatedly reverses inside one travel primitive instead of committing to its route` }));
+    }
+  }
+  return defects;
+}
+
+function normalizedDiscontinuity(before, after, floor) {
+  if (![before, after].every(Number.isFinite)) return null;
+  return Math.abs(after - before) / Math.max(Math.abs(before), Math.abs(after), floor);
+}
+
+function boundaryTransitionTypes(rawTracks, normalizedTime) {
+  const types = [];
+  for (const name of FINITE_TRACKS) {
+    const keys = ((rawTracks[name] || {}).keyframes) || [];
+    const key = keys.find((row) => Math.abs(Number(row.time) - normalizedTime) < 1e-7);
+    if (!key) continue;
+    types.push({ parameter: name, incoming: key.transitionIn && key.transitionIn.type,
+      outgoing: key.transitionOut && key.transitionOut.type });
+  }
+  return types;
+}
+
+function boundaryContinuityDefects({ plan, esp, tracks }) {
+  const defects = [];
+  const warnings = [];
+  if (!plan || !(plan.total_frames > 0)) return { defects, warnings };
+  const decoded = motionContinuity.extractEspCameraTracks(esp);
+  const segments = (plan.segments || []).filter((segment) => segment && segment.duration_seconds > 0);
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const before = segments[index];
+    const after = segments[index + 1];
+    if (before.hard_transition || after.hard_transition || before.transition === 'hard' || after.transition === 'hard') continue;
+    const boundary = before.end_frame;
+    const report = motionContinuity.playbackBoundaryRates(decoded, boundary, plan.total_frames, plan.frame_rate || 30);
+    const candidates = [
+      { parameter: 'position_speed', before: report.before.speed_mps, after: report.after.speed_mps,
+        floor: SMOOTHNESS_TOLERANCES.boundary_position_floor_mps },
+      { parameter: 'altitude_speed', before: report.before.altitude_rate_mps, after: report.after.altitude_rate_mps,
+        floor: SMOOTHNESS_TOLERANCES.boundary_altitude_floor_mps },
+      { parameter: 'pan_speed', before: report.before.pan_rate_dps, after: report.after.pan_rate_dps,
+        floor: SMOOTHNESS_TOLERANCES.boundary_angle_floor_dps },
+      { parameter: 'tilt_speed', before: report.before.tilt_rate_dps, after: report.after.tilt_rate_dps,
+        floor: SMOOTHNESS_TOLERANCES.boundary_angle_floor_dps },
+    ].map((row) => ({ ...row, score: normalizedDiscontinuity(row.before, row.after, row.floor) }))
+      .filter((row) => Number.isFinite(row.score));
+    const worst = candidates.sort((a, b) => b.score - a.score)[0];
+    if (!worst || worst.score <= SMOOTHNESS_TOLERANCES.boundary_velocity_discontinuity) continue;
+    const metadata = boundaryTransitionTypes(tracks, boundary / plan.total_frames);
+    const movingLinear = metadata.some((row) => row.incoming === 'linear' && row.outgoing === 'linear');
+    const record = defectRecord({ defectClass: 'BOUNDARY_VELOCITY_DISCONTINUITY', parameter: worst.parameter,
+      segment: before, before: before.action, after: after.action,
+      frameStart: boundary - 1, frameEnd: boundary + 1, measured: worst.score,
+      threshold: SMOOTHNESS_TOLERANCES.boundary_velocity_discontinuity,
+      explanation: `${before.action}→${after.action} changes normalized ${worst.parameter} rate abruptly at an interior boundary`,
+      severity: movingLinear ? 'error' : 'warning' });
+    (movingLinear ? defects : warnings).push(record);
+  }
+  return { defects, warnings };
+}
+
+function endpointEasingDefects({ plan, tracks }) {
+  const defects = [];
+  if (!plan || !(plan.total_frames > 0) || !plan.motion_policy || !plan.motion_policy.coherent_trajectory) return defects;
+  const segments = (plan.segments || []).filter((segment) => segment && segment.duration_seconds > 0);
+  if (!segments.length) return defects;
+  for (const [edge, segment, time] of [['start', segments[0], 0], ['stop', segments.at(-1), 1]]) {
+    if (['hold', 'hover'].includes(segment.action) || segment.hard_transition || segment.transition === 'hard') continue;
+    for (const [name, kind] of [['longitude', 'longitude'], ['latitude', 'latitude'], ['altitude', 'altitude'],
+      ['rotationX', 'pan'], ['rotationY', 'tilt']]) {
+      const keys = ((tracks[name] || {}).keyframes) || [];
+      if (keys.length < 2) continue;
+      const key = edge === 'start' ? keys[0] : keys.at(-1);
+      if (Math.abs(Number(key.time) - time) > 1e-7) continue;
+      const handle = edge === 'start' ? key.transitionOut : key.transitionIn;
+      const adjacent = edge === 'start' ? keys[1] : keys.at(-2);
+      if ((!handle || handle.type === 'linear') && Math.abs(Number(key.value) - Number(adjacent.value)) > 1e-9) {
+        defects.push(defectRecord({ defectClass: edge === 'start' ? 'HARD_START' : 'HARD_STOP', parameter: kind,
+          segment, frameStart: edge === 'start' ? 0 : plan.total_frames - 1,
+          frameEnd: edge === 'start' ? 1 : plan.total_frames,
+          measured: 'linear', threshold: 'non-linear eased endpoint',
+          explanation: `${kind} begins or ends moving with a linear endpoint instead of the declared coherent envelope` }));
+      }
+    }
+  }
+  return defects;
+}
+
+function smoothnessDoctrineReport({ plan, esp, tracks = cameraTracks(esp) }) {
+  const defects = [
+    ...scalarPumpDefects({ plan, tracks }),
+    ...radiusAndTargetDefects({ plan, tracks }),
+    ...headingDefects({ plan, tracks }),
+    ...trajectoryDefects({ plan, tracks }),
+    ...endpointEasingDefects({ plan, tracks }),
+  ];
+  const boundary = boundaryContinuityDefects({ plan, esp, tracks });
+  defects.push(...boundary.defects);
+  const roll = rollReport(esp);
+  if (roll.present && roll.non_zero > 0) defects.push(defectRecord({ defectClass: 'ROLL_INSTABILITY', parameter: 'roll',
+    segment: null, frameStart: 0, frameEnd: plan && plan.total_frames,
+    measured: roll.max_abs_deg, threshold: SMOOTHNESS_TOLERANCES.roll_noise_deg,
+    explanation: 'roll is animated without an explicit roll contract' }));
+  return { schema_version: 1, tolerances: SMOOTHNESS_TOLERANCES, defects, warnings: boundary.warnings };
+}
+
 function segmentTrackReversals({ plan, tracks }) {
   const findings = [];
   const total = plan && plan.total_frames;
@@ -583,8 +966,10 @@ function evaluate({ plan, esp }) {
   const deadMoves = deadMovementReport({ plan, tracks });
   deadMoves.errors.forEach((message) => errors.push(`movement intent: ${message}`));
   deadMoves.warnings.forEach((message) => warnings.push(`movement intent: ${message}`));
+  const smoothness = smoothnessDoctrineReport({ plan, esp, tracks });
+  smoothness.defects.forEach((finding) => errors.push(`smoothness ${finding.defect_class}: ${finding.explanation}`));
+  smoothness.warnings.forEach((finding) => warnings.push(`smoothness ${finding.defect_class}: ${finding.explanation}`));
   const roll = rollReport(esp);
-  if (roll.present && roll.non_zero > 0) errors.push(`movement coherence: roll (rotationZ) is keyframed non-zero in ${roll.non_zero} keyframe(s) — roll should stay near zero`);
 
   return {
     schema_version: 1,
@@ -599,8 +984,12 @@ function evaluate({ plan, esp }) {
       findings: orbit,
     },
     roll,
+    smoothness,
     motion_policy: plan.motion_policy || null,
   };
 }
 
-module.exports = { cameraTracks, evaluate, coherenceReport, orbitReport, deadOrbitReport, deadMovementReport, rollReport, POSITION_DIRECTION_TOLERANCE };
+module.exports = { cameraTracks, evaluate, coherenceReport, orbitReport, deadOrbitReport, deadMovementReport,
+  rollReport, sortedTimedSamples, timeAwareDerivatives, motionEnvelope,
+  scalarPumpDefects, radiusAndTargetDefects, headingDefects, trajectoryDefects, boundaryContinuityDefects,
+  smoothnessDoctrineReport, SMOOTHNESS_TOLERANCES, POSITION_DIRECTION_TOLERANCE };
