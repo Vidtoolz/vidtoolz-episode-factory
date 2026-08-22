@@ -2,6 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const childProcess = require("node:child_process");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const http = require("node:http");
@@ -31,6 +32,26 @@ function fixture({ quality = false } = {}) {
   bytes(path.join(dir, "mystery-a.bin"), "same unknown"); bytes(path.join(dir, "mystery-b.bin"), "same unknown");
   if (quality) json(path.join(qualityRoot, "evidence.json"), { project_id: projectId });
   return { root, musicRoot, qualityRoot, projectId, dir, options, payload, a: path.join(dir, "candidates/candidate-001/renders/preview-mix.wav"), b: path.join(dir, "candidates/candidate-002/renders/preview-mix.wav") };
+}
+function approvedPairFixture({ quality = false } = {}) {
+  lifecycle.clearPreviewPlans(); dedupe.clearPlans();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "music-approved-resolve-dedupe-"));
+  const musicRoot = path.join(root, "store"), qualityRoot = path.join(root, "quality"), projectId = quality ? "quality-approved-pair" : "approved-pair";
+  const dir = path.join(musicRoot, "projects", projectId), options = { musicRoot, qualityEvidenceRoots: [qualityRoot] };
+  const payload = Buffer.alloc(192 * 1024, 11), sha256 = crypto.createHash("sha256").update(payload).digest("hex");
+  json(path.join(musicRoot, "score-registry.json"), { version: 1, projects: [{ project_id: projectId, name: projectId, path: dir }] });
+  json(path.join(dir, "score-project.json"), { project_id: projectId, name: projectId, cue_sheet_approved: true, current_plan_revision_id: "revision-a", approved_candidate: "music-candidate-001" });
+  json(path.join(dir, "cue-sheet.json"), { plan_revision_id: "revision-a", cues: [{ cue_id: "C1" }] });
+  json(path.join(dir, "music-candidates/music-candidate-001/candidate.json"), { candidate_id: "music-candidate-001", backend: "minimax", status: "completed", human_verdict: "use", plan_revision_id: "revision-a" });
+  bytes(path.join(dir, "music-candidates/music-candidate-001/production.wav"), payload);
+  const master = path.join(dir, "approved/mix.wav"), resolveCopy = path.join(dir, "approved/resolve-import/mix.wav");
+  bytes(master, payload); bytes(resolveCopy, payload);
+  json(path.join(dir, "approved/provenance.json"), { approved_candidate: "music-candidate-001", plan_revision_id: "revision-a", artifact_manifest: { entries: [
+    { logical_role: "production_mix", relative_path: "mix.wav", byte_size: payload.length, sha256 },
+    { logical_role: "resolve_production_mix", relative_path: "resolve-import/mix.wav", byte_size: payload.length, sha256 },
+  ] } });
+  if (quality) json(path.join(qualityRoot, "evidence.json"), { project_id: projectId });
+  return { root, musicRoot, qualityRoot, projectId, dir, options, payload, sha256, master, resolveCopy, candidate: path.join(dir, "music-candidates/music-candidate-001/production.wav") };
 }
 function groupFor(f) { return dedupe.audit(f.options).groups.find((group) => group.sha256 === hash(f.a)); }
 function requestJson(server, pathname, options = {}) {
@@ -63,6 +84,114 @@ test("quality-gate duplicates are reported but never eligible", () => {
   assert.ok(group.files.every((file) => file.policy === "DEDUPE_PROTECTED"));
   const plan = dedupe.previewDedupe(f.projectId, group.sha256, f.options);
   assert.equal(plan.allowed, false);
+});
+
+test("exact current approved master and Resolve copy are narrowly eligible while candidate source stays protected", () => {
+  const f = approvedPairFixture(), report = dedupe.audit(f.options), group = report.groups.find((item) => item.sha256 === f.sha256);
+  const pair = group.files.filter((file) => ["APPROVED_MASTER", "RESOLVE_IMPORT_COPY"].includes(file.semantic_role));
+  assert.equal(pair.length, 2); assert.ok(pair.every((file) => file.policy === "DEDUPE_ELIGIBLE_APPROVED_RESOLVE_PAIR"));
+  assert.equal(group.files.find((file) => file.semantic_role === "PRODUCTION_CANDIDATE").policy, "DEDUPE_PROTECTED");
+  const plan = dedupe.previewDedupe(f.projectId, f.sha256, f.options);
+  assert.equal(plan.allowed, true); assert.equal(plan.action, "dedupe_approved_resolve_pair");
+  assert.equal(plan.canonical.relative_path, "approved/mix.wav");
+  assert.deepEqual(plan.targets.map((target) => target.relative_path), ["approved/resolve-import/mix.wav"]);
+  assert.equal(plan.approval.approved_candidate, "music-candidate-001");
+  assert.equal(group.reclaimable_physical_bytes_by_project[f.projectId], fs.statSync(f.resolveCopy).blocks * 512);
+});
+
+test("approved/Resolve pair requires matching manifest bytes and current approval", () => {
+  const changed = approvedPairFixture(); fs.writeFileSync(changed.resolveCopy, Buffer.alloc(changed.payload.length, 12));
+  const report = dedupe.audit(changed.options), group = report.groups.find((item) => item.sha256 === changed.sha256);
+  assert.equal(group.files.find((file) => file.semantic_role === "APPROVED_MASTER").policy, "DEDUPE_PROTECTED");
+  const stale = approvedPairFixture(); const projectFile = path.join(stale.dir, "score-project.json");
+  const project = JSON.parse(fs.readFileSync(projectFile)); project.current_plan_revision_id = "revision-b"; json(projectFile, project);
+  const staleGroup = dedupe.audit(stale.options).groups.find((item) => item.sha256 === stale.sha256);
+  assert.ok(staleGroup.files.filter((file) => ["APPROVED_MASTER", "RESOLVE_IMPORT_COPY"].includes(file.semantic_role)).every((file) => file.policy === "DEDUPE_PROTECTED"));
+});
+
+test("quality-gate approved/Resolve pair remains hard protected", () => {
+  const f = approvedPairFixture({ quality: true }), group = dedupe.audit(f.options).groups.find((item) => item.sha256 === f.sha256);
+  assert.ok(group.files.every((file) => file.policy === "DEDUPE_PROTECTED"));
+  assert.equal(dedupe.previewDedupe(f.projectId, f.sha256, f.options).allowed, false);
+});
+
+test("approved/Resolve preview fails closed when approval authority changes", () => {
+  const f = approvedPairFixture(), plan = dedupe.previewDedupe(f.projectId, f.sha256, f.options);
+  const projectFile = path.join(f.dir, "score-project.json"), project = JSON.parse(fs.readFileSync(projectFile));
+  project.cue_sheet_approved = false; json(projectFile, project);
+  assert.throws(() => dedupe.executePlan(plan.plan_id, f.options), (cause) => cause.code === "stale_preview");
+});
+
+test("approved/Resolve preview fails closed when either published path is replaced", () => {
+  for (const role of ["master", "resolveCopy"]) {
+    const f = approvedPairFixture(), plan = dedupe.previewDedupe(f.projectId, f.sha256, f.options);
+    const replacement = `${f[role]}.replacement`; fs.copyFileSync(f[role], replacement); fs.renameSync(replacement, f[role]);
+    assert.throws(() => dedupe.executePlan(plan.plan_id, f.options), (cause) => cause.code === "stale_preview");
+  }
+});
+
+test("approved/Resolve transaction links only derived copy, records approval, and materializes safely", () => {
+  const f = approvedPairFixture(), candidateInode = fs.statSync(f.candidate).ino, masterInode = fs.statSync(f.master).ino;
+  const result = dedupe.executePlan(dedupe.previewDedupe(f.projectId, f.sha256, f.options).plan_id, f.options);
+  assert.equal(fs.statSync(f.master).ino, masterInode); assert.equal(fs.statSync(f.resolveCopy).ino, masterInode);
+  assert.equal(fs.statSync(f.candidate).ino, candidateInode); assert.notEqual(candidateInode, masterInode);
+  assert.equal(result.approval.approved_candidate, "music-candidate-001"); assert.ok(result.physical_savings_bytes >= f.payload.length);
+  const materialized = dedupe.executePlan(dedupe.previewMaterialize(f.projectId, result.transaction_id, f.options).plan_id, f.options);
+  assert.equal(materialized.state, "materialized"); assert.notEqual(fs.statSync(f.master).ino, fs.statSync(f.resolveCopy).ino);
+  assert.equal(hash(f.master), f.sha256); assert.equal(hash(f.resolveCopy), f.sha256);
+});
+
+test("executing one approved/Resolve pair leaves every other eligible project untouched", () => {
+  const f = approvedPairFixture(), otherId = "approved-pair-two";
+  const otherDir = path.join(f.musicRoot, "projects", otherId);
+  fs.cpSync(f.dir, otherDir, { recursive: true });
+  const otherProjectFile = path.join(otherDir, "score-project.json");
+  const otherProject = JSON.parse(fs.readFileSync(otherProjectFile));
+  otherProject.project_id = otherId; otherProject.name = otherId; json(otherProjectFile, otherProject);
+  json(path.join(f.musicRoot, "score-registry.json"), { version: 1, projects: [
+    { project_id: f.projectId, name: f.projectId, path: f.dir },
+    { project_id: otherId, name: otherId, path: otherDir },
+  ] });
+  const otherMaster = path.join(otherDir, "approved/mix.wav");
+  const otherResolve = path.join(otherDir, "approved/resolve-import/mix.wav");
+  const otherCandidate = path.join(otherDir, "music-candidates/music-candidate-001/production.wav");
+  const before = [otherMaster, otherResolve, otherCandidate].map((file) => fs.statSync(file).ino);
+  const selectedCandidateInode = fs.statSync(f.candidate).ino;
+
+  dedupe.executePlan(dedupe.previewDedupe(f.projectId, f.sha256, f.options).plan_id, f.options);
+
+  assert.equal(fs.statSync(f.master).ino, fs.statSync(f.resolveCopy).ino);
+  assert.equal(fs.statSync(f.candidate).ino, selectedCandidateInode);
+  assert.deepEqual([otherMaster, otherResolve, otherCandidate].map((file) => fs.statSync(file).ino), before);
+  assert.notEqual(fs.statSync(otherMaster).ino, fs.statSync(otherResolve).ino);
+});
+
+test("approved/Resolve transaction failure restores an independent exact derived copy", () => {
+  const f = approvedPairFixture();
+  const plan = dedupe.previewDedupe(f.projectId, f.sha256, f.options);
+  assert.throws(() => dedupe.executePlan(plan.plan_id, { ...f.options, failAfterTarget: 0 }), /simulated/);
+  assert.notEqual(fs.statSync(f.master).ino, fs.statSync(f.resolveCopy).ino);
+  assert.equal(hash(f.resolveCopy), f.sha256);
+});
+
+test("hardlinked approved pair can be materialized into a self-contained archive and restored independently", () => {
+  const f = approvedPairFixture();
+  const result = dedupe.executePlan(dedupe.previewDedupe(f.projectId, f.sha256, f.options).plan_id, f.options);
+  dedupe.executePlan(dedupe.previewMaterialize(f.projectId, result.transaction_id, f.options).plan_id, f.options);
+  const archived = path.join(f.dir, "approved-archive-fixture"); fs.renameSync(path.join(f.dir, "approved"), archived);
+  const restored = path.join(f.dir, "approved"); fs.renameSync(archived, restored);
+  const master = path.join(restored, "mix.wav"), resolveCopy = path.join(restored, "resolve-import/mix.wav");
+  assert.equal(hash(master), f.sha256); assert.equal(hash(resolveCopy), f.sha256); assert.notEqual(fs.statSync(master).ino, fs.statSync(resolveCopy).ino);
+});
+
+test("copy and backup semantics preserve bytes whether links are preserved or materialized", () => {
+  const f = approvedPairFixture(); fs.unlinkSync(f.resolveCopy); fs.linkSync(f.master, f.resolveCopy);
+  const plain = path.join(f.root, "plain"), archive = path.join(f.root, "archive-copy"); fs.mkdirSync(plain);
+  fs.copyFileSync(f.master, path.join(plain, "master.wav")); fs.copyFileSync(f.resolveCopy, path.join(plain, "resolve.wav"));
+  assert.notEqual(fs.statSync(path.join(plain, "master.wav")).ino, fs.statSync(path.join(plain, "resolve.wav")).ino);
+  childProcess.execFileSync("cp", ["-a", path.join(f.dir, "approved"), archive]);
+  assert.equal(hash(path.join(archive, "mix.wav")), f.sha256); assert.equal(hash(path.join(archive, "resolve-import/mix.wav")), f.sha256);
+  assert.equal(fs.statSync(path.join(archive, "mix.wav")).ino, fs.statSync(path.join(archive, "resolve-import/mix.wav")).ino, "cp -a preserves links inside a copied tree");
 });
 
 test("dedupe preview is semantic, exact, reversible, and contains no absolute paths", () => {
@@ -185,6 +314,9 @@ test("Music Creator reports logical, physical, protected, and previewed dedupe t
   assert.match(page, /\/api\/score\/storage\/dedupe/);
   assert.match(page, /logical duplicates/); assert.match(page, /physically duplicated/);
   assert.match(page, /Content identity never overrides semantic protection/);
+  assert.match(page, /Approved soundtrack copies/); assert.match(page, /Shared storage/);
+  assert.match(page, /Independent copies/); assert.match(page, /Materialize independent copy/);
+  assert.match(page, /Optimize Resolve copy/);
   assert.doesNotMatch(page, /Deduplicate everything/i);
 });
 

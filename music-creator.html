@@ -412,15 +412,17 @@
           const rows=(summary.candidates||[]).map(c=>`<tr><td>${esc(c.candidate_id)}</td><td>${esc(c.backend)}</td><td>${esc(STORAGE_LABELS[c.classification]||c.classification)}</td><td>${fmtBytes(c.byte_size)}</td><td>${esc(c.reason||'')}</td><td>${c.protection==='ARCHIVABLE'?`<button class="btn" data-storage-action="archive" data-candidate="${esc(c.candidate_id)}">Preview archive</button>`:'protected'}</td></tr>`).join('');
           const archives=(global.archives||[]).filter(a=>a.project_id===ID).map(a=>`<div class="row"><span class="meta">${esc(a.archive_id)} · ${esc(a.state)} · ${fmtBytes(a.total_bytes)}</span>${a.state==='archived'?`<button class="btn" data-storage-action="restore" data-archive="${esc(a.archive_id)}">Preview restore</button><button class="btn btn-danger" data-storage-action="delete" data-archive="${esc(a.archive_id)}">Preview delete</button>`:''}</div>`).join('');
           const duplicateGroups=(dedupe.groups||[]).filter(g=>(g.files||[]).some(f=>f.project_id===ID));
-          const duplicateRows=duplicateGroups.map(g=>`<tr><td>${esc(g.semantic_pattern)}</td><td>${g.file_count}</td><td>${fmtBytes(g.logical_duplicate_bytes)}</td><td>${fmtBytes(g.physical_duplicate_bytes)}</td><td>${fmtBytes(g.reclaimable_physical_bytes)}</td><td>${g.reclaimable_physical_bytes>0?`<button class="btn" data-dedupe-hash="${esc(g.sha256)}">Preview dedupe</button>`:'protected / no-op'}</td></tr>`).join('');
+          const duplicateRows=duplicateGroups.map(g=>{const approvedResolve=(g.files||[]).some(f=>f.project_id===ID&&f.semantic_role==='APPROVED_MASTER')&&(g.files||[]).some(f=>f.project_id===ID&&f.semantic_role==='RESOLVE_IMPORT_COPY');const projectReclaim=(g.reclaimable_physical_bytes_by_project||{})[ID]||0;return `<tr><td>${esc(g.semantic_pattern)}</td><td>${g.file_count}</td><td>${fmtBytes(g.logical_duplicate_bytes)}</td><td>${fmtBytes(g.physical_duplicate_bytes)}</td><td>${fmtBytes(projectReclaim)}</td><td>${projectReclaim>0?`<button class="btn" data-dedupe-hash="${esc(g.sha256)}">${approvedResolve?'Optimize Resolve copy':'Preview dedupe'}</button>`:'protected / no-op'}</td></tr>`}).join('');
+          const dedupeTransactions=(dedupe.transactions||[]).filter(t=>t.project_id===ID&&t.approval).map(t=>`<div class="row"><span class="meta">Approved soundtrack copies · ${t.state==='deduped'?'Shared storage':'Independent copies'} · ${fmtBytes(t.physical_savings_bytes)}</span>${t.state==='deduped'?`<button class="btn" data-materialize-transaction="${esc(t.transaction_id)}">Materialize independent copy</button>`:''}</div>`).join('');
           box.innerHTML=`${summary.quality_gate?'<div class="stale-note">Frozen quality-gate evidence — hard protected.</div>':''}
             <p class="meta">${fmtBytes(summary.total_bytes)} total · ${fmtBytes(summary.protected_bytes)} protected · ${fmtBytes(summary.archivable_bytes)} potentially archivable · delete remains preview-only</p>
             <h4>Duplicate content</h4><p class="meta">${fmtBytes(dedupe.logical_duplicate_bytes)} logical duplicates · ${fmtBytes(dedupe.physical_duplicate_bytes)} physically duplicated · ${fmtBytes(dedupe.reclaimable_physical_bytes)} currently eligible. Content identity never overrides semantic protection.</p>
-            ${duplicateRows?`<table><tr><th>roles</th><th>files</th><th>logical</th><th>physical</th><th>eligible</th><th>action</th></tr>${duplicateRows}</table>`:'<p class="meta">No top duplicate group belongs to this project.</p>'}
+            ${duplicateRows?`<table><tr><th>roles</th><th>files</th><th>logical</th><th>physical</th><th>eligible</th><th>action</th></tr>${duplicateRows}</table>`:'<p class="meta">No top duplicate group belongs to this project.</p>'}${dedupeTransactions}
             ${rows?`<table><tr><th>artifact group</th><th>backend</th><th>classification</th><th>bytes</th><th>reason</th><th>action</th></tr>${rows}</table>`:'<p class="meta">No candidate artifact groups.</p>'}
             ${archives?`<h4>Archive records</h4>${archives}`:''}<div id="storage-plan"></div>`;
           box.querySelectorAll('[data-storage-action]').forEach(button=>button.addEventListener('click',()=>previewStorageAction(button)));
           box.querySelectorAll('[data-dedupe-hash]').forEach(button=>button.addEventListener('click',()=>previewDedupe(button.dataset.dedupeHash)));
+          box.querySelectorAll('[data-materialize-transaction]').forEach(button=>button.addEventListener('click',()=>previewMaterialize(button.dataset.materializeTransaction)));
         }catch(e){ box.innerHTML=`<div class="err" style="display:block">${esc(e.message)}</div>`; }
       }
 
@@ -428,16 +430,25 @@
         const target=$('storage-plan');
         try{
           const plan=await post('/api/score/storage/dedupe/preview',{action:'dedupe_group',project_id:ID,sha256});
-          target.innerHTML=`<div class="plan-box"><strong>Dedupe preview</strong><br>${esc(plan.mechanism)} · ${fmtBytes(plan.estimated_physical_savings)} measured allocation potentially saved · ${plan.allowed?'eligible scratch fixture':'blocked'}
+          target.innerHTML=`<div class="plan-box"><strong>${plan.action==='dedupe_approved_resolve_pair'?'Optimize Resolve copy':'Dedupe preview'}</strong><br>${esc(plan.mechanism)} · ${fmtBytes(plan.estimated_physical_savings)} measured allocation potentially saved · ${plan.allowed?'eligible':'blocked'}
             ${(plan.blockers||[]).map(b=>`<div class="meta">${esc(b)}</div>`).join('')}
             ${(plan.targets||[]).map(f=>`<div class="meta">${esc(f.semantic_role)} · ${esc(f.relative_path)}</div>`).join('')}
             ${plan.allowed?'<button class="btn btn-warn" id="btn-dedupe-confirm">Apply reversible dedupe</button>':'<p class="meta">No mutation is available for this production/protected group.</p>'}</div>`;
           if(plan.allowed) $('btn-dedupe-confirm').addEventListener('click',async()=>{
-            if(!confirm('Apply this scratch-only hardlink plan? The server will revalidate every byte and lifecycle fact.')) return;
+            if(!confirm('Apply this reversible hardlink plan? The server will revalidate every byte, approval, and lifecycle fact.')) return;
             try{ const result=await post('/api/score/storage/dedupe/execute',{plan_id:plan.plan_id}); toast(`Saved ${fmtBytes(result.physical_savings_bytes)} physically`); await reviewStorage(); }
             catch(e){ showErr(e.message); await reviewStorage(); }
           });
         }catch(e){ target.innerHTML=`<div class="err" style="display:block">${esc(e.message)}</div>`; }
+      }
+
+      async function previewMaterialize(transactionId){
+        const target=$('storage-plan');
+        try{
+          const plan=await post('/api/score/storage/dedupe/preview',{action:'materialize',project_id:ID,transaction_id:transactionId});
+          target.innerHTML=`<div class="plan-box"><strong>Materialize Resolve copy</strong><br>${plan.allowed?'Restore an independent regular-file copy.':'Blocked'}${(plan.blockers||[]).map(b=>`<div class="meta">${esc(b)}</div>`).join('')}${plan.allowed?'<button class="btn btn-warn" id="btn-materialize-confirm">Materialize</button>':''}</div>`;
+          if(plan.allowed) $('btn-materialize-confirm').addEventListener('click',async()=>{try{await post('/api/score/storage/dedupe/execute',{plan_id:plan.plan_id});toast('Resolve copy is independent again');await reviewStorage();}catch(e){showErr(e.message);await reviewStorage();}});
+        }catch(e){target.innerHTML=`<div class="err" style="display:block">${esc(e.message)}</div>`;}
       }
 
       async function previewStorageAction(button){

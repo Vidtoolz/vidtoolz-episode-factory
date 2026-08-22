@@ -16,6 +16,8 @@ const AUDIT_CACHE_MS = 30 * 1000;
 const AUDIT_TIMEOUT_MS = 120 * 1000;
 const AUDIO = new Set([".wav", ".flac", ".mp3", ".m4a", ".ogg", ".aac"]);
 const MIDI = new Set([".mid", ".midi"]);
+const APPROVED_MASTER_PATH = "approved/mix.wav";
+const RESOLVE_COPY_PATH = "approved/resolve-import/mix.wav";
 
 function error(message, statusCode = 400, code = "storage_dedupe_error") {
   return Object.assign(new Error(message), { statusCode, code });
@@ -44,11 +46,33 @@ function roleFor(relative, classification) {
 }
 function protectionFor(project, file) {
   if (project.quality_gate || file.classification === lifecycle.CLASSES.QUALITY_GATE) return { policy: "DEDUPE_PROTECTED", reason: "Frozen quality-gate domain." };
+  if (project.approved_resolve_pair && ["APPROVED_MASTER", "RESOLVE_IMPORT_COPY"].includes(file.semantic_role)) {
+    return { policy: "DEDUPE_ELIGIBLE_APPROVED_RESOLVE_PAIR", reason: "Exact current approved master/Resolve copy pair; approval provenance and bytes validate." };
+  }
   if (file.classification === lifecycle.CLASSES.CURRENT_APPROVED) return { policy: "DEDUPE_PROTECTED", reason: "Current approved production truth." };
   if ([lifecycle.CLASSES.UNKNOWN, lifecycle.CLASSES.ARCHIVED].includes(file.classification)) return { policy: "DEDUPE_UNKNOWN", reason: "Unknown or independently restorable domain." };
   if (!project.dedupe_fixture) return { policy: "DEDUPE_PROTECTED", reason: "Production mutation is not enabled; audit only." };
   if (!AUDIO.has(path.extname(file.relative_path).toLowerCase())) return { policy: "DEDUPE_PROTECTED", reason: "First executable scope is fixture audio only." };
   return { policy: "DEDUPE_ELIGIBLE_COPY", reason: "Explicit scratch fixture audio with non-approved lifecycle state." };
+}
+function approvedResolvePair(truth, summary) {
+  if (truth.qualityGate || !truth.approvalCurrent || !lifecycle.approvedConsistency(truth).ok) return null;
+  const master = summary.files.find((file) => file.relative_path === APPROVED_MASTER_PATH);
+  const resolveCopy = summary.files.find((file) => file.relative_path === RESOLVE_COPY_PATH);
+  if (!master || !resolveCopy || master.classification !== lifecycle.CLASSES.CURRENT_APPROVED || resolveCopy.classification !== lifecycle.CLASSES.CURRENT_APPROVED) return null;
+  const entries = truth.approved && truth.approved.artifact_manifest && truth.approved.artifact_manifest.entries;
+  if (!Array.isArray(entries)) return null;
+  const masterEntry = entries.find((entry) => entry.relative_path === "mix.wav");
+  const resolveEntry = entries.find((entry) => entry.relative_path === "resolve-import/mix.wav");
+  if (!masterEntry || !resolveEntry || !masterEntry.sha256 || masterEntry.sha256 !== resolveEntry.sha256) return null;
+  const masterPath = path.join(truth.dir, APPROVED_MASTER_PATH);
+  const resolvePath = path.join(truth.dir, RESOLVE_COPY_PATH);
+  if (!fs.existsSync(masterPath) || !fs.existsSync(resolvePath)) return null;
+  const masterStat = fs.statSync(masterPath), resolveStat = fs.statSync(resolvePath);
+  if (!masterStat.isFile() || !resolveStat.isFile() || masterStat.dev !== resolveStat.dev || masterStat.size !== resolveStat.size) return null;
+  const hash = hashFile(masterPath);
+  if (hash !== masterEntry.sha256 || hashFile(resolvePath) !== hash) return null;
+  return { sha256: hash, approved_candidate: truth.approvedCandidate, plan_revision_id: truth.approvedPlanRevision };
 }
 function projectRecords(options = {}) {
   const global = lifecycle.inventory(options);
@@ -58,6 +82,7 @@ function projectRecords(options = {}) {
     const truth = lifecycle.projectTruth(project.project_id, options);
     const summary = lifecycle.projectInventory(project.project_id, options);
     const dedupeFixture = truth.project.storage_dedupe_fixture === true;
+    const pair = approvedResolvePair(truth, summary);
     for (const file of summary.files) {
       const absolute = path.join(truth.dir, file.relative_path);
       let stat;
@@ -73,13 +98,34 @@ function projectRecords(options = {}) {
         allocated_bytes: stat.blocks * 512,
         device: String(stat.dev), inode: String(stat.ino), link_count: stat.nlink,
       };
-      Object.assign(record, protectionFor({ ...project, dedupe_fixture: dedupeFixture }, record));
+      Object.assign(record, protectionFor({ ...project, dedupe_fixture: dedupeFixture, approved_resolve_pair: pair }, record));
       records.push(record);
     }
   }
   return records;
 }
 function groupPattern(files) { return [...new Set(files.map((file) => file.semantic_role))].sort().join(" + "); }
+function transactionSummaries(options = {}) {
+  const result = [];
+  for (const project of lifecycle.inventory(options).projects) {
+    if (!project.local_project) continue;
+    let truth;
+    try { truth = lifecycle.projectTruth(project.project_id, options); } catch { continue; }
+    const dir = transactionRoot(truth);
+    if (!fs.existsSync(dir)) continue;
+    for (const name of fs.readdirSync(dir)) {
+      if (!/^dedupe-[A-Za-z0-9-]+\.json$/.test(name)) continue;
+      let record;
+      try { record = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8")); } catch { continue; }
+      if (!record || record.project_id !== project.project_id) continue;
+      result.push({ transaction_id: record.transaction_id, project_id: record.project_id, state: record.state,
+        mechanism: record.mechanism, sha256: record.sha256, canonical: record.canonical, targets: record.targets,
+        physical_savings_bytes: record.physical_savings_bytes, approval: record.approval || null,
+        created_at: record.created_at, materialized_at: record.materialized_at || null });
+    }
+  }
+  return result.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+}
 function audit(options = {}) {
   const records = projectRecords(options);
   const bySize = new Map();
@@ -105,15 +151,20 @@ function audit(options = {}) {
     for (const file of files) inodes.set(`${file.device}:${file.inode}`, file.allocated_bytes);
     const distinctAllocations = [...inodes.values()];
     const physicalDuplicate = Math.max(0, distinctAllocations.reduce((a, b) => a + b, 0) - Math.max(...distinctAllocations));
-    const eligible = files.filter((file) => file.policy === "DEDUPE_ELIGIBLE_COPY" && file.link_count === 1);
+    const eligible = files.filter((file) => ["DEDUPE_ELIGIBLE_COPY", "DEDUPE_ELIGIBLE_APPROVED_RESOLVE_PAIR"].includes(file.policy) && file.link_count === 1);
     const eligibleByProject = new Map();
     for (const file of eligible) {
       if (!eligibleByProject.has(file.project_id)) eligibleByProject.set(file.project_id, []);
       eligibleByProject.get(file.project_id).push(file);
     }
     let reclaimable = 0;
+    const reclaimableByProject = {};
     for (const sameProject of eligibleByProject.values()) {
-      if (sameProject.length > 1) reclaimable += sameProject.slice(1).reduce((sum, file) => sum + file.allocated_bytes, 0);
+      if (sameProject.length > 1) {
+        const projectBytes = sameProject.slice(1).reduce((sum, file) => sum + file.allocated_bytes, 0);
+        reclaimable += projectBytes;
+        reclaimableByProject[sameProject[0].project_id] = projectBytes;
+      }
     }
     const ordered = [...files].sort((a, b) => `${a.classification}:${a.project_id}:${a.relative_path}`.localeCompare(`${b.classification}:${b.project_id}:${b.relative_path}`));
     const canonicalInode = `${ordered[0].device}:${ordered[0].inode}`;
@@ -129,6 +180,7 @@ function audit(options = {}) {
       logical_duplicate_bytes: files[0].byte_size * (files.length - 1),
       physical_duplicate_bytes: physicalDuplicate,
       reclaimable_physical_bytes: reclaimable,
+      reclaimable_physical_bytes_by_project: reclaimableByProject,
       already_shared_logical_bytes: files.length * files[0].byte_size - inodes.size * files[0].byte_size,
       protected: files.some((file) => file.policy !== "DEDUPE_ELIGIBLE_COPY"),
       semantic_pattern: groupPattern(files),
@@ -151,6 +203,7 @@ function audit(options = {}) {
     logical_duplicate_bytes_by_class: logicalByClass,
     physical_duplicate_bytes_by_class: physicalByClass,
     patterns: [...patterns].map(([pattern, physical_duplicate_bytes]) => ({ pattern, physical_duplicate_bytes })).sort((a, b) => b.physical_duplicate_bytes - a.physical_duplicate_bytes),
+    transactions: transactionSummaries(options),
     groups,
   };
 }
@@ -188,6 +241,15 @@ function fingerprint(files) {
     return { project_id: file.project_id, relative_path: file.relative_path, sha256: hashFile(file.absolute_path), size: stat.size, device: String(stat.dev), inode: String(stat.ino), links: stat.nlink };
   }));
 }
+function approvalFingerprint(truth) {
+  return lifecycle._private.hashValue({
+    lifecycle: lifecycle._private.authorityFingerprint(truth),
+    approval_current: truth.approvalCurrent,
+    approved_candidate: truth.approvedCandidate,
+    approved_plan_revision: truth.approvedPlanRevision,
+    approved_manifest: truth.approved && truth.approved.artifact_manifest || null,
+  });
+}
 function remember(plan, options = {}) {
   const uuid = typeof options.randomUUID === "function" ? options.randomUUID() : crypto.randomUUID();
   const stored = { ...plan, plan_id: `dedupe-plan-${uuid}`, created_at: new Date().toISOString(), expires_at: Date.now() + PLAN_TTL_MS };
@@ -206,20 +268,28 @@ function resolveGroup(projectId, sha256, options = {}) {
   return { group, truth, files };
 }
 function previewDedupe(projectId, sha256, options = {}) {
-  const { group, files } = resolveGroup(projectId, sha256, options);
-  const eligible = files.filter((file) => file.policy === "DEDUPE_ELIGIBLE_COPY");
-  const canonical = eligible[0] || null;
-  const targets = canonical ? eligible.slice(1).filter((file) => file.inode !== canonical.inode) : [];
+  const { group, truth, files } = resolveGroup(projectId, sha256, options);
+  const productionPair = files.find((file) => file.relative_path === APPROVED_MASTER_PATH && file.policy === "DEDUPE_ELIGIBLE_APPROVED_RESOLVE_PAIR")
+    && files.find((file) => file.relative_path === RESOLVE_COPY_PATH && file.policy === "DEDUPE_ELIGIBLE_APPROVED_RESOLVE_PAIR");
+  const eligible = productionPair
+    ? files.filter((file) => [APPROVED_MASTER_PATH, RESOLVE_COPY_PATH].includes(file.relative_path) && file.policy === "DEDUPE_ELIGIBLE_APPROVED_RESOLVE_PAIR")
+    : files.filter((file) => file.policy === "DEDUPE_ELIGIBLE_COPY");
+  const canonical = productionPair ? eligible.find((file) => file.relative_path === APPROVED_MASTER_PATH) : eligible[0] || null;
+  const targets = canonical ? eligible.filter((file) => file.relative_path !== canonical.relative_path && file.inode !== canonical.inode) : [];
   const blockers = [];
-  if (eligible.length < 2) blockers.push("At least two explicit scratch-fixture audio copies are required.");
+  if (eligible.length < 2) blockers.push("No exact eligible scratch group or approved master/Resolve-copy pair is present.");
+  if (productionPair && (!canonical || targets.some((file) => file.relative_path !== RESOLVE_COPY_PATH))) blockers.push("Only the Resolve import copy may be replaced; the approved master is authoritative.");
   if (eligible.some((file) => file.link_count !== 1)) blockers.push("A target is already shared; use materialization or treat it as a no-op.");
   if (new Set(eligible.map((file) => file.device)).size > 1) blockers.push("Hardlink dedupe requires one filesystem device.");
   const savings = targets.reduce((sum, file) => sum + file.allocated_bytes, 0);
-  return remember({ action: "dedupe_hardlink", project_id: projectId, sha256, mechanism: "hardlink", allowed: blockers.length === 0 && targets.length > 0,
+  const plannedFiles = productionPair ? eligible : files;
+  return remember({ action: productionPair ? "dedupe_approved_resolve_pair" : "dedupe_hardlink", project_id: projectId, sha256, mechanism: "hardlink", allowed: blockers.length === 0 && targets.length > 0,
     blockers, canonical: canonical && { relative_path: canonical.relative_path, semantic_role: canonical.semantic_role },
     targets: targets.map((file) => ({ relative_path: file.relative_path, semantic_role: file.semantic_role, allocated_bytes: file.allocated_bytes })),
     logical_duplicate_bytes: group.logical_duplicate_bytes, estimated_physical_savings: savings, reversible: true,
-    state_fingerprint: fingerprint(files), files: files.map((file) => ({ relative_path: file.relative_path, semantic_role: file.semantic_role, classification: file.classification, policy: file.policy, sha256 })),
+    state_fingerprint: fingerprint(plannedFiles), authority_fingerprint: productionPair ? approvalFingerprint(truth) : null,
+    approval: productionPair ? { approved_candidate: truth.approvedCandidate, plan_revision_id: truth.approvedPlanRevision } : null,
+    files: plannedFiles.map((file) => ({ relative_path: file.relative_path, semantic_role: file.semantic_role, classification: file.classification, policy: file.policy, sha256 })),
   }, options);
 }
 function transactionRoot(truth) { return path.join(truth.dir, ".storage-dedupe", "transactions"); }
@@ -234,11 +304,14 @@ function executeDedupe(plan, options = {}) {
     const record = { project_id: plan.project_id, relative_path: current.relative_path, absolute_path, classification: current.classification,
       semantic_role: roleFor(current.relative_path, current.classification), byte_size: stat.size, allocated_bytes: stat.blocks * 512,
       device: String(stat.dev), inode: String(stat.ino), link_count: stat.nlink };
-    Object.assign(record, protectionFor({ ...summary, dedupe_fixture: truth.project.storage_dedupe_fixture === true }, record));
+    const pair = approvedResolvePair(truth, summary);
+    Object.assign(record, protectionFor({ ...summary, quality_gate: truth.qualityGate, dedupe_fixture: truth.project.storage_dedupe_fixture === true, approved_resolve_pair: pair }, record));
     return record;
   });
-  if (files.some((file) => file.policy !== "DEDUPE_ELIGIBLE_COPY" || hashFile(file.absolute_path) !== plan.sha256)) throw error("Dedupe protection or bytes changed after preview.", 409, "stale_preview");
+  const expectedPolicy = plan.action === "dedupe_approved_resolve_pair" ? "DEDUPE_ELIGIBLE_APPROVED_RESOLVE_PAIR" : "DEDUPE_ELIGIBLE_COPY";
+  if (files.some((file) => file.policy !== expectedPolicy || hashFile(file.absolute_path) !== plan.sha256)) throw error("Dedupe protection or bytes changed after preview.", 409, "stale_preview");
   if (fingerprint(files) !== plan.state_fingerprint) throw error("Dedupe state changed after preview.", 409, "stale_preview");
+  if (plan.authority_fingerprint && approvalFingerprint(truth) !== plan.authority_fingerprint) throw error("Approval or provenance changed after preview.", 409, "stale_preview");
   const source = files.find((file) => file.relative_path === plan.canonical.relative_path);
   const targets = plan.targets.map((target) => files.find((file) => file.relative_path === target.relative_path));
   if (!source || targets.some((file) => !file)) throw error("Dedupe paths changed after preview.", 409, "stale_preview");
@@ -268,7 +341,8 @@ function executeDedupe(plan, options = {}) {
     }, 0);
     const record = { schema_version: SCHEMA_VERSION, transaction_id: id, state: "deduped", mechanism: "hardlink", project_id: plan.project_id,
       sha256: plan.sha256, canonical: plan.canonical, targets: plan.targets, before_allocated_bytes: before, after_additional_allocated_bytes: after,
-      physical_savings_bytes: before - after, source_state_fingerprint: plan.state_fingerprint, created_at: new Date().toISOString() };
+      physical_savings_bytes: before - after, source_state_fingerprint: plan.state_fingerprint, approval: plan.approval || null,
+      source_device: String(sourceStat.dev), source_inode_at_execution: String(sourceStat.ino), created_at: new Date().toISOString() };
     fs.mkdirSync(txRoot, { recursive: true });
     const recordFile = path.join(txRoot, `${id}.json`);
     fs.writeFileSync(recordFile, `${JSON.stringify(record, null, 2)}\n`, { flag: "wx" });
@@ -338,7 +412,7 @@ function executeMaterialize(plan, options = {}) {
 function executePlan(planId, options = {}) {
   semanticId(planId, "plan_id"); const plan = plans.get(planId); plans.delete(planId);
   if (!plan || Date.now() > plan.expires_at) throw error("Dedupe preview is missing or expired.", 409, "stale_preview");
-  if (plan.action === "dedupe_hardlink") return executeDedupe(plan, options);
+  if (["dedupe_hardlink", "dedupe_approved_resolve_pair"].includes(plan.action)) return executeDedupe(plan, options);
   if (plan.action === "materialize") return executeMaterialize(plan, options);
   throw error("Unknown dedupe action.", 400);
 }
@@ -346,4 +420,4 @@ function clearPlans() { plans.clear(); }
 function clearAuditCache() { auditCache.clear(); }
 
 module.exports = { SCHEMA_VERSION, roleFor, protectionFor, audit, auditAsync, previewDedupe, previewMaterialize, executePlan, clearPlans, clearAuditCache,
-  _private: { projectRecords, fingerprint, plans } };
+  _private: { projectRecords, fingerprint, approvalFingerprint, approvedResolvePair, transactionSummaries, plans } };

@@ -14,6 +14,7 @@ const resolveBin = "/opt/resolve/bin/resolve";
 const resolveApi = "/opt/resolve/Developer/Scripting";
 const resolveLib = "/opt/resolve/libs/Fusion/fusionscript.so";
 const sourceFixture = process.env.RESOLVE_HARDLINK_WAV || "/home/vidtoolz/vidtoolz-score-projects/projects/2026-08-21-mc-smoke-04-24-18/music-candidates/music-candidate-002/production.wav";
+const replacementFixture = process.env.RESOLVE_HARDLINK_REPLACEMENT_WAV || "/home/vidtoolz/vidtoolz-score-projects/projects/2026-08-21-mc-smoke-04-24-18/music-candidates/music-candidate-001/production.wav";
 const scoreRoot = process.env.SCORE_ENGINE_MUSIC_ROOT || path.join(os.homedir(), "vidtoolz-score-projects");
 const keep = process.argv.includes("--keep");
 let root; let resolveProcess; let resolveEnv; let projectName;
@@ -67,6 +68,7 @@ function playbackProbe() {
 try {
   assert.ok(fs.existsSync(resolveBin), "Resolve binary unavailable");
   assert.ok(fs.existsSync(sourceFixture), "WAV fixture unavailable");
+  assert.ok(fs.existsSync(replacementFixture), "replacement WAV fixture unavailable");
   run("python3", ["-m", "py_compile", path.join(__dirname, "scorecraft-resolve-hardlink-fixture.py")]);
   root = fs.mkdtempSync(path.join(scoreRoot, ".resolve-hardlink-gate-"));
   const master = path.join(root, "approved/mix.wav"); const resolveCopy = path.join(root, "approved/resolve-import/mix.wav");
@@ -98,15 +100,40 @@ try {
   assert.equal(afterLinkedResolve.master.sha256, independent.master.sha256); assert.equal(afterLinkedResolve.resolve_copy.sha256, independent.resolve_copy.sha256);
   assert.equal(afterLinkedResolve.master.inode, afterLinkedResolve.resolve_copy.inode);
 
-  const materializedTemp = `${resolveCopy}.materialize-${process.pid}`; fs.copyFileSync(resolveCopy, materializedTemp, fs.constants.COPYFILE_EXCL); fs.renameSync(materializedTemp, resolveCopy);
-  const materialized = { master: stat(master), resolve_copy: stat(resolveCopy) };
+  // Reapproval semantics: retire the whole immutable approved directory, then
+  // atomically publish a new independently copied pair at the same paths.
+  const archivedApproved = path.join(root, "approved-archive-fixture-a");
+  fs.renameSync(path.join(root, "approved"), archivedApproved);
+  const build = path.join(root, "approved-build-fixture-b");
+  fs.mkdirSync(path.join(build, "resolve-import"), { recursive: true });
+  fs.copyFileSync(replacementFixture, path.join(build, "mix.wav"), fs.constants.COPYFILE_EXCL);
+  fs.copyFileSync(replacementFixture, path.join(build, "resolve-import/mix.wav"), fs.constants.COPYFILE_EXCL);
+  fs.renameSync(build, path.join(root, "approved"));
+  const replacement = { master: stat(master), resolve_copy: stat(resolveCopy), retired_master: stat(path.join(archivedApproved, "mix.wav")), retired_resolve_copy: stat(path.join(archivedApproved, "resolve-import/mix.wav")) };
+  assert.equal(replacement.master.sha256, sha(replacementFixture)); assert.notEqual(replacement.master.sha256, independent.master.sha256);
+  assert.notEqual(replacement.master.inode, replacement.resolve_copy.inode);
+  assert.equal(replacement.retired_master.inode, replacement.retired_resolve_copy.inode);
+  const afterReplacementReopen = driver("close_reopen");
+  assert.equal(afterReplacementReopen.snapshot.clips[0].source_sha256, replacement.master.sha256);
+  const replacementPlayback = playbackProbe();
+
+  // Materialize the retired shared pair before an independent archive/restore.
+  const retiredResolve = path.join(archivedApproved, "resolve-import/mix.wav");
+  const materializedTemp = `${retiredResolve}.materialize-${process.pid}`; fs.copyFileSync(retiredResolve, materializedTemp, fs.constants.COPYFILE_EXCL); fs.renameSync(materializedTemp, retiredResolve);
+  const materialized = { master: stat(path.join(archivedApproved, "mix.wav")), resolve_copy: stat(retiredResolve) };
   assert.notEqual(materialized.master.inode, materialized.resolve_copy.inode); assert.equal(materialized.master.sha256, materialized.resolve_copy.sha256);
-  driver("close_reopen"); const materializedPlayback = playbackProbe();
+  const archivePayload = path.join(root, "archive", "payload"); fs.mkdirSync(path.dirname(archivePayload), { recursive: true });
+  fs.renameSync(archivedApproved, archivePayload);
+  const archived = { master: stat(path.join(archivePayload, "mix.wav")), resolve_copy: stat(path.join(archivePayload, "resolve-import/mix.wav")) };
+  fs.renameSync(archivePayload, archivedApproved);
+  const restored = { master: stat(path.join(archivedApproved, "mix.wav")), resolve_copy: stat(path.join(archivedApproved, "resolve-import/mix.wav")) };
+  assert.notEqual(restored.master.inode, restored.resolve_copy.inode); assert.equal(restored.master.sha256, independent.master.sha256);
   const cleanup = driver("cleanup"); assert.equal(cleanup.deleted, true);
   process.stdout.write(`${JSON.stringify({ verdict: "RESOLVE_READ_ONLY_CONFIRMED", resolve_version: resolveVersion, project_name: projectName,
     source_sha256: independent.master.sha256, independent, setup: setup.snapshot, independent_playback: independentPlayback,
     linked, reopened: reopened.snapshot, linked_playback: linkedPlayback, after_linked_resolve: afterLinkedResolve,
-    physical_savings_bytes: independent.resolve_copy.blocks, materialized, materialized_playback: materializedPlayback,
+    physical_savings_bytes: independent.resolve_copy.blocks, replacement, after_replacement_reopen: afterReplacementReopen.snapshot,
+    replacement_playback: replacementPlayback, materialized, archived, restored,
     cleanup: true, workspace: root }, null, 2)}\n`);
 } finally {
   try { quitResolve(); } catch {}
