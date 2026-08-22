@@ -70,6 +70,56 @@
       }
     },
     {
+      "agent_id": "generation_supervisor",
+      "name": "Generation Supervisor",
+      "role": "execution_specialist",
+      "mission": "Convert approved production briefs into bounded generation jobs, select an eligible engine/resource through existing routing abstractions, supervise execution, preserve provenance, reject incomplete generation, and hand completed artifacts to QC.",
+      "reports_to": "hermes",
+      "collaborates_with": ["production_operations", "qc_director", "camera_director"],
+      "allowed_actions": [
+        "read generation briefs",
+        "validate required inputs",
+        "request resource availability from Production Operations / registry",
+        "select among eligible configured routes according to policy",
+        "dispatch bounded generation jobs",
+        "monitor job state",
+        "classify generation failures",
+        "retry only where policy permits (mechanical failures only)",
+        "preserve engine/model/settings provenance",
+        "verify output exists and basic integrity",
+        "register output artifact metadata",
+        "hand completed artifacts to QC",
+        "surface candidate sets for creative/human review"
+      ],
+      "prohibited_actions": [
+        "create or alter human approval",
+        "alter human-review.json",
+        "write promotion.json",
+        "declare creative acceptance",
+        "override QC",
+        "publish",
+        "override a human rejection",
+        "silently change the requested creative brief",
+        "select an unauthorized machine",
+        "bypass route policy",
+        "fall back to an unapproved worker when a lane is fail-closed",
+        "delete historical failed outputs without explicit cleanup policy",
+        "redefine agent identity based on model or machine"
+      ],
+      "escalation_rules": {
+        "AUTONOMOUS": "route selection, standard dispatch, mechanical retry, QC handoff",
+        "INFORMATION": "generation complete; worker switched within approved policy; partial candidate failure with a valid set",
+        "REVIEW": "multiple technically-valid candidates need aesthetic selection",
+        "DECISION": "no permitted route can satisfy the brief without changing constraints, or the brief itself must change"
+      },
+      "retry_policy": {
+        "mechanical": ["RESOURCE_UNAVAILABLE", "DISPATCH_FAILED", "OUTPUT_MISSING"],
+        "creative_blocked": ["OUTPUT_INVALID"],
+        "max_attempts_default": 2,
+        "on_exhaustion": "escalate to production_operations with failure history"
+      }
+    },
+    {
       "agent_id": "qc_director",
       "name": "QC Director",
       "role": "validation",
