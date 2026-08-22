@@ -25,6 +25,9 @@ Tar preserves directory structure, modes, symlinks, and hardlinks. Correct bytes
 # Report and reverify the latest successful snapshot
 ./ops/music-creator-data-backup.sh --status
 
+# Monthly recovery drill against latest canonical + external snapshots
+./ops/music-creator-data-backup.sh --restore-drill
+
 # Read-only retention decision; never deletes
 ./ops/music-creator-data-backup.sh --retention-preview
 
@@ -92,6 +95,8 @@ The versioned systemd user timer runs daily at 04:45 Europe/Helsinki with up to 
 
 Automatic retention keeps the newest seven verified canonical snapshots. `latest-successful` is always protected; `PINNED` snapshots are also protected and unknown/unverified directories are never automatic deletion candidates. Retention runs only after both the external-payload snapshot and canonical backup succeed. Preview with `--retention-preview`; execution is `--apply-retention`. At the measured 6.239 GB per snapshot, the normal retained canonical footprint is about 43.7 GB, with a worst-case full-snapshot write volume of about 187.2 GB per 30-day month. Pins are explicit operator exceptions, not created by the timer.
 
+The accepted recovery snapshot `20260822T142451Z-a3ecd184` is pinned as the known-good full backup/restore gate. A `PINNED` marker's text is its operator-visible reason; retention reports it and never removes the snapshot. Operators should review pins periodically, but unpinning is always a separate human decision.
+
 Deploy and verify the timer from repository source:
 
 ```bash
@@ -122,3 +127,11 @@ This gives the NAS-hosted payload an independent ext4 recovery copy. Its retenti
 ```
 
 On NAS loss, restore the verified local external snapshot to the exact registry path after remounting/replacing VIDNAS. On local-system loss, the original external package remains on VIDNAS. Never redirect an arbitrary registry path into this backup lane; the project ID and path are fixed and fail closed.
+
+## Recurring recovery drill
+
+Run `./ops/music-creator-data-backup.sh --restore-drill` monthly and after any material backup-tool change. Monthly is conservative for roughly 9.5 GB of combined restore I/O: it exercises recovery often enough to expose drift without turning deep hashing and temporary disk allocation into routine daily load. The drill is explicit/manual; no separate restore timer is installed.
+
+The command takes both backup-domain locks, verifies the latest canonical and external snapshots, checks that local scratch has the combined declared payload size plus 10 GiB reserve, and restores both into a uniquely named isolated directory under `/home/vidtoolz`. It then compares deterministic manifests, runs alternate-root registry/provenance consistency, verifies the accepted MiniMax candidate and all six quality-gate projects, and validates the external registry relationship. On PASS, only that disposable drill directory is removed and a durable result is written under `~/.local/state/vidtoolz/music-creator-backup/latest.json`. On failure, production remains untouched and the isolated evidence directory is retained for diagnosis.
+
+`--status` reports a concise recovery health classification. `HEALTHY` requires the timer enabled, the expected CIFS authority mounted, fresh canonical and external snapshots, a successful service result, and a passing drill within 45 days. It otherwise reports the most relevant state: `NAS_UNAVAILABLE`, `TIMER_DISABLED`, `BACKUP_STALE`, `EXTERNAL_BACKUP_STALE`, `RESTORE_DRILL_DUE`, or `RESTORE_DRILL_FAILED`.

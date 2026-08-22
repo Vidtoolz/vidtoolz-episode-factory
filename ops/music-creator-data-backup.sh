@@ -15,6 +15,15 @@ EXTERNAL_PROJECT_ID=${MUSIC_CREATOR_EXTERNAL_PROJECT_ID:-pkg-why-i-refuse-to-out
 EXTERNAL_SOURCE=${MUSIC_CREATOR_EXTERNAL_SOURCE:-/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-packages/why-i-refuse-to-outsource-my-creator-identity-to-ai-20260630/music}
 EXTERNAL_BACKUP_ROOT=${MUSIC_CREATOR_EXTERNAL_BACKUP_ROOT:-/home/vidtoolz/vidtoolz-music-external-backups/$EXTERNAL_PROJECT_ID}
 EXTERNAL_RETENTION_KEEP=${MUSIC_CREATOR_EXTERNAL_RETENTION_KEEP:-2}
+DRILL_STATE_ROOT=${MUSIC_CREATOR_RESTORE_DRILL_STATE_ROOT:-/home/vidtoolz/.local/state/vidtoolz/music-creator-backup}
+DRILL_SCRATCH_PARENT=${MUSIC_CREATOR_RESTORE_DRILL_SCRATCH_PARENT:-/home/vidtoolz}
+DRILL_MIN_FREE_AFTER=${MUSIC_CREATOR_RESTORE_DRILL_MIN_FREE_AFTER:-10737418240}
+DRILL_PROJECT_ID=${MUSIC_CREATOR_RESTORE_DRILL_PROJECT_ID:-2026-08-21-mc-smoke-04-24-18}
+DRILL_CANDIDATE_ID=${MUSIC_CREATOR_RESTORE_DRILL_CANDIDATE_ID:-music-candidate-002}
+DRILL_PLAN_REVISION=${MUSIC_CREATOR_RESTORE_DRILL_PLAN_REVISION:-7aeb9c2281a548c64742056276be12de5e57e48ea1ca166f5363015a8eb09a30}
+DRILL_WAV_SHA256=${MUSIC_CREATOR_RESTORE_DRILL_WAV_SHA256:-18d947a3733bf244d1f4b716df09972f0176b6fe7760bec09b2b48427760ffb8}
+DRILL_QUALITY_PROJECTS=${MUSIC_CREATOR_RESTORE_DRILL_QUALITY_PROJECTS:-6}
+DRILL_MAX_AGE_DAYS=${MUSIC_CREATOR_RESTORE_DRILL_MAX_AGE_DAYS:-45}
 
 usage() {
   cat <<'EOF'
@@ -29,6 +38,7 @@ Usage:
   ./ops/music-creator-data-backup.sh --restore BACKUP_DIR ABSENT_TARGET_DIR
   ./ops/music-creator-data-backup.sh --external-verify BACKUP_DIR
   ./ops/music-creator-data-backup.sh --external-restore BACKUP_DIR ABSENT_TARGET_DIR
+  ./ops/music-creator-data-backup.sh --restore-drill
 
 Environment overrides for tests/operators:
   MUSIC_CREATOR_DATA_ROOT
@@ -36,6 +46,8 @@ Environment overrides for tests/operators:
   MUSIC_CREATOR_BACKUP_STEP_TIMEOUT
   MUSIC_CREATOR_EXTERNAL_SOURCE
   MUSIC_CREATOR_EXTERNAL_BACKUP_ROOT
+  MUSIC_CREATOR_RESTORE_DRILL_SCRATCH_PARENT
+  MUSIC_CREATOR_RESTORE_DRILL_STATE_ROOT
 EOF
 }
 
@@ -241,6 +253,28 @@ status() {
   if [[ -f "$EXTERNAL_BACKUP_ROOT/latest-successful" ]]; then external_status=$(head -1 "$EXTERNAL_BACKUP_ROOT/latest-successful"); fi
   printf 'operations retained=%s retained_bytes=%s retention_keep=%s nas_mount_ok=%s timer=%s service_result=%s external_latest=%s\n' "$count" "$bytes" "$RETENTION_KEEP" "$mount_ok" "$timer_state" "${service_result:-unknown}" "$external_status"
   printf 'next_scheduled=%s\n' "${next:-unknown}"
+
+  local pinned=0 health=HEALTHY external_age=-1 drill_result=NEVER drill_age=-1 drill_backup=none
+  pinned=$(find "$BACKUP_ROOT/snapshots" -mindepth 2 -maxdepth 2 -type f -name PINNED 2>/dev/null | wc -l)
+  if [[ "$external_status" != missing && -f "$EXTERNAL_BACKUP_ROOT/snapshots/$external_status/backup.json" ]]; then
+    external_age=$(( $(date -u +%s) - $(date -u -d "$(jq -r '.completed_at' "$EXTERNAL_BACKUP_ROOT/snapshots/$external_status/backup.json")" +%s) ))
+  fi
+  if [[ -f "$DRILL_STATE_ROOT/latest.json" ]]; then
+    drill_result=$(jq -r '.result // "UNKNOWN"' "$DRILL_STATE_ROOT/latest.json" 2>/dev/null || printf UNKNOWN)
+    drill_backup=$(jq -r '.canonical_backup_id // "none"' "$DRILL_STATE_ROOT/latest.json" 2>/dev/null || printf none)
+    drill_age=$(( $(date -u +%s) - $(date -u -d "$(jq -r '.completed_at // .failed_at' "$DRILL_STATE_ROOT/latest.json")" +%s) ))
+  fi
+  if [[ "$mount_ok" != YES ]]; then health=NAS_UNAVAILABLE
+  elif [[ "$timer_state" != enabled ]]; then health=TIMER_DISABLED
+  elif (( age_seconds > 129600 )); then health=BACKUP_STALE
+  elif (( external_age < 0 || external_age > 129600 )); then health=EXTERNAL_BACKUP_STALE
+  elif [[ "$drill_result" = FAILED ]]; then health=RESTORE_DRILL_FAILED
+  elif [[ "$drill_result" != PASS || $drill_age -gt $((DRILL_MAX_AGE_DAYS * 86400)) ]]; then health=RESTORE_DRILL_DUE
+  fi
+  printf 'recovery_health=%s pinned=%s restore_drill=%s drill_age_seconds=%s drill_canonical=%s\n' "$health" "$pinned" "$drill_result" "$drill_age" "$drill_backup"
+  while IFS= read -r pin; do
+    printf 'pinned_backup=%s reason=%s\n' "$(basename -- "$(dirname -- "$pin")")" "$(tr '\n' ' ' < "$pin" | sed 's/[[:space:]]*$//')"
+  done < <(find "$BACKUP_ROOT/snapshots" -mindepth 2 -maxdepth 2 -type f -name PINNED 2>/dev/null | sort)
 }
 
 dry_run() {
@@ -345,6 +379,87 @@ external_restore() {
   printf 'EXTERNAL_RESTORED project_id=%s target=%s manifest_sha256=%s\n' "$EXTERNAL_PROJECT_ID" "$target" "$(sha "$target.restore-manifest.jsonl")"
 }
 
+restore_drill() {
+  validate_roots
+  validate_external
+  absolute_dir "$DRILL_STATE_ROOT"
+  absolute_dir "$DRILL_SCRATCH_PARENT"
+  [[ -d "$DRILL_SCRATCH_PARENT" ]] || fail "restore-drill scratch parent missing: $DRILL_SCRATCH_PARENT"
+
+  mkdir -p -- "$DRILL_STATE_ROOT"
+  exec 9>"$BACKUP_ROOT/.backup.lock"; flock -n 9 || fail "canonical backup operation is active"
+  exec 7>"$EXTERNAL_BACKUP_ROOT/.backup.lock"; flock -n 7 || fail "external backup operation is active"
+
+  local canonical_id external_id canonical_backup external_backup needed available drill_id drill_root
+  canonical_id=$(head -1 "$BACKUP_ROOT/latest-successful")
+  external_id=$(head -1 "$EXTERNAL_BACKUP_ROOT/latest-successful")
+  canonical_backup="$BACKUP_ROOT/snapshots/$canonical_id"
+  external_backup="$EXTERNAL_BACKUP_ROOT/snapshots/$external_id"
+  verify_backup "$canonical_backup" >/dev/null
+  verify_backup "$external_backup" >/dev/null
+  needed=$(( $(jq -r '.byte_count' "$canonical_backup/backup.json") + $(jq -r '.byte_count' "$external_backup/backup.json") + DRILL_MIN_FREE_AFTER ))
+  available=$(df -B1 --output=avail "$DRILL_SCRATCH_PARENT" | tail -1 | tr -d ' ')
+  (( available >= needed )) || fail "insufficient restore-drill scratch space: available=$available required=$needed"
+
+  drill_id="$(date -u +%Y%m%dT%H%M%SZ)-$(printf '%s' "$canonical_id:$external_id:$PPID:$RANDOM" | sha256sum | cut -c1-8)"
+  drill_root=$(mktemp -d -- "$DRILL_SCRATCH_PARENT/music-creator-restore-drill-$drill_id-XXXXXXXX")
+  local canonical_restore="$drill_root/canonical" external_restore_root="$drill_root/external"
+  local failure_file="$DRILL_STATE_ROOT/.failed-$drill_id.json"
+  drill_failure() {
+    local layer=$1
+    jq -n --arg drill_id "$drill_id" --arg failed_at "$(date -u +%FT%TZ)" --arg layer "$layer" \
+      --arg canonical_backup_id "$canonical_id" --arg external_backup_id "$external_id" --arg evidence "$drill_root" \
+      '{schema_version:1,result:"FAILED",drill_id:$drill_id,failed_at:$failed_at,failure_layer:$layer,canonical_backup_id:$canonical_backup_id,external_backup_id:$external_backup_id,evidence_path:$evidence}' > "$failure_file"
+    mv -- "$failure_file" "$DRILL_STATE_ROOT/latest.json"
+    fail "RESTORE_DRILL_FAILED layer=$layer evidence=$drill_root"
+  }
+
+  mkdir -p -- "$canonical_restore" "$external_restore_root"
+  timeout "$STEP_TIMEOUT" tar -xf "$canonical_backup/data.tar" -C "$canonical_restore" || drill_failure canonical_extract
+  if [[ ${MUSIC_CREATOR_BACKUP_TEST_MODE:-0} = 1 && -n ${MUSIC_CREATOR_BACKUP_TEST_DRILL_AFTER_RESTORE_COMMAND:-} ]]; then
+    export MUSIC_CREATOR_RESTORE_DRILL_CANONICAL="$canonical_restore"
+    bash -c "$MUSIC_CREATOR_BACKUP_TEST_DRILL_AFTER_RESTORE_COMMAND" || drill_failure test_hook
+  fi
+  timeout "$STEP_TIMEOUT" node "$MANIFEST_TOOL" "$canonical_restore" "$drill_root/canonical-manifest.jsonl" >/dev/null || drill_failure canonical_manifest
+  cmp -s "$canonical_backup/integrity-manifest.jsonl" "$drill_root/canonical-manifest.jsonl" || drill_failure canonical_manifest_mismatch
+  timeout "$STEP_TIMEOUT" node "$VERIFY_TOOL" "$canonical_restore" "$(jq -r '.source_path' "$canonical_backup/backup.json")" > "$drill_root/canonical-consistency.json" || drill_failure canonical_consistency
+  [[ $(jq -r '.ok' "$drill_root/canonical-consistency.json") = true ]] || drill_failure canonical_consistency
+  [[ $(jq -r '.quality_gate_projects' "$drill_root/canonical-consistency.json") = "$DRILL_QUALITY_PROJECTS" ]] || drill_failure quality_gate_count
+
+  local project="$canonical_restore/projects/$DRILL_PROJECT_ID"
+  local candidate="$project/music-candidates/$DRILL_CANDIDATE_ID/music-candidate.json"
+  local production="$project/music-candidates/$DRILL_CANDIDATE_ID/production.wav"
+  local provenance="$project/approved/provenance.json"
+  [[ -f "$candidate" && -f "$production" && -f "$provenance" && -f "$project/approved/mix.wav" && -f "$project/approved/resolve-import/mix.wav" ]] || drill_failure accepted_candidate_missing
+  [[ $(jq -r '.candidate_id' "$candidate") = "$DRILL_CANDIDATE_ID" && $(jq -r '.backend' "$candidate") = minimax && $(jq -r '.status' "$candidate") = completed && $(jq -r '.human_verdict | ascii_downcase' "$candidate") = use ]] || drill_failure accepted_candidate_state
+  [[ $(jq -r '.approved_candidate' "$provenance") = "$DRILL_CANDIDATE_ID" && $(jq -r '.approval_status' "$provenance") = approved && $(jq -r '.plan_revision_id' "$provenance") = "$DRILL_PLAN_REVISION" ]] || drill_failure accepted_provenance
+  [[ $(sha "$production") = "$DRILL_WAV_SHA256" && $(sha "$project/approved/mix.wav") = "$DRILL_WAV_SHA256" && $(sha "$project/approved/resolve-import/mix.wav") = "$DRILL_WAV_SHA256" ]] || drill_failure accepted_wav_hash
+
+  timeout "$STEP_TIMEOUT" tar -xf "$external_backup/data.tar" -C "$external_restore_root" || drill_failure external_extract
+  timeout "$STEP_TIMEOUT" node "$MANIFEST_TOOL" "$external_restore_root" "$drill_root/external-manifest.jsonl" >/dev/null || drill_failure external_manifest
+  cmp -s "$external_backup/integrity-manifest.jsonl" "$drill_root/external-manifest.jsonl" || drill_failure external_manifest_mismatch
+  [[ $(jq -r '.project_id' "$external_backup/backup.json") = "$EXTERNAL_PROJECT_ID" ]] || drill_failure external_project_identity
+  [[ $(jq -r --arg id "$EXTERNAL_PROJECT_ID" '.projects[] | select(.project_id==$id) | .path' "$canonical_restore/score-registry.json") = "$EXTERNAL_SOURCE" ]] || drill_failure external_registry_relationship
+
+  local completed_at result_tmp="$DRILL_STATE_ROOT/.latest-$drill_id.json"
+  completed_at=$(date -u +%FT%TZ)
+  jq -n --arg drill_id "$drill_id" --arg completed_at "$completed_at" \
+    --arg canonical_backup_id "$canonical_id" --arg external_backup_id "$external_id" \
+    --arg canonical_manifest_sha256 "$(sha "$drill_root/canonical-manifest.jsonl")" \
+    --arg external_manifest_sha256 "$(sha "$drill_root/external-manifest.jsonl")" \
+    --arg candidate_id "$DRILL_CANDIDATE_ID" --arg candidate_sha256 "$DRILL_WAV_SHA256" \
+    --argjson quality_gate_projects "$DRILL_QUALITY_PROJECTS" \
+    --argjson canonical_files "$(jq -r '.file_count' "$canonical_backup/backup.json")" \
+    --argjson canonical_bytes "$(jq -r '.byte_count' "$canonical_backup/backup.json")" \
+    --argjson external_files "$(jq -r '.file_count' "$external_backup/backup.json")" \
+    --argjson external_bytes "$(jq -r '.byte_count' "$external_backup/backup.json")" \
+    '{schema_version:1,result:"PASS",drill_id:$drill_id,completed_at:$completed_at,canonical_backup_id:$canonical_backup_id,external_backup_id:$external_backup_id,canonical_manifest_sha256:$canonical_manifest_sha256,external_manifest_sha256:$external_manifest_sha256,canonical_files:$canonical_files,canonical_bytes:$canonical_bytes,external_files:$external_files,external_bytes:$external_bytes,accepted_candidate:{candidate_id:$candidate_id,sha256:$candidate_sha256},quality_gate_projects:$quality_gate_projects,scratch_removed:true}' > "$result_tmp"
+  mv -- "$result_tmp" "$DRILL_STATE_ROOT/latest.json"
+  rm -rf -- "$drill_root"
+  printf 'RESTORE_DRILL_PASS drill_id=%s canonical_backup=%s external_backup=%s canonical_manifest_sha256=%s external_manifest_sha256=%s\n' \
+    "$drill_id" "$canonical_id" "$external_id" "$(jq -r '.canonical_manifest_sha256' "$DRILL_STATE_ROOT/latest.json")" "$(jq -r '.external_manifest_sha256' "$DRILL_STATE_ROOT/latest.json")"
+}
+
 scheduled_run() {
   external_backup
   backup
@@ -364,6 +479,7 @@ case ${1:-} in
   --restore) [[ $# = 3 ]] || { usage; exit 64; }; restore_backup "$2" "$3" ;;
   --external-verify) [[ $# = 2 ]] || { usage; exit 64; }; locked_verify "$EXTERNAL_BACKUP_ROOT" "$2" ;;
   --external-restore) [[ $# = 3 ]] || { usage; exit 64; }; external_restore "$2" "$3" ;;
+  --restore-drill) [[ $# = 1 ]] || { usage; exit 64; }; restore_drill ;;
   --help|-h) usage ;;
   *) usage; exit 64 ;;
 esac

@@ -25,10 +25,11 @@ function fixture() {
     { project_id: "fixture-qg-quality", path: quality },
     { project_id: "external-project", path: external, package_path: path.dirname(external) },
   ] }));
-  write(path.join(project, "score-project.json"), JSON.stringify({ project_id: "accepted-project", approved_candidate: "music-candidate-002", current_plan_revision_id: "revision-a" }));
-  write(path.join(project, "music-candidates/music-candidate-002/music-candidate.json"), JSON.stringify({ candidate_id: "music-candidate-002", status: "completed", human_verdict: "use", plan_revision_id: "revision-a" }));
+  write(path.join(project, "score-project.json"), JSON.stringify({ project_id: "accepted-project", approved_candidate: "music-candidate-002", current_plan_revision_id: "revision-a", approval_current: true }));
+  write(path.join(project, "music-candidates/music-candidate-002/music-candidate.json"), JSON.stringify({ candidate_id: "music-candidate-002", backend: "minimax", status: "completed", human_verdict: "use", plan_revision_id: "revision-a" }));
   write(path.join(project, "music-candidates/music-candidate-002/production.wav"), audio);
   write(path.join(project, "approved/mix.wav"), audio);
+  write(path.join(project, "approved/provenance.json"), JSON.stringify({ approval_status: "approved", approved_candidate: "music-candidate-002", plan_revision_id: "revision-a", human_verdict: "use" }));
   fs.mkdirSync(path.join(project, "approved/resolve-import"), { recursive: true });
   fs.linkSync(path.join(project, "approved/mix.wav"), path.join(project, "approved/resolve-import/mix.wav"));
   write(path.join(project, ".storage-dedupe/transactions/tx.json"), JSON.stringify({
@@ -46,7 +47,7 @@ function fixture() {
 function run(f, args, extraEnv = {}) {
   return childProcess.spawnSync("bash", [backupScript, ...args], {
     encoding: "utf8",
-    env: { ...process.env, MUSIC_CREATOR_DATA_ROOT: f.source, MUSIC_CREATOR_BACKUP_ROOT: f.backupRoot, MUSIC_CREATOR_BACKUP_ALLOW_SAME_DEVICE: "1", MUSIC_CREATOR_BACKUP_TEST_MODE: "1", MUSIC_CREATOR_BACKUP_MIN_FREE_AFTER: "0", MUSIC_CREATOR_BACKUP_STEP_TIMEOUT: "30s", MUSIC_CREATOR_EXTERNAL_PROJECT_ID: "external-project", MUSIC_CREATOR_EXTERNAL_SOURCE: f.external, MUSIC_CREATOR_EXTERNAL_BACKUP_ROOT: f.externalBackupRoot, ...extraEnv },
+    env: { ...process.env, MUSIC_CREATOR_DATA_ROOT: f.source, MUSIC_CREATOR_BACKUP_ROOT: f.backupRoot, MUSIC_CREATOR_BACKUP_ALLOW_SAME_DEVICE: "1", MUSIC_CREATOR_BACKUP_TEST_MODE: "1", MUSIC_CREATOR_BACKUP_MIN_FREE_AFTER: "0", MUSIC_CREATOR_BACKUP_STEP_TIMEOUT: "30s", MUSIC_CREATOR_EXTERNAL_PROJECT_ID: "external-project", MUSIC_CREATOR_EXTERNAL_SOURCE: f.external, MUSIC_CREATOR_EXTERNAL_BACKUP_ROOT: f.externalBackupRoot, MUSIC_CREATOR_RESTORE_DRILL_STATE_ROOT: path.join(f.root, "drill-state"), MUSIC_CREATOR_RESTORE_DRILL_SCRATCH_PARENT: f.root, MUSIC_CREATOR_RESTORE_DRILL_MIN_FREE_AFTER: "0", MUSIC_CREATOR_RESTORE_DRILL_PROJECT_ID: "accepted-project", MUSIC_CREATOR_RESTORE_DRILL_PLAN_REVISION: "revision-a", MUSIC_CREATOR_RESTORE_DRILL_WAV_SHA256: f.audioHash, MUSIC_CREATOR_RESTORE_DRILL_QUALITY_PROJECTS: "1", ...extraEnv },
   });
 }
 function latest(f) { const id = fs.readFileSync(path.join(f.backupRoot, "latest-successful"), "utf8").trim(); return { id, dir: path.join(f.backupRoot, "snapshots", id) }; }
@@ -189,6 +190,32 @@ test("status reports retention, NAS health, timer state, and external coverage",
   const status = run(f, ["--status"]); assert.equal(status.status, 0, status.stderr);
   assert.match(status.stdout, /retention_keep=7/); assert.match(status.stdout, /nas_mount_ok=NO/);
   assert.match(status.stdout, /external_latest=[0-9]{8}T[0-9]{6}Z-/);
+  assert.match(status.stdout, /recovery_health=NAS_UNAVAILABLE/); assert.match(status.stdout, /restore_drill=NEVER/);
+});
+
+test("repeatable restore drill reconstructs and deeply verifies canonical and external recovery domains", () => {
+  const f = fixture(); assert.equal(run(f, ["--scheduled-run"]).status, 0);
+  const result = run(f, ["--restore-drill"]); assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  assert.match(result.stdout, /RESTORE_DRILL_PASS/);
+  const state = JSON.parse(fs.readFileSync(path.join(f.root, "drill-state/latest.json")));
+  assert.equal(state.result, "PASS"); assert.equal(state.canonical_files > 0, true); assert.equal(state.external_files > 0, true);
+  assert.equal(state.accepted_candidate.sha256, f.audioHash); assert.equal(state.quality_gate_projects, 1);
+  assert.equal(fs.readdirSync(f.root).some((name) => name.startsWith("music-creator-restore-drill-")), false, "successful scratch is removed");
+});
+
+test("restore drill corruption fails closed and preserves diagnostic evidence", () => {
+  const f = fixture(); assert.equal(run(f, ["--scheduled-run"]).status, 0);
+  const result = run(f, ["--restore-drill"], { MUSIC_CREATOR_BACKUP_TEST_DRILL_AFTER_RESTORE_COMMAND: "printf corrupt >> \"$MUSIC_CREATOR_RESTORE_DRILL_CANONICAL/score-registry.json\"" });
+  assert.notEqual(result.status, 0); assert.match(result.stderr, /RESTORE_DRILL_FAILED layer=canonical_manifest_mismatch/);
+  const state = JSON.parse(fs.readFileSync(path.join(f.root, "drill-state/latest.json")));
+  assert.equal(state.result, "FAILED"); assert.ok(fs.existsSync(state.evidence_path));
+});
+
+test("restore drill refuses insufficient scratch space before extracting data", () => {
+  const f = fixture(); assert.equal(run(f, ["--scheduled-run"]).status, 0);
+  const result = run(f, ["--restore-drill"], { MUSIC_CREATOR_RESTORE_DRILL_MIN_FREE_AFTER: String(Number.MAX_SAFE_INTEGER) });
+  assert.notEqual(result.status, 0); assert.match(result.stderr, /insufficient restore-drill scratch space/);
+  assert.equal(fs.readdirSync(f.root).some((name) => name.startsWith("music-creator-restore-drill-")), false);
 });
 
 test("versioned systemd timer invokes the bounded scheduled command on the declared daily cadence", () => {
