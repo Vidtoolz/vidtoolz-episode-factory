@@ -315,6 +315,9 @@
   // framing for a 396 km leg is 1,122 km up, which shows all of Scandinavia and
   // loses the cities the leg is actually about, while ~190 km reads fine.
   const TRANSIT_LEGIBILITY_HEADROOM = 1.5;
+  // Below this relative margin a "climb" has not actually climbed (mirrors the
+  // camera-quality gate's DEAD_MOVE_DEGENERATE_FRACTION).
+  const DEAD_CLIMB_FRACTION = 0.005;
   function transitAltitudeM(distanceM, tiltDeg, floorM, options = {}) {
     const planner = loadPlanner(options.planner);
     if (!Number.isFinite(distanceM) || distanceM <= 0) return Math.round(Math.max(floorM || 0, planner.DEFAULT_ALTITUDE_M));
@@ -809,6 +812,14 @@
     function emit(step, slot, targetInfo, targetPlace, context, next, after, prev) {
       const def = MOVEMENTS[step.type] || MOVEMENTS[slot === "travel" ? "fly" : "hold"];
       const action = def.primitive;
+      // Set inside the useTransitAltitude branch: the climb had no legible
+      // altitude above the cursor and was reclassified to a hold (see below).
+      let transitReclassified = false;
+      // Set by the at-slot widening guard: a zoom_out whose shifted framing is
+      // not wider than where the camera already is.
+      let zoomOutReclassified = false;
+      // Symmetric: a push-in with no meaningful tightening available.
+      let zoomInReclassified = false;
       // A fly/zoom immediately followed by an orbit around the SAME target lands
       // on that orbit's ring entry, so it is correctly framed and must keep the
       // orbit's tilt for a continuous boundary (the v0.8 zero-slide property).
@@ -1032,11 +1043,60 @@
         altitudeSource = "cruise_held";
         scale = cursor.framing || scale;
       }
+      // MOVEMENT-INTENT GUARD, at-slot widening (zoom_out / reveal). A shifted
+      // framing that lands AT OR BELOW the camera's current altitude is not a
+      // pull-back at all — it is a descent wearing a zoom_out label (measured:
+      // DIRN17 segment 11, fly arrives at continent-scale 4,537,025 m and the
+      // +1-rung "reveal" resolves to country 3,686,333 m = −18.75% wider).
+      // Same resolution as the transit guard: there is nothing meaningful to
+      // pull back TO, so hold the camera instead of emitting a dead move.
+      if (!transitReclassified && slot === "at" && action === "zoom_out"
+        && Number.isFinite(shift) && shift > 0 && !Number.isFinite(step.altitude_m)
+        && altitude <= cursor.altitude_m * (1 + DEAD_CLIMB_FRACTION)) {
+        altitude = cursor.altitude_m;
+        altitudeSource = "already_wider_than_target_framing";
+        scale = cursor.framing || scale;
+        zoomOutReclassified = true;
+      }
+      // Symmetric guard for tightening: a push-in whose resolved framing is
+      // not meaningfully CLOSER than where the camera already is (typically a
+      // calibrated landmark the ladder cannot go below) would be a dead move.
+      // Only when the ladder itself had no closer rung — a real one-rung move
+      // is legitimate even when a calibrated place altitude makes the
+      // percentage small.
+      if (!transitReclassified && !zoomOutReclassified && slot === "at" && action === "zoom_in"
+        && Number.isFinite(shift) && shift < 0 && !Number.isFinite(step.altitude_m)
+        && stepScale(frameBase.scale, shift) === frameBase.scale
+        && altitude >= cursor.altitude_m * (1 - DEAD_CLIMB_FRACTION)) {
+        altitude = cursor.altitude_m;
+        altitudeSource = "already_tighter_than_target_framing";
+        scale = cursor.framing || scale;
+        zoomInReclassified = true;
+      }
       if (def.useTransitAltitude && !Number.isFinite(step.altitude_m)) {
         const dist = context && Number.isFinite(context.distanceM) ? context.distanceM : null;
         altitude = transitAltitudeM(dist, baseTilt, Math.max(cursor.altitude_m, frameBase.altitude_m), { planner });
         altitudeSource = "derived_transit";
         scale = "transit";
+        // MOVEMENT-INTENT GUARD (zoom_out that cannot zoom). The floor above
+        // keeps the crossing legible, but when the camera ALREADY sits at or
+        // above the legible transit height the clamp collapses this step to
+        // its own starting altitude: a "Climb Out" labelled zoom_out with a
+        // 0% framing change — exactly the dead move the camera-quality gate
+        // flags as movement-intent failure (measured on DIRN17 segment 2:
+        // region-framed start at 992,474 m, legible transit ~240,624 m,
+        // clamped back to 992,474 → 992,474).
+        //
+        // There is genuinely nothing to climb to, so the honest resolution is
+        // reclassification, not a fake pull-back: hold the camera at the
+        // travelling altitude it already has and let the cruise do the
+        // crossing. The step keeps its slot, duration and place so pacing and
+        // segment counts stay stable; only the primitive changes.
+        if (altitude <= cursor.altitude_m * (1 + DEAD_CLIMB_FRACTION)) {
+          altitude = cursor.altitude_m;
+          altitudeSource = "transit_already_legible";
+          transitReclassified = true;
+        }
       }
       // LEGIBILITY FLOOR on a travelling leg's climb.
       //
@@ -1165,6 +1225,27 @@
         compiled.altitude_m = Math.round(frameBase.altitude_m);
       }
       if (orbitFlattened) compiled.tilt_capped = tiltCapped = true;
+      // Reclassified dead climb (see the useTransitAltitude guard above):
+      // emit a hold, not a zoom_out. A hold keeps the camera exactly where it
+      // is, so the altitude must NOT be re-emitted (the planner would apply it
+      // as an authoritative move) and the phrase must read as hovering.
+      if (transitReclassified || zoomOutReclassified || zoomInReclassified) {
+        compiled.action = "hover";
+        compiled.reclassified_from = "zoom_out";
+        compiled.reclassification_reason = transitReclassified
+          ? "already_at_or_above_legible_transit_altitude"
+          : zoomOutReclassified
+            ? "already_wider_than_target_framing"
+            : "already_tighter_than_target_framing";
+        compiled.emit_altitude = false;
+        compiled.emit_tilt = false;
+        compiled.altitude_m = Math.round(cursor.altitude_m);
+        warnings.push(`${def.label} at ${compiledLocationLabel(targetInfo)} ${transitReclassified
+          ? `was already at or above the legible crossing altitude (${formatAltitude(compiled.altitude_m)}), so there was nothing to climb to`
+          : zoomOutReclassified
+            ? `is already framed wider than the requested pull-back framing (${formatAltitude(compiled.altitude_m)}), so there was nothing meaningful to pull back to`
+            : `is already framed as tight as the requested push-in framing (${formatAltitude(compiled.altitude_m)}), so there was nothing meaningful to tighten onto`} — the movement holds the camera instead of pretending to zoom.`);
+      }
       compiled.phrase = phraseFor(compiled);
       steps.push(compiled);
 
