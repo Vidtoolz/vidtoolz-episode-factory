@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "operator": "Mikko",
+  "authority": "human visual review",
+  "started_at": "2026-08-22T06:20:00+03:00",
+  "completed_at": "2026-08-22T06:45:00+03:00",
+  "verdict": "SETTLE_THEN_LAUNCH",
+  "note": "Visually reviewed the side-by-side comparison (review-media/DIRN17-SIDE-BY-SIDE-NORMAL.mp4 and SLOWMO-x4). SETTLE_THEN_LAUNCH is better than the current production baseline. TANGENT_DEPARTURE remains rejected (altitude-coupling failure).",
+  "allowed_verdicts": [
+    "BASELINE_BETTER",
+    "TANGENT_DEPARTURE",
+    "SETTLE_THEN_LAUNCH",
+    "NONE_GOOD"
+  ],
+  "media_reviewed": [
+    "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/review-media/DIRN17-SIDE-BY-SIDE-NORMAL.mp4",
+    "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/review-media/DIRN17-SIDE-BY-SIDE-SLOWMO-x4.mp4"
+  ]
+}
