@@ -1,0 +1,35 @@
+# Shot Plan: Fresh K — hold the Colosseum, then orbit it
+
+Total duration: 17 seconds
+Frame rate: 30 fps
+Total frames: 510
+Aspect: 16:9 (1920x1080)
+Frame convention: start_frame inclusive, end_frame exclusive
+
+## Segment Table
+
+| # | Action | Location | Alt (m) | Tilt | Time | start_frame | end_frame | Status |
+|---|---|---|---:|---:|---:|---:|---:|---|
+| 1 | hover | Colosseum | 709 | 60 | 0-3s | 0 | 90 | resolved |
+| 2 | orbit | Colosseum | 709 | 60 | 3-17s | 90 | 510 | resolved |
+
+## Locations
+
+- Colosseum: 41.8902, 12.4922
+
+## Applied Defaults
+
+- segment 1: opening hold staged on segment 2's orbit ring (same target, same framing — the orbit starts sweeping immediately instead of moving onto the ring).
+- camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus.
+
+## Unresolved Warnings
+
+- none
+
+## Manual Earth Studio Build Summary
+
+- Use this plan as a manual camera-build guide.
+- Use the coordinates in `shot-plan.json` for search or camera target reference.
+- Use `route.kml` only as a visual reference asset.
+- KML import does not create a finished Earth Studio camera animation.
+- Mikko must manually create, review, adjust, and approve keyframes before rendering.

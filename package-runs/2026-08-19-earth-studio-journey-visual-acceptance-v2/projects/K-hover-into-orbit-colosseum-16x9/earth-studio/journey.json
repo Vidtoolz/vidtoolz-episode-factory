@@ -1,0 +1,45 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": "16:9",
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Colosseum",
+    "story": {
+      "role": null,
+      "importance": null,
+      "purposes": []
+    },
+    "framing": "landmark",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s321",
+      "type": "hold",
+      "duration_seconds": 3,
+      "pace": null,
+      "emphasis": null,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    },
+    {
+      "id": "s322",
+      "type": "half_orbit",
+      "duration_seconds": 14,
+      "pace": null,
+      "emphasis": null,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": []
+}

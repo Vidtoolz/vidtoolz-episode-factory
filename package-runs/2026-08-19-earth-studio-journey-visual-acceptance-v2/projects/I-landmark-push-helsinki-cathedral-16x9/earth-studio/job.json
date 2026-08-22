@@ -1,0 +1,38 @@
+{
+  "jobName": "Fresh I — push in on Helsinki Cathedral",
+  "slug": "fresh-i-push-in-on-helsinki-cathedral",
+  "description": "hover over Helsinki Cathedral at 1418m tilted 0 degrees for 3 seconds then zoom in on Helsinki Cathedral at 634m tilted 0 degrees for 6 seconds",
+  "aspect": "16:9",
+  "render_dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "frame_rate": 30,
+  "total_frames": 270,
+  "total_duration_seconds": 9,
+  "unresolved_count": 0,
+  "planner_version": "0.9.4",
+  "motion_profile": {
+    "profile_version": 4,
+    "source": "config/earth-studio-motion/motion-profile.json",
+    "references": [
+      "darien-gap",
+      "mountkinabalu",
+      "radiator-untitled",
+      "servyx"
+    ],
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
+  },
+  "created_at": "2026-08-19T14:00:00.000Z",
+  "journey": {
+    "journey_version": 1,
+    "pace": "calm",
+    "preset": null,
+    "start_source": "location",
+    "stop_count": 1,
+    "movement_count": 2,
+    "compiled_description": "hover over Helsinki Cathedral at 1418m tilted 0 degrees for 3 seconds then zoom in on Helsinki Cathedral at 634m tilted 0 degrees for 6 seconds"
+  },
+  "camera_quality": "camera-quality.json",
+  "continuation_state": "continuation-state.json"
+}

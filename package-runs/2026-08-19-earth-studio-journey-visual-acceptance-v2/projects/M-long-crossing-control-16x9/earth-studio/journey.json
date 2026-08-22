@@ -1,0 +1,100 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": "16:9",
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Helsinki",
+    "story": {
+      "role": null,
+      "importance": null,
+      "purposes": []
+    },
+    "framing": "city",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s360",
+      "type": "hold",
+      "duration_seconds": 3,
+      "pace": null,
+      "emphasis": null,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": [
+    {
+      "destination": {
+        "location": "New York",
+        "story": {
+          "role": null,
+          "importance": null,
+          "purposes": []
+        },
+        "framing": "city",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "cinematic",
+      "travel": [
+        {
+          "id": "s357",
+          "type": "pull_back",
+          "duration_seconds": 10,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s358",
+          "type": "cruise",
+          "duration_seconds": 105,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        },
+        {
+          "id": "s359",
+          "type": "descend",
+          "duration_seconds": 14,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s364",
+          "type": "hold",
+          "duration_seconds": 4,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": "16:9",
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Paris",
+    "story": {
+      "role": null,
+      "importance": null,
+      "purposes": []
+    },
+    "framing": "city",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s265",
+      "type": "hold",
+      "duration_seconds": 3,
+      "pace": null,
+      "emphasis": null,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": [
+    {
+      "destination": {
+        "location": "Eiffel Tower",
+        "story": {
+          "role": null,
+          "importance": null,
+          "purposes": []
+        },
+        "framing": "landmark",
+        "altitude_m": null,
+        "tilt_deg": null
+      },
+      "travel_style": "low_approach",
+      "travel": [
+        {
+          "id": "s264",
+          "type": "fly_low",
+          "duration_seconds": 7,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ],
+      "movements": [
+        {
+          "id": "s267",
+          "type": "half_orbit",
+          "duration_seconds": 10,
+          "pace": null,
+          "emphasis": null,
+          "direction": 1,
+          "altitude_m": null,
+          "tilt_deg": null,
+          "framing": null,
+          "revolutions": null
+        }
+      ]
+    }
+  ]
+}

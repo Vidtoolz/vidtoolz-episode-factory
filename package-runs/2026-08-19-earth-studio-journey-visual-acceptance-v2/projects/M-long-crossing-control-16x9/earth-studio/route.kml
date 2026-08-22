@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Fresh M — Helsinki to New York, isolated long crossing route reference</name>
+    <description>KML reference asset only. This does not create a finished Google Earth Studio camera animation.</description>
+    <Placemark>
+      <name>Helsinki</name>
+      <Point><coordinates>24.9384,60.1699,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>New York</name>
+      <Point><coordinates>-74.006,40.7128,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Fresh M — Helsinki to New York, isolated long crossing route path reference</name>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+        24.9384,60.1699,0
+        24.9384,60.1699,0
+        -74.006,40.7128,0
+        -74.006,40.7128,0
+        -74.006,40.7128,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

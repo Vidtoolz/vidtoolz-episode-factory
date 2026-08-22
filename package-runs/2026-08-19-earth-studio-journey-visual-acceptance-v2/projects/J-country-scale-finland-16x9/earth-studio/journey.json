@@ -1,0 +1,45 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": "16:9",
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Finland",
+    "story": {
+      "role": null,
+      "importance": null,
+      "purposes": []
+    },
+    "framing": "country",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s305",
+      "type": "hold",
+      "duration_seconds": 4,
+      "pace": null,
+      "emphasis": null,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    },
+    {
+      "id": "s306",
+      "type": "zoom_out",
+      "duration_seconds": 7,
+      "pace": null,
+      "emphasis": null,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": []
+}

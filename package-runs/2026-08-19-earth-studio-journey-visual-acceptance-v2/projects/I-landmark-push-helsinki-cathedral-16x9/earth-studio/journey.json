@@ -1,0 +1,45 @@
+{
+  "journey_version": 1,
+  "pace": "calm",
+  "aspect": "16:9",
+  "preset": null,
+  "start": {
+    "source": "location",
+    "location": "Helsinki Cathedral",
+    "story": {
+      "role": null,
+      "importance": null,
+      "purposes": []
+    },
+    "framing": "landmark",
+    "altitude_m": null,
+    "tilt_deg": null
+  },
+  "start_movements": [
+    {
+      "id": "s289",
+      "type": "hold",
+      "duration_seconds": 3,
+      "pace": null,
+      "emphasis": null,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    },
+    {
+      "id": "s290",
+      "type": "zoom_in",
+      "duration_seconds": 6,
+      "pace": null,
+      "emphasis": null,
+      "direction": 1,
+      "altitude_m": null,
+      "tilt_deg": null,
+      "framing": null,
+      "revolutions": null
+    }
+  ],
+  "legs": []
+}

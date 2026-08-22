@@ -1,0 +1,44 @@
+{
+  "continuation_state_version": 1,
+  "generated_by": "earth-studio-journey",
+  "planner_version": "0.9.4",
+  "motion_profile_version": 4,
+  "source_animation": "Fresh H — approach the Eiffel Tower and settle into orbit",
+  "timestamp": "2026-08-19T14:00:00.000Z",
+  "aspect": "16:9",
+  "frame_rate": 30,
+  "total_frames": 600,
+  "ends_at_frame": 599,
+  "camera": {
+    "latitude": 48.870523,
+    "longitude": 2.2945,
+    "altitude_m": 438,
+    "pan_deg": 180,
+    "heading_deg": 180,
+    "tilt_deg": 72
+  },
+  "esp_mapping": {
+    "longitude": "cameraPositionGroup.longitude",
+    "latitude": "cameraPositionGroup.latitude",
+    "altitude_m": "cameraPositionGroup.altitude",
+    "pan_deg": "cameraRotationGroup.rotationX",
+    "tilt_deg": "cameraRotationGroup.rotationY",
+    "not_keyframed": [
+      "rotationZ",
+      "fov",
+      "exposure",
+      "aperture",
+      "minFocusLength"
+    ]
+  },
+  "target": {
+    "name": "Eiffel Tower",
+    "latitude": 48.8584,
+    "longitude": 2.2945
+  },
+  "final_movement": {
+    "segment_id": 3,
+    "action": "orbit",
+    "location_name": "Eiffel Tower"
+  }
+}
