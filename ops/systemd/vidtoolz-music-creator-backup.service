@@ -1,0 +1,9 @@
+[Unit]
+Description=Music Creator verified production-data backup and bounded retention
+
+[Service]
+Type=oneshot
+ExecStart=/home/vidtoolz/vidtoolz-episode-factory/ops/music-creator-data-backup.sh --scheduled-run
+TimeoutStartSec=6h
+Nice=10
+IOSchedulingClass=idle

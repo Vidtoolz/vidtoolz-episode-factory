@@ -16,12 +16,14 @@ function sha(file) { return crypto.createHash("sha256").update(fs.readFileSync(f
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "music-data-backup-"));
   const source = path.join(root, "score-projects"), backupRoot = path.join(root, "backup-root");
+  const external = path.join(root, "external-package", "music"), externalBackupRoot = path.join(root, "external-backup");
   const project = path.join(source, "projects", "accepted-project");
   const quality = path.join(source, "projects", "fixture-qg-quality");
   const audio = Buffer.alloc(256 * 1024, 23);
   write(path.join(source, "score-registry.json"), JSON.stringify({ version: 1, projects: [
     { project_id: "accepted-project", path: project },
     { project_id: "fixture-qg-quality", path: quality },
+    { project_id: "external-project", path: external, package_path: path.dirname(external) },
   ] }));
   write(path.join(project, "score-project.json"), JSON.stringify({ project_id: "accepted-project", approved_candidate: "music-candidate-002", current_plan_revision_id: "revision-a" }));
   write(path.join(project, "music-candidates/music-candidate-002/music-candidate.json"), JSON.stringify({ candidate_id: "music-candidate-002", status: "completed", human_verdict: "use", plan_revision_id: "revision-a" }));
@@ -36,13 +38,15 @@ function fixture() {
   }));
   write(path.join(quality, "score-project.json"), JSON.stringify({ project_id: "fixture-qg-quality", quality_gate: true }));
   write(path.join(quality, "evidence/frozen.wav"), Buffer.alloc(128 * 1024, 9));
+  write(path.join(external, "approved/mix.wav"), Buffer.alloc(64 * 1024, 7));
+  write(path.join(external, "score-project.json"), JSON.stringify({ project_id: "external-project" }));
   fs.mkdirSync(backupRoot, { recursive: true });
-  return { root, source, backupRoot, project, quality, audioHash: sha(path.join(project, "approved/mix.wav")) };
+  return { root, source, backupRoot, external, externalBackupRoot, project, quality, audioHash: sha(path.join(project, "approved/mix.wav")) };
 }
 function run(f, args, extraEnv = {}) {
   return childProcess.spawnSync("bash", [backupScript, ...args], {
     encoding: "utf8",
-    env: { ...process.env, MUSIC_CREATOR_DATA_ROOT: f.source, MUSIC_CREATOR_BACKUP_ROOT: f.backupRoot, MUSIC_CREATOR_BACKUP_ALLOW_SAME_DEVICE: "1", MUSIC_CREATOR_BACKUP_STEP_TIMEOUT: "30s", ...extraEnv },
+    env: { ...process.env, MUSIC_CREATOR_DATA_ROOT: f.source, MUSIC_CREATOR_BACKUP_ROOT: f.backupRoot, MUSIC_CREATOR_BACKUP_ALLOW_SAME_DEVICE: "1", MUSIC_CREATOR_BACKUP_TEST_MODE: "1", MUSIC_CREATOR_BACKUP_MIN_FREE_AFTER: "0", MUSIC_CREATOR_BACKUP_STEP_TIMEOUT: "30s", MUSIC_CREATOR_EXTERNAL_PROJECT_ID: "external-project", MUSIC_CREATOR_EXTERNAL_SOURCE: f.external, MUSIC_CREATOR_EXTERNAL_BACKUP_ROOT: f.externalBackupRoot, ...extraEnv },
   });
 }
 function latest(f) { const id = fs.readFileSync(path.join(f.backupRoot, "latest-successful"), "utf8").trim(); return { id, dir: path.join(f.backupRoot, "snapshots", id) }; }
@@ -112,6 +116,86 @@ test("concurrent source write is detected and prior verified backup remains auth
   const failed = run(f, ["--backup"], { MUSIC_CREATOR_BACKUP_TEST_MODE: "1", MUSIC_CREATOR_BACKUP_TEST_AFTER_ARCHIVE_COMMAND: `printf '\\n' >> '${registry}'` });
   assert.notEqual(failed.status, 0); assert.match(failed.stderr, /source changed during backup/);
   assert.equal(latest(f).id, prior); assert.equal(fs.readdirSync(path.join(f.backupRoot, "snapshots")).length, 1);
+});
+
+function cloneSnapshot(f, sourceDir, id, options = {}) {
+  const target = path.join(f.backupRoot, "snapshots", id); fs.cpSync(sourceDir, target, { recursive: true });
+  const metadataFile = path.join(target, "backup.json"), metadata = JSON.parse(fs.readFileSync(metadataFile));
+  metadata.backup_id = id; metadata.destination = target; fs.writeFileSync(metadataFile, JSON.stringify(metadata, null, 2));
+  if (options.pinned) write(path.join(target, "PINNED"), "operator-preserved\n");
+  return target;
+}
+
+test("retention preview selects only oldest verified snapshots and protects latest, pinned, unknown, and unverified data", () => {
+  const f = fixture(); assert.equal(run(f, ["--backup"]).status, 0); const base = latest(f);
+  cloneSnapshot(f, base.dir, "20260101T000000Z-11111111");
+  cloneSnapshot(f, base.dir, "20260102T000000Z-22222222", { pinned: true });
+  cloneSnapshot(f, base.dir, "20260103T000000Z-33333333");
+  fs.mkdirSync(path.join(f.backupRoot, "snapshots", "operator-notes"));
+  const result = run(f, ["--retention-preview"], { MUSIC_CREATOR_BACKUP_RETENTION_KEEP: "2" });
+  assert.equal(result.status, 0, result.stderr); assert.match(result.stdout, /REMOVE backup_id=20260101/);
+  assert.match(result.stdout, /RETAIN backup_id=20260102.*reason=pinned/); assert.match(result.stdout, /PROTECT_UNKNOWN name=operator-notes/);
+  assert.match(result.stdout, new RegExp(`RETAIN backup_id=${base.id}.*reason=latest`));
+});
+
+test("retention execution is bounded, idempotent, and cannot overlap the backup lock", () => {
+  const f = fixture(); assert.equal(run(f, ["--backup"]).status, 0); const base = latest(f);
+  cloneSnapshot(f, base.dir, "20260101T000000Z-11111111"); cloneSnapshot(f, base.dir, "20260102T000000Z-22222222");
+  const applied = run(f, ["--apply-retention"], { MUSIC_CREATOR_BACKUP_RETENTION_KEEP: "2" });
+  assert.equal(applied.status, 0, applied.stderr); assert.ok(!fs.existsSync(path.join(f.backupRoot, "snapshots/20260101T000000Z-11111111")));
+  assert.ok(fs.existsSync(base.dir)); assert.equal(run(f, ["--apply-retention"], { MUSIC_CREATOR_BACKUP_RETENTION_KEEP: "2" }).status, 0);
+  const lock = childProcess.spawn("flock", [path.join(f.backupRoot, ".backup.lock"), "sleep", "2"]); try {
+    assert.notEqual(run(f, ["--apply-retention"], { MUSIC_CREATOR_BACKUP_RETENTION_KEEP: "2" }).status, 0);
+    assert.notEqual(run(f, ["--verify", base.dir]).status, 0);
+  } finally { lock.kill(); }
+});
+
+test("scheduled run protects the whitelisted external project and applies retention only after both verified backups", () => {
+  const f = fixture(); const result = run(f, ["--scheduled-run"]); assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+  assert.ok(fs.existsSync(path.join(f.backupRoot, "latest-successful")));
+  const externalId = fs.readFileSync(path.join(f.externalBackupRoot, "latest-successful"), "utf8").trim();
+  const externalDir = path.join(f.externalBackupRoot, "snapshots", externalId);
+  assert.equal(run(f, ["--external-verify", externalDir]).status, 0);
+  const restore = path.join(f.root, "external-restored"); assert.equal(run(f, ["--external-restore", externalDir, restore]).status, 0);
+  assert.equal(sha(path.join(restore, "approved/mix.wav")), sha(path.join(f.external, "approved/mix.wav")));
+});
+
+test("external project backup fails closed when registry ownership or exact path does not match", () => {
+  const f = fixture(); const registry = JSON.parse(fs.readFileSync(path.join(f.source, "score-registry.json")));
+  registry.projects.find((item) => item.project_id === "external-project").path = path.dirname(f.external);
+  fs.writeFileSync(path.join(f.source, "score-registry.json"), JSON.stringify(registry));
+  const result = run(f, ["--scheduled-run"]); assert.notEqual(result.status, 0); assert.match(result.stderr, /exact registered project path/);
+  assert.ok(!fs.existsSync(path.join(f.backupRoot, "latest-successful")));
+});
+
+test("wrong NAS authority and low free space fail before capture without a local fallback", () => {
+  const f = fixture();
+  const wrong = run(f, ["--backup"], { MUSIC_CREATOR_BACKUP_TEST_MODE: "0", MUSIC_CREATOR_BACKUP_EXPECTED_SOURCE: "//not-this-device/share" });
+  assert.notEqual(wrong.status, 0); assert.match(wrong.stderr, /expected NAS mount/); assert.ok(!fs.existsSync(path.join(f.backupRoot, "latest-successful")));
+  const low = run(f, ["--backup"], { MUSIC_CREATOR_BACKUP_MIN_FREE_AFTER: String(Number.MAX_SAFE_INTEGER) });
+  assert.notEqual(low.status, 0); assert.match(low.stderr, /insufficient destination space/);
+});
+
+test("failed scheduled backup never runs retention or replaces the prior main recovery point", () => {
+  const f = fixture(); assert.equal(run(f, ["--backup"]).status, 0); const prior = latest(f);
+  cloneSnapshot(f, prior.dir, "20260101T000000Z-11111111");
+  const failed = run(f, ["--scheduled-run"], { MUSIC_CREATOR_BACKUP_RETENTION_KEEP: "1", MUSIC_CREATOR_BACKUP_TEST_AFTER_ARCHIVE_COMMAND: "exit 23" });
+  assert.notEqual(failed.status, 0); assert.equal(latest(f).id, prior.id);
+  assert.ok(fs.existsSync(path.join(f.backupRoot, "snapshots/20260101T000000Z-11111111")), "retention must not run after failed capture");
+});
+
+test("status reports retention, NAS health, timer state, and external coverage", () => {
+  const f = fixture(); assert.equal(run(f, ["--scheduled-run"]).status, 0);
+  const status = run(f, ["--status"]); assert.equal(status.status, 0, status.stderr);
+  assert.match(status.stdout, /retention_keep=7/); assert.match(status.stdout, /nas_mount_ok=NO/);
+  assert.match(status.stdout, /external_latest=[0-9]{8}T[0-9]{6}Z-/);
+});
+
+test("versioned systemd timer invokes the bounded scheduled command on the declared daily cadence", () => {
+  const service = fs.readFileSync(path.join(__dirname, "../ops/systemd/vidtoolz-music-creator-backup.service"), "utf8");
+  const timer = fs.readFileSync(path.join(__dirname, "../ops/systemd/vidtoolz-music-creator-backup.timer"), "utf8");
+  assert.match(service, /music-creator-data-backup\.sh --scheduled-run/); assert.match(service, /TimeoutStartSec=6h/);
+  assert.match(timer, /04:45:00 Europe\/Helsinki/); assert.match(timer, /Persistent=true/); assert.match(timer, /RandomizedDelaySec=10min/);
 });
 
 if (require.main === module) {

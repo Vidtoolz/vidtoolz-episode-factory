@@ -19,8 +19,14 @@ Tar preserves directory structure, modes, symlinks, and hardlinks. Correct bytes
 # Create and deeply verify one snapshot
 ./ops/music-creator-data-backup.sh --backup
 
+# The scheduled policy path: external payload, canonical root, then retention
+./ops/music-creator-data-backup.sh --scheduled-run
+
 # Report and reverify the latest successful snapshot
 ./ops/music-creator-data-backup.sh --status
+
+# Read-only retention decision; never deletes
+./ops/music-creator-data-backup.sh --retention-preview
 
 # Verify a named snapshot
 ./ops/music-creator-data-backup.sh --verify \
@@ -82,4 +88,37 @@ Keep the rollback directory until candidate hashes, approvals, exports, and regi
 
 ## Scheduling and retention
 
-The production backup remains manual after initial acceptance. A full snapshot is about 6.24 GB and deep verification reads the source twice; installing an unattended schedule without a separately approved retention policy would create unbounded NAS history. Run a verified backup after meaningful project/approval changes and check `--status`. Keep the prior verified snapshot when creating a new one. A future scheduler should reuse this command, prevent overlap, and add conservative retention only after capacity/churn evidence.
+The versioned systemd user timer runs daily at 04:45 Europe/Helsinki with up to ten minutes of jitter and catch-up after downtime. Daily is justified by observed bursty project work: 1,321 files/6.19 GB were created or changed on 2026-08-21 and 53 files/47.2 MB on 2026-08-22, including approvals and production candidates. A verified snapshot takes tens of seconds, while the NAS has about 100 TB free. Also run `--scheduled-run` explicitly after a major approval when a same-day recovery point matters.
+
+Automatic retention keeps the newest seven verified canonical snapshots. `latest-successful` is always protected; `PINNED` snapshots are also protected and unknown/unverified directories are never automatic deletion candidates. Retention runs only after both the external-payload snapshot and canonical backup succeed. Preview with `--retention-preview`; execution is `--apply-retention`. At the measured 6.239 GB per snapshot, the normal retained canonical footprint is about 43.7 GB, with a worst-case full-snapshot write volume of about 187.2 GB per 30-day month. Pins are explicit operator exceptions, not created by the timer.
+
+Deploy and verify the timer from repository source:
+
+```bash
+./ops/deploy-music-backup-ops.sh --install
+systemctl --user daemon-reload
+systemctl --user enable --now vidtoolz-music-creator-backup.timer
+./ops/deploy-music-backup-ops.sh --check
+systemctl --user list-timers vidtoolz-music-creator-backup.timer
+```
+
+The backup script verifies that `/mnt/vidnas_public` resolves to the CIFS authority `//192.168.61.186/Public`, checks free capacity before capture, and refuses a local fallback directory. The service has a six-hour bound and the script lock prevents overlap.
+
+## External package-linked Music Creator project
+
+Registry project `pkg-why-i-refuse-to-outsource-my-creator-identity-to-ai-20260630` points to the AIGEN-owned package on VIDNAS, with its Music Creator payload at:
+
+`/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-packages/why-i-refuse-to-outsource-my-creator-identity-to-ai-20260630/music`
+
+The generating system is AIGEN, but its existing Git mirror excludes WAVs and its media mirror includes only images/video. Backup ownership of this exact registry-linked `music` directory is therefore `MUSIC_CREATOR_OWNED`. The scheduled operation validates the registry ID and exact canonical path, then creates a separately verified local snapshot under:
+
+`/home/vidtoolz/vidtoolz-music-external-backups/pkg-why-i-refuse-to-outsource-my-creator-identity-to-ai-20260630`
+
+This gives the NAS-hosted payload an independent ext4 recovery copy. Its retention is the newest two verified snapshots. Restore to an absent test path with:
+
+```bash
+./ops/music-creator-data-backup.sh --external-verify EXTERNAL_BACKUP_DIR
+./ops/music-creator-data-backup.sh --external-restore EXTERNAL_BACKUP_DIR /absolute/absent/test-path
+```
+
+On NAS loss, restore the verified local external snapshot to the exact registry path after remounting/replacing VIDNAS. On local-system loss, the original external package remains on VIDNAS. Never redirect an arbitrary registry path into this backup lane; the project ID and path are fixed and fail closed.

@@ -39,6 +39,7 @@
       "score-engine/storage-lifecycle.js"
     ],
     "operations": [
+      "ops/deploy-music-backup-ops.sh",
       "ops/music-creator-data-backup.sh",
       "ops/music-creator-data-manifest.js",
       "ops/music-creator-data-verify.js",
@@ -48,7 +49,9 @@
       "ops/music-creator-launchers/ensure-cockpit.sh",
       "ops/music-creator-launchers/open-episode-factory-page",
       "ops/music-creator-launchers/open-music-creator",
-      "ops/music-creator-launchers/vidtoolz-music3"
+      "ops/music-creator-launchers/vidtoolz-music3",
+      "ops/systemd/vidtoolz-music-creator-backup.service",
+      "ops/systemd/vidtoolz-music-creator-backup.timer"
     ],
     "verification_scripts": [
       "scripts/backfill-score-explanation.js",
@@ -105,6 +108,7 @@
     ]
   },
   "external_runtime_data": [
-    "/home/vidtoolz/vidtoolz-score-projects"
+    "/home/vidtoolz/vidtoolz-score-projects",
+    "/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-packages/why-i-refuse-to-outsource-my-creator-identity-to-ai-20260630/music"
   ]
 }

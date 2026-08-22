@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Music Creator verified production-data backup
+
+[Timer]
+OnCalendar=*-*-* 04:45:00 Europe/Helsinki
+Persistent=true
+RandomizedDelaySec=10min
+Unit=vidtoolz-music-creator-backup.service
+
+[Install]
+WantedBy=timers.target

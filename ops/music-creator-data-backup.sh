@@ -7,6 +7,14 @@ VERIFY_TOOL="$SCRIPT_DIR/music-creator-data-verify.js"
 SOURCE_ROOT=${MUSIC_CREATOR_DATA_ROOT:-/home/vidtoolz/vidtoolz-score-projects}
 BACKUP_ROOT=${MUSIC_CREATOR_BACKUP_ROOT:-/mnt/vidnas_public/VIDTOOLZ/08_SYSTEM_EXPORTS/music-creator-data-backups}
 STEP_TIMEOUT=${MUSIC_CREATOR_BACKUP_STEP_TIMEOUT:-4h}
+RETENTION_KEEP=${MUSIC_CREATOR_BACKUP_RETENTION_KEEP:-7}
+EXPECTED_BACKUP_SOURCE=${MUSIC_CREATOR_BACKUP_EXPECTED_SOURCE:-//192.168.61.186/Public}
+EXPECTED_BACKUP_FSTYPE=${MUSIC_CREATOR_BACKUP_EXPECTED_FSTYPE:-cifs}
+MIN_FREE_AFTER=${MUSIC_CREATOR_BACKUP_MIN_FREE_AFTER:-10737418240}
+EXTERNAL_PROJECT_ID=${MUSIC_CREATOR_EXTERNAL_PROJECT_ID:-pkg-why-i-refuse-to-outsource-my-creator-identity-to-ai-20260630}
+EXTERNAL_SOURCE=${MUSIC_CREATOR_EXTERNAL_SOURCE:-/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-packages/why-i-refuse-to-outsource-my-creator-identity-to-ai-20260630/music}
+EXTERNAL_BACKUP_ROOT=${MUSIC_CREATOR_EXTERNAL_BACKUP_ROOT:-/home/vidtoolz/vidtoolz-music-external-backups/$EXTERNAL_PROJECT_ID}
+EXTERNAL_RETENTION_KEEP=${MUSIC_CREATOR_EXTERNAL_RETENTION_KEEP:-2}
 
 usage() {
   cat <<'EOF'
@@ -14,13 +22,20 @@ Usage:
   ./ops/music-creator-data-backup.sh --status
   ./ops/music-creator-data-backup.sh --dry-run
   ./ops/music-creator-data-backup.sh --backup
+  ./ops/music-creator-data-backup.sh --scheduled-run
+  ./ops/music-creator-data-backup.sh --retention-preview
+  ./ops/music-creator-data-backup.sh --apply-retention
   ./ops/music-creator-data-backup.sh --verify BACKUP_DIR
   ./ops/music-creator-data-backup.sh --restore BACKUP_DIR ABSENT_TARGET_DIR
+  ./ops/music-creator-data-backup.sh --external-verify BACKUP_DIR
+  ./ops/music-creator-data-backup.sh --external-restore BACKUP_DIR ABSENT_TARGET_DIR
 
 Environment overrides for tests/operators:
   MUSIC_CREATOR_DATA_ROOT
   MUSIC_CREATOR_BACKUP_ROOT
   MUSIC_CREATOR_BACKUP_STEP_TIMEOUT
+  MUSIC_CREATOR_EXTERNAL_SOURCE
+  MUSIC_CREATOR_EXTERNAL_BACKUP_ROOT
 EOF
 }
 
@@ -38,6 +53,24 @@ nearest_existing_parent() {
   printf '%s\n' "$candidate"
 }
 mount_source() { findmnt -T "$1" -n -o SOURCE | tail -1; }
+mount_fstype() { findmnt -T "$1" -n -o FSTYPE | tail -1; }
+
+validate_expected_nas() {
+  local path=$1 source fstype
+  source=$(mount_source "$path")
+  fstype=$(mount_fstype "$path")
+  if [[ ${MUSIC_CREATOR_BACKUP_TEST_MODE:-0} != 1 ]]; then
+    [[ "$source" = "$EXPECTED_BACKUP_SOURCE" && "$fstype" = "$EXPECTED_BACKUP_FSTYPE" ]] ||
+      fail "expected NAS mount $EXPECTED_BACKUP_SOURCE ($EXPECTED_BACKUP_FSTYPE), got $source ($fstype) at $path"
+  fi
+}
+
+require_capacity() {
+  local source_root=$1 destination=$2 needed available
+  needed=$(du -sb "$source_root" | awk '{print $1}')
+  available=$(df -B1 --output=avail "$destination" | tail -1 | tr -d ' ')
+  (( available >= needed + MIN_FREE_AFTER )) || fail "insufficient destination space: available=$available required=$((needed + MIN_FREE_AFTER))"
+}
 
 validate_roots() {
   absolute_dir "$SOURCE_ROOT"
@@ -46,11 +79,13 @@ validate_roots() {
   [[ "$BACKUP_ROOT" != "$SOURCE_ROOT" && "$BACKUP_ROOT" != "$SOURCE_ROOT/"* ]] || fail "backup root cannot be inside source root"
   local backup_parent source_mount backup_mount
   backup_parent=$(nearest_existing_parent "$BACKUP_ROOT")
+  validate_expected_nas "$backup_parent"
   source_mount=$(mount_source "$SOURCE_ROOT")
   backup_mount=$(mount_source "$backup_parent")
   if [[ ${MUSIC_CREATOR_BACKUP_ALLOW_SAME_DEVICE:-0} != 1 && "$source_mount" = "$backup_mount" ]]; then
     fail "backup destination is not independent from source device ($source_mount)"
   fi
+  require_capacity "$SOURCE_ROOT" "$backup_parent"
 }
 
 verify_backup() {
@@ -70,6 +105,115 @@ verify_backup() {
     "$(jq -r '.byte_count' "$metadata")" "$(jq -r '.manifest_sha256' "$metadata")"
 }
 
+locked_verify() {
+  local root=$1 backup=$2
+  mkdir -p -- "$root"
+  exec 6>"$root/.backup.lock"; flock -n 6 || fail "backup/retention/restore operation is active for $root"
+  verify_backup "$backup"
+  flock -u 6
+}
+
+recognized_snapshot() {
+  local root=$1 dir=$2 id metadata manifest
+  id=$(basename -- "$dir")
+  [[ "$id" =~ ^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$ ]] || return 1
+  [[ "$dir" = "$root/snapshots/$id" && -d "$dir" ]] || return 1
+  metadata="$dir/backup.json"; manifest="$dir/integrity-manifest.jsonl"
+  [[ -f "$metadata" && -f "$manifest" && -f "$dir/data.tar" && -f "$dir/VERIFIED" ]] || return 1
+  [[ $(jq -r '.status' "$metadata" 2>/dev/null) = verified && $(jq -r '.backup_id' "$metadata" 2>/dev/null) = "$id" ]] || return 1
+  [[ $(sha "$manifest") = "$(jq -r '.manifest_sha256' "$metadata" 2>/dev/null)" ]] || return 1
+}
+
+retention_plan() {
+  local root=$1 keep=$2 latest="" dir id size index cutoff reason action
+  [[ "$keep" =~ ^[1-9][0-9]*$ ]] || fail "retention count must be a positive integer"
+  [[ -d "$root/snapshots" ]] || { printf 'RETENTION root=%s verified=0 keep=%s\n' "$root" "$keep"; return; }
+  [[ -f "$root/latest-successful" ]] && latest=$(head -1 "$root/latest-successful")
+  local -a verified=() unknown=()
+  while IFS= read -r dir; do
+    if recognized_snapshot "$root" "$dir"; then verified+=("$dir"); else unknown+=("$dir"); fi
+  done < <(find "$root/snapshots" -mindepth 1 -maxdepth 1 -type d -print | sort)
+  cutoff=$((${#verified[@]} - keep)); (( cutoff < 0 )) && cutoff=0
+  printf 'RETENTION root=%s verified=%s keep=%s latest=%s\n' "$root" "${#verified[@]}" "$keep" "${latest:-none}"
+  for ((index=0; index<${#verified[@]}; index++)); do
+    dir=${verified[$index]}; id=$(basename -- "$dir"); size=$(du -sb "$dir" | awk '{print $1}')
+    action=RETAIN; reason=newest
+    if [[ -f "$dir/PINNED" ]]; then reason=pinned
+    elif [[ "$id" = "$latest" ]]; then reason=latest
+    elif (( index < cutoff )); then action=REMOVE; reason=outside-retention
+    fi
+    printf '%s backup_id=%s bytes=%s reason=%s\n' "$action" "$id" "$size" "$reason"
+  done
+  for dir in "${unknown[@]}"; do
+    printf 'PROTECT_UNKNOWN name=%s reason=unrecognized-or-unverified\n' "$(basename -- "$dir")"
+  done
+}
+
+apply_retention_root() {
+  local root=$1 keep=$2 lock_file=$3 plan line id dir removed=0 bytes=0 size latest
+  mkdir -p -- "$root/snapshots"
+  exec 8>"$lock_file"
+  flock -n 8 || fail "backup/retention operation is active for $root"
+  plan=$(retention_plan "$root" "$keep")
+  latest=""; [[ -f "$root/latest-successful" ]] && latest=$(head -1 "$root/latest-successful")
+  while IFS= read -r line; do
+    [[ "$line" = REMOVE\ * ]] || continue
+    id=${line#*backup_id=}; id=${id%% *}; dir="$root/snapshots/$id"
+    [[ "$id" != "$latest" ]] || fail "retention attempted to remove latest-successful"
+    recognized_snapshot "$root" "$dir" || fail "retention candidate changed or became ambiguous: $id"
+    [[ ! -f "$dir/PINNED" ]] || fail "retention candidate became pinned: $id"
+    size=$(du -sb "$dir" | awk '{print $1}')
+    rm -rf -- "$dir"
+    removed=$((removed + 1)); bytes=$((bytes + size))
+    printf 'REMOVED backup_id=%s bytes=%s\n' "$id" "$size"
+  done <<< "$plan"
+  [[ -z "$latest" || -d "$root/snapshots/$latest" ]] || fail "latest-successful was lost"
+  printf 'RETENTION_APPLIED root=%s removed=%s reclaimed_bytes=%s\n' "$root" "$removed" "$bytes"
+}
+
+validate_external() {
+  absolute_dir "$EXTERNAL_SOURCE"; absolute_dir "$EXTERNAL_BACKUP_ROOT"
+  [[ -d "$EXTERNAL_SOURCE" ]] || fail "external payload missing: $EXTERNAL_SOURCE"
+  local registered
+  registered=$(jq -r --arg id "$EXTERNAL_PROJECT_ID" '.projects[] | select(.project_id==$id) | .path' "$SOURCE_ROOT/score-registry.json")
+  [[ "$registered" = "$EXTERNAL_SOURCE" ]] || fail "external payload is not the exact registered project path"
+  [[ "$(realpath "$EXTERNAL_SOURCE")" = "$EXTERNAL_SOURCE" ]] || fail "external payload path must be canonical and non-symlinked"
+  validate_expected_nas "$EXTERNAL_SOURCE"
+  local parent source_mount backup_mount
+  parent=$(nearest_existing_parent "$EXTERNAL_BACKUP_ROOT")
+  source_mount=$(mount_source "$EXTERNAL_SOURCE"); backup_mount=$(mount_source "$parent")
+  [[ "$source_mount" != "$backup_mount" || ${MUSIC_CREATOR_BACKUP_TEST_MODE:-0} = 1 ]] || fail "external backup is not independent from payload device"
+  require_capacity "$EXTERNAL_SOURCE" "$parent"
+}
+
+external_backup() {
+  validate_external
+  mkdir -p -- "$EXTERNAL_BACKUP_ROOT/snapshots" "$EXTERNAL_BACKUP_ROOT/.staging"
+  exec 7>"$EXTERNAL_BACKUP_ROOT/.backup.lock"; flock -n 7 || fail "another external payload backup is active"
+  local id stage completed started completed_at summary after_summary manifest_hash archive_hash
+  id="$(date -u +%Y%m%dT%H%M%SZ)-$(printf '%s' "$EXTERNAL_SOURCE:$PPID:$RANDOM" | sha256sum | cut -c1-8)"
+  stage="$EXTERNAL_BACKUP_ROOT/.staging/$id"; completed="$EXTERNAL_BACKUP_ROOT/snapshots/$id"
+  mkdir -p -- "$stage"; started=$(date -u +%FT%TZ)
+  summary=$(timeout "$STEP_TIMEOUT" node "$MANIFEST_TOOL" "$EXTERNAL_SOURCE" "$stage/source-before.jsonl")
+  timeout "$STEP_TIMEOUT" tar --create --file "$stage/data.tar" --directory "$EXTERNAL_SOURCE" --one-file-system .
+  after_summary=$(timeout "$STEP_TIMEOUT" node "$MANIFEST_TOOL" "$EXTERNAL_SOURCE" "$stage/source-after.jsonl")
+  cmp -s "$stage/source-before.jsonl" "$stage/source-after.jsonl" || fail "external payload changed during backup"
+  [[ "$summary" = "$after_summary" ]] || fail "external payload accounting changed during backup"
+  mv -- "$stage/source-before.jsonl" "$stage/integrity-manifest.jsonl"; unlink -- "$stage/source-after.jsonl"
+  timeout "$STEP_TIMEOUT" tar -tf "$stage/data.tar" >/dev/null
+  manifest_hash=$(sha "$stage/integrity-manifest.jsonl"); archive_hash=$(sha "$stage/data.tar"); completed_at=$(date -u +%FT%TZ)
+  jq -n --arg backup_id "$id" --arg started_at "$started" --arg completed_at "$completed_at" \
+    --arg source_path "$EXTERNAL_SOURCE" --arg source_host "$(hostname)" --arg destination "$completed" \
+    --arg project_id "$EXTERNAL_PROJECT_ID" --arg manifest_sha256 "$manifest_hash" --arg archive_sha256 "$archive_hash" \
+    --argjson file_count "$(jq -r '.files' <<<"$summary")" --argjson directory_count "$(jq -r '.directories' <<<"$summary")" \
+    --argjson symlink_count "$(jq -r '.symlinks' <<<"$summary")" --argjson byte_count "$(jq -r '.bytes' <<<"$summary")" \
+    '{schema_version:1,tool:"music-creator-external-data-backup",status:"verified",ownership:"MUSIC_CREATOR_OWNED",project_id:$project_id,backup_id:$backup_id,started_at:$started_at,completed_at:$completed_at,source_path:$source_path,source_host:$source_host,destination:$destination,file_count:$file_count,directory_count:$directory_count,symlink_count:$symlink_count,byte_count:$byte_count,manifest_sha256:$manifest_sha256,archive_sha256:$archive_sha256,verification:{source_stable:true,archive_readable:true,manifest_verified:true}}' > "$stage/backup.json"
+  printf 'verified %s\n' "$completed_at" > "$stage/VERIFIED"
+  mv -- "$stage" "$completed"; printf '%s\n' "$id" > "$EXTERNAL_BACKUP_ROOT/.latest-successful.$id"; mv -- "$EXTERNAL_BACKUP_ROOT/.latest-successful.$id" "$EXTERNAL_BACKUP_ROOT/latest-successful"
+  verify_backup "$completed"
+  flock -u 7
+}
+
 status() {
   local pointer="$BACKUP_ROOT/latest-successful"
   if [[ ! -f "$pointer" ]]; then
@@ -81,7 +225,22 @@ status() {
   [[ "$id" =~ ^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$ ]] || fail "invalid latest-successful pointer"
   backup="$BACKUP_ROOT/snapshots/$id"
   verify_backup "$backup"
-  printf 'latest_successful=%s destination=%s completed_at=%s\n' "$id" "$backup" "$(jq -r '.completed_at' "$backup/backup.json")"
+  local completed_at age_seconds
+  completed_at=$(jq -r '.completed_at' "$backup/backup.json")
+  age_seconds=$(( $(date -u +%s) - $(date -u -d "$completed_at" +%s) ))
+  printf 'latest_successful=%s destination=%s completed_at=%s age_seconds=%s\n' "$id" "$backup" "$completed_at" "$age_seconds"
+  local count bytes mount_ok=NO timer_state=not-installed next=unknown service_result=unknown external_status=missing
+  count=$(find "$BACKUP_ROOT/snapshots" -mindepth 1 -maxdepth 1 -type d -exec test -f '{}/VERIFIED' \; -printf . | wc -c)
+  bytes=$(du -sb "$BACKUP_ROOT/snapshots" | awk '{print $1}')
+  if [[ "$(mount_source "$BACKUP_ROOT")" = "$EXPECTED_BACKUP_SOURCE" && "$(mount_fstype "$BACKUP_ROOT")" = "$EXPECTED_BACKUP_FSTYPE" ]]; then mount_ok=YES; fi
+  if systemctl --user cat vidtoolz-music-creator-backup.timer >/dev/null 2>&1; then
+    timer_state=$(systemctl --user is-enabled vidtoolz-music-creator-backup.timer 2>/dev/null || true)
+    next=$(systemctl --user list-timers vidtoolz-music-creator-backup.timer --no-legend 2>/dev/null | awk '{$1=$1;print}' || true)
+    service_result=$(systemctl --user show vidtoolz-music-creator-backup.service -p Result --value 2>/dev/null || true)
+  fi
+  if [[ -f "$EXTERNAL_BACKUP_ROOT/latest-successful" ]]; then external_status=$(head -1 "$EXTERNAL_BACKUP_ROOT/latest-successful"); fi
+  printf 'operations retained=%s retained_bytes=%s retention_keep=%s nas_mount_ok=%s timer=%s service_result=%s external_latest=%s\n' "$count" "$bytes" "$RETENTION_KEEP" "$mount_ok" "$timer_state" "${service_result:-unknown}" "$external_status"
+  printf 'next_scheduled=%s\n' "${next:-unknown}"
 }
 
 dry_run() {
@@ -93,6 +252,10 @@ dry_run() {
   printf 'DRY_RUN source=%s files=%s bytes=%s destination=%s available=%s source_mount=%s destination_mount=%s\n' \
     "$SOURCE_ROOT" "$source_files" "$source_bytes" "$BACKUP_ROOT" "$available" \
     "$(mount_source "$SOURCE_ROOT")" "$(mount_source "$(nearest_existing_parent "$BACKUP_ROOT")")"
+  validate_external
+  printf 'EXTERNAL_DRY_RUN project_id=%s source=%s files=%s bytes=%s destination=%s source_mount=%s destination_mount=%s\n' \
+    "$EXTERNAL_PROJECT_ID" "$EXTERNAL_SOURCE" "$(find "$EXTERNAL_SOURCE" -type f | wc -l)" "$(du -sb "$EXTERNAL_SOURCE" | awk '{print $1}')" \
+    "$EXTERNAL_BACKUP_ROOT" "$(mount_source "$EXTERNAL_SOURCE")" "$(mount_source "$(nearest_existing_parent "$EXTERNAL_BACKUP_ROOT")")"
 }
 
 backup() {
@@ -141,10 +304,12 @@ backup() {
   printf '%s\n' "$id" > "$pointer_tmp"
   mv -- "$pointer_tmp" "$BACKUP_ROOT/latest-successful"
   verify_backup "$completed"
+  flock -u 9
 }
 
 restore_backup() {
   local backup=$1 target=$2 parent stage
+  exec 6>"$BACKUP_ROOT/.backup.lock"; flock -n 6 || fail "backup/retention/restore operation is active for $BACKUP_ROOT"
   absolute_dir "$target"
   [[ "$target" != / && "$target" != "$HOME" && "$target" != "$SOURCE_ROOT" ]] || fail "unsafe restore target: $target"
   [[ ! -e "$target" ]] || fail "restore target already exists: $target"
@@ -166,12 +331,39 @@ restore_backup() {
     "$(jq -r '.backup_id' "$backup/backup.json")" "$target" "$(sha "$target.restore-manifest.jsonl")"
 }
 
+external_restore() {
+  local backup=$1 target=$2 stage
+  exec 6>"$EXTERNAL_BACKUP_ROOT/.backup.lock"; flock -n 6 || fail "backup/retention/restore operation is active for $EXTERNAL_BACKUP_ROOT"
+  absolute_dir "$target"; [[ "$target" != / && "$target" != "$HOME" && ! -e "$target" ]] || fail "unsafe or existing external restore target: $target"
+  verify_backup "$backup" >/dev/null
+  [[ $(jq -r '.project_id' "$backup/backup.json") = "$EXTERNAL_PROJECT_ID" ]] || fail "backup is not for the registered external project"
+  stage="$(dirname -- "$target")/.restore-staging-$(basename -- "$target")-$$"; [[ ! -e "$stage" ]] || fail "restore staging exists"
+  mkdir -p -- "$stage"; timeout "$STEP_TIMEOUT" tar -xf "$backup/data.tar" -C "$stage"
+  timeout "$STEP_TIMEOUT" node "$MANIFEST_TOOL" "$stage" "$stage.manifest.jsonl" >/dev/null
+  cmp -s "$backup/integrity-manifest.jsonl" "$stage.manifest.jsonl" || fail "external restore manifest mismatch"
+  mv -- "$stage" "$target"; mv -- "$stage.manifest.jsonl" "$target.restore-manifest.jsonl"
+  printf 'EXTERNAL_RESTORED project_id=%s target=%s manifest_sha256=%s\n' "$EXTERNAL_PROJECT_ID" "$target" "$(sha "$target.restore-manifest.jsonl")"
+}
+
+scheduled_run() {
+  external_backup
+  backup
+  apply_retention_root "$BACKUP_ROOT" "$RETENTION_KEEP" "$BACKUP_ROOT/.backup.lock"
+  apply_retention_root "$EXTERNAL_BACKUP_ROOT" "$EXTERNAL_RETENTION_KEEP" "$EXTERNAL_BACKUP_ROOT/.backup.lock"
+  status
+}
+
 case ${1:-} in
   --status) [[ $# = 1 ]] || { usage; exit 64; }; status ;;
   --dry-run) [[ $# = 1 ]] || { usage; exit 64; }; dry_run ;;
   --backup) [[ $# = 1 ]] || { usage; exit 64; }; backup ;;
-  --verify) [[ $# = 2 ]] || { usage; exit 64; }; verify_backup "$2" ;;
+  --scheduled-run) [[ $# = 1 ]] || { usage; exit 64; }; scheduled_run ;;
+  --retention-preview) [[ $# = 1 ]] || { usage; exit 64; }; retention_plan "$BACKUP_ROOT" "$RETENTION_KEEP" ;;
+  --apply-retention) [[ $# = 1 ]] || { usage; exit 64; }; apply_retention_root "$BACKUP_ROOT" "$RETENTION_KEEP" "$BACKUP_ROOT/.backup.lock" ;;
+  --verify) [[ $# = 2 ]] || { usage; exit 64; }; locked_verify "$BACKUP_ROOT" "$2" ;;
   --restore) [[ $# = 3 ]] || { usage; exit 64; }; restore_backup "$2" "$3" ;;
+  --external-verify) [[ $# = 2 ]] || { usage; exit 64; }; locked_verify "$EXTERNAL_BACKUP_ROOT" "$2" ;;
+  --external-restore) [[ $# = 3 ]] || { usage; exit 64; }; external_restore "$2" "$3" ;;
   --help|-h) usage ;;
   *) usage; exit 64 ;;
 esac
