@@ -44,10 +44,10 @@ function agentView(pkgDir, sourceCommit) {
     ...(sourceCommit ? ['--source-commit', sourceCommit] : [])]);
 }
 
-test('A1: registry identity — three agents with stable unique IDs and role definitions', () => {
+test('A1: registry identity — four agents with stable unique IDs and role definitions', () => {
   const reg = JSON.parse(fs.readFileSync(REGISTRY, 'utf8'));
   const ids = reg.agents.map((a) => a.agent_id);
-  assert.deepEqual(ids.sort(), ['camera_director', 'production_operations', 'qc_director']);
+  assert.deepEqual(ids.sort(), ['camera_director', 'generation_supervisor', 'production_operations', 'qc_director']);
   for (const a of reg.agents) {
     assert.ok(a.name && a.mission && a.reports_to === 'hermes');
     assert.ok(Array.isArray(a.allowed_actions) && a.allowed_actions.length > 0);
