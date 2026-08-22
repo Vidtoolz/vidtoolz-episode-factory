@@ -43,12 +43,143 @@
   // precisely the case where interior keyframes earn their place: they ARE the
   // circle, not decoration.
   const ORBIT_SAMPLE_STEP_DEG = 10;
+
+  // SETTLE-THEN-LAUNCH orbit→travel handoff (human-approved DIRN17, verdict
+  // recorded in package-runs/2026-08-21-earth-studio-orbit-travel-handoff/
+  // human-review.json).
+  //
+  // When an orbit is followed by a travel leg (fly_to/zoom) whose initial
+  // ground bearing differs materially from the orbit's exit tangent, the
+  // boundary keyframe departed straight into the travel launch and real
+  // Earth Studio playback redirected the ground-velocity vector ~73° in one
+  // frame (DIRN17 Rotterdam: 73.12° measured). The approved fix: decelerate
+  // the orbit into the boundary (calibrated terminal custom handle), hold
+  // position/altitude/tilt for ORBIT_TRAVEL_HANDOFF.hold_frames (15 frames =
+  // 0.5 s at 30 fps — exactly the reviewed candidate), then let the travel leg
+  // launch with its ordinary easeOut from rest. Pan keeps only the incoming
+  // deceleration; orientation stays continuous.
+  //
+  // Activation is geometric and state-based, never case-named: it fires only
+  // when BOTH speeds above the floor would disagree in direction by more than
+  // the threshold. A benign handoff (travel continues near the tangent) keeps
+  // the existing continuous transition untouched.
+  const ORBIT_TRAVEL_HANDOFF = {
+    direction_threshold_deg: 30,
+    speed_floor_mps: 100,
+    hold_frames: 15,
+    // The reviewed candidate authored -0.25·gap / influence 0.4 custom arrival
+    // handles on lat/lng/altitude/tilt and pan at the boundary keyframe.
+    arrival_fraction: 0.25,
+    arrival_influence: 0.4,
+  };
   // Ring acquisition (orbit Phase B). An orbit rides a ring of
   // altitude*tan(tilt) around its subject and faces it. A camera arriving from a
   // hover, a hold or the wrong pitch is NOT yet in that geometry, and letting it
   // reach the geometry while the sweep is already running is what produced the
   // visible slide. Acquisition gets its own bounded phase so the sweep can hold
   // radius, altitude and pitch.
+  // RING-ACQUISITION PACING — an experiment switch, not a default.
+  //
+  // Acquisition is sized as a max over three independent demands, and measurement
+  // showed the top-down calibration case has lateral 5.093 s against tilt 5.000 s:
+  // they are within 0.09 s of each other. So raising one channel alone buys almost
+  // nothing — lateral-only would cap at 5.000 s (1.8%) and tilt-only at 5.093 s
+  // (zero). A candidate has to move BOTH, and keep them balanced, or it just
+  // relocates the bottleneck.
+  //
+  // `lateralSpeedFactor` multiplies the orbit's own ground speed, which is what
+  // currently paces the radial move; `tiltRateDegPerS` replaces the calm rotation
+  // rate for the acquisition only (the sweep is untouched).
+  const ACQUISITION_PROFILES = {
+    brisk: { lateralSpeedFactor: 1.5, tiltRateDegPerS: 18 },
+    firm: { lateralSpeedFactor: 2.0, tiltRateDegPerS: 24 },
+  };
+  const ACQUISITION_DEFAULT_PROFILE = null; // null = current production pacing
+  // FRAMING-STABLE ACQUISITION — an experiment switch, not a default.
+  //
+  // Screen-space projection from real Earth Studio showed the subject moving
+  // vertically in frame during acquisition (peak 0.095 of normalized frame height,
+  // ~80 px on an 838 px render) while geometric aim error stayed <= 0.445 deg.
+  //
+  // Root cause, proven against six real samples: the subject is vertically centred
+  // exactly when `radius == altitude * tan(tilt)`. In the current acquisition radius
+  // is LINEAR in u and tilt is LINEAR in u, but altitude is an EASED two-keyframe
+  // change — so `altitude * tan(tilt)` is nonlinear while radius is linear, and the
+  // residual between them oscillates. Each channel is individually valid and
+  // monotonic; they are simply not coupled at intermediate frames.
+  //
+  // This switch co-samples altitude in the acquisition loop and derives radius from
+  // `altitude * tan(tilt)` at the same u, scaled so the final sample still lands
+  // exactly on the ring.
+  //
+  // REJECTED BY REAL IMPORT — kept only as documented evidence. Do not enable it
+  // expecting a fix.
+  //
+  // Real Earth Studio measured peak drift 0.0954 with it against 0.0948 without:
+  // no improvement, while the internal model had predicted 0.1800 -> 0.0609. The
+  // reason is instructive. A purely radial acquisition emits position keyframes at
+  // only u = 0, 0.5 and 1.0, because `entrySamples` is sized from the BEARING
+  // change and a camera moving straight out from the ring centre has none. The
+  // linear and coupled radius formulas agree exactly at u = 0.5 and u = 1.0, so
+  // this switch changes no position keyframe at all — it only adds an altitude
+  // keyframe, worth about 1 m in the played curve.
+  //
+  // So the residual that moves the subject is not in the keyframe VALUES; it is in
+  // Earth Studio's interpolation BETWEEN three keyframes spread across 153 frames.
+  // A real fix has to raise the acquisition's sample density for radial entries,
+  // which is a separate change with its own byte and smoothness consequences.
+  const FRAMING_STABLE_ACQUISITION_DEFAULT = false;
+  // RING-ACQUISITION SAMPLE DENSITY — an experiment switch, not a default.
+  //
+  // `entrySamples` is sized from the BEARING change alone. A camera leaving the
+  // ring's centre has none, so it floors at 2 intervals and the acquisition emits
+  // position keyframes at only u = 0, 0.5 and 1.0. Measured live on the drift
+  // fixture: 153 acquisition frames carrying 3 lat keys (599, 676, 752) — 76.5
+  // frames per keyframe.
+  //
+  // For comparison, the SWEEP that acquisition leads into is sampled at
+  // ORBIT_SAMPLE_STEP_DEG: 480 frames / 18 samples = 26.7 frames per keyframe. So
+  // the acquisition is 2.9x sparser than the motion the same system already
+  // considers well sampled, and Earth Studio is left interpolating a long curve.
+  //
+  // The density rule is therefore DERIVED from that existing budget rather than
+  // chosen: the sweep accepts stepDeg of turn per sample, which at the ring is
+  // `radius * stepDeg` of ground travel per sample. Apply the same ground-travel
+  // budget to the acquisition's RADIAL travel:
+  //
+  //   sweepStepGroundM = radius * toRadians(stepDeg)      214.3 m on the fixture
+  //   radialSamples    = ceil(radialTravel / that)        ceil(1228 / 214.3) = 6
+  //   entrySamples     = max(2, bearingSamples, radialSamples)
+  //
+  // which lands the fixture at 25.5 frames per keyframe against the sweep's 26.7.
+  // Bearing and radial travel are the same budget expressed on the two motion
+  // channels an acquisition actually has, so a bearing-driven entry that is
+  // already dense enough is unaffected.
+  //
+  // NOT the rejected coupled-radius candidate: radius stays linear in u and no
+  // formula changes. Only the number of samples does.
+  const ORBIT_ENTRY_DENSITY_DEFAULT = null; // null = current sparse sampling
+  // ACQUISITION TILT SCHEDULE — an experiment switch, not a default.
+  //
+  // The subject sits on the optical centreline exactly when
+  //   radius(t) = altitude(t) * tan(tilt(t)).
+  // Radius, altitude and tilt are all interpolated LINEARLY, but that identity is
+  // nonlinear, so it can only hold where the three happen to coincide. Rather than
+  // add keyframes, solve the identity for the one channel that is free:
+  //   tilt_required(t) = atan(radius(t) / altitude(t)).
+  //
+  // Endpoints come out exact, not approximately: at u=0 the camera is at the ring
+  // centre so atan(0/alt) = 0, and at u=1 radius IS altitude*tan(tilt) by
+  // construction, so atan returns the orbit tilt. The ratio rises monotonically
+  // (radius increasing, altitude decreasing), so tilt cannot reverse or overshoot.
+  //
+  // NOTE ON DENSITY: at the current 2-interval sampling the identity tilt equals
+  // the linear tilt EXACTLY at every sample (u = 0, 0.5, 1.0), so this switch is a
+  // byte-level no-op there — the same trap that made the coupled-radius candidate
+  // unmeasurable. It only expresses anything on a denser time base, so the
+  // experiment pairs it with the (also non-default) density switch and is
+  // explicitly EXPERIMENTAL rather than a shippable combination.
+  const ORBIT_ENTRY_TILT_SCHEDULE_DEFAULT = null; // null = linear
   const ORBIT_ENTRY_MIN_SECONDS = 0.5;
   const ORBIT_ENTRY_MAX_FRACTION = 0.35; // never eat more than this of the orbit
   const ORBIT_ENTRY_RING_TOLERANCE_FRACTION = 0.02;
@@ -670,12 +801,44 @@
   // always floored by the place's terrain minimum. Returns the value plus its
   // provenance (`source`) so plans and acceptance diagnostics can state where
   // every altitude came from.
-  function targetAltitude(action, altitudeSpec, location) {
+  // CALIBRATED-LANDMARK PORTRAIT CANDIDATE — experiment switch, default off.
+  //
+  // A calibrated (gazetteer) altitude never passes through the journey layer's
+  // framing law, so `aspectAwareFraming` structurally cannot reach it: on AUTO
+  // framing the compiled phrase omits the altitude and THIS function supplies it.
+  // Real Earth Studio measured the Colosseum at its calibrated 700 m occupying
+  // 3.59 frame widths at 9:16 — the largest framing defect in the actual Shorts
+  // format.
+  //
+  // The rule preserves what the calibration itself frames rather than
+  // substituting the generic class span: S = frameWidthMeters(alt, tilt) is put on
+  // the LIMITING axis, which reduces to `alt / min(1, width/height)`. The tilt
+  // cancels, so the preserved span is exact at whatever tilt the shot uses.
+  //
+  // Landscape and square aspects divide by exactly 1, so 16:9 output is unchanged
+  // by construction — not merely expected to be.
+  const CALIBRATED_PORTRAIT_DEFAULT = false;
+
+  function calibratedPortraitFactor(options = {}) {
+    const enabled = options.calibratedPortraitFraming !== undefined
+      ? !!options.calibratedPortraitFraming : CALIBRATED_PORTRAIT_DEFAULT;
+    if (!enabled) return 1;
+    const dims = ASPECTS[options.aspect] || null;
+    if (!dims || !(dims.width > 0) || !(dims.height > 0)) return 1;
+    return Math.min(1, dims.width / dims.height);
+  }
+
+  function targetAltitude(action, altitudeSpec, location, options = {}) {
     const minAlt = (location && location.min_altitude_m) || 0;
     if (altitudeSpec && typeof altitudeSpec.altitude_m === "number") {
       return { value: clampAltitude(altitudeSpec.altitude_m, minAlt), source: altitudeSpec.source === "explicit" ? "explicit" : `semantic_${altitudeSpec.source}` };
     }
-    const fixtureAlt = location && typeof location.altitude_m === "number" ? location.altitude_m : null;
+    const rawFixture = location && typeof location.altitude_m === "number" ? location.altitude_m : null;
+    // Only a CALIBRATED fixture altitude is adapted. An action default is already
+    // aspect-agnostic and is left alone.
+    const factor = rawFixture !== null ? calibratedPortraitFactor(options) : 1;
+    const fixtureAlt = rawFixture !== null && factor < 1
+      ? Math.round(rawFixture / factor) : rawFixture;
     if (action === "zoom_in") return { value: clampAltitude(fixtureAlt || ZOOM_IN_ALTITUDE_M, minAlt), source: fixtureAlt ? "gazetteer" : "action_default" };
     if (action === "zoom_out") return { value: clampAltitude(Math.max(ZOOM_OUT_ALTITUDE_M, (fixtureAlt || 0) * 2), minAlt), source: fixtureAlt ? "gazetteer" : "action_default" };
     return { value: clampAltitude(fixtureAlt || DEFAULT_ALTITUDE_M, minAlt), source: fixtureAlt ? "gazetteer" : "action_default" };
@@ -709,7 +872,7 @@
     return DEFAULT_DURATION_S[action] || 4;
   }
 
-  function parseSegment(text, segmentId, currentSeconds, frameRate = FRAME_RATE, previousLocation = null, previousAltitudeM = DEFAULT_ALTITUDE_M, previousTiltDeg = null) {
+  function parseSegment(text, segmentId, currentSeconds, frameRate = FRAME_RATE, previousLocation = null, previousAltitudeM = DEFAULT_ALTITUDE_M, previousTiltDeg = null, framingOptions = {}) {
     const warnings = [];
     const notes = [];
     const actionInfo = detectAction(text);
@@ -755,7 +918,10 @@
       && (!locationPhrase || location.name === previousLocation.name);
 
     // Duration: explicit wins; otherwise scale to the move's magnitude.
-    let altitude = targetAltitude(actionInfo.action, altitudeSpec, location);
+    let altitude = targetAltitude(actionInfo.action, altitudeSpec, location, {
+      aspect: framingOptions.aspect || DEFAULT_ASPECT,
+      calibratedPortraitFraming: framingOptions.calibratedPortraitFraming,
+    });
     let tiltDeg = typeof tiltSpec.tilt_deg === "number" ? tiltSpec.tilt_deg
       : (DEFAULT_TILT_DEG[actionInfo.action] != null ? DEFAULT_TILT_DEG[actionInfo.action] : 45);
     let tiltSource = typeof tiltSpec.tilt_deg === "number" ? "explicit" : "action_default";
@@ -905,7 +1071,10 @@
     if (!parts.length) warnings.push("description did not contain any parseable segments.");
 
     parts.forEach((part, index) => {
-      const parsed = parseSegment(part, index + 1, currentSeconds, frameRate, lastLocation, lastAltitude, lastTilt);
+      const parsed = parseSegment(part, index + 1, currentSeconds, frameRate, lastLocation, lastAltitude, lastTilt, {
+        aspect: options.aspect,
+        calibratedPortraitFraming: options.calibratedPortraitFraming,
+      });
       segments.push(parsed.segment);
       warnings.push(...parsed.warnings.map((warning) => `segment ${index + 1}: ${warning}`));
       notes.push(...parsed.notes.map((note) => `segment ${index + 1}: ${note}`));
@@ -1078,7 +1247,10 @@
   }
 
   function buildShotPlan(jobName, description, generatedAt = new Date().toISOString(), options = {}) {
-    const parsed = parseDescription(description);
+    const parsed = parseDescription(description, {
+      aspect: options.aspect,
+      calibratedPortraitFraming: options.calibratedPortraitFraming,
+    });
     const initialCamera = normalizeInitialCamera(options.initialCamera);
     const motionPolicyOption = options.motionPolicy && typeof options.motionPolicy === "object"
       ? {
@@ -1391,6 +1563,13 @@ This checklist is technical planning support only. It is not creative approval, 
         }
       }
       push(cur.time, wrapLng(cur.value), cur.sampledInterior);
+      // SETTLE-THEN-LAUNCH handoff markers must survive the wrap — the
+      // serializer keys its easing off them.
+      const last = out[out.length - 1];
+      if (cur.orbitTravelHandoff && last && last.time === cur.time) {
+        last.orbitTravelHandoff = cur.orbitTravelHandoff;
+        if (cur.semanticBoundary) last.semanticBoundary = true;
+      }
     }
     return out;
   }
@@ -1599,6 +1778,13 @@ This checklist is technical planning support only. It is not creative approval, 
     });
   }
 
+  // Orbit bearing and its provenance, from the real keyframe path.
+  function orbitBearingReport(plan, options = {}) {
+    const orbitBearing = [];
+    buildEspKeyframes(plan, { ...options, orbitBearing });
+    return orbitBearing;
+  }
+
   function buildEspKeyframes(plan, options = {}) {
     const policy = motionPolicy(plan, options);
     const tracks = { lng: [], lat: [], alt: [], pan: [], tilt: [] };
@@ -1804,6 +1990,86 @@ This checklist is technical planning support only. It is not creative approval, 
           : enterWhereItStands ? preBearingDeg
           : state.pan - 180;
         const orbitStartPan = thetaEnd === null && !enterWhereItStands ? state.pan : theta0 + 180;
+        // ORBIT BEARING AS A DIRECTORIAL VARIABLE.
+        //
+        // Which side of the subject an orbit starts on has always existed, but only
+        // as a by-product: it falls out of the exit solver, or out of wherever the
+        // arrival happened to leave the camera. A directorial layer cannot choose a
+        // side it cannot see, so the bearing and — more importantly — WHY it has
+        // that value are recorded here.
+        //
+        // Three sources, in the order the code resolves them:
+        //   exit_alignment    the successor travel fixes the END bearing, so the
+        //                     start is back-solved from it. Not free.
+        //   incoming_arrival  the camera was already off-centre, so the orbit
+        //                     enters on the bearing it is standing on.
+        //   carried_camera    nothing constrains it; it follows the pan it inherits.
+        //
+        // Freedom is stated separately from source, because "inherited" and
+        // "constrained" are different things: an arrival bearing could be chosen
+        // upstream, whereas an exit requirement genuinely cannot move.
+        const bearingSource = thetaEnd !== null ? "exit_alignment"
+          : enterWhereItStands ? "incoming_arrival"
+          : "carried_camera";
+        // WHERE COULD A DIRECTOR ACTUALLY CHOOSE THIS?
+        //
+        // "Inherited" was true but not actionable: it says the bearing came from the
+        // previous shot without saying whether that shot could have been asked to
+        // arrive somewhere else. That distinction is the whole architectural
+        // question, because a bearing selector that cannot influence the arrival can
+        // only act on orbits that are already free.
+        //
+        //   fixed_by_exit_alignment   the successor needs a specific exit; no freedom
+        //   fixed_by_continuation     inherited camera state is authoritative
+        //   free                      nothing upstream or downstream constrains it
+        //   arrival_controllable      a fly/zoom onto the SAME subject precedes it,
+        //                             so the earliest legitimate control point is
+        //                             that arrival, not the orbit
+        //   inherited_not_controllable the previous shot is not an arrival this orbit
+        //                             could redirect (another orbit, a different
+        //                             subject) — freedom would require reaching
+        //                             further back than one movement
+        const previousSeg = idx > 0 ? resolved[idx - 1] : null;
+        const previousIsArrival = !!(previousSeg
+          && ["fly_to", "zoom_in", "zoom_out"].includes(previousSeg.action)
+          && previousSeg.location && locRef
+          && Math.abs(previousSeg.location.latitude - locRef.latitude) < 1e-6
+          && Math.abs(previousSeg.location.longitude - locRef.longitude) < 1e-6);
+        // A hold between the arrival and the orbit is transparent to this question:
+        // it holds whatever the arrival delivered.
+        const beforeHold = idx > 1 ? resolved[idx - 2] : null;
+        const holdCameFromArrival = !!(previousSeg && previousSeg.holds_camera && beforeHold
+          && ["fly_to", "zoom_in", "zoom_out"].includes(beforeHold.action)
+          && beforeHold.location && locRef
+          && Math.abs(beforeHold.location.latitude - locRef.latitude) < 1e-6
+          && Math.abs(beforeHold.location.longitude - locRef.longitude) < 1e-6);
+        const bearingFreedom = thetaEnd !== null ? "fixed_by_exit_alignment"
+          : (idx === 0 && openedFromSeed) ? "fixed_by_continuation"
+          : (idx === 0) ? "free"
+          : (previousIsArrival || holdCameFromArrival) ? "arrival_controllable"
+          : "inherited_not_controllable";
+        if (Array.isArray(options.orbitBearing)) {
+          options.orbitBearing.push({
+            segment_id: segment.segment_id,
+            subject: segment.location_name || (locRef && locRef.name) || null,
+            start_bearing_deg: ((theta0 % 360) + 360) % 360,
+            exit_bearing_deg: (((theta0 + sweep) % 360) + 360) % 360,
+            sweep_deg: sweep,
+            bearing_source: bearingSource,
+            bearing_freedom: bearingFreedom,
+            // The earliest place a directorial layer could legitimately set it.
+            earliest_control_point: bearingFreedom === "arrival_controllable"
+              ? (holdCameFromArrival ? `segment ${beforeHold.segment_id} (arrival before the hold)`
+                : `segment ${previousSeg.segment_id} (arrival)`)
+              : bearingFreedom === "free" ? "the orbit itself"
+              : bearingFreedom === "fixed_by_exit_alignment" ? "not free — successor fixes the exit"
+              : bearingFreedom === "fixed_by_continuation" ? "not free — inherited camera state"
+              : "further back than one movement",
+            radius_m: radius,
+            altitude_m: endAltitude,
+            tilt_deg: tilt,
+          });
+        }
         // OPENING ORBIT: place frame 0 ON the ring at the bearing the sweep
         // actually starts from. initialCameraState puts an opening orbit at
         // bearing 0 with pan 180, which was right while theta0 was always 0 —
@@ -1855,16 +2121,19 @@ This checklist is technical planning support only. It is not creative approval, 
         // move gets the orbit's OWN ground speed, so acquisition and sweep travel
         // at the same pace and read as one continuous camera performance. Bounded
         // so a long acquisition can never eat the shot.
+        const acquisitionProfile = ACQUISITION_PROFILES[options.acquisitionProfile || ACQUISITION_DEFAULT_PROFILE] || null;
+        const lateralFactor = acquisitionProfile ? acquisitionProfile.lateralSpeedFactor : 1;
+        const tiltRate = acquisitionProfile ? acquisitionProfile.tiltRateDegPerS : ORBIT_ENTRY_TILT_MAX_RATE_DEG_PER_S;
         const sweepGroundSpeed = (radius * Math.abs(toRadians(sweep))) / orbitSeconds;
-        const lateralSeconds = sweepGroundSpeed > 1e-6 ? offRingM / sweepGroundSpeed : 0;
-        const tiltSeconds = tiltDeltaDeg / ORBIT_ENTRY_TILT_MAX_RATE_DEG_PER_S;
+        const lateralSeconds = sweepGroundSpeed > 1e-6 ? offRingM / (sweepGroundSpeed * lateralFactor) : 0;
+        const tiltSeconds = tiltDeltaDeg / tiltRate;
         // The HEADING turn is work too. A camera arriving from elsewhere may not
         // be facing the subject at all — a continuation seed measured 170.5 deg
         // off — and sizing the phase from pitch and distance alone whipped that
         // turn through in about 0.7 s. Heading gets the same calm rotation rate
         // as pitch.
         const panDeltaDeg = Math.abs(shortestLngDelta(state.pan, theta0 + 180));
-        const panSeconds = panDeltaDeg / ORBIT_ENTRY_TILT_MAX_RATE_DEG_PER_S;
+        const panSeconds = panDeltaDeg / tiltRate;
         const needsPan = panDeltaDeg > 1;
         let entryFrames = 0;
         if (policy.coherentTrajectory && (needsRing || needsTilt || needsPan)) {
@@ -1898,6 +2167,23 @@ This checklist is technical planning support only. It is not creative approval, 
             acquisition_frames: entryFrames,
             sweep_frames: ef - sweepStart,
             frame_rate: fps,
+            // Which channel actually SIZES the acquisition. `wanted` is a max over
+            // three independent demands, so speeding up a channel that is not the
+            // binding one buys nothing at all.
+            acquisition_channels: {
+              off_ring_m: offRingM,
+              tilt_delta_deg: tiltDeltaDeg,
+              pan_delta_deg: panDeltaDeg,
+              sweep_ground_speed_mps: sweepGroundSpeed,
+              lateral_seconds: needsRing ? lateralSeconds : 0,
+              tilt_seconds: needsTilt ? tiltSeconds : 0,
+              pan_seconds: needsPan ? panSeconds : 0,
+              floor_seconds: ORBIT_ENTRY_MIN_SECONDS,
+              cap_seconds: orbitSeconds * ORBIT_ENTRY_MAX_FRACTION,
+              profile: options.acquisitionProfile || ACQUISITION_DEFAULT_PROFILE || null,
+              lateral_speed_factor: lateralFactor,
+              tilt_rate_deg_per_s: tiltRate,
+            },
           });
         }
         if (entryFrames > 0) {
@@ -1912,7 +2198,36 @@ This checklist is technical planning support only. It is not creative approval, 
           // the centre at a top-down pitch heading is not visually meaningful,
           // so a smooth turn beats snapping to the ring's aim.
           const panTarget = state.pan + shortestLngDelta(state.pan, theta0 + 180);
-          const entrySamples = Math.max(2, Math.ceil(Math.abs(bearingDelta) / stepDeg));
+          const bearingSamples = Math.max(2, Math.ceil(Math.abs(bearingDelta) / stepDeg));
+          // See ORBIT_ENTRY_DENSITY_DEFAULT. Gated on coherentTrajectory so the
+          // legacy/freeform paths — including the byte-frozen controls — keep the
+          // sampling they were frozen with.
+          const densityMode = options.orbitEntryDensity !== undefined
+            ? options.orbitEntryDensity : ORBIT_ENTRY_DENSITY_DEFAULT;
+          let entrySamples = bearingSamples;
+          // "with_altitude" additionally pins altitude on the sample time base.
+          // Position density ALONE was measured 3.1x worse in real Earth Studio
+          // (0.0948 -> 0.2969) because lat/lng/tilt linearize while altitude keeps
+          // its two-keyframe ease, so the position triple desynchronizes. This
+          // emits the altitude values the existing ramp already targets at the
+          // same frames — no formula changes, radius stays linear in u.
+          const tiltSchedule = options.orbitEntryTiltSchedule !== undefined
+            ? options.orbitEntryTiltSchedule : ORBIT_ENTRY_TILT_SCHEDULE_DEFAULT;
+          // Gated on coherentTrajectory like the density switch, so byte-frozen and
+          // legacy paths keep the linear schedule they were frozen with.
+          const identityTilt = policy.coherentTrajectory && tiltSchedule === "identity";
+          const densifyAltitude = densityMode === 'with_altitude'
+            || (densityMode && typeof densityMode === 'object' && densityMode.altitude);
+          if (policy.coherentTrajectory && densityMode) {
+            const raw = densityMode && typeof densityMode === 'object'
+              ? densityMode.multiplier : densityMode;
+            const multiplier = Number.isFinite(raw) ? Math.max(1, raw) : 1;
+            const sweepStepGroundM = Math.abs(radius) * toRadians(stepDeg);
+            const radialTravelM = Math.abs(radius - startRadius);
+            const radialSamples = sweepStepGroundM > 1e-6
+              ? Math.ceil((radialTravelM * multiplier) / sweepStepGroundM) : 0;
+            entrySamples = Math.max(2, bearingSamples, radialSamples);
+          }
           // Anchor pitch and altitude at the boundary FIRST. Without this the
           // acquisition's tilt keyframe is the track's next keyframe after the
           // opening one, so the change interpolates from frame 0 and the pitch
@@ -1921,11 +2236,31 @@ This checklist is technical planning support only. It is not creative approval, 
           // even started. Acquisition must be confined to its own window.
           anchor("tilt", sf);
           anchor("alt", sf);
+          // See FRAMING_STABLE_ACQUISITION_DEFAULT. Co-sampling altitude here is
+          // what makes the coupling computable: the two-keyframe eased altitude is
+          // exactly the channel that breaks it.
+          const framingStable = options.framingStableAcquisition !== undefined
+            ? !!options.framingStableAcquisition : FRAMING_STABLE_ACQUISITION_DEFAULT;
+          const coupleRadius = framingStable && needsRing && needsTilt
+            && Math.abs(tilt) > 1e-6 && endAltitude > 0;
+          // Scale so the last sample lands on the ring EXACTLY, whatever the
+          // look-at product happens to be there (the ring radius carries its own
+          // clamp and rounding).
+          const couplingScale = coupleRadius
+            ? radius / Math.max(1e-6, endAltitude * Math.tan(toRadians(tilt))) : 1;
           for (let i = 1; i <= entrySamples; i += 1) {
             const u = i / entrySamples;
-            const pt = offsetPoint(locRef, startBearing + bearingDelta * u, startRadius + (radius - startRadius) * u);
+            const altAtU = state.altitude + (endAltitude - state.altitude) * u;
+            const tiltAtU = state.tilt + (tilt - state.tilt) * u;
+            const radiusAtU = coupleRadius
+              ? altAtU * Math.tan(toRadians(tiltAtU)) * couplingScale
+              : startRadius + (radius - startRadius) * u;
+            const pt = offsetPoint(locRef, startBearing + bearingDelta * u, radiusAtU);
             const frame = sf + entryFrames * u;
             const interior = i < entrySamples;
+            // Altitude has to be sampled on the same time base or the coupling is
+            // against a curve the radius never actually sees.
+            if (coupleRadius || densifyAltitude) put("alt", frame, altAtU, interior);
             // Only emit what actually has to be acquired. When the camera is
             // already on the ring (a fly/zoom annotated to land on the ring
             // entry) and only the pitch has to settle, re-placing position adds
@@ -1938,10 +2273,21 @@ This checklist is technical planning support only. It is not creative approval, 
             if (needsRing || needsPan) {
               put("pan", frame, state.pan + (panTarget - state.pan) * u, interior);
             }
-            if (needsTilt) put("tilt", frame, round6(state.tilt + (tilt - state.tilt) * u), interior);
+            if (needsTilt) {
+              let tiltValue = state.tilt + (tilt - state.tilt) * u;
+              if (identityTilt && radiusAtU > 0 && altAtU > 0) {
+                // Force the LAST sample to the orbit's own tilt: atan returns it to
+                // ~1e-13 already, but the sweep's geometry must not inherit a
+                // rounding residual.
+                tiltValue = i === entrySamples
+                  ? tilt : (Math.atan2(radiusAtU, altAtU) * 180) / Math.PI;
+              }
+              put("tilt", frame, round6(tiltValue), interior);
+            }
           }
-          // Altitude also finishes here, so the sweep holds it.
-          if (state.altitude !== endAltitude) change("alt", sf, sweepStart, endAltitude);
+          // Altitude also finishes here, so the sweep holds it. When coupled it was
+          // already emitted sample by sample above.
+          if (!coupleRadius && !densifyAltitude && state.altitude !== endAltitude) change("alt", sf, sweepStart, endAltitude);
           if (needsRing) {
             lastPoint = offsetPoint(locRef, theta0, radius);
             state = { ...state, latitude: lastPoint.latitude, longitude: lastPoint.longitude, pan: theta0 + 180 };
@@ -2019,6 +2365,107 @@ This checklist is technical planning support only. It is not creative approval, 
         change("alt", sweepStart, ef, endAltitude);
         change("tilt", sweepStart, ef, tilt);
         if (!policy.coherentTrajectory) change("pan", sf, ef, orbitStartPan + sweep);
+        // ── SETTLE-THEN-LAUNCH orbit→travel handoff (human-approved DIRN17) ──
+        // If the next playable segment travels somewhere materially different
+        // from this orbit's exit tangent, the boundary keyframe would redirect
+        // the ground-velocity vector in one frame (DIRN17 measured 73.12° in
+        // real playback). Decelerate the orbit into the boundary, hold for the
+        // reviewed 0.5 s, and let the travel leg launch from rest. Activation
+        // is geometric: heading mismatch above ORBIT_TRAVEL_HANDOFF.
+        // direction_threshold_deg with both speeds over the floor. A benign
+        // handoff keeps the existing continuous transition byte-for-byte.
+        const handoffNext = (() => {
+          for (let j = idx + 1; j < resolved.length; j += 1) {
+            const cand = resolved[j];
+            if (!cand.location || cand.holds_camera) continue;
+            if (["fly_to", "zoom_in", "zoom_out"].includes(cand.action)) return cand;
+            return null; // another orbit/hover owns what follows
+          }
+          return null;
+        })();
+        if (policy.coherentTrajectory && handoffNext && options.compareLegacyMotion !== true) {
+          const h = ORBIT_TRAVEL_HANDOFF;
+          const fpsH = plan.frame_rate || FRAME_RATE;
+          // Only a successor that genuinely TRAVELS somewhere else qualifies —
+          // the same gate the orbit's exit-phase solver uses. A same-subject
+          // zoom_out/pull-back after an orbit is already continuous with it
+          // (measured on DIRN17 segment 6: no seam, real playback clean) and
+          // must keep its existing launch.
+          const travelsAway = haversineMeters(location, handoffNext.location) > Math.max(radius * 2, 1000);
+          const exitRadialDeg = theta0 + sweep;
+          const tangentBearing = exitRadialDeg + 90 * Math.sign(sweep || 1);
+          const cosLatH = Math.cos(toRadians(lastPoint.latitude)) || 1e-6;
+          const dLngH = shortestLngDelta(0, handoffNext.location.longitude - lastPoint.longitude);
+          const eastM = dLngH * 111320 * cosLatH;
+          const northM = (handoffNext.location.latitude - lastPoint.latitude) * 111320;
+          const travelBearing = Number.isFinite(Math.atan2(eastM, northM))
+            ? (Math.atan2(eastM, northM) * 180) / Math.PI : tangentBearing;
+          const turnDeg = Math.abs(((travelBearing - tangentBearing + 540) % 360) - 180);
+          const exitTangentSpeed = radius * Math.abs(toRadians(sweep)) / Math.max(1e-6, (ef - sweepStart) / fpsH);
+          const travelDistanceM = haversineMeters(lastPoint, handoffNext.location);
+          const activates = travelsAway && turnDeg > h.direction_threshold_deg
+            && exitTangentSpeed > h.speed_floor_mps && travelDistanceM > 1000;
+          if (Array.isArray(options.orbitTravelHandoff)) {
+            options.orbitTravelHandoff.push({
+              segment_id: segment.segment_id,
+              successor: handoffNext.segment_id,
+              turn_deg: Math.round(turnDeg * 100) / 100,
+              threshold_deg: h.direction_threshold_deg,
+              exit_tangent_speed_mps: Math.round(exitTangentSpeed),
+              activates,
+            });
+          }
+          if (activates && ef + h.hold_frames < (plan.total_frames || ef + h.hold_frames + 1)) {
+            const boundaryFrame = ef;
+            const holdFrame = ef + h.hold_frames;
+            const markBoundary = (trackName) => {
+              const track = tracks[trackName];
+              const kf = track[track.length - 1];
+              if (!kf || kf.time !== boundaryFrame) {
+                // No keyframe on this channel exactly at the boundary (e.g.
+                // altitude/tilt were last keyed at sweep start and hold a
+                // constant value through the orbit's end): anchor one at the
+                // boundary and hold it, mirroring the reviewed candidate,
+                // which authored the hold on every one of these channels.
+                put(trackName, boundaryFrame, track.length ? track[track.length - 1].value : 0, "out");
+                const anchorKf = track[track.length - 1];
+                anchorKf.orbitTravelHandoff = "settle_boundary";
+                anchorKf.semanticBoundary = true;
+                const holdKf = espKeyframe(holdFrame, anchorKf.value);
+                holdKf.orbitTravelHandoff = "settle_hold";
+                holdKf.semanticBoundary = true;
+                track.push(holdKf);
+                return;
+              }
+              kf.orbitTravelHandoff = "settle_boundary";
+              kf.semanticBoundary = true;
+              const holdKf = espKeyframe(holdFrame, kf.value);
+              holdKf.orbitTravelHandoff = "settle_hold";
+              holdKf.semanticBoundary = true;
+              track.push(holdKf);
+            };
+            ["lat", "lng", "alt", "tilt"].forEach(markBoundary);
+            // Pan matches the approved candidate exactly: the boundary key
+            // gets the decelerating custom arrival, but NO hold key — the
+            // candidate left pan unkeyed after the boundary, and a hold key
+            // here would be a redundant flat key whenever the following
+            // travel keeps pan fixed.
+            {
+              const track = tracks.pan;
+              const kf = track[track.length - 1];
+              if (!kf || kf.time !== boundaryFrame) {
+                put("pan", boundaryFrame, track.length ? track[track.length - 1].value : 0, "out");
+              }
+              const panKf = track[track.length - 1];
+              panKf.orbitTravelHandoff = "settle_boundary";
+              panKf.semanticBoundary = true;
+              // The approved candidate authored ONLY the custom arrival on
+              // pan — no out-transition at all. Mark it so the serializer
+              // omits transitionOut here instead of emitting linear.
+              panKf.orbitTravelHandoffPanArrivalOnly = true;
+            }
+          }
+        }
         state = { latitude: lastPoint.latitude, longitude: lastPoint.longitude, altitude: endAltitude, pan: sweepPanBase + sweep, tilt };
         return;
       }
@@ -2343,8 +2790,22 @@ This checklist is technical planning support only. It is not creative approval, 
     // Long-crossing cruise profile is an EXPERIMENT SWITCH, not a default: the
     // calibration round decides whether it becomes one.
     if (options.cruiseProfile) keyframeOptions.cruiseProfile = options.cruiseProfile;
+    // Ring-acquisition pacing is an EXPERIMENT SWITCH like the cruise profile:
+    // production pacing is unchanged unless a caller asks for a candidate.
+    if (options.acquisitionProfile) keyframeOptions.acquisitionProfile = options.acquisitionProfile;
+    if (options.framingStableAcquisition !== undefined) {
+      keyframeOptions.framingStableAcquisition = options.framingStableAcquisition;
+    }
+    // Ring-acquisition sample density — experiment switch, same shape as above.
+    if (options.orbitEntryDensity !== undefined) {
+      keyframeOptions.orbitEntryDensity = options.orbitEntryDensity;
+    }
+    if (options.orbitEntryTiltSchedule !== undefined) {
+      keyframeOptions.orbitEntryTiltSchedule = options.orbitEntryTiltSchedule;
+    }
     // Opt-in observation out-parameter (see the note at its emit site).
     if (Array.isArray(options.orbitTiming)) keyframeOptions.orbitTiming = options.orbitTiming;
+    if (Array.isArray(options.orbitBearing)) keyframeOptions.orbitBearing = options.orbitBearing;
     // A plan carrying an initial_camera (continuation) seeds the opening state.
     if (plan.initial_camera && typeof plan.initial_camera === "object") {
       keyframeOptions.initialCamera = plan.initial_camera;
@@ -2366,6 +2827,25 @@ This checklist is technical planning support only. It is not creative approval, 
     //   terminal arrival — the track's last keyframe eases in gently
     //                      (multi-reference 0.25/0.29, influence 0.4).
     const legacy = Boolean(options.compareLegacyMotion);
+    // SETTLE-THEN-LAUNCH orbit→travel handoff: keyframes marked during the
+    // state walk. The boundary key decelerates the orbit into rest (calibrated
+    // custom arrival, -0.25·gap / influence 0.4 — the same settle law as a
+    // terminal arrival) and departs hard-linear into the hold; the hold key
+    // departs easeOut so the following travel launches progressively from
+    // rest. Pan keeps only the incoming deceleration (the reviewed candidate's
+    // exact treatment). dropRedundantKeyframes preserves these via
+    // semanticBoundary.
+    const handoffBoundary = new Set();
+    const handoffHold = new Set();
+    for (const trackName of ["lat", "lng", "alt", "tilt", "pan"]) {
+      (tracks[trackName] || []).forEach((k, i) => {
+        if (k.orbitTravelHandoff === "settle_boundary") {
+          handoffBoundary.add(`${trackName}:${i}`);
+          const next = (tracks[trackName] || [])[i + 1];
+          if (next && next.orbitTravelHandoff === "settle_hold") handoffHold.add(`${trackName}:${i + 1}`);
+        }
+      });
+    }
     const finalSeg = [...plan.segments].reverse().find((sg) => sg.location && sg.duration_seconds > 0);
     const boundaryFracs = new Set(plan.segments
       .filter((sg) => sg.location && sg.duration_seconds > 0
@@ -2373,7 +2853,7 @@ This checklist is technical planning support only. It is not creative approval, 
         && !sg.ends_at_orbit_entry
         && (!finalSeg || sg.segment_id !== finalSeg.segment_id))
       .map((sg) => frac(sg.end_frame)));
-    const kfs = (arr, mapValue, kind) => arr.map((k, i) => {
+    const kfs = (arr, mapValue, kind, trackName0) => arr.map((k, i) => {
       const kf = { time: frac(k.time), value: mapValue(k.value) };
       // Interior sample of a described curve (orbit ring, space-zoom climb):
       // hard-linear on BOTH sides.
@@ -2423,7 +2903,35 @@ This checklist is technical planning support only. It is not creative approval, 
         const gapPrev = i > 0 ? frac(k.time) - frac(arr[i - 1].time) : 0;
         const gapNext = i < arr.length - 1 ? frac(arr[i + 1].time) - frac(k.time) : 0;
         const cls = kind === "altitude" ? "altitude" : "positional";
-        if (i === 0) {
+      // SETTLE-THEN-LAUNCH orbit→travel handoff easing (checked before the
+      // generic cases so the reviewed candidate's exact handle shapes win).
+      const hKey = `${trackName0}:${i}`;
+      if (!legacy && handoffBoundary.has(hKey)) {
+        const gapPrevH = i > 0 ? frac(k.time) - frac(arr[i - 1].time) : 0;
+        if (gapPrevH > 0) {
+          kf.transitionIn = { x: round6(-ORBIT_TRAVEL_HANDOFF.arrival_fraction * gapPrevH), y: 0,
+            influence: ORBIT_TRAVEL_HANDOFF.arrival_influence, type: "custom" };
+        }
+        // Pan matches the approved candidate exactly: the custom arrival and
+        // NO out-transition at all (the candidate left pan unkeyed after the
+        // boundary, so ES holds it; an authored out-handle would be noise).
+        if (k.orbitTravelHandoffPanArrivalOnly) { delete kf.transitionOut; return kf; }
+        // Departure into the hold is exactly flat — the settle itself.
+        kf.transitionOut = { x: 0, y: 0, type: "linear" };
+        return kf;
+      }
+      if (!legacy && handoffHold.has(hKey)) {
+        const gapNextH = i < arr.length - 1 ? frac(arr[i + 1].time) - frac(k.time) : 0;
+        // Launch the following travel progressively from rest. The hold key
+        // sits at the START of the travel segment, so its out-span IS the
+        // travel leg's opening.
+        kf.transitionIn = { x: 0, y: 0, type: "linear" };
+        kf.transitionOut = gapNextH > 0
+          ? { x: round6(MOTION_EASING.departure_fraction * gapNextH), y: 0, type: "easeOut" }
+          : { x: 0, y: 0, type: "linear" };
+        return kf;
+      }
+      if (i === 0) {
           kf.transitionOut = { x: round6(MOTION_EASING.departure_fraction * gapNext), y: 0, type: "easeOut" };
         } else if (i === arr.length - 1) {
           const t = MOTION_EASING.terminal_arrival[cls];
@@ -2492,6 +3000,22 @@ This checklist is technical planning support only. It is not creative approval, 
           // its closing pan sample therefore has no later pan keyframe to
           // prove continuation, but it is still a through-boundary channel.
           || kind === "pan";
+        // SETTLE-THEN-LAUNCH handoff boundary overrides the through-boundary
+        // rule: the approved candidate decelerates the orbit into rest here
+        // (calibrated custom arrival) even on pan, then holds.
+        if (trackName0 && handoffBoundary.has(`${trackName0}:${i}`)) {
+          kf.transitionIn = gap > 0
+            ? { x: round6(-ORBIT_TRAVEL_HANDOFF.arrival_fraction * gap), y: 0,
+              influence: ORBIT_TRAVEL_HANDOFF.arrival_influence, type: "custom" }
+            : { x: 0, y: 0, type: "linear" };
+          if (k.orbitTravelHandoffPanArrivalOnly) {
+            // Approved candidate's exact pan treatment: arrival handle only.
+            delete kf.transitionOut;
+            return kf;
+          }
+          kf.transitionOut = { x: 0, y: 0, type: "linear" };
+          return kf;
+        }
         kf.transitionIn = continues
           ? { x: 0, y: 0, type: "linear" }
           : (gap > 0
@@ -2535,9 +3059,9 @@ This checklist is technical planning support only. It is not creative approval, 
                   type: "cameraPositionGroup",
                   inTimeline: true,
                   attributes: [
-                    espLeaf("longitude", kfs(tracks.lng, (v) => (v - lonMin) / lonSpan), { minValueRange: lonMin }),
-                    espLeaf("latitude", kfs(tracks.lat, (v) => (v - latMin) / latSpan), { minValueRange: latMin }),
-                    espLeaf("altitude", kfs(tracks.alt, (v) => v * ESP_ALTITUDE_SCALE, "altitude"), { logarithmic: false }),
+                    espLeaf("longitude", kfs(tracks.lng, (v) => (v - lonMin) / lonSpan, "positional", "lng"), { minValueRange: lonMin }),
+                    espLeaf("latitude", kfs(tracks.lat, (v) => (v - latMin) / latSpan, "positional", "lat"), { minValueRange: latMin }),
+                    espLeaf("altitude", kfs(tracks.alt, (v) => v * ESP_ALTITUDE_SCALE, "altitude", "alt"), { logarithmic: false }),
                   ],
                 },
                 {
@@ -2559,9 +3083,9 @@ This checklist is technical planning support only. It is not creative approval, 
                   type: "cameraRotationGroup",
                   inTimeline: true,
                   attributes: [
-                    espLeaf("rotationX", kfs(tracks.pan, (v) => (v - panMin) / panSpan, "pan"),
+                    espLeaf("rotationX", kfs(tracks.pan, (v) => (v - panMin) / panSpan, "pan", "pan"),
                       tracks.pan.length ? { minValueRange: panMin, maxValueRange: panMin + panSpan } : {}),
-                    espLeaf("rotationY", kfs(tracks.tilt, (v) => v / 180, "tilt")),
+                    espLeaf("rotationY", kfs(tracks.tilt, (v) => v / 180, "tilt", "tilt")),
                     { type: "rotationZ", value: {} },
                   ],
                 },
@@ -2762,6 +3286,8 @@ This checklist is technical planning support only. It is not creative approval, 
     buildShotPlanMarkdown,
     buildEspKeyframes,
     orbitTimingReport,
+    orbitBearingReport,
+    ACQUISITION_PROFILES,
     buildEsp,
     normalizeInitialCamera,
     finalCameraState,
