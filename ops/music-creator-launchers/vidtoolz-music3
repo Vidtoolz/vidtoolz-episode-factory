@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# MiniMax Music 3 — vidnux desktop launcher (manual, operator-initiated only).
+#
+# Reaches the VIDLAP2-hosted, localhost-only Music 3 ComfyUI:
+#   1. verify VIDLAP2 SSH reachability
+#   2. refuse if DaVinci Resolve is running on VIDLAP2 (Resolve always wins)
+#   3. start the runtime if needed via the SINGLE-SOURCE VIDLAP2 launcher
+#      (C:\VidtoolzMusic\launcher\Start-Music3.ps1 -NoBrowser)
+#   4. establish/reuse a localhost-bound SSH tunnel 127.0.0.1:18189 → 8189
+#   5. open http://127.0.0.1:18189 in the default browser
+#
+# No services, no auto-start, no LAN exposure — the tunnel binds 127.0.0.1
+# and lives only as long as the user-created ssh process.
+# MUSIC3_NO_BROWSER=1 skips the browser step (used by acceptance tests).
+# --status-only is read-only: 0 healthy, 10 SSH unavailable, 11 Resolve
+# running, 12 runtime offline/manual start required, 13 unhealthy port owner.
+set -euo pipefail
+
+STATUS_ONLY=0
+if [ "${1:-}" = "--status-only" ]; then STATUS_ONLY=1; shift; fi
+if [ "$#" -ne 0 ]; then printf 'Usage: %s [--status-only]\n' "$0" >&2; exit 64; fi
+
+HOST="${MUSIC3_HOST:-vidlap2}"
+LOCAL_PORT="${MUSIC3_LOCAL_PORT:-18189}"
+REMOTE_PORT="${MUSIC3_REMOTE_PORT:-8189}"
+LOCAL_URL="http://127.0.0.1:${LOCAL_PORT}"
+TUNNEL_SPEC="127.0.0.1:${LOCAL_PORT}:127.0.0.1:${REMOTE_PORT}"
+LOG_DIR="${HOME}/.local/share/vidtoolz-launcher-logs"
+LOG_FILE="${LOG_DIR}/music3-tunnel.log"
+SSH_CONNECT_TIMEOUT="${MUSIC3_SSH_CONNECT_TIMEOUT:-5}"
+SSH_COMMAND_TIMEOUT="${MUSIC3_SSH_COMMAND_TIMEOUT:-15}"
+SSH_START_TIMEOUT="${MUSIC3_SSH_START_TIMEOUT:-150}"
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout="$SSH_CONNECT_TIMEOUT" -o ConnectionAttempts=1 -o ServerAliveInterval=5 -o ServerAliveCountMax=1)
+BROWSER_BIN="${MUSIC3_BROWSER_BIN:-xdg-open}"
+NOTIFY_BIN="${MUSIC3_NOTIFY_BIN:-notify-send}"
+mkdir -p "$LOG_DIR"
+
+say() { printf '%s [music3] %s\n' "$(date --iso-8601=seconds)" "$*" | tee -a "$LOG_FILE"; }
+fail() {
+  say "ERROR: $*"
+  command -v "$NOTIFY_BIN" >/dev/null 2>&1 && "$NOTIFY_BIN" -u critical "MiniMax Music 3" "$*" || true
+  exit "${2:-1}"
+}
+status_exit() {
+  local code="$1"
+  shift
+  say "$*"
+  command -v "$NOTIFY_BIN" >/dev/null 2>&1 && "$NOTIFY_BIN" -u normal "Music Creator — MiniMax" "$*" || true
+  exit "$code"
+}
+
+local_healthy() { curl -s -m 3 "${LOCAL_URL}/system_stats" 2>/dev/null | grep -q '"devices"'; }
+run_ssh() {
+  local limit="$1"
+  shift
+  timeout --signal=TERM "$limit" ssh "${SSH_OPTS[@]}" "$HOST" "$@"
+}
+remote_healthy() {
+  run_ssh "$SSH_COMMAND_TIMEOUT" \
+    "curl.exe -s -m 4 http://127.0.0.1:${REMOTE_PORT}/system_stats" 2>/dev/null | grep -q '"devices"'
+}
+
+# 1) VIDLAP2 reachable?
+if ! run_ssh "$SSH_COMMAND_TIMEOUT" "echo OK" >/dev/null 2>&1; then
+  [ "$STATUS_ONLY" = "1" ] && status_exit 10 "BLOCKED_VIDLAP2_UNREACHABLE: Music Creator is ready; MiniMax generation is unavailable."
+  fail "VIDLAP2 is not reachable over SSH (offline, asleep, authentication failed, or the bounded SSH check timed out)."
+fi
+
+# 2) Resolve always wins — refuse before starting anything.
+if RESOLVE_RAW=$(run_ssh "$SSH_COMMAND_TIMEOUT" \
+    'powershell -NoProfile -Command "@(Get-Process Resolve,ResolveStudio -ErrorAction SilentlyContinue).Count"'); then
+  RESOLVE_COUNT=$(printf '%s' "$RESOLVE_RAW" | tr -d '\r\n')
+else
+  rc=$?
+  [ "$STATUS_ONLY" = "1" ] && status_exit 10 "BLOCKED_VIDLAP2_UNREACHABLE: Resolve state could not be verified (SSH exit ${rc}); MiniMax was not started."
+  fail "Could not verify Resolve state on VIDLAP2 (SSH exit ${rc}); MiniMax was not started."
+fi
+if [ "$RESOLVE_COUNT" != "0" ]; then
+  if [[ "$RESOLVE_COUNT" =~ ^[1-9][0-9]*$ ]]; then
+    [ "$STATUS_ONLY" = "1" ] && status_exit 11 "BLOCKED_RESOLVE_RUNNING: Music Creator is ready; close Resolve before starting MiniMax."
+    fail "MiniMax Music 3 was not started: DaVinci Resolve is running on VIDLAP2. Close Resolve first." 2
+  fi
+  fail "MiniMax Music 3 was not started because VIDLAP2 returned an invalid Resolve status: ${RESOLVE_COUNT:-empty}."
+fi
+
+# 3) Runtime: reuse if healthy, otherwise start via the single-source
+#    VIDLAP2 launcher (which re-checks Resolve and polls readiness itself).
+if remote_healthy; then
+  [ "$STATUS_ONLY" = "1" ] && status_exit 0 "READY: MiniMax is healthy on VIDLAP2."
+  say "Music 3 already running on VIDLAP2 — reusing it."
+else
+  if PORT_OWNER=$(run_ssh "$SSH_COMMAND_TIMEOUT" \
+      "powershell -NoProfile -Command \"\$c=Get-NetTCPConnection -LocalPort ${REMOTE_PORT} -State Listen -ErrorAction SilentlyContinue; if(\$c){\$p=Get-Process -Id \$c.OwningProcess -ErrorAction SilentlyContinue; Write-Output ('OCCUPIED pid={0} process={1}' -f \$c.OwningProcess,\$p.ProcessName)}else{Write-Output 'FREE'}\""); then
+    PORT_OWNER=$(printf '%s' "$PORT_OWNER" | tr -d '\r\n')
+  else
+    rc=$?
+    [ "$STATUS_ONLY" = "1" ] && status_exit 10 "BLOCKED_VIDLAP2_UNREACHABLE: Port state could not be verified (SSH exit ${rc}); MiniMax was not started."
+    fail "Could not inspect VIDLAP2 port ${REMOTE_PORT} (SSH exit ${rc}); MiniMax was not started."
+  fi
+  if [ "$PORT_OWNER" != "FREE" ]; then
+    [ "$STATUS_ONLY" = "1" ] && status_exit 13 "BLOCKED_MINIMAX_UNHEALTHY: VIDLAP2 port ${REMOTE_PORT} is occupied but its health check failed (${PORT_OWNER})."
+    fail "VIDLAP2 port ${REMOTE_PORT} is occupied but MiniMax health failed (${PORT_OWNER}). No process was killed or started."
+  fi
+  [ "$STATUS_ONLY" = "1" ] && status_exit 12 "READY_WITH_MINIMAX_MANUAL_START_REQUIRED: Music Creator is ready; use the MiniMax Music 3 launcher when generation is needed."
+  say "Starting Music 3 on VIDLAP2 (manual start via its own launcher)..."
+  if run_ssh "$SSH_START_TIMEOUT" \
+      'powershell -NoProfile -ExecutionPolicy Bypass -File C:\VidtoolzMusic\launcher\Start-Music3.ps1 -NoBrowser' >>"$LOG_FILE" 2>&1; then
+    rc=0
+  else
+    rc=$?
+    [ "$rc" = "2" ] && fail "VIDLAP2 refused: DaVinci Resolve is running. Close Resolve first." 2
+    [ "$rc" = "124" ] && fail "Timed out waiting for the VIDLAP2 Music 3 launcher after ${SSH_START_TIMEOUT}. Check C:\\VidtoolzMusic\\logs\\."
+    fail "Music 3 failed to start on VIDLAP2 — see C:\\VidtoolzMusic\\logs\\ (and ${LOG_FILE})."
+  fi
+  say "Music 3 is ready on VIDLAP2."
+fi
+
+# 4) Tunnel: reuse a healthy one; replace only OUR stale tunnel, never
+#    unrelated ssh sessions (match the exact forward spec).
+if ss -tln 2>/dev/null | grep -q "127.0.0.1:${LOCAL_PORT} "; then
+  if local_healthy; then
+    say "Existing tunnel on ${LOCAL_PORT} is healthy — reusing it."
+  else
+    if pgrep -f -- "ssh .*\-L ${TUNNEL_SPEC}" >/dev/null 2>&1; then
+      say "Stale Music 3 tunnel on ${LOCAL_PORT} — replacing that tunnel only."
+      pkill -f -- "ssh .*\-L ${TUNNEL_SPEC}" || true
+    else
+      fail "Local port ${LOCAL_PORT} is occupied by an unexpected listener. No process was killed."
+    fi
+    sleep 1
+  fi
+fi
+if ! local_healthy; then
+  timeout --signal=TERM "$SSH_COMMAND_TIMEOUT" ssh "${SSH_OPTS[@]}" \
+      -f -N -o ExitOnForwardFailure=yes -L "$TUNNEL_SPEC" "$HOST" \
+    || fail "Could not establish the SSH tunnel to VIDLAP2:${REMOTE_PORT}."
+  for _ in $(seq 1 10); do local_healthy && break; sleep 1; done
+  local_healthy || fail "Tunnel is up but ${LOCAL_URL}/system_stats is not answering."
+  say "Tunnel established: ${LOCAL_URL} → VIDLAP2 127.0.0.1:${REMOTE_PORT}"
+fi
+
+# 5) Open the UI.
+if [ "${MUSIC3_NO_BROWSER:-0}" != "1" ]; then
+  say "Opening ${LOCAL_URL}"
+  "$BROWSER_BIN" "$LOCAL_URL" >>"$LOG_FILE" 2>&1 \
+    || fail "Music 3 is ready, but the browser could not be opened. Open ${LOCAL_URL} manually."
+else
+  say "MUSIC3_NO_BROWSER=1 — browser step skipped (URL: ${LOCAL_URL})"
+fi

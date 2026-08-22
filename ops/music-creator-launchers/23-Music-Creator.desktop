@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=23-Music-Creator
+Comment=VIDTOOLZ Music Creator — music direction for video creators
+Exec=/home/vidtoolz/bin/open-music-creator
+Icon=audio-x-generic
+Terminal=false
+Categories=AudioVideo;

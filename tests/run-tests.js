@@ -64,6 +64,8 @@ require("./earth-studio-terrain-motion.test.js");
 require("./earth-studio-smoothness-doctrine.test.js");
 require("./earth-studio-orbit-travel-handoff.test.js");
 require("./earth-studio-movement-intent.test.js");
+require("./music-launcher.test.js");
+require("./music-launcher-deployment.test.js");
 require("./earth-studio-director.test.js");
 require("./earth-studio-directorial-plan.test.js");
 require("./earth-studio-opening-composition.test.js");

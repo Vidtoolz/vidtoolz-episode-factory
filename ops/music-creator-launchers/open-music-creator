@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# VIDTOOLZ Music Creator = music-creator.html served by the Episode Factory
+# server (:8010). Pure orchestration layer over the existing Score Engine
+# APIs — no separate service of its own. MiniMax remains an optional,
+# operator-started backend: report its state after local readiness, but never
+# make an offline GPU runtime block the Music Creator page.
+PAGE_LAUNCHER="${VIDTOOLZ_PAGE_LAUNCHER:-/home/vidtoolz/bin/open-episode-factory-page}"
+MUSIC3_LAUNCHER="${VIDTOOLZ_MUSIC3_LAUNCHER:-/home/vidtoolz/bin/vidtoolz-music3}"
+
+"$PAGE_LAUNCHER" music-creator.html 8010
+
+if [ -x "$MUSIC3_LAUNCHER" ]; then
+  if "$MUSIC3_LAUNCHER" --status-only; then
+    :
+  else
+    rc=$?
+    # Status-only codes describe an optional backend. The helper has already
+    # logged/notified the actionable state; local Music Creator is READY.
+    case "$rc" in 10|11|12|13) : ;; *) printf 'MiniMax status check failed unexpectedly (exit %s).\n' "$rc" >&2 ;; esac
+  fi
+fi
+
+exit 0
