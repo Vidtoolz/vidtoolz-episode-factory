@@ -280,6 +280,13 @@ const SCORE_CUES_SAVE_API = '/api/score/cues/save';
 const SCORE_CUES_APPROVE_API = '/api/score/cues/approve';
 const SCORE_BRIEF_EXPORT_API = '/api/score/brief/export';
 const SCORE_MUSIC_GENERATE_API = '/api/score/music/generate';
+const SCORE_MUSIC_STATUS_API = '/api/score/music/status';
+const SCORE_STORAGE_SUMMARY_API = '/api/score/storage/summary';
+const SCORE_STORAGE_PREVIEW_API = '/api/score/storage/preview';
+const SCORE_STORAGE_EXECUTE_API = '/api/score/storage/execute';
+const SCORE_STORAGE_DEDUPE_API = '/api/score/storage/dedupe';
+const SCORE_STORAGE_DEDUPE_PREVIEW_API = '/api/score/storage/dedupe/preview';
+const SCORE_STORAGE_DEDUPE_EXECUTE_API = '/api/score/storage/dedupe/execute';
 const SCORE_PALETTE_API = '/api/score/palette';
 const SCORE_CANDIDATES_GENERATE_API = '/api/score/candidates/generate';
 const SCORE_CANDIDATE_STATUS_API = '/api/score/candidates/status';
@@ -682,6 +689,8 @@ const earthStudioLane = require('./earth-studio-lane.js');
 const comfyuiGateway = require('./comfyui-gateway');
 const scoreLane = require('./score-engine/score-lane.js');
 const musicDispatch = require('./score-engine/music-dispatch.js');
+const musicStorageLifecycle = require('./score-engine/storage-lifecycle.js');
+const musicStorageDedupe = require('./score-engine/storage-dedupe.js');
 const { verifyApprovedExports, formatVerifierReport } = require('./score-engine/score-readiness.js');
 const scorePlanner = require('./score-engine/cue-planner.js');
 const ideaPromotion = require('./idea-promotion.js');
@@ -13853,6 +13862,10 @@ function applyImageReviewGate(state, rows, sfMediaRoot) {
 
 function createServer(options = {}) {
   const serverOptions = options && typeof options === 'object' ? options : {};
+  // Lifecycle previews are intentionally process-local. Restarting the server
+  // invalidates them so stale browser state cannot authorize storage mutation.
+  musicStorageLifecycle.clearPreviewPlans();
+  musicStorageDedupe.clearPlans();
   // Named (re-enterable) request handler: Super Focus media routes are
   // re-dispatched through handleRequest after the async VIDNAS mount probe
   // resolves (see the gate below), with sfMediaProbed=true to skip re-probing.
@@ -14835,7 +14848,7 @@ function createServer(options = {}) {
             // Adopt identity model: the router-selected chat tag when the
             // decision carries one, else the configured evaluator model.
             const adoptModel = (decision.selected && decision.selected.chat_tag)
-              || process.env.SUPER_FOCUS_EVAL_MODEL || 'qwen38-27b-ud-q3-k-xl:chat';
+              || process.env.SUPER_FOCUS_EVAL_MODEL || 'qwen38-27b-dynamic-v3-q3-k-xl:official';
             const adopted = routingIntegration.findAdoptableEvaluation(
               scriptHash,
               adoptModel,
@@ -17495,14 +17508,19 @@ function createServer(options = {}) {
         } : null;
         const approved = state.approved ? {
           approved_candidate: state.approved.approved_candidate,
+          backend: state.approved.backend || 'scorecraft',
+          candidate_kind: state.approved.candidate_kind || 'structural_sketch',
+          plan_revision_id: state.approved.plan_revision_id || (state.approved.identity && state.approved.identity.cue_sheet_hash) || null,
           approval_scope: state.approved.approval_scope,
           provenance_schema_version: state.approved.provenance_schema_version,
+          exported_files: state.approved.exported_files || [],
         } : null;
         const readiness = { ...(state.readiness || {}) };
         delete readiness.verify_command;
         sendJSON(res, 200, {
           project, cue_sheet: state.cue_sheet, music_plan: musicPlan, candidates: state.candidates,
-          approved, reaper_ready: state.reaper_ready, analysis: state.analysis, readiness,
+          approved, approval_current: state.approval_current, state_integrity: state.state_integrity,
+          reaper_ready: state.reaper_ready, analysis: state.analysis, readiness,
           narration: state.narration, daw_configuration: state.daw_configuration,
         });
       }
@@ -17588,10 +17606,93 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Score music generate API' });
-          return musicDispatch.requestMusicGeneration(payload.project_id || '', payload, scoreOptions());
+          return payload.prepare_only
+            ? musicDispatch.requestMusicGeneration(payload.project_id || '', payload, scoreOptions())
+            : musicDispatch.startMusicGeneration(payload.project_id || '', payload, scoreOptions());
         })
         .then((result) => sendJSON(res, 200, result))
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-music-generate-error'));
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === SCORE_MUSIC_STATUS_API) {
+      try {
+        const state = scoreLane.getProject(url.searchParams.get('id') || '', scoreOptions());
+        sendJSON(res, 200, {
+          project_id: state.project.project_id,
+          candidates: state.candidates.filter((candidate) => candidate.backend === 'minimax'),
+        });
+      }
+      catch (error) { sendError(res, error.statusCode || 500, error.message, 'score-music-status-error'); }
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === SCORE_STORAGE_SUMMARY_API) {
+      try {
+        const projectId = url.searchParams.get('id') || '';
+        const result = projectId
+          ? musicStorageLifecycle.projectInventory(projectId, scoreOptions())
+          : musicStorageLifecycle.inventory({
+              ...scoreOptions(),
+              includeDuplicates: url.searchParams.get('include_duplicates') === '1',
+            });
+        sendJSON(res, 200, result);
+      } catch (error) { sendError(res, error.statusCode || 500, error.message, error.code || 'score-storage-summary-error'); }
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_STORAGE_PREVIEW_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          const action = String(payload.action || '');
+          if (action === 'archive_candidate') return musicStorageLifecycle.previewArchiveCandidate(payload.project_id || '', payload.candidate_id || '', scoreOptions());
+          if (action === 'restore_candidate') return musicStorageLifecycle.previewRestore(payload.archive_id || '', scoreOptions());
+          if (action === 'delete_archive') return musicStorageLifecycle.previewDeleteArchive(payload.archive_id || '', scoreOptions());
+          throw Object.assign(new Error('Unknown storage lifecycle preview action.'), { statusCode: 400 });
+        })
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'score-storage-preview-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_STORAGE_EXECUTE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score storage lifecycle execute API' });
+          return musicStorageLifecycle.executePlan(payload.plan_id || '', scoreOptions());
+        })
+        .then((result) => { musicStorageDedupe.clearAuditCache(); sendJSON(res, 200, result); })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'score-storage-execute-error'));
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === SCORE_STORAGE_DEDUPE_API) {
+      musicStorageDedupe.auditAsync(scoreOptions()).then((report) => {
+        const projectId = url.searchParams.get('id') || '';
+        const groups = projectId
+          ? report.groups.filter((group) => group.files.some((file) => file.project_id === projectId))
+          : report.groups.slice(0, 20);
+        sendJSON(res, 200, { ...report, groups });
+      }).catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'score-storage-dedupe-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_STORAGE_DEDUPE_PREVIEW_API) {
+      readJsonBody(req)
+        .then(async (payload) => {
+          if (payload.action === 'dedupe_group') {
+            const auditReport = await musicStorageDedupe.auditAsync(scoreOptions());
+            return musicStorageDedupe.previewDedupe(payload.project_id || '', payload.sha256 || '', { ...scoreOptions(), auditReport });
+          }
+          if (payload.action === 'materialize') return musicStorageDedupe.previewMaterialize(payload.project_id || '', payload.transaction_id || '', scoreOptions());
+          throw Object.assign(new Error('Unknown storage dedupe preview action.'), { statusCode: 400 });
+        })
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'score-storage-dedupe-preview-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === SCORE_STORAGE_DEDUPE_EXECUTE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Score storage dedupe execute API' });
+          return musicStorageDedupe.executePlan(payload.plan_id || '', scoreOptions());
+        })
+        .then((result) => sendJSON(res, 200, result))
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'score-storage-dedupe-execute-error'));
       return;
     }
     if (req.method === 'POST' && url.pathname === SCORE_PALETTE_API) {
@@ -17616,7 +17717,9 @@ function createServer(options = {}) {
       readJsonBody(req)
         .then((payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Score candidate status API' });
-          sendJSON(res, 200, { candidate: scoreLane.setCandidateStatus(payload.project_id || '', payload.candidate_id || '', payload.status || '', payload.notes, scoreOptions()) });
+          sendJSON(res, 200, { candidate: scoreLane.setCandidateReview(
+            payload.project_id || '', payload.candidate_id || '', payload, scoreOptions(),
+          ) });
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-candidate-status-error'));
       return;
@@ -17813,6 +17916,8 @@ function createServer(options = {}) {
           sendJSON(res, 200, scoreLane.applyResolveProductionPlan(payload.project_id || '', {
             resolve_production_plan_id: payload.resolve_production_plan_id,
             expected_plan_identity: payload.expected_plan_identity,
+            // EXPERIMENTAL_MANUAL_RESOLVE_ASSEMBLY: outside normal production; explicit opt-in only.
+            experimental_manual_resolve_assembly: payload.experimental_manual_resolve_assembly === true,
           }, scoreOptions()));
         })
         .catch((error) => sendError(res, error.statusCode || 500, error.message, 'score-resolve-production-apply-error'));
@@ -17989,8 +18094,35 @@ function createServer(options = {}) {
         const settings = scoreLane.loadSettings(scoreOptions());
         const filePath = scoreLane.resolveProjectFile(settings, url.searchParams.get('id') || '', url.searchParams.get('path') || '');
         const ext = require('node:path').extname(filePath).toLowerCase();
-        const types = { '.wav': 'audio/wav', '.mid': 'audio/midi', '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.mkv': 'video/x-matroska', '.mxf': 'application/mxf', '.json': 'application/json', '.md': 'text/markdown; charset=utf-8', '.rpp': 'text/plain; charset=utf-8', '.csv': 'text/csv; charset=utf-8', '.txt': 'text/plain; charset=utf-8' };
-        res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream', 'Content-Length': fs.statSync(filePath).size, 'Cache-Control': 'no-store' });
+        const types = { '.wav': 'audio/wav', '.mid': 'audio/midi', '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.mkv': 'video/x-matroska', '.mxf': 'application/mxf', '.json': 'application/json', '.md': 'text/markdown; charset=utf-8', '.rpp': 'text/plain; charset=utf-8', '.csv': 'text/csv', '.txt': 'text/plain; charset=utf-8' };
+        const stat = fs.statSync(filePath);
+        const range = String(req.headers.range || '');
+        // Range support (quality gate 2026-08-21): browsers stream media via
+        // byte ranges; without it Chrome pins one full-body connection per
+        // play and the 6-connection pool stalls after ~6 plays, leaving every
+        // later player at 0:00 forever.
+        if (range) {
+          const m = /^bytes=(\d*)-(\d*)$/.exec(range);
+          const start = m && m[1] !== '' ? parseInt(m[1], 10) : 0;
+          const end = m && m[2] !== '' ? parseInt(m[2], 10) : stat.size - 1;
+          if (!m || Number.isNaN(start) || Number.isNaN(end) || start > end || end >= stat.size) {
+            res.writeHead(416, { 'Content-Range': `bytes */${stat.size}`, 'Cache-Control': 'no-store' });
+            res.end();
+            return;
+          }
+          res.writeHead(206, {
+            'Content-Type': types[ext] || 'application/octet-stream',
+            'Content-Length': end - start + 1,
+            'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'no-store',
+          });
+          const partStream = fs.createReadStream(filePath, { start, end });
+          partStream.on('error', (err) => { console.error('Score file stream error:', err.message); res.destroy(); });
+          partStream.pipe(res);
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream', 'Content-Length': stat.size, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' });
         // Guarded like the other media routes: the file can vanish between the
         // stat and the stream open — an unguarded error leaves the response
         // hanging with headers already sent.

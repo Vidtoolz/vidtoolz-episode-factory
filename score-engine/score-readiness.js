@@ -336,12 +336,23 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
   const approvedDir = path.join(dir, "approved");
   const hasApproval = Boolean(dir) && fs.existsSync(path.join(approvedDir, "provenance.json"));
   const approvalRecord = approved || (hasApproval ? readJson(path.join(approvedDir, "provenance.json")) : null);
-  const approvalAuthority = provenanceLib.assessSketchApprovalAuthority({
+  const assessedApprovalAuthority = provenanceLib.assessSketchApprovalAuthority({
     project, cues, musicPlan, candidates, approved: approvalRecord, dir, settings, composerContract: COMPOSER_CONTRACT,
   });
+  // Approval is downstream of explicit cue-plan approval. Even if an operator
+  // saves byte-identical cues, that save deliberately reopens the plan gate;
+  // the preserved export remains historical until the plan is re-approved.
+  const approvalAuthority = approvalRecord && !project.cue_sheet_approved ? {
+    ...assessedApprovalAuthority,
+    state: "stale",
+    current: false,
+    reasons: [...new Set([...(assessedApprovalAuthority.reasons || []), "cue_plan_unapproved"])],
+  } : assessedApprovalAuthority;
   const previewable = candidates.filter((c) => c.files && c.files.preview_mix);
   const reaperBuilt = candidates.some((c) => c.reaper_built);
   const production = assessProductionAuthority({ dir, approvalAuthority, approved: approvalRecord });
+  const productionCandidateApproval = Boolean(approvalRecord && approvalRecord.backend === "minimax"
+    && approvalRecord.candidate_kind === "production_audio");
 
   const stages = [
     {
@@ -363,7 +374,9 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
       id: "approval", label: "Approved export",
       state: approvalAuthority.current ? "done" : hasApproval ? "draft" : "todo",
       detail: approvalAuthority.current
-        ? "sketch approval is hash-bound and current; production mix is still required"
+        ? productionCandidateApproval
+          ? "MiniMax production candidate approval is hash-bound and current; technical/final mix acceptance remains separate"
+          : "sketch approval is hash-bound and current; production mix is still required"
         : hasApproval
           ? `${approvalAuthority.state}: ${approvalAuthority.reasons.join(", ")}`
           : "audition, then approve ONE candidate as a sketch",
@@ -395,7 +408,9 @@ function assessReadiness({ project = {}, cueSheet = null, musicPlan = null, cand
         : !previewable.length ? "Generate music candidates (step 3), then audition the sketch previews."
           : !approvalAuthority.current
             ? hasApproval ? "The preserved sketch approval is stale or legacy; regenerate/reapprove deliberately from the current score state." : "Audition the previews (A/B compare) and approve one candidate as a sketch."
-            : production.state === "not_imported" ? "Import a DAW production mix bound to this current sketch approval."
+            : production.state === "not_imported" ? productionCandidateApproval
+              ? "The approved MiniMax mix is exported for production/import; complete the separate technical and final listening gates before claiming delivery readiness."
+              : "Import a DAW production mix bound to this current sketch approval."
               : production.state === "imported" ? "Verify the imported production mix."
                 : production.state === "stale" ? `Repair stale production state: ${production.reasons.join(", ")}.`
                 : production.state === "reference_verified" ? "Import the operator-patched production render; the reference render cannot authorize Resolve."
@@ -515,9 +530,16 @@ function verifyApprovedExports(dir, options = {}) {
   // from whichever files happen to remain in a directory.
   const contract = provenance.render_contract || {};
   const lanes = Array.isArray(contract.expected_lanes) ? contract.expected_lanes : [];
+  const productionCandidate = provenance.backend === "minimax" && provenance.candidate_kind === "production_audio";
   check("artifact manifest current", Boolean(provenance.artifact_manifest), "legacy_artifacts_unverified — no authoritative manifest");
-  check("render contract declares expected lanes", lanes.length > 0, "expected_lanes missing");
-  const expectedRoles = new Map([
+  check("render contract declares expected lanes", productionCandidate || lanes.length > 0,
+    productionCandidate ? null : "expected_lanes missing");
+  const expectedRoles = productionCandidate ? new Map([
+    ["production_mix", "mix.wav"],
+    ["resolve_production_mix", "resolve-import/mix.wav"],
+    ["cue_markers", "resolve-import/cue-markers.csv"],
+    ["resolve_readme", "resolve-import/README.md"],
+  ]) : new Map([
     ["sketch_mix", "mix.wav"],
     ["sketch_dialogue_safe_mix", "mix-dialogue-safe.wav"],
     ["midi_all_lanes", "midi/all-lanes.mid"],
@@ -550,7 +572,7 @@ function verifyApprovedExports(dir, options = {}) {
     check(`exists: approved/${rel}`, fs.existsSync(path.join(approvedDir, rel)), "missing");
   }
 
-  const expectedDirectoryFiles = [
+  const expectedDirectoryFiles = productionCandidate ? [] : [
     ["stems", lanes.map((lane) => `${lane}.wav`)],
     ["midi", [...lanes.map((lane) => `${lane}.mid`), "all-lanes.mid"]],
     [path.join("resolve-import", "stems"), lanes.map((lane) => `${lane}.wav`)],
@@ -564,7 +586,10 @@ function verifyApprovedExports(dir, options = {}) {
   }
 
   // 2. Every declared Resolve sketch mirror is byte-identical.
-  for (const rel of ["mix.wav", "mix-dialogue-safe.wav", ...lanes.map((lane) => path.join("stems", `${lane}.wav`))]) {
+  const approvalMixes = productionCandidate
+    ? ["mix.wav"]
+    : ["mix.wav", "mix-dialogue-safe.wav", ...lanes.map((lane) => path.join("stems", `${lane}.wav`))];
+  for (const rel of approvalMixes) {
     const a = path.join(approvedDir, rel);
     const b = path.join(approvedDir, "resolve-import", rel);
     if (fs.existsSync(a) && fs.existsSync(b)) {
@@ -575,7 +600,7 @@ function verifyApprovedExports(dir, options = {}) {
   }
 
   // 3. Every WAV honors the provenance's own render contract.
-  const wavs = ["mix.wav", "mix-dialogue-safe.wav", ...lanes.map((lane) => path.join("stems", `${lane}.wav`))];
+  const wavs = approvalMixes;
   for (const rel of wavs) {
     const file = path.join(approvedDir, rel);
     if (!fs.existsSync(file)) continue; // already failed above

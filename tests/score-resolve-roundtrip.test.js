@@ -210,7 +210,7 @@ test("score Resolve P8: public lane preflight persists exact target plan, applie
   }, { ...options, resolveProductionDriverImpl: driver });
   assert.equal(preflight.status, "ready_to_apply");
   assert.equal(preflight.target.project_unique_id, "project-id");
-  const applied = lane.applyResolveProductionPlan(project.project_id, { resolve_production_plan_id: preflight.resolve_production_plan_id, expected_plan_identity: preflight.plan_identity }, { ...options, resolveProductionDriverImpl: driver });
+  const applied = lane.applyResolveProductionPlan(project.project_id, { resolve_production_plan_id: preflight.resolve_production_plan_id, expected_plan_identity: preflight.plan_identity, experimental_manual_resolve_assembly: true }, { ...options, resolveProductionDriverImpl: driver });
   assert.equal(applied.source_timeline_untouched, true);
   assert.equal(applied.applied_timeline_name, target.destination_timeline_name);
   const state = lane.getProject(project.project_id, options);

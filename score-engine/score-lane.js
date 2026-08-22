@@ -17,6 +17,9 @@ const midiWriter = require("./midi-writer.js");
 const synth = require("./preview-synth.js");
 const reaper = require("./reaper-backend.js");
 const provenanceLib = require("./score-provenance.js");
+const interpretations = require("./interpretations.js");
+const scriptSnapshot = require("./script-snapshot.js");
+const productionCandidates = require("./production-candidates.js");
 const resolveTimelineEvidence = require("./resolve-timeline-evidence.js");
 const resolveProduction = require("./resolve-production-integration.js");
 
@@ -30,8 +33,12 @@ function readJson(file, fallback = null) {
   try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch (error) { return fallback; }
 }
 function writeJson(file, data) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
+  // Authoritative Scorecraft state (registry, score-project.json, cue sheets,
+  // candidates, settings, profiles) all flow through here. A torn plain write
+  // corrupts project authority, so every write is atomic (tmp + rename on the
+  // same filesystem). Atomicity is strictly safer for the disposable writers
+  // too, so this is a single-point fix rather than dozens of call-site edits.
+  return writeJsonAtomic(file, data);
 }
 function writeJsonAtomic(file, data) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -160,7 +167,35 @@ function deleteProfile(settings, profileId) {
 
 // ── registry + project resolution ──
 function registryPath(settings) { return path.join(settings.music_root, "score-registry.json"); }
-function loadRegistry(settings) { return readJson(registryPath(settings), { version: 1, projects: [] }); }
+function loadRegistry(settings) {
+  const file = registryPath(settings);
+  // A genuinely ABSENT registry is a legitimate first run.
+  if (!fs.existsSync(file)) return { version: 1, projects: [] };
+  let raw;
+  try { raw = fs.readFileSync(file, "utf8"); } catch (error) {
+    throw httpError(`Score registry could not be read: ${error.message}`, 500);
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.projects)) {
+      throw new Error("registry is not a {projects:[...]} object");
+    }
+    return parsed;
+  } catch (error) {
+    // A corrupt EXISTING registry must NEVER silently become empty: that would
+    // unregister every project AND let the next createScoreProject overwrite
+    // the registry with a one-project universe. Preserve evidence (idempotent,
+    // write-once) but LEAVE the corrupt original in place so every call keeps
+    // failing loudly until a human restores it — unlike profiles, we do not
+    // rename-and-reseed, because reseeding a registry IS the data-loss bug.
+    const archived = path.join(settings.music_root, "score-registry.corrupt.json");
+    try {
+      fs.mkdirSync(settings.music_root, { recursive: true });
+      if (!fs.existsSync(archived)) fs.writeFileSync(archived, raw);
+    } catch {}
+    throw httpError(`Score registry is corrupt (${error.message}); a copy was preserved at score-registry.corrupt.json. Refusing to continue with an empty registry — restore or repair score-registry.json.`, 500);
+  }
+}
 function saveRegistry(settings, registry) { writeJson(registryPath(settings), registry); }
 
 function resolveProjectDir(settings, projectId) {
@@ -239,6 +274,8 @@ function createScoreProject(input = {}, options = {}) {
     candidate_count: Math.min(5, Math.max(1, Number(input.candidate_count) || settings.default_candidate_count)),
     seed: Number.isInteger(input.seed) ? input.seed : 1,
     cue_sheet_approved: false,
+    plan_revision_sequence: 0,
+    current_plan_revision_id: null,
     approved_candidate: null,
     cues: [],
   };
@@ -269,6 +306,64 @@ and Mikko's approvals — no artist imitation. Generated ${project.created_at}.
 }
 
 // ── project state ──
+function currentPlanRevisionId(project, cues = []) {
+  return project && project.current_plan_revision_id
+    || (cues.length ? provenanceLib.cueSheetHash(cues) : null); // legacy projects only
+}
+
+function issuePlanRevision(project, cues) {
+  const sequence = Math.max(0, Number(project.plan_revision_sequence) || 0) + 1;
+  const revisionId = provenanceLib.hashCanonical({
+    schema_version: 1,
+    role: "scorecraft_cue_plan_revision",
+    project_id: project.project_id,
+    sequence,
+    cue_sheet_hash: provenanceLib.cueSheetHash(cues),
+  });
+  project.plan_revision_sequence = sequence;
+  project.current_plan_revision_id = revisionId;
+  return revisionId;
+}
+
+function describeRevisionState(project, candidates, approved, approvalCurrent) {
+  const cues = Array.isArray(project && project.cues) ? project.cues : [];
+  const currentPlanRevision = currentPlanRevisionId(project, cues);
+  const describedCandidates = candidates.map((candidate) => {
+    const planRevisionId = candidate.plan_revision_id
+      || (project.current_plan_revision_id ? null : candidate.identity && candidate.identity.cue_sheet_hash)
+      || null;
+    const currentPlan = Boolean(currentPlanRevision && planRevisionId === currentPlanRevision);
+    const productionApprovalEligible = candidate.backend === productionCandidates.BACKEND
+      ? Boolean(project && project.cue_sheet_approved && currentPlan
+        && candidate.generation_status === "completed" && candidate.artifact_available
+        && candidate.artifact_integrity !== false && candidate.human_verdict === "use")
+      : Boolean(project && project.cue_sheet_approved && currentPlan);
+    return {
+      ...candidate,
+      plan_revision_id: planRevisionId,
+      current_plan_revision: currentPlan,
+      approval_eligible: productionApprovalEligible,
+    };
+  });
+  const currentCandidateCount = describedCandidates.filter((candidate) => candidate.current_plan_revision).length;
+  const approvedPlanRevision = approved && (approved.plan_revision_id
+    || (!project.current_plan_revision_id && approved.identity && approved.identity.cue_sheet_hash)) || null;
+  return {
+    candidates: describedCandidates,
+    state: {
+      current_plan_revision: currentPlanRevision,
+      has_cues: cues.length > 0,
+      plan_approved: Boolean(project && project.cue_sheet_approved),
+      current_candidate_count: currentCandidateCount,
+      historical_candidate_count: describedCandidates.length - currentCandidateCount,
+      has_current_candidates: currentCandidateCount > 0,
+      approved_export_exists: Boolean(approved && approved.approved_candidate),
+      approved_plan_revision: approvedPlanRevision,
+      approval_current: Boolean(approvalCurrent),
+    },
+  };
+}
+
 function getProject(projectId, options = {}) {
   const settings = loadSettings(options);
   const { dir } = resolveProjectDir(settings, projectId);
@@ -276,14 +371,17 @@ function getProject(projectId, options = {}) {
   if (!project) throw httpError(`score-project.json unreadable in ${dir}`, 500);
   const cueSheet = readJson(path.join(dir, "cue-sheet.json"));
   const musicPlan = readJson(path.join(dir, "music-plan.json"));
-  const candidates = listCandidates(dir);
+  const scorecraftCandidates = listCandidates(dir);
+  const storedCandidates = [...scorecraftCandidates, ...listProductionCandidates(dir, project.project_id)];
   const approvedDir = path.join(dir, "approved");
   const approved = fs.existsSync(path.join(approvedDir, "provenance.json")) ? readJson(path.join(approvedDir, "provenance.json")) : null;
   // Score Map + readiness data (v1.2): pure analysis of the plan and a staged
   // readiness assessment ride along with every project GET — the UI never
   // computes truth client-side, and deep verification stays a CLI concern.
   const readinessLib = require("./score-readiness.js");
-  const readiness = readinessLib.assessReadiness({ project, cueSheet, musicPlan, candidates, approved, dir, settings });
+  const readiness = readinessLib.assessReadiness({ project, cueSheet, musicPlan, candidates: storedCandidates, approved, dir, settings });
+  const revisionState = describeRevisionState(project, storedCandidates, approved, readiness.sketch_approval_current);
+  const candidates = revisionState.candidates;
   const productionMixCandidates = listProductionMixes(projectId, options);
   const narration = assessNarrationAuthority(dir, project);
   readiness.narration = narration;
@@ -313,7 +411,9 @@ function getProject(projectId, options = {}) {
     music_plan: musicPlan,
     candidates,
     approved,
-    reaper_ready: candidates.some((c) => c.reaper_built),
+    approval_current: revisionState.state.approval_current,
+    state_integrity: revisionState.state,
+    reaper_ready: candidates.some((c) => c.backend === "scorecraft" && c.reaper_built),
     analysis: readiness.analysis,
     readiness,
     production_mix_candidates: productionMixCandidates,
@@ -333,10 +433,25 @@ function listCandidates(dir) {
   if (!fs.existsSync(root)) return [];
   return fs.readdirSync(root).filter((n) => /^candidate-\d{3}$/.test(n)).sort().map((n) => {
     const meta = readJson(path.join(root, n, "candidate.json"), { candidate_id: n, status: "planned" });
+    meta.backend = "scorecraft";
+    meta.candidate_kind = "structural_sketch";
+    meta.generation_status = "completed";
+    meta.human_verdict = meta.status === "rejected" ? "reject" : meta.status === "approved" ? "use" : "unreviewed";
     meta.reaper_built = fs.existsSync(path.join(root, n, "reaper", "project.rpp"));
     meta.ableton_built = fs.existsSync(path.join(root, n, "ableton", "README.md"));
     return meta;
   });
+}
+
+function listProductionCandidates(dir, projectId) {
+  let isActive = () => false;
+  let onInterrupted = null;
+  try {
+    const dispatch = require("./music-dispatch.js");
+    isActive = (candidateId) => dispatch.isCandidateActive(projectId, candidateId);
+    onInterrupted = (meta) => dispatch.scheduleReconciledResourceRelease(dir, meta);
+  } catch {}
+  return productionCandidates.list(dir, { isActive, onInterrupted });
 }
 
 function listProjects(options = {}) {
@@ -347,12 +462,30 @@ function listProjects(options = {}) {
     // cue_count honesty fix (v1.2): cues live in cue-sheet.json, never on the
     // project record — the landing page always showed 0 before this.
     const cueSheet = readJson(path.join(entry.path, "cue-sheet.json"));
+    const cues = cueSheet && Array.isArray(cueSheet.cues) ? cueSheet.cues : [];
+    const currentPlanRevision = currentPlanRevisionId(project, cues);
+    const approvedRecord = readJson(path.join(entry.path, "approved", "provenance.json"));
+    const approvedExportExists = Boolean(approvedRecord && approvedRecord.approved_candidate);
+    const approvedPlanRevision = approvedRecord && (approvedRecord.plan_revision_id
+      || (!project.current_plan_revision_id && approvedRecord.identity && approvedRecord.identity.cue_sheet_hash));
+    const candidates = [...listCandidates(entry.path), ...listProductionCandidates(entry.path, project.project_id)];
+    const musicPlan = readJson(path.join(entry.path, "music-plan.json"));
+    const authority = provenanceLib.assessSketchApprovalAuthority({
+      project: project || {}, cues, musicPlan, candidates, approved: approvedRecord,
+      dir: entry.path, settings, composerContract: composerEngine.COMPOSER_CONTRACT,
+      verifyArtifacts: false,
+    });
+    const approvalCurrent = Boolean(project && project.cue_sheet_approved && approvedExportExists
+      && approvedPlanRevision === currentPlanRevision && authority.current);
     return {
       ...entry,
       exists: fs.existsSync(entry.path),
       duration_seconds: project ? project.duration_seconds : null,
-      cue_count: cueSheet && Array.isArray(cueSheet.cues) ? cueSheet.cues.length : 0,
-      approved: project ? Boolean(project.approved_candidate) : false,
+      cue_count: cues.length,
+      approved: approvalCurrent,
+      approved_export_exists: approvedExportExists,
+      approval_current: approvalCurrent,
+      current_plan_revision: currentPlanRevision,
     };
   });
 }
@@ -391,22 +524,22 @@ function generateCuesForProject(projectId, input = {}, options = {}) {
   if (input.ai_response_text) {
     cueSheet = planner.parseAiCueSheet(input.ai_response_text, { duration_seconds: project.duration_seconds, generator: input.generator || "ai_assisted" });
   } else {
-    const scriptSnapshot = path.join(dir, "script-snapshot.txt");
     cueSheet = planner.generateCueSheet({
       duration_seconds: project.duration_seconds,
       tempo_bpm: project.global_tempo_bpm,
       key: project.global_key,
       overall_mood: project.overall_mood,
       dialogue_density: project.dialogue_density,
-      script_text: fs.existsSync(scriptSnapshot) ? fs.readFileSync(scriptSnapshot, "utf8") : "",
+      script_text: scriptSnapshot.readScriptSnapshot(dir),
     });
   }
+  const planRevisionId = issuePlanRevision(project, cueSheet.cues);
   archiveIfExists(dir, "cue-sheet.json");
-  writeJson(path.join(dir, "cue-sheet.json"), { ...cueSheet, generated_at: nowIso() });
+  writeJson(path.join(dir, "cue-sheet.json"), { ...cueSheet, plan_revision_id: planRevisionId, generated_at: nowIso() });
   project.cues = cueSheet.cues;
   project.cue_sheet_approved = false;
   saveProject(dir, project);
-  return { cue_sheet: cueSheet, archived_previous: true };
+  return { cue_sheet: { ...cueSheet, plan_revision_id: planRevisionId }, archived_previous: true };
 }
 
 function saveCueSheetEdits(projectId, cues, options = {}) {
@@ -415,15 +548,16 @@ function saveCueSheetEdits(projectId, cues, options = {}) {
   const project = readJson(path.join(dir, "score-project.json"));
   const errors = schemas.validateCueSheet({ cues }, { duration_seconds: project.duration_seconds });
   if (errors.length) throw httpError(`Cue sheet rejected: ${errors.join("; ")}`, 400);
+  const planRevisionId = issuePlanRevision(project, cues);
   archiveIfExists(dir, "cue-sheet.json");
-  writeJson(path.join(dir, "cue-sheet.json"), { cues, generator: "operator_edited", generated_at: nowIso() });
+  writeJson(path.join(dir, "cue-sheet.json"), { cues, plan_revision_id: planRevisionId, generator: "operator_edited", generated_at: nowIso() });
   project.cues = cues;
   // An edit invalidates the human approval — otherwise candidates could be
   // composed from a structure nobody approved (the GUI's Approve button
   // saves-then-approves, so the normal flow re-approves immediately).
   project.cue_sheet_approved = false;
   saveProject(dir, project);
-  return { saved: true, cue_count: cues.length };
+  return { saved: true, cue_count: cues.length, plan_revision_id: planRevisionId };
 }
 
 function approveCueSheet(projectId, options = {}) {
@@ -433,7 +567,7 @@ function approveCueSheet(projectId, options = {}) {
   if (!project.cues || project.cues.length === 0) throw httpError("No cue sheet to approve — generate one first.", 400);
   project.cue_sheet_approved = true;
   saveProject(dir, project);
-  return { approved: true };
+  return { approved: true, plan_revision_id: currentPlanRevisionId(project, project.cues) };
 }
 
 // ── MusicRenderBrief v1 export ──
@@ -501,6 +635,17 @@ function generateCandidates(projectId, input = {}, options = {}) {
 
   const count = Math.min(5, Math.max(1, Number(input.count) || project.candidate_count || 3));
   const baseSeed = Number.isInteger(input.seed) ? input.seed : project.seed || 1;
+  const persistedScriptText = scriptSnapshot.readScriptSnapshot(dir);
+  // v1.5 diversity overhaul (QG): candidates are distinct soundtrack CONCEPTS
+  // solving the same approved brief. Concepts come from a script-aware
+  // contrast set; the diversity gate re-checks pairwise distance and swaps in
+  // spare concepts (bounded) if two candidates land too close. Explicit input
+  // overrides (revision path) win over the auto set.
+  const contrast = interpretations.selectContrastSet(project, {
+    family: input.contrast_family || undefined,
+    script_text: persistedScriptText || input.script_text || "",
+  });
+  const conceptQueue = [...contrast.concepts, ...contrast.spares];
   // v1.1: voice-safe pulse register — dialogue-heavy projects default to
   // mid_high (clears narration fundamentals); recorded per candidate so
   // approve/REAPER recomposition stays byte-identical forever.
@@ -509,20 +654,49 @@ function generateCandidates(projectId, input = {}, options = {}) {
     : (project.dialogue_density === "high" ? "mid_high" : "low_mid");
   const harmonicDrift = input.harmonic_drift === undefined ? true : Boolean(input.harmonic_drift);
   const created = [];
-  for (let i = 0; i < count; i += 1) {
-    created.push(buildOneCandidate(dir, project, musicPlan, {
-      seed: baseSeed + i,
+  const signatures = [];
+  const MAX_DIVERSITY_RETRIES = conceptQueue.length; // bounded: never loop forever
+  let retries = 0;
+  let queueIndex = 0;
+  while (created.length < count && queueIndex < conceptQueue.length) {
+    const concept = conceptQueue[queueIndex];
+    queueIndex += 1;
+    const result = buildOneCandidate(dir, project, musicPlan, {
+      seed: baseSeed + created.length,
       palette_id: input.palette_id || project.palette_id,
-      lane_gains: validateLaneGains(input.lane_gains),
+      lane_gains: { ...concept.lane_gains, ...validateLaneGains(input.lane_gains) },
       cues: project.cues,
       parent_candidate: input.parent_candidate || null,
       revision: input.revision || null,
       pulse_register: pulseRegister,
       harmonic_drift: harmonicDrift,
+      tempo_feel: input.tempo_feel || concept.axes.tempo_feel,
+      pulse_style: input.pulse_style || concept.axes.pulse_style,
+      melody_bias: input.melody_bias || concept.axes.melody_bias,
+      interpretation: concept,
+      plan_revision_id: currentPlanRevisionId(project, project.cues),
       sampleRate: settings.default_export_sample_rate,
-    }, settings));
+    }, settings);
+    const sig = interpretations.diversitySignature(result.composition, result.meta);
+    const tooClose = signatures.some((s) => interpretations.pairwiseDistance(s, sig).total < interpretations.DIVERSITY_MIN_TOTAL);
+    if (tooClose && retries < MAX_DIVERSITY_RETRIES && queueIndex < conceptQueue.length) {
+      // Fail closed on duplicate-like candidates: drop this one, try the next
+      // concept in the set. Bounded by the spare list; honest fallback below.
+      retries += 1;
+      fs.rmSync(result.candidateDir, { recursive: true, force: true });
+      continue;
+    }
+    signatures.push(sig);
+    created.push(result);
   }
-  return { candidates: created.map((c) => c.meta) };
+  return {
+    candidates: created.map((c) => c.meta),
+    contrast_family: contrast.family,
+    diversity: interpretations.diversityReport(signatures),
+    diversity_retries: retries,
+    short_of_requested: created.length < count,
+    current_plan_revision: currentPlanRevisionId(project, project.cues),
+  };
 }
 
 function buildOneCandidate(dir, project, musicPlan, generation, settings) {
@@ -539,6 +713,10 @@ function buildOneCandidate(dir, project, musicPlan, generation, settings) {
     dialogue_density: project.dialogue_density,
     pulse_register: generation.pulse_register,
     harmonic_drift: generation.harmonic_drift,
+    tempo_feel: generation.tempo_feel,
+    pulse_style: generation.pulse_style,
+    melody_bias: generation.melody_bias,
+    interpretation: generation.interpretation || undefined,
   });
 
   // MIDI: one combined file + one per lane (per-role import convenience, §12).
@@ -559,7 +737,11 @@ function buildOneCandidate(dir, project, musicPlan, generation, settings) {
 
   // Immutable input snapshots make later handoffs independent of mutable
   // project-level cue and instrument-plan files.
-  writeJson(path.join(candidateDir, "cue-sheet-used.json"), { cues: generation.cues });
+  writeJson(path.join(candidateDir, "cue-sheet-used.json"), {
+    cues: generation.cues,
+    plan_revision_id: generation.plan_revision_id || null,
+    source_plan_revision_id: generation.source_plan_revision_id || null,
+  });
   // generated_at is audit metadata, not a composition input. Keeping it in the
   // immutable snapshot made otherwise identical candidates acquire different
   // artifact manifests and candidate-content hashes solely because the plan
@@ -576,6 +758,12 @@ function buildOneCandidate(dir, project, musicPlan, generation, settings) {
     lane_gains: generation.lane_gains,
     pulse_register: generation.pulse_register || null,
     harmonic_drift: Boolean(generation.harmonic_drift),
+    tempo_feel: generation.tempo_feel || "as_planned",
+    pulse_style: generation.pulse_style || "as_planned",
+    melody_bias: generation.melody_bias || "as_planned",
+    interpretation: generation.interpretation || null,
+    plan_revision_id: generation.plan_revision_id || null,
+    source_plan_revision_id: generation.source_plan_revision_id || null,
     parent_candidate: generation.parent_candidate,
     revision: generation.revision,
     duration_seconds: project.duration_seconds,
@@ -641,6 +829,8 @@ function buildCandidateProvenance(project, musicPlan, meta, generation) {
     pulse_register: meta.pulse_register || "low_mid",
     harmonic_drift: meta.harmonic_drift === true,
     cue_sheet: generation.cues.map((c) => ({ cue_id: c.cue_id, name: c.name, start: c.start_seconds, end: c.end_seconds, function: c.function, emotion: c.emotion, energy: c.energy, density: c.density })),
+    plan_revision_id: meta.plan_revision_id || null,
+    source_plan_revision_id: meta.source_plan_revision_id || null,
     instrument_profiles: musicPlan ? Object.fromEntries(Object.entries(musicPlan.roles).map(([role, r]) => [role, r.profile_id])) : {},
     generation_method: "deterministic rule-based composer (no AI note generation)",
     ai_planning: generation.revision ? { revision_request: generation.revision.request, changes: generation.revision.changes } : null,
@@ -692,6 +882,10 @@ function compositionOptionsFromMeta(project, meta) {
     dialogue_density: project.dialogue_density,
     pulse_register: meta.pulse_register || undefined,
     harmonic_drift: meta.harmonic_drift === true,
+    tempo_feel: meta.tempo_feel,
+    pulse_style: meta.pulse_style,
+    melody_bias: meta.melody_bias,
+    interpretation: meta.interpretation || undefined,
   };
 }
 
@@ -712,6 +906,36 @@ function setCandidateStatus(projectId, candidateId, status, note, options = {}) 
   if (note !== undefined) meta.notes = String(note || "");
   writeJson(path.join(candidateDir, "candidate.json"), meta);
   return meta;
+}
+
+// Quality-gate notes for MiniMax production candidates (music-candidate-*).
+// Their lifecycle `status` uses the dispatch vocabulary (generated/completed/
+// failed), NOT CANDIDATE_STATUSES — so this writer only attaches human review
+// notes and never touches status. Quality gate fix 2026-08-21.
+function setMusicCandidateNotes(projectId, candidateId, note, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const record = productionCandidates.findRecord(dir, candidateId);
+  if (!record) throw httpError(`Candidate not found: ${candidateId}`, 404);
+  return productionCandidates.update(dir, candidateId, { notes: String(note || ""), reviewed_at: nowIso() });
+}
+
+function setCandidateVerdict(projectId, candidateId, verdict, note, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  if (!productionCandidates.findRecord(dir, candidateId)) throw httpError(`Production candidate not found: ${candidateId}`, 404);
+  try { return productionCandidates.setVerdict(dir, candidateId, verdict, note); }
+  catch (error) { throw httpError(error.message, /not found/.test(error.message) ? 404 : 409); }
+}
+
+function setCandidateReview(projectId, candidateId, input = {}, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  if (productionCandidates.findRecord(dir, candidateId)) {
+    if (input.verdict !== undefined) return setCandidateVerdict(projectId, candidateId, input.verdict, input.notes, options);
+    return setMusicCandidateNotes(projectId, candidateId, input.notes, options);
+  }
+  return setCandidateStatus(projectId, candidateId, input.status || "", input.notes, options);
 }
 
 function reviseCandidate(projectId, candidateId, requestText, options = {}) {
@@ -739,6 +963,12 @@ function reviseCandidate(projectId, candidateId, requestText, options = {}) {
     revision: plan,
     pulse_register: meta.pulse_register || undefined,
     harmonic_drift: meta.harmonic_drift === true,
+    tempo_feel: meta.tempo_feel,
+    pulse_style: meta.pulse_style,
+    melody_bias: meta.melody_bias,
+    interpretation: meta.interpretation || undefined,
+    plan_revision_id: null,
+    source_plan_revision_id: meta.plan_revision_id || meta.source_plan_revision_id || null,
     sampleRate: settings.default_export_sample_rate,
   }, settings);
   return { revision_plan: plan, candidate: result.meta };
@@ -1071,7 +1301,7 @@ handoff keeps you fully productive without it.
 // which defaults true): video-package exports are trimmed to EXACTLY the
 // project duration with a 150ms boundary fade; pass false for a
 // tail-preserving export (release rings past the video end by up to 1s).
-function approveCandidate(projectId, candidateId, options = {}, exportOptions = {}) {
+function approveScorecraftCandidate(projectId, candidateId, options = {}, exportOptions = {}) {
   const settings = loadSettings(options);
   const { dir } = resolveProjectDir(settings, projectId);
   const candidateDir = candidateDirOf(dir, candidateId);
@@ -1111,6 +1341,10 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
       contract: candidateIdentityContract,
     });
     const stale = [];
+    if (!project.cue_sheet_approved) stale.push("cue_plan_unapproved");
+    if (project.current_plan_revision_id && meta.plan_revision_id !== project.current_plan_revision_id) {
+      stale.push("plan_revision_changed");
+    }
     if (currentIdentity.cue_sheet_hash !== meta.identity.cue_sheet_hash) stale.push("cue_sheet_changed");
     if (currentIdentity.music_plan_hash !== meta.identity.music_plan_hash) stale.push("music_plan_changed");
     if (currentIdentity.composer_contract_hash !== meta.identity.composer_contract_hash) stale.push("composer_contract_changed");
@@ -1200,6 +1434,7 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
       approval_scope: "sketch_only",
       approved_at: nowIso(),
       approved_candidate: candidateId,
+      plan_revision_id: meta.plan_revision_id || (approvedCandidateIdentity && approvedCandidateIdentity.plan_revision_id) || null,
       render_contract: approvalContract,
       identity: approvedCandidateIdentity ? {
         ...approvedCandidateIdentity,
@@ -1246,7 +1481,210 @@ function approveCandidate(projectId, candidateId, options = {}, exportOptions = 
   writeJson(path.join(candidateDir, "candidate.json"), meta);
   project.approved_candidate = candidateId;
   saveProject(dir, project);
-  return { approved: candidateId, approved_dir: approvedDir, files: provenance.exported_files };
+  return {
+    approved: candidateId,
+    approved_dir: approvedDir,
+    files: provenance.exported_files,
+    approval_current: true,
+    plan_revision_id: provenance.plan_revision_id || null,
+  };
+}
+
+function approveProductionCandidate(projectId, candidateId, options = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  const project = readJson(path.join(dir, "score-project.json"));
+  const record = productionCandidates.findRecord(dir, candidateId);
+  if (!record) throw httpError(`Production candidate not found: ${candidateId}`, 404);
+  const meta = record.meta;
+  const currentRevision = currentPlanRevisionId(project, project.cues || []);
+  const stale = [];
+  if ((meta.backend || productionCandidates.BACKEND) !== productionCandidates.BACKEND) stale.push("backend_mismatch");
+  if (meta.project_id && meta.project_id !== project.project_id) stale.push("project_mismatch");
+  if (!project.cue_sheet_approved) stale.push("cue_plan_unapproved");
+  if (!currentRevision || meta.plan_revision_id !== currentRevision) stale.push("plan_revision_changed");
+  if (productionCandidates.generationStatus(meta.status) !== "completed") stale.push("generation_incomplete");
+  if (productionCandidates.humanVerdict(meta) !== "use") stale.push("human_verdict_required");
+  const source = path.join(record.dir, "production.wav");
+  if (!fs.existsSync(source) || !fs.statSync(source).isFile()) stale.push("production_artifact_missing");
+  let sourceHash = null;
+  if (!stale.includes("production_artifact_missing")) {
+    sourceHash = provenanceLib.sha256File(source);
+    if (sourceHash !== meta.output_sha256) stale.push("production_artifact_hash_mismatch");
+  }
+  let expectedInputHash = null;
+  try { expectedInputHash = productionCandidates.inputIdentity(meta); } catch {}
+  if (!expectedInputHash || expectedInputHash !== meta.candidate_input_hash) stale.push("candidate_input_changed");
+  const expectedContentHash = sourceHash && expectedInputHash
+    ? productionCandidates.contentIdentity(expectedInputHash, sourceHash) : null;
+  if (!expectedContentHash || expectedContentHash !== meta.candidate_content_hash) stale.push("candidate_content_changed");
+  if (stale.length) {
+    throw httpError(`MiniMax candidate ${candidateId} is not approval-eligible: ${[...new Set(stale)].join(", ")}.`, 409);
+  }
+
+  // Approval is an immutable authority boundary: it must MEASURE the real audio,
+  // never assert requested/assumed properties. Probe the exact bytes we hashed
+  // (via the same hardened ffprobe path the DAW-return lane uses) and reject
+  // BEFORE any approval state is built. A short render (e.g. 41s for a 60s cue),
+  // wrong sample rate/channels/bit depth, or an unreadable file fails here — not
+  // one stage later in the package verifier. The gate allows a bounded tail so
+  // legitimately near-length generative output passes; duration_exact below
+  // records whether it actually landed within tolerance.
+  const productionContract = {
+    sample_rate: 44100, bit_depth: 16, channels: 2,
+    target_duration_seconds: project.duration_seconds,
+    duration_exact: false, duration_tolerance_seconds: 0.05,
+  };
+  const measured = productionProbe(source, settings, options);
+  validateProductionMedia(measured, productionContract);
+  const measuredBitDepth = measured.codec === "pcm_s24le" ? 24 : measured.codec === "pcm_s16le" ? 16 : null;
+  const measuredDurationError = Number.isFinite(measured.duration) ? measured.duration - project.duration_seconds : null;
+  const measuredDurationExact = measuredDurationError != null && Math.abs(measuredDurationError) <= 0.05;
+
+  const cueSheet = readJson(path.join(dir, "cue-sheet.json"), { cues: project.cues || [] });
+  const musicPlan = readJson(path.join(dir, "music-plan.json"));
+  const approvedDir = path.join(dir, "approved");
+  const buildDir = uniquePath(path.join(dir, `approved-build-${stamp()}`));
+  fs.mkdirSync(path.join(buildDir, "resolve-import"), { recursive: true });
+  let provenance;
+  try {
+    fs.copyFileSync(source, path.join(buildDir, "mix.wav"));
+    fs.copyFileSync(source, path.join(buildDir, "resolve-import", "mix.wav"));
+    const cues = Array.isArray(cueSheet.cues) ? cueSheet.cues : [];
+    const markersCsv = ["Name,Start (seconds),End (seconds)"].concat(cues.map((cue) =>
+      `"${`${cue.cue_id} ${cue.name}`.replace(/"/g, '""')}",${cue.start_seconds},${cue.end_seconds}`,
+    )).join("\n") + "\n";
+    fs.writeFileSync(path.join(buildDir, "resolve-import", "cue-markers.csv"), markersCsv);
+    fs.writeFileSync(path.join(buildDir, "resolve-import", "README.md"),
+      `# Resolve import — ${project.name}\n\nThis is the exact human-selected MiniMax production candidate ${candidateId}.\nImport mix.wav and use cue-markers.csv for timing reference. Machine generation and workflow integration do not replace human listening or final mix review.\n`,
+    );
+    const measuredMedia = { sample_rate: measured.sample_rate, bit_depth: measuredBitDepth, channels: measured.channels };
+    const candidateManifest = provenanceLib.buildArtifactManifest(record.dir, [
+      { logical_role: "production_candidate_mix", relative_path: "production.wav", media: { ...measuredMedia } },
+    ]);
+    const candidateManifestHash = provenanceLib.artifactManifestHash(candidateManifest);
+    const approvalManifest = provenanceLib.buildArtifactManifest(buildDir, [
+      { logical_role: "production_mix", relative_path: "mix.wav", media: { ...measuredMedia } },
+      { logical_role: "resolve_production_mix", relative_path: "resolve-import/mix.wav", media: { ...measuredMedia } },
+      { logical_role: "cue_markers", relative_path: "resolve-import/cue-markers.csv" },
+      { logical_role: "resolve_readme", relative_path: "resolve-import/README.md" },
+    ]);
+    const approvalManifestHash = provenanceLib.artifactManifestHash(approvalManifest);
+    const renderContract = {
+      schema_version: 1,
+      backend: productionCandidates.BACKEND,
+      candidate_kind: productionCandidates.CANDIDATE_KIND,
+      sample_rate: measured.sample_rate,
+      bit_depth: measuredBitDepth,
+      channels: measured.channels,
+      target_duration_seconds: project.duration_seconds,
+      measured_duration_seconds: measured.duration,
+      duration_error_seconds: measuredDurationError,
+      duration_exact: measuredDurationExact,
+      duration_tolerance_seconds: 0.05,
+      expected_lanes: [],
+      expected_candidate_midi: [],
+      expected_sketch_stems: [],
+      production_mix_required: true,
+      production_stems_required: false,
+    };
+    const identity = {
+      plan_revision_id: currentRevision,
+      candidate_input_hash: expectedInputHash,
+      candidate_content_hash: expectedContentHash,
+      cue_sheet_hash: provenanceLib.cueSheetHash(cues),
+      music_plan_hash: provenanceLib.hashCanonical(provenanceLib.musicPlanIdentity({ project, musicPlan, generation: meta })),
+      composer_contract_hash: provenanceLib.hashCanonical({ schema_version: 1, backend: productionCandidates.BACKEND, workflow_id: meta.workflow_id }),
+      render_contract_hash: provenanceLib.hashCanonical(renderContract),
+      candidate_artifact_manifest_hash: candidateManifestHash,
+      approval_artifact_manifest_hash: approvalManifestHash,
+    };
+    provenance = {
+      provenance_schema_version: provenanceLib.PROVENANCE_SCHEMA_VERSION,
+      backend: productionCandidates.BACKEND,
+      candidate_kind: productionCandidates.CANDIDATE_KIND,
+      approval_scope: "production_candidate",
+      approval_status: "approved",
+      approved_at: nowIso(),
+      approved_candidate: candidateId,
+      plan_revision_id: currentRevision,
+      human_verdict: "use",
+      generator: meta.generator || "MiniMax Music 3",
+      generation_job_id: meta.generation_job_id || null,
+      render_contract: renderContract,
+      render: {
+        sample_rate: measured.sample_rate, bit_depth: measuredBitDepth, channels: measured.channels,
+        renderer: meta.generator || "MiniMax Music 3",
+        duration_exact: measuredDurationExact,
+        measured_duration_seconds: measured.duration,
+        duration_error_seconds: measuredDurationError,
+        export_mode: "retrieved production candidate (exact-byte copy)",
+      },
+      identity,
+      candidate_artifact_manifest: candidateManifest,
+      artifact_manifest: approvalManifest,
+      cue_sheet: cues.map((cue) => ({
+        cue_id: cue.cue_id, name: cue.name, start: cue.start_seconds, end: cue.end_seconds,
+      })),
+      production: {
+        state: "candidate_approved",
+        technical_verified: false, // signal QC (clipping/silence) remains a separate human-controlled gate
+        format_verified: true,     // sample rate / channels / bit depth / duration measured at approval
+        measured_sample_rate: measured.sample_rate,
+        measured_channels: measured.channels,
+        measured_bit_depth: measuredBitDepth,
+        measured_duration_seconds: measured.duration,
+        duration_error_seconds: measuredDurationError,
+        human_listening_verdict: "use",
+      },
+      exported_files: ["approved/mix.wav", "approved/resolve-import/mix.wav", "approved/resolve-import/cue-markers.csv"],
+    };
+    writeJson(path.join(buildDir, "provenance.json"), provenance);
+    fs.writeFileSync(path.join(buildDir, "provenance.md"), [
+      `# Provenance — ${project.name} / ${candidateId}`,
+      "",
+      `- Backend: ${provenance.backend}`,
+      `- Plan revision: ${currentRevision}`,
+      `- Candidate content: ${expectedContentHash}`,
+      "- Human verdict: USE",
+      "- Technical/final mix acceptance remains a separate human-controlled gate.",
+      "",
+    ].join("\n"));
+  } catch (error) {
+    fs.rmSync(buildDir, { recursive: true, force: true });
+    throw error;
+  }
+
+  if (fs.existsSync(approvedDir)) {
+    fs.renameSync(approvedDir, uniquePath(path.join(dir, `approved-archive-${stamp()}`)));
+  }
+  fs.renameSync(buildDir, approvedDir);
+  productionCandidates.update(dir, candidateId, {
+    approval_status: "approved", approved_at: nowIso(),
+    // Persist the measured facts so describe()/UI report the real audio, not the plan.
+    measured_duration_seconds: measured.duration,
+    measured_sample_rate: measured.sample_rate,
+    measured_channels: measured.channels,
+    measured_bit_depth: measuredBitDepth,
+  });
+  project.approved_candidate = candidateId;
+  saveProject(dir, project);
+  return {
+    approved: candidateId,
+    backend: productionCandidates.BACKEND,
+    approved_dir: approvedDir,
+    files: provenance.exported_files,
+    approval_current: true,
+    plan_revision_id: currentRevision,
+  };
+}
+
+function approveCandidate(projectId, candidateId, options = {}, exportOptions = {}) {
+  const settings = loadSettings(options);
+  const { dir } = resolveProjectDir(settings, projectId);
+  return productionCandidates.findRecord(dir, candidateId)
+    ? approveProductionCandidate(projectId, candidateId, options)
+    : approveScorecraftCandidate(projectId, candidateId, options, exportOptions);
 }
 
 // ── production DAW return gate ──
@@ -3508,7 +3946,19 @@ function verifyResolveProductionTarget(projectId, input = {}, options = {}) {
   return recordProductionEvidence(projectId, integration, plan, inspected.readback, { product: inspected.product, version: inspected.version, automation: "official_python_api_production_verify", project_name: plan.target.project_name, timeline_name: plan.target.timeline_name, database_type: "operator_selected" }, options);
 }
 
+// EXPERIMENTAL_MANUAL_RESOLVE_ASSEMBLY — Scorecraft's production boundary is
+// READY_FOR_RESOLVE: normal package approval hands off import artifacts and
+// STOPS. Driving Resolve to duplicate a timeline and append the music clip is
+// a manual, opt-in experiment OUTSIDE normal package-run progression, never
+// reached by any approval path. It must be requested explicitly and never
+// advances package state. Source-timeline protection is enforced by the driver.
 function applyResolveProductionPlan(projectId, input = {}, options = {}) {
+  const optedIn = input.experimental_manual_resolve_assembly === true
+    || options.experimentalManualResolveAssembly === true
+    || process.env.SCORECRAFT_ENABLE_RESOLVE_ASSEMBLY === "1";
+  if (!optedIn) {
+    throw httpError("Resolve timeline assembly is EXPERIMENTAL_MANUAL_RESOLVE_ASSEMBLY: it is outside normal Scorecraft production and never part of approval. Re-invoke with experimental_manual_resolve_assembly:true (or SCORECRAFT_ENABLE_RESOLVE_ASSEMBLY=1) to run it manually.", 403);
+  }
   const settings = loadSettings(options); const { dir } = resolveProjectDir(settings, projectId);
   const project = readJson(path.join(dir, "score-project.json")); const integration = currentResolveIntegration(dir, project, settings);
   const plan = loadCurrentResolveProductionPlan(dir, integration, input);
@@ -3919,6 +4369,9 @@ module.exports = {
   setPalette,
   generateCandidates,
   setCandidateStatus,
+  setMusicCandidateNotes,
+  setCandidateVerdict,
+  setCandidateReview,
   reviseCandidate,
   buildReaperHandoff,
   openInReaper,

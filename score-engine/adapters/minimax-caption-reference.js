@@ -25,6 +25,19 @@ const ENDING_SENTENCES = {
   "loop-ready-tail": "end with a loop-ready tail",
 };
 
+// One cue may develop substantially, but its sections are not independent
+// songs. MiniMax receives this rule inside the Arrangement block so it binds
+// every timed section, especially a late build/peak that might otherwise be
+// interpreted as permission to start unrelated material.
+const CONTINUITY_DOCTRINE = [
+  "Continuity rule: evolve one continuous composition; do not replace it.",
+  "Keep the core instrumental palette, tonal and harmonic world, motif family, groove family, production aesthetic, and spatial character recognizably consistent from beginning to end.",
+  "Develop through intensity, density, layers, register, fills, rhythmic or harmonic development, melodic variation, breakdown, rebuild, and ending resolution.",
+  "Unless the brief explicitly requests a transformation, do not start an unrelated second composition, switch genre, replace the palette, reset the harmony, introduce a disconnected groove, or hard-restart the music.",
+].join(" ");
+
+const SECTION_CONTINUATION = "Continue the established motif, palette, harmony, and groove; vary and develop the arrangement instead of starting new music";
+
 function mmss(seconds) {
   const s = Math.round(seconds);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -53,13 +66,14 @@ function renderVocalDetails() {
 
 function renderArrangement(brief) {
   const inst = brief.instrumentation || {};
-  const parts = [];
+  const parts = [CONTINUITY_DOCTRINE];
   brief.sections.forEach((section, index) => {
     let line = `${mmss(section.start_s)}-${mmss(section.end_s)} ${section.name}`;
     const details = [];
     if (index === 0 && Array.isArray(inst.required) && inst.required.length) {
       details.push(inst.required.join(" and "));
     }
+    if (index > 0) details.push(SECTION_CONTINUATION);
     if (section.notes) details.push(section.notes);
     if (details.length) line += `: ${details.join("; ")}`;
     parts.push(line.endsWith(".") ? line : `${line}.`);
@@ -98,4 +112,4 @@ function renderMiniMaxCaption(brief) {
   return { caption, blocks, adapter: "minimax-caption-reference", status: "experimental" };
 }
 
-module.exports = { renderMiniMaxCaption };
+module.exports = { CONTINUITY_DOCTRINE, SECTION_CONTINUATION, renderMiniMaxCaption };

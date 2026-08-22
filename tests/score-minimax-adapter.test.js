@@ -52,6 +52,26 @@ test("multiple sections preserve order and timing exactly", () => {
   assert.ok(a.indexOf("0:42-1:15 tension build") < a.indexOf("1:15-1:30 closing resolution"));
 });
 
+test("one cue preserves identity anchors while allowing musical development", () => {
+  const brief = minimalBrief({
+    sections: [
+      { name: "restrained opening", start_s: 0, end_s: 24, notes: "introduce the motif softly" },
+      { name: "late peak", start_s: 24, end_s: 29, notes: "add layers and intensity" },
+      { name: "closing resolution", start_s: 29, end_s: 33, notes: "resolve the motif" },
+    ],
+    target_duration_s: 33,
+  });
+  const { blocks } = adapter.renderMiniMaxCaption(brief);
+  const arrangement = blocks.arrangement;
+  assert.ok(arrangement.startsWith(adapter.CONTINUITY_DOCTRINE));
+  assert.match(arrangement, /one continuous composition; do not replace it/i);
+  assert.match(arrangement, /core instrumental palette, tonal and harmonic world, motif family, groove family/i);
+  assert.match(arrangement, /intensity, density, layers, register, fills/);
+  assert.match(arrangement, /do not start an unrelated second composition, switch genre, replace the palette, reset the harmony/);
+  assert.equal(arrangement.split(adapter.SECTION_CONTINUATION).length - 1, 2, "every later section inherits the opening identity");
+  assert.match(arrangement, /0:24-0:29 late peak: Continue the established motif, palette, harmony, and groove; vary and develop the arrangement instead of starting new music; add layers and intensity\./);
+});
+
 test("vocal details are always explicitly instrumental", () => {
   const { blocks } = adapter.renderMiniMaxCaption(minimalBrief());
   assert.equal(blocks.vocal_details, "Instrumental. No vocals of any kind.");
@@ -129,8 +149,12 @@ test("VIDLAP2 example-brief fixture renders the reference caption", () => {
     + "Instrumental. No vocals of any kind.\n"
     + "\n"
     + "[Arrangement]\n"
+    + "Continuity rule: evolve one continuous composition; do not replace it. "
+    + "Keep the core instrumental palette, tonal and harmonic world, motif family, groove family, production aesthetic, and spatial character recognizably consistent from beginning to end. "
+    + "Develop through intensity, density, layers, register, fills, rhythmic or harmonic development, melodic variation, breakdown, rebuild, and ending resolution. "
+    + "Unless the brief explicitly requests a transformation, do not start an unrelated second composition, switch genre, replace the palette, reset the harmony, introduce a disconnected groove, or hard-restart the music. "
     + "0:00-0:48 bed: soft electric piano and warm sub bass; static harmonic loop, minimal movement, no fills. "
-    + "0:48-1:00 settle: thin out, resolve harmonically, leave air. "
+    + "0:48-1:00 settle: Continue the established motif, palette, harmony, and groove; vary and develop the arrangement instead of starting new music; thin out, resolve harmonically, leave air. "
     + "Allowed colors: light vinyl texture, muted pad, sparse rim clicks. "
     + "End on a clear button, not a fade. "
     + "Avoid: vocals, lead melody, brass, risers, trap hi-hats, sidechain pumping.\n";

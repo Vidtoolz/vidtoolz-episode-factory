@@ -322,7 +322,7 @@ function aggregateMusicalRegions(cues) {
 // ── assembly ────────────────────────────────────────────────────────────────
 // Pure derivation: (project, cues, palettes, instrumentRoles) → frozen v1
 // brief. Loading, approval gating, and artifact writing live in score-lane.
-function deriveMusicRenderBrief(project, cues, palettes, instrumentRoles) {
+function deriveMusicRenderBrief(project, cues, palettes, instrumentRoles, overrides = {}) {
   if (project.duration_seconds > contract.LIMITS.duration_max) {
     const e = new Error(`Project duration ${project.duration_seconds}s exceeds the MusicRenderBrief v1 maximum of ${contract.LIMITS.duration_max}s — the frozen contract cannot represent it.`);
     e.statusCode = 400;
@@ -330,6 +330,17 @@ function deriveMusicRenderBrief(project, cues, palettes, instrumentRoles) {
   }
   const mixRole = deriveMixRole(project);
   const { instrumentation, avoid } = deriveInstrumentation(project, palettes, instrumentRoles);
+  // v1.5: candidate interpretations may override the brief's musical HOW
+  // (instrumentation colors, ending, avoid) while the frozen contract keeps
+  // the shared WHAT (duration, tempo, energy/narration intent, sections).
+  if (Array.isArray(overrides.required) && overrides.required.length) {
+    instrumentation.required = overrides.required.slice(0, contract.LIMITS.instrument_list_max || 8);
+  }
+  if (Array.isArray(overrides.avoid)) avoid.push(...overrides.avoid);
+  const sections = aggregateMusicalRegions(cues);
+  if (overrides.section_note) {
+    for (const section of sections) section.notes = String(section.notes ? `${section.notes} ${overrides.section_note}` : overrides.section_note).slice(0, contract.LIMITS.section_notes_max || 240);
+  }
   const brief = {
     brief_id: briefIdForProject(project),
     brief_version: 1,
@@ -341,9 +352,9 @@ function deriveMusicRenderBrief(project, cues, palettes, instrumentRoles) {
     emotion_curve: deriveEmotionCurve(cues),
     instrumentation,
     avoid,
-    sections: aggregateMusicalRegions(cues),
+    sections,
     narration_density: deriveNarrationDensity(cues, project),
-    ending: deriveEnding(cues),
+    ending: overrides.ending || deriveEnding(cues),
     loopability: false, // EDITORIAL: timeline-bound narrative scores are not loops
     mix_role: mixRole,
   };

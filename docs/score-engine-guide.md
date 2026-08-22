@@ -98,6 +98,50 @@ Hard rules baked in:
    approval. Changed bytes or changed selected music/narration/timing authority
    make the current round trip stale while preserving historical records.
 
+## Short operator instructions
+
+Use this as the normal Scorecraft quick start. The controls are on the Score
+Engine page; the detailed gates below explain the evidence behind each step.
+
+1. Open `http://127.0.0.1:8010/score-engine.html` and create a score. Choose a
+   VIDTOOLZ package or leave it standalone, then set the duration (or probe a
+   video/script).
+2. Open the score workspace. Click **Generate cue sheet**, edit the rows if
+   needed, click **Save cue edits**, then click **Approve cue sheet**.
+3. Select an orchestration profile and click **Apply orchestration profile**.
+4. Choose 1–5 candidates and click **Generate music candidates**. Listen to the
+   sketch and dialogue-safe previews; use **A/B compare** or **Generate revised
+   candidate** when useful.
+5. On the chosen candidate, click **Approve sketch**. Keep **Duration-exact
+   package export** checked unless you intentionally need the release tail.
+6. Click **Build REAPER project** or **Build Ableton handoff**. Patch the
+   instruments in the DAW, render a stereo PCM WAV using the handoff contract,
+   then return to Scorecraft and import that WAV under the issued handoff.
+7. Select the imported mix and click **Verify production mix**. Listen to that
+   exact returned file, click **Approve exact mix after listening**, then click
+   **Select approved mix as final**.
+8. Click **Prepare Resolve package**. If reviewing music against voiceover,
+   register and verify the exact narration first, then prepare the score-in-
+   picture handoff. Resolve rendering, program QC, and picture/sound approval
+   remain separate final gates.
+
+Done means the page shows a current approved sketch, an issued DAW handoff, a
+technically verified and human-listening-approved selected production mix, and
+the required Resolve package or handoff. A sketch preview or a successful file
+import alone is not production approval.
+
+Verified workflow coverage:
+
+```bash
+node tests/run-tests.js
+node scripts/verify-scorecraft-resolve-roundtrip.js --keep
+```
+
+The first command exercises the local Scorecraft UI/API workflow and its
+staleness, provenance, timing, and file-safety checks. The second exercises the
+disposable Resolve handoff contract with ffmpeg; it does not claim that a human
+has reviewed the resulting picture and sound.
+
 ### Canonical narration for context review
 
 The score workspace has a separate **Voiceover context authority** panel. Use
@@ -335,6 +379,9 @@ Canonical identities use stable-key-order UTF-8 serialization and SHA-256;
 finite numbers retain their exact JSON representation, invalid/omitted values
 fail, and Unicode strings are preserved byte-for-byte without normalization.
 Absolute project/template paths and timestamps are excluded from identity.
+`script-snapshot.txt` is the durable script authority used by cue planning and
+script-aware interpretation selection after reload; transient request text is
+not treated as persistent project state.
 Candidate provenance binds cue sheet, music plan, composer contract, render
 contract, candidate content, and a per-file manifest. Approval binds that exact
 candidate. An issued DAW contract uses the approved-state hash plus the
@@ -348,6 +395,16 @@ snapshot and rechecks the current approval, handoff contract, handoff artifact
 manifest, render hash, and exact returned bytes. Resolve provenance carries
 that handoff identity forward while binding its audio copy and approved
 cue-marker bytes back to verification.
+
+Each cue save or regeneration issues a `plan_revision_id` from the persisted
+revision sequence and cue-sheet content hash. Project state
+reports independent facts rather than one ordinal phase: whether cues exist,
+whether the current cue plan is approved, how many candidates match the current
+plan revision, whether a preserved approved export exists, and whether that
+approval is current. Saving or regenerating cues reopens the cue approval gate.
+Historical candidates and approved exports remain on disk, but
+`approval_current` stays false until a candidate bound to the current approved
+cue revision is deliberately approved.
 
 State flow:
 
@@ -364,6 +421,7 @@ music package.
 Invalidation:
 
 - cue/music-plan/composer/render-contract change → candidate and downstream approval/production state stale
+- saved or regenerated but unapproved cue plan → preserved approval stale (`cue_plan_unapproved`)
 - imported file mutation or deletion → production verification stale
 - handoff contract/package mutation or approval change → DAW return stale
 - Resolve copy mutation or deletion → Resolve-ready false
@@ -448,14 +506,56 @@ Rules encoded in `score-engine/music-dispatch.js`:
   rather than adapting quality settings. Audio truth: ComfyUI saves lossless
   FLAC at native 44.1 kHz; the 16-bit PCM WAV deliverable is a separate
   lossless ffmpeg step on the worker; never resampled.
-- One music request runs at a time per cockpit; MiniMax remains EXPERIMENTAL
-  pending human editorial approval, and no production flow calls this
-  endpoint automatically. No production render was made while building this
-  bridge.
+- One music request runs at a time per cockpit. MiniMax generation is always
+  explicit, and machine completion never supplies a human verdict or approval.
+
+### MiniMax production candidates
+
+Music Creator exposes MiniMax beside local Scorecraft options while preserving
+their different roles: Scorecraft is a structural sketch backend; MiniMax
+returns a production-sound candidate that still requires human listening.
+
+1. Open Music Creator, create or open a score, and approve the current music
+   plan.
+2. Start the MiniMax Music 3 ComfyUI runtime on the worker. It must be
+   reachable to the compute selector on `127.0.0.1:8189`; Scorecraft does not
+   start it.
+3. Click **Generate MiniMax production option**. Admission completes before the
+   request returns; accepted jobs return `queued` and continue asynchronously.
+   Music Creator polls persisted candidate state and shows queued, running,
+   completed, or failed without exposing job JSON or filesystem paths.
+4. Play the completed candidate directly in Music Creator. Mark **USE** or
+   **Reject**; the verdict survives reload. Only USE makes a current,
+   hash-matching completed candidate approval-eligible.
+5. Click **Approve soundtrack**. The exact candidate bytes are copied into
+   `approved/mix.wav` and `approved/resolve-import/mix.wav`, with backend,
+   plan-revision, candidate-input, candidate-content, and artifact-manifest
+   provenance. A cue-plan revision preserves the audio as history and makes
+   the approval stale.
+6. If admission reports the manual-start runtime unavailable, start it on the
+   worker and retry. The failed candidate remains visible with the reason and
+   never appears playable or approval-eligible.
+
+Verified local test path:
+
+```bash
+node tests/score-minimax-adapter.test.js
+node tests/score-music-dispatch.test.js
+node tests/music-creator-minimax-integration.test.js
+python3 "$HOME/vidtoolz-compute/vidtoolz-compute.py" select music_generation --json
+```
+
+The test commands exercise caption preparation, fail-closed dispatch, playback,
+verdict, approval, revision staleness, and mixed backends with a fake transport.
+The selector command is the live prerequisite check;
+when the worker is stopped it should report `BLOCKED` with a manual-start
+runtime reason.
 
 ## Production storage
 
-- `approved/` — approved sketch reference package, never production-certified.
+- `approved/` — current approved Scorecraft sketch package or exact approved
+  MiniMax production candidate; provenance identifies which. MiniMax workflow
+  integration does not itself claim technical or aesthetic final acceptance.
 - `production/imports/<content-id>/` — immutable imported WAV + verification
   receipt, including approved, handoff, and returned-byte hashes.
 - `production/current.json` — atomic pointer to the selected import.

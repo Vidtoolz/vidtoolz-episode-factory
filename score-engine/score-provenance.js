@@ -162,6 +162,10 @@ function cueSheetIdentity(cues = []) {
   return { schema_version: HASH_SCHEMA_VERSION, cues: cues.map(materialCue) };
 }
 
+function cueSheetHash(cues = []) {
+  return hashCanonical(cueSheetIdentity(cues));
+}
+
 function portableMusicPlan(musicPlan = null) {
   if (!musicPlan) return null;
   const roles = {};
@@ -198,6 +202,13 @@ function musicPlanIdentity({ project = {}, musicPlan = null, generation = {} } =
       lane_gains: generation.lane_gains || {},
       pulse_register: generation.pulse_register || "low_mid",
       harmonic_drift: generation.harmonic_drift === true,
+      tempo_feel: generation.tempo_feel || "as_planned",
+      pulse_style: generation.pulse_style || "as_planned",
+      melody_bias: generation.melody_bias || "as_planned",
+      interpretation: generation.interpretation ? {
+        interpretation_id: generation.interpretation.interpretation_id || null,
+        axes: generation.interpretation.axes || null,
+      } : null,
     },
   };
 }
@@ -222,17 +233,18 @@ function renderContract({ project = {}, candidate = {}, settings = {}, durationE
 }
 
 function candidateIdentity({ project = {}, cues = [], musicPlan = null, candidate = {}, composerContract = {}, contract = {} } = {}) {
-  const cueSheetHash = hashCanonical(cueSheetIdentity(cues));
+  const cueRevisionHash = cueSheetHash(cues);
   const musicPlanHash = hashCanonical(musicPlanIdentity({ project, musicPlan, generation: candidate }));
   const composerContractHash = hashCanonical({ schema_version: HASH_SCHEMA_VERSION, ...composerContract });
   const renderContractHash = hashCanonical(contract);
   const aggregate = {
     schema_version: HASH_SCHEMA_VERSION,
-    cue_sheet_hash: cueSheetHash,
+    cue_sheet_hash: cueRevisionHash,
     music_plan_hash: musicPlanHash,
     composer_contract_hash: composerContractHash,
     render_contract_hash: renderContractHash,
   };
+  if (candidate.plan_revision_id) aggregate.plan_revision_id = candidate.plan_revision_id;
   return { ...aggregate, candidate_input_hash: hashCanonical(aggregate) };
 }
 
@@ -246,7 +258,7 @@ function candidateContentHash(candidateInputHash, manifestHash) {
 
 function approvedStateIdentity(approved = {}) {
   const identity = approved.identity || {};
-  return {
+  const state = {
     schema_version: HASH_SCHEMA_VERSION,
     role: "approved_scorecraft_state",
     approved_candidate: approved.approved_candidate,
@@ -259,6 +271,9 @@ function approvedStateIdentity(approved = {}) {
     candidate_artifact_manifest_hash: identity.candidate_artifact_manifest_hash,
     approval_artifact_manifest_hash: identity.approval_artifact_manifest_hash,
   };
+  const planRevisionId = approved.plan_revision_id || identity.plan_revision_id;
+  if (planRevisionId) state.plan_revision_id = planRevisionId;
+  return state;
 }
 
 function approvedStateHash(approved) {
@@ -517,10 +532,87 @@ function verifyArtifactManifest(root, manifest) {
   return { valid: failures.length === 0, failures };
 }
 
-function assessSketchApprovalAuthority({ project = {}, cues = [], musicPlan = null, candidates = [], approved = null, dir = "", settings = {}, composerContract = {} } = {}) {
+function assessProductionCandidateApprovalAuthority({ project, cues, candidates, approved, dir, verifyArtifacts = true }) {
+  const reasons = [];
+  const candidateId = approved.approved_candidate;
+  const candidate = candidates.find((item) => item.candidate_id === candidateId && item.backend === "minimax");
+  if (!candidate) reasons.push("approved_candidate_missing");
+  // Projects created before explicit plan revisions use the cue-sheet hash as
+  // their durable revision identity. Candidate generation and approval already
+  // use this fallback; authority checks must use the same truth after reload.
+  const currentRevision = project.current_plan_revision_id
+    || (cues.length ? cueSheetHash(cues) : null);
+  if (!currentRevision || !candidate || candidate.plan_revision_id !== currentRevision
+    || approved.plan_revision_id !== currentRevision) reasons.push("plan_revision_changed");
+  if (candidate && candidate.generation_status !== "completed") reasons.push("generation_incomplete");
+  if (candidate && candidate.human_verdict !== "use") reasons.push("human_verdict_changed");
+  if (candidate && !candidate.artifact_available) reasons.push("production_artifact_missing");
+  if (approved.identity && cueSheetHash(cues) !== approved.identity.cue_sheet_hash) reasons.push("cue_sheet_changed");
+
+  if (verifyArtifacts && candidate && candidate.playable_artifact_path) {
+    try {
+      const source = resolveManifestPath(dir, candidate.playable_artifact_path).target;
+      const sourceHash = sha256File(source);
+      if (sourceHash !== candidate.output_sha256) reasons.push("production_artifact_hash_mismatch");
+      if (candidate.candidate_input_hash !== approved.identity.candidate_input_hash
+        || candidate.candidate_content_hash !== approved.identity.candidate_content_hash
+        || contentHashForProduction(candidate.candidate_input_hash, sourceHash) !== approved.identity.candidate_content_hash) {
+        reasons.push("approved_candidate_hash_mismatch");
+      }
+    } catch {
+      reasons.push("production_artifact_missing");
+    }
+  }
+  if (verifyArtifacts) try {
+    const candidateRecordPath = resolveManifestPath(dir, `music-candidates/${candidateId}/music-candidate.json`).target;
+    const candidateRoot = path.dirname(candidateRecordPath);
+    const candidateManifest = approved.candidate_artifact_manifest;
+    const candidateCheck = verifyArtifactManifest(candidateRoot, candidateManifest);
+    for (const failure of candidateCheck.failures) reasons.push(failure.reason);
+    if (artifactManifestHash(candidateManifest) !== approved.identity.candidate_artifact_manifest_hash) {
+      reasons.push("approved_candidate_hash_mismatch");
+    }
+  } catch {
+    reasons.push("artifact_manifest_incomplete");
+  }
+  if (verifyArtifacts) try {
+    if (hashCanonical(approved.render_contract) !== approved.identity.render_contract_hash) reasons.push("render_contract_changed");
+    const approvalCheck = verifyArtifactManifest(path.join(dir, "approved"), approved.artifact_manifest);
+    for (const failure of approvalCheck.failures) reasons.push(failure.reason);
+    if (artifactManifestHash(approved.artifact_manifest) !== approved.identity.approval_artifact_manifest_hash) {
+      reasons.push("approved_candidate_hash_mismatch");
+    }
+    const mixHash = sha256File(path.join(dir, "approved", "mix.wav"));
+    if (!candidate || mixHash !== candidate.output_sha256) reasons.push("approved_candidate_hash_mismatch");
+  } catch {
+    reasons.push("artifact_manifest_incomplete");
+  }
+  const uniqueReasons = [...new Set(reasons)];
+  return {
+    state: uniqueReasons.length ? "stale" : "current",
+    current: uniqueReasons.length === 0,
+    reasons: uniqueReasons,
+    approved_candidate: candidateId || null,
+    backend: "minimax",
+  };
+}
+
+function contentHashForProduction(candidateInputHash, artifactSha256) {
+  return hashCanonical({
+    schema_version: 1,
+    role: "minimax_production_candidate_content",
+    candidate_input_hash: candidateInputHash,
+    artifact_sha256: artifactSha256,
+  });
+}
+
+function assessSketchApprovalAuthority({ project = {}, cues = [], musicPlan = null, candidates = [], approved = null, dir = "", settings = {}, composerContract = {}, verifyArtifacts = true } = {}) {
   if (!approved) return { state: "none", current: false, reasons: [] };
   if (approved.provenance_schema_version !== PROVENANCE_SCHEMA_VERSION || !approved.identity) {
     return { state: "legacy_unverified", current: false, reasons: ["legacy_approval_unverified"] };
+  }
+  if (approved.backend === "minimax" && approved.candidate_kind === "production_audio") {
+    return assessProductionCandidateApprovalAuthority({ project, cues, candidates, approved, dir, verifyArtifacts });
   }
   const reasons = [];
   const candidateId = approved.approved_candidate;
@@ -538,6 +630,15 @@ function assessSketchApprovalAuthority({ project = {}, cues = [], musicPlan = nu
     if (current.composer_contract_hash !== approved.identity.composer_contract_hash) reasons.push("composer_contract_changed");
     if (current.render_contract_hash !== approved.identity.render_contract_hash) reasons.push("render_contract_changed");
     if (current.candidate_input_hash !== candidate.identity.candidate_input_hash) reasons.push("approved_candidate_hash_mismatch");
+    const currentPlanRevision = project.current_plan_revision_id
+      || (cues.length ? cueSheetHash(cues) : null);
+    const candidatePlanRevision = candidate.plan_revision_id || candidate.identity.plan_revision_id || null;
+    const approvedPlanRevision = approved.plan_revision_id || approved.identity.plan_revision_id || null;
+    if (currentPlanRevision || candidatePlanRevision || approvedPlanRevision) {
+      if (!currentPlanRevision || candidatePlanRevision !== currentPlanRevision || approvedPlanRevision !== currentPlanRevision) {
+        reasons.push("plan_revision_changed");
+      }
+    }
     if (candidate.identity.candidate_content_hash !== approved.identity.candidate_content_hash
       || candidate.identity.candidate_input_hash !== approved.identity.candidate_input_hash) {
       reasons.push("approved_candidate_hash_mismatch");
@@ -551,25 +652,27 @@ function assessSketchApprovalAuthority({ project = {}, cues = [], musicPlan = nu
     } catch {
       reasons.push("render_contract_changed");
     }
-    const candidateManifest = verifyArtifactManifest(candidateDir, candidate.artifact_manifest);
-    for (const failure of candidateManifest.failures) reasons.push(failure.reason);
-    try {
-      const liveManifestHash = artifactManifestHash(candidate.artifact_manifest);
-      const liveContentHash = candidateContentHash(candidate.identity.candidate_input_hash, liveManifestHash);
-      if (liveManifestHash !== candidate.identity.artifact_manifest_hash
-        || liveManifestHash !== approved.identity.candidate_artifact_manifest_hash
-        || liveContentHash !== candidate.identity.candidate_content_hash
-        || liveContentHash !== approved.identity.candidate_content_hash) {
-        reasons.push("approved_candidate_hash_mismatch");
+    if (verifyArtifacts) {
+      const candidateManifest = verifyArtifactManifest(candidateDir, candidate.artifact_manifest);
+      for (const failure of candidateManifest.failures) reasons.push(failure.reason);
+      try {
+        const liveManifestHash = artifactManifestHash(candidate.artifact_manifest);
+        const liveContentHash = candidateContentHash(candidate.identity.candidate_input_hash, liveManifestHash);
+        if (liveManifestHash !== candidate.identity.artifact_manifest_hash
+          || liveManifestHash !== approved.identity.candidate_artifact_manifest_hash
+          || liveContentHash !== candidate.identity.candidate_content_hash
+          || liveContentHash !== approved.identity.candidate_content_hash) {
+          reasons.push("approved_candidate_hash_mismatch");
+        }
+      } catch {
+        reasons.push("artifact_manifest_incomplete");
       }
-    } catch {
-      reasons.push("artifact_manifest_incomplete");
     }
 
     const handoffManifest = candidate.handoff_artifact_manifest;
     const handoffIdentityHash = candidate.identity.handoff_artifact_manifest_hash;
     const approvedHandoffHash = approved.identity.candidate_handoff_artifact_manifest_hash;
-    if (handoffManifest) {
+    if (verifyArtifacts && handoffManifest) {
       const handoffCheck = verifyArtifactManifest(candidateDir, handoffManifest);
       for (const failure of handoffCheck.failures) reasons.push(failure.reason);
       try {
@@ -580,8 +683,8 @@ function assessSketchApprovalAuthority({ project = {}, cues = [], musicPlan = nu
       } catch {
         reasons.push("artifact_manifest_incomplete");
       }
-    } else if (handoffIdentityHash || approvedHandoffHash
-      || fs.existsSync(path.join(candidateDir, "reaper", "project.rpp"))) {
+    } else if (verifyArtifacts && (handoffIdentityHash || approvedHandoffHash
+      || fs.existsSync(path.join(candidateDir, "reaper", "project.rpp")))) {
       reasons.push("artifact_manifest_incomplete");
     }
   }
@@ -593,7 +696,7 @@ function assessSketchApprovalAuthority({ project = {}, cues = [], musicPlan = nu
     reasons.push("render_contract_changed");
   }
 
-  if (approved.artifact_manifest) {
+  if (verifyArtifacts && approved.artifact_manifest) {
     const approvedManifest = verifyArtifactManifest(path.join(dir, "approved"), approved.artifact_manifest);
     for (const failure of approvedManifest.failures) reasons.push(failure.reason === "candidate_artifact_missing" ? "artifact_manifest_incomplete" : failure.reason);
     try {
@@ -603,7 +706,7 @@ function assessSketchApprovalAuthority({ project = {}, cues = [], musicPlan = nu
     } catch {
       reasons.push("artifact_manifest_incomplete");
     }
-  } else {
+  } else if (verifyArtifacts) {
     reasons.push("artifact_manifest_incomplete");
   }
 
@@ -626,6 +729,7 @@ module.exports = {
   sha256,
   sha256File,
   cueSheetIdentity,
+  cueSheetHash,
   musicPlanIdentity,
   portableMusicPlan,
   renderContract,

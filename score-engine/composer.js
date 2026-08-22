@@ -11,7 +11,7 @@ const { parseSupportedKey, SUPPORTED_TIME_SIGNATURES } = require("./score-schema
 // Any material change to note generation or its defaults must bump the version.
 const COMPOSER_CONTRACT = Object.freeze({
   schema_version: 1,
-  algorithm_version: "scorecraft-deterministic-composer-v1.3",
+  algorithm_version: "scorecraft-deterministic-composer-v1.5",
   ppq: PPQ,
   default_pulse_register: "low_mid",
   default_harmonic_drift: false,
@@ -116,30 +116,72 @@ function effectiveCueSettings(cue, options = {}) {
 // pulse an octave so it clears male-narration fundamentals; 'high' goes above.
 const PULSE_REGISTER_BASES = { low_mid: 4, mid_high: 5, high: 6 };
 
+// Candidate interpretation axes (quality gate 2026-08-21, QG-LIVE-1): before
+// this, every candidate shared one palette/key/tempo/cue-sheet and seeds only
+// jittered ornamentation, so "Generate Options" produced one arrangement
+// repeated. These axes give each candidate an audible arrangement character
+// WITHOUT touching the approved cue sheet (structure/timing/energy stay the
+// plan's) and are recorded per candidate so recomposition stays
+// byte-identical. Defaults reproduce pre-v1.2 output exactly.
+const TEMPO_FEELS = { as_planned: 1, lifted: 1.08, relaxed: 0.92 };
+const PULSE_STYLES = ["as_planned", "driving", "sparse"];
+const MELODY_BIASES = ["as_planned", "forward", "minimal"];
+
 function composePulse(ctx) {
   const { cue, eff, rng, grid, out } = ctx;
-  const stepBeats = eff.dialogueSafe || eff.density <= 2 ? 0.5 : eff.density >= 4 ? 0.25 : 0.5;
+  if (ctx.rhythmStrategy === "no_pulse") return;
+  if (ctx.isFirstCue && (ctx.openingStrategy === "ambient_intro" || ctx.openingStrategy === "sparse_entry")) return;
+  let stepBeats;
+  let restBias;
+  if (!ctx.hasInterpretation) {
+    // v1.4 exact rules (incl. dialogue-safe gating) for stored candidates.
+    stepBeats = eff.dialogueSafe || eff.density <= 2 ? 0.5 : eff.density >= 4 ? 0.25 : 0.5;
+    restBias = 0;
+    if (!eff.dialogueSafe && ctx.pulseStyle === "driving") { stepBeats = 0.25; restBias = -0.1; }
+    if (ctx.pulseStyle === "sparse") { stepBeats = 1; restBias = 0.15; }
+  } else {
+    stepBeats = eff.dialogueSafe || eff.density <= 2 ? 0.5 : eff.density >= 4 ? 0.25 : 0.5;
+    restBias = 0;
+    if (ctx.rhythmStrategy === "driving_pulse") { stepBeats = 0.25; restBias = -0.1; }
+    if (ctx.rhythmStrategy === "sparse_pulse") { stepBeats = 1; restBias = 0.15; }
+    if (ctx.rhythmStrategy === "syncopated_pulse") { stepBeats = 0.5; restBias = 0.05; }
+    if (ctx.densityStrategy === "very_sparse") restBias += 0.15;
+    if (ctx.densityStrategy === "climax_only_dense" && !ctx.isClimaxCue) restBias += 0.2;
+  }
   const gate = 0.55 + rng() * 0.15;
   const baseVel = Math.min(eff.velocityCeiling, 42 + eff.energy * 9);
-  const restProbability = eff.dialogueSafe ? 0.3 : Math.max(0.02, 0.28 - eff.density * 0.05);
+  const restProbability = Math.min(0.6, Math.max(0.02, (eff.dialogueSafe ? 0.3 : Math.max(0.02, 0.28 - eff.density * 0.05)) + restBias));
   const registerBase = PULSE_REGISTER_BASES[ctx.pulseRegister] || PULSE_REGISTER_BASES.low_mid;
   const pitchRoot = degreeToMidi(ctx.key, 0, registerBase);
   const pitchAlt = degreeToMidi(ctx.key, 4, registerBase);
+  const syncopated = ctx.rhythmStrategy === "syncopated_pulse";
+  const spaceBeat = ctx.spaceSeconds ? grid.secondsToBeat(ctx.spaceSeconds) || 0 : 0;
   for (let beat = 0; beat + stepBeats <= grid.beats + 1e-9; beat += stepBeats) {
     if (rng() < restProbability) continue;
-    const accent = Math.abs(beat % 1) < 1e-9 ? 6 : Math.abs(beat % 0.5) < 1e-9 ? 0 : -6;
+    const placed = syncopated ? beat + 0.25 : beat;
+    if (placed < spaceBeat) continue;
+    if (ctx.waves && Math.floor(placed / 8) % 2 === 1 && rng() < 0.5) continue;
+    const accent = Math.abs(placed % 1) < 1e-9 ? 6 : Math.abs(placed % 0.5) < 1e-9 ? 0 : -6;
     const note = rng() < 0.82 ? pitchRoot : pitchAlt;
-    out.push(grid.event("pulse", beat, stepBeats * gate, note, baseVel + accent + Math.round(rng() * 6 - 3)));
+    out.push(grid.event("pulse", placed, stepBeats * gate, note, baseVel + accent + Math.round(rng() * 6 - 3)));
   }
 }
 
 function composeBass(ctx) {
   const { eff, rng, grid, out, chords } = ctx;
   const baseVel = Math.min(eff.velocityCeiling, 40 + eff.energy * 8);
+  if (ctx.isFirstCue && ctx.openingStrategy === "ambient_intro") return;
+  if (ctx.isFirstCue && ctx.openingStrategy === "sparse_entry") {
+    out.push(grid.event("bass", 0, grid.beats * 0.96, degreeToMidi(ctx.key, chords[0].degree, 2), baseVel - 6));
+    return;
+  }
+  const sparseHold = eff.dialogueSafe || eff.density <= 2
+    || ctx.densityStrategy === "very_sparse" || ctx.harmonicChar === "static"
+    || (ctx.densityStrategy === "climax_only_dense" && !ctx.isClimaxCue);
   for (const bar of grid.bars) {
     const chord = chords[bar.index % chords.length];
     const root = degreeToMidi(ctx.key, chord.degree, 2); // low register
-    if (eff.dialogueSafe || eff.density <= 2) {
+    if (sparseHold) {
       out.push(grid.event("bass", bar.startBeat, bar.beats * 0.96, root, baseVel - 6));
     } else {
       out.push(grid.event("bass", bar.startBeat, bar.beats / 2 * 0.9, root, baseVel));
@@ -162,8 +204,9 @@ const DRIFT_PHRASE_BARS = 8;
 function composeHarmony(ctx) {
   const { eff, rng, grid, out, chords } = ctx;
   const baseVel = Math.min(eff.velocityCeiling - 8, 34 + eff.energy * 6);
+  const driftActive = ctx.driftActive || ctx.harmonicChar === "evolving";
   const variants = [];
-  if (ctx.driftActive) {
+  if (driftActive) {
     const phraseCount = Math.ceil(grid.bars.length / DRIFT_PHRASE_BARS);
     for (let p = 0; p < phraseCount; p += 1) {
       variants.push(p === 0
@@ -171,12 +214,13 @@ function composeHarmony(ctx) {
         : { substitute: rng() < 0.5, lift: rng() < 0.4 ? 12 : 0, colorTone: rng() < 0.6 });
     }
   }
+  const staticVoicing = ctx.harmonicChar === "static";
   let voicing = null;
   for (const bar of grid.bars) {
     const chord = chords[bar.index % chords.length];
     let degree = chord.degree;
     let lift = 0;
-    const variant = ctx.driftActive ? variants[Math.floor(bar.index / DRIFT_PHRASE_BARS)] : null;
+    const variant = driftActive ? variants[Math.floor(bar.index / DRIFT_PHRASE_BARS)] : null;
     if (variant) {
       if (variant.substitute) degree = (degree + 3) % 7; // gentle mediant shift for the phrase
       lift = variant.lift;
@@ -185,7 +229,23 @@ function composeHarmony(ctx) {
         out.push(grid.event("harmony", bar.startBeat, bar.beats * 1.9, degreeToMidi(ctx.key, degree + 8, 4) + lift, Math.max(20, baseVel - 12)));
       }
     }
-    voicing = voiceLead(voicing, chordPitches(ctx.key, degree, 4).map((p) => p + lift));
+    if (staticVoicing && voicing) {
+      for (const pitch of voicing) {
+        out.push(grid.event("harmony", bar.startBeat, bar.beats * 0.98, pitch, baseVel));
+      }
+      continue;
+    }
+    let pitches;
+    if (ctx.harmonicChar === "open") {
+      pitches = [degreeToMidi(ctx.key, degree, 4), degreeToMidi(ctx.key, degree + 4, 4), degreeToMidi(ctx.key, degree, 5)];
+    } else {
+      pitches = chordPitches(ctx.key, degree, 4).map((p) => p + lift);
+    }
+    if (ctx.harmonicChar === "tense") pitches = pitches.map((p, i) => (i === pitches.length - 1 ? p + 1 : p));
+    voicing = voiceLead(voicing, pitches);
+    if (ctx.harmonicChar === "warm" && bar.index % 4 === 0) {
+      out.push(grid.event("harmony", bar.startBeat, bar.beats * 1.9, degreeToMidi(ctx.key, degree + 5, 4), Math.max(20, baseVel - 10)));
+    }
     for (const pitch of voicing) {
       out.push(grid.event("harmony", bar.startBeat, bar.beats * 0.98, pitch, baseVel));
     }
@@ -194,19 +254,39 @@ function composeHarmony(ctx) {
 
 function composeTexture(ctx) {
   const { eff, rng, grid, out } = ctx;
-  const probability = (eff.dialogueSafe ? 0.05 : 0.1) + eff.density * 0.02;
+  let probability = (eff.dialogueSafe ? 0.05 : 0.1) + eff.density * 0.02;
+  if (ctx.textureKind === "atmospheric") probability *= 1.6;
+  if (ctx.textureKind === "granular") probability *= 1.3;
+  if (ctx.densityStrategy === "climax_only_dense" && !ctx.isClimaxCue) probability *= 0.4;
   const baseVel = Math.min(56, 22 + eff.energy * 5);
+  if (ctx.textureKind === "sustained") {
+    for (const bar of grid.bars) {
+      if (rng() >= probability * 2) continue;
+      const degree = [7, 9, 11, 14][Math.floor(rng() * 4)];
+      out.push(grid.event("texture", bar.startBeat, bar.beats * 0.98, degreeToMidi(ctx.key, degree, 4), baseVel));
+    }
+    return;
+  }
+  const spaceBeat = ctx.spaceSeconds ? grid.secondsToBeat(ctx.spaceSeconds) || 0 : 0;
   for (let beat = 0; beat + 0.5 <= grid.beats + 1e-9; beat += 1) {
     if (rng() >= probability) continue;
     const degree = [7, 9, 11, 14][Math.floor(rng() * 4)];
-    out.push(grid.event("texture", beat + (rng() < 0.5 ? 0 : 0.5), 0.5 + rng(), degreeToMidi(ctx.key, degree, 4), baseVel));
+    // RNG order matters: v1.4 consumed placement BEFORE duration; the neutral
+    // path must keep that order for byte-identical recomposition.
+    const placed = beat + (rng() < 0.5 ? 0 : 0.5);
+    let dur = 0.5 + rng();
+    if (ctx.textureKind === "atmospheric") dur = 1.5 + rng() * 2;
+    if (ctx.textureKind === "granular" || ctx.textureKind === "percussive") dur = 0.2 + rng() * 0.3;
+    if (placed < spaceBeat) continue;
+    out.push(grid.event("texture", placed, dur, degreeToMidi(ctx.key, degree, 4), baseVel));
   }
 }
 
-function composeMelody(ctx) {
+// v1.4 motif emitter, extracted so v1.5 melodic strategies can reuse it with
+// a different statement cadence. RNG order is identical to v1.4.
+function emitMotif(ctx, everyBars) {
   const { eff, rng, grid, out } = ctx;
-  if (!eff.allowMelody) return;
-  // Short seeded motif (3-5 notes), stated once per 4 bars, never busy (§12.5).
+  // Short seeded motif (3-5 notes), stated once per `everyBars` bars, never busy (§12.5).
   const motifLength = 3 + Math.floor(rng() * 3);
   const degrees = [];
   let degree = [0, 2, 4][Math.floor(rng() * 3)] + 7;
@@ -215,7 +295,7 @@ function composeMelody(ctx) {
     degree += [-2, -1, 1, 2][Math.floor(rng() * 4)];
   }
   const baseVel = Math.min(eff.velocityCeiling - 4, 48 + eff.energy * 7);
-  for (let bar = 0; bar < grid.bars.length; bar += 4) {
+  for (let bar = 0; bar < grid.bars.length; bar += everyBars) {
     const startBeat = grid.bars[bar].startBeat + (rng() < 0.5 ? 0 : 2);
     degrees.forEach((d, i) => {
       const beat = startBeat + i * (rng() < 0.3 ? 1 : 0.5);
@@ -225,21 +305,110 @@ function composeMelody(ctx) {
   }
 }
 
+function composeMelody(ctx) {
+  const { eff, rng, grid, out } = ctx;
+  if (!ctx.hasInterpretation) {
+    // v1.4 semantics for stored candidates: byte-identical recomposition.
+    if (ctx.melodyBias === "minimal") return;
+    const forward = ctx.melodyBias === "forward";
+    const allowMelody = forward
+      ? (!eff.dialogueSafe && eff.density >= 2)
+      : eff.allowMelody;
+    if (!allowMelody) return;
+    emitMotif(ctx, 4);
+    return;
+  }
+  switch (ctx.melodicStrategy) {
+    case "none":
+      return;
+    case "sparse_motif":
+      if (!eff.allowMelody) return;
+      emitMotif(ctx, 4);
+      return;
+    case "clear_identity":
+      if (eff.dialogueSafe) return;
+      emitMotif(ctx, 2);
+      return;
+    case "fragmentary": {
+      if (eff.dialogueSafe || eff.density < 2) return;
+      const baseVel = Math.min(eff.velocityCeiling - 4, 48 + eff.energy * 7);
+      for (let beat = 0; beat + 0.5 <= grid.beats; beat += 2) {
+        if (rng() < 0.7) continue;
+        const d = [7, 9, 11][Math.floor(rng() * 3)];
+        out.push(grid.event("melody", beat, 0.4, degreeToMidi(ctx.key, d, 4), baseVel - 6));
+      }
+      return;
+    }
+    case "long_tones": {
+      if (eff.dialogueSafe) return;
+      const baseVel = Math.min(eff.velocityCeiling - 6, 40 + eff.energy * 5);
+      for (let bar = 0; bar < grid.bars.length; bar += 4) {
+        const d = [0, 2, 4][Math.floor(rng() * 3)];
+        const span = Math.min(16, grid.beats - grid.bars[bar].startBeat);
+        if (span < 2) continue;
+        out.push(grid.event("melody", grid.bars[bar].startBeat, span * 0.9, degreeToMidi(ctx.key, d + 7, 4), baseVel));
+      }
+      return;
+    }
+    case "rhythmic_motif": {
+      if (eff.dialogueSafe) return;
+      const baseVel = Math.min(eff.velocityCeiling - 4, 46 + eff.energy * 6);
+      const pitch = degreeToMidi(ctx.key, 7, 4);
+      for (let beat = 0; beat + 0.5 <= grid.beats; beat += 2) {
+        out.push(grid.event("melody", beat, 0.25, pitch, baseVel));
+        if (rng() < 0.5) out.push(grid.event("melody", beat + 0.75, 0.25, pitch, baseVel - 6));
+      }
+      return;
+    }
+    default:
+      if (!eff.allowMelody) return;
+      emitMotif(ctx, 4);
+  }
+}
+
 function composeImpacts(ctx) {
   const { cue, eff, grid, out, isLastCue } = ctx;
   const lowRoot = degreeToMidi(ctx.key, 0, 1);
+  if (ctx.isFirstCue && (ctx.openingStrategy === "ambient_intro" || ctx.openingStrategy === "sparse_entry")) return;
+  const spaceBeat = ctx.spaceSeconds ? grid.secondsToBeat(ctx.spaceSeconds) || 0 : 0;
   if (["hook", "climax", "reveal", "turn"].includes(cue.function) && eff.energy >= 2) {
-    out.push(grid.event("impact", 0, 2, lowRoot, Math.min(112, 70 + eff.energy * 8)));
+    const suppressed = ctx.climaxStrategy === "drop_then_impact" && ctx.isClimaxCue;
+    if (!suppressed) {
+      out.push(grid.event("impact", Math.max(spaceBeat, 0), 2, lowRoot, Math.min(112, 70 + eff.energy * 8)));
+    }
   }
   for (const hit of cue.hit_points || []) {
     const beat = grid.secondsToBeat(hit);
-    if (beat !== null) out.push(grid.event("impact", beat, 1, lowRoot + 12, 84));
+    if (beat !== null && beat >= spaceBeat) out.push(grid.event("impact", beat, 1, lowRoot + 12, 84));
+  }
+  if (ctx.isClimaxCue) {
+    if (ctx.climaxStrategy === "drop_then_impact") {
+      out.push(grid.event("impact", Math.max(spaceBeat, 2), 1, lowRoot, 96));
+    }
+    if (ctx.climaxStrategy === "rhythm") {
+      out.push(grid.event("impact", Math.max(spaceBeat, 0), 1, lowRoot + 12, 88));
+      out.push(grid.event("impact", Math.max(0, grid.beats - 2), 1, lowRoot + 12, 88));
+    }
+    if (ctx.climaxStrategy === "sustained_expansion") {
+      out.push(grid.event("impact", Math.max(spaceBeat, 0), Math.min(4, grid.beats), lowRoot, 80));
+    }
+  }
+  if (ctx.isFirstCue && ctx.openingStrategy === "rhythmic_start") {
+    out.push(grid.event("impact", 0, 1, lowRoot + 12, 86));
+    out.push(grid.event("impact", 1, 1, lowRoot + 12, 80));
   }
   if (isLastCue) {
-    // Final confident button: root stab + low anchor on the last beat (§13).
-    const buttonBeat = Math.max(0, grid.beats - 1);
-    out.push(grid.event("impact", buttonBeat, 1, lowRoot, 104));
-    out.push(grid.event("impact", buttonBeat, 1, degreeToMidi(ctx.key, 0, 3), 92));
+    if (ctx.endingStrategy === "clear-button") {
+      // Final confident button: root stab + low anchor on the last beat (§13).
+      const buttonBeat = Math.max(0, grid.beats - 1);
+      out.push(grid.event("impact", buttonBeat, 1, lowRoot, 104));
+      out.push(grid.event("impact", buttonBeat, 1, degreeToMidi(ctx.key, 0, 3), 92));
+    } else if (ctx.endingStrategy === "sting") {
+      out.push(grid.event("impact", Math.max(0, grid.beats - 0.5), 0.5, lowRoot + 12, 100));
+    } else if (ctx.endingStrategy === "loop-ready-tail") {
+      out.push(grid.event("impact", Math.max(0, grid.beats - 2), 2, lowRoot, 70));
+    }
+    // "fade": no final impact — the tail simply stays quiet.
   }
 }
 
@@ -258,6 +427,28 @@ function compose(cueSheet, options = {}) {
   const pulseRegister = PULSE_REGISTER_BASES[options.pulse_register] ? options.pulse_register : "low_mid";
   const driftEnabled = options.harmonic_drift === true;
   const driftThreshold = Number(options.harmonic_drift_threshold) > 0 ? Number(options.harmonic_drift_threshold) : 35;
+  // Interpretation axes (QG-LIVE-1): default to pre-v1.2 behavior so stored
+  // candidates recompose byte-identically; new candidates opt in via
+  // recorded generation settings.
+  const tempoFeel = TEMPO_FEELS[options.tempo_feel] ? options.tempo_feel : "as_planned";
+  const tempoFactor = TEMPO_FEELS[tempoFeel];
+  const pulseStyle = PULSE_STYLES.includes(options.pulse_style) ? options.pulse_style : "as_planned";
+  const melodyBias = MELODY_BIASES.includes(options.melody_bias) ? options.melody_bias : "as_planned";
+  // Concept normalization (v1.5 diversity overhaul): a full interpretation
+  // object wins; individual v1.4 axes remain honored for stored candidates;
+  // everything else defaults to the neutral concept = pre-v1.5 output.
+  const conceptAxes = options.interpretation && options.interpretation.axes ? options.interpretation.axes : options;
+  const rhythmStrategy = conceptAxes.rhythm
+    || (pulseStyle === "driving" ? "driving_pulse" : pulseStyle === "sparse" ? "sparse_pulse" : "regular_pulse");
+  const melodicStrategy = conceptAxes.melody
+    || (melodyBias === "forward" ? "clear_identity" : melodyBias === "minimal" ? "none" : "sparse_motif");
+  const harmonicChar = conceptAxes.harmonic || "stable";
+  const densityStrategy = conceptAxes.density || "moderate";
+  const textureKind = conceptAxes.texture || "clean";
+  const development = conceptAxes.development || "steady";
+  const openingStrategy = conceptAxes.opening || "immediate";
+  const climaxStrategy = conceptAxes.climax || "density";
+  const endingStrategy = conceptAxes.ending || "clear-button";
   const cues = cueSheet.cues || [];
   const notes = [];
   const tempoMap = [];
@@ -275,10 +466,30 @@ function compose(cueSheet, options = {}) {
     }
     if (!Number.isFinite(cue.tempo_bpm) || cue.tempo_bpm < 40 || cue.tempo_bpm > 220) throw new Error(`Unsupported tempo_bpm for ${cue.cue_id || `cue ${cueIndex + 1}`}: ${cue.tempo_bpm}`);
     if (!SUPPORTED_TIME_SIGNATURES.includes(cue.time_signature)) throw new Error(`Unsupported time_signature for ${cue.cue_id || `cue ${cueIndex + 1}`}: ${cue.time_signature}`);
+    // energy/density govern velocity and note density. A non-integer or
+    // out-of-range value silently produced velocity-0 (== note-off) MIDI and
+    // NaN WAV samples — inaudible, no error. This module must not trust that
+    // schema validation ran upstream: fail loudly on its own contract.
+    if (!Number.isInteger(cue.energy) || cue.energy < 1 || cue.energy > 5) throw new Error(`Invalid energy for ${cue.cue_id || `cue ${cueIndex + 1}`}: ${cue.energy} (need integer 1..5)`);
+    if (!Number.isInteger(cue.density) || cue.density < 1 || cue.density > 5) throw new Error(`Invalid density for ${cue.cue_id || `cue ${cueIndex + 1}`}: ${cue.density} (need integer 1..5)`);
     const eff = effectiveCueSettings(cue, options);
     const cueSeconds = cue.end_seconds - cue.start_seconds;
-    const beatSeconds = 60 / cue.tempo_bpm;
+    // Tempo feel (QG-LIVE-1): the cue sheet's tempo_bpm is the plan; the
+    // candidate's interpretation may run it lifted/relaxed. Seconds stay
+    // locked to the cue window; only the beat grid and tempoMap change.
+    const effectiveBpm = Math.round(cue.tempo_bpm * tempoFactor);
+    const beatSeconds = 60 / effectiveBpm;
     const beats = cueSeconds / beatSeconds;
+    // Leading silence before the FIRST cue must offset the whole tick timeline.
+    // Note seconds/.rpp items/WAV are anchored to cue.start_seconds, but the
+    // tick timeline started at 0 — so a cold-open cue (start > 0) made every
+    // MIDI note play early. Convert the lead-in at this cue's tempo; the tempo
+    // event is pinned at tick 0 below so ticks 0..lead map to real time. A
+    // first cue at start_seconds === 0 leaves cueStartTick at 0 → byte-identical
+    // to prior output. Inter-cue gaps (loop tail) are unchanged: no double count.
+    if (cueIndex === 0 && cue.start_seconds > 0) {
+      cueStartTick = Math.round((cue.start_seconds / beatSeconds) * PPQ);
+    }
     const [meterNumerator, meterDenominator] = cue.time_signature.split("/").map(Number);
     const beatsPerBar = meterNumerator * 4 / meterDenominator;
     const barCount = Math.max(1, Math.ceil(beats / beatsPerBar));
@@ -287,7 +498,10 @@ function compose(cueSheet, options = {}) {
       bars.push({ index: i, startBeat: i * beatsPerBar, beats: Math.min(beatsPerBar, beats - i * beatsPerBar) });
     }
 
-    tempoMap.push({ tick: cueStartTick, bpm: cue.tempo_bpm, time_signature: cue.time_signature || "4/4" });
+    // Pin the first cue's tempo at tick 0 so any leading-silence ticks convert
+    // at the real tempo (not the SMF 120bpm default); later cues keep their own
+    // tick. For a first cue at start 0 this is tick 0 either way (byte-identical).
+    tempoMap.push({ tick: cueIndex === 0 ? 0 : cueStartTick, bpm: effectiveBpm, time_signature: cue.time_signature || "4/4" });
     markers.push({ tick: cueStartTick, name: `${cue.cue_id} ${cue.name}` });
 
     // Deterministic chord plan for the cue.
@@ -320,10 +534,41 @@ function compose(cueSheet, options = {}) {
     };
     LANES.forEach((lane, laneIndex) => {
       const rng = mulberry32(seed ^ hashString(`${cue.cue_id}:${lane}`) ^ (laneIndex * 2654435761));
+      // v1.5 concept context: per-cue derived flags. Neutral values reproduce
+      // v1.3/v1.4 output exactly (velScale 1, no caps, no overrides).
+      const cueCount = Math.max(1, cues.length);
+      let velScale = 1;
+      let densityCap = 5;
+      if (development === "gradual_build") velScale = 0.8 + 0.4 * (cueIndex / cueCount);
+      if (development === "restrained_then_lift") {
+        const lift = cueIndex >= cueCount - 2;
+        velScale = lift ? 1.15 : 0.8;
+        if (!lift) densityCap = 2;
+      }
+      const isClimaxCue = ["reveal", "climax"].includes(cue.function);
+      const isFirstCue = cueIndex === 0;
       LANE_GENERATORS[lane]({
         cue, eff, rng, grid, out, key, chords,
         isLastCue: cueIndex === cues.length - 1,
+        isFirstCue,
+        isClimaxCue,
+        hasInterpretation: Boolean(options.interpretation && options.interpretation.axes),
         pulseRegister,
+        pulseStyle,
+        melodyBias,
+        rhythmStrategy,
+        melodicStrategy,
+        harmonicChar,
+        densityStrategy,
+        textureKind,
+        development,
+        openingStrategy,
+        climaxStrategy,
+        endingStrategy,
+        velScale,
+        densityCap,
+        waves: development === "waves",
+        spaceSeconds: openingStrategy === "space_first" && isFirstCue ? 2 : 0,
         driftActive: driftEnabled && cueSeconds >= driftThreshold,
       });
     });
@@ -352,6 +597,14 @@ function compose(cueSheet, options = {}) {
       dialogue_density: options.dialogue_density || null,
       pulse_register: pulseRegister,
       harmonic_drift: driftEnabled,
+      tempo_feel: tempoFeel,
+      pulse_style: pulseStyle,
+      melody_bias: melodyBias,
+      interpretation: options.interpretation ? {
+        interpretation_id: options.interpretation.interpretation_id || null,
+        label: options.interpretation.label || null,
+        axes: options.interpretation.axes || null,
+      } : null,
       cue_count: cues.length,
       total_ticks: cueStartTick,
       note_count: notes.length,

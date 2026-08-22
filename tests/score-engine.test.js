@@ -1085,6 +1085,27 @@ test("score-engine hardening: a candidate folder without candidate.json answers 
   catch (error) { assert.equal(error.statusCode, 409); assert.match(error.message, /incomplete/); }
 });
 
+test("quality gate: music-candidate notes writer attaches review notes without touching dispatch lifecycle status", () => {
+  const { options } = tmpEnv();
+  const project = readyProject(options, { duration_seconds: 20 });
+  const payload = lane.getProject(project.project_id, options);
+  const dir = path.join(payload.dir, "music-candidates", "music-candidate-001");
+  fs.mkdirSync(dir, { recursive: true });
+  const meta = { candidate_id: "music-candidate-001", status: "completed", seed: 1, output_sha256: "ab".repeat(32) };
+  fs.writeFileSync(path.join(dir, "music-candidate.json"), JSON.stringify(meta, null, 2));
+  const updated = lane.setMusicCandidateNotes(project.project_id, "music-candidate-001", "QG {\"verdict\":\"MAYBE\"}", options);
+  assert.equal(updated.status, "completed", "dispatch lifecycle status untouched");
+  assert.equal(updated.notes, "QG {\"verdict\":\"MAYBE\"}", "review notes attached");
+  assert.ok(typeof updated.reviewed_at === "string" && updated.reviewed_at.length > 0, "review timestamp recorded");
+  const reRead = JSON.parse(fs.readFileSync(path.join(dir, "music-candidate.json"), "utf8"));
+  assert.equal(reRead.status, "completed", "persisted file keeps dispatch status");
+  assert.equal(reRead.output_sha256, "ab".repeat(32), "provenance fields untouched");
+  try { lane.setMusicCandidateNotes(project.project_id, "candidate-001", "x", options); assert.fail("expected 404 for unknown production candidate"); }
+  catch (error) { assert.equal(error.statusCode, 404); }
+  try { lane.setMusicCandidateNotes(project.project_id, "music-candidate-099", "x", options); assert.fail("expected 404"); }
+  catch (error) { assert.equal(error.statusCode, 404); }
+});
+
 test("score-engine hardening: MIDI timeline preserves silence gaps between cues", () => {
   const cues = [
     { cue_id: "C001", name: "A", start_seconds: 0, end_seconds: 10, function: "hook", emotion: "curious", energy: 2, density: 2, tempo_bpm: 120, key: "D minor", time_signature: "4/4", instrument_roles: {}, hit_points: [], dialogue_safe: true },
@@ -1112,4 +1133,120 @@ test("score-engine hardening: spawn failure reports launched:false as a 500, not
     () => lane.openInReaper(project.project_id, "candidate-001", { ...options, spawnImpl }),
     /REAPER failed to launch/
   );
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// HARDENING PASS 2026-08-22 (surgical): composer contract + timeline fixes.
+// ─────────────────────────────────────────────────────────────────────────
+const { PPQ: HP_PPQ } = require("../score-engine/midi-writer.js");
+
+test("composer: leading silence before the first cue offsets the MIDI timeline", () => {
+  // Cold open — music enters at 7.5s. beatSeconds at 120bpm = 0.5 → lead = 7200 ticks.
+  const sheet = { cues: [scoreCue("C1", 7.5, 15.5), scoreCue("C2", 15.5, 20.5)] };
+  const comp = composer.compose(sheet, { seed: 11 });
+  const leadTick = Math.round((7.5 / (60 / 120)) * HP_PPQ);
+  assert.equal(leadTick, 7200);
+  assert.equal(comp.tempoMap[0].tick, 0, "first tempo event is pinned at tick 0");
+  assert.equal(comp.markers[0].tick, leadTick, "first cue marker sits at the cold-open tick");
+  const minTick = Math.min(...comp.notes.map((n) => n.tick));
+  assert.ok(minTick >= leadTick, `earliest note tick ${minTick} must be at or after the lead-in ${leadTick}`);
+  // Absolute-time consistency: the earliest note's tick maps back to its seconds.
+  const first = comp.notes.slice().sort((a, b) => a.tick - b.tick)[0];
+  const tickSeconds = (first.tick / HP_PPQ) * (60 / 120);
+  assert.ok(Math.abs(tickSeconds - first.seconds) < 1e-6, `note tick↔seconds must agree (${tickSeconds} vs ${first.seconds})`);
+  assert.ok(first.seconds >= 7.5 - 1e-6, "first note is at/after the cue's real start time");
+});
+
+test("composer: a first cue at 0s is unchanged (tick 0), later inter-cue gaps still honored", () => {
+  const at0 = composer.compose({ cues: [scoreCue("C1", 0, 8)] }, { seed: 3 });
+  assert.equal(at0.tempoMap[0].tick, 0);
+  assert.equal(at0.markers[0].tick, 0, "no phantom offset when the score starts at 0");
+  const minTick = Math.min(...at0.notes.map((n) => n.tick));
+  assert.equal(minTick % 1, 0);
+  // inter-cue gap: C2 starts 2s after C1 ends → its marker is offset by the gap.
+  const gapped = composer.compose({ cues: [scoreCue("C1", 0, 8), scoreCue("C2", 10, 16)] }, { seed: 3 });
+  assert.equal(gapped.markers[0].tick, 0);
+  assert.ok(gapped.markers[1].tick > Math.round((8 / (60 / 120)) * HP_PPQ), "C2 marker includes the 2s inter-cue gap, not just C1's length");
+});
+
+test("composer: leading-gap output is deterministic (byte-identical MIDI on recompose)", () => {
+  const sheet = { cues: [scoreCue("C1", 5, 13)] };
+  const a = composer.compose(sheet, { seed: 21 });
+  const b = composer.compose(sheet, { seed: 21 });
+  assert.deepEqual(a.notes, b.notes);
+  assert.deepEqual(a.tempoMap, b.tempoMap);
+  assert.deepEqual(a.markers, b.markers);
+});
+
+test("composer: invalid energy/density fail loudly (module contract, not schema-dependent)", () => {
+  const base = () => scoreCue("C1", 0, 8);
+  for (const bad of [NaN, Infinity, -Infinity, 0, 6, -1, 2.5, "3", null, undefined]) {
+    const c1 = base(); c1.energy = bad;
+    assert.throws(() => composer.compose({ cues: [c1] }, { seed: 1 }), /Invalid energy/, `energy=${String(bad)} must throw`);
+    const c2 = base(); c2.density = bad;
+    assert.throws(() => composer.compose({ cues: [c2] }, { seed: 1 }), /Invalid density/, `density=${String(bad)} must throw`);
+  }
+  // valid integers 1..5 still compose
+  for (const good of [1, 2, 3, 4, 5]) {
+    const c = base(); c.energy = good; c.density = good;
+    assert.ok(composer.compose({ cues: [c] }, { seed: 1 }).notes.length >= 0);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// HARDENING PASS 2026-08-22 (surgical): registry & authoritative-JSON durability.
+// Corrupt existing authoritative state must fail visibly and preserve evidence,
+// never silently become empty. Writes are atomic (tmp + rename).
+// ─────────────────────────────────────────────────────────────────────────
+const laneHP = require("../score-engine/score-lane.js");
+function scoreEnvHP() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "score-registry-"));
+  return { root, options: { settingsPath: path.join(root, "settings.json"), musicRoot: path.join(root, "music") } };
+}
+function makeProjectHP(options, name) {
+  return laneHP.createScoreProject({ name, duration_seconds: 6, script_text: "A calm reflective explainer about deep time." }, options).project;
+}
+
+test("registry durability: absent registry is a clean first run; valid registry round-trips", () => {
+  const { options } = scoreEnvHP();
+  const p1 = makeProjectHP(options, "First");                 // absent → first run
+  const p2 = makeProjectHP(options, "Second");                // valid → append
+  const list = laneHP.listProjects(options).map((x) => x.project_id).sort();
+  assert.deepEqual(list, [p1.project_id, p2.project_id].sort(), "both projects registered");
+});
+
+test("registry durability: a corrupt registry fails loudly, preserves evidence, and never empties the universe", () => {
+  const { options, root } = scoreEnvHP();
+  const a = makeProjectHP(options, "Alpha");
+  const b = makeProjectHP(options, "Beta");
+  const registry = path.join(root, "music", "score-registry.json");
+  fs.writeFileSync(registry, '{ "version": 1, "projects": [ {"project_id":'); // truncated JSON
+  // Every registry-touching operation now fails loudly instead of returning empty.
+  assert.throws(() => laneHP.listProjects(options), /corrupt/i, "listProjects fails loudly on corruption");
+  assert.throws(() => laneHP.getProject(a.project_id, options), /corrupt/i);
+  // Evidence preserved, corrupt original LEFT IN PLACE (keeps failing until repaired).
+  assert.ok(fs.existsSync(path.join(root, "music", "score-registry.corrupt.json")), "corrupt copy archived");
+  assert.ok(fs.existsSync(registry), "corrupt original is preserved in place, not renamed away");
+  // Critically: attempting to create a new project after corruption must NOT
+  // overwrite the registry with a fresh one-project universe.
+  assert.throws(() => makeProjectHP(options, "Gamma"), /corrupt/i, "create refuses to run on a corrupt registry");
+  const stillCorrupt = fs.readFileSync(registry, "utf8");
+  assert.ok(!stillCorrupt.includes("Gamma"), "registry was not overwritten with a new universe");
+  // After a human repairs it, everything is intact again.
+  fs.writeFileSync(registry, JSON.stringify({ version: 1, projects: [
+    { project_id: a.project_id, name: "Alpha", path: path.join(root, "music", "projects", a.project_id) },
+    { project_id: b.project_id, name: "Beta", path: path.join(root, "music", "projects", b.project_id) },
+  ] }));
+  const recovered = laneHP.listProjects(options).map((x) => x.project_id).sort();
+  assert.deepEqual(recovered, [a.project_id, b.project_id].sort(), "repair restores the full universe");
+});
+
+test("registry durability: an interrupted (tmp) write never leaves a torn registry", () => {
+  const { options, root } = scoreEnvHP();
+  makeProjectHP(options, "Solo");
+  const registry = path.join(root, "music", "score-registry.json");
+  // A valid parse proves the atomic writer left a complete file, and no .tmp- residue remains.
+  assert.doesNotThrow(() => JSON.parse(fs.readFileSync(registry, "utf8")));
+  const residue = fs.readdirSync(path.join(root, "music")).filter((n) => n.includes(".tmp-"));
+  assert.deepEqual(residue, [], "no temp files left behind by the atomic writer");
 });

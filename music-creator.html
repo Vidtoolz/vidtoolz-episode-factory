@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Music Creator — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.9.6">
+    <style>
+      .mc { max-width: 1060px; margin: 0 auto; padding: 24px 20px 48px; }
+      .mc h1 { margin: 8px 0 2px; font-size: 22px; }
+      .meta{color:var(--muted,#8b949e);font-size:12px;}
+      .step{background:var(--panel,#161b22);border:1px solid var(--border,#30363d);border-radius:10px;padding:16px 18px;margin:14px 0;}
+      .step.done{border-color:rgba(63,185,80,.5);}
+      .step-head{display:flex;gap:10px;align-items:center;font-weight:600;font-size:15px;margin-bottom:8px;flex-wrap:wrap;}
+      .badge{font-size:11px;padding:2px 10px;border-radius:99px;border:1px solid var(--border,#30363d);}
+      .badge.done{color:#3fb950;border-color:#2ea04366;} .badge.todo{color:#d29922;border-color:#d2992266;}
+      .badge.busy{color:#58a6ff;border-color:#58a6ff66;}
+      .btn{border:none;border-radius:6px;padding:7px 15px;font-size:13px;cursor:pointer;background:var(--panel-3,#21262d);color:inherit;border:1px solid var(--border,#30363d);margin:3px 6px 3px 0;text-decoration:none;display:inline-block;}
+      .btn:hover{border-color:#58a6ff;} .btn:disabled{opacity:.45;cursor:default;}
+      .btn-go{background:#2ea043;color:#fff;border-color:#2ea043;}
+      .btn-warn{border-color:#d2992266;color:#d29922;}
+      .btn-danger{border-color:#da363366;color:#f85149;}
+      .chip{display:inline-block;border:1px solid var(--border,#30363d);border-radius:99px;padding:4px 12px;margin:3px 4px 3px 0;font-size:12px;cursor:pointer;background:var(--panel-3,#21262d);}
+      .chip:hover{border-color:#58a6ff;}
+      input,select,textarea{background:#0d1117;color:#e6edf3;border:1px solid var(--border,#30363d);border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit;box-sizing:border-box;}
+      textarea{width:100%;resize:vertical;}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+      th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border,#30363d);}
+      audio{width:100%;margin:6px 0;}
+      .plan-box{background:#0d1117;border:1px solid var(--border,#30363d);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.5;white-space:pre-wrap;}
+      .cand{border:1px solid var(--border,#30363d);border-radius:8px;padding:12px 14px;margin:10px 0;background:var(--panel,#161b22);}
+      .cand.approved{border-color:rgba(63,185,80,.6);}
+      .cand.rejected{opacity:.55;}
+      .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+      .err{background:#3d1214;border:1px solid #da363366;color:#f85149;border-radius:8px;padding:10px 12px;font-size:13px;margin:10px 0;display:none;white-space:pre-wrap;}
+      .ok-note{background:#0f2d1a;border:1px solid #2ea04366;color:#3fb950;border-radius:8px;padding:10px 12px;font-size:13px;margin:10px 0;}
+      .stale-note{background:#31240d;border:1px solid #d2992266;color:#d29922;border-radius:8px;padding:10px 12px;font-size:13px;margin:10px 0;}
+      details.advanced{margin-top:26px;border-top:1px dashed var(--border,#30363d);padding-top:14px;}
+      summary.advanced-sum{cursor:pointer;color:var(--muted,#8b949e);font-size:13px;}
+      .projpick{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+      .energy-strip span{display:inline-block;min-width:52px;text-align:center;border:1px solid var(--border,#30363d);border-radius:6px;padding:3px 6px;margin:2px;font-size:11px;}
+      .guide{background:var(--panel,#161b22);border:1px solid var(--border,#30363d);border-radius:10px;padding:14px 18px;margin:14px 0;font-size:13px;line-height:1.6;}
+      #toast{position:fixed;bottom:18px;right:18px;background:#238636;color:#fff;padding:8px 16px;border-radius:8px;display:none;z-index:50;font-size:13px;}
+    </style>
+  </head>
+  <body>
+    <main class="mc">
+      <div class="meta"><a href="index.html">← Cockpit</a> · <a href="score-engine.html">Score workspace (advanced)</a></div>
+      <h1>VIDTOOLZ Music Creator</h1>
+      <div class="meta">Music direction for video creators. Describe the video → get a music plan → listen to options → use the one that works. No music theory required.</div>
+
+      <div id="err" class="err"></div>
+
+      <!-- STEP 0 · PROJECT -->
+      <section class="step" id="step-project">
+        <div class="step-head">1 · Project <span id="badge-project" class="badge todo">not started</span></div>
+        <div id="project-picker" class="projpick">
+          <label>Open existing: <select id="project-select"><option value="">— choose —</option></select></label>
+          <button class="btn" id="btn-open">Open</button>
+          <span class="meta">or create a new one below</span>
+        </div>
+        <div style="margin-top:12px">
+          <div class="row" style="margin-bottom:8px">
+            <input id="np-name" placeholder="Project name (e.g. My explainer score)" style="min-width:280px">
+            <input id="np-duration" placeholder="Exact seconds (optional)" style="width:170px" inputmode="decimal">
+          </div>
+          <textarea id="np-script" rows="6" placeholder="Paste the narration script here. The system estimates the video length from it and shapes the music around the narration. (A script is the best input — but a short description of the video also works.)"></textarea>
+          <details id="np-guided" style="margin:10px 0">
+            <summary class="advanced-sum">Optional: steer the direction (everything else stays automatic)</summary>
+            <div class="row" style="margin-top:8px">
+              <label>Feeling
+                <select id="np-mood">
+                  <option value="">auto</option>
+                  <option value="curious">Curious</option>
+                  <option value="clinical">Serious / factual</option>
+                  <option value="tense">Tense</option>
+                  <option value="dark">Dark</option>
+                  <option value="optimistic">Inspirational</option>
+                  <option value="warm">Warm</option>
+                  <option value="playful">Playful</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </label>
+              <label>Style
+                <select id="np-palette">
+                  <option value="">auto</option>
+                </select>
+              </label>
+              <label><input type="checkbox" id="np-narration" checked> Music under narration (recommended)</label>
+            </div>
+          </details>
+          <button class="btn btn-go" id="btn-create">Create project</button>
+        </div>
+      </section>
+
+      <!-- STEP 1 · MUSIC PLAN -->
+      <section class="step" id="step-plan">
+        <div class="step-head">2 · Music plan <span id="badge-plan" class="badge todo">waiting for project</span></div>
+        <p class="meta" id="plan-summary"></p>
+        <div id="plan-box" class="plan-box" style="display:none"></div>
+        <div style="margin-top:10px">
+          <button class="btn btn-go" id="btn-plan" disabled>Create Music Plan</button>
+          <span class="meta" id="plan-status"></span>
+        </div>
+      </section>
+
+      <!-- STEP 2 · OPTIONS -->
+      <section class="step" id="step-options">
+        <div class="step-head">3 · Options <span id="badge-options" class="badge todo">waiting for plan</span></div>
+        <p class="meta">Three versions of the same plan. Listen, then pick one — or ask for a revision in plain language.</p>
+        <div id="candidates"></div>
+        <div style="margin-top:10px">
+          <button class="btn btn-go" id="btn-generate" disabled>Generate Options</button>
+          <button class="btn btn-warn" id="btn-minimax" disabled>Generate MiniMax production option</button>
+          <label class="meta">count <select id="opt-count"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
+          <span class="meta" id="gen-status"></span>
+        </div>
+      </section>
+
+      <!-- STEP 3 · REVISE -->
+      <section class="step" id="step-revise">
+        <div class="step-head">4 · Revise <span class="meta">optional — only if nothing fits yet</span></div>
+        <p class="meta">Say what should change, in ordinary words. The system rewrites the plan and renders a new version of the selected candidate.</p>
+        <div class="row" style="margin-bottom:6px">
+          <span class="meta">revise:</span> <select id="revise-target"></select>
+        </div>
+        <div id="revise-chips"></div>
+        <div class="row" style="margin-top:8px">
+          <input id="revise-text" placeholder="e.g. calmer, less busy, darker, stronger ending, better under my voice…" style="flex:1;min-width:320px">
+          <button class="btn" id="btn-revise" disabled>Revise</button>
+        </div>
+      </section>
+
+      <!-- STEP 4 · USE -->
+      <section class="step" id="step-use">
+        <div class="step-head">5 · Approved soundtrack <span id="badge-use" class="badge todo">nothing approved</span></div>
+        <div id="approved-box"></div>
+      </section>
+
+      <div id="toast"></div>
+
+      <!-- ADVANCED / DIAGNOSTICS -->
+      <details class="advanced" id="advanced-panel">
+        <summary class="advanced-sum">Advanced / diagnostics (cue table, technical details, generators, provenance)</summary>
+        <div id="advanced-body" style="margin-top:12px">
+          <p class="meta">Open a project first.</p>
+        </div>
+      </details>
+
+      <!-- USER GUIDE (required on every cockpit page) -->
+      <section class="guide" id="user-guide">
+        <strong>User guide</strong><br>
+        <b>What this is:</b> one place to get soundtrack music for your videos. It plans the music from your script, renders a few versions, and hands the winner to your edit. The heavy lifting (cue structure, energy, timing, instrumentation) is automatic; you listen and decide.<br>
+        <b>Workflow:</b> 1) Create or open a project (paste the narration script). 2) <i>Create Music Plan</i> — read the plain-language strategy. 3) <i>Generate Options</i> — listen to 2–5 versions. 4) If nothing fits, <i>Revise</i> with ordinary words (calmer / darker / stronger ending / less busy). 5) <i>Use This</i> on the winner — the approved mix, stems and MIDI are written to the project folder for Resolve.<br>
+        <b>Where files land:</b> the approved soundtrack (mix, dialogue-safe mix, per-lane stems, MIDI, provenance) is exported into the project's music folder — for package projects that is on VIDNAS with the rest of the package.<br>
+        <b>Honest limits:</b> the built-in preview renderer is a structural sketch (timing/energy/arrangement). MiniMax Music 3 produces production-sound candidates, but its worker starts manually and the system reports truthfully when it is offline. Generated audio remains unreviewed until you explicitly mark USE or Reject, and nothing auto-approves.<br>
+        <b>Need more control?</b> Open the <a href="score-engine.html">Score workspace</a> for cue-level editing, REAPER/Ableton handoffs and production import.
+      </section>
+    </main>
+
+    <script>
+      'use strict';
+      // ── transport (same nonce pattern as score-project.html) ──────────────
+      function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+      function unwrap(j){return j && typeof j==='object' && j.data!==undefined ? j.data : j;}
+      let nonce='', nonceHeader='x-vidtoolz-local-write-nonce';
+      let minimaxPoll=null;
+      async function fetchJson(url, opts){ const r=await fetch(url, Object.assign({cache:'no-store'}, opts||{})); const j=await r.json().catch(()=>({})); if(!r.ok||(j&&j.ok===false)) throw new Error((j&&j.error)||('HTTP '+r.status)); return unwrap(j); }
+      async function ensureNonce(){ if(nonce) return nonce; try{ const p=await fetchJson('/api/package-engine/status'); if(p&&p.localWriteNonce){nonce=p.localWriteNonce;nonceHeader=p.nonceHeader||nonceHeader;} }catch(e){} return nonce; }
+      async function post(path, body){ await ensureNonce(); const headers={'Content-Type':'application/json'}; headers[nonceHeader]=nonce; const r=await fetch(path,{method:'POST',headers,body:JSON.stringify(body)}); const j=await r.json().catch(()=>({})); if(!r.ok||(j&&j.ok===false)) throw new Error((j&&j.error)||('HTTP '+r.status)); return unwrap(j); }
+
+      function toast(msg, bad){ const el=document.getElementById('toast'); el.textContent=msg; el.style.background=bad?'#da3633':'#238636'; el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(()=>{el.style.display='none';},2800); }
+      function showErr(msg){ const el=document.getElementById('err'); if(!msg){el.style.display='none';return;} el.style.display='block'; el.textContent=msg; }
+      function fmtTime(s){ if(!Number.isFinite(s)) return '?'; const m=Math.floor(s/60), r=Math.round(s%60); return m+':'+String(r).padStart(2,'0'); }
+      function fmtBytes(n){ n=Number(n)||0; const units=['B','KB','MB','GB']; let i=0; while(n>=1024&&i<units.length-1){n/=1024;i++;} return (i?n.toFixed(n>=10?1:2):String(n))+' '+units[i]; }
+
+      const PALETTES = [
+        { id:'tech_noir_pulse', name:'Dark Tech', desc:'analog pulse, dark pads — serious technology pieces' },
+        { id:'serious_system_builder', name:'Serious Explainer', desc:'steady pulse, low authority bass — calm, credible' },
+        { id:'broadcast_explainer', name:'Warm Explainer', desc:'clean pulse, light plucks, warm pads' },
+        { id:'ai_lab', name:'AI Lab', desc:'granular textures, synthetic clicks — strange, modern' },
+        { id:'dry_comedy_underscore', name:'Dry Comedy', desc:'minimal plucks and blips, awkward pauses' },
+      ];
+      const REVISE_CHIPS = ['Calmer','Less busy','Darker','More tension in the middle','Stronger ending','More distinctive intro','Warmer','Less bass','Faster','Slower'];
+
+      let ID = null;      // current project_id
+      let ST = null;      // last loaded project state
+      let busy = false;
+
+      const $ = (id)=>document.getElementById(id);
+      const params = new URLSearchParams(location.search);
+      const startId = params.get('id');
+
+      // ── load & render ─────────────────────────────────────────────────────
+      let loadSeq = 0;
+      async function load(){
+        const seq = ++loadSeq;
+        try {
+          const list = await fetchJson('/api/score/projects');
+          if (seq !== loadSeq) return;
+          renderProjectSelect(list.projects || []);
+          if (ID) {
+            const st = await fetchJson('/api/score/project?id='+encodeURIComponent(ID));
+            if (seq !== loadSeq) return;
+            ST = st; showErr(''); render();
+          } else render();
+        } catch(e){ showErr(e.message); }
+      }
+
+      function renderProjectSelect(projects){
+        const sel = $('project-select');
+        sel.innerHTML = '<option value="">— choose —</option>' + projects.map(p=>`<option value="${esc(p.project_id)}"${p.project_id===ID?' selected':''}>${esc(p.name)} (${p.cue_count||0} cues${p.approval_current?' · approved':p.approved_export_exists?' · historical approval':''})</option>`).join('');
+        if (!$('np-palette').options.length) {
+          $('np-palette').innerHTML = '<option value="">auto</option>' + PALETTES.map(p=>`<option value="${p.id}">${p.name} — ${p.desc}</option>`).join('');
+        }
+        $('revise-chips').innerHTML = REVISE_CHIPS.map(c=>`<span class="chip" data-text="${esc(c)}">${esc(c)}</span>`).join('');
+      }
+
+      function projectFacts(){
+        if (!ST || !ST.project) return {
+          hasProject:false, hasCues:false, planApproved:false, currentCandidates:[], historicalCandidates:[],
+          hasCurrentCandidates:false, approvedExportExists:false, approvalCurrent:false,
+        };
+        const p = ST.project, integrity = ST.state_integrity || {}, cands = ST.candidates || [];
+        const currentCandidates = cands.filter(c=>c.current_plan_revision === true);
+        const historicalCandidates = cands.filter(c=>c.current_plan_revision !== true);
+        return {
+          hasProject:true,
+          hasCues:integrity.has_cues !== undefined ? integrity.has_cues : (p.cues||[]).length > 0,
+          planApproved:integrity.plan_approved !== undefined ? integrity.plan_approved : p.cue_sheet_approved === true,
+          currentCandidates,
+          historicalCandidates,
+          hasCurrentCandidates:integrity.has_current_candidates !== undefined ? integrity.has_current_candidates : currentCandidates.length > 0,
+          approvedExportExists:integrity.approved_export_exists !== undefined ? integrity.approved_export_exists : Boolean(ST.approved && ST.approved.approved_candidate),
+          approvalCurrent:ST.approval_current === true,
+        };
+      }
+
+      function planWords(){
+        const p = ST.project, cues = p.cues || [];
+        if (!cues.length) return '';
+        const moods = [...new Set(cues.map(c=>c.emotion))].join(', ');
+        const energy = cues.map(c=>c.energy).join(' → ');
+        const moodWord = (p.overall_mood||'');
+        const role = p.music_role === 'underscore' ? 'a restrained bed under narration' : 'a '+p.music_role+' track';
+        const lines = [
+          `Recommended approach: ${role} for ${fmtTime(p.duration_seconds)} of video.`,
+          `Shape: ${cues.length} sections — ${cues.map(c=>`${fmtTime(c.start_seconds)}–${fmtTime(c.end_seconds)} ${c.name}`).join(' · ')}.`,
+          `Energy curve: ${energy}.  Character: ${moods}${moodWord?` (${moodWord})`:''}.`,
+          `${cues.every(c=>c.dialogue_safe)?'Every section stays dialogue-safe (space for your voice).':''}`,
+        ];
+        return lines.filter(Boolean).join('\n');
+      }
+
+      function render(){
+        const facts = projectFacts();
+        // badges
+        const setBadge=(el, done, text)=>{ el.className='badge '+(done?'done':'todo'); el.textContent=text; };
+        setBadge($('badge-project'), facts.hasProject, ST?ST.project.name:'not started');
+        setBadge($('badge-plan'), facts.planApproved, facts.planApproved?'approved':(facts.hasCues?'needs approval':'waiting for project'));
+        setBadge($('badge-options'), facts.hasCurrentCandidates, facts.hasCurrentCandidates?(facts.currentCandidates.length+' current option(s)'):'waiting for approved plan');
+        setBadge($('badge-use'), facts.approvalCurrent, facts.approvalCurrent?ST.approved.approved_candidate:(facts.approvedExportExists?'historical approval — stale':'nothing approved'));
+
+        // plan step
+        $('btn-plan').disabled = busy || !ST || facts.planApproved;
+        $('btn-plan').textContent = facts.hasCues && !facts.planApproved ? 'Approve Music Plan' : 'Create Music Plan';
+        $('plan-summary').textContent = ST ? `${ST.project.name} · ${fmtTime(ST.project.duration_seconds)} · ${ST.project.target_platform.replace(/_/g,' ')} · narration density ${ST.project.dialogue_density}` : 'Create or open a project to begin.';
+        if (ST && (ST.project.cues||[]).length) {
+          $('plan-box').style.display='block';
+          $('plan-box').textContent = planWords();
+        } else $('plan-box').style.display='none';
+
+        // options step
+        $('btn-generate').disabled = busy || !ST || !facts.planApproved;
+        $('btn-minimax').disabled = busy || !ST || !facts.planApproved;
+        renderCandidates(facts);
+
+        // revise targets
+        const sel = $('revise-target');
+        sel.innerHTML = facts.currentCandidates.filter(c=>c.backend==='scorecraft').map(c=>`<option value="${esc(c.candidate_id)}">${esc(c.candidate_id)}${c.status==='approved'?' (approved)':''}</option>`).join('');
+        $('btn-revise').disabled = busy || !facts.planApproved || !sel.options.length;
+
+        // approved box
+        renderApproved(facts);
+        renderAdvanced();
+        scheduleMiniMaxPoll();
+      }
+
+      function scheduleMiniMaxPoll(){
+        const active = Boolean(ST && (ST.candidates||[]).some(c=>c.backend==='minimax' && (c.generation_status==='queued'||c.generation_status==='running')));
+        if (!active && minimaxPoll){ clearTimeout(minimaxPoll); minimaxPoll=null; }
+        if (active && !minimaxPoll) minimaxPoll=setTimeout(async()=>{ minimaxPoll=null; await load(); },1500);
+      }
+
+      function fileUrl(rel){ return '/api/score/file?id='+encodeURIComponent(ID)+'&path='+encodeURIComponent(rel); }
+
+      function renderCandidates(facts){
+        const box = $('candidates');
+        const cands = (ST && ST.candidates) || [];
+        if (!cands.length){ box.innerHTML = '<p class="meta">No options yet.</p>'; return; }
+        box.innerHTML = cands.map(c=>{
+          const parent = c.parent_candidate?`<span class="meta">revision of ${esc(c.parent_candidate)}</span>`:'';
+          const revNote = c.revision && c.revision.changes && c.revision.changes.length ? `<div class="meta">changes: ${esc(c.revision.changes.map(ch=>ch.description||ch.type).join('; '))}</div>` : '';
+          const isProduction = c.backend==='minimax';
+          const mix = c.files && c.files.preview_mix ? `<audio controls preload="none" src="${fileUrl(c.files.preview_mix)}"></audio>`
+            : `<p class="meta">${isProduction && c.generation_status==='failed'?'No playable audio was produced.':'Audio is not available yet.'}</p>`;
+          const dlg = c.files && c.files.preview_dialogue_safe ? `<details><summary class="advanced-sum">version for dense narration</summary><audio controls preload="none" src="${fileUrl(c.files.preview_dialogue_safe)}"></audio></details>` : '';
+          const isApproved = c.status==='approved'||c.approval_status==='approved';
+          const isCurrent = c.current_plan_revision === true;
+          const isCurrentApproval = isCurrent && facts.approvalCurrent
+            && ST.approved && ST.approved.approved_candidate === c.candidate_id;
+          const charLine = c.parent_candidate ? '' : (()=>{
+            if (c.interpretation && c.interpretation.label) {
+              return `<div class="meta">character: ${esc(c.interpretation.label)} — ${esc(c.interpretation.character || '')}</div>`;
+            }
+            const t = c.tempo_feel==='lifted'?'a touch faster':c.tempo_feel==='relaxed'?'a touch slower':'at the planned pace';
+            const p = c.pulse_style==='driving'?'with a driving pulse':c.pulse_style==='sparse'?'with a sparse, open pulse':'with the planned pulse';
+            const m = c.melody_bias==='forward'?'and a clearer melodic voice':c.melody_bias==='minimal'?'and almost no melody':'and the planned melody';
+            return `<div class="meta">character: ${t}, ${p}, ${m}</div>`;
+          })();
+          const backendLabel = isProduction ? 'MiniMax · production candidate' : 'Scorecraft · structural sketch';
+          const shownStatus = isProduction ? c.generation_status : c.status;
+          const historyPrefix = isCurrent ? '' : 'historical · ';
+          const verdict = isProduction ? `<span class="meta">human verdict: ${esc(c.human_verdict||'unreviewed')}</span>` : '';
+          const failureMessage = c.failure_reason || (c.artifact_integrity===false ? 'The saved audio no longer matches its generation record and cannot be approved.' : '');
+          const failure = isProduction && failureMessage ? `<div class="err" style="display:block">${esc(failureMessage)}</div>` : '';
+          return `<div class="cand ${esc(c.status)}">
+            <div class="row"><strong>${esc(c.candidate_id)}</strong>
+              <span class="meta">${esc(backendLabel)} · ${fmtTime(c.duration_seconds)}${!isProduction&&!c.parent_candidate?' · variation '+(parseInt(c.candidate_id.slice(-3),10)):''}</span>${parent}
+              <span class="badge ${isCurrentApproval?'done':'todo'}">${historyPrefix+esc(shownStatus)}</span></div>
+            ${charLine}${revNote}${verdict}${failure}${mix}${dlg}
+            <div class="row">
+              ${isProduction ? `
+                <button class="btn btn-go" data-act="use" data-id="${esc(c.candidate_id)}"${busy||!isCurrent||c.generation_status!=='completed'||c.human_verdict==='use'?' disabled':''}>USE</button>
+                <button class="btn btn-danger" data-act="reject-production" data-id="${esc(c.candidate_id)}"${busy||c.generation_status!=='completed'||c.human_verdict==='reject'?' disabled':''}>Reject</button>
+                <button class="btn" data-act="approve" data-id="${esc(c.candidate_id)}"${busy||isCurrentApproval||!c.approval_eligible?' disabled':''}>Approve soundtrack</button>` : `
+                <button class="btn btn-go" data-act="approve" data-id="${esc(c.candidate_id)}"${isApproved||!isCurrent||!facts.planApproved?' disabled':''}>Use This</button>
+                <button class="btn" data-act="morelike" data-id="${esc(c.candidate_id)}"${busy||!isCurrent||!facts.planApproved?' disabled':''}>More Like This</button>
+                <button class="btn btn-danger" data-act="reject" data-id="${esc(c.candidate_id)}"${isApproved||c.status==='rejected'||!isCurrent?' disabled':''}>Reject</button>`}
+            </div>
+          </div>`;
+        }).join('');
+        box.querySelectorAll('button[data-act]').forEach(b=>b.addEventListener('click', async ()=>{
+          const act=b.dataset.act, cid=b.dataset.id;
+          try {
+            if (act==='approve'){ await run('Approving…', ()=>post('/api/score/candidates/approve',{project_id:ID,candidate_id:cid})); toast(cid+' approved — soundtrack exported'); }
+            else if (act==='use'){ await post('/api/score/candidates/status',{project_id:ID,candidate_id:cid,verdict:'use'}); toast(cid+' marked USE — approve when ready'); }
+            else if (act==='reject-production'){ await post('/api/score/candidates/status',{project_id:ID,candidate_id:cid,verdict:'reject'}); toast(cid+' rejected'); }
+            else if (act==='reject'){ await run('Marking rejected…', ()=>post('/api/score/candidates/status',{project_id:ID,candidate_id:cid,status:'rejected'})); }
+            else if (act==='morelike'){ await run('Creating variation of '+cid+'…', ()=>post('/api/score/candidates/revise',{project_id:ID,candidate_id:cid,request:'Make another version like this — keep the direction, vary the details.'})); toast('Variation added'); }
+            await load();
+          } catch(e){ showErr(e.message); busy=false; render(); }
+        }));
+      }
+
+      function renderApproved(facts){
+        const box = $('approved-box');
+        if (!facts.approvedExportExists){ box.innerHTML='<p class="meta">Approve an option above. The approved mix, dialogue-safe mix, stems and MIDI are exported to the project folder.</p>'; return; }
+        const approvalNote = facts.approvalCurrent
+          ? `<div class="ok-note">Approved for the current music plan: <strong>${esc(ST.approved.approved_candidate)}</strong> — exported to the project music folder.</div>`
+          : `<div class="stale-note">Historical approval: <strong>${esc(ST.approved.approved_candidate)}</strong>. This export is preserved, but it belongs to an earlier music plan and is not the currently approved soundtrack. Approve the current plan, generate current options, and choose a new soundtrack.</div>`;
+        const dialogueSafe = ST.approved && ST.approved.backend==='minimax' ? ''
+          : `<details><summary class="advanced-sum">dialogue-safe version</summary><audio controls preload="none" src="${fileUrl('approved/mix-dialogue-safe.wav')}"></audio></details>`;
+        box.innerHTML = `${approvalNote}
+          <audio controls preload="none" src="${fileUrl('approved/mix.wav')}"></audio>
+          ${dialogueSafe}
+          <div class="row" style="margin-top:8px">
+            <button class="btn" id="btn-folder">Open project folder</button>
+            <span class="meta">From here: import the mix/stems into your Resolve edit (see the README inside approved/resolve-import).</span>
+          </div>`;
+        $('btn-folder').addEventListener('click', async ()=>{ try{ await post('/api/score/open-folder',{project_id:ID}); toast('Folder opened'); }catch(e){ showErr(e.message); } });
+      }
+
+      function renderAdvanced(){
+        const el = $('advanced-body');
+        if (!ST){ el.innerHTML='<p class="meta">Open a project first.</p>'; return; }
+        const p = ST.project, cues = p.cues||[];
+        const cueRows = cues.map(c=>`<tr><td>${esc(c.cue_id)}</td><td>${esc(c.name)}</td><td>${fmtTime(c.start_seconds)}–${fmtTime(c.end_seconds)}</td><td>${esc(c.function)}</td><td>${esc(c.emotion)}</td><td>${c.energy}</td><td>${c.density}</td><td>${c.dialogue_safe?'yes':'no'}</td></tr>`).join('');
+        const roles = ST.music_plan ? Object.entries(ST.music_plan.roles||{}).map(([lane,r])=>`<tr><td>${esc(lane)}</td><td>${esc(r.character||'')}</td><td>${esc(r.profile_display_name||r.vendor||'')}</td><td class="meta">${esc(r.preset_hint||'')}</td></tr>`).join('') : '';
+        el.innerHTML = `
+          <p class="meta">Project id ${esc(p.project_id)} · engine ${esc(p.engine_version)} · dialogue density ${esc(p.dialogue_density)} · role ${esc(p.music_role)} · palette ${esc(p.palette_id)} · seed ${p.seed}${p.video_package_path?' · package project (VIDNAS)':''}</p>
+          ${cueRows?`<h4 style="margin:10px 0 2px">Cue sheet</h4><table><tr><th>cue</th><th>name</th><th>time</th><th>function</th><th>emotion</th><th>energy</th><th>density</th><th>dialogue-safe</th></tr>${cueRows}</table>`:''}
+          ${roles?`<h4 style="margin:10px 0 2px">Instrumentation plan</h4><table><tr><th>lane</th><th>character</th><th>instrument profile</th><th>preset hint</th></tr>${roles}</table>`:''}
+          <h4 style="margin:14px 0 2px">Generators</h4>
+          <p class="meta">Built-in deterministic composer + preview renderer: OFFLINE, always available (what you hear above).<br>
+          MiniMax Music 3: production candidate backend with explicit generation state and human verdict. Its worker starts manually; dispatch fails closed with a truthful reason when it is offline. Nothing routes to it automatically.</p>
+          <h4 style="margin:14px 0 2px">Deep tools</h4>
+          <p><a class="btn" href="score-project.html?id=${encodeURIComponent(p.project_id)}">Open in Score workspace</a> <span class="meta">cue editing · REAPER/Ableton handoff · production import · narration verification</span></p>
+          <h4 style="margin:14px 0 2px">Storage lifecycle</h4>
+          <p class="meta">Storage actions follow approval, revision, verdict, and provenance truth. Current work, approved soundtracks, quality evidence, and unknown files stay protected.</p>
+          <button class="btn" id="btn-storage-review">Review Storage</button>
+          <div id="storage-review" style="margin-top:8px"></div>`;
+        $('btn-storage-review').addEventListener('click', reviewStorage);
+      }
+
+      const STORAGE_LABELS={
+        CURRENT_APPROVED:'Current approved — protected', CURRENT_UNAPPROVED:'Current work — protected',
+        HISTORICAL:'Historical — archivable', REJECTED:'Rejected — archivable',
+        QUALITY_GATE:'Quality evidence — protected', FAILED_INCOMPLETE:'Failed/incomplete — review',
+        RECONSTRUCTIBLE_DISPOSABLE:'Reconstructible/disposable', UNKNOWN:'Unknown — protected', ARCHIVED:'Archived',
+      };
+
+      async function reviewStorage(){
+        const box=$('storage-review');
+        box.innerHTML='<p class="meta">Reading server-side storage truth…</p>';
+        try{
+          const [summary,global,dedupe]=await Promise.all([
+            fetchJson('/api/score/storage/summary?id='+encodeURIComponent(ID)),
+            fetchJson('/api/score/storage/summary'),
+            fetchJson('/api/score/storage/dedupe?id='+encodeURIComponent(ID)),
+          ]);
+          const rows=(summary.candidates||[]).map(c=>`<tr><td>${esc(c.candidate_id)}</td><td>${esc(c.backend)}</td><td>${esc(STORAGE_LABELS[c.classification]||c.classification)}</td><td>${fmtBytes(c.byte_size)}</td><td>${esc(c.reason||'')}</td><td>${c.protection==='ARCHIVABLE'?`<button class="btn" data-storage-action="archive" data-candidate="${esc(c.candidate_id)}">Preview archive</button>`:'protected'}</td></tr>`).join('');
+          const archives=(global.archives||[]).filter(a=>a.project_id===ID).map(a=>`<div class="row"><span class="meta">${esc(a.archive_id)} · ${esc(a.state)} · ${fmtBytes(a.total_bytes)}</span>${a.state==='archived'?`<button class="btn" data-storage-action="restore" data-archive="${esc(a.archive_id)}">Preview restore</button><button class="btn btn-danger" data-storage-action="delete" data-archive="${esc(a.archive_id)}">Preview delete</button>`:''}</div>`).join('');
+          const duplicateGroups=(dedupe.groups||[]).filter(g=>(g.files||[]).some(f=>f.project_id===ID));
+          const duplicateRows=duplicateGroups.map(g=>`<tr><td>${esc(g.semantic_pattern)}</td><td>${g.file_count}</td><td>${fmtBytes(g.logical_duplicate_bytes)}</td><td>${fmtBytes(g.physical_duplicate_bytes)}</td><td>${fmtBytes(g.reclaimable_physical_bytes)}</td><td>${g.reclaimable_physical_bytes>0?`<button class="btn" data-dedupe-hash="${esc(g.sha256)}">Preview dedupe</button>`:'protected / no-op'}</td></tr>`).join('');
+          box.innerHTML=`${summary.quality_gate?'<div class="stale-note">Frozen quality-gate evidence — hard protected.</div>':''}
+            <p class="meta">${fmtBytes(summary.total_bytes)} total · ${fmtBytes(summary.protected_bytes)} protected · ${fmtBytes(summary.archivable_bytes)} potentially archivable · delete remains preview-only</p>
+            <h4>Duplicate content</h4><p class="meta">${fmtBytes(dedupe.logical_duplicate_bytes)} logical duplicates · ${fmtBytes(dedupe.physical_duplicate_bytes)} physically duplicated · ${fmtBytes(dedupe.reclaimable_physical_bytes)} currently eligible. Content identity never overrides semantic protection.</p>
+            ${duplicateRows?`<table><tr><th>roles</th><th>files</th><th>logical</th><th>physical</th><th>eligible</th><th>action</th></tr>${duplicateRows}</table>`:'<p class="meta">No top duplicate group belongs to this project.</p>'}
+            ${rows?`<table><tr><th>artifact group</th><th>backend</th><th>classification</th><th>bytes</th><th>reason</th><th>action</th></tr>${rows}</table>`:'<p class="meta">No candidate artifact groups.</p>'}
+            ${archives?`<h4>Archive records</h4>${archives}`:''}<div id="storage-plan"></div>`;
+          box.querySelectorAll('[data-storage-action]').forEach(button=>button.addEventListener('click',()=>previewStorageAction(button)));
+          box.querySelectorAll('[data-dedupe-hash]').forEach(button=>button.addEventListener('click',()=>previewDedupe(button.dataset.dedupeHash)));
+        }catch(e){ box.innerHTML=`<div class="err" style="display:block">${esc(e.message)}</div>`; }
+      }
+
+      async function previewDedupe(sha256){
+        const target=$('storage-plan');
+        try{
+          const plan=await post('/api/score/storage/dedupe/preview',{action:'dedupe_group',project_id:ID,sha256});
+          target.innerHTML=`<div class="plan-box"><strong>Dedupe preview</strong><br>${esc(plan.mechanism)} · ${fmtBytes(plan.estimated_physical_savings)} measured allocation potentially saved · ${plan.allowed?'eligible scratch fixture':'blocked'}
+            ${(plan.blockers||[]).map(b=>`<div class="meta">${esc(b)}</div>`).join('')}
+            ${(plan.targets||[]).map(f=>`<div class="meta">${esc(f.semantic_role)} · ${esc(f.relative_path)}</div>`).join('')}
+            ${plan.allowed?'<button class="btn btn-warn" id="btn-dedupe-confirm">Apply reversible dedupe</button>':'<p class="meta">No mutation is available for this production/protected group.</p>'}</div>`;
+          if(plan.allowed) $('btn-dedupe-confirm').addEventListener('click',async()=>{
+            if(!confirm('Apply this scratch-only hardlink plan? The server will revalidate every byte and lifecycle fact.')) return;
+            try{ const result=await post('/api/score/storage/dedupe/execute',{plan_id:plan.plan_id}); toast(`Saved ${fmtBytes(result.physical_savings_bytes)} physically`); await reviewStorage(); }
+            catch(e){ showErr(e.message); await reviewStorage(); }
+          });
+        }catch(e){ target.innerHTML=`<div class="err" style="display:block">${esc(e.message)}</div>`; }
+      }
+
+      async function previewStorageAction(button){
+        const action=button.dataset.storageAction;
+        const payload=action==='archive'
+          ? {action:'archive_candidate',project_id:ID,candidate_id:button.dataset.candidate}
+          : {action:action==='restore'?'restore_candidate':'delete_archive',archive_id:button.dataset.archive};
+        const target=$('storage-plan');
+        try{
+          const plan=await post('/api/score/storage/preview',payload);
+          const affected=(plan.files||[]).map(f=>`<li>${esc(f.relative_path)} · ${fmtBytes(f.byte_size)}</li>`).join('');
+          target.innerHTML=`<div class="plan-box"><strong>${esc(action)} preview</strong><br>${fmtBytes(plan.total_bytes)} · ${plan.allowed?'eligible':'blocked'}
+            ${(plan.blockers||[]).map(b=>`<div class="meta">${esc(b)}</div>`).join('')}${affected?`<details><summary class="advanced-sum">Exact files</summary><ul>${affected}</ul></details>`:''}
+            ${plan.allowed?`<button class="btn btn-warn" id="btn-storage-confirm">${action==='restore'?'Restore':'Archive'} this artifact group</button>`:'<p class="meta">No mutation is available for this preview.</p>'}</div>`;
+          if(plan.allowed) $('btn-storage-confirm').addEventListener('click',async()=>{
+            if(!confirm(`${action==='restore'?'Restore':'Archive'} ${plan.candidate_id}? The server will revalidate this preview before changing files.`)) return;
+            try{ await post('/api/score/storage/execute',{plan_id:plan.plan_id}); toast(action==='restore'?'Artifact restored':'Artifact archived'); await load(); await reviewStorage(); }
+            catch(e){ showErr(e.message); await reviewStorage(); }
+          });
+        }catch(e){ target.innerHTML=`<div class="err" style="display:block">${esc(e.message)}</div>`; }
+      }
+
+      // ── one-click flows ───────────────────────────────────────────────────
+      async function run(label, fn){
+        busy=true; showErr(''); $('plan-status').textContent=label; render();
+        try { return await fn(); }
+        finally { busy=false; $('plan-status').textContent=''; }
+      }
+
+      $('btn-create').addEventListener('click', async ()=>{
+        const name=$('np-name').value.trim();
+        const script=$('np-script').value.trim();
+        const dur=parseFloat($('np-duration').value);
+        if(!name) return showErr('Give the project a name.');
+        if(!script && !Number.isFinite(dur)) return showErr('Paste a script, or give an exact duration in seconds.');
+        const payload={name, dialogue_density:$('np-narration').checked?'high':'low', music_role:'underscore'};
+        if(script) payload.script_text=script;
+        if(Number.isFinite(dur)&&dur>0) payload.duration_seconds=dur;
+        const mood=$('np-mood').value; if(mood) payload.overall_mood=mood;
+        const pal=$('np-palette').value; if(pal) payload.palette_id=pal;
+        try {
+          const r=await run('Creating project…', ()=>post('/api/score/projects',payload));
+          ID=(r.project||r).project_id; toast('Project created');
+          history.replaceState(null,'','music-creator.html?id='+encodeURIComponent(ID));
+          await load();
+        } catch(e){ showErr(e.message); busy=false; render(); }
+      });
+
+      $('btn-open').addEventListener('click', async ()=>{
+        const v=$('project-select').value; if(!v) return;
+        ID=v; history.replaceState(null,'','music-creator.html?id='+encodeURIComponent(ID));
+        await load();
+      });
+
+      $('btn-plan').addEventListener('click', async ()=>{
+        try {
+          const hasCues = ST && ST.project && (ST.project.cues||[]).length > 0;
+          if (!hasCues) {
+            // First click GENERATES the plan only. Machine generation is not
+            // human approval: the operator must read the plan before approving
+            // it, because approval unlocks candidate generation and MiniMax
+            // dispatch. One click can never set cue_sheet_approved.
+            await run('Analyzing script…', ()=>post('/api/score/cues/generate',{project_id:ID}));
+            await load();
+            toast('Plan created — read it, then click Approve Music Plan');
+            return;
+          }
+          // Second, explicit click records the human approval.
+          await run('Approving music plan…', ()=>post('/api/score/cues/approve',{project_id:ID}));
+          toast('Music plan approved');
+          await load();
+        } catch(e){ showErr(e.message); busy=false; render(); }
+      });
+
+      $('btn-generate').addEventListener('click', async ()=>{
+        const count=parseInt($('opt-count').value,10)||3;
+        try {
+          await run('Generating options (offline render, a few seconds)…', ()=>post('/api/score/candidates/generate',{project_id:ID,count}));
+          toast('Options ready — listen below');
+          await load();
+        } catch(e){ showErr(e.message); busy=false; render(); }
+      });
+
+      $('btn-minimax').addEventListener('click', async ()=>{
+        const button=$('btn-minimax');
+        button.disabled=true; $('gen-status').textContent='Checking MiniMax runtime…'; showErr('');
+        try {
+          await post('/api/score/music/generate',{project_id:ID,candidate_count:1});
+          toast('MiniMax generation queued — status will update here');
+        } catch(e) {
+          showErr(e.message);
+          toast('MiniMax unavailable — no playable candidate was created',true);
+        } finally {
+          $('gen-status').textContent='';
+          await load();
+        }
+      });
+
+      $('btn-revise').addEventListener('click', async ()=>{
+        const cid=$('revise-target').value, text=$('revise-text').value.trim();
+        if(!cid) return; if(!text) return showErr('Say what should change — one sentence is enough.');
+        try {
+          const rev = await run('Revising '+cid+'…', ()=>post('/api/score/candidates/revise',{project_id:ID,candidate_id:cid,request:text}));
+          const changes = (rev.revision_plan && rev.revision_plan.changes) || [];
+          const SETTINGS_ONLY = new Set(['lane_gain','palette']);
+          if (!changes.length) { toast('New variation added (no specific rule matched — new seed)'); }
+          else if (changes.every(ch=>SETTINGS_ONLY.has(ch.type))) {
+            toast('Variation '+rev.candidate.candidate_id+' added — approve it directly if it works');
+          } else {
+            // Plan-level revision: adopt the revised cues as THE plan, then the
+            // human re-approves the updated plan and regenerates options. This
+            // is the sanctioned flow — the provenance contract refuses to
+            // approve candidates built from an unapproved structure.
+            const snap = await fetchJson(fileUrl('candidates/'+rev.candidate.candidate_id+'/cue-sheet-used.json'));
+            await post('/api/score/cues/save',{project_id:ID,cues:snap.cues});
+            toast('Plan updated with your revision — approve the updated plan in step 2, then Generate Options again');
+          }
+          $('revise-text').value='';
+          await load();
+        } catch(e){ showErr(e.message); busy=false; render(); }
+      });
+
+      document.addEventListener('click', (ev)=>{
+        const chip=ev.target.closest('.chip[data-text]');
+        if(chip){ $('revise-text').value = chip.dataset.text; $('revise-text').focus(); }
+      });
+
+      // boot
+      (async ()=>{
+        if (startId){ ID=startId; }
+        await load();
+      })();
+    </script>
+  </body>
+</html>
