@@ -70,6 +70,7 @@ require("./earth-studio-agent-pilot.test.js");
 require("./generation-supervisor.test.js");
 require("./music-launcher.test.js");
 require("./music-launcher-deployment.test.js");
+require("./music-data-backup.test.js");
 require("./music-storage-lifecycle.test.js");
 require("./music-storage-dedupe.test.js");
 require("./music-creator.test.js");

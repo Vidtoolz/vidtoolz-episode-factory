@@ -39,6 +39,9 @@
       "score-engine/storage-lifecycle.js"
     ],
     "operations": [
+      "ops/music-creator-data-backup.sh",
+      "ops/music-creator-data-manifest.js",
+      "ops/music-creator-data-verify.js",
       "ops/deploy-music-launchers.sh",
       "ops/music-creator-launchers/23-Music-Creator.desktop",
       "ops/music-creator-launchers/README.md",
@@ -66,6 +69,7 @@
     "tests": [
       "tests/aigen-resolve-assembly.test.js",
       "tests/backfill-score-explanation.test.js",
+      "tests/music-data-backup.test.js",
       "tests/music-creator-minimax-integration.test.js",
       "tests/music-creator-state-integrity.test.js",
       "tests/music-creator.test.js",
@@ -93,6 +97,7 @@
     "documentation": [
       "docs/minimax-musical-continuity.md",
       "docs/minimax-resource-release.md",
+      "docs/music-creator-data-recovery.md",
       "docs/music-creator-production-baseline-20260822.md",
       "docs/music-creator-storage-deduplication.md",
       "docs/music-creator-storage-lifecycle.md",
