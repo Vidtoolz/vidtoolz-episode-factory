@@ -142,7 +142,29 @@ function parseResearchGateStatus(markdown = "") {
   };
 }
 
-function readResearchGate(runDir) {
+function readResearchGate(runDir, options = {}) {
+  // Canonical precedence: research-results.json (Research Result V1) is the
+  // authority for new Research Result-aware flows. Legacy Markdown evidence
+  // below remains the backward-compatible path; a legacy PASS never overrides
+  // a contradictory canonical result.
+  const authority = require("./research-result-authority.js");
+  const canonical = authority.evaluateCanonicalResearch(runDir, { asOf: options.asOf });
+  if (canonical.present) {
+    if (canonical.status === 'READY') {
+      return { sourceFile: "research-results.json", status: "PASS", structureStatus: "READY TO DRAFT",
+        readyToDraft: true, canonical,
+        reason: `canonical Research Results valid: ${canonical.counts.valid}/${canonical.counts.total} claims usable.` };
+    }
+    if (canonical.status === 'REVIEW') {
+      return { sourceFile: "research-results.json", status: "REVIEW", structureStatus: "PARTIAL",
+        readyToDraft: false, canonical,
+        reason: `canonical Research Results require human decision: ${canonical.blockers.join('; ') || 'disagreement pending'}.` };
+    }
+    return { sourceFile: "research-results.json", status: "BLOCKED", structureStatus: "BLOCKED",
+      readyToDraft: false, canonical,
+      reason: `canonical Research Results block drafting: ${canonical.blockers.join('; ') || 'no usable results'}.` };
+  }
+
   const researchPath = findResearchPackPath(runDir);
   const reviewPath = findResearchSufficiencyReviewPath(runDir);
   if (!researchPath) {
