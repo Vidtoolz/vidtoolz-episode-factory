@@ -468,7 +468,8 @@
         "rewrite Story or Research verdicts",
         "generate media or choose backend/model/host",
         "write executable image prompts or Camera mechanics",
-        "absorb Creative Director episode-identity authority"
+        "absorb Creative Director episode-identity authority",
+        "publish or alter publish-gate approval state"
       ],
       "escalation_rules": "Misleading absolute framing returns to Research; packaged promises exceeding source content return to Story; provocative framing and episode-concept changes escalate to Mikko as NEEDS_HUMAN_DECISION.",
       "disagreement_behavior": "Packaging vs Story or Packaging vs Research conflicts surface as RETURN_TO_STORY / RETURN_TO_RESEARCH / NEEDS_HUMAN_DECISION with both positions preserved; publish-gate approval is never derived from semantic success."
