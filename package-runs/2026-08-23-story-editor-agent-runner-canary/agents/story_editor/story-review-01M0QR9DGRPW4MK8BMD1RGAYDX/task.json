@@ -1,0 +1,161 @@
+{
+  "task_id": "story-review-01M0QR9DGRPW4MK8BMD1RGAYDX",
+  "project_id": "01M0QR9DGP5RRFTPVDA7WQP2XM",
+  "package_run_id": "2026-08-23-story-editor-agent-runner-canary",
+  "requested_by": "mikko",
+  "assignment": {
+    "action": "review_script",
+    "editorial_goal": "Review the exact current canonical Story without revising or approving it.",
+    "controversial_change": false
+  },
+  "script_version_id": "01M0QR9DGRPW4MK8BMD1RGAYDX",
+  "script_content_hash": "f6d38d2bc156ab537256ac0d0843a6ca9919e5749c55d581dd98cb36ef457671",
+  "script_sections": [
+    {
+      "id": "01M0QR9DGPJ29KR4PPNFXGB6GZ",
+      "order": 1,
+      "beat": "Source script paragraph 01",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "Here's the thing nobody selling you an AI tool will say out loud: every part of your channel can be copied. Every part except one.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 25
+    },
+    {
+      "id": "01M0QR9DGQVSKPCFJ1RSRN1R1P",
+      "order": 2,
+      "beat": "Source script paragraph 02",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "The script structure? Cloned in an afternoon. Your thumbnail template, your color grade, your pacing, your hook formula — somebody reverse-engineers all of it over a weekend with the same five tools you use. And the generative stuff makes it worse. The footage is a commodity now. The voice is a commodity. The edit is turning into a button.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 59
+    },
+    {
+      "id": "01M0QR9DGQ974AHKBQA06Z3TQT",
+      "order": 3,
+      "beat": "Source script paragraph 03",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "So what's actually left? You. The specific, slightly broken human standing in front of the camera. That's the moat. That's the only asset on your channel that doesn't have a free tier.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 32
+    },
+    {
+      "id": "01M0QR9DGQEDPB0GZ6VQ4XV90P",
+      "order": 4,
+      "beat": "Source script paragraph 04",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "And here's what's wild — it's a moat you don't have to build. You already are it. Your timing. The way you get irrationally annoyed at things. The dumb tangent. The opinion you deliver with way too much confidence. A competitor can study your workflow forever and still can't run your personality on their hardware. There's no checkpoint to download. No LoRA for being you.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 65
+    },
+    {
+      "id": "01M0QR9DGQN6ZYSN9NH4219YHS",
+      "order": 5,
+      "beat": "Source script paragraph 05",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "Which is exactly why I won't hand it to the AI — and I say that as a guy with three agents running his back end. Let the machine cut footage, score drafts, harvest clips, do the boring 80%. Fine. Take it. But the second I let it write my jokes in my voice, generate my face, decide what I think — I've outsourced the one thing with no substitute. I've automated away my own moat. That's not leverage. That's paying to make myself replaceable, slightly faster.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 87
+    },
+    {
+      "id": "01M0QR9DGQVW72X19PPFKE6MCZ",
+      "order": 6,
+      "beat": "Source script paragraph 06",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "And audiences have a nose for hollow. They can't always name it, but they feel when nobody's actually home. The human touch isn't a nice-to-have — it's the whole reason anyone clicked.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 32
+    },
+    {
+      "id": "01M0QR9DGQPFE29WNHB84H0T27",
+      "order": 7,
+      "beat": "Source script paragraph 07",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "It's like Steely Dan. Anyone can hire the same session players and the same gear. Nobody can hire the taste. The taste is the band.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 25
+    },
+    {
+      "id": "01M0QR9DGQP03DGQZ4SPE3YPFM",
+      "order": 8,
+      "beat": "Source script paragraph 08",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "So use the tools. All of them. Let the pipeline get absurd. But keep your hands on the part the audience actually showed up for — the person at the center, with the specific point of view, who occasionally says something no prompt would ever generate.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 46
+    },
+    {
+      "id": "01M0QR9DGQ6WD2KY32GHVS2VGC",
+      "order": 9,
+      "beat": "Source script paragraph 09",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "Because when everything is generatable, the only scarce thing left is a person who means it.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 16
+    },
+    {
+      "id": "01M0QR9DGQP0TZHB2CMFCFCNJ6",
+      "order": 10,
+      "beat": "Source script paragraph 10",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "So no. I'm not outsourcing me. I'm the moat. I'm keeping the moat.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 13
+    },
+    {
+      "id": "01M0QR9DGQRN3KB64TSE6R8R2C",
+      "order": 11,
+      "beat": "Source script paragraph 11",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "...also the AI version of me would probably be better at thumbnails, and I refuse to give it the satisfaction.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 20
+    }
+  ],
+  "central_claim": "Discuss the importance of maintaining a human touch and personal identity in AI video production, even when using advanced tools.",
+  "narrative_spine": null,
+  "script_claim_bindings": [],
+  "research_result_refs": [],
+  "data_root": "/home/vidtoolz/vidtoolz-script-builder/data",
+  "script_builder_root": "/home/vidtoolz/vidtoolz-script-builder",
+  "risk_level": "LOCAL_AUTO",
+  "retry_budget": 2,
+  "cost_budget": {
+    "max_model_calls": 2
+  },
+  "privacy": {
+    "local_only": true
+  }
+}

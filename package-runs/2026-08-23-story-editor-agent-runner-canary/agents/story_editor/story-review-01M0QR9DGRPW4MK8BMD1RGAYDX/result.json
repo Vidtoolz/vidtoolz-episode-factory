@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "agent_id": "story_editor",
+  "role_id": "story_editor",
+  "task_id": "story-review-01M0QR9DGRPW4MK8BMD1RGAYDX",
+  "project_id": "01M0QR9DGP5RRFTPVDA7WQP2XM",
+  "package_run_id": "2026-08-23-story-editor-agent-runner-canary",
+  "requested_by": "mikko",
+  "state": "BLOCKED",
+  "attention": "REVIEW",
+  "attempts": 0,
+  "max_attempts": 2,
+  "source_version_id": "01M0QR9DGRPW4MK8BMD1RGAYDX",
+  "candidate_version_id": null,
+  "central_claim": "Discuss the importance of maintaining a human touch and personal identity in AI video production, even when using advanced tools.",
+  "narrative_spine": null,
+  "structural_findings": [],
+  "argument_change": null,
+  "research_impact": null,
+  "recommendation": null,
+  "review_bundle": null,
+  "disagreement_state": "NONE",
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "REMEDIATE"
+  },
+  "provenance": {
+    "acting_agent": "story_editor",
+    "lane": "large_text",
+    "source_commit": "64364e335b383b7568f4cadf273b2908ce2806db",
+    "recorded_at": "2026-08-23T17:24:40.144Z"
+  },
+  "events": [
+    {
+      "at": "2026-08-23T17:24:40.139Z",
+      "actor": "story_editor",
+      "state": "ASSIGNMENT_RECEIVED",
+      "detail": "review_script from mikko"
+    },
+    {
+      "at": "2026-08-23T17:24:40.144Z",
+      "actor": "story_editor",
+      "state": "BLOCKED",
+      "detail": "deterministic preflight failed: narrative_spine missing"
+    }
+  ],
+  "reason": "deterministic preflight failed: narrative_spine missing",
+  "control_room": {
+    "role": "Story Editor",
+    "state": "BLOCKED",
+    "current_task": "story-review-01M0QR9DGRPW4MK8BMD1RGAYDX",
+    "source_version": "01M0QR9DGRPW4MK8BMD1RGAYDX",
+    "candidate_version": null,
+    "central_claim": "Discuss the importance of maintaining a human touch and personal identity in AI video production, even when using advanced tools.",
+    "narrative_spine": null,
+    "owner": "story_editor",
+    "next_owner": "production_operations",
+    "attention_level": "REVIEW",
+    "blocker": "deterministic preflight failed: narrative_spine missing",
+    "unresolved_disagreement": "NONE",
+    "latest_event": {
+      "at": "2026-08-23T17:24:40.144Z",
+      "actor": "story_editor",
+      "state": "BLOCKED",
+      "detail": "deterministic preflight failed: narrative_spine missing"
+    },
+    "story_summary": {
+      "structural_findings": 0,
+      "changed_sections": [],
+      "argument_change": null,
+      "research_invalidated": 0,
+      "new_unbound_claims": 0,
+      "constraint_failures": 0,
+      "diff": null,
+      "recommendation": null
+    }
+  }
+}

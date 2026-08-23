@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "runner_version": "agent-runner-v1",
+  "invocations": [
+    {
+      "invocation_id": "story_editor:story-review-01M0QR9DGRPW4MK8BMD1RGAYDX:1",
+      "agent_id": "story_editor",
+      "task_id": "story-review-01M0QR9DGRPW4MK8BMD1RGAYDX",
+      "attempt_number": 1,
+      "state": "BLOCKED",
+      "attention": "REVIEW",
+      "next_owner": "production_operations",
+      "task_directory": "story_editor/story-review-01M0QR9DGRPW4MK8BMD1RGAYDX",
+      "completed_at": "2026-08-23T17:24:40.145Z"
+    }
+  ]
+}

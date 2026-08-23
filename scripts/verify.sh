@@ -11,6 +11,8 @@ node --check score-engine/score-provenance.js
 node --check score-engine/score-readiness.js
 node --check scripts/verify-score-package.js
 node --check scripts/agent-control-room.js
+node --check scripts/agent-run.js
+node --check scripts/agent-task-story-editor.js
 node --check storage-adapter.js
 node --check app.js
 node --check agent-control-room-ui.js
