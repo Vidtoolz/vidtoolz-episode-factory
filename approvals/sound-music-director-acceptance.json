@@ -1,0 +1,26 @@
+{
+  "record_type": "human-decision-approval-binding",
+  "schema_version": 1,
+  "decision": "ACCEPT",
+  "deciding_human": "Mikko",
+  "decided_at": "2026-08-23T08:23:14+03:00",
+  "approved_commit": "ea68e42cb6e7740ee015c809408e341a8130b667",
+  "approved_commit_subject": "Build Sound and Music Director agent",
+  "scope": "SOUND_MUSIC_DIRECTOR_PRODUCTION_BASELINE",
+  "scope_note": "Decision binds to the exact commit/artifact state only. Later mutations to Sound & Music code, contract, or registry do not inherit this approval. Unrelated Editor/Earth Studio work is not approved. No push authorization granted.",
+  "artifact_binding": {
+    "artifact_path": "commit:ea68e42cb6e7740ee015c809408e341a8130b667",
+    "artifact_sha256": "029deec8b64df2fd42188707b58a7497e0077b2a62ce8bd21971453feb5862ca",
+    "artifact_sha256_of_what": "sha256 over exact git commit-object bytes (git cat-file commit ea68e42c...)",
+    "commit": "ea68e42cb6e7740ee015c809408e341a8130b667",
+    "approved_by": "Mikko",
+    "approved_at": "2026-08-23T08:23:14+03:00",
+    "scope": "SOUND_MUSIC_DIRECTOR_PRODUCTION_BASELINE"
+  },
+  "component_hashes": {
+    "config/agent-contract.json": "677d8689cf7ba93151f57fa177d567a7d0a5b8bb143b5d8e6f35a2163872de45",
+    "config/agent-registry.json": "28171d93e71dc9201b66ba129e530809015c0e7fb428e252704e5da9ea24ece0",
+    "scripts/sound-music-director.js": "1f3cd8184ae437468c3f19a0864222ce2e8f9a8256679861237d046c6bbd48e7"
+  },
+  "verification_contract": "Recompute with: git cat-file commit ea68e42cb6e7740ee015c809408e341a8130b667 | sha256sum, and verify via scripts/agent-contract-validator.js verifyApprovalBinding using artifact_binding fields."
+}
