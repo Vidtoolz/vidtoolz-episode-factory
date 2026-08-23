@@ -1,7 +1,17 @@
 {
-  "note": "R1–R10 failure-case fixtures for Research Result V1 Phase A. Each case is a root/results variant consumed by tests/research-result-validator.test.js. All identities are explicit TEST identities; no real human approval is fabricated.",
-  "shared_claim": {
-    "normalized_text": "Test claim for R-cases.",
-    "canonical_id": "claim-00000000-0000-4000-8000-0000000000r1"
-  }
+  "schema_version": 1,
+  "artifact_type": "research-result-failure-fixture-manifest",
+  "note": "Specification-only mutation manifest. The standalone suite constructs each self-contained case from valid TEST artifacts; none is a live approval or production result.",
+  "cases": [
+    {"id": "R1", "mutation": "evidence.source_ref does not resolve", "expected_state": "INVALID", "reason": "SOURCE_REFERENCE_MISSING"},
+    {"id": "R2", "mutation": "exact excerpt bytes changed without matching excerpt hash", "expected_state": "INVALID", "reason": "EVIDENCE_EXCERPT_MISMATCH"},
+    {"id": "R3", "mutation": "mechanically valid citation with Research support_status UNSUPPORTED", "expected_state": "VALID", "authorization": false, "recommendation": "DO_NOT_USE"},
+    {"id": "R4", "mutation": "independent SUPPORTS and CONTRADICTS links retained", "expected_state": "VALID", "authorization": false, "disagreement": "NEEDS_SPECIALIST_REVIEW"},
+    {"id": "R5", "mutation": "ten republishers assigned one independence_group", "independent_support_count": 1},
+    {"id": "R6", "mutation": "CURRENT_FACT freshness window expired", "expected_state": "STALE", "reason": "CURRENT_FACT_EXPIRED", "authorization": false},
+    {"id": "R7", "mutation": "old HISTORICAL_FACT with effective_date", "expected_state": "VALID"},
+    {"id": "R8", "mutation": "bound script assertion differs from evaluated claim", "expected_state": "STALE", "reason": "CLAIM_TEXT_CHANGED"},
+    {"id": "R9", "mutation": "required Story constraint ID omitted or replaced by unknown ID", "expected_helper_state": "INVALID"},
+    {"id": "R10", "mutation": "human exception result/script/assertion/artifact binding drift", "expected_exception_state": "STALE", "reason": "HUMAN_EXCEPTION_STALE"}
+  ]
 }

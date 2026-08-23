@@ -1,117 +1,146 @@
 {
- "schema_version": 1,
- "artifact_type": "research-results",
- "package_run_id": "fixture-claim-19.23",
- "project_id": null,
- "results": [
-  {
-   "result_id": "result-01923-r1",
-   "revision": 1,
-   "claim_ref": {
-    "namespace": "vidtoolz-mindmap/canonical-idea",
-    "canonical_id": "canon_gd_v10_5b4bf8ef0326bc1392af",
-    "revision": 1,
-    "alias_ids": [
-     {
-      "namespace": "vidtoolz-mindmap/discovery-claim",
-      "id": "claim-19.23"
-     }
-    ]
-   },
-   "claim": {
-    "normalized_text": "Cloud post-production improves remote access and collaboration, but high-resolution media introduces latency and recurring-cost overhead that local workflows avoid.",
-    "normalized_text_sha256": "2a76600d0bed53969882fee103f0c73a344193717822fb31ea5f3c6c9cef43cd"
-   },
-   "temporal": {
-    "temporal_class": "EVERGREEN_FACT"
-   },
-   "judgment": {
-    "support": "PARTIALLY_SUPPORTED",
-    "freshness": "NOT_APPLICABLE",
-    "evidence_quality": "WEAK",
-    "confidence": "MEDIUM",
-    "independence": "UNKNOWN",
-    "contradiction": "NONE",
-    "disagreement": "NONE",
-    "recommendation": "RESEARCH_MORE",
-    "rationale": "Audited Mindmap calibration: cloud collaboration benefits are real but media-size, bandwidth, provider pricing and time horizon condition the downsides; local workflows do not universally avoid latency or recurring costs. Single-source evidence."
-   },
-   "qualification": {
-    "qualification_required": true,
-    "wording_constraints": [
-     {
-      "constraint_id": "qc-01923-media-size",
-      "type": "LIMIT_SCOPE",
-      "note": "media size matters"
-     },
-     {
-      "constraint_id": "qc-01923-bandwidth",
-      "type": "LIMIT_SCOPE",
-      "note": "available bandwidth matters"
-     },
-     {
-      "constraint_id": "qc-01923-pricing",
-      "type": "RETAIN_QUALIFIER",
-      "note": "provider pricing matters"
-     },
-     {
-      "constraint_id": "qc-01923-horizon",
-      "type": "RETAIN_QUALIFIER",
-      "note": "time horizon matters"
-     },
-     {
-      "constraint_id": "qc-01923-latency-abs",
-      "type": "FORBID_ABSOLUTE",
-      "note": "local workflows do not universally avoid latency"
-     },
-     {
-      "constraint_id": "qc-01923-cost-abs",
-      "type": "FORBID_ABSOLUTE",
-      "note": "local workflows do not universally avoid recurring costs"
-     }
-    ]
-   },
-   "sources": [
-    {
-     "source_id": "src_gdoc_1XaPql0wBiNRjV9IMQ-pkru44t8jbwdMxP_YUJtkxGwo",
-     "source_class": "SECONDARY",
-     "original": {
-      "title": "What is collaborative video editing?"
-     },
-     "container": {
-      "container_type": "google_doc",
-      "relationship": "UNKNOWN",
-      "google_doc_id": "1XaPql0wBiNRjV9IMQ-pkru44t8jbwdMxP_YUJtkxGwo",
-      "title": "What is collaborative video editing?"
-     },
-     "independence_group": "ig-01923-collab-editing-doc",
-     "independence_basis": "single Google Doc corpus source; independence UNKNOWN — conservative single group"
-    }
-   ],
-   "evidence": [
-    {
-     "evidence_id": "ev-01923-1",
-     "source_ref": "src_gdoc_1XaPql0wBiNRjV9IMQ-pkru44t8jbwdMxP_YUJtkxGwo",
-     "stance": "SUPPORTS",
-     "excerpt": {
-      "exact_text": "High-resolution footage in cloud-based editing and rendering environments can suffer from lag, creating latency issues that do not exist in local workflows.",
-      "exact_text_sha256": "36c893de3d373b3b0296461cbf762a949e313384f29523301cb27e691fc1fa10"
-     },
-     "evidence_set_id": "canon_gd_v10_5b4bf8ef0326bc1392af",
-     "extracted_idea_id": "canon_gd_v10_5b4bf8ef0326bc1392af"
-    }
-   ],
-   "independent_support_count": 1,
-   "provenance": {
-    "researched_by": "mindmap-calibration-audit",
-    "audit_reference": "mindmap-reconciliation-calibration-v1.0",
-    "recorded_at": "2026-08-23T08:30:00+03:00"
-   },
-   "staleness": {
-    "state": "VALID",
-    "reason": null
-   },
-   "result_digest": "9cec196ddbfc1a6fd38eb28bc633a7439c67256d51710d07820df90f5629e9fb"
-  }
- ]
+  "schema_version": 1,
+  "artifact_type": "research-results",
+  "package_run_id": "fixture-claim-19.23",
+  "project_id": "research-result-v1-phase-a",
+  "results": [{
+    "result_id": "research-result-19230000-0000-4000-8000-000000000001",
+    "result_revision": 1,
+    "claim_ref": {
+      "namespace": "vidtoolz-mindmap/canonical-idea",
+      "canonical_id": "canon_gd_v10_5b4bf8ef0326bc1392af",
+      "revision": 1,
+      "alias_ids": [{"namespace": "vidtoolz-mindmap/discovery-claim", "id": "claim-19.23"}]
+    },
+    "claim": {
+      "evaluated_text": "Cloud post-production improves remote access and collaboration, but high-resolution media introduces latency and recurring-cost overhead that local workflows avoid.",
+      "evaluated_text_sha256": "2a76600d0bed53969882fee103f0c73a344193717822fb31ea5f3c6c9cef43cd",
+      "temporal": {"temporal_class": "EVERGREEN_FACT"}
+    },
+    "judgment": {
+      "support_status": "PARTIALLY_SUPPORTED",
+      "freshness_status_at_review": "NOT_APPLICABLE",
+      "evidence_quality": "WEAK",
+      "confidence": "MEDIUM",
+      "independence_status": "UNKNOWN",
+      "contradiction_status": "NONE",
+      "disagreement_state": "NONE",
+      "recommendation": "RESEARCH_MORE",
+      "rationale": "The corpus supports remote access, collaboration, bandwidth-dependent latency, and potentially higher long-term subscription cost. It does not support the absolute claim that local workflows universally avoid latency or recurring costs. Both containers have unknown original-source identity, so they do not prove independent corroboration.",
+      "unresolved_questions": ["What original publications or firsthand evidence underlie the two Google Doc containers?"]
+    },
+    "qualification": {
+      "qualification_required": true,
+      "wording_constraints": [
+        {"constraint_id": "rr-01923-bandwidth", "type": "LIMIT_SCOPE", "instruction": "State that latency depends on available bandwidth."},
+        {"constraint_id": "rr-01923-cost-absolute", "type": "FORBID_ABSOLUTE", "instruction": "Do not claim local workflows universally avoid recurring costs."},
+        {"constraint_id": "rr-01923-latency-absolute", "type": "FORBID_ABSOLUTE", "instruction": "Do not claim local workflows universally avoid latency."},
+        {"constraint_id": "rr-01923-media-size", "type": "LIMIT_SCOPE", "instruction": "State that latency depends on media size or resolution."},
+        {"constraint_id": "rr-01923-pricing", "type": "RETAIN_QUALIFIER", "instruction": "State that recurring-cost comparisons depend on provider pricing."},
+        {"constraint_id": "rr-01923-time-horizon", "type": "RETAIN_QUALIFIER", "instruction": "State that cost comparisons depend on time horizon."}
+      ]
+    },
+    "sources": [
+      {
+        "source_ref": "src_gdoc_1XaPql0wBiNRjV9IMQ-pkru44t8jbwdMxP_YUJtkxGwo",
+        "source_class": "UNKNOWN",
+        "original_source": null,
+        "container": {
+          "source_id": "src_gdoc_1XaPql0wBiNRjV9IMQ-pkru44t8jbwdMxP_YUJtkxGwo",
+          "container_type": "GOOGLE_DOC",
+          "relationship_to_original": "UNKNOWN",
+          "google_document_id": "1XaPql0wBiNRjV9IMQ-pkru44t8jbwdMxP_YUJtkxGwo",
+          "title": "What is collaborative video editing?",
+          "retrieved_at": "2026-08-13T15:23:49.176Z",
+          "retrieved_content_sha256": "d3644b87d75a37a0ba307d531ab18e6944e1394a759fee8dd275abb56cd2fecf",
+          "source_fingerprint_sha256": "d3644b87d75a37a0ba307d531ab18e6944e1394a759fee8dd275abb56cd2fecf"
+        },
+        "independence_group": "unknown-origin:canon_gd_v10_5b4bf8ef0326bc1392af",
+        "independence_basis": "Original source identity is unknown; conservatively grouped with all unknown-origin containers for this claim."
+      },
+      {
+        "source_ref": "src_gdoc_1laSZIfP3_ql6cNvrdIf-CKfgFZ9c4IJ7nOLGONDO4qY",
+        "source_class": "UNKNOWN",
+        "original_source": null,
+        "container": {
+          "source_id": "src_gdoc_1laSZIfP3_ql6cNvrdIf-CKfgFZ9c4IJ7nOLGONDO4qY",
+          "container_type": "GOOGLE_DOC",
+          "relationship_to_original": "UNKNOWN",
+          "google_document_id": "1laSZIfP3_ql6cNvrdIf-CKfgFZ9c4IJ7nOLGONDO4qY",
+          "title": "Cloud vs. on-prem video editing",
+          "retrieved_at": "2026-08-13T14:54:07.536Z",
+          "retrieved_content_sha256": "fa5d8d50b90b010385a76f9e5e49aeab27fef810a912b2ce0daad946dad5fe5a",
+          "source_fingerprint_sha256": "fa5d8d50b90b010385a76f9e5e49aeab27fef810a912b2ce0daad946dad5fe5a"
+        },
+        "independence_group": "unknown-origin:canon_gd_v10_5b4bf8ef0326bc1392af",
+        "independence_basis": "Original source identity is unknown; a second Google Doc container does not establish an independent original source."
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "ev-01923-1",
+        "source_ref": "src_gdoc_1XaPql0wBiNRjV9IMQ-pkru44t8jbwdMxP_YUJtkxGwo",
+        "stance": "SUPPORTS",
+        "excerpt": {
+          "exact_text": "   - **Cloud Editing**: Requires only a web browser or cloud-based software, with easy access from anywhere.\n3. **Collaboration**:\n   - **Remote Editing**: Collaboration is typically not in real-time unless using additional tools.\n   - **Cloud Editing**: Allows for real-time collaboration and access to the same file simultaneously.\n4. **Syncing**:\n   - **Remote Editing**: May require manual syncing or file transfers after editing.\n   - **Cloud Editing**: Automatic syncing happens in real time.",
+          "exact_text_sha256": "9dc1dcc49e134ab00f52c34f210c436ee38b62c789f7f310d39363812b2a41d1"
+        },
+        "evidence_set_id": "evidence_b48ff691794edefed2bc",
+        "extracted_idea_id": "ext_gd_v13_91552debf8c2e8083e0b",
+        "evidence_window_id": "win_21f33a4f0cfee5efb205",
+        "paragraph_range": {"start": 120, "end": 126},
+        "heading_context": "### Key Differences"
+      },
+      {
+        "evidence_id": "ev-01923-2",
+        "source_ref": "src_gdoc_1XaPql0wBiNRjV9IMQ-pkru44t8jbwdMxP_YUJtkxGwo",
+        "stance": "SUPPORTS",
+        "excerpt": {
+          "exact_text": "   - **Cloud Editing**: Files are always stored in the cloud and accessed over the internet.\n2. **Access**:\n   - **Remote Editing**: May require specialized software or remote access tools (e.g., remote desktop).\n   - **Cloud Editing**: Requires only a web browser or cloud-based software, with easy access from anywhere.\n3. **Collaboration**:\n   - **Remote Editing**: Collaboration is typically not in real-time unless using additional tools.\n   - **Cloud Editing**: Allows for real-time collaboration and access to the same file simultaneously.",
+          "exact_text_sha256": "1481a2c6390ea900a8e9a3f3b75b807cb450dfac905a4587e7d286931ee3bf54"
+        },
+        "evidence_set_id": "evidence_b48ff691794edefed2bc",
+        "extracted_idea_id": "ext_gd_v13_91552debf8c2e8083e0b",
+        "evidence_window_id": "win_d8a64fce8db8a056d4ac",
+        "paragraph_range": {"start": 117, "end": 123},
+        "heading_context": "### Key Differences"
+      },
+      {
+        "evidence_id": "ev-01923-3",
+        "source_ref": "src_gdoc_1laSZIfP3_ql6cNvrdIf-CKfgFZ9c4IJ7nOLGONDO4qY",
+        "stance": "SUPPORTS",
+        "excerpt": {
+          "exact_text": "Disaster Recovery: Cloud services are generally more resilient to local disruptions like power outages or system crashes.\nCons:\nInternet Dependency: Requires a fast and stable internet connection; poor connectivity can slow workflows significantly.\nLatency Issues: Cloud-based editing and rendering may suffer from lag, especially with high-resolution footage.\nData Security Concerns: Uploading sensitive or proprietary content to the cloud can pose risks of unauthorized access or breaches.\nOngoing Costs: Subscription-based pricing can become costly for long-term use compared to owning hardware and software outright.\nLimited Offline Access: Projects may become inaccessible without an internet connection, interrupting workflows.",
+          "exact_text_sha256": "0d8b44017b4ab0df2ab70a7b078d0d33051bc9d748ed9e8ed68f237199d2cafc"
+        },
+        "evidence_set_id": "evidence_4bec02bbc28db25ae418",
+        "extracted_idea_id": "ext_gd_v13_c3e376c596980b58686e",
+        "evidence_window_id": "win_3ed812052eeee48b99e1",
+        "paragraph_range": {"start": 20, "end": 26},
+        "heading_context": "Cons:"
+      },
+      {
+        "evidence_id": "ev-01923-4",
+        "source_ref": "src_gdoc_1laSZIfP3_ql6cNvrdIf-CKfgFZ9c4IJ7nOLGONDO4qY",
+        "stance": "CONTEXT_ONLY",
+        "excerpt": {
+          "exact_text": "Local Editors, Hardware, and Storage Pros:\n\t1\tFull Control: Total ownership and control over hardware, software, and files without relying on third-party services.\n\t2\tOffline Access: Projects can be worked on without internet connectivity, ensuring consistent productivity.\n\t3\tLower Latency: Real-time editing and playback with no network delays, even with high-resolution content.\n\t4\tCost Efficiency Over Time: One-time hardware and software purchases can be more economical for long-term projects.\n\t5\tEnhanced Security: Files remain on local drives, minimizing exposure to hacking or unauthorized access.\n\t6\tCustomizable Workflows: Easier to integrate specialized plugins, workflows, or hardware tailored to unique needs.",
+          "exact_text_sha256": "d55b67e8c2106f883bf1383b99d60e35a6a0db02f0a3f83c5a60eed1cb12a60d"
+        },
+        "evidence_set_id": "evidence_4bec02bbc28db25ae418",
+        "extracted_idea_id": "ext_gd_v13_c3e376c596980b58686e",
+        "evidence_window_id": "win_82930107bebd3fcfcbc2",
+        "paragraph_range": {"start": 32, "end": 38},
+        "heading_context": "Local Editors, Hardware, and Storage Pros:"
+      }
+    ],
+    "derived": {"independent_support_count": 1},
+    "provenance": {"provenance_inputs": [
+      {"system": "vidtoolz-mindmap", "type": "claim-package-v3", "record_id": "canon_gd_v10_5b4bf8ef0326bc1392af", "sha256": "8ef969ad01698dc57c192bcaf3a1cb244b97fb7ffa1748cc5ec0baf085aee26e"},
+      {"system": "vidtoolz-mindmap", "type": "canonical-record", "record_id": "canon_gd_v10_5b4bf8ef0326bc1392af", "sha256": "4073dd474b021d037b36fedac814fc8ac0e74153d0b1cdf135e6fb58c6c8f88a"},
+      {"system": "vidtoolz-mindmap", "type": "review-record", "record_id": "claim-19.23", "sha256": "09a19474755f4c5d7a2da9b97ef19a6812cfc6eef6729c6178c8a283e7a29f5c"}
+    ]},
+    "lifecycle": {"created_at": "2026-08-23T08:30:00+03:00", "reviewed_at": "2026-08-23T08:30:00+03:00"},
+    "result_digest_sha256": "978ca046976110a3abc559b4d59e8e26d507f16e0cb1e23d2c269b0ac6e3be3b"
+  }]
 }
