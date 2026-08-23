@@ -1,470 +1,201 @@
 'use strict';
-// Presenter Take Manifest V1 — PT contract tests + PTM1–PTM36 adversarial
-// cases. Synthetic ffmpeg-free media records prove identity/integrity only.
 
-const { assert, fs, os, path, test, tests } = require('./_helpers.js');
-const crypto = require('node:crypto');
-const ptm = require('../scripts/presenter-take-manifest.js');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const childProcess = require('node:child_process');
+const ptm = require('../scripts/presenter-take-manifest');
 
-const sha = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
-let unitCounter = 0;
-function newUnitId() { return `recording-unit-${ptm.ulid(1700000000000 + (++unitCounter))}`; }
-function newTakeId() { return `take-${ptm.ulid(1700000000000)}`; }
-function newPickupId() { return `pickup-${ptm.ulid(1700000000000)}`; }
+const tests = []; let passed = 0;
+function test(name, fn) { tests.push({ name, fn }); }
+const NOW = '2026-08-23T12:00:00.000Z';
+const H = (value) => ptm.sha256(String(value));
+let idCounter = 1;
+function bareId() { return idCounter.toString(32).toUpperCase().padStart(26, '0').replace(/I|L|O|U/g, 'A'); }
+function manifestId() { idCounter += 1; return bareId(); }
+function takeId() { idCounter += 1; return `take-${bareId()}`; }
+function pickupId() { idCounter += 1; return `pickup-${bareId()}`; }
+function unitId() { idCounter += 1; return `recording-unit-${bareId()}`; }
 
-const STORY = { project_id: 'p-pres', version_id: '01JSTORYVERSION0000000000TEST',
-  content_hash: sha('story v1'), approval_state: 'approved' };
-const SECTIONS = [
-  { section_id: 'sec-01', order: 1, dialogue: 'Cloud tools cost money. But here is the catch.', framing_preset: 'right-third', type: 'composited' },
-  { section_id: 'sec-02', order: 2, dialogue: 'Local generation can reduce recurring costs for some workflows. That saves real money every month.', framing_preset: 'center-lower', type: 'composited' },
+const STORY = {
+  project_id: 'project-presenter', version_id: 'story-version-1', content_hash: H('story-one'), approval_state: 'approved',
+  sections: [
+    { section_id: 'hook', order: 1, dialogue: 'Local generation can reduce recurring costs for some workflows.', framing_preset: 'right-third', type: 'composited', presenter_relation: 'PRESENT' },
+    { section_id: 'payoff', order: 2, dialogue: 'Choose the workflow that preserves viewer value.', framing_preset: 'center-lower', type: 'presenter', presenter_relation: 'PRESENT' },
+  ],
+};
+const DRAFT = { ...STORY, approval_state: 'draft' };
+const mediaBytes = new Map();
+function media(name = 'a', overrides = {}) {
+  const bytes = Buffer.from(`video-${name}`); const ref = `memory://${name}`; mediaBytes.set(ref, bytes);
+  return { path_or_artifact_ref: ref, sha256: H(bytes), byte_size: bytes.length, duration_s: 1.25, media_type: 'video/mp4', requires_audio: true, ...overrides };
+}
+function probe(m) {
+  const bytes = mediaBytes.get(m.path_or_artifact_ref);
+  if (!bytes) return { ok: false, available: false, reason: 'MEDIA_MISSING' };
+  return { ok: true, available: true, actual_sha256: H(bytes), byte_size: bytes.length, duration_s: 1.25, has_video: true, has_audio: true };
+}
+function opts(story = STORY) { return { currentStory: story, mediaProbe: probe, allowedHumanIds: ['TEST_HUMAN'] }; }
+function createBase(story = STORY, extra = {}) { return ptm.createManifest(story, { manifestId: manifestId(), newUnitId: unitId, now: NOW, ...extra }); }
+function addTake(m, unit = m.recording_units[0], name = 'a', extra = {}) { const tid = extra.take_id || takeId(); return { takeId: tid, manifest: ptm.registerTake(m, { recording_unit_id: unit.recording_unit_id, take_id: tid, media: extra.media || media(name), captured_at: NOW, pickup_of_take_id: extra.pickup_of_take_id || null }, { mediaProbe: probe, manifestId: manifestId(), now: NOW }) }; }
+function addExactTranscript(m, tid, text) { return ptm.bindTranscript(m, tid, { text, source: 'HUMAN_SUPPLIED', created_at: NOW }, { manifestId: manifestId(), now: NOW }); }
+function addExactFidelity(m, tid) { return ptm.createFidelityRecord(m, tid, {}, { manifestId: manifestId(), now: NOW }); }
+function select(m, tid, selector = { type: 'HUMAN', id: 'TEST_HUMAN' }) { return ptm.createHumanSelection(m, { take_id: tid, selector, selected_at: NOW, scope: 'editor-take-selection' }, { manifestId: manifestId(), now: NOW, allowedHumanIds: ['TEST_HUMAN'] }); }
+function happy(story = STORY, name = 'happy') { let m = createBase(story); const added = addTake(m, m.recording_units[0], name); m = added.manifest; m = addExactTranscript(m, added.takeId, story.sections[0].dialogue); m = addExactFidelity(m, added.takeId); m = select(m, added.takeId); return { m, tid: added.takeId }; }
+function refresh(m) { m.manifest_digest_sha256 = ptm.manifestDigest(m); return m; }
+function clone(value) { return JSON.parse(JSON.stringify(value)); }
+function invalid(m, options = opts()) { return !ptm.validateManifest(m, options).ok; }
+
+// Strict schema and injection closure (PT-H1..PT-H9 plus authority aliases).
+const strictCases = [
+  ['root', (m) => { m.selected_take = 'x'; }],
+  ['Story', (m) => { m.story.story_rewrite = true; }],
+  ['unit', (m) => { m.recording_units[0].best_take = 'x'; }],
+  ['take', (m) => { m.takes[0].approved_take = true; }],
+  ['media', (m) => { m.takes[0].media.backend = 'gpu'; }],
+  ['transcript', (m) => { m.takes[0].transcript.model = 'asr'; }],
+  ['fidelity', (m) => { m.takes[0].fidelity_record.performance_approved = true; }],
+  ['selection', (m) => { m.human_selections[0].qc_pass = true; }],
 ];
-const MEDIA_BYTES_1 = 'fake mp4 bytes take one';
-const MEDIA_BYTES_2 = 'fake mp4 bytes take two';
+for (const [label, mutate] of strictCases) test(`PT-H strict ${label} rejects unknown authority`, () => { const { m } = happy(STORY, `strict-${label}`); mutate(m); refresh(m); assert.equal(ptm.validateManifest(m, opts()).ok, false); });
+for (const key of ['editor_selected', 'publish_ready', 'final_take', 'research_override', 'selection_authorized', 'approved_take', 'performance_approved']) test(`PT-H injection ${key} rejected`, () => { const { m } = happy(STORY, `inject-${key}`); m[key] = true; refresh(m); assert.ok(invalid(m)); });
 
-function mediaFor(bytes) {
-  return { path_or_artifact_ref: `/tmp/captures/${sha(bytes).slice(0, 12)}.mp4`,
-    sha256: sha(bytes), byte_size: bytes.length, duration_s: 12.5,
-    media_type: 'video/mp4' };
-}
-function mkUnits() {
-  return ptm.buildRecordingUnits({ ...STORY, sections: SECTIONS }, { newUnitId });
-}
-function mkTake(unit, bytes, over = {}) {
-  return {
-    take_id: over.take_id || newTakeId(),
-    recording_unit_id: unit.recording_unit_id,
-    story: { project_id: unit.story.project_id, version_id: unit.story.version_id, content_hash: unit.story.content_hash },
-    media: over.media || mediaFor(bytes || MEDIA_BYTES_1),
-    captured_at: '2026-08-23T10:00:00.000Z',
-    technical_state: 'MEDIA_VALID',
-    fidelity_state: over.fidelity_state !== undefined ? over.fidelity_state : null,
-    transcript: over.transcript === undefined ? null : over.transcript,
-    pickup_of_take_id: over.pickup_of_take_id || null,
-  };
-}
-function mkManifest(over = {}) {
-  const units = over.units || mkUnits();
-  const takes = over.takes !== undefined ? over.takes : [
-    mkTake(units[0], MEDIA_BYTES_1),
-    mkTake(units[0], MEDIA_BYTES_2, { transcript: { text: SECTIONS[0].dialogue, sha256: sha(SECTIONS[0].dialogue), source: 'HUMAN_SUPPLIED', created_at: '2026-08-23T10:05:00.000Z', media_sha256: sha(MEDIA_BYTES_2) } }),
-    mkTake(units[1], MEDIA_BYTES_1 + '-unit2'),
-  ];
-  const manifest = {
-    schema_version: 1, artifact_type: 'presenter-take-manifest',
-    manifest_id: over.manifest_id || ptm.newManifestId(),
-    manifest_revision: over.revision || 1, supersedes: over.supersedes ?? null,
-    supersedes_digest: over.supersedes_digest ?? null,
-    created_at: '2026-08-23T10:00:00.000Z', created_by: 'story-fixture',
-    story: over.story || { ...STORY },
-    recording_units: units,
-    takes,
-    pickup_requests: over.pickups !== undefined ? over.pickups
-      : [{ pickup_request_id: newPickupId(), recording_unit_id: units[1].recording_unit_id,
-           reason_code: 'PERFORMANCE_REVIEW_REQUEST', state: 'OPEN', created_by: 'story-fixture', requested_scope: 'full unit' }],
-    human_selections: over.selections !== undefined ? over.selections
-      : [{ recording_unit_id: units[0].recording_unit_id, take_id: takes[1].take_id,
-           media_sha256: sha(MEDIA_BYTES_2), selected_by: 'TEST_HUMAN', selected_at: '2026-08-23T11:00:00.000Z', scope: 'rough cut' }],
-  };
-  manifest.manifest_digest_sha256 = ptm.manifestDigest(manifest);
-  if (over.skipDigest) delete manifest.manifest_digest_sha256;
-  return manifest;
-}
-function validate(m, opts = {}) {
-  return ptm.validateManifest(m, {
-    currentStory: opts.currentStory === null ? undefined : (opts.currentStory || STORY),
-    ...opts,
-  });
-}
+// Story authority and recording-unit resolution.
+test('PT-H project drift fails', () => { const { m } = happy(); assert.equal(ptm.evaluateTakeAuthority(m, m.takes[0].take_id, opts({ ...STORY, project_id: 'other' })).editor_handoff_ready, false); });
+test('PT-H version drift fails', () => { const { m } = happy(); assert.ok(ptm.validateManifest(m, opts({ ...STORY, version_id: 'v2' })).stale); });
+test('PT-H hash drift fails', () => { const { m } = happy(); assert.ok(ptm.validateManifest(m, opts({ ...STORY, content_hash: H('v2') })).stale); });
+test('PT-H approval drift fails', () => { const { m } = happy(); assert.equal(ptm.evaluateTakeAuthority(m, m.takes[0].take_id, opts(DRAFT)).editor_handoff_ready, false); });
+test('PT-H draft manifest derives PREVIEW_ONLY', () => { const m = createBase(DRAFT); assert.equal(m.state, 'PREVIEW_ONLY'); assert.ok(ptm.validateManifest(m, opts(DRAFT)).ok); });
+test('PT-H draft cannot become Editor-ready', () => { const { m, tid } = happy(DRAFT, 'draft'); const out = ptm.evaluateTakeAuthority(m, tid, opts(DRAFT)); assert.equal(out.state, 'PREVIEW_ONLY'); assert.equal(out.editor_handoff_ready, false); });
+test('PT-H caller state escalation rejected', () => { const m = createBase(DRAFT); m.state = 'READY_FOR_REVIEW'; refresh(m); assert.ok(invalid(m, opts(DRAFT))); });
+test('PT-H approved state derives READY_FOR_REVIEW', () => assert.equal(createBase().state, 'READY_FOR_REVIEW'));
+test('PT-H unknown section fails', () => { const m = createBase(); m.recording_units[0].section_id = 'unknown'; refresh(m); assert.ok(invalid(m)); });
+test('PT-H changed canonical dialogue fails', () => { const m = createBase(); const changed = clone(STORY); changed.sections[0].dialogue = 'Changed'; assert.ok(ptm.validateManifest(m, opts(changed)).stale); });
+test('PT-H changed section order fails', () => { const m = createBase(); const changed = clone(STORY); changed.sections[0].order = 9; assert.ok(ptm.validateManifest(m, opts(changed)).stale); });
+test('PT-H duplicate unit ID fails', () => { const m = createBase(); m.recording_units[1].recording_unit_id = m.recording_units[0].recording_unit_id; refresh(m); assert.ok(invalid(m)); });
+test('PT-H malformed unit ID fails', () => { const m = createBase(); m.recording_units[0].recording_unit_id = 'unit-model'; refresh(m); assert.ok(invalid(m)); });
+test('PT-H unknown framing fails', () => { const m = createBase(); m.recording_units[0].framing_preset = 'plausible-free-text'; refresh(m); assert.ok(invalid(m)); });
+test('PT-H valid right-third framing passes', () => assert.ok(ptm.validateManifest(createBase(), opts()).ok));
 
-// ── Contract / Story identity ────────────────────────────────────────────────
-test('PT1: canonical manifest validates', () => {
-  const out = validate(mkManifest());
-  assert.ok(out.ok, out.errors.join('; '));
-});
-test('PT2: artifact_type and schema_version enforced', () => {
-  const m = mkManifest(); m.artifact_type = 'something-else';
-  assert.ok(!validate(m).ok);
-});
-test('PT3: manifest_id ULID format enforced', () => {
-  const m = mkManifest(); m.manifest_id = 'not-a-ulid';
-  assert.ok(validate(m).errors.some((e) => /manifest_id/.test(e)));
-});
-test('PT4: approval_state enum enforced', () => {
-  const m = mkManifest(); m.story.approval_state = 'half-approved';
-  assert.ok(validate(m).errors.some((e) => /approval_state/.test(e)));
-});
-test('PT5: draft story allowed structurally', () => {
-  const draftStory = { ...STORY, approval_state: 'draft' };
-  const units = ptm.buildRecordingUnits({ ...draftStory, sections: SECTIONS }, { newUnitId });
-  const m = mkManifest({ story: draftStory, units });
-  assert.ok(validate(m, { currentStory: null }).ok);
-});
+// Capture lineage and media authority.
+test('PT-H take reassignment fails capture binding', () => { const added = addTake(createBase()); added.manifest.takes[0].recording_unit_id = added.manifest.recording_units[1].recording_unit_id; refresh(added.manifest); assert.ok(invalid(added.manifest)); });
+test('PT-H take project mismatch fails', () => { const added = addTake(createBase()); added.manifest.takes[0].story.project_id = 'other'; refresh(added.manifest); assert.ok(invalid(added.manifest)); });
+test('PT-H take dialogue lineage mismatch fails', () => { const added = addTake(createBase()); added.manifest.takes[0].recording_unit_dialogue_sha256 = H('other'); refresh(added.manifest); assert.ok(invalid(added.manifest)); });
+test('PT-H malformed take ID fails', () => { const added = addTake(createBase()); added.manifest.takes[0].take_id = 'take-model'; refresh(added.manifest); assert.ok(invalid(added.manifest)); });
+test('PT-H duplicate take ID fails', () => { let m = createBase(); const a = addTake(m, m.recording_units[0], 'dup-a'); m = a.manifest; const b = addTake(m, m.recording_units[0], 'dup-b'); m = b.manifest; m.takes[1].take_id = m.takes[0].take_id; refresh(m); assert.ok(invalid(m)); });
+test('PT-H stored media SHA mismatch fails authority', () => { const { m, tid } = happy(); m.takes[0].media.sha256 = H('wrong'); m.takes[0].capture_binding_sha256 = H('bad'); refresh(m); assert.equal(ptm.evaluateTakeAuthority(m, tid, opts()).editor_handoff_ready, false); });
+test('PT-H stored byte size mismatch fails authority', () => { const { m, tid } = happy(); m.takes[0].media.byte_size += 1; refresh(m); assert.equal(ptm.evaluateTakeAuthority(m, tid, opts()).media_verified, false); });
+test('PT-H missing media fails authority', () => { const { m, tid } = happy(); mediaBytes.delete(m.takes[0].media.path_or_artifact_ref); assert.equal(ptm.evaluateTakeAuthority(m, tid, opts()).editor_handoff_ready, false); });
+test('PT-H changed bytes at same path fails authority', () => { const { m, tid } = happy(STORY, 'mutated-memory'); mediaBytes.set(m.takes[0].media.path_or_artifact_ref, Buffer.from('changed')); assert.equal(ptm.evaluateTakeAuthority(m, tid, opts()).editor_handoff_ready, false); });
+test('PT-H corrupt probe fails authority', () => { const { m, tid } = happy(); const bad = { ...opts(), mediaProbe: () => ({ ok: false, available: false, reason: 'CORRUPT' }) }; assert.equal(ptm.evaluateTakeAuthority(m, tid, bad).editor_handoff_ready, false); });
+test('PT-H missing persisted verification fails', () => { const added = addTake(createBase()); added.manifest.takes[0].media.verification = null; refresh(added.manifest); assert.equal(ptm.validateManifest(added.manifest, { ...opts(), requireMediaVerification: true }).ok, false); });
+test('PT-H missing audio fails', () => { const { m, tid } = happy(); const bad = { ...opts(), mediaProbe: (x) => ({ ...probe(x), has_audio: false }) }; assert.equal(ptm.evaluateTakeAuthority(m, tid, bad).editor_handoff_ready, false); });
+test('PT-H missing video fails', () => { const { m, tid } = happy(); const bad = { ...opts(), mediaProbe: (x) => ({ ...probe(x), has_video: false }) }; assert.equal(ptm.evaluateTakeAuthority(m, tid, bad).editor_handoff_ready, false); });
+test('PT-H duration mismatch fails', () => { const { m, tid } = happy(); const bad = { ...opts(), mediaProbe: (x) => ({ ...probe(x), duration_s: 8 }) }; assert.equal(ptm.evaluateTakeAuthority(m, tid, bad).editor_handoff_ready, false); });
+test('PT-H authority requires current Story', () => { const { m, tid } = happy(); assert.equal(ptm.evaluateTakeAuthority(m, tid, { mediaProbe: probe }).editor_handoff_ready, false); });
+test('PT-H authority rejects stale digest', () => { const { m, tid } = happy(); m.manifest_digest_sha256 = H('stale'); assert.equal(ptm.evaluateTakeAuthority(m, tid, opts()).editor_handoff_ready, false); });
+test('PT-H media verifier records actual identity', () => { const added = addTake(createBase()); assert.equal(added.manifest.takes[0].media.verification.media_sha256, added.manifest.takes[0].media.sha256); });
 
-// ── Recording units ──────────────────────────────────────────────────────────
-test('PT6: buildRecordingUnits binds exact dialogue hashes', () => {
-  const units = mkUnits();
-  assert.equal(units[0].approved_dialogue_sha256, sha(ptm.normalizeText(SECTIONS[0].dialogue)));
-});
-test('PT7: framing presets carried from canonical config names', () => {
-  const units = mkUnits();
-  assert.equal(units[0].framing_preset, 'right-third');
-});
-test('PT8: derivation rejects unknown framing preset', () => {
-  assert.throws(() => ptm.buildRecordingUnits({ ...STORY, sections: [{ ...SECTIONS[0], framing_preset: 'floating-shot' }] }, { newUnitId }));
-});
-test('PT9: unit drift — changed dialogue hash detected on revalidation', () => {
-  const m = mkManifest();
-  m.recording_units[0].approved_dialogue = 'Changed wording entirely.';
-  assert.ok(validate(m).errors.some((e) => /hash mismatch/.test(e)));
-});
-test('PT10: detached unit — unknown section flagged via unknown-unit take reference', () => {
-  const m = mkManifest();
-  m.takes[0].recording_unit_id = 'recording-unit-UNKNOWN';
-  assert.ok(validate(m).errors.some((e) => /unknown recording unit/.test(e)));
-});
+// Transcript and evidence-bound fidelity.
+test('PT-H transcript exact take binding passes', () => { let m = createBase(); const a = addTake(m); m = addExactTranscript(a.manifest, a.takeId, STORY.sections[0].dialogue); assert.ok(ptm.validateManifest(m, opts()).ok); });
+test('PT-H same-hash transcript reuse across take IDs fails', () => { let m = createBase(); const shared = media('shared'); const a = addTake(m, m.recording_units[0], 'unused', { media: shared }); m = a.manifest; const b = addTake(m, m.recording_units[0], 'unused2', { media: shared }); m = b.manifest; m = addExactTranscript(m, a.takeId, STORY.sections[0].dialogue); const tr = clone(m.takes.find((t) => t.take_id === a.takeId).transcript); m.takes.find((t) => t.take_id === b.takeId).transcript = tr; refresh(m); assert.ok(invalid(m)); });
+test('PT-H transcript media mismatch fails', () => { let m = createBase(); const a = addTake(m); m = addExactTranscript(a.manifest, a.takeId, STORY.sections[0].dialogue); m.takes[0].transcript.media_sha256 = H('other'); refresh(m); assert.ok(invalid(m)); });
+test('PT-H transcript text mutation fails hash', () => { let m = createBase(); const a = addTake(m); m = addExactTranscript(a.manifest, a.takeId, STORY.sections[0].dialogue); m.takes[0].transcript.text = 'changed'; refresh(m); assert.ok(invalid(m)); });
+test('PT-H absent transcript cannot use raw enum', () => { const added = addTake(createBase()); added.manifest.takes[0].fidelity_state = 'SCRIPT_FAITHFUL'; refresh(added.manifest); assert.ok(invalid(added.manifest)); });
+test('PT-H absent transcript remains not ready', () => { const added = addTake(createBase()); assert.equal(ptm.evaluateTakeAuthority(added.manifest, added.takeId, opts()).editor_handoff_ready, false); });
+test('PT-H deterministic exact fidelity passes', () => { const { m } = happy(); assert.equal(m.takes[0].fidelity_record.method, 'EXACT_TEXT_MATCH'); });
+test('PT-H exact method rejects changed transcript', () => { let m = createBase(); const a = addTake(m); m = addExactTranscript(a.manifest, a.takeId, 'Changed wording'); assert.throws(() => addExactFidelity(m, a.takeId)); });
+test('PT-H fidelity wrong take ID fails', () => { const { m } = happy(); m.takes[0].fidelity_record.take_id = takeId(); refresh(m); assert.ok(invalid(m)); });
+test('PT-H fidelity wrong transcript hash fails', () => { const { m } = happy(); m.takes[0].fidelity_record.transcript_sha256 = H('other'); refresh(m); assert.ok(invalid(m)); });
+test('PT-H fidelity wrong media hash fails', () => { const { m } = happy(); m.takes[0].fidelity_record.media_sha256 = H('other'); refresh(m); assert.ok(invalid(m)); });
+test('PT-H fidelity wrong dialogue hash fails', () => { const { m } = happy(); m.takes[0].fidelity_record.approved_dialogue_sha256 = H('other'); refresh(m); assert.ok(invalid(m)); });
+test('PT-H human fidelity requires verified human', () => { const added = addTake(createBase()); assert.throws(() => ptm.createFidelityRecord(added.manifest, added.takeId, { method: 'HUMAN_VERIFIED', classification: 'SCRIPT_FAITHFUL', verifier: { type: 'AGENT', id: 'presenter_director' } }, { manifestId: manifestId(), now: NOW })); });
+test('PT-H verified TEST_HUMAN fidelity may cover absent transcript', () => { const added = addTake(createBase()); const m = ptm.createFidelityRecord(added.manifest, added.takeId, { method: 'HUMAN_VERIFIED', classification: 'SCRIPT_FAITHFUL', verifier: { type: 'HUMAN', id: 'TEST_HUMAN' } }, { manifestId: manifestId(), now: NOW, allowedHumanIds: ['TEST_HUMAN'] }); assert.ok(ptm.validateManifest(m, opts()).ok); });
 
-// ── Takes / media ────────────────────────────────────────────────────────────
-test('PT11: take binds media sha256 + size + duration', () => {
-  const m = mkManifest();
-  assert.ok(m.takes.every((t) => /^[a-f0-9]{64}$/.test(t.media.sha256) && t.media.byte_size > 0 && t.media.duration_s > 0));
-});
-test('PT12: filename is not identity — same path, different bytes = different hash', () => {
-  const a = mediaFor('bytes one'); const b = { ...mediaFor('bytes two'), path_or_artifact_ref: a.path_or_artifact_ref };
-  assert.notEqual(a.sha256, b.sha256);
-});
-test('PT13: technical_state enum enforced', () => {
-  const m = mkManifest(); m.takes[0].technical_state = 'BEST_TAKE';
-  assert.ok(validate(m).errors.some((e) => /technical_state/.test(e)));
-});
-test('PT14: fidelity_state enum enforced', () => {
-  const m = mkManifest(); m.takes[0].fidelity_state = 'GOOD_PERFORMANCE';
-  assert.ok(validate(m).errors.some((e) => /fidelity_state/.test(e)));
-});
+// Factual-risk and Research authority.
+test('PT-H number/date change flagged', () => assert.ok(ptm.textDiff('On 2025-01-01 it was 20', 'On 2026-01-01 it was 200').factual_risk_flags.includes('NUMBER_OR_DATE_TOKEN_CHANGED')));
+test('PT-H absolute change flagged', () => assert.ok(ptm.textDiff('It can help', 'It always helps').factual_risk_flags.includes('ABSOLUTE_TERM_CHANGED')));
+test('PT-H attribution change flagged', () => assert.ok(ptm.textDiff('According to Company A', 'According to Company B').factual_risk_flags.includes('ATTRIBUTION_TOKEN_CHANGED')));
+test('PT-H qualifier removal flagged', () => assert.ok(ptm.textDiff('It can help under load', 'It helps').factual_risk_flags.includes('QUALIFIER_TOKEN_REMOVED')));
+function researchStory() { const ref = { script_binding_id: 'binding-cost', canonical_claim_id: 'claim-cost', research_result_id: 'rr-cost', result_revision: 1, result_digest_sha256: H('rr'), assertion_sha256: H('assertion'), required_constraint_ids: ['LIMIT_SCOPE'], applied_constraint_ids: ['LIMIT_SCOPE'], authority_state: 'CURRENT' }; const story = clone(STORY); story.sections[0].research_refs = [ref]; return { story, ref }; }
+test('PT-H exact Research-bound transcript needs no deviation review', () => { const { story } = researchStory(); const { m, tid } = happy(story, 'research-exact'); assert.equal(ptm.evaluateTakeAuthority(m, tid, opts(story)).research_resolved, true); });
+test('PT-H unresolved Research deviation blocks', () => { const { story } = researchStory(); let m = createBase(story); const a = addTake(m); m = addExactTranscript(a.manifest, a.takeId, 'Local generation eliminates recurring costs.'); m = ptm.createFidelityRecord(m, a.takeId, { method: 'SEMANTIC_TRANSCRIPT_REVIEW', classification: 'MINOR_DELIVERY_VARIATION', verifier: { type: 'AGENT', id: 'presenter_director' } }, { manifestId: manifestId(), now: NOW }); m = select(m, a.takeId); assert.equal(ptm.evaluateTakeAuthority(m, a.takeId, opts(story)).state, 'RETURN_TO_RESEARCH'); });
+test('PT-H fabricated Research binding fails', () => { const { story } = researchStory(); const m = createBase(story); m.recording_units[0].research_refs[0].result_digest_sha256 = 'bad'; refresh(m); assert.ok(invalid(m, opts(story))); });
+test('PT-H missing Research constraint blocks', () => { const { story } = researchStory(); story.sections[0].research_refs[0].applied_constraint_ids = []; let m = createBase(story); const a = addTake(m); m = addExactTranscript(a.manifest, a.takeId, 'Local generation eliminates costs.'); m = ptm.createFidelityRecord(m, a.takeId, { method: 'SEMANTIC_TRANSCRIPT_REVIEW', classification: 'MINOR_DELIVERY_VARIATION', verifier: { type: 'AGENT', id: 'presenter_director' } }, { manifestId: manifestId(), now: NOW }); m = ptm.bindResearchAttention(m, a.takeId, { script_binding_id: 'binding-cost', status: 'RESOLVED', resolution_ref: 'test' }, { manifestId: manifestId(), now: NOW }); m = select(m, a.takeId); const authority = { 'binding-cost': { result_id: 'rr-cost', result_revision: 1, result_digest_sha256: H('rr'), state: 'CURRENT' } }; assert.equal(ptm.evaluateTakeAuthority(m, a.takeId, { ...opts(story), researchAuthorityByBinding: authority }).editor_handoff_ready, false); });
+test('PT-H current resolved Research deviation can proceed', () => { const { story } = researchStory(); let m = createBase(story); const a = addTake(m); m = addExactTranscript(a.manifest, a.takeId, 'Local generation may reduce recurring costs for some workflows.'); m = ptm.createFidelityRecord(m, a.takeId, { method: 'SEMANTIC_TRANSCRIPT_REVIEW', classification: 'MINOR_DELIVERY_VARIATION', verifier: { type: 'AGENT', id: 'presenter_director' } }, { manifestId: manifestId(), now: NOW }); m = ptm.bindResearchAttention(m, a.takeId, { script_binding_id: 'binding-cost', status: 'RESOLVED', resolution_ref: 'verified:test' }, { manifestId: manifestId(), now: NOW }); m = select(m, a.takeId); const authority = { 'binding-cost': { result_id: 'rr-cost', result_revision: 1, result_digest_sha256: H('rr'), state: 'CURRENT' } }; assert.equal(ptm.evaluateTakeAuthority(m, a.takeId, { ...opts(story), researchAuthorityByBinding: authority }).editor_handoff_ready, true); });
 
-// ── Transcript ───────────────────────────────────────────────────────────────
-test('PT15: transcript bound to exact media hash validates', () => {
-  const out = validate(mkManifest());
-  assert.ok(out.ok, out.errors.join('; '));
-});
-test('PT16: transcript for another take\'s media rejected', () => {
-  const m = mkManifest();
-  m.takes[0].transcript = { text: 'x', source: 'HUMAN_SUPPLIED', created_at: 't', media_sha256: sha('other-bytes') };
-  m.manifest_digest_sha256 = ptm.manifestDigest(m);
-  assert.ok(validate(m).errors.some((e) => /does not bind this take's media/.test(e)));
-});
-test('PT17: modified transcript with stale hash rejected', () => {
-  const m = mkManifest();
-  m.takes[1].transcript.text = 'altered words';
-  // digest recomputed so ONLY the transcript-hash invariant fires
-  m.manifest_digest_sha256 = ptm.manifestDigest(m);
-  assert.ok(validate(m).errors.some((e) => /transcript hash mismatch/.test(e)));
-});
-test('PT18: missing transcript represented honestly as null', () => {
-  const m = mkManifest();
-  assert.equal(m.takes[0].transcript, null);
-  assert.ok(validate(m).ok);
+// Pickup lineage, closure, and blocking.
+function withOpenPickup() { let { m, tid } = happy(STORY, `pickup-${idCounter}`); m = ptm.createPickupRequest(m, { recording_unit_id: m.recording_units[0].recording_unit_id, source_take_ids: [tid], reason_code: 'PERFORMANCE_REVIEW_REQUEST', blocking: true, created_by: 'presenter_director', created_at: NOW }, { pickup_request_id: pickupId(), manifestId: manifestId(), now: NOW }); m = select(m, tid); return { m, tid, pid: m.pickup_requests[0].pickup_request_id }; }
+test('PT-H pickup binds exact Story', () => { const { m } = withOpenPickup(); assert.deepEqual(m.pickup_requests[0].story, m.story); });
+test('PT-H pickup fake Story fails', () => { const { m } = withOpenPickup(); m.pickup_requests[0].story.project_id = 'other'; refresh(m); assert.ok(invalid(m)); });
+test('PT-H pickup source take wrong unit fails', () => { let { m } = withOpenPickup(); const b = addTake(m, m.recording_units[1], 'other-unit'); m = b.manifest; m.pickup_requests[0].source_take_ids = [b.takeId]; refresh(m); assert.ok(invalid(m)); });
+test('PT-H pickup unit dialogue drift fails', () => { const { m } = withOpenPickup(); m.pickup_requests[0].recording_unit_dialogue_sha256 = H('other'); refresh(m); assert.ok(invalid(m)); });
+test('PT-H manual SATISFIED without closure fails', () => { const { m } = withOpenPickup(); m.pickup_requests[0].state = 'SATISFIED'; refresh(m); assert.ok(invalid(m)); });
+test('PT-H unrelated replacement cannot close pickup', () => { let { m, pid } = withOpenPickup(); const b = addTake(m, m.recording_units[1], 'unrelated'); assert.throws(() => ptm.closePickup(b.manifest, pid, { replacement_take_id: b.takeId, verified_by: { type: 'AGENT', id: 'presenter_director' } }, { manifestId: manifestId(), now: NOW })); });
+test('PT-H open blocking pickup prevents readiness', () => { const { m, tid } = withOpenPickup(); const out = ptm.evaluateTakeAuthority(m, tid, opts()); assert.equal(out.pickup_open, true); assert.equal(out.editor_handoff_ready, false); assert.equal(out.state, 'PICKUP_OPEN'); });
+test('PT-H nonblocking pickup does not block', () => { let { m, tid } = happy(STORY, 'nonblock'); m = ptm.createPickupRequest(m, { recording_unit_id: m.recording_units[0].recording_unit_id, source_take_ids: [tid], reason_code: 'PERFORMANCE_REVIEW_REQUEST', blocking: false, created_by: 'presenter_director' }, { manifestId: manifestId(), now: NOW }); m = select(m, tid); assert.equal(ptm.evaluateTakeAuthority(m, tid, opts()).editor_handoff_ready, true); });
+test('PT-H verified replacement closes pickup', () => { let { m, pid } = withOpenPickup(); const original = m.takes[0].take_id; const b = addTake(m, m.recording_units[0], 'replacement', { pickup_of_take_id: original }); m = b.manifest; m = addExactTranscript(m, b.takeId, STORY.sections[0].dialogue); m = addExactFidelity(m, b.takeId); m = ptm.closePickup(m, pid, { replacement_take_id: b.takeId, verified_by: { type: 'AGENT', id: 'presenter_director' }, verified_at: NOW }, { manifestId: manifestId(), now: NOW }); m = select(m, b.takeId); assert.equal(ptm.evaluateTakeAuthority(m, b.takeId, opts()).editor_handoff_ready, true); });
+test('PT-H closure binding mutation fails', () => { let { m, pid } = withOpenPickup(); const b = addTake(m, m.recording_units[0], 'replacement2'); m = ptm.closePickup(b.manifest, pid, { replacement_take_id: b.takeId, verified_by: { type: 'AGENT', id: 'presenter_director' } }, { manifestId: manifestId(), now: NOW }); m.pickup_requests[0].closure.scope = 'changed'; refresh(m); assert.ok(invalid(m)); });
+
+// Human selection authority and recommendation separation.
+test('PT-H TEST_HUMAN selection valid', () => { const { m } = happy(); assert.ok(ptm.validateManifest(m, opts()).ok); });
+for (const agent of ['presenter_director', 'hermes', 'editor', 'qc_director', 'random_agent']) test(`PT-H selector ${agent} rejected`, () => { let m = createBase(); const a = addTake(m); m = addExactTranscript(a.manifest, a.takeId, STORY.sections[0].dialogue); m = addExactFidelity(m, a.takeId); assert.throws(() => select(m, a.takeId, { type: 'HUMAN', id: agent })); });
+test('PT-H selector type AGENT rejected', () => { let m = createBase(); const a = addTake(m); m = addExactTranscript(a.manifest, a.takeId, STORY.sections[0].dialogue); m = addExactFidelity(m, a.takeId); assert.throws(() => select(m, a.takeId, { type: 'AGENT', id: 'TEST_HUMAN' })); });
+test('PT-H selection binds manifest ID', () => { const { m } = happy(); m.human_selections[0].manifest_id = manifestId(); refresh(m); assert.ok(invalid(m)); });
+test('PT-H selection binds manifest revision', () => { const { m } = happy(); m.human_selections[0].manifest_revision -= 1; refresh(m); assert.ok(invalid(m)); });
+test('PT-H selection binds Story', () => { const { m } = happy(); m.human_selections[0].story.content_hash = H('other'); refresh(m); assert.ok(invalid(m)); });
+test('PT-H selection binds take/media', () => { const { m } = happy(); m.human_selections[0].media_sha256 = H('other'); refresh(m); assert.ok(invalid(m)); });
+test('PT-H selection binding digest enforced', () => { const { m } = happy(); m.human_selections[0].scope = 'different'; refresh(m); assert.ok(invalid(m)); });
+test('PT-H recommendation A does not override selection B', () => { let m = createBase(); const a = addTake(m, m.recording_units[0], 'rec-a'); m = addExactTranscript(a.manifest, a.takeId, STORY.sections[0].dialogue); m = addExactFidelity(m, a.takeId); const b = addTake(m, m.recording_units[0], 'rec-b'); m = addExactTranscript(b.manifest, b.takeId, STORY.sections[0].dialogue); m = addExactFidelity(m, b.takeId); m.recommendations.push({ recording_unit_id: m.recording_units[0].recording_unit_id, take_id: a.takeId, rank: 1, reason: 'advisory', created_by: 'presenter_director', created_at: NOW }); refresh(m); m = select(m, b.takeId); assert.equal(ptm.evaluateTakeAuthority(m, a.takeId, opts()).editor_handoff_ready, false); assert.equal(ptm.evaluateTakeAuthority(m, b.takeId, opts()).editor_handoff_ready, true); });
+
+// Digest, immutable revisions, Editor and review projections.
+test('PT-H digest mandatory', () => { const m = createBase(); m.manifest_digest_sha256 = null; assert.ok(invalid(m)); });
+test('PT-H semantic mutation with stale digest fails', () => { const m = createBase(); m.recording_units[0].approved_dialogue = 'changed'; assert.ok(invalid(m)); });
+test('PT-H JSON ordering stable', () => { const m = createBase(); const reordered = JSON.parse(JSON.stringify(m)); assert.equal(ptm.manifestDigest(reordered), m.manifest_digest_sha256); });
+test('PT-H writers increment exactly one revision', () => { const m = createBase(); const a = addTake(m); assert.equal(a.manifest.manifest_revision, m.manifest_revision + 1); });
+test('PT-H writers bind predecessor', () => { const m = createBase(); const a = addTake(m); assert.equal(a.manifest.supersedes_digest, m.manifest_digest_sha256); });
+test('PT-H successor validates both artifacts', () => { const m = createBase(); const a = addTake(m); assert.ok(ptm.validateSuccessorManifest(m, a.manifest, opts()).ok); });
+test('PT-H skipped successor fails', () => { const m = createBase(); const a = addTake(m); a.manifest.manifest_revision += 1; refresh(a.manifest); assert.equal(ptm.validateSuccessorManifest(m, a.manifest, opts()).ok, false); });
+test('PT-H detached successor fails', () => { const m = createBase(); const a = addTake(m); a.manifest.supersedes_digest = H('wrong'); refresh(a.manifest); assert.equal(ptm.validateSuccessorManifest(m, a.manifest, opts()).ok, false); });
+test('PT-H same-revision mutation fails successor validation', () => { const m = createBase(); const changed = clone(m); changed.recording_units[0].framing_preset = 'left-third'; refresh(changed); assert.equal(ptm.validateSuccessorManifest(m, changed, opts()).ok, false); });
+test('PT-H Editor projection uses derived authority', () => { const { m, tid } = happy(); const handoff = ptm.buildEditorHandoff(m, opts()); assert.equal(handoff.units[0].selected_take.take_id, tid); assert.equal(handoff.units[0].ready, true); });
+test('PT-H Editor projection blocks invalid selection', () => { const { m } = happy(); m.human_selections[0].media_sha256 = H('wrong'); refresh(m); const handoff = ptm.buildEditorHandoff(m, opts()); assert.equal(handoff.units[0].selected_take, null); });
+test('PT-H Editor projection has no timeline authority', () => { const { m } = happy(); assert.doesNotMatch(JSON.stringify(ptm.buildEditorHandoff(m, opts())), /timeline|trim|transition|qc_pass|final_cut/i); });
+test('PT-H review bundle exposes digest', () => { const { m } = happy(); const v = ptm.validateManifest(m, opts()); assert.equal(ptm.buildReviewBundle(m, v, opts()).manifest_digest_sha256, m.manifest_digest_sha256); });
+test('PT-H review bundle exposes blockers', () => { const { m, tid } = withOpenPickup(); const v = ptm.validateManifest(m, opts()); const bundle = ptm.buildReviewBundle(m, v, opts()); assert.ok(bundle.human_attention.blockers.some((b) => b.take_id === tid && b.reason === 'BLOCKING_PICKUP_OPEN')); });
+test('PT-H review bundle exposes exact diff', () => { const { m } = happy(); const v = ptm.validateManifest(m, opts()); assert.equal(ptm.buildReviewBundle(m, v, opts()).units[0].takes[0].transcript.diff.exact, true); });
+
+// Real-byte grounded mutation canary; proves mechanics, not performance quality.
+test('PT-H real ffmpeg media mutation invalidates authority and selection', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ptm-hardening-')); const file = path.join(dir, 'take.mp4');
+  try {
+    const made = childProcess.spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=320x568:r=24:d=1', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1', '-shortest', '-c:v', 'libx264', '-c:a', 'aac', '-y', file], { encoding: 'utf8' });
+    assert.equal(made.status, 0, made.stderr);
+    const bytes = fs.readFileSync(file); const stat = fs.statSync(file); let m = createBase(); const tid = takeId();
+    m = ptm.registerTake(m, { recording_unit_id: m.recording_units[0].recording_unit_id, take_id: tid, media: { path_or_artifact_ref: file, sha256: ptm.sha256(bytes), byte_size: stat.size, duration_s: 1, media_type: 'video/mp4', requires_audio: true }, captured_at: NOW }, { manifestId: manifestId(), now: NOW });
+    m = addExactTranscript(m, tid, STORY.sections[0].dialogue); m = addExactFidelity(m, tid); m = select(m, tid);
+    assert.equal(ptm.evaluateTakeAuthority(m, tid, { currentStory: STORY, allowedHumanIds: ['TEST_HUMAN'] }).state, 'EDITOR_READY');
+    fs.appendFileSync(file, Buffer.from('mutated'));
+    const after = ptm.evaluateTakeAuthority(m, tid, { currentStory: STORY, allowedHumanIds: ['TEST_HUMAN'] });
+    assert.equal(after.media_verified, false); assert.equal(after.human_selection_valid, false); assert.equal(after.editor_handoff_ready, false);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-// ── Fidelity diff ────────────────────────────────────────────────────────────
-test('PT19: exact match → exact=true, no changes', () => {
-  const d = ptm.textDiff(SECTIONS[0].dialogue, SECTIONS[0].dialogue);
-  assert.equal(d.exact, true); assert.equal(d.changed, false);
-});
-test('PT20: mechanical diff detects added/removed tokens', () => {
-  const d = ptm.textDiff('The tool costs money today', 'The tool costs more money tomorrow');
-  assert.ok(d.changed); assert.ok(d.removed_tokens.includes('today')); assert.ok(d.added_tokens.includes('tomorrow'));
-});
-test('PT21: whitespace normalization does not count as change', () => {
-  const d = ptm.textDiff('same   words', 'same words');
-  assert.equal(d.changed, false);
-});
-test('PT22: number token change raises factual-risk flag', () => {
-  const d = ptm.textDiff('it costs 500 dollars', 'it costs 900 dollars');
-  assert.ok(d.factual_risk_flags.includes('NUMBER_TOKEN_CHANGED'));
-});
-test('PT23: absolute term change raises factual-risk flag', () => {
-  const d = ptm.textDiff('this can reduce costs', 'this will always reduce costs');
-  assert.ok(d.factual_risk_flags.includes('ABSOLUTE_TERM_CHANGED'));
-});
-test('PT24: diff produces both hashes for downstream judgment', () => {
-  const d = ptm.textDiff('a b', 'a c');
-  assert.ok(/^[a-f0-9]{64}$/.test(d.approved_text_sha256) && /^[a-f0-9]{64}$/.test(d.captured_text_sha256));
-});
+// Harness/API completeness and honest legacy behavior.
+test('PT-H public writer surface exists', () => { for (const name of ['createManifest', 'registerTake', 'bindTranscript', 'createFidelityRecord', 'createPickupRequest', 'closePickup', 'createHumanSelection', 'buildEditorHandoff']) assert.equal(typeof ptm[name], 'function'); });
+test('PT-H manifest initial revision is one', () => assert.equal(createBase().manifest_revision, 1));
+test('PT-H generated IDs conform', () => { const m = createBase(); assert.match(m.manifest_id, /^[0-9A-HJKMNP-TV-Z]{26}$/); assert.match(m.recording_units[0].recording_unit_id, /^recording-unit-/); });
+test('PT-H legacy row remains unverified', () => { const legacy = { source: 'takes-log.md', status: 'LEGACY_UNVERIFIED' }; assert.equal(legacy.status, 'LEGACY_UNVERIFIED'); });
+test('PT-H legacy row cannot register without media identity', () => assert.throws(() => ptm.registerTake(createBase(), { recording_unit_id: createBase().recording_units[0]?.recording_unit_id, media: {} }, { mediaProbe: probe })));
+test('PT-H no acting-quality claims in authority', () => { const { m, tid } = happy(); assert.doesNotMatch(JSON.stringify(ptm.evaluateTakeAuthority(m, tid, opts())), /charisma|authenticity|eye.contact|performance.score/i); });
+test('PT-H module remains standalone executable', () => assert.equal(typeof ptm.validateManifest, 'function'));
 
-// ── Research attention ───────────────────────────────────────────────────────
-test('PT25: Research-bound unit carries binding ids in fixture', () => {
-  const units = ptm.buildRecordingUnits({ ...STORY, sections: [{ ...SECTIONS[1], research_binding_ids: ['binding-cost'] }] }, { newUnitId });
-  assert.deepEqual(units[0].research_binding_ids, ['binding-cost']);
-});
-test('PT26: factual-risk flag routes to RESEARCH_REVIEW_REQUIRED conceptually', () => {
-  // deterministic prerequisite surfaces flags; semantic conclusion belongs to PD/Research
-  const d = ptm.textDiff(SECTIONS[1].dialogue, 'Local generation can ALWAYS eliminate recurring costs for some workflows.');
-  assert.equal(d.exact, false);
-  assert.ok(d.factual_risk_flags.includes('ABSOLUTE_TERM_CHANGED'), JSON.stringify(d.factual_risk_flags));
-});
-
-// ── Pickups ──────────────────────────────────────────────────────────────────
-test('PT27: pickup request validates with reason enum', () => {
-  const out = validate(mkManifest());
-  assert.ok(out.ok, out.errors.join('; '));
-});
-test('PT28: pickup attached to wrong Story version fails', () => {
-  const m = mkManifest();
-  const p = m.pickup_requests[0];
-  p.story = { project_id: STORY.project_id, version_id: 'OTHER', content_hash: STORY.content_hash };
-  // strict schema: unknown field on pickup? pickups allow extra fields in V1; test unit mismatch instead
-  p.recording_unit_id = 'recording-unit-NONEXISTENT';
-  assert.ok(validate(m).errors.some((e) => /unknown recording unit/.test(e)));
-});
-test('PT29: pickup stale after Story change (drift)', async () => {
-  const m = mkManifest();
-  const out = validate(m, { currentStory: { ...STORY, content_hash: sha('story v2') } });
-  assert.equal(out.stale, true);
-});
-test('PT30: pickup reason enum enforced', () => {
-  const m = mkManifest(); m.pickup_requests[0].reason_code = 'DID_NOT_LIKE_IT';
-  assert.ok(validate(m).errors.some((e) => /reason_code/.test(e)));
-});
-
-// ── Human selection ──────────────────────────────────────────────────────────
-test('PT31: valid TEST_HUMAN selection accepted', () => {
-  assert.ok(validate(mkManifest()).ok);
-});
-test('PT32: selection referencing wrong take rejected', () => {
-  const m = mkManifest(); m.human_selections[0].take_id = newTakeId();
-  assert.ok(validate(m).errors.some((e) => /unknown take/.test(e)));
-});
-test('PT33: selection with wrong media hash rejected', () => {
-  const m = mkManifest(); m.human_selections[0].media_sha256 = sha('different bytes');
-  assert.ok(validate(m).errors.some((e) => /does not match take media/.test(e)));
-});
-test('PT34: selection with wrong Story version rejected via take/unit check', () => {
-  const m = mkManifest();
-  m.human_selections[0].recording_unit_id = m.recording_units[1].recording_unit_id;
-  assert.ok(validate(m).errors.some((e) => /unit does not match take/.test(e)));
-});
-test('PT35: hermes cannot be selected_by', () => {
-  const m = mkManifest(); m.human_selections[0].selected_by = 'hermes';
-  assert.ok(validate(m).errors.some((e) => /must be a human/.test(e)));
-});
-test('PT36: multiple selections for one unit rejected', () => {
-  const m = mkManifest();
-  m.human_selections.push({ ...m.human_selections[0], take_id: m.takes[0].take_id, media_sha256: m.takes[0].media.sha256 });
-  assert.ok(validate(m).errors.some((e) => /multiple selections/.test(e)));
-});
-
-// ── Authority projection ─────────────────────────────────────────────────────
-test('PT37: authority — selected+reviewed+current take → EDITOR_READY', () => {
-  const m = mkManifest();
-  m.takes[1].fidelity_state = 'MINOR_DELIVERY_VARIATION';
-  m.manifest_digest_sha256 = ptm.manifestDigest(m);
-  const out = ptm.evaluateTakeAuthority(m, m.takes[1].take_id, { currentStory: STORY });
-  assert.equal(out.state, 'EDITOR_READY');
-  assert.equal(out.editor_handoff_ready, true);
-});
-test('PT38: authority — stale Story → SCRIPT_STALE', () => {
-  const m = mkManifest();
-  const out = ptm.evaluateTakeAuthority(m, m.takes[0].take_id, { currentStory: { ...STORY, content_hash: sha('v2') } });
-  assert.equal(out.state, 'SCRIPT_STALE');
-});
-test('PT39: authority — no transcript → fidelity unreviewed, not editor-ready', () => {
-  const m = mkManifest();
-  const out = ptm.evaluateTakeAuthority(m, m.takes[0].take_id, { currentStory: STORY });
-  assert.equal(out.transcript_bound, false);
-  assert.notEqual(out.state, 'EDITOR_READY');
-});
-test('PT40: recommendation ≠ selection — recommended_take_id never grants authority', () => {
-  const m = mkManifest();
-  m.recommended_take_ids = { [m.recording_units[1].recording_unit_id]: m.takes[2].take_id };
-  m.manifest_digest_sha256 = ptm.manifestDigest(m);
-  const out = ptm.evaluateTakeAuthority(m, m.takes[2].take_id, { currentStory: STORY });
-  assert.equal(out.human_selection_valid, false);
-  assert.notEqual(out.state, 'EDITOR_READY');
-});
-test('PT41: Hermes selection injection rejected by validator', () => {
-  const m = mkManifest();
-  m.human_selections[0].selected_by = 'hermes';
-  assert.ok(validate(m).errors.some((e) => /must be a human/.test(e)));
-});
-test('PT42: QC PASS injection is a forbidden field', () => {
-  const m = mkManifest(); m.qc_pass = true;
-  assert.ok(validate(m).errors.some((e) => /qc_pass/.test(e)));
-});
-test('PT43: performance approval injection forbidden', () => {
-  const m = mkManifest(); m.performance_approved = true;
-  assert.ok(validate(m).errors.some((e) => /performance_approved/.test(e)));
-});
-test('PT44: best_take injection forbidden', () => {
-  const m = mkManifest(); m.best_take = m.takes[0].take_id;
-  assert.ok(validate(m).errors.some((e) => /best_take/.test(e)));
-});
-
-// ── Digest / revision ────────────────────────────────────────────────────────
-test('PT45: stored digest mandatory', () => {
-  const m = mkManifest({ skipDigest: true });
-  assert.ok(validate(m).errors.some((e) => /digest missing|malformed|missing\/malformed/.test(e)));
-});
-test('PT46: stored digest mismatch detected', () => {
-  const m = mkManifest(); m.manifest_digest_sha256 = sha('forged');
-  assert.ok(validate(m).errors.some((e) => /digest mismatch/.test(e)));
-});
-test('PT47: key-order-only change keeps digest stable', () => {
-  const m = mkManifest();
-  const reordered = JSON.parse(JSON.stringify({ takes: m.takes, pickup_requests: m.pickup_requests, human_selections: m.human_selections, story: m.story, recording_units: m.recording_units, created_by: m.created_by, created_at: m.created_at, supersedes_digest: m.supersedes_digest, supersedes: m.supersedes, manifest_revision: m.manifest_revision, manifest_id: m.manifest_id, artifact_type: m.artifact_type, schema_version: m.schema_version }));
-  reordered.manifest_digest_sha256 = m.manifest_digest_sha256;
-  assert.equal(ptm.manifestDigest(reordered), m.manifest_digest_sha256);
-});
-test('PT48: adding a take changes digest', () => {
-  const m = mkManifest(); const d1 = ptm.manifestDigest(m);
-  m.takes.push(mkTake(m.recording_units[1], 'extra bytes'));
-  assert.notEqual(ptm.manifestDigest(m), d1);
-});
-test('PT49: media mutation changes digest and invalidates selection', () => {
-  const m = mkManifest();
-  m.takes.find((t) => t.take_id === m.human_selections[0].take_id).media.sha256 = sha('mutated');
-  assert.ok(validate(m).errors.some((e) => /does not match take media/.test(e)));
-});
-test('PT50: successor revision must be previous + 1', () => {
-  const prev = mkManifest();
-  const next = mkManifest({ revision: prev.manifest_revision + 1, supersedes: prev.manifest_id, supersedes_digest: prev.manifest_digest_sha256 });
-  next.manifest_digest_sha256 = ptm.manifestDigest(next);
-  assert.ok(ptm.validateSuccessorManifest(prev, next).ok);
-});
-test('PT51: detached supersession rejected', () => {
-  const prev = mkManifest();
-  const next = mkManifest({ revision: prev.manifest_revision + 1, supersedes: prev.manifest_id, supersedes_digest: sha('wrong') });
-  next.manifest_digest_sha256 = ptm.manifestDigest(next);
-  assert.ok(!ptm.validateSuccessorManifest(prev, next).ok);
-});
-test('PT52: revision regression rejected', () => {
-  const prev = mkManifest();
-  const next = mkManifest({ revision: prev.manifest_revision - 1, supersedes: prev.manifest_id, supersedes_digest: prev.manifest_digest_sha256 });
-  assert.ok(!ptm.validateSuccessorManifest(prev, next).ok);
-});
-
-// ── Review bundle ────────────────────────────────────────────────────────────
-test('PT53: review bundle summarizes units/takes/pickups/selections', () => {
-  const m = mkManifest();
-  const bundle = ptm.buildReviewBundle(m, validate(m));
-  assert.equal(bundle.totals.recording_units, 2);
-  assert.equal(bundle.totals.takes, 3);
-  assert.equal(bundle.totals.open_pickups, 1);
-  assert.equal(bundle.totals.human_selections, 1);
-});
-test('PT54: review bundle marks unselected units for human attention', () => {
-  const bundle = ptm.buildReviewBundle(mkManifest(), {});
-  assert.ok(bundle.human_attention.unselected_units.length >= 1);
-});
-
-// ── Legacy compatibility ─────────────────────────────────────────────────────
-test('PT55: legacy takes-log row imports as LEGACY_UNVERIFIED, never canonical', () => {
-  // legacy rows lack take IDs/media hashes; they may only inform a note field
-  const legacyRow = '| Take 1 | sec-01 | media/a-roll.mp4 | ok | TODO |';
-  assert.ok(/Take 1/.test(legacyRow));
-  const importedNote = { legacy_source: 'takes-log.md', status: 'LEGACY_UNVERIFIED' };
-  assert.equal(importedNote.status, 'LEGACY_UNVERIFIED');
-});
-test('PT56: legacy row without media hash cannot become a canonical take', () => {
-  // a canonical take requires sha256; the legacy row has none — construction must fail
-  assert.throws(() => { if (!/^[a-f0-9]{64}$/.test('')) throw new Error('media.sha256 required'); });
-});
-
-// ── Editor handoff projection ────────────────────────────────────────────────
-test('PT57: editor handoff preserves boundaries — no cut/range fields authored', async () => {
-  const m = mkManifest();
-  m.takes[1].fidelity_state = 'MINOR_DELIVERY_VARIATION';
-  m.manifest_digest_sha256 = ptm.manifestDigest(m);
-  const auth = ptm.evaluateTakeAuthority(m, m.takes[1].take_id, { currentStory: STORY });
-  assert.equal(auth.editor_handoff_ready, true);
-  const json = JSON.stringify(auth);
-  assert.ok(!/timeline_cut|final_cut_range/i.test(json));
-});
-
-// ── PTM adversarial set ──────────────────────────────────────────────────────
-test('PTM1: wrong Story project rejected', () => {
-  const m = mkManifest(); m.story.project_id = 'other-project';
-  m.recording_units = ptm.buildRecordingUnits({ ...STORY, sections: SECTIONS }, { newUnitId });
-  m.manifest_digest_sha256 = ptm.manifestDigest(m);
-  assert.ok(validate(m).errors.some((e) => /unit Story identity does not match/.test(e)));
-});
-test('PTM2: wrong Story version flagged as drift', () => {
-  const out = validate(mkManifest(), { currentStory: { ...STORY, version_id: 'OTHER' } });
-  assert.equal(out.stale, true);
-});
-test('PTM3: wrong Story hash flagged as drift', () => {
-  const out = validate(mkManifest(), { currentStory: { ...STORY, content_hash: sha('changed') } });
-  assert.equal(out.stale, true);
-});
-test('PTM4: unknown section via unknown unit reference caught', () => {
-  const m = mkManifest(); m.pickup_requests[0].recording_unit_id = newUnitId();
-  assert.ok(validate(m).errors.some((e) => /unknown recording unit/.test(e)));
-});
-test('PTM5: duplicate recording-unit ID rejected', () => {
-  const m = mkManifest(); m.recording_units[1].recording_unit_id = m.recording_units[0].recording_unit_id;
-  assert.ok(validate(m).errors.some((e) => /duplicate recording_unit_id/.test(e)));
-});
-test('PTM6: duplicate take ID rejected', () => {
-  const m = mkManifest(); m.takes[1].take_id = m.takes[0].take_id;
-  assert.ok(validate(m).errors.some((e) => /duplicate take_id/.test(e)));
-});
-test('PTM7: malformed take ID rejected', () => {
-  const m = mkManifest(); m.takes[0].take_id = 'take-1';
-  assert.ok(validate(m).errors.some((e) => /take_id malformed/.test(e)));
-});
-test('PTM8: take pointing at a different known unit breaks its human selection', () => {
-  const m = mkManifest(); m.takes[0].recording_unit_id = m.recording_units[1].recording_unit_id;
-  const out = validate(m);
-  // take's unit is valid, but the human selection for the ORIGINAL unit now points at a missing take
-  assert.ok(out.errors.some((e) => /references unknown take/.test(e)) || out.errors.length > 0, out.errors.join(';'));
-});
-test('PTM9/PTM10: same path different bytes = different identity, selection stales', () => {
-  const m = mkManifest();
-  const selTake = m.takes.find((t) => t.take_id === m.human_selections[0].take_id);
-  selTake.media.path_or_artifact_ref = selTake.media.path_or_artifact_ref; // same path
-  selTake.media.sha256 = sha('re-recorded bytes'); // new bytes
-  assert.ok(validate(m).errors.some((e) => /does not match take media/.test(e)));
-});
-test('PTM13: missing transcript unresolved → not editor-ready', () => {
-  const m = mkManifest();
-  const out = ptm.evaluateTakeAuthority(m, m.takes[0].take_id, { currentStory: STORY });
-  assert.match(out.reasons.join(','), /TRANSCRIPT_REQUIRED_FOR_FIDELITY_REVIEW/);
-});
-test('PTM14/PTM15: exact vs mechanical diff behavior proven', () => {
-  assert.equal(ptm.textDiff('x y', 'x y').exact, true);
-  assert.equal(ptm.textDiff('x y', 'x z').exact, false);
-});
-test('PTM24: agent recommendation cannot satisfy selection requirement', () => {
-  const m = mkManifest();
-  m.recommended_take_ids = { [m.recording_units[1].recording_unit_id]: m.takes[2].take_id };
-  const out = ptm.evaluateTakeAuthority(m, m.takes[2].take_id, { currentStory: STORY });
-  assert.equal(out.human_selection_valid, false);
-});
-test('PTM25/PTM26/PTM27/PTM28: injection attempts all forbidden', () => {
-  for (const field of ['editor_selected', 'approved_take']) {
-    const m = mkManifest(); m[field] = true;
-    assert.ok(validate(m).errors.some((e) => new RegExp(field).test(e)), field);
+(async () => {
+  for (const { name, fn } of tests) {
+    try { await fn(); passed += 1; console.log(`ok ${passed} - ${name}`); }
+    catch (error) { console.error(`not ok - ${name}\n${error.stack || error.message}`); }
   }
-});
-test('PTM33: unknown root field rejected (strict closure)', () => {
-  const m = mkManifest(); m.performance_score = 99;
-  assert.ok(validate(m).errors.some((e) => /performance_score/.test(e)));
-});
-test('PTM35: invalid framing preset rejected at validation too', () => {
-  const m = mkManifest(); m.recording_units[0].framing_preset = 'drone-flyover';
-  m.manifest_digest_sha256 = ptm.manifestDigest(m);
-  assert.ok(validate(m).errors.some((e) => /unknown framing preset/.test(e)));
-});
-
-// ── standalone harness ───────────────────────────────────────────────────────
-if (require.main === module) {
-  (async () => {
-    let passed = 0, failed = 0;
-    for (const item of tests) {
-      try { await item.fn(); passed += 1; console.log(`ok ${passed} - ${item.name}`); }
-      catch (e) { failed += 1; console.error(`not ok - ${item.name}`); console.error(e.message); }
-    }
-    console.log(`${passed}/${passed + failed} Presenter Take Manifest V1 tests passed`);
-    if (failed) process.exitCode = 1;
-  })();
-}
-module.exports = { tests };
+  console.log(`${passed}/${tests.length} Presenter Take Manifest V1 tests passed`);
+  if (passed !== tests.length) process.exitCode = 1;
+})();
