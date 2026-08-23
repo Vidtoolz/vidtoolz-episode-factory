@@ -1,0 +1,102 @@
+{
+  "contract_version": 1,
+  "name": "research-results-v1",
+  "status": "CANONICAL",
+  "authority": "Deterministic structural authority for the Research Result V1 artifact. This contract defines the shape a research-results.json file MUST take. It does not judge truth, credibility, or semantic support — those remain Research judgment (Phase B+) and Mikko's human authority.",
+  "artifact": {
+    "root": {
+      "schema_version": "integer, must equal 1",
+      "artifact_type": "exact string 'research-results'",
+      "package_run_id": "string, required",
+      "project_id": "string, optional",
+      "results": "array of immutable result objects, required"
+    },
+    "immutability": "A result entry, once written, is never mutated. New research appends a new result. A superseded result remains historical. Aggregate append never invalidates unrelated result bindings. Supersession is explicit via supersedes_result_id; superseded_by is derived, never written."
+  },
+  "claim_ref": {
+    "fields": ["namespace", "canonical_id", "revision", "alias_ids[]"],
+    "canonical_namespaces": ["vidtoolz-mindmap/canonical-idea", "vidtoolz-episode-factory/package-run-claim"],
+    "identity_rules": {
+      "mindmap": "canonical_idea_id is authority; discovery_claim_id is alias only",
+      "package_run_local": "claim-<UUIDv4>, issued once; identity never derived from mutable claim text",
+      "revision_model": "unchanged normalized proposition → same revision; wording/qualification/narrowing/temporal change → new revision+result; broadening → new revision + mandatory Research review; materially different proposition → new canonical claim ID; new evidence with unchanged proposition → same claim revision, new result revision",
+      "binding_rule": "an old result can never authorize a different claim-text hash"
+    },
+    "alias_shape": { "namespace": "string", "id": "string" }
+  },
+  "states": {
+    "support": ["SUPPORTED", "PARTIALLY_SUPPORTED", "UNSUPPORTED", "INCONCLUSIVE"],
+    "freshness": ["FRESH", "EXPIRED", "NOT_APPLICABLE", "UNKNOWN"],
+    "evidence_quality": ["ADEQUATE", "WEAK", "INADEQUATE", "UNKNOWN"],
+    "confidence": ["HIGH", "MEDIUM", "LOW"],
+    "independence": ["ADEQUATE", "LIMITED", "UNKNOWN", "NOT_REQUIRED"],
+    "contradiction": ["NONE", "RESOLVED", "UNRESOLVED"],
+    "disagreement": ["NONE", "RESOLVED_BY_CONTRACT", "NEEDS_SPECIALIST_REVIEW", "NEEDS_HUMAN_DECISION", "BLOCKED"],
+    "recommendation": ["ALLOW_USE", "ALLOW_USE_WITH_QUALIFICATION", "RESEARCH_MORE", "DO_NOT_USE", "ESCALATE"],
+    "qualification": {
+      "fields": ["qualification_required (boolean)", "wording_constraints[]"],
+      "constraint_types": ["LIMIT_SCOPE", "RETAIN_QUALIFIER", "FORBID_ABSOLUTE", "REQUIRE_ATTRIBUTION", "REQUIRE_AS_OF_DATE"],
+      "rule": "every constraint requires a stable constraint_id"
+    }
+  },
+  "evidence_link": {
+    "required": ["evidence_id", "source_ref", "stance", "excerpt"],
+    "stance_enum": ["SUPPORTS", "CONTRADICTS", "CONTEXT_ONLY"],
+    "excerpt": { "exact_text": "string, bounded", "exact_text_sha256": "sha256 of exact_text bytes" },
+    "corpus_preservation_optional": ["evidence_set_id", "extracted_idea_id", "evidence_window_id", "paragraph_start", "paragraph_end", "heading_context"]
+  },
+  "source_model": {
+    "original": ["source_id?", "title?", "normalized_url?", "publisher?"],
+    "container": ["container_type?", "relationship", "source_id?", "google_doc_id?", "title?", "url?", "retrieved_at?", "retrieved_content_sha256?"],
+    "relationship_enum": ["IS_ORIGINAL", "DERIVED_FROM", "UNKNOWN"],
+    "rules": [
+      "Google Doc title/owner is not proof of original authorship",
+      "unknown original identity is legal",
+      "never fabricate original publisher/author/URL",
+      "uncertainty remains visible",
+      "unknown-origin evidence may lower semantic quality later but remains structurally valid"
+    ],
+    "source_classes": ["OFFICIAL", "ACADEMIC", "REPORTING", "PRIMARY_OTHER", "SECONDARY", "USER_GENERATED", "SOCIAL", "UNKNOWN"],
+    "class_rule": "classification, not credibility scoring; validator never infers OFFICIAL=true or SOCIAL=false"
+  },
+  "independence": {
+    "per_source_fields": ["independence_group", "independence_basis"],
+    "grouping_rules": "same original publication/dataset/press release/interview/event/syndicated chain → same group; ten articles repeating one press release → one group; different URLs or publishers do not automatically prove independence; unknown-origin containers for one claim grouped conservatively unless Research establishes otherwise",
+    "support_count_rule": "independent_support_count = count(unique independence_group) over valid evidence where stance == SUPPORTS; CONTRADICTS and CONTEXT_ONLY never increase it"
+  },
+  "temporal": {
+    "classes": ["CURRENT_FACT", "HISTORICAL_FACT", "EVERGREEN_FACT", "UNCLASSIFIED"],
+    "unclassified_rule": "UNCLASSIFIED may exist during incomplete Research but cannot authorize normal downstream QC use",
+    "current_fact": "requires as_of + freshness policy (MAX_AGE_DAYS with integer days, or REVIEW_BY with ISO date); all supporting evidence must include retrieval date",
+    "historical_fact": "requires effective/event date; source age alone must not stale it",
+    "evergreen": "no arbitrary expiry; source/content/fingerprint change can still trigger revalidation",
+    "google_doc_rule": "Google Doc modification date is never a substitute for event date"
+  },
+  "staleness": {
+    "states": ["VALID", "STALE", "INVALID", "SUPERSEDED"],
+    "reason_codes": ["SOURCE_CONTENT_CHANGED", "SOURCE_INACCESSIBLE", "CURRENT_FACT_EXPIRED", "CLAIM_TEXT_CHANGED", "RESULT_SUPERSEDED", "SCRIPT_ASSERTION_CHANGED", "SOURCE_FINGERPRINT_CHANGED", "CONTAINER_CONTENT_CHANGED", "EVIDENCE_EXCERPT_MISMATCH", "RESULT_DIGEST_MISMATCH", "SOURCE_REFERENCE_MISSING", "HUMAN_EXCEPTION_STALE"],
+    "semantics": {
+      "INVALID": "mechanical integrity broken",
+      "STALE": "historically auditable, no longer valid for new downstream authorization",
+      "SUPERSEDED": "valid historical Research result replaced by a later result",
+      "history_rule": "history is never deleted merely because authority expired"
+    }
+  },
+  "result_digest": {
+    "algorithm": "SHA-256 over compact canonical UTF-8 JSON",
+    "canonicalization": "recursive object-key sort; deterministic sort of authoritative arrays (aliases, sources, evidence, constraints, provenance inputs); exact bytes hashed",
+    "includes": ["root version/type", "package_run_id", "project_id?", "complete result excluding its digest field: identities, revisions, claim text/hash, temporal policy, judgments, rationales, qualifications, source records, evidence, stance, independence, provenance, lifecycle audit timestamps, supersession pointer"],
+    "excludes": ["result digest itself", "Markdown projections", "UI-only timestamps", "aggregate file ordering outside canonical normalization", "later human-exception artifacts"]
+  },
+  "immutability_supersession": {
+    "rules": ["positive monotonic revisions", "unique result IDs", "no supersession cycles", "same claim lineage for supersession", "no mutation of old result objects", "later result points backward via supersedes_result_id", "superseded_by derived, not written", "one valid unsuperseded current head per claim"],
+    "ambiguity_rule": "two unsuperseded valid heads → ambiguity → fail closed; never silently choose latest timestamp"
+  },
+  "human_exception": {
+    "status": "data model only; Phase A",
+    "binds_to": ["exact claim", "exact result ID/revision/digest", "exact script use", "exact script hash", "exact assertion binding", "reason", "acknowledged risk"],
+    "rules": ["human exception does not rewrite Research verdict", "changed result/script/exception invalidates approval", "exception cannot repair corrupt evidence or missing provenance", "exception cannot transform unsupported into supported", "approval uses canonical artifact approval binding (scripts/agent-contract-validator.js verifyApprovalBinding)"],
+    "integration": "Phase B; no production QC integration yet"
+  },
+  "validator_non_goals": ["truth", "source credibility", "semantic support", "scientific correctness", "political correctness", "source independence in epistemic terms", "argument quality", "whether two formulations mean the same thing", "whether Mikko should take an editorial risk"]
+}

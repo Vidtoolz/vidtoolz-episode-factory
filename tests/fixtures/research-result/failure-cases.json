@@ -1,0 +1,7 @@
+{
+  "note": "R1–R10 failure-case fixtures for Research Result V1 Phase A. Each case is a root/results variant consumed by tests/research-result-validator.test.js. All identities are explicit TEST identities; no real human approval is fabricated.",
+  "shared_claim": {
+    "normalized_text": "Test claim for R-cases.",
+    "canonical_id": "claim-00000000-0000-4000-8000-0000000000r1"
+  }
+}

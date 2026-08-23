@@ -1,0 +1,117 @@
+{
+ "schema_version": 1,
+ "artifact_type": "research-results",
+ "package_run_id": "fixture-claim-19.23",
+ "project_id": null,
+ "results": [
+  {
+   "result_id": "result-01923-r1",
+   "revision": 1,
+   "claim_ref": {
+    "namespace": "vidtoolz-mindmap/canonical-idea",
+    "canonical_id": "canon_gd_v10_5b4bf8ef0326bc1392af",
+    "revision": 1,
+    "alias_ids": [
+     {
+      "namespace": "vidtoolz-mindmap/discovery-claim",
+      "id": "claim-19.23"
+     }
+    ]
+   },
+   "claim": {
+    "normalized_text": "Cloud post-production improves remote access and collaboration, but high-resolution media introduces latency and recurring-cost overhead that local workflows avoid.",
+    "normalized_text_sha256": "2a76600d0bed53969882fee103f0c73a344193717822fb31ea5f3c6c9cef43cd"
+   },
+   "temporal": {
+    "temporal_class": "EVERGREEN_FACT"
+   },
+   "judgment": {
+    "support": "PARTIALLY_SUPPORTED",
+    "freshness": "NOT_APPLICABLE",
+    "evidence_quality": "WEAK",
+    "confidence": "MEDIUM",
+    "independence": "UNKNOWN",
+    "contradiction": "NONE",
+    "disagreement": "NONE",
+    "recommendation": "RESEARCH_MORE",
+    "rationale": "Audited Mindmap calibration: cloud collaboration benefits are real but media-size, bandwidth, provider pricing and time horizon condition the downsides; local workflows do not universally avoid latency or recurring costs. Single-source evidence."
+   },
+   "qualification": {
+    "qualification_required": true,
+    "wording_constraints": [
+     {
+      "constraint_id": "qc-01923-media-size",
+      "type": "LIMIT_SCOPE",
+      "note": "media size matters"
+     },
+     {
+      "constraint_id": "qc-01923-bandwidth",
+      "type": "LIMIT_SCOPE",
+      "note": "available bandwidth matters"
+     },
+     {
+      "constraint_id": "qc-01923-pricing",
+      "type": "RETAIN_QUALIFIER",
+      "note": "provider pricing matters"
+     },
+     {
+      "constraint_id": "qc-01923-horizon",
+      "type": "RETAIN_QUALIFIER",
+      "note": "time horizon matters"
+     },
+     {
+      "constraint_id": "qc-01923-latency-abs",
+      "type": "FORBID_ABSOLUTE",
+      "note": "local workflows do not universally avoid latency"
+     },
+     {
+      "constraint_id": "qc-01923-cost-abs",
+      "type": "FORBID_ABSOLUTE",
+      "note": "local workflows do not universally avoid recurring costs"
+     }
+    ]
+   },
+   "sources": [
+    {
+     "source_id": "src_gdoc_1XaPql0wBiNRjV9IMQ-pkru44t8jbwdMxP_YUJtkxGwo",
+     "source_class": "SECONDARY",
+     "original": {
+      "title": "What is collaborative video editing?"
+     },
+     "container": {
+      "container_type": "google_doc",
+      "relationship": "UNKNOWN",
+      "google_doc_id": "1XaPql0wBiNRjV9IMQ-pkru44t8jbwdMxP_YUJtkxGwo",
+      "title": "What is collaborative video editing?"
+     },
+     "independence_group": "ig-01923-collab-editing-doc",
+     "independence_basis": "single Google Doc corpus source; independence UNKNOWN — conservative single group"
+    }
+   ],
+   "evidence": [
+    {
+     "evidence_id": "ev-01923-1",
+     "source_ref": "src_gdoc_1XaPql0wBiNRjV9IMQ-pkru44t8jbwdMxP_YUJtkxGwo",
+     "stance": "SUPPORTS",
+     "excerpt": {
+      "exact_text": "High-resolution footage in cloud-based editing and rendering environments can suffer from lag, creating latency issues that do not exist in local workflows.",
+      "exact_text_sha256": "36c893de3d373b3b0296461cbf762a949e313384f29523301cb27e691fc1fa10"
+     },
+     "evidence_set_id": "canon_gd_v10_5b4bf8ef0326bc1392af",
+     "extracted_idea_id": "canon_gd_v10_5b4bf8ef0326bc1392af"
+    }
+   ],
+   "independent_support_count": 1,
+   "provenance": {
+    "researched_by": "mindmap-calibration-audit",
+    "audit_reference": "mindmap-reconciliation-calibration-v1.0",
+    "recorded_at": "2026-08-23T08:30:00+03:00"
+   },
+   "staleness": {
+    "state": "VALID",
+    "reason": null
+   },
+   "result_digest": "9cec196ddbfc1a6fd38eb28bc633a7439c67256d51710d07820df90f5629e9fb"
+  }
+ ]
+}
