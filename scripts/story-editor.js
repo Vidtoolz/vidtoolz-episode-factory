@@ -250,6 +250,21 @@ function buildPrompt(task, evaluatorFindings) {
 }
 
 // ── semantic output validation (deterministic) ───────────────────────────────
+function semanticChangedSectionIds(task, proposal) {
+  const sourceById = new Map((task.script_sections || []).map((section) => [String(section.id), section]));
+  const proposalById = new Map((proposal.sections || []).map((section) => [String(section.id), section]));
+  const changed = new Set();
+  for (const [id, source] of sourceById) {
+    const candidate = proposalById.get(id);
+    if (!candidate || String(candidate.beat || '') !== String(source.beat || '') || candidate.dialogue !== source.dialogue) changed.add(id);
+  }
+  for (const id of proposalById.keys()) if (!sourceById.has(id)) changed.add(id);
+  const proposedSequence = (proposal.sections || []).slice().sort((a, b) => a.order - b.order).map((section) => String(section.id));
+  const survivingSourceSequence = (task.script_sections || []).slice().sort((a, b) => a.order - b.order).map((section) => String(section.id)).filter((id) => proposalById.has(id));
+  if (JSON.stringify(proposedSequence.filter((id) => sourceById.has(id))) !== JSON.stringify(survivingSourceSequence)) for (const id of proposedSequence) changed.add(id);
+  return changed;
+}
+
 function validateSemanticOutput(raw, task) {
   const errs = [];
   let obj;
@@ -259,12 +274,14 @@ function validateSemanticOutput(raw, task) {
   exactKeys(obj, ['structural_findings', 'spine_coherence', 'spine_coherence_rationale', 'argument_change_risk', 'argument_change_rationale', 'research_concerns', 'authority_escalations', 'recommendation', 'revision_proposal'], '$', errs);
   if (!Array.isArray(obj.structural_findings)) errs.push('structural_findings must be array');
   const sectionIds = new Set((task.script_sections || []).map((section) => String(section.id)));
+  const proposedLocalIds = new Set((obj.revision_proposal?.sections || []).map((section) => String(section.id)));
+  const allowedSemanticSectionIds = new Set([...sectionIds, ...proposedLocalIds]);
   const findingIds = new Set();
   for (const [i, finding] of (obj.structural_findings || []).entries()) {
     exactKeys(finding, ['finding_id', 'section_ids', 'category', 'severity', 'rationale', 'recommended_action'], `structural_findings[${i}]`, errs);
     if (!safeId(finding.finding_id) || findingIds.has(finding.finding_id)) errs.push(`structural_findings[${i}].finding_id invalid or duplicate`);
     findingIds.add(finding.finding_id);
-    if (!Array.isArray(finding.section_ids) || finding.section_ids.some((id) => !sectionIds.has(String(id)))) errs.push(`structural_findings[${i}].section_ids invalid`);
+    if (!Array.isArray(finding.section_ids) || finding.section_ids.some((id) => !allowedSemanticSectionIds.has(String(id)))) errs.push(`structural_findings[${i}].section_ids invalid`);
     if (!FINDING_CATEGORIES.includes(finding.category)) errs.push(`structural_findings[${i}].category invalid`);
     if (!FINDING_SEVERITIES.includes(finding.severity)) errs.push(`structural_findings[${i}].severity invalid`);
     if (normalized(finding.rationale).length < 8 || normalized(finding.recommended_action).length < 4) errs.push(`structural_findings[${i}] requires concise rationale and action`);
@@ -291,7 +308,7 @@ function validateSemanticOutput(raw, task) {
     const proposedIds = new Set(), proposedOrders = new Set();
     for (const [i, section] of (rp.sections || []).entries()) {
       exactKeys(section, ['id', 'order', 'beat', 'dialogue'], `revision_proposal.sections[${i}]`, errs);
-      if (!sectionIds.has(String(section.id))) errs.push(`revision_proposal.sections[${i}].id is not a stable source section`);
+      if (!safeId(String(section.id))) errs.push(`revision_proposal.sections[${i}].id invalid`);
       if (proposedIds.has(String(section.id))) errs.push(`revision_proposal.sections[${i}].id duplicated`);
       proposedIds.add(String(section.id));
       if (!Number.isInteger(section.order) || section.order < 1 || proposedOrders.has(section.order)) errs.push(`revision_proposal.sections[${i}].order invalid or duplicate`);
@@ -306,7 +323,7 @@ function validateSemanticOutput(raw, task) {
       }
       if (!safeId(r.change_id) || ids.has(r.change_id)) errs.push(`duplicate or invalid change_id ${r.change_id}`);
       ids.add(r.change_id);
-      if (!sectionIds.has(String(r.section_id))) errs.push(`change_rationales[${i}].section_id invalid`);
+      if (!allowedSemanticSectionIds.has(String(r.section_id))) errs.push(`change_rationales[${i}].section_id invalid`);
       if (!findingIds.has(r.finding_ref)) errs.push(`change_rationales[${i}].finding_ref invalid`);
       const argumentAliases = { none: 'NO_ARGUMENT_CHANGE', no_argument_change: 'NO_ARGUMENT_CHANGE', potential_argument_change: 'POTENTIAL_ARGUMENT_CHANGE', argument_change: 'ARGUMENT_CHANGE' };
       const researchAliases = { none: 'NONE', unchanged: 'UNCHANGED', rewritten: 'REWRITTEN', removed: 'REMOVED', new_factual_claim: 'NEW_FACTUAL_CLAIM' };
@@ -329,24 +346,27 @@ function validateSemanticOutput(raw, task) {
       for (const id of bindingIds) if (!seenBindings.has(id)) errs.push(`factual claim declaration missing binding ${id}`);
       for (const [i, claim] of (rp.factual_claim_changes.new || []).entries()) {
         exactKeys(claim, ['claim_id', 'section_id', 'assertion_text', 'rationale'], `factual_claim_changes.new[${i}]`, errs);
-        if (!safeId(claim.claim_id) || !sectionIds.has(String(claim.section_id)) || !normalized(claim.assertion_text) || !normalized(claim.rationale)) errs.push(`factual_claim_changes.new[${i}] invalid`);
+        if (!safeId(claim.claim_id) || !allowedSemanticSectionIds.has(String(claim.section_id)) || !normalized(claim.assertion_text) || !normalized(claim.rationale)) errs.push(`factual_claim_changes.new[${i}] invalid`);
       }
     }
-    const sourceById = new Map((task.script_sections || []).map((section) => [String(section.id), section]));
-    const proposalById = new Map((rp.sections || []).map((section) => [String(section.id), section]));
-    const changed = new Set();
-    for (const [id, source] of sourceById) {
-      const candidate = proposalById.get(id);
-      if (!candidate || String(candidate.beat || '') !== String(source.beat || '') || candidate.dialogue !== source.dialogue) changed.add(id);
+    const changed = semanticChangedSectionIds(task, rp);
+    const findingById = new Map((obj.structural_findings || []).map((finding) => [finding.finding_id, finding]));
+    const directRationalized = new Set((rp.change_rationales || []).map((rationale) => String(rationale.section_id)));
+    const rationalized = new Set(directRationalized);
+    for (const rationale of rp.change_rationales || []) {
+      rationalized.add(String(rationale.section_id));
+      for (const id of findingById.get(rationale.finding_ref)?.section_ids || []) rationalized.add(String(id));
     }
-    const proposedSequence = (rp.sections || []).slice().sort((a, b) => a.order - b.order).map((section) => String(section.id));
-    const survivingSourceSequence = (task.script_sections || []).slice().sort((a, b) => a.order - b.order).map((section) => String(section.id)).filter((id) => proposalById.has(id));
-    if (JSON.stringify(proposedSequence) !== JSON.stringify(survivingSourceSequence)) for (const id of proposedSequence) changed.add(id);
-    const rationalized = new Set((rp.change_rationales || []).map((r) => String(r.section_id)));
     for (const id of changed) if (!rationalized.has(id)) errs.push(`changed section ${id} lacks rationale`);
-    for (const id of rationalized) if (!changed.has(id)) errs.push(`rationale supplied for unchanged section ${id}`);
+    for (const id of directRationalized) if (!changed.has(id)) errs.push(`rationale supplied for unchanged section ${id}`);
   }
   return { errs, obj };
+}
+
+function deterministicCandidateSectionId(task, section) {
+  const seed = JSON.stringify({ project_id: task.project_id, source_version_id: task.script_version_id,
+    local_id: String(section.id), beat: normalized(section.beat), dialogue: normalized(section.dialogue) });
+  return `story-section-${sha256(seed).slice(0, 20)}`;
 }
 
 // ── run ──────────────────────────────────────────────────────────────────────
@@ -362,7 +382,7 @@ async function run(task, options = {}) {
     handoff: null, provenance: null, events: [] };
   const ev = (state, detail) => out.events.push({ at: nowIso(), actor: AGENT_ID, state, detail: detail || null });
   const finish = (nextOwner) => {
-    out.handoff = { next_owner: nextOwner, next_action: nextOwner === 'mikko' ? 'HUMAN_REVIEW_OR_APPROVAL' : nextOwner === 'hermes' ? 'ESCALATE_WITH_EVIDENCE' : nextOwner === 'research_director' ? 'REVALIDATE_FACTUAL_CLAIMS' : 'REMEDIATE' };
+    out.handoff = { next_owner: nextOwner, next_action: nextOwner === 'mikko' ? 'HUMAN_REVIEW_OR_APPROVAL' : nextOwner === 'hermes' ? 'ESCALATE_WITH_EVIDENCE' : nextOwner === 'research_director' ? 'REVALIDATE_FACTUAL_CLAIMS' : nextOwner ? 'REMEDIATE' : null };
     out.provenance = { acting_agent: AGENT_ID, lane: LANE,
       source_commit: (() => { try { return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim(); } catch { return null; } })(),
       recorded_at: nowIso() };
@@ -402,7 +422,8 @@ async function run(task, options = {}) {
   const context = buildPrompt(task, task.script_evaluator_findings || options.evaluatorFindings || null);
   out.max_attempts = Math.min(out.max_attempts, task.cost_budget?.max_model_calls || MAX_ATTEMPTS_HARD_CAP);
   let semantic = null, lastErrs = [];
-  for (out.attempts = 1; out.attempts <= out.max_attempts; out.attempts += 1) {
+  for (let attempt = 1; attempt <= out.max_attempts; attempt += 1) {
+    out.attempts = attempt;
     out.state = task.assignment.action === 'revise_script' ? 'REVISING' : 'REVIEWING';
     try {
       const raw = await invokeModel(context, route, options);
@@ -486,11 +507,23 @@ async function run(task, options = {}) {
   }
 
   const sourceById = new Map(sourceVersion.sections.map((section) => [String(section.id), section]));
+  const sectionIdMap = new Map(proposal.sections.map((section) => [String(section.id),
+    sourceById.has(String(section.id)) ? String(section.id) : deterministicCandidateSectionId(task, section)]));
   const candidateSections = proposal.sections.map((section) => ({
-    ...sourceById.get(String(section.id)), id: String(section.id), order: section.order,
-    beat: section.beat == null ? sourceById.get(String(section.id)).beat : section.beat,
+    ...(sourceById.get(String(section.id)) || { type: 'dialogue', background: null, framing_preset: null, visual_notes: '', media_refs: [] }),
+    id: sectionIdMap.get(String(section.id)), order: section.order,
+    beat: section.beat == null ? sourceById.get(String(section.id))?.beat : section.beat,
     dialogue: section.dialogue,
   }));
+  const changedLocalIds = semanticChangedSectionIds(task, proposal);
+  const findingById = new Map(semantic.structural_findings.map((finding) => [finding.finding_id, finding]));
+  const canonicalRationales = proposal.change_rationales.flatMap((rationale) => {
+    const covered = new Set([String(rationale.section_id), ...(findingById.get(rationale.finding_ref)?.section_ids || []).map(String)]);
+    const affected = [...covered].filter((id) => changedLocalIds.has(id));
+    return affected.map((id) => ({ ...rationale,
+      change_id: affected.length === 1 ? rationale.change_id : `${rationale.change_id}-${sha256(id).slice(0, 8)}`,
+      section_id: sectionIdMap.get(id) || id }));
+  });
 
   // create candidate version (canonical API; NEVER approve)
   let candidate;
@@ -533,7 +566,7 @@ async function run(task, options = {}) {
     script_builder_root: sbRoot, data_root: task.data_root, project_id: task.project_id,
     source_version: { version_id: task.script_version_id, content_hash: task.script_content_hash },
     candidate_version: { version_id: candidate.id, content_hash: candidate.content_hash },
-    change_rationales: proposal.change_rationales,
+    change_rationales: canonicalRationales,
     research: task.research ? {
       run_dir: task.research.run_dir,
       source_bindings_doc: sourceBindingsDoc,
@@ -554,7 +587,7 @@ async function run(task, options = {}) {
   const srrClass = review.bundle.argument_change.classification;
   if (srrClass === 'ARGUMENT_CHANGE_CONFIRMED_BY_METADATA') argumentClass = 'ARGUMENT_CHANGE';
   else if (srrClass === 'POTENTIAL_ARGUMENT_CHANGE' && argumentClass === 'NO_ARGUMENT_CHANGE') argumentClass = 'POTENTIAL_ARGUMENT_CHANGE';
-  out.argument_change = { classification: argumentClass, reasons: [...argReasons, ...review.bundle.argument_change.reasons] };
+  out.argument_change = { classification: argumentClass, reasons: [semantic.argument_change_rationale, ...argReasons, ...review.bundle.argument_change.reasons].filter(Boolean) };
 
   // Research-invalidated or new unbound → RETURN_TO_RESEARCH
   if ((proposal.factual_claim_changes?.rewritten || []).length) {
@@ -631,7 +664,7 @@ module.exports = { AGENT_ID, LANE, ACTIONS, RECOMMENDATIONS, ARG_CLASSES, STATES
   FINDING_CATEGORIES, FINDING_SEVERITIES, AUTHORITY_ESCALATIONS,
   MAX_ATTEMPTS_HARD_CAP, DEFAULT_MAX_ATTEMPTS, RoutingError,
   routeCapability, selectComputeRoute, invokeModel, buildPrompt,
-  validateSemanticOutput, researchConstraintSummaries, preflight, run, controlRoomView };
+  validateSemanticOutput, semanticChangedSectionIds, deterministicCandidateSectionId, researchConstraintSummaries, preflight, run, controlRoomView };
 
 if (require.main === module) {
   (async () => {
