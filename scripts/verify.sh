@@ -142,6 +142,7 @@ node --check scripts/visual-plan-prompt-adapter.js
 node --check scripts/visual-planning-director.js
 node --check scripts/audience-package.js
 node --check scripts/audience-packaging-director.js
+node --check scripts/presenter-take-manifest.js
 node --check publish-gate-decision.js
 node --check idea-engine.js
 node --check idea-engine-prompts.js
