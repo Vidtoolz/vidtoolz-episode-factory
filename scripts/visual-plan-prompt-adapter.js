@@ -18,7 +18,9 @@ function promptTextFor(shot, index) {
   if (shot.media_type === 'SCREEN_CAPTURE' || shot.media_type === 'PRESENTER_A_ROLL' || shot.media_type === 'ARCHIVAL_EXTERNAL') return null;
   const block = { block_id: `block-${String(index + 1).padStart(3, '0')}`, text: `${shot.shot_brief} Purpose: ${shot.narrative_function}. Subject: ${shot.subject}.` };
   const built = dryRun.buildPromptForBlock(block, shot.presenter_relation === 'NONE' || shot.presenter_relation === 'REPLACE' ? 1 : 3);
-  return built.full_prompt;
+  const presenterAware = shot.presenter_relation === 'BROLL_OVERLAY' || shot.presenter_relation === 'PICTURE_IN_PICTURE';
+  if (!presenterAware) return built.full_prompt;
+  return `${built.full_prompt} Presenter-composite requirement: treat this as a calm supporting plate, reserve clear negative space for the presenter, and avoid a busy full-frame composition.`;
 }
 
 function buildPromptRecords(shots, options = {}) {

@@ -73,7 +73,7 @@ test('VP54 CANARY C map intent has no mechanics',async()=>{const s=semantic();Ob
 test('VP55 CANARY D video handoff neutral',async()=>{const s=semantic();Object.assign(s.beats[0].shots[0],{media_type:'GENERATED_VIDEO',generation_mode:'DIRECT_VIDEO'});const out=await director.run(task(),opts(s));assert.equal(out.generation_handoffs[0].brief.input_artifacts.length,0);assert.equal(out.generation_handoffs[0].host,undefined);});
 test('VP56 CANARY E missing coverage blocks',async()=>{const s=semantic();s.beats.pop();assert.equal((await director.run(task(),opts(s))).state,'ESCALATED');});
 test('VP57 CANARY F presenter balance legal',async()=>{const s=semantic();s.beats[0].shots[0].media_type='PRESENTER_A_ROLL';s.beats[0].shots[0].generation_mode='NOT_APPLICABLE';s.beats[0].shots[0].presenter_relation='PRESENT';const out=await director.run(task(),opts(s));assert.equal(out.visual_plan.shots[0].presenter_relation,'PRESENT');});
-test('VP58 prompt adapter uses existing builder',async()=>assert.equal((await director.run(task(),opts())).visual_plan.prompts[0].origin,'super-focus-builder'));
+test('VP58 prompt adapter uses existing builder with presenter-safe composition',async()=>{const prompt=(await director.run(task(),opts())).visual_plan.prompts[0];assert.equal(prompt.origin,'super-focus-builder');assert.match(prompt.prompt_text,/reserve clear negative space for the presenter/);});
 test('VP59 Visual Plan validator invoked',async()=>assert.ok((await director.run(task(),opts())).validation));
 test('VP60 evaluatePlanAuthority invoked',async()=>assert.ok((await director.run(task(),opts())).authority));
 test('VP61 Generation projection no route',async()=>assert.equal((await director.run(task(),opts())).generation_handoffs[0].lane,undefined));
