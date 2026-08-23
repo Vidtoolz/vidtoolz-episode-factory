@@ -111,6 +111,7 @@ require("./story-revision-review.test.js");
 require("./story-editor.test.js");
 require("./visual-plan.test.js");
 require("./visual-planning-director.test.js");
+require("./audience-packaging-director.test.js");
 require("./workflow-path.test.js");
 require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");

@@ -241,15 +241,39 @@
     {
       "role_id": "audience_packaging_director",
       "role_name": "Audience & Packaging Director",
-      "status": "PLANNED",
+      "status": "BUILT",
       "build_order": 5,
       "owns": [
-        "title/thumbnail/packaging proposals",
-        "distribution packaging",
-        "performance-analysis input"
+        "title proposals and variants",
+        "title clarity/tension/fidelity assessment",
+        "thumbnail communication concepts",
+        "title-thumbnail pairing",
+        "viewer-promise framing",
+        "packaging variants and ranking",
+        "Research-aware packaging framing",
+        "description draft (V1)",
+        "package revalidation against source content",
+        "packaging performance-analysis input"
       ],
       "does_not_own": [
-        "final packaging/publish approval (Mikko)"
+        "final packaging/publish approval (Mikko)",
+        "Story thesis or argument structure",
+        "factual Research verdict",
+        "episode creative identity",
+        "thumbnail visual specification execution (Visual Planning Director)",
+        "Camera mechanics",
+        "generation backend/model/machine",
+        "media generation",
+        "final edit/timeline",
+        "Presenter performance/readiness",
+        "final title/thumbnail/pair selection"
+      ],
+      "boundaries": [
+        "Packaging may make the episode easier to understand from the outside; it may not promise an episode that does not exist.",
+        "Thumbnail concepts stay concepts: Visual Planning owns executable visual specification; Generation Supervisor owns execution.",
+        "Factual titles, thumbnail text and comparisons carry canonical Research binding refs; Research verdicts are never rewritten.",
+        "Story drift invalidates package authority; final packaging revalidates against final-content identity.",
+        "Ranking is advisory. Final title/thumbnail/pair selection and publication belong to Mikko via publish-gate."
       ]
     },
     {
@@ -439,7 +463,7 @@
     "rule": "Operator/UI trackers must never become a competing source of truth. Projection loss must degrade display, never authority.",
     "run_state": {
       "invariant": "Every active package run has one machine-readable canonical workflow state derived from the 14-gate engine.",
-      "marker": "package-run-state.md is an optional local marker (active/parked/superseded) read by package-runs-index.js — it classifies lifecycle, it does not override gate evidence.",
+      "marker": "package-run-state.md is an optional local marker (active/parked/superseded) read by package-runs-index.js \u2014 it classifies lifecycle, it does not override gate evidence.",
       "ambiguity": "If evidence is incomplete, state is AMBIGUOUS. Guessing is prohibited. Cockpit surfaces must never infer a more confident state than the evidence supports.",
       "owner": "Production Operations owns run-state maintenance; Hermes reads and routes from it."
     }
@@ -450,7 +474,7 @@
       "agent name",
       "state",
       "current task",
-      "owner → next owner",
+      "owner \u2192 next owner",
       "attention level",
       "one-line blocker",
       "unresolved disagreement",
