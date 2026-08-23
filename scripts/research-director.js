@@ -1,447 +1,137 @@
 #!/usr/bin/env node
 'use strict';
-// VIDTOOLZ RESEARCH DIRECTOR — semantic evidence analyst. Built on the
-// canonical hardened Research Result V1 contract (1d17cb1). The agent
-// supplies SEMANTIC judgment only; all identity, integrity, freshness
-// arithmetic, digests, bindings, authorization, and QC remain deterministic
-// and outside the agent.
-//
-// Authority:
-//   owns: factual research judgment, evidence/support assessment, source
-//         quality, effective independence, contradiction analysis, confidence,
-//         qualification + wording constraints, Research recommendation,
-//         production of canonical Research Result semantic fields.
-//   does not own: final argument, script, story structure, creative angle,
-//         final QC, human approval, publication, generation execution,
-//         routing, deterministic hashes/freshness/validity/binding.
-//
-// V1 scope: evidence-first. No autonomous web crawling — the agent operates
-// on Mindmap claim packages, corpus excerpts, supplied source material, and
-// artifact_refs attached to the task. When evidence is insufficient and no
-// authorized retrieval exists, it returns RESEARCH_MORE, never fabricated
-// sources.
-//
-// Model routing: semantic inference runs through the local large_text lane
-// (vidtoolz-compute authority picks host; this agent never hard-codes one).
-// Task risk/capability routing follows the canonical ceilings: LOCAL_AUTO /
-// LOCAL_PARALLEL / FRONTIER_RECOMMENDED (frontier never sent automatically).
-//
-// Task envelope (v1):
-// {
-//   task_id, project_id?, package_run_id, requested_by?,
-//   assignment: { action: 'evaluate_claim' | 'evaluate_existing_result' | 'research_from_known_sources' | 'status',
-//                 controversial_claim?: bool, max_generation_attempts?: int },
-//   claim_ref, claim: { evaluated_text, temporal }, research_question?,
-//   sources[], evidence[],               // canonical hardened shapes
-//   risk_level?,                         // LOCAL_AUTO | LOCAL_PARALLEL | FRONTIER_RECOMMENDED
-//   retry_budget?, deadline?
-// }
-//
-// Output: result envelope { state, candidates?, research_result, handoff,
-//   provenance, events } + control_room projection. On success the semantic
-// Research Result validates under the hardened contract and is consumable by
-// research-result-authority.js unchanged.
 
+// Semantic evidence specialist over canonical Research Result V1. Models may
+// judge only supplied evidence; deterministic services retain mechanics and
+// authorization authority.
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
+const http = require('node:http');
+const https = require('node:https');
 const { execFileSync } = require('node:child_process');
-
-const researchValidator = require('./research-result-validator.js');
-const contractValidator = require('./agent-contract-validator.js');
+const v = require('./research-result-validator.js');
 const contract = require('../config/agent-contract.json');
-const registry = require('../config/agent-registry.json');
 
-const REPO_ROOT = path.resolve(__dirname, '..');
-const AGENT_ID = 'research_director';
-const LANE = 'large_text'; // local semantic inference lane — host chosen by compute authority
-const sha256 = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
-const nowIso = () => new Date().toISOString();
-const MAX_ATTEMPTS_HARD_CAP = 3;
-const DEFAULT_MAX_ATTEMPTS = 2;
-
-const STATE_OWNERS = {
-  COMPLETE: null, RESEARCHING: 'research_director', EVALUATING: 'research_director',
-  AWAITING_HUMAN_REVIEW: 'mikko', NEEDS_HUMAN_DECISION: 'mikko',
-  RESEARCH_MORE: 'research_director', BLOCKED: 'production_operations',
-  INPUT_MISSING: 'production_operations', RETRY_BUDGET_EXHAUSTED: 'hermes',
-  RESOURCE_UNAVAILABLE: 'production_operations', PLAN_UNAPPROVED: 'production_operations',
+const AGENT_ID = 'research_director', LANE = 'large_text';
+const DEFAULT_MAX_ATTEMPTS = 2, MAX_ATTEMPTS_HARD_CAP = 3, MAX_PROMPT_CHARS = 24000;
+const ACTIONS = Object.freeze(['evaluate_claim', 'evaluate_existing_result', 'evaluate_known_evidence', 'research_from_known_sources', 'status']);
+const sets = {
+  support: new Set(v.ENUMS.support), quality: new Set(v.ENUMS.evidence_quality), confidence: new Set(v.ENUMS.confidence),
+  independence: new Set(v.ENUMS.independence), contradiction: new Set(v.ENUMS.contradiction), disagreement: new Set(contract.disagreement_model.states),
+  recommendation: new Set(v.ENUMS.recommendation), stance: new Set(v.ENUMS.stance), constraint: new Set(v.ENUMS.constraint_type),
 };
+const clone = structuredClone, nowIso = () => new Date().toISOString();
+const normalize = (x) => String(x || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+const safeId = (x) => typeof x === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(x);
 
-const RECOMMENDATIONS = new Set(['ALLOW_USE', 'ALLOW_USE_WITH_QUALIFICATION', 'RESEARCH_MORE', 'DO_NOT_USE', 'ESCALATE']);
-const SUPPORT = new Set(['SUPPORTED', 'PARTIALLY_SUPPORTED', 'UNSUPPORTED', 'INCONCLUSIVE']);
-const QUALITY = new Set(['ADEQUATE', 'WEAK', 'INADEQUATE', 'UNKNOWN']);
-const CONFIDENCE = new Set(['HIGH', 'MEDIUM', 'LOW']);
-const INDEPENDENCE = new Set(['ADEQUATE', 'LIMITED', 'UNKNOWN', 'NOT_REQUIRED']);
-const CONTRADICTION = new Set(['NONE', 'RESOLVED', 'UNRESOLVED']);
-const CONSTRAINT_TYPES = new Set(['LIMIT_SCOPE', 'RETAIN_QUALIFIER', 'FORBID_ABSOLUTE', 'REQUIRE_ATTRIBUTION', 'REQUIRE_AS_OF_DATE']);
-const STANCES = new Set(['SUPPORTS', 'CONTRADICTS', 'CONTEXT_ONLY']);
-
-// ── capability routing (never auto-frontier) ─────────────────────────────────
-function routeCapability(task) {
-  const level = task.risk_level || task.assignment?.risk_level || 'LOCAL_AUTO';
-  if (!['LOCAL_AUTO', 'LOCAL_PARALLEL', 'FRONTIER_RECOMMENDED'].includes(level)) {
-    return { ok: false, reason: `unknown risk_level ${level}` };
-  }
-  if (level === 'FRONTIER_RECOMMENDED') {
-    return { ok: true, mode: 'FRONTIER_RECOMMENDED', local: false,
-      note: 'frontier tooling never invoked automatically — Mikko chooses' };
-  }
-  return { ok: true, mode: level, local: true };
+class RoutingError extends Error { constructor(code, message) { super(message); this.code = code; } }
+function routeCapability(task = {}) {
+  const mode = task.risk_level || task.assignment?.risk_level || 'LOCAL_AUTO', localOnly = task.privacy?.local_only !== false;
+  if (!['LOCAL_AUTO', 'LOCAL_PARALLEL', 'FRONTIER_RECOMMENDED'].includes(mode)) return { ok: false, code: 'NO_AUTHORIZED_ROUTE', reason: `unknown risk_level ${mode}` };
+  if (mode === 'FRONTIER_RECOMMENDED') return localOnly ? { ok: false, code: 'PRIVACY_LOCAL_ONLY', reason: 'local-only evidence cannot be handed to frontier' } : { ok: true, mode, local: false, auto_dispatch: false };
+  return { ok: true, mode, local: true, auto_dispatch: true };
 }
-
-// ── model adapter (bounded; real adapter in production, fake in tests) ────────
-// Adapter contract: fn(task, promptContext) → Promise<string> raw JSON text.
-// Production default: local large_text lane via vidtoolz-compute + ollama.
-// Tests inject options.modelAdapter with a bounded fake (REAL ORCHESTRATION
-// CANARY), never a mocked semantic JSON fixture.
-async function invokeModel(task, context, options) {
-  if (options.modelAdapter) return options.modelAdapter(task, context);
-  const { prompt } = context;
-  const lanePath = path.join(os.homedir(), 'vidtoolz-compute', 'vidtoolz-compute.py');
-  const out = execFileSync('python3', [lanePath, 'route', '--lane', LANE, '--json'], { encoding: 'utf8', timeout: 120000 });
-  const decision = JSON.parse(out);
-  if (!decision.ok || decision.decision !== 'ROUTE') {
-    const err = new Error(`large_text lane refused: ${decision.reason || decision.decision}`);
-    err.statusCode = 503; throw err;
-  }
-  // Local Ollama endpoint from compute authority
-  const endpoint = decision.endpoint || decision.selected_host;
-  const http = require('node:http');
-  const body = JSON.stringify({
-    model: decision.model || (decision.required_models && decision.required_models[0]) || 'qwen3.8-27b:latest',
-    stream: false,
-    messages: [{ role: 'system', content: 'Return exactly one compact JSON object, no prose.' }, { role: 'user', content: prompt }],
-    options: { temperature: 0, num_ctx: 8192 },
-  });
-  return await new Promise((resolve, reject) => {
-    const req = http.request(`${endpoint.replace(/\/+$/, '')}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json' } }, (res) => {
-      const chunks = []; res.on('data', (c) => chunks.push(c));
-      res.on('end', () => {
-        try {
-          const payload = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-          resolve(payload.message ? payload.message.content : payload.response || '');
-        } catch (e) { reject(e); }
-      });
-    });
-    req.on('error', (e) => { e.statusCode = 503; reject(e); });
-    req.setTimeout(120000, () => { req.destroy(new Error('model timeout')); });
-    req.end(body);
-  });
-}
-
-// ── semantic output schema validation (deterministic) ─────────────────────────
-function validateSemanticOutput(raw) {
-  const errs = [];
-  let obj;
-  try { obj = typeof raw === 'string' ? JSON.parse(raw) : raw; }
-  catch { errs.push('model output is not valid JSON'); return { errs, obj: null }; }
-  const j = obj.judgment || obj;
-  for (const [f, set] of [['support_status', SUPPORT], ['freshness_status_at_review', new Set(['FRESH', 'EXPIRED', 'NOT_APPLICABLE', 'UNKNOWN'])],
-    ['evidence_quality', QUALITY], ['confidence', CONFIDENCE], ['independence_status', INDEPENDENCE],
-    ['contradiction_status', CONTRADICTION], ['disagreement_state', new Set(contract.disagreement_model.states)],
-    ['recommendation', RECOMMENDATIONS]]) {
-    if (!set.has(j[f])) errs.push(`judgment.${f} '${j[f]}' not in canonical enum`);
-  }
-  if (!Array.isArray(j.unresolved_questions)) errs.push('judgment.unresolved_questions must be array');
-  if (typeof j.rationale !== 'string' || j.rationale.length < 8) errs.push('judgment.rationale too short/absent');
-  const q = obj.qualification || {};
-  if (q.qualification_required === true) {
-    if (!Array.isArray(q.wording_constraints) || !q.wording_constraints.length) errs.push('qualification_required=true needs wording_constraints');
-  }
-  for (const [i, c] of (q.wording_constraints || []).entries()) {
-    if (!c.constraint_id || !CONSTRAINT_TYPES.has(c.type) || !c.instruction) errs.push(`wording_constraints[${i}] missing canonical fields`);
-  }
-  for (const [i, e] of (obj.evidence || []).entries()) {
-    if (!e.evidence_id || !STANCES.has(e.stance)) errs.push(`evidence[${i}] needs evidence_id + canonical stance`);
-  }
-  // consistency guards mirrored from hardened contract
-  if (['NEEDS_HUMAN_DECISION', 'BLOCKED'].includes(j.disagreement_state) &&
-      ['ALLOW_USE', 'ALLOW_USE_WITH_QUALIFICATION'].includes(j.recommendation)) {
-    errs.push('blocking disagreement cannot recommend ordinary use');
-  }
-  if (j.contradiction_status === 'UNRESOLVED' && j.recommendation === 'ALLOW_USE') {
-    errs.push('unresolved contradiction cannot recommend unqualified ALLOW_USE');
-  }
-  return { errs, obj };
-}
-
-// ── prompt construction: bounded, no uncontrolled context, no chain-of-thought
- // normalize task source shapes into canonical hardened container shape
-function normalizeSources(sources = []) {
-  return (sources || []).map((s) => ({
-    source_ref: s.source_ref, source_class: s.source_class,
-    original_source: s.original_source || null,
-    container: {
-      source_id: s.container?.source_id || `src_${(s.container?.container_type || 'local_file')}_${s.source_ref}`,
-      container_type: s.container?.container_type || 'local_file',
-      relationship_to_original: s.container?.relationship_to_original || s.container?.relationship || 'UNKNOWN',
-      google_document_id: s.container?.google_document_id,
-      title: s.container?.title || (s.original_source && s.original_source.title) || null,
-      url: s.container?.url,
-      retrieved_at: s.container?.retrieved_at || '1970-01-01T00:00:00Z',
-      retrieved_content_sha256: s.container?.retrieved_content_sha256 || sha256('unprovided'),
-      source_fingerprint_sha256: s.container?.source_fingerprint_sha256,
-    },
-    independence_group: s.independence_group, independence_basis: s.independence_basis,
-  }));
-}
-function buildPrompt(task) {
-  const claim = task.claim || {};
-  const lines = [
-    'You are the VIDTOOLZ Research Director. Judge ONLY what the supplied evidence supports.',
-    'Never invent sources, quotes, URLs, publishers, or dates. Never rewrite the claim.',
-    'Classify each evidence window with exactly one stance: SUPPORTS | CONTRADICTS | CONTEXT_ONLY.',
-    'Classify support: SUPPORTED | PARTIALLY_SUPPORTED | UNSUPPORTED | INCONCLUSIVE.',
-    'Confidence: HIGH | MEDIUM | LOW. Independence: ADEQUATE | LIMITED | UNKNOWN | NOT_REQUIRED.',
-    'Contradiction: NONE | RESOLVED | UNRESOLVED. Recommendation: ALLOW_USE | ALLOW_USE_WITH_QUALIFICATION | RESEARCH_MORE | DO_NOT_USE | ESCALATE.',
-    'If evidence is insufficient or contradictory, use RESEARCH_MORE or INCONCLUSIVE, never fabricate.',
-    task.assignment?.controversial_claim ? 'This claim is marked controversial_claim:true. If material unresolved disagreement remains, set disagreement_state NEEDS_HUMAN_DECISION.' : '',
-    '',
-    `Claim: ${claim.evaluated_text}`,
-    `Temporal class: ${(claim.temporal || {}).temporal_class}`,
-    task.research_question ? `Research question: ${task.research_question}` : '',
-    '',
-    'Evidence (id | source | stance-candidate | independence group | excerpt):',
-  ];
-  for (const e of task.evidence || []) {
-    const src = (task.sources || []).find((s) => s.source_ref === e.source_ref) || {};
-    lines.push(`- ${e.evidence_id} | ${e.source_ref} | group ${src.independence_group || '?'} | ${JSON.stringify((e.excerpt || {}).exact_text || '').slice(0, 400)}`);
-  }
-  lines.push('', 'Return exactly one JSON object: { judgment:{...}, qualification:{...}, evidence:[{evidence_id,stance}], rationale_ref_ids:[] }');
-  return { prompt: lines.join('\n') };
-}
-
-// ── deterministic preflight (fail closed before any semantic work) ───────────
-function preflight(task) {
-  const errs = [];
-  if (!task.task_id) errs.push('task_id missing');
-  if (!task.package_run_id) errs.push('package_run_id missing');
-  const action = task.assignment?.action;
-  if (!['evaluate_claim', 'evaluate_existing_result', 'research_from_known_sources', 'status'].includes(action)) {
-    errs.push(`unsupported action ${action}`);
-  }
-  const cr = task.claim_ref || {};
-  if (!researchValidator.NAMESPACES || !Object.values(researchValidator.NAMESPACES).includes(cr.namespace)) {
-    errs.push('claim_ref.namespace not canonical');
-  }
-  if (cr.namespace === researchValidator.NAMESPACES?.MINDMAP && !/^canon_gd_v10_[a-f0-9]{20}$/i.test(cr.canonical_id || '')) {
-    errs.push('Mindmap canonical_id malformed');
-  }
-  if (cr.namespace === researchValidator.NAMESPACES?.PACKAGE && !/^claim-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cr.canonical_id || '')) {
-    errs.push('package-run canonical_id malformed');
-  }
-  const claim = task.claim || {};
-  if (!claim.evaluated_text) errs.push('claim.evaluated_text missing');
-  if (!claim.temporal || !claim.temporal.temporal_class) errs.push('claim.temporal.temporal_class missing');
-  for (const [i, e] of (task.evidence || []).entries()) {
-    const ex = e.excerpt || {};
-    if (ex.exact_text && ex.exact_text_sha256 && sha256(ex.exact_text) !== ex.exact_text_sha256) {
-      errs.push(`evidence[${i}] excerpt hash mismatch`);
-    }
-  }
-  const windows = new Set();
-  for (const e of task.evidence || []) {
-    if (e.evidence_window_id) { if (windows.has(e.evidence_window_id)) errs.push('duplicate evidence_window_id'); windows.add(e.evidence_window_id); }
-  }
-  if (claim.temporal?.temporal_class === 'CURRENT_FACT') {
-    const pol = claim.temporal.freshness_policy || {};
-    if (pol.MAX_AGE_DAYS && Date.parse(nowIso()) - Date.parse(claim.temporal.as_of) > pol.MAX_AGE_DAYS * 86400000) {
-      errs.push('CURRENT_FACT_EXPIRED');
-    }
-  }
-  return errs;
-}
-
-// ── deterministic writer: build canonical hardened Research Result V1 ─────────
-function buildResult(task, semantic, previousResult) {
-  const revision = previousResult ? previousResult.result_revision + 1 : 1;
-  const semanticStances = new Map((semantic.evidence || []).map((e) => [e.evidence_id, e.stance]));
-  const mergedEvidence = (task.evidence || []).map((e) => ({
-    ...e,
-    stance: semanticStances.get(e.evidence_id) ?? e.stance ?? 'CONTEXT_ONLY',
-  }));
-  const result = {
-    result_id: `research-result-${crypto.randomUUID()}`,
-    result_revision: revision,
-    claim_ref: { alias_ids: [], ...task.claim_ref },
-    claim: { evaluated_text: task.claim.evaluated_text,
-      evaluated_text_sha256: sha256(task.claim.evaluated_text),
-      temporal: task.claim.temporal },
-    judgment: semantic.judgment,
-    qualification: semantic.qualification,
-    sources: normalizeSources(task.sources),
-    evidence: mergedEvidence,
-    derived: { independent_support_count: researchValidator.independentSupportCount
-      ? researchValidator.independentSupportCount({ sources: task.sources, evidence: mergedEvidence }) : 0 },
-    provenance: { provenance_inputs: (task.provenance_inputs || []).length
-      ? task.provenance_inputs
-      : [{ system: 'research-director', type: 'semantic-judgment', record_id: task.task_id, sha256: sha256(task.task_id) }] },
-    lifecycle: { created_at: nowIso(), reviewed_at: nowIso() },
-  };
-  if (previousResult) result.supersedes_result_id = previousResult.result_id;
-  const root = { schema_version: 1, artifact_type: 'research-results', package_run_id: task.package_run_id, results: [result] };
-  result.result_digest_sha256 = researchValidator.computeResultDigest(root, result);
-  return { result, root };
-}
-
-async function run(task, options = {}) {
-  const result = { schema_version: 1, agent_id: AGENT_ID, role_id: 'research_director',
-    task_id: task.task_id, project_id: task.project_id ?? null, package_run_id: task.package_run_id,
-    requested_by: task.requested_by || 'hermes', state: null, attention: 'AUTONOMOUS',
-    attempts: 0, max_attempts: Math.min(task.retry_budget || DEFAULT_MAX_ATTEMPTS, MAX_ATTEMPTS_HARD_CAP),
-    candidates: [], research_result: null, recommendation: null,
-    disagreement_state: 'NONE', handoff: null, provenance: null, events: [] };
-  const ev = (state, detail) => result.events.push({ at: nowIso(), actor: AGENT_ID, state, detail: detail || null });
-  const finish = (nextOwner) => {
-    result.handoff = { next_owner: nextOwner, next_action: nextOwner === 'mikko' ? 'HUMAN_REVIEW_OR_APPROVAL' : nextOwner === 'hermes' ? 'ESCALATE_WITH_EVIDENCE' : 'REMEDIATE' };
-    result.provenance = { acting_agent: AGENT_ID, lane: LANE, source_commit: (() => { try { return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim(); } catch { return null; } })(), recorded_at: nowIso() };
-    ev(result.state, result.reason || null);
-    return result;
-  };
-
-  ev('ASSIGNMENT_RECEIVED', `${task.assignment?.action} from ${result.requested_by}`);
-
-  // deterministic preflight — never reason around mechanical failure
-  const pre = preflight(task);
-  if (pre.length) {
-    result.state = 'BLOCKED';
-    result.reason = `deterministic preflight failed: ${pre.join('; ')}`;
-    result.attention = 'REVIEW';
-    return finish('production_operations');
-  }
-  ev('PREFLIGHT_PASS');
-
-  // capability routing
-  const cap = routeCapability(task);
-  if (!cap.ok) { result.state = 'BLOCKED'; result.reason = cap.reason; return finish('production_operations'); }
-  if (!cap.local) {
-    result.state = 'AWAITING_HUMAN_REVIEW';
-    result.reason = 'frontier capability recommended — never invoked automatically';
-    result.attention = 'REVIEW';
-    return finish('mikko');
-  }
-  if (task.assignment.action === 'status') {
-    result.state = 'COMPLETE'; result.reason = 'status only';
-    return finish(null);
-  }
-
-  // semantic inference with bounded retries
-  const context = buildPrompt(task);
-  let semantic = null, lastErrs = [];
-  for (result.attempts = 1; result.attempts <= result.max_attempts; result.attempts += 1) {
-    result.state = 'RESEARCHING';
+function selectComputeRoute(task, options = {}) {
+  let selected;
+  if (options.routeSelector) selected = options.routeSelector({ lane: LANE, risk_level: task.risk_level || 'LOCAL_AUTO', privacy: { local_only: task.privacy?.local_only !== false } });
+  else {
+    const root = path.resolve(options.computeRoot || process.env.VIDTOOLZ_COMPUTE_ROOT || path.join(os.homedir(), 'vidtoolz-compute'));
     try {
-      const raw = await invokeModel(task, context, options);
-      const checked = validateSemanticOutput(raw);
-      if (!checked.errs.length) { semantic = checked.obj; break; }
-      lastErrs = checked.errs;
-      ev('MODEL_OUTPUT_INVALID', checked.errs.join('; '));
-    } catch (e) {
-      lastErrs = [String(e.message || e)];
-      if (e.statusCode === 503) {
-        result.state = 'RESOURCE_UNAVAILABLE';
-        result.reason = `model lane unavailable: ${e.message}`;
-        result.attention = 'INFORMATION';
-        return finish('production_operations');
-      }
-      ev('MODEL_FAILURE', String(e.message || e).slice(0, 200));
-    }
+      selected = JSON.parse(execFileSync('python3', [path.join(root, 'vidtoolz-compute.py'), 'select', LANE, '--json'], { encoding: 'utf8', timeout: 120000 }));
+      const required = JSON.parse(fs.readFileSync(path.join(root, 'registry.json'), 'utf8'))?.lanes?.[LANE]?.required_models;
+      if (!Array.isArray(required) || !required.length) throw new RoutingError('NO_AUTHORIZED_MODEL', 'compute registry has no large_text model');
+      selected.model = required.find((model) => !Array.isArray(selected?.checks?.models) || selected.checks.models.includes(model));
+      selected.model_source = `compute-registry.lanes.${LANE}.required_models`;
+      if (!selected.model) throw new RoutingError('NO_AUTHORIZED_MODEL', 'no registry-required large_text model is available');
+    } catch (error) { if (error instanceof RoutingError) throw error; throw new RoutingError('ROUTING_UNAVAILABLE', `compute selector failed: ${error.message}`); }
   }
-  if (!semantic) {
-    result.state = 'RETRY_BUDGET_EXHAUSTED';
-    result.reason = `semantic output invalid after ${result.max_attempts} attempt(s): ${lastErrs.join('; ').slice(0, 200)}`;
-    result.attention = 'REVIEW';
-    return finish('hermes');
-  }
-
-  // controversial / unresolved human gate
-  if (task.assignment.controversial_claim && semantic.judgment.disagreement_state === 'NEEDS_HUMAN_DECISION') {
-    result.disagreement_state = 'NEEDS_HUMAN_DECISION';
-  }
-
-  // build canonical hardened Research Result
-  const previousResult = task.previous_result || null;
-  const { result: rr, root } = buildResult(task, semantic, previousResult);
-  const aggregate = researchValidator.validateAggregate(root, { as_of: options.asOf });
-  if (!aggregate.validation_ok) {
-    result.state = 'BLOCKED';
-    result.reason = `produced result fails hardened validation: ${JSON.stringify(aggregate.reason_codes)}`;
-    return finish('production_operations');
-  }
-  result.research_result = rr;
-  result.candidates = [{ result_id: rr.result_id, result_state: aggregate.results[0].result_state,
-    authorization_ok: aggregate.results[0].authorization_ok }];
-
-  // append-only against prior aggregate when supplied
-  if (options.previousAggregate) {
-    const ao = researchValidator.validateAppendOnly(options.previousAggregate, { ...root, results: [...options.previousAggregate.results, rr] });
-    if (!ao.ok) {
-      result.state = 'BLOCKED';
-      result.reason = `append-only violation: ${JSON.stringify(ao.errors.map((e) => e.message || e.code))}`;
-      return finish('production_operations');
-    }
-  }
-
-  result.recommendation = { action: semantic.judgment.recommendation, result_id: rr.result_id,
-    rationale: semantic.judgment.rationale };
-  const j = semantic.judgment;
-  if (['NEEDS_HUMAN_DECISION', 'BLOCKED'].includes(j.disagreement_state) || task.assignment.controversial_claim) {
-    result.state = 'NEEDS_HUMAN_DECISION';
-    result.disagreement_state = j.disagreement_state;
-    result.attention = 'REVIEW';
-    return finish('mikko');
-  }
-  if (['RESEARCH_MORE', 'DO_NOT_USE'].includes(j.recommendation)) {
-    result.state = 'RESEARCH_MORE';
-    result.reason = j.rationale;
-    result.attention = 'REVIEW';
-    return finish('production_operations');
-  }
-  result.state = 'COMPLETE';
-  return finish(null);
+  if (!selected || selected.ok !== true || selected.decision !== 'ROUTE') throw new RoutingError('NO_AUTHORIZED_ROUTE', selected?.reason || 'compute authority declined route');
+  if (!selected.selected_host || !selected.endpoint || !selected.model || !/^https?:\/\//.test(selected.endpoint)) throw new RoutingError('ROUTING_UNAVAILABLE', 'route lacks authorized host, endpoint, or model');
+  return { lane: LANE, host: selected.selected_host, endpoint: selected.endpoint, model: selected.model, model_source: selected.model_source || 'injected-compute-authority' };
+}
+function requestJson(url, body, timeout = 120000) {
+  return new Promise((resolve, reject) => { const bytes = Buffer.from(JSON.stringify(body)); const req = (url.startsWith('https:') ? https : http).request(url, { method: 'POST', headers: { 'content-type': 'application/json', 'content-length': bytes.length } }, (res) => { const chunks = []; res.on('data', (x) => chunks.push(x)); res.on('end', () => { const text = Buffer.concat(chunks).toString(); if (res.statusCode < 200 || res.statusCode >= 300) return reject(new Error(`model HTTP ${res.statusCode}: ${text.slice(0, 160)}`)); try { resolve(JSON.parse(text)); } catch (error) { reject(new Error(`malformed transport JSON: ${error.message}`)); } }); }); req.on('error', reject); req.setTimeout(timeout, () => req.destroy(new Error('model transport timeout'))); req.end(bytes); });
+}
+async function invokeModel(context, route, options = {}) {
+  const started = Date.now();
+  if (options.modelAdapter) { const x = await options.modelAdapter({ prompt: context.prompt, context: clone(context.context), route: clone(route) }); return { raw: typeof x === 'string' ? x : JSON.stringify(x), latency_ms: Date.now() - started }; }
+  const payload = await requestJson(`${route.endpoint.replace(/\/+$/, '')}/api/chat`, { model: route.model, stream: false, think: false, format: 'json', messages: [{ role: 'system', content: 'Return one compact JSON object; no chain-of-thought, markdown, or surrounding prose.' }, { role: 'user', content: context.prompt }], options: { temperature: 0, num_ctx: 8192 } });
+  const raw = payload?.message?.content ?? payload?.response; if (typeof raw !== 'string' || !raw.trim()) throw new Error('model returned empty structured response'); return { raw, latency_ms: Date.now() - started };
 }
 
-function controlRoomView(result) {
-  return {
-    role: 'Research Director', state: result.state, current_task: result.task_id,
-    current_claim: result.research_result ? result.research_result.claim_ref.canonical_id : null,
-    current_result_id: result.research_result ? result.research_result.result_id : null,
-    owner: AGENT_ID, next_owner: result.handoff ? result.handoff.next_owner : null,
-    attention_level: result.attention, blocker: result.reason || null,
-    unresolved_disagreement: result.disagreement_state,
-    latest_event: result.events.length ? result.events[result.events.length - 1] : null,
-    research_summary: result.research_result ? {
-      support_status: result.research_result.judgment.support_status,
-      evidence_quality: result.research_result.judgment.evidence_quality,
-      confidence: result.research_result.judgment.confidence,
-      independence_status: result.research_result.judgment.independence_status,
-      contradiction_status: result.research_result.judgment.contradiction_status,
-      recommendation: result.research_result.judgment.recommendation,
-      qualification_required: Boolean(result.research_result.qualification?.qualification_required),
-      constraint_ids: (result.research_result.qualification?.wording_constraints || []).map((c) => c.constraint_id),
-      source_count: (result.research_result.sources || []).length,
-      independent_support_count: result.research_result.derived?.independent_support_count ?? 0,
-    } : null,
-  };
+function exactCoverage(entries, key, expected, label, errors) {
+  if (!Array.isArray(entries)) return errors.push(`${label} must be an array`); const seen = new Set();
+  entries.forEach((entry, i) => { const id = entry?.[key]; if (!expected.has(id)) errors.push(`${label}[${i}].${key} does not match supplied input`); if (seen.has(id)) errors.push(`${label}[${i}].${key} is duplicated`); seen.add(id); }); for (const id of expected) if (!seen.has(id)) errors.push(`${label} is missing ${id}`);
+}
+function keys(obj, allowed, label, errors) { if (!obj || typeof obj !== 'object' || Array.isArray(obj)) { errors.push(`${label} must be an object`); return false; } Object.keys(obj).forEach((key) => { if (!allowed.includes(key)) errors.push(`${label}.${key} is not allowed`); }); return true; }
+function deriveEvidenceQuality(s) {
+  const quality = new Map(s.source_quality_assessments.map((x) => [x.source_ref, x.quality])); const refs = new Set(s.evidence_assessments.filter((x) => x.stance === 'SUPPORTS').map((x) => x.source_ref)); const values = [...refs].map((x) => quality.get(x));
+  if (!values.length || values.every((x) => x === 'INADEQUATE')) return 'INADEQUATE'; if (values.includes('UNKNOWN')) return 'UNKNOWN'; if (values.includes('WEAK') || values.includes('INADEQUATE')) return 'WEAK'; return 'ADEQUATE';
+}
+function validateSemanticOutput(raw, expected = {}) {
+  const errors = []; let out; try { out = typeof raw === 'string' ? JSON.parse(raw) : clone(raw); } catch { return { ok: false, errors: ['model output is not valid JSON'], value: null }; }
+  keys(out, ['judgment', 'qualification', 'evidence_assessments', 'source_quality_assessments', 'independence_assessments'], '$', errors);
+  const j = out?.judgment || {}; keys(j, ['support_status', 'evidence_quality', 'evidence_quality_rationale', 'confidence', 'confidence_rationale', 'independence_status', 'independence_rationale', 'contradiction_status', 'contradiction_rationale', 'disagreement_state', 'recommendation', 'rationale', 'unresolved_questions'], 'judgment', errors);
+  for (const [field, set] of [['support_status', sets.support], ['evidence_quality', sets.quality], ['confidence', sets.confidence], ['independence_status', sets.independence], ['contradiction_status', sets.contradiction], ['disagreement_state', sets.disagreement], ['recommendation', sets.recommendation]]) if (!set.has(j[field])) errors.push(`judgment.${field} is not canonical`);
+  for (const field of ['evidence_quality_rationale', 'confidence_rationale', 'independence_rationale', 'contradiction_rationale', 'rationale']) if (typeof j[field] !== 'string' || normalize(j[field]).length < 8) errors.push(`judgment.${field} requires a concise rationale`); if (!Array.isArray(j.unresolved_questions)) errors.push('judgment.unresolved_questions must be an array');
+  const evidenceIds = new Set(expected.evidenceIds || []), sourceRefs = new Set(expected.sourceRefs || []); exactCoverage(out.evidence_assessments, 'evidence_id', evidenceIds, 'evidence_assessments', errors); exactCoverage(out.source_quality_assessments, 'source_ref', sourceRefs, 'source_quality_assessments', errors); exactCoverage(out.independence_assessments, 'source_ref', sourceRefs, 'independence_assessments', errors);
+  (out.evidence_assessments || []).forEach((x, i) => { keys(x, ['evidence_id', 'stance', 'rationale'], `evidence_assessments[${i}]`, errors); if (!sets.stance.has(x.stance)) errors.push(`evidence_assessments[${i}].stance invalid`); if (!normalize(x.rationale)) errors.push(`evidence_assessments[${i}].rationale required`); x.source_ref = expected.sourceByEvidence?.get(x.evidence_id); });
+  (out.source_quality_assessments || []).forEach((x, i) => { keys(x, ['source_ref', 'quality', 'rationale'], `source_quality_assessments[${i}]`, errors); if (!sets.quality.has(x.quality)) errors.push(`source_quality_assessments[${i}].quality invalid`); if (!normalize(x.rationale)) errors.push(`source_quality_assessments[${i}].rationale required`); });
+  (out.independence_assessments || []).forEach((x, i) => { keys(x, ['source_ref', 'independence_group', 'rationale'], `independence_assessments[${i}]`, errors); if (!safeId(x.independence_group)) errors.push(`independence_assessments[${i}].independence_group invalid`); if (!normalize(x.rationale)) errors.push(`independence_assessments[${i}].rationale required`); });
+  const q = out.qualification || {}; keys(q, ['qualification_required', 'wording_constraints'], 'qualification', errors); if (typeof q.qualification_required !== 'boolean' || !Array.isArray(q.wording_constraints)) errors.push('qualification shape invalid'); if (q.qualification_required && !q.wording_constraints?.length) errors.push('qualification requires constraints'); if (!q.qualification_required && q.wording_constraints?.length) errors.push('constraints require qualification');
+  const constraintKeys = new Set(); (q.wording_constraints || []).forEach((x, i) => { keys(x, ['type', 'instruction', 'rationale', 'evidence_refs'], `qualification.wording_constraints[${i}]`, errors); if (!sets.constraint.has(x.type) || !normalize(x.instruction) || !normalize(x.rationale) || !Array.isArray(x.evidence_refs) || x.evidence_refs.some((id) => !evidenceIds.has(id))) errors.push(`qualification.wording_constraints[${i}] invalid`); const k = `${x.type}|${normalize(x.instruction).toLowerCase()}`; if (constraintKeys.has(k)) errors.push('duplicate semantic constraint'); constraintKeys.add(k); });
+  if (!errors.length) { const quality = deriveEvidenceQuality(out); if (j.evidence_quality !== quality) errors.push(`judgment.evidence_quality must equal conservative source-derived ${quality}`); if (['SUPPORTED', 'PARTIALLY_SUPPORTED'].includes(j.support_status) && !out.evidence_assessments.some((x) => x.stance === 'SUPPORTS')) errors.push('support needs supporting evidence'); if (['UNSUPPORTED', 'INCONCLUSIVE'].includes(j.support_status) && ['ALLOW_USE', 'ALLOW_USE_WITH_QUALIFICATION'].includes(j.recommendation)) errors.push('unsupported result cannot allow use'); if (j.contradiction_status === 'UNRESOLVED' && ['ALLOW_USE', 'ALLOW_USE_WITH_QUALIFICATION'].includes(j.recommendation)) errors.push('unresolved contradiction cannot allow use'); }
+  return { ok: !errors.length, errors, value: out };
 }
 
-module.exports = { AGENT_ID, LANE, MAX_ATTEMPTS_HARD_CAP, DEFAULT_MAX_ATTEMPTS,
-  routeCapability, buildPrompt, validateSemanticOutput, preflight, buildResult,
-  run, controlRoomView };
-
-if (require.main === module) {
-  (async () => {
-    const args = {};
-    for (let i = 2; i < process.argv.length; i += 1) {
-      if (process.argv[i] === '--task') args.task = process.argv[++i];
-    }
-    if (!args.task) { console.error('usage: research-director.js --task <task.json>'); process.exit(2); }
-    const task = JSON.parse(fs.readFileSync(args.task, 'utf8'));
-    const out = await run(task);
-    const payload = { ...out, control_room: controlRoomView(out) };
-    console.log(JSON.stringify(payload, null, 2));
-    process.exit(['COMPLETE', 'AWAITING_HUMAN_REVIEW', 'RESEARCH_MORE'].includes(out.state) ? 0 : 1);
-  })();
+function deterministicConstraintId(ref, x) { return `research-constraint-${v.sha256Text(v.canonicalJson({ namespace: ref.namespace, canonical_id: ref.canonical_id, claim_revision: ref.revision, type: x.type, instruction: normalize(x.instruction) })).slice(0, 20)}`; }
+function constraints(ref, q) { return (q.wording_constraints || []).map((x) => ({ ...x, instruction: normalize(x.instruction) })).sort((a, b) => `${a.type}|${a.instruction}`.localeCompare(`${b.type}|${b.instruction}`)).map((x) => ({ constraint_id: deterministicConstraintId(ref, x), type: x.type, instruction: x.instruction })); }
+function buildPrompt(task) {
+  const choice = (set) => `one string from: ${[...set].join(' | ')}`;
+  const context = { claim: { claim_ref: task.claim_ref, evaluated_text: task.claim.evaluated_text, research_question: task.research_question || null, temporal: task.claim.temporal, controversial_claim: Boolean(task.assignment?.controversial_claim) }, sources: clone(task.sources), evidence: clone(task.evidence), provenance_inputs: clone(task.provenance_inputs), required_output: { judgment: { support_status: choice(sets.support), evidence_quality: choice(sets.quality), evidence_quality_rationale: 'string', confidence: choice(sets.confidence), confidence_rationale: 'string', independence_status: choice(sets.independence), independence_rationale: 'string', contradiction_status: choice(sets.contradiction), contradiction_rationale: 'string', disagreement_state: choice(sets.disagreement), recommendation: choice(sets.recommendation), rationale: 'string', unresolved_questions: ['string'] }, evidence_assessments: [{ evidence_id: 'exact supplied ID', stance: choice(sets.stance), rationale: 'string' }], source_quality_assessments: [{ source_ref: 'exact supplied ID', quality: choice(sets.quality), rationale: 'string' }], independence_assessments: [{ source_ref: 'exact supplied ID', independence_group: 'string', rationale: 'string' }], qualification: { qualification_required: 'boolean', wording_constraints: [{ type: choice(sets.constraint), instruction: 'string', rationale: 'string', evidence_refs: ['supplied evidence ID'] }] } } };
+  const prompt = ['Assess every clause of the exact claim. Universal words such as avoids, always, never, all, and universally require universal evidence; comparative advantage does not prove total avoidance. If only a narrower claim is supported, use PARTIALLY_SUPPORTED plus FORBID_ABSOLUTE or LIMIT_SCOPE.', 'Assess every supplied evidence item and source exactly once. Different URLs, documents, titles, or publishers do not prove independence. Source class is not credibility. Preserve contradiction. Never invent or repair source identity, URLs, dates, quotes, publishers, or provenance.', 'Every enum is one JSON string, never an array. Aggregate evidence_quality: any supporting UNKNOWN makes UNKNOWN; otherwise any supporting WEAK/INADEQUATE makes WEAK; all supporting ADEQUATE makes ADEQUATE; none makes INADEQUATE. Unknown origin normally warrants reasoned WEAK, not inconsistent UNKNOWN/WEAK labels.', 'Return concise decision rationales, not chain-of-thought. Return exactly the required JSON object.', JSON.stringify(context)].join('\n\n');
+  if (prompt.length > MAX_PROMPT_CHARS) throw new Error('bounded semantic prompt too large'); return { prompt, context };
 }
+function buildSemanticResult(task, semantic, history, options = {}) {
+  const groups = new Map(semantic.independence_assessments.map((x) => [x.source_ref, x])), stances = new Map(semantic.evidence_assessments.map((x) => [x.evidence_id, x.stance]));
+  const sources = task.sources.map((x) => ({ ...clone(x), independence_group: groups.get(x.source_ref).independence_group, independence_basis: normalize(groups.get(x.source_ref).rationale) })); const evidence = task.evidence.map((x) => ({ ...clone(x), stance: stances.get(x.evidence_id) }));
+  const root = history.previousAggregate ? clone(history.previousAggregate) : { schema_version: 1, artifact_type: 'research-results', package_run_id: task.package_run_id, ...(task.project_id === undefined ? {} : { project_id: task.project_id }), results: [] }; const timestamp = options.now || nowIso();
+  const result = { result_id: (options.resultIdFactory || (() => `research-result-${crypto.randomUUID()}`))(), result_revision: history.previousResult ? history.previousResult.result_revision + 1 : 1, claim_ref: clone(task.claim_ref), claim: { evaluated_text: task.claim.evaluated_text, evaluated_text_sha256: v.sha256Text(v.normalizeClaimText(task.claim.evaluated_text)), ...(task.research_question ? { research_question: task.research_question } : {}), temporal: clone(task.claim.temporal) }, judgment: { support_status: semantic.judgment.support_status, freshness_status_at_review: v.effectiveFreshness({ claim: task.claim }, options.asOf || timestamp).status, evidence_quality: deriveEvidenceQuality(semantic), confidence: semantic.judgment.confidence, independence_status: semantic.judgment.independence_status, contradiction_status: semantic.judgment.contradiction_status, disagreement_state: semantic.judgment.disagreement_state, recommendation: semantic.judgment.recommendation, rationale: normalize(semantic.judgment.rationale), unresolved_questions: clone(semantic.judgment.unresolved_questions) }, qualification: { qualification_required: semantic.qualification.qualification_required, wording_constraints: constraints(task.claim_ref, semantic.qualification) }, sources, evidence, derived: { independent_support_count: v.independentSupportCount({ sources, evidence }) }, provenance: { provenance_inputs: clone(task.provenance_inputs) }, lifecycle: { created_at: timestamp, reviewed_at: timestamp }, ...(history.previousResult ? { supersedes_result_id: history.previousResult.result_id } : {}) };
+  root.results.push(result); result.result_digest_sha256 = v.computeResultDigest(root, result); return { root, result };
+}
+function neutral(task) { return { judgment: { support_status: 'INCONCLUSIVE', evidence_quality: 'UNKNOWN', confidence: 'LOW', independence_status: 'UNKNOWN', contradiction_status: 'NONE', disagreement_state: 'NONE', recommendation: 'RESEARCH_MORE', rationale: 'Neutral deterministic preflight assessment.', unresolved_questions: [] }, qualification: { qualification_required: false, wording_constraints: [] }, evidence_assessments: task.evidence.map((x) => ({ evidence_id: x.evidence_id, source_ref: x.source_ref, stance: 'CONTEXT_ONLY', rationale: 'Neutral preflight stance.' })), source_quality_assessments: task.sources.map((x) => ({ source_ref: x.source_ref, quality: 'UNKNOWN', rationale: 'Neutral preflight quality.' })), independence_assessments: task.sources.map((x) => ({ source_ref: x.source_ref, independence_group: x.independence_group, rationale: x.independence_basis })) }; }
+function history(task, options, errors) {
+  if (options.previousAggregate && task.previous_aggregate) { const append = v.validateAppendOnly(options.previousAggregate, task.previous_aggregate); if (!append.ok) errors.push(...append.errors.map((x) => `candidate history ${x.code}: ${x.message}`)); }
+  const aggregate = task.previous_aggregate || options.previousAggregate || null; if (!aggregate) return { previousAggregate: null, previousResult: null };
+  const report = v.validateAggregate(aggregate, { as_of: options.asOf || options.now || nowIso() }); if (!report.validation_ok) errors.push(...report.reason_codes.map((x) => `previous aggregate ${x}`)); const lineage = `${task.claim_ref.namespace}|${task.claim_ref.canonical_id}`, head = report.current_heads.find((x) => x.claim_lineage === lineage); if (!head || head.state !== 'VALID' || head.result_ids.length !== 1) errors.push('previous aggregate has no unique valid head'); return { previousAggregate: aggregate, previousResult: head ? aggregate.results.find((x) => x.result_id === head.result_ids[0]) : null };
+}
+function preflight(task, options = {}) {
+  const errors = [], codes = new Set(); if (!task || typeof task !== 'object') return { ok: false, errors: ['task invalid'], reason_codes: ['TASK_INVALID'] }; if (!safeId(task.task_id) || !safeId(task.package_run_id) || !ACTIONS.includes(task.assignment?.action)) errors.push('task identity/action invalid'); if (task.assignment?.action === 'status') return { ok: !errors.length, errors, reason_codes: errors.length ? ['TASK_INVALID'] : [], history: { previousAggregate: null, previousResult: null } };
+  if (!task.claim_ref || !task.claim || !Array.isArray(task.sources) || !Array.isArray(task.evidence) || !Array.isArray(task.provenance_inputs)) errors.push('canonical claim, sources, evidence, and provenance required'); if (task.privacy !== undefined && typeof task.privacy?.local_only !== 'boolean') errors.push('privacy.local_only required'); if (task.retry_budget !== undefined && (!Number.isInteger(task.retry_budget) || task.retry_budget < 1)) errors.push('retry_budget invalid'); if (task.cost_budget !== undefined && (!Number.isInteger(task.cost_budget?.max_model_calls) || task.cost_budget.max_model_calls < 1)) errors.push('cost budget invalid'); if (task.deadline !== undefined && Number.isNaN(Date.parse(task.deadline))) errors.push('deadline invalid'); if (task.deadline && Date.parse(options.now || nowIso()) > Date.parse(task.deadline)) { errors.push('deadline expired'); codes.add('DEADLINE_EXPIRED'); } if (errors.length) return { ok: false, errors, reason_codes: [...codes, 'TASK_INVALID'] }; if (!task.evidence.length) return { ok: false, errors: ['no provenance-bound evidence'], reason_codes: ['EVIDENCE_REQUIRED'] };
+  const refs = new Set(task.sources.map((x) => x.source_ref)); for (const ref of task.known_source_refs || []) if (!refs.has(ref)) errors.push(`known source missing: ${ref}`); const prior = history(task, options, errors); if (errors.length) return { ok: false, errors, reason_codes: ['HISTORY_INVALID'] };
+  const candidate = buildSemanticResult(task, neutral(task), prior, { ...options, now: options.now || '2000-01-01T00:00:00.000Z', resultIdFactory: () => 'research-result-00000000-0000-4000-8000-000000000000' }); const report = v.validateAggregate(candidate.root, { as_of: options.asOf || options.now || nowIso(), ...(options.currentSources ? { current_sources: options.currentSources } : {}) }); const entry = report.results.find((x) => x.result_id === candidate.result.result_id);
+  if (!report.validation_ok || entry?.result_state !== 'VALID') return { ok: false, errors: [...report.errors, ...(entry?.errors || [])].map((x) => `${x.code}: ${x.path}: ${x.message}`), reason_codes: report.reason_codes, history: prior, report }; if (prior.previousAggregate && !v.validateAppendOnly(prior.previousAggregate, candidate.root).ok) return { ok: false, errors: ['append-only preflight failed'], reason_codes: ['APPEND_ONLY_INVALID'], history: prior }; return { ok: true, errors: [], reason_codes: [], history: prior };
+}
+function mapAgentState(entry, aggregate, j, task) {
+  if (!aggregate.validation_ok || !entry || ['INVALID', 'STALE', 'SUPERSEDED'].includes(entry.result_state)) return { state: 'BLOCKED', next: 'hermes', reason: `canonical result ${entry?.result_state || aggregate.result_state}: ${(entry?.reason_codes || aggregate.reason_codes).join(', ')}` };
+  if (j.recommendation === 'ESCALATE') return { state: 'ESCALATED', next: j.disagreement_state === 'NEEDS_HUMAN_DECISION' || task.assignment.controversial_claim ? 'mikko' : 'hermes', reason: j.rationale };
+  if (j.disagreement_state === 'NEEDS_HUMAN_DECISION' || task.assignment.controversial_claim) return { state: 'AWAITING_HUMAN_DECISION', next: 'mikko', reason: j.rationale };
+  if (j.disagreement_state === 'NEEDS_SPECIALIST_REVIEW' || j.contradiction_status === 'UNRESOLVED') return { state: 'ESCALATED', next: 'hermes', reason: j.rationale };
+  if (j.recommendation === 'RESEARCH_MORE') return { state: 'RESEARCH_MORE', next: 'hermes', reason: j.rationale }; if (j.recommendation === 'DO_NOT_USE' || j.disagreement_state === 'BLOCKED' || !aggregate.authorization_ok || !entry.authorization_ok) return { state: 'BLOCKED', next: 'hermes', reason: j.rationale || 'canonical authorization denied' }; return { state: 'COMPLETE', next: null, reason: null };
+}
+function finish(out, mapped) { out.state = mapped.state; out.reason = mapped.reason; out.attention = mapped.next === 'mikko' ? 'DECISION' : mapped.next ? 'REVIEW' : 'AUTONOMOUS'; out.handoff = { next_owner: mapped.next, next_action: mapped.next === 'mikko' ? 'HUMAN_DECISION' : mapped.next ? 'ROUTE_WITH_EVIDENCE' : null }; out.events.push({ at: nowIso(), actor: AGENT_ID, state: out.state, detail: out.reason }); return out; }
+async function run(task, options = {}) {
+  const out = { schema_version: 1, agent_id: AGENT_ID, role_id: AGENT_ID, task_id: task?.task_id || null, package_run_id: task?.package_run_id || null, project_id: task?.project_id ?? null, requested_by: task?.requested_by || 'hermes', state: null, attempts: 0, max_attempts: 0, route: null, research_result: null, candidate_aggregate: null, semantic_assessment: null, candidates: [], events: [{ at: nowIso(), actor: AGENT_ID, state: 'ASSIGNMENT_RECEIVED', detail: task?.assignment?.action }], handoff: null, reason: null };
+  if (task?.assignment?.action === 'status') return finish(out, preflight(task, options).ok ? { state: 'COMPLETE', next: null, reason: null } : { state: 'BLOCKED', next: 'hermes', reason: 'invalid status task' }); const mechanical = preflight(task, options); if (!mechanical.ok) return finish(out, { state: 'BLOCKED', next: 'hermes', reason: `deterministic preflight failed [${mechanical.reason_codes.join(', ')}]: ${mechanical.errors.join('; ')}` });
+  const cap = routeCapability(task); if (!cap.ok) return finish(out, { state: 'BLOCKED', next: cap.code === 'PRIVACY_LOCAL_ONLY' ? 'mikko' : 'hermes', reason: `${cap.code}: ${cap.reason}` }); if (!cap.local) return finish(out, { state: 'ESCALATED', next: 'hermes', reason: 'FRONTIER_RECOMMENDED: no evidence transmitted; explicit human routing required' });
+  let route; try { route = selectComputeRoute(task, options); } catch (error) { return finish(out, { state: 'BLOCKED', next: 'hermes', reason: `${error.code || 'ROUTING_UNAVAILABLE'}: ${error.message}` }); } out.route = { lane: route.lane, host: route.host, model: route.model, model_source: route.model_source };
+  const prompt = buildPrompt(task), expected = { evidenceIds: new Set(task.evidence.map((x) => x.evidence_id)), sourceRefs: new Set(task.sources.map((x) => x.source_ref)), sourceByEvidence: new Map(task.evidence.map((x) => [x.evidence_id, x.source_ref])) }; out.max_attempts = Math.min(task.retry_budget || DEFAULT_MAX_ATTEMPTS, task.cost_budget?.max_model_calls || MAX_ATTEMPTS_HARD_CAP, MAX_ATTEMPTS_HARD_CAP); let semantic, last = [];
+  for (let attempt = 1; attempt <= out.max_attempts; attempt += 1) { out.attempts = attempt; try { const response = await invokeModel(prompt, route, options); out.route.latency_ms = response.latency_ms; const checked = validateSemanticOutput(response.raw, expected); if (checked.ok) { semantic = checked.value; break; } last = checked.errors; } catch (error) { last = [`MODEL_TRANSPORT_FAILED: ${error.message}`]; } }
+  if (!semantic) return finish(out, { state: 'ESCALATED', next: 'hermes', reason: `SEMANTIC_RETRY_EXHAUSTED: ${last.join('; ').slice(0, 500)}` }); const candidate = buildSemanticResult(task, semantic, mechanical.history, options), aggregate = v.validateAggregate(candidate.root, { as_of: options.asOf || options.now || nowIso() }); if (mechanical.history.previousAggregate && !v.validateAppendOnly(mechanical.history.previousAggregate, candidate.root).ok) return finish(out, { state: 'BLOCKED', next: 'hermes', reason: 'APPEND_ONLY_INVALID' }); const entry = aggregate.results.find((x) => x.result_id === candidate.result.result_id); Object.assign(out, { research_result: candidate.result, candidate_aggregate: candidate.root, semantic_assessment: semantic, candidates: [{ result_id: candidate.result.result_id, result_state: entry?.result_state || 'INVALID', authorization_ok: Boolean(entry?.authorization_ok) }] }); return finish(out, mapAgentState(entry, aggregate, semantic.judgment, task));
+}
+function controlRoomView(out) { const r = out.research_result; return { role: 'Research Director', state: out.state, current_task: out.task_id, current_claim: r?.claim_ref?.canonical_id || null, current_result_id: r?.result_id || null, owner: AGENT_ID, next_owner: out.handoff?.next_owner || null, attention_level: out.attention, blocker: out.reason || null, disagreement: r?.judgment?.disagreement_state || null, route: out.route, latest_event: out.events.at(-1) || null, research_summary: r ? { source_count: r.sources.length, independent_support_count: r.derived.independent_support_count, support_status: r.judgment.support_status, evidence_quality: r.judgment.evidence_quality, confidence: r.judgment.confidence, qualification_required: r.qualification.qualification_required, contradiction_status: r.judgment.contradiction_status, recommendation: r.judgment.recommendation } : null }; }
+
+module.exports = { AGENT_ID, LANE, ACTIONS, DEFAULT_MAX_ATTEMPTS, MAX_ATTEMPTS_HARD_CAP, RoutingError, routeCapability, selectComputeRoute, invokeModel, buildPrompt, validateSemanticOutput, deriveEvidenceQuality, deterministicConstraintId, preflight, buildSemanticResult, mapAgentState, run, controlRoomView };
+if (require.main === module) (async () => { const i = process.argv.indexOf('--task'); if (i < 0 || !process.argv[i + 1]) process.exit(2); const output = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...output, control_room: controlRoomView(output) }, null, 2)); process.exit(output.state === 'COMPLETE' ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });

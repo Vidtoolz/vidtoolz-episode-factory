@@ -1,314 +1,50 @@
 'use strict';
-// Research Director — RD1–RD28 + grounded canaries. Semantic inference goes
-// through the injected bounded model adapter in tests (REAL ORCHESTRATION
-// CANARY path: real production run() with bounded fake adapter). No semantic
-// JSON fixtures are pre-baked.
+const assert = require('node:assert/strict');
+const fs = require('node:fs'), path = require('node:path'), os = require('node:os'), crypto = require('node:crypto');
+const rd = require('../scripts/research-director.js'), v = require('../scripts/research-result-validator.js');
+const contract = require('../config/agent-contract.json'), registry = require('../config/agent-registry.json'), authority = require('../scripts/research-result-authority.js');
+const sha = (x) => crypto.createHash('sha256').update(x).digest('hex'), clone = structuredClone;
+const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/research-result/claim-19.23.json'))), grounded = fixture.results[0];
+const tests = [], test = (name, fn) => tests.push({ name, fn });
+const route = () => ({ ok: true, decision: 'ROUTE', selected_host: 'TEST_LOCAL', endpoint: 'http://127.0.0.1:1', model: 'TEST_MODEL' });
+function task(over = {}) { const sources = clone(over.sources || grounded.sources); return { task_id: over.task_id || 'rd-test', package_run_id: fixture.package_run_id, project_id: fixture.project_id, requested_by: 'hermes', assignment: { action: over.action || 'evaluate_known_evidence', controversial_claim: Boolean(over.controversial) }, claim_ref: clone(over.claim_ref || grounded.claim_ref), claim: clone(over.claim || grounded.claim), research_question: 'What does the evidence support?', sources, evidence: clone(over.evidence || grounded.evidence), provenance_inputs: clone(over.provenance_inputs || grounded.provenance.provenance_inputs), artifact_refs: [], known_source_refs: sources.map((x) => x.source_ref), privacy: clone(over.privacy || { local_only: true }), risk_level: over.risk || 'LOCAL_AUTO', retry_budget: over.retry || 2, cost_budget: { max_model_calls: over.calls || 2 }, deadline: '2099-01-01T00:00:00Z', ...(over.previous ? { previous_aggregate: clone(over.previous) } : {}) }; }
+function semantic(input, over = {}) { const stances = over.stances || {}; const qualities = input.sources.map((s) => ({ source_ref: s.source_ref, quality: over.sourceQuality || 'ADEQUATE', rationale: 'Claim-specific source quality assessment.' })); const evid = input.evidence.map((e) => ({ evidence_id: e.evidence_id, stance: stances[e.evidence_id] || 'SUPPORTS', rationale: 'The exact excerpt was compared with the exact claim.' })); let quality = over.quality || (over.sourceQuality || 'ADEQUATE'); if (!evid.some((x) => x.stance === 'SUPPORTS')) quality = 'INADEQUATE'; return { judgment: { support_status: over.support || 'SUPPORTED', evidence_quality: quality, evidence_quality_rationale: 'Aggregate quality follows source-specific assessments.', confidence: over.confidence || 'HIGH', confidence_rationale: 'Confidence reflects relevance, quality, independence, contradiction, and time.', independence_status: over.independence || 'ADEQUATE', independence_rationale: 'Groups reflect original publication and source-event relationships.', contradiction_status: over.contradiction || 'NONE', contradiction_rationale: 'Material opposing evidence is explicitly retained when present.', disagreement_state: over.disagreement || 'NONE', recommendation: over.recommendation || 'ALLOW_USE', rationale: over.rationale || 'The bounded evidence supports this exact factual proposition.', unresolved_questions: [] }, qualification: clone(over.qualification || { qualification_required: false, wording_constraints: [] }), evidence_assessments: clone(over.evidenceAssessments || evid), source_quality_assessments: clone(over.sourceAssessments || qualities), independence_assessments: input.sources.map((s) => ({ source_ref: s.source_ref, independence_group: over.group || s.independence_group, rationale: 'Underlying origin relationship was assessed.' })) }; }
+const expected = (t) => ({ evidenceIds: new Set(t.evidence.map((x) => x.evidence_id)), sourceRefs: new Set(t.sources.map((x) => x.source_ref)), sourceByEvidence: new Map(t.evidence.map((x) => [x.evidence_id, x.source_ref])) });
+const run = (t, s, opt = {}) => rd.run(t, { routeSelector: route, modelAdapter: async ({ context }) => typeof s === 'function' ? s(context) : s, now: '2026-08-23T12:00:00Z', asOf: '2026-08-23T12:00:00Z', ...opt });
+function current(retrieved) { const t = task(); t.claim.temporal = { temporal_class: 'CURRENT_FACT', as_of: retrieved, freshness_policy: { mode: 'MAX_AGE_DAYS', max_age_days: 30 } }; t.sources.forEach((s) => { s.container.retrieved_at = retrieved; }); return t; }
+function opposing() { const t = task(); const text = ['A preregistered trial found workflow X reduced median completion time by 18% versus Y.', 'An independent preregistered replication found workflow X increased median completion time by 7% versus Y.']; t.claim_ref = { namespace: 'vidtoolz-episode-factory/package-run-claim', canonical_id: 'claim-11111111-1111-4111-8111-111111111111', revision: 1, alias_ids: [] }; t.claim = { evaluated_text: 'Workflow X reduces median completion time versus Y.', evaluated_text_sha256: sha('Workflow X reduces median completion time versus Y.'), temporal: { temporal_class: 'EVERGREEN_FACT' } }; t.sources = text.map((x, i) => ({ source_ref: `study-${i}`, source_class: 'ACADEMIC', original_source: { source_id: `doi-test-${i}`, title: `Registered study ${i}`, url: `https://example.invalid/${i}`, publisher: `Test Journal ${i}` }, container: { source_id: `frozen-${i}`, container_type: 'LOCAL_FILE', relationship_to_original: 'DERIVED_FROM', title: `Frozen study ${i}`, retrieved_at: '2026-08-01T00:00:00Z', retrieved_content_sha256: sha(x), source_fingerprint_sha256: sha(x) }, independence_group: `study-${i}`, independence_basis: 'Separate study and dataset.' })); t.evidence = text.map((x, i) => ({ evidence_id: i ? 'contradicts' : 'supports', source_ref: `study-${i}`, stance: i ? 'CONTRADICTS' : 'SUPPORTS', excerpt: { exact_text: x, exact_text_sha256: sha(x) } })); t.known_source_refs = t.sources.map((x) => x.source_ref); return t; }
 
-const { assert, fs, os, path, test } = require('./_helpers.js');
-const crypto = require('node:crypto');
-const rd = require('../scripts/research-director.js');
-const rrv = require('../scripts/research-result-validator.js');
-const contract = require('../config/agent-contract.json');
-const registry = require('../config/agent-registry.json');
-const authority = require('../scripts/research-result-authority.js');
+test('RD1 registration', () => { assert.equal(contract.role_roster.find((x) => x.role_id === 'research_director').status, 'BUILT'); assert.ok(registry.agents.find((x) => x.agent_id === 'research_director')); });
+test('RD2 authority owned', () => assert.ok(contract.role_roster.find((x) => x.role_id === 'research_director').owns.includes('semantic claim verification')));
+test('RD3 prohibited authority', () => assert.match(contract.role_roster.find((x) => x.role_id === 'research_director').does_not_own.join(' ').toLowerCase(), /script writing.*final qc.*publication/));
+test('RD4 invalid preflight blocks before model', async () => { const t = task(); t.evidence[0].excerpt.exact_text_sha256 = sha('bad'); let n = 0; const o = await run(t, () => { n++; }); assert.equal(o.state, 'BLOCKED'); assert.equal(n, 0); assert.match(o.reason, /EVIDENCE_EXCERPT_MISMATCH/); });
+test('RD5 no evidence never fabricates', async () => { const t = task({ sources: [], evidence: [] }); t.known_source_refs = []; let n = 0; const o = await run(t, () => n++); assert.equal(o.state, 'BLOCKED'); assert.equal(n, 0); assert.equal(o.research_result, null); });
+test('RD6 citation is not support', async () => { const t = task(); const o = await run(t, semantic(t, { support: 'UNSUPPORTED', quality: 'INADEQUATE', recommendation: 'DO_NOT_USE', evidenceAssessments: t.evidence.map((e) => ({ evidence_id: e.evidence_id, stance: 'CONTEXT_ONLY', rationale: 'Citation does not support this exact proposition.' })) })); assert.equal(o.state, 'BLOCKED'); });
+test('RD7 opposing evidence preserved', async () => { const t = opposing(), s = semantic(t, { support: 'INCONCLUSIVE', contradiction: 'UNRESOLVED', disagreement: 'NEEDS_SPECIALIST_REVIEW', recommendation: 'ESCALATE', evidenceAssessments: [{ evidence_id: 'supports', stance: 'SUPPORTS', rationale: 'Trial supports.' }, { evidence_id: 'contradicts', stance: 'CONTRADICTS', rationale: 'Replication contradicts.' }] }); const o = await run(t, s); assert.equal(o.state, 'ESCALATED'); assert.deepEqual(o.research_result.evidence.map((x) => x.stance).sort(), ['CONTRADICTS', 'SUPPORTS']); });
+test('RD8 semantic independence not URL count', async () => { const t = task(); const o = await run(t, semantic(t, { group: 'one-underlying-origin', independence: 'LIMITED' })); assert.equal(o.research_result.derived.independent_support_count, 1); });
+test('RD9 source class is not quality', async () => { const t = task(); const o = await run(t, semantic(t, { sourceQuality: 'WEAK', quality: 'WEAK', support: 'PARTIALLY_SUPPORTED', recommendation: 'RESEARCH_MORE' })); assert.equal(o.semantic_assessment.source_quality_assessments[0].quality, 'WEAK'); });
+test('RD10 deterministic constraint IDs', async () => { const t = task(), q = { qualification_required: true, wording_constraints: [{ type: 'FORBID_ABSOLUTE', instruction: 'Do not use universal wording.', rationale: 'Evidence is bounded.', evidence_refs: ['ev-01923-3'] }] }; const a = await run(t, semantic(t, { recommendation: 'ALLOW_USE_WITH_QUALIFICATION', qualification: q })), b = await run(t, semantic(t, { recommendation: 'ALLOW_USE_WITH_QUALIFICATION', qualification: q })); assert.equal(a.research_result.qualification.wording_constraints[0].constraint_id, b.research_result.qualification.wording_constraints[0].constraint_id); });
+test('RD11 canonical recommendations', () => { const t = task(), s = semantic(t); s.judgment.recommendation = 'MAYBE'; assert.equal(rd.validateSemanticOutput(s, expected(t)).ok, false); });
+test('RD12 malformed output retries', async () => { const t = task(); let n = 0; const o = await run(t, () => ++n === 1 ? {} : semantic(t)); assert.equal(o.state, 'COMPLETE'); assert.equal(n, 2); });
+test('RD13 coverage retry exhaustion', async () => { const t = task({ retry: 1, calls: 1 }), s = semantic(t); s.evidence_assessments.pop(); const o = await run(t, s); assert.equal(o.state, 'ESCALATED'); });
+test('RD14 append successor works', async () => { const t = task(), a = await run(t, semantic(t)); const t2 = task({ previous: a.candidate_aggregate }), b = await run(t2, semantic(t2)); assert.equal(b.state, 'COMPLETE'); assert.equal(b.research_result.result_revision, 2); assert.equal(v.validateAppendOnly(a.candidate_aggregate, b.candidate_aggregate).ok, true); });
+test('RD15 controversial goes human', async () => { const t = task({ controversial: true }), o = await run(t, semantic(t)); assert.equal(o.state, 'AWAITING_HUMAN_DECISION'); assert.equal(o.handoff.next_owner, 'mikko'); });
+test('RD16 Hermes cannot alter verdict', async () => { const t = task(); t.requested_verdict = 'SUPPORTED'; const o = await run(t, semantic(t, { support: 'PARTIALLY_SUPPORTED', recommendation: 'RESEARCH_MORE' })); assert.equal(o.state, 'RESEARCH_MORE'); });
+test('RD17 no Story rewrite', async () => { const t = task(), o = await run(t, semantic(t)); assert.ok(!('script' in o.research_result)); });
+test('RD18 stale/invalid never complete', async () => { const t = current('2025-01-01T00:00:00Z'), o = await run(t, semantic(t)); assert.equal(o.state, 'BLOCKED'); });
+test('RD19 no approval or QC verdict', async () => { const t = task(), o = await run(t, semantic(t)); assert.ok(!('approval' in o.research_result) && !('qc_verdict' in o.research_result)); });
+test('RD20 control room bounded', async () => { const t = task(), o = await run(t, semantic(t)), c = rd.controlRoomView(o); assert.equal(c.current_claim, t.claim_ref.canonical_id); assert.ok(!('prompt' in c)); });
+test('RD21 grounded claim-19.23 all windows', async () => { const t = task(), stances = { 'ev-01923-4': 'CONTEXT_ONLY' }, o = await run(t, semantic(t, { stances, sourceQuality: 'WEAK', quality: 'WEAK', support: 'PARTIALLY_SUPPORTED', confidence: 'MEDIUM', independence: 'UNKNOWN', group: grounded.sources[0].independence_group, recommendation: 'RESEARCH_MORE' })); assert.equal(o.semantic_assessment.evidence_assessments.length, 4); assert.equal(o.research_result.derived.independent_support_count, 1); });
+test('RD22 grounded positive qualified', async () => { const t = task(); t.claim.evaluated_text = 'Cloud editing can enable remote collaboration and can experience latency with high-resolution media.'; t.claim_ref.revision = 2; const o = await run(t, semantic(t, { sourceQuality: 'WEAK', quality: 'WEAK', confidence: 'MEDIUM', recommendation: 'ALLOW_USE_WITH_QUALIFICATION', qualification: { qualification_required: true, wording_constraints: [{ type: 'LIMIT_SCOPE', instruction: 'Retain conditional wording.', rationale: 'Conditions vary.', evidence_refs: ['ev-01923-3'] }] } })); assert.equal(o.state, 'COMPLETE'); });
+test('RD23 contradiction canary escalates', async () => { const t = opposing(), s = semantic(t, { support: 'INCONCLUSIVE', contradiction: 'UNRESOLVED', disagreement: 'NEEDS_SPECIALIST_REVIEW', recommendation: 'RESEARCH_MORE', evidenceAssessments: [{ evidence_id: 'supports', stance: 'SUPPORTS', rationale: 'Supports.' }, { evidence_id: 'contradicts', stance: 'CONTRADICTS', rationale: 'Contradicts.' }] }); assert.equal((await run(t, s)).state, 'ESCALATED'); });
+test('RD24 partial provenance blocks', async () => { const t = task(); delete t.sources[0].container.retrieved_at; delete t.sources[0].container.retrieved_content_sha256; let n = 0; const o = await run(t, () => n++); assert.equal(o.state, 'BLOCKED'); assert.equal(n, 0); assert.doesNotMatch(JSON.stringify(o), /1970-01-01|unprovided/); });
+test('RD25 current fact fresh runs expired does not', async () => { const a = current('2026-08-20T00:00:00Z'), b = current('2025-01-01T00:00:00Z'); let n = 0; assert.equal((await run(a, () => { n++; return semantic(a); })).state, 'COMPLETE'); assert.equal((await run(b, () => { n++; return semantic(b); })).state, 'BLOCKED'); assert.equal(n, 1); });
+test('RD26 Phase B consumes canonical output', async () => { const t = task(), o = await run(t, semantic(t)), dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rd-')); try { fs.writeFileSync(path.join(dir, 'research-results.json'), JSON.stringify(o.candidate_aggregate)); assert.equal(authority.evaluateCanonicalResearch(dir, { asOf: '2026-08-23T12:00:00Z' }).status, 'READY'); } finally { fs.rmSync(dir, { recursive: true, force: true }); } });
+test('RD27 confidence rationale required', () => { const t = task(), s = semantic(t); s.judgment.confidence_rationale = ''; assert.equal(rd.validateSemanticOutput(s, expected(t)).ok, false); });
+test('RD28 ESCALATE and RESEARCH_MORE not complete', async () => { const t = task(); assert.equal((await run(t, semantic(t, { recommendation: 'ESCALATE' }))).state, 'ESCALATED'); assert.equal((await run(t, semantic(t, { support: 'PARTIALLY_SUPPORTED', recommendation: 'RESEARCH_MORE' }))).state, 'RESEARCH_MORE'); });
+test('RD29 production append rejects mutation/deletion', async () => { const t = task(), a = await run(t, semantic(t)); const mutated = clone(a.candidate_aggregate); mutated.results[0].judgment.confidence = 'LOW'; mutated.results[0].result_digest_sha256 = v.computeResultDigest(mutated, mutated.results[0]); assert.equal((await run(task({ previous: mutated }), semantic(t), { previousAggregate: a.candidate_aggregate })).state, 'BLOCKED'); const successor = await run(task({ previous: a.candidate_aggregate }), semantic(t)); const deleted = clone(successor.candidate_aggregate); deleted.results.shift(); assert.equal((await run(task({ previous: deleted }), semantic(t), { previousAggregate: successor.candidate_aggregate })).state, 'BLOCKED'); });
+test('RD30 frontier and routing failures never dispatch/retry', async () => { let routes = 0, models = 0; const f = task({ risk: 'FRONTIER_RECOMMENDED', privacy: { local_only: false } }), one = await rd.run(f, { routeSelector: () => routes++, modelAdapter: () => models++ }); assert.equal(one.state, 'ESCALATED'); const p = task({ risk: 'FRONTIER_RECOMMENDED', privacy: { local_only: true } }), two = await rd.run(p, { routeSelector: () => routes++, modelAdapter: () => models++ }); assert.equal(two.state, 'BLOCKED'); const normal = task(), three = await rd.run(normal, { routeSelector: () => { throw new Error('offline'); }, modelAdapter: () => models++ }); assert.equal(three.state, 'BLOCKED'); assert.equal(three.attempts, 0); assert.equal(routes + models, 0); });
 
-const sha = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
-const POSITIVE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'research-result', 'claim-19.23.json'), 'utf8'));
-
-function mkTask(over = {}) {
-  const claimText = over.claimText || 'Evidence test claim.';
-  return {
-    task_id: over.taskId || 'rd-test', project_id: 'p', package_run_id: 'run-x',
-    requested_by: over.requestedBy || 'hermes',
-    assignment: { action: over.action || 'evaluate_claim', controversial_claim: Boolean(over.controversial) },
-    claim_ref: over.claimRef || { namespace: 'vidtoolz-episode-factory/package-run-claim',
-      canonical_id: 'claim-00000000-0000-4000-8000-000000000001', revision: 1, alias_ids: [] },
-    claim: { evaluated_text: claimText,
-      temporal: over.temporal || { temporal_class: 'EVERGREEN_FACT' } },
-    sources: over.sources || [{ source_ref: 's1', source_class: over.sourceClass || 'REPORTING',
-      original_source: { source_id: 'o', title: 't', url: 'https://example.com', publisher: 'p' },
-      container: { container_type: 'local_file', relationship: 'IS_ORIGINAL',
-        retrieved_at: '2026-01-01T00:00:00Z', retrieved_content_sha256: sha('c') },
-      independence_group: 'g1', independence_basis: 't' }],
-    evidence: over.evidence || [{ evidence_id: 'e1', source_ref: 's1', stance: 'SUPPORTS',
-      excerpt: { exact_text: 'supports', exact_text_sha256: sha('supports') } }],
-    risk_level: over.risk || 'LOCAL_AUTO',
-    retry_budget: over.budget,
-    provenance_inputs: [{ system: 'test', type: 'unit', record_id: 'r', sha256: rrv.sha256('y') }],
-  };
-}
-function semanticOut(over = {}) {
-  return {
-    judgment: {
-      support_status: over.support || 'SUPPORTED',
-      freshness_status_at_review: 'NOT_APPLICABLE',
-      evidence_quality: over.quality || 'ADEQUATE',
-      confidence: over.confidence || 'HIGH',
-      independence_status: 'ADEQUATE',
-      contradiction_status: over.contradiction || 'NONE',
-      disagreement_state: over.disagreement || 'NONE',
-      recommendation: over.recommendation || 'ALLOW_USE',
-      rationale: over.rationale || 'grounded rationale with evidence', unresolved_questions: [],
-    },
-    qualification: over.qualification || { qualification_required: false, wording_constraints: [] },
-    evidence: over.evid || [{ evidence_id: 'e1', stance: 'SUPPORTS' }],
-  };
-}
-function boundedAdapter(out) { return async () => JSON.stringify(out); }
-
-// ── RD1–RD3 registration/authority ───────────────────────────────────────────
-test('RD1: research_director registered in contract and registry', () => {
-  const role = contract.role_roster.find((r) => r.role_id === 'research_director');
-  assert.ok(role && role.status === 'BUILT');
-  const agent = registry.agents.find((a) => a.agent_id === 'research_director');
-  assert.ok(agent);
-});
-
-test('RD2: Research owns factual/evidence judgment', () => {
-  const role = contract.role_roster.find((r) => r.role_id === 'research_director');
-  for (const owned of ['factual research', 'semantic claim verification', 'source-quality judgment', 'contradiction analysis']) {
-    assert.ok(role.owns.includes(owned));
-  }
-});
-
-test('RD3: prohibited authority — no script/final argument/QC/publication', () => {
-  const role = contract.role_roster.find((r) => r.role_id === 'research_director');
-  for (const banned of ['script writing', 'final argument', 'publication', 'final QC']) {
-    assert.ok(role.does_not_own.some((d) => d.toLowerCase().includes(banned.toLowerCase())), banned);
-  }
-});
-
-// ── RD4–RD7 deterministic-first/fabrication/contradiction ─────────────────────
-test('RD4: invalid preflight blocks before semantic model', async () => {
-  const task = mkTask({ evidence: [{ evidence_id: 'e1', source_ref: 's1', stance: 'SUPPORTS',
-    excerpt: { exact_text: 'x', exact_text_sha256: sha('tampered') } }] });
-  const calls = [];
-  const out = await rd.run(task, { modelAdapter: (task2, ctx) => { calls.push(1); return Promise.resolve('{}'); } });
-  assert.equal(out.state, 'BLOCKED');
-  assert.equal(calls.length, 0); // model never invoked when mechanical validation fails
-});
-
-test('RD5: insufficient evidence → RESEARCH_MORE, never fabricated', async () => {
-  const task = mkTask({ sources: [], evidence: [] });
-  // adapter must NOT be forced to fabricate stances for missing evidence
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut({ recommendation: 'RESEARCH_MORE', support: 'INCONCLUSIVE', rationale: 'no usable evidence supplied' })) });
-  assert.equal(out.state, 'RESEARCH_MORE');
-  assert.equal(out.research_result.judgment.recommendation, 'RESEARCH_MORE');
-});
-
-test('RD6: citation presence does not automatically mean SUPPORTS', async () => {
-  const task = mkTask({ evidence: [{ evidence_id: 'e1', source_ref: 's1', stance: 'SUPPORTS',
-    excerpt: { exact_text: 'x', exact_text_sha256: sha('x') } }] });
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut({ support: 'UNSUPPORTED', rationale: 'excerpt is context only, contradiction_status test', recommendation: 'RESEARCH_MORE', evid: [{ evidence_id: 'e1', stance: 'CONTEXT_ONLY' }] })) });
-  assert.equal(out.research_result.evidence[0].stance, 'CONTEXT_ONLY');
-});
-
-test('RD7: contradictory evidence preserved (both stances present)', async () => {
-  const task = mkTask({ evidence: [{ evidence_id: 'e1', source_ref: 's1', stance: 'SUPPORTS',
-      excerpt: { exact_text: 'a', exact_text_sha256: sha('a') } },
-    { evidence_id: 'e2', source_ref: 's1', stance: 'CONTRADICTS',
-      excerpt: { exact_text: 'b', exact_text_sha256: sha('b') } }] });
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut({
-    support: 'INCONCLUSIVE', contradiction: 'UNRESOLVED', disagreement: 'NEEDS_SPECIALIST_REVIEW', recommendation: 'ESCALATE', rationale: 'conflicting evidence preserved',
-    evid: [{ evidence_id: 'e1', stance: 'SUPPORTS' }, { evidence_id: 'e2', stance: 'CONTRADICTS' }] })) });
-  assert.equal(out.research_result.judgment.contradiction_status, 'UNRESOLVED');
-  assert.equal(new Set(out.research_result.evidence.map((e) => e.stance)).size, 2);
-});
-
-// ── RD8–RD11 independence/quality/qualification/recommendation ───────────────
-test('RD8: ten derivatives do not become ten corroborators', async () => {
-  const task = mkTask({ evidence: [{ evidence_id: 'e1', source_ref: 's1', stance: 'SUPPORTS', excerpt: { exact_text: 'x', exact_text_sha256: sha('x') } }] });
-  for (let i = 2; i <= 10; i++) {
-    task.sources.push({ source_ref: `s${i}`, source_class: 'SECONDARY', original_source: { source_id: 'o', title: 't', url: 'https://x', publisher: 'p' },
-      container: { container_type: 'local_file', relationship: 'DERIVED_FROM', retrieved_at: '2026-01-01T00:00:00Z', retrieved_content_sha256: sha('c') },
-      independence_group: 'g1', independence_basis: 'syndicated same source' });
-    task.evidence.push({ evidence_id: `e${i}`, source_ref: `s${i}`, stance: 'SUPPORTS', excerpt: { exact_text: 'x', exact_text_sha256: sha('x') } });
-  }
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut({ rationale: 'all syndicated' })) });
-  assert.equal(out.research_result.derived.independent_support_count, 1);
-});
-
-test('RD9: source class never becomes credibility score', () => {
-  const role = registry.agents.find((a) => a.agent_id === 'research_director');
-  assert.ok(!role.allowed_actions.some((a) => /credibility/.test(a)));
-});
-
-test('RD10: qualification emits canonical constraint IDs', async () => {
-  const task = mkTask();
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut({ recommendation: 'ALLOW_USE_WITH_QUALIFICATION',
-    qualification: { qualification_required: true, wording_constraints: [
-      { constraint_id: 'q-scope', type: 'LIMIT_SCOPE', instruction: 'bound circumstances only' },
-      { constraint_id: 'q-abs', type: 'FORBID_ABSOLUTE', instruction: 'remove absolutes' }] },
-    rationale: 'needs bounds' })) });
-  assert.equal(out.research_result.qualification.qualification_required, true);
-  assert.deepEqual(out.research_result.qualification.wording_constraints.map((c) => c.constraint_id), ['q-scope', 'q-abs']);
-});
-
-test('RD11: recommendation enum enforced by validateSemanticOutput', () => {
-  assert.ok(rd.validateSemanticOutput({ judgment: { ...semanticOut().judgment, recommendation: 'MAYBE' }, evidence: [] }).errs.length > 0);
-  assert.equal(rd.validateSemanticOutput({ judgment: { ...semanticOut().judgment, recommendation: 'ESCALATE' }, evidence: [] }).errs.length, 0);
-});
-
-// ── RD12–RD14 retry/append-only ─────────────────────────────────────────────
-test('RD12: malformed model output retries within budget', async () => {
-  const task = mkTask(); let n = 0;
-  const adapter = async () => { n += 1; return n < 2 ? 'not-json' : JSON.stringify(semanticOut()); };
-  const out = await rd.run(task, { modelAdapter: adapter });
-  assert.equal(out.state, 'COMPLETE');
-  assert.equal(n, 2);
-  assert.equal(out.attempts, 2);
-});
-
-test('RD13: persistent malformed output → RETRY_BUDGET_EXHAUSTED → hermes', async () => {
-  const task = mkTask({ budget: 2 });
-  const out = await rd.run(task, { modelAdapter: async () => 'always-broken' });
-  assert.equal(out.state, 'RETRY_BUDGET_EXHAUSTED');
-  assert.equal(out.handoff.next_owner, 'hermes');
-});
-
-test('RD14: append-only — historical mutation blocked', async () => {
-  const task = mkTask();
-  const first = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut()) });
-  const root = { schema_version: 1, artifact_type: 'research-results', package_run_id: 'run-x', results: [first.research_result] };
-  const mutated = { ...root, results: [{ ...first.research_result, judgment: { ...first.research_result.judgment, confidence: 'LOW' } }] };
-  mutated.results[0].result_digest_sha256 = rrv.computeResultDigest(mutated, mutated.results[0]);
-  const ao = rrv.validateAppendOnly(root, mutated);
-  assert.ok(!ao.ok);
-});
-
-// ── RD15–RD19 human/hermes/story/qc boundaries ───────────────────────────────
-test('RD15: controversial claim → NEEDS_HUMAN_DECISION, verdict not auto-approved', async () => {
-  const task = mkTask({ controversial: true });
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut({ disagreement: 'NEEDS_HUMAN_DECISION', recommendation: 'ESCALATE', rationale: 'human risk needed' })) });
-  assert.equal(out.state, 'NEEDS_HUMAN_DECISION');
-  assert.equal(out.handoff.next_owner, 'mikko');
-});
-
-test('RD16: Hermes routes but cannot alter Research verdict', async () => {
-  const task = mkTask({ requestedBy: 'hermes' });
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut()) });
-  assert.equal(out.requested_by, 'hermes');
-  const hermesProhibited = require('../config/agent-contract.json').hermes.prohibited;
-  assert.ok(hermesProhibited.some((p) => /altering|overriding/.test(p)) || hermesProhibited.some((p) => /specialist verdict/.test(p)));
-});
-
-test('RD17: Story boundary — Research output contains no script-writing field', async () => {
-  const task = mkTask();
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut()) });
-  assert.ok(!('script' in out.research_result) && !('revision_instructions' in out.research_result));
-});
-
-test('RD18: Research cannot override QC block (judgment does not change aggregate)', async () => {
-  const task = mkTask();
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut({ rationale: 'fine' })) });
-  // aggregate validation is deterministic; agent cannot force authorization_ok
-  const agg = rrv.validateAggregate({ schema_version: 1, artifact_type: 'research-results', package_run_id: 'run-x', results: [out.research_result] });
-  assert.equal(typeof agg.authorization_ok === 'boolean', true);
-});
-
-test('RD19: Research cannot record a human exception approval field', async () => {
-  const task = mkTask();
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut()) });
-  assert.ok(!('approval' in out.research_result) && !('approved_by' in out.research_result));
-});
-
-// ── RD20 control room ─────────────────────────────────────────────────────────
-test('RD20: control room projection carries hardened fields, no chain-of-thought', async () => {
-  const task = mkTask();
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut()) });
-  const cr = rd.controlRoomView(out);
-  for (const f of ['role', 'state', 'current_task', 'owner', 'next_owner', 'attention_level', 'blocker', 'unresolved_disagreement', 'latest_event', 'research_summary']) {
-    assert.ok(f in cr, f);
-  }
-  assert.ok(!('prompt' in cr) && !('logs' in cr));
-});
-
-// ── RD21–RD25 grounded canaries ───────────────────────────────────────────────
-test('RD21: claim-19.23 grounded weak-evidence canary → RESEARCH_MORE', async () => {
-  const pos = POSITIVE.results[0];
-  const task = {
-    task_id: 'canary-1923', project_id: 'p', package_run_id: 'fixture-claim-19.23', requested_by: 'hermes',
-    assignment: { action: 'evaluate_claim', controversial_claim: false },
-    claim_ref: pos.claim_ref,
-    claim: { evaluated_text: pos.claim.evaluated_text, temporal: pos.claim.temporal },
-    sources: pos.sources, evidence: pos.evidence,
-    risk_level: 'LOCAL_AUTO',
-    provenance_inputs: [{ system: 'canary', type: 'fixture', record_id: 'rd21', sha256: rrv.sha256('rd21') }],
-  };
-  const semantic = semanticOut({
-    support: 'PARTIALLY_SUPPORTED', quality: 'WEAK', confidence: 'MEDIUM',
-    recommendation: 'RESEARCH_MORE', rationale: 'single-source weak corroboration',
-    qualification: { qualification_required: true, wording_constraints: pos.qualification.wording_constraints },
-  });
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semantic) });
-  assert.equal(out.state, 'RESEARCH_MORE');
-  assert.equal(out.research_result.judgment.support_status, 'PARTIALLY_SUPPORTED');
-  assert.equal(out.research_result.derived.independent_support_count, 1);
-  assert.equal(rd.controlRoomView(out).research_summary.support_status, 'PARTIALLY_SUPPORTED');
-});
-
-test('RD22: positive supported canary → ALLOW_USE with valid output', async () => {
-  const task = mkTask({ claimText: 'Local-first execution avoids network latency.' });
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut({
-    rationale: 'strong direct source support', evid: [
-      { evidence_id: 'e1', stance: 'SUPPORTS' },
-      { evidence_id: 'e2', stance: 'SUPPORTS' }] })) });
-  assert.equal(out.state, 'COMPLETE');
-  const agg = rrv.validateAggregate({ schema_version: 1, artifact_type: 'research-results', package_run_id: 'run-x', results: [out.research_result] });
-  assert.ok(agg.validation_ok);
-  assert.ok(out.research_result.derived.independent_support_count >= 1);
-});
-
-test('RD23: contradiction canary — genuine SUPPORTS + CONTRADICTS preserved', async () => {
-  const task = mkTask({ evidence: [
-    { evidence_id: 'e1', source_ref: 's1', stance: 'SUPPORTS', excerpt: { exact_text: 'a', exact_text_sha256: sha('a') } },
-    { evidence_id: 'e2', source_ref: 's1', stance: 'CONTRADICTS', excerpt: { exact_text: 'b', exact_text_sha256: sha('b') } }] });
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut({
-    support: 'INCONCLUSIVE', contradiction: 'UNRESOLVED', disagreement: 'NEEDS_SPECIALIST_REVIEW', recommendation: 'ESCALATE', rationale: 'conflict unresolved',
-    evid: [{ evidence_id: 'e1', stance: 'SUPPORTS' }, { evidence_id: 'e2', stance: 'CONTRADICTS' }] })) });
-  assert.equal(out.research_result.judgment.contradiction_status, 'UNRESOLVED');
-  const stances = out.research_result.evidence.map((e) => e.stance);
-  assert.ok(stances.includes('SUPPORTS') && stances.includes('CONTRADICTS'));
-});
-
-test('RD24: fabrication canary — no invention when evidence insufficient', async () => {
-  const task = mkTask({ sources: [], evidence: [] });
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut({ support: 'INCONCLUSIVE', recommendation: 'RESEARCH_MORE', rationale: 'insufficient' })) });
-  assert.equal(out.state, 'RESEARCH_MORE');
-  assert.equal((out.research_result.sources || []).length, 0);
-});
-
-test('RD25: current-fact expiry cannot be overridden', async () => {
-  const task = mkTask({ temporal: { temporal_class: 'CURRENT_FACT', as_of: '2026-06-01T00:00:00Z', freshness_policy: { MAX_AGE_DAYS: 7 } } });
-  task.sources[0].container.retrieved_at = '2026-06-01T00:00:00Z';
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut()) });
-  assert.equal(out.state, 'BLOCKED');
-  assert.match(out.reason, /CURRENT_FACT_EXPIRED/);
-});
-
-// ── RD26–RD28 handoff ─────────────────────────────────────────────────────────
-test('RD26: agent output validates under hardened V1', async () => {
-  const task = mkTask(); const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut()) });
-  const agg = rrv.validateAggregate({ schema_version: 1, artifact_type: 'research-results', package_run_id: 'run-x', results: [out.research_result], }, { as_of: '2026-01-01' });
-  assert.ok(agg.validation_ok);
-});
-
-test('RD27: Phase B authority module consumes RD output directly', async () => {
-  const task = mkTask(); const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut()) });
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rd-run-'));
-  const root = { schema_version: 1, artifact_type: 'research-results', package_run_id: 'run-x', results: [out.research_result] };
-  fs.writeFileSync(path.join(dir, 'research-results.json'), JSON.stringify(root));
-  const ev = authority.evaluateCanonicalResearch(dir, { asOf: '2026-01-01' });
-  assert.equal(ev.mode, 'canonical');
-  assert.ok(ev.present);
-});
-
-test('RD28: qualified output carries exact constraint IDs for Story binding handoff', async () => {
-  const task = mkTask();
-  const out = await rd.run(task, { modelAdapter: boundedAdapter(semanticOut({ recommendation: 'ALLOW_USE_WITH_QUALIFICATION',
-    qualification: { qualification_required: true, wording_constraints: [
-      { constraint_id: 'q-a', type: 'LIMIT_SCOPE', instruction: 'x' }, { constraint_id: 'q-b', type: 'RETAIN_QUALIFIER', instruction: 'y' }] } })) });
-  const ids = out.research_result.qualification.wording_constraints.map((c) => c.constraint_id);
-  const cs = rrv.validateConstraintSatisfaction(out.research_result, { satisfied_constraint_ids: ids, research_result_digest_sha256: out.research_result.result_digest_sha256 });
-  assert.ok(cs.ok);
-});
+async function runAll() { let pass = 0; for (const t of tests) try { await t.fn(); console.log(`ok ${++pass} - ${t.name}`); } catch (error) { console.error(`not ok ${pass + 1} - ${t.name}\n${error.stack}`); process.exitCode = 1; } console.log(`Research Director: ${pass}/${tests.length} PASS`); if (pass !== tests.length) process.exitCode = 1; }
+module.exports = { tests, runAll, task, semantic, opposing };
+if (require.main === module) runAll();
