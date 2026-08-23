@@ -1,397 +1,493 @@
 'use strict';
-// Research Result V1 Phase B — integration tests.
-// Canonical authority for new flows, legacy compatibility, Story bindings,
-// invalidation, human exception, QC contract, claim-19.23 canary, B1–B20.
 
-const { assert, fs, os, path, test } = require('./_helpers.js');
+// Research Result V1 Phase B integration tests. All JSON fixtures use the
+// hardened Phase A contract; legacy compatibility applies only to Markdown
+// package runs, never to an obsolete JSON schema.
+
+const { assert, fs, os, path, test, tests } = require('./_helpers.js');
 const crypto = require('node:crypto');
-const rrv = require('../scripts/research-result-validator.js');
+const validator = require('../scripts/research-result-validator.js');
 const authority = require('../scripts/research-result-authority.js');
 const scriptStructure = require('../scripts/package-run-script-structure.js');
 const scriptReview = require('../scripts/package-run-script-review.js');
-const contractValidator = require('../scripts/agent-contract-validator.js');
 
-const sha = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
-const AS_OF = '2026-08-23T09:00:00+03:00';
+const AS_OF = '2026-08-23T12:00:00Z';
 const POSITIVE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'research-result', 'claim-19.23.json'), 'utf8'));
+let sequence = 1000;
+
+const clone = (value) => structuredClone(value);
+const hash = (text) => validator.sha256Text(text);
 
 function tmpRun() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rrb-run-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rr-phase-b-'));
   const runDir = path.join(root, 'package-runs', '2026-08-23-research-canary');
   fs.mkdirSync(runDir, { recursive: true });
   return { root, runDir };
 }
+
 function writeRun(runDir, files) {
   for (const [name, content] of Object.entries(files)) {
-    fs.writeFileSync(path.join(runDir, name), typeof content === 'string' ? content : JSON.stringify(content, null, 1));
+    fs.writeFileSync(path.join(runDir, name), typeof content === 'string' ? content : `${JSON.stringify(content, null, 2)}\n`);
   }
 }
 
-// --- result builders (reuse Phase A semantics) --------------------------------
-let n = 0;
-function mkResult(over = {}) {
-  n += 1;
-  const claimText = over.claimText || `Test claim ${n} for phase B.`;
-  const r = {
-    result_id: `res-b-${n}`, revision: 1,
-    claim_ref: { namespace: 'vidtoolz-episode-factory/package-run-claim',
-      canonical_id: `claim-00000000-0000-4000-8000-${String(n).padStart(12, '0')}`, revision: 1, alias_ids: [] },
-    claim: { normalized_text: claimText, normalized_text_sha256: sha(claimText) },
-    temporal: { temporal_class: 'EVERGREEN_FACT' },
-    judgment: { support: 'SUPPORTED', freshness: 'NOT_APPLICABLE', evidence_quality: 'ADEQUATE',
-      confidence: 'HIGH', independence: 'ADEQUATE', contradiction: 'NONE', disagreement: 'NONE',
-      recommendation: 'ALLOW_USE', rationale: 'test' },
-    qualification: { qualification_required: false, wording_constraints: [] },
-    sources: [{ source_id: `src-b-${n}`, source_class: 'REPORTING', independence_group: `ig-b-${n}`,
-      independence_basis: 'test', container: { relationship: 'IS_ORIGINAL' } }],
-    evidence: [{ evidence_id: `ev-b-${n}`, source_ref: `src-b-${n}`, stance: 'SUPPORTS',
-      excerpt: { exact_text: 'supports', exact_text_sha256: sha('supports') } }],
-    independent_support_count: 1,
-    staleness: { state: 'VALID', reason: null },
+function makeResult(options = {}) {
+  sequence += 1;
+  const suffix = String(sequence).padStart(12, '0');
+  const text = options.text || `A bounded Phase B factual assertion ${sequence}.`;
+  return {
+    result_id: options.result_id || `research-result-00000000-0000-4000-8000-${suffix}`,
+    result_revision: options.result_revision || 1,
+    claim_ref: {
+      namespace: 'vidtoolz-episode-factory/package-run-claim',
+      canonical_id: options.canonical_id || `claim-00000000-0000-4000-8000-${suffix}`,
+      revision: options.claim_revision || 1,
+      alias_ids: [],
+    },
+    claim: {
+      evaluated_text: text,
+      evaluated_text_sha256: hash(validator.normalizeClaimText(text)),
+      temporal: options.temporal || { temporal_class: 'EVERGREEN_FACT' },
+    },
+    judgment: {
+      support_status: options.support || 'SUPPORTED',
+      freshness_status_at_review: options.freshness || 'NOT_APPLICABLE',
+      evidence_quality: options.quality || 'ADEQUATE',
+      confidence: options.confidence || 'HIGH',
+      independence_status: options.independence || 'ADEQUATE',
+      contradiction_status: options.contradiction || 'NONE',
+      disagreement_state: options.disagreement || 'NONE',
+      recommendation: options.recommendation || 'ALLOW_USE',
+      rationale: 'Explicit TEST judgment; deterministic code did not infer it.',
+      unresolved_questions: [],
+    },
+    qualification: options.qualification || { qualification_required: false, wording_constraints: [] },
+    sources: [{
+      source_ref: `source-phase-b-${suffix}`,
+      source_class: 'REPORTING',
+      original_source: {
+        source_id: `original-phase-b-${suffix}`,
+        title: 'Phase B test source',
+        url: `https://example.invalid/phase-b/${suffix}`,
+        publisher: 'TEST_PUBLISHER',
+      },
+      container: {
+        source_id: `container-phase-b-${suffix}`,
+        container_type: 'WEB_PAGE',
+        relationship_to_original: 'DERIVED_FROM',
+        title: 'Phase B test container',
+        url: `https://example.invalid/container/${suffix}`,
+        retrieved_at: '2026-08-20T00:00:00Z',
+        retrieved_content_sha256: hash(`container-${suffix}`),
+        source_fingerprint_sha256: hash(`fingerprint-${suffix}`),
+      },
+      independence_group: `independence-phase-b-${suffix}`,
+      independence_basis: 'Explicit TEST grouping.',
+    }],
+    evidence: [{
+      evidence_id: `evidence-phase-b-${suffix}`,
+      source_ref: `source-phase-b-${suffix}`,
+      stance: 'SUPPORTS',
+      excerpt: { exact_text: 'Bounded Phase B supporting excerpt.', exact_text_sha256: hash('Bounded Phase B supporting excerpt.') },
+    }],
+    derived: { independent_support_count: 1 },
+    provenance: { provenance_inputs: [{ system: 'TEST', type: 'fixture', record_id: `phase-b-${suffix}`, sha256: hash(`phase-b-${suffix}`) }] },
+    lifecycle: { created_at: '2026-08-23T08:00:00Z', reviewed_at: '2026-08-23T08:00:00Z' },
+    ...(options.supersedes ? { supersedes_result_id: options.supersedes } : {}),
+    result_digest_sha256: '0'.repeat(64),
   };
-  Object.assign(r, over.assign || {});
-  return r;
 }
-function mkRoot(results, pkg = '2026-08-23-research-canary') {
-  const root = { schema_version: 1, artifact_type: 'research-results', package_run_id: pkg, results };
-  for (const r of results) r.result_digest = rrv.resultDigest(root, r);
+
+function rehash(root) {
+  root.results.forEach((result) => { result.result_digest_sha256 = validator.computeResultDigest(root, result); });
   return root;
 }
-function mkBinding(result, over = {}) {
-  const assertion = over.assertion || 'A factual sentence about the claim.';
-  return {
-    binding_id: `script-claim-${crypto.randomUUID()}`,
-    section_id: over.section_id || 'body',
-    assertion_text: assertion,
-    assertion_text_sha256: sha(assertion),
-    claim_ref: result.claim_ref,
-    research_result_ref: { package_run_id: '2026-08-23-research-canary',
-      result_id: result.result_id, result_revision: result.revision,
-      result_digest_sha256: result.result_digest },
-    satisfied_constraint_ids: over.satisfied_constraint_ids || [],
-    ...over.extra,
-  };
+
+function makeRoot(results, packageRunId = '2026-08-23-research-canary') {
+  return rehash({ schema_version: 1, artifact_type: 'research-results', package_run_id: packageRunId, project_id: 'phase-b-test', results });
 }
-function mkBindingsDoc(bindings, over = {}) {
-  const script = over.script || 'Intro. A factual sentence about the claim. Outro.';
-  return {
-    schema_version: 1, project_id: 'test-project', script_version_id: 'v-test-1',
-    script_content_hash: sha(script), bindings, _script: script,
-  };
-}
-function runWith(root) {
+
+function runWith(root, additional = {}) {
   const { runDir } = tmpRun();
-  writeRun(runDir, { 'research-results.json': root });
+  writeRun(runDir, { 'research-results.json': root, ...additional });
   return runDir;
 }
 
-// ── authority + aggregate ────────────────────────────────────────────────────
-test('B1: valid current result + exact Story binding → PASS', () => {
-  const result = mkResult();
-  const runDir = runWith(mkRoot([result]));
-  const doc = mkBindingsDoc([mkBinding(result)]);
-  const out = authority.verifyStoryBindings(doc, runDir, { asOf: AS_OF });
-  assert.ok(out.ok, JSON.stringify(out.errors));
-  const ev = authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF });
-  assert.equal(ev.status, 'READY');
-});
-
-test('B2: missing research-results.json in new canonical flow → BLOCK', () => {
-  const { runDir } = tmpRun(); // no canonical file
-  const doc = mkBindingsDoc([mkBinding(mkResult())]);
-  const out = authority.verifyStoryBindings(doc, runDir, { asOf: AS_OF });
-  assert.ok(!out.ok && out.errors.some((e) => /research-results\.json/.test(e)));
-  const ev = authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF });
-  assert.equal(ev.mode, 'legacy');
-});
-
-test('B3: legacy Markdown-only archived run remains readable under compatibility path', () => {
-  const { runDir } = tmpRun();
-  writeRun(runDir, {
-    'selected-package.md': '# Selected\n',
-    'research-evidence.md': '- Research approval: PASS\n',
-    'research-sufficiency-review.md': '# Research Sufficiency Review\n- Research sufficiency status: PASS\n- Research approval marker: PASS\n',
-    'source-support-map.md': '| source/reference | claim supported | evidence type | reliability note | status |\n| --- | --- | --- | --- | --- |\n| selected-package.json | The selected package and viewer promise are recorded locally. | local artifact | Local run artifact. | review-needed |\n| package-candidates.json | The rejected alternatives are available for comparison. | local artifact | Local run artifact. | review-needed |\n',
-    'proof-capture-plan.md': '| proof item | what it proves | local capture method | file/app/source | status |\n| --- | --- | --- | --- | --- |\n| selected-package.json | The selected package content exists locally. | read local file | selected-package.json | review-needed |\n',
-    'research-objections.md': '| objection/counterexample | why it matters | evidence needed | response plan | status |\n| --- | --- | --- | --- | --- |\n| The claim may overstate benefits. | Overstated claims mislead viewers. | reviewer check | soften wording | review-needed |\n',
-  });
-  const legacy = scriptStructure.readResearchGate(runDir);
-  assert.equal(legacy.status, 'PASS'); // legacy path unchanged
-  const ev = authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF });
-  assert.equal(ev.mode, 'legacy');
-  assert.equal(ev.present, false);
-});
-
-test('B4: legacy PASS cannot override canonical STALE → BLOCK', () => {
-  const result = mkResult();
-  result.temporal = { temporal_class: 'CURRENT_FACT', as_of: '2026-06-01T00:00:00Z',
-    freshness_policy: { MAX_AGE_DAYS: 7 } };
-  result.sources[0].container = { relationship: 'IS_ORIGINAL', retrieved_at: '2026-06-01T00:00:00Z' };
-  const runDir = runWith(mkRoot([result]));
-  // legacy Markdown PASS present alongside canonical STALE
-  writeRun(runDir, { 'research-evidence.md': '- Research approval: PASS\n' });
-  const ev = authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF });
-  assert.equal(ev.status, 'BLOCKED'); // canonical wins
-  // canonical research gate in script-structure blocks drafting
-  const gate = scriptStructure.readResearchGate(runDir, { asOf: AS_OF });
-  assert.equal(gate.readyToDraft, false);
-});
-
-test('B5: stale result → BLOCK', () => {
-  const result = mkResult();
-  result.temporal = { temporal_class: 'CURRENT_FACT', as_of: '2026-01-01T00:00:00Z',
-    freshness_policy: { MAX_AGE_DAYS: 30 } };
-  result.sources[0].container = { relationship: 'IS_ORIGINAL', retrieved_at: '2026-01-01T00:00:00Z' };
-  const runDir = runWith(mkRoot([result]));
-  assert.equal(authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF }).status, 'BLOCKED');
-});
-
-test('B6: invalid digest → BLOCK', () => {
-  const result = mkResult();
-  const root = mkRoot([result]);
-  result.result_digest = sha('tampered');
-  const runDir = runWith(root);
-  assert.equal(authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF }).status, 'BLOCKED');
-});
-
-test('B7: superseded result binding → BLOCK', () => {
-  const old = mkResult(); old.result_id = 'res-old';
-  const next = mkResult({ claimText: old.claim.normalized_text });
-  next.result_id = 'res-new'; next.revision = 2; next.claim_ref = { ...old.claim_ref, revision: 2 };
-  next.supersedes_result_id = 'res-old';
-  next.claim.normalized_text_sha256 = old.claim.normalized_text_sha256;
-  const root = mkRoot([old, next]);
-  const runDir = runWith(root);
-  const b = mkBinding(old); // binds superseded result
-  const out = authority.verifyStoryBindings(mkBindingsDoc([b]), runDir, { asOf: AS_OF });
-  assert.ok(!out.ok && out.errors.some((e) => /SUPERSEDED|not VALID|STALE|RESULT_SUPERSEDED/i.test(e)));
-});
-
-test('B8: two current heads → BLOCK (ambiguity fails closed)', () => {
-  const h1 = mkResult(); h1.result_id = 'head-1';
-  const h2 = mkResult({ claimText: h1.claim.normalized_text }); h2.result_id = 'head-2'; h2.revision = 2;
-  h2.claim_ref = h1.claim_ref; h2.claim.normalized_text_sha256 = h1.claim.normalized_text_sha256;
-  const runDir = runWith(mkRoot([h1, h2]));
-  const ev = authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF });
-  assert.equal(ev.status, 'BLOCKED');
-  assert.ok(ev.blockers.some((b) => /ambiguity/i.test(b)));
-});
-
-test('B9: exact assertion changed → BLOCK', () => {
-  const result = mkResult();
-  const runDir = runWith(mkRoot([result]));
-  const b = mkBinding(result, { assertion: 'A factual sentence about the claim.' });
-  b.assertion_text_sha256 = sha('A factual sentence about the claim!'); // punctuation change
-  const out = authority.verifyStoryBindings(mkBindingsDoc([b]), runDir, { asOf: AS_OF });
-  assert.ok(!out.ok && out.errors.some((e) => /assertion hash mismatch/.test(e)));
-});
-
-test('B10: qualifier removed → BLOCK', () => {
-  const result = mkResult();
-  result.qualification = { qualification_required: true, wording_constraints: [
-    { constraint_id: 'q-abs', type: 'FORBID_ABSOLUTE', note: 'no absolutes' }] };
-  result.judgment.recommendation = 'ALLOW_USE_WITH_QUALIFICATION';
-  const root = mkRoot([result]);
-  const runDir = runWith(root);
-  const b = mkBinding(result, { satisfied_constraint_ids: [] }); // qualifier dropped
-  const out = authority.verifyStoryBindings(mkBindingsDoc([b]), runDir, { asOf: AS_OF });
-  assert.ok(!out.ok && out.errors.some((e) => /qualification constraints not satisfied/.test(e)));
-  // with the constraint carried forward → PASS
-  const b2 = mkBinding(result, { satisfied_constraint_ids: ['q-abs'] });
-  assert.ok(authority.verifyStoryBindings(mkBindingsDoc([b2]), runDir, { asOf: AS_OF }).ok);
-});
-
-test('B11: changed number/date in assertion → BLOCK', () => {
-  const result = mkResult();
-  const runDir = runWith(mkRoot([result]));
-  const b = mkBinding(result, { assertion: 'Latency rises above 500 ms for 4K media.' });
-  b.assertion_text_sha256 = sha('Latency rises above 600 ms for 4K media.');
-  const out = authority.verifyStoryBindings(mkBindingsDoc([b]), runDir, { asOf: AS_OF });
-  assert.ok(!out.ok);
-});
-
-test('B12: script version changed but assertion identical → binding mechanically retainable', () => {
-  const result = mkResult();
-  const runDir = runWith(mkRoot([result]));
-  const assertion = 'A factual sentence about the claim.';
-  const b = mkBinding(result, { assertion });
-  const doc1 = mkBindingsDoc([b], { script: `Version one. ${assertion}` });
-  const doc2 = mkBindingsDoc([b], { script: `Version two differs. ${assertion}` });
-  assert.equal(doc1.script_content_hash === doc2.script_content_hash, false);
-  // binding verifies against both because the exact factual span is unchanged
-  assert.ok(authority.verifyStoryBindings(doc1, runDir, { asOf: AS_OF }).ok);
-  assert.ok(authority.verifyStoryBindings(doc2, runDir, { asOf: AS_OF }).ok);
-});
-
-test('B13: RESEARCH_MORE → ordinary production BLOCK', () => {
-  const result = mkResult();
-  result.judgment = { ...result.judgment, recommendation: 'RESEARCH_MORE', support: 'PARTIALLY_SUPPORTED',
-    evidence_quality: 'WEAK', confidence: 'MEDIUM' };
-  const runDir = runWith(mkRoot([result]));
-  const ev = authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF });
-  assert.equal(ev.status, 'BLOCKED');
-  const gate = scriptStructure.readResearchGate(runDir, { asOf: AS_OF });
-  assert.equal(gate.readyToDraft, false);
-});
-
-test('B14: unresolved NEEDS_HUMAN_DECISION → route to decision (REVIEW), not PASS/BLOCK', () => {
-  const result = mkResult();
-  result.judgment.disagreement = 'NEEDS_HUMAN_DECISION';
-  result.judgment.recommendation = 'ESCALATE';
-  const runDir = runWith(mkRoot([result]));
-  const ev = authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF });
-  assert.equal(ev.status, 'REVIEW');
-  assert.equal(ev.decision_required, true);
-});
-
-test('B15: exact valid human exception allows exact use; Research verdict unchanged', () => {
-  const result = mkResult();
-  result.judgment = { ...result.judgment, recommendation: 'RESEARCH_MORE', evidence_quality: 'WEAK' };
-  const root = mkRoot([result]);
-  const runDir = runWith(root);
-  const b = mkBinding(result);
-  const script = 'Intro. A factual sentence about the claim. Outro.';
-  const exception = {
-    exception_id: 'TEST-EX-B15', claim_ref: result.claim_ref, result_id: result.result_id,
-    result_digest: result.result_digest, binding_id: b.binding_id,
-    script_sha256: sha(script), reason: 'editorial risk accepted', acknowledged_risk: 'weak evidence used knowingly', _root: root,
-    approval: { artifact_path: 'script:test', artifact_sha256: sha(script), commit: 'TEST',
-      approved_by: 'TEST-HUMAN', approved_at: AS_OF, scope: 'TEST' },
+function makeBinding(result, options = {}) {
+  const assertion = options.assertion || 'A factual sentence about the claim.';
+  return {
+    binding_id: options.binding_id || `script-claim-${crypto.randomUUID()}`,
+    section_id: options.section_id || 'body',
+    assertion_text: assertion,
+    assertion_text_sha256: hash(assertion),
+    claim_ref: clone(result.claim_ref),
+    research_result_ref: {
+      package_run_id: options.package_run_id || '2026-08-23-research-canary',
+      result_id: result.result_id,
+      result_revision: result.result_revision,
+      result_digest_sha256: result.result_digest_sha256,
+    },
+    satisfied_constraint_ids: options.satisfied_constraint_ids || [],
   };
-  const out = authority.verifyHumanException(exception, b, result, Buffer.from(script));
-  assert.ok(out.ok, JSON.stringify(out.errors));
-  assert.equal(result.judgment.recommendation, 'RESEARCH_MORE'); // verdict untouched
+}
+
+function makeBindingsDoc(bindings, options = {}) {
+  const script = options.script || 'Intro. A factual sentence about the claim. Outro.';
+  return {
+    schema_version: 1,
+    project_id: 'phase-b-test',
+    script_version_id: options.script_version_id || 'script-version-test-1',
+    script_content_hash: hash(script),
+    bindings,
+  };
+}
+
+function exceptionFor(result, binding, bindingsDoc) {
+  const exception = {
+    schema_version: 1,
+    artifact_type: 'research-human-exception',
+    exception_id: `research-exception-${crypto.randomUUID()}`,
+    exception_type: 'ALLOW_USE_WITH_EXPLICIT_EXCEPTION',
+    claim_ref: clone(result.claim_ref),
+    research_result_ref: {
+      result_id: result.result_id,
+      result_revision: result.result_revision,
+      result_digest_sha256: result.result_digest_sha256,
+    },
+    script_usage_ref: {
+      script_version_id: bindingsDoc.script_version_id,
+      script_content_hash: bindingsDoc.script_content_hash,
+      binding_id: binding.binding_id,
+      assertion_text_sha256: binding.assertion_text_sha256,
+    },
+    reason: 'Explicit test-only editorial exception.',
+    acknowledged_risks: ['TEST risk; not a production approval.'],
+    approval_binding: {},
+  };
+  const bytes = validator.exceptionApprovalBytes(exception);
+  exception.approval_binding = {
+    artifact_path: 'test://research-human-exception',
+    artifact_sha256: validator.sha256(bytes),
+    commit: 'TEST_COMMIT',
+    approved_by: 'TEST_HUMAN',
+    approved_at: AS_OF,
+    scope: 'TEST_ONLY',
+  };
+  return { exception, bytes };
+}
+
+function canonicalExceptionOptions(result, binding, doc, bytes) {
+  return {
+    current_result_state: 'VALID',
+    current_result_ref: {
+      result_id: result.result_id,
+      result_revision: result.result_revision,
+      result_digest_sha256: result.result_digest_sha256,
+    },
+    current_script_usage_ref: {
+      script_version_id: doc.script_version_id,
+      script_content_hash: doc.script_content_hash,
+      binding_id: binding.binding_id,
+      assertion_text_sha256: binding.assertion_text_sha256,
+    },
+    current_exception_bytes: bytes,
+  };
+}
+
+function makeChain() {
+  const first = makeResult();
+  const second = makeResult({
+    canonical_id: first.claim_ref.canonical_id,
+    text: first.claim.evaluated_text,
+    result_revision: 2,
+    claim_revision: 1,
+    supersedes: first.result_id,
+  });
+  return { first, second, root: makeRoot([first, second]) };
+}
+
+// B1–B20: preserved Phase B workflow behavior on canonical hardened JSON.
+test('B1: valid current result + exact Story binding → PASS', () => {
+  const result = makeResult(); const runDir = runWith(makeRoot([result]));
+  const binding = makeBinding(result); const doc = makeBindingsDoc([binding]);
+  const out = authority.verifyStoryBindings(doc, runDir, { asOf: AS_OF, sectionTextById: { body: binding.assertion_text } });
+  assert.equal(out.ok, true, JSON.stringify(out.errors));
+  assert.equal(out.evaluation.status, 'READY');
 });
 
-test('B16: exception after script mutation → STALE/BLOCK', () => {
-  const result = mkResult();
-  const b = mkBinding(result);
-  const script = 'original script text';
-  const exception = { claim_ref: result.claim_ref, result_id: result.result_id,
-    result_digest: result.result_digest, binding_id: b.binding_id, script_sha256: sha(script),
-    reason: 'r', acknowledged_risk: 'r',
-    approval: { artifact_path: 'script:test', artifact_sha256: sha(script), commit: 'T',
-      approved_by: 'TEST-HUMAN', approved_at: AS_OF, scope: 'T' } };
-  const out = authority.verifyHumanException(exception, b, result, Buffer.from('mutated script text'));
-  assert.ok(!out.ok && out.errors.some((e) => /STALE/.test(e)));
+test('B2: canonical flow missing result blocks', () => {
+  const result = makeResult(); const { runDir } = tmpRun();
+  const out = authority.verifyStoryBindings(makeBindingsDoc([makeBinding(result)]), runDir, { asOf: AS_OF });
+  assert.equal(out.ok, false); assert.match(out.errors.join(' '), /research-results\.json/);
 });
 
-test('B17: exception after Research Result mutation → STALE/BLOCK', () => {
-  const result = mkResult();
-  const b = mkBinding(result);
-  const script = 's';
-  const exception = { claim_ref: result.claim_ref, result_id: result.result_id,
-    result_digest: 'old-digest-that-no-longer-matches', binding_id: b.binding_id,
-    script_sha256: sha(script), reason: 'r', acknowledged_risk: 'r', _root: mkRoot([result]),
-    approval: { artifact_path: 'script:test', artifact_sha256: sha(script), commit: 'T',
-      approved_by: 'TEST-HUMAN', approved_at: AS_OF, scope: 'T' } };
-  const out = authority.verifyHumanException(exception, b, result, Buffer.from(script));
-  assert.ok(!out.ok && out.errors.some((e) => /HUMAN_EXCEPTION_STALE|result_digest/.test(e)));
-});
-
-test('B18: risky claim not declared/bound → script review flags it', () => {
+test('B3: legacy Markdown archived flow remains available', () => {
   const { runDir } = tmpRun();
   writeRun(runDir, {
-    'selected-package.md': '# Selected\n',
-    'research-pack.md': '# Research\n',
+    'research-pack.md': '# Research\n\n## Research Sufficiency Gate\n- Status: PASS\n',
     'research-evidence.md': '- Research approval: PASS\n',
     'research-sufficiency-review.md': '# Research Sufficiency Review\n- Research sufficiency status: PASS\n- Research approval marker: PASS\n',
-    'source-support-map.md': '| source/reference | claim supported | evidence type | reliability note | status |\n| --- | --- | --- | --- | --- |\n| selected-package.json | The selected package and viewer promise are recorded locally. | local artifact | Local run artifact. | review-needed |\n| package-candidates.json | The rejected alternatives are available for comparison. | local artifact | Local run artifact. | review-needed |\n',
-    'proof-capture-plan.md': '| proof item | what it proves | local capture method | file/app/source | status |\n| --- | --- | --- | --- | --- |\n| selected-package.json | The selected package content exists locally. | read local file | selected-package.json | review-needed |\n',
-    'research-objections.md': '| objection/counterexample | why it matters | evidence needed | response plan | status |\n| --- | --- | --- | --- | --- |\n| The claim may overstate benefits. | Overstated claims mislead viewers. | reviewer check | soften wording | review-needed |\n',
+    'source-support-map.md': '| source/reference | claim supported | evidence type | reliability note | status |\n| --- | --- | --- | --- | --- |\n| selected-package.json | selected package | local | local | review-needed |\n| package-candidates.json | alternatives | local | local | review-needed |\n',
+    'proof-capture-plan.md': '| proof item | what it proves | local capture method | file/app/source | status |\n| --- | --- | --- | --- | --- |\n| selected-package.json | exists | local | selected-package.json | review-needed |\n',
+    'research-objections.md': '| objection/counterexample | why it matters | evidence needed | response plan | status |\n| --- | --- | --- | --- | --- |\n| overstatement | accuracy | review | qualify | review-needed |\n',
+  });
+  assert.equal(scriptStructure.readResearchGate(runDir).status, 'PASS');
+  assert.equal(authority.evaluateCanonicalResearch(runDir).mode, 'legacy');
+});
+
+test('B4: legacy PASS cannot override canonical stale result', () => {
+  const result = makeResult({ temporal: { temporal_class: 'CURRENT_FACT', as_of: '2026-01-01T00:00:00Z', freshness_policy: { mode: 'MAX_AGE_DAYS', max_age_days: 30 } }, freshness: 'FRESH' });
+  const runDir = runWith(makeRoot([result]), { 'research-evidence.md': '- Research approval: PASS\n' });
+  assert.equal(authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF }).status, 'BLOCKED');
+  assert.equal(scriptStructure.readResearchGate(runDir, { asOf: AS_OF }).readyToDraft, false);
+});
+
+test('B5: stale result blocks', () => {
+  const result = makeResult({ temporal: { temporal_class: 'CURRENT_FACT', as_of: '2026-01-01T00:00:00Z', freshness_policy: { mode: 'MAX_AGE_DAYS', max_age_days: 1 } }, freshness: 'FRESH' });
+  assert.equal(authority.evaluateCanonicalResearch(runWith(makeRoot([result])), { asOf: AS_OF }).status, 'BLOCKED');
+});
+
+test('B6: invalid digest blocks', () => {
+  const root = makeRoot([makeResult()]); root.results[0].result_digest_sha256 = hash('tampered');
+  assert.equal(authority.evaluateCanonicalResearch(runWith(root), { asOf: AS_OF }).status, 'BLOCKED');
+});
+
+test('B7: binding to superseded result blocks', () => {
+  const { first, root } = makeChain(); const runDir = runWith(root);
+  const out = authority.verifyStoryBindings(makeBindingsDoc([makeBinding(first)]), runDir, { asOf: AS_OF });
+  assert.equal(out.ok, false); assert.match(out.errors.join(' '), /not current authority|SUPERSEDED/);
+});
+
+test('B8: ambiguous current heads block', () => {
+  const first = makeResult();
+  const second = makeResult({ canonical_id: first.claim_ref.canonical_id, text: first.claim.evaluated_text, result_revision: 2, claim_revision: 1 });
+  const out = authority.evaluateCanonicalResearch(runWith(makeRoot([first, second])), { asOf: AS_OF });
+  assert.equal(out.status, 'BLOCKED'); assert.match(out.blockers.join(' '), /ambiguous/);
+});
+
+test('B9: assertion hash change blocks', () => {
+  const result = makeResult(); const runDir = runWith(makeRoot([result])); const binding = makeBinding(result);
+  binding.assertion_text_sha256 = hash(`${binding.assertion_text}!`);
+  assert.match(authority.verifyStoryBindings(makeBindingsDoc([binding]), runDir, { asOf: AS_OF }).errors.join(' '), /assertion hash mismatch/);
+});
+
+test('B10: removed qualification blocks; exact IDs pass', () => {
+  const qualification = { qualification_required: true, wording_constraints: [{ constraint_id: 'constraint-A', type: 'FORBID_ABSOLUTE', instruction: 'Do not use absolute wording.' }] };
+  const result = makeResult({ qualification, recommendation: 'ALLOW_USE_WITH_QUALIFICATION' }); const runDir = runWith(makeRoot([result]));
+  assert.equal(authority.verifyStoryBindings(makeBindingsDoc([makeBinding(result)]), runDir, { asOf: AS_OF }).ok, false);
+  assert.equal(authority.verifyStoryBindings(makeBindingsDoc([makeBinding(result, { satisfied_constraint_ids: ['constraint-A'] })]), runDir, { asOf: AS_OF }).ok, true);
+});
+
+test('B11: changed number/date in assertion blocks', () => {
+  const result = makeResult(); const runDir = runWith(makeRoot([result])); const binding = makeBinding(result, { assertion: 'Latency was 500 ms on 2026-08-20.' });
+  binding.assertion_text_sha256 = hash('Latency was 600 ms on 2026-08-21.');
+  assert.equal(authority.verifyStoryBindings(makeBindingsDoc([binding]), runDir, { asOf: AS_OF }).ok, false);
+});
+
+test('B12: unchanged assertion may be deterministically reissued for a new script version', () => {
+  const result = makeResult(); const runDir = runWith(makeRoot([result])); const binding = makeBinding(result);
+  const first = makeBindingsDoc([binding], { script: `V1. ${binding.assertion_text}`, script_version_id: 'script-v1' });
+  const second = makeBindingsDoc([binding], { script: `V2 changed elsewhere. ${binding.assertion_text}`, script_version_id: 'script-v2' });
+  assert.notEqual(first.script_content_hash, second.script_content_hash);
+  assert.equal(authority.verifyStoryBindings(first, runDir, { asOf: AS_OF, sectionTextById: { body: binding.assertion_text } }).ok, true);
+  assert.equal(authority.verifyStoryBindings(second, runDir, { asOf: AS_OF, sectionTextById: { body: binding.assertion_text } }).ok, true);
+});
+
+test('B13: RESEARCH_MORE blocks ordinary production', () => {
+  const result = makeResult({ support: 'PARTIALLY_SUPPORTED', quality: 'WEAK', confidence: 'MEDIUM', recommendation: 'RESEARCH_MORE' });
+  const runDir = runWith(makeRoot([result]));
+  assert.equal(authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF }).status, 'BLOCKED');
+  assert.equal(scriptStructure.readResearchGate(runDir, { asOf: AS_OF }).readyToDraft, false);
+});
+
+test('B14: NEEDS_HUMAN_DECISION routes to REVIEW', () => {
+  const result = makeResult({ disagreement: 'NEEDS_HUMAN_DECISION', recommendation: 'ESCALATE' });
+  const evaluation = authority.evaluateCanonicalResearch(runWith(makeRoot([result])), { asOf: AS_OF });
+  assert.equal(evaluation.status, 'REVIEW'); assert.equal(evaluation.decision_required, true);
+});
+
+test('B15: exact canonical exception allows exact use without changing Research verdict', () => {
+  const result = makeResult({ recommendation: 'RESEARCH_MORE', quality: 'WEAK' }); const runDir = runWith(makeRoot([result]));
+  const binding = makeBinding(result); const doc = makeBindingsDoc([binding]); const { exception, bytes } = exceptionFor(result, binding, doc);
+  const out = authority.verifyStoryBindings(doc, runDir, { asOf: AS_OF, humanException: exception, currentExceptionBytes: bytes });
+  assert.equal(out.ok, true, JSON.stringify(out.errors)); assert.equal(result.judgment.recommendation, 'RESEARCH_MORE');
+});
+
+test('B16: script mutation makes exception stale', () => {
+  const result = makeResult(); const binding = makeBinding(result); const doc = makeBindingsDoc([binding]); const { exception, bytes } = exceptionFor(result, binding, doc);
+  const current = canonicalExceptionOptions(result, binding, doc, bytes); current.current_script_usage_ref.script_content_hash = hash('changed script');
+  assert.equal(authority.verifyHumanException(exception, current).status, 'STALE');
+});
+
+test('B17: Research Result mutation makes exception stale', () => {
+  const result = makeResult(); const root = makeRoot([result]); const binding = makeBinding(result); const doc = makeBindingsDoc([binding]); const { exception, bytes } = exceptionFor(result, binding, doc);
+  const current = canonicalExceptionOptions(result, binding, doc, bytes); current.current_result_ref.result_digest_sha256 = hash('changed result');
+  assert.equal(authority.verifyHumanException(exception, current).status, 'STALE'); assert.equal(root.results[0].judgment.support_status, 'SUPPORTED');
+});
+
+test('B18: risky unbound claim remains a review flag', () => {
+  const { runDir } = tmpRun();
+  writeRun(runDir, {
+    'selected-package.md': '# Selected\n', 'research-pack.md': '# Research\n',
+    'research-evidence.md': '- Research approval: PASS\n',
+    'research-sufficiency-review.md': '# Research Sufficiency Review\n- Research sufficiency status: PASS\n- Research approval marker: PASS\n',
+    'source-support-map.md': '| source/reference | claim supported | evidence type | reliability note | status |\n| --- | --- | --- | --- | --- |\n| selected-package.json | selected | local | local | review-needed |\n| package-candidates.json | candidates | local | local | review-needed |\n',
+    'proof-capture-plan.md': '| proof item | what it proves | local capture method | file/app/source | status |\n| --- | --- | --- | --- | --- |\n| selected-package.json | exists | local | selected-package.json | review-needed |\n',
+    'research-objections.md': '| objection/counterexample | why it matters | evidence needed | response plan | status |\n| --- | --- | --- | --- | --- |\n| overclaim | accuracy | review | qualify | review-needed |\n',
     'script-structure.md': '# Script Structure\n- Script structure status: PASS\n- Ready to draft: yes\n',
     'final-script.md': 'This always works. Everyone agrees it is the best.\n',
   });
-  const ctx = scriptReview.readReviewContext(runDir);
-  const review = scriptReview.determineReviewStatus(ctx);
-  const text = JSON.stringify(review) + JSON.stringify(ctx.scriptIssues);
-  assert.ok(/strong claim|unsupported|evidence gap|NEEDS REVISION/i.test(text), 'review should surface risky unbound claim: ' + text);
+  const context = scriptReview.readReviewContext(runDir); const review = scriptReview.determineReviewStatus(context);
+  assert.match(`${JSON.stringify(review)}${JSON.stringify(context.scriptIssues)}`, /strong claim|unsupported|evidence gap|NEEDS REVISION/i);
 });
 
-test('B19: two claims in one sentence → two independent bindings required', () => {
-  const r1 = mkResult(); const r2 = mkResult();
-  const runDir = runWith(mkRoot([r1, r2]));
+test('B19: two factual claims require two canonical bindings', () => {
+  const first = makeResult(); const second = makeResult(); const runDir = runWith(makeRoot([first, second]));
   const assertion = 'Cloud tools cost monthly; local tools need hardware.';
-  const b1 = mkBinding(r1, { assertion });
-  const b2 = mkBinding(r2, { assertion });
-  const doc = mkBindingsDoc([b1, b2]);
-  const out = authority.verifyStoryBindings(doc, runDir, { asOf: AS_OF });
-  assert.ok(out.ok, JSON.stringify(out.errors));
-  assert.equal(new Set([b1.claim_ref.canonical_id, b2.claim_ref.canonical_id]).size, 2);
+  const bindings = [makeBinding(first, { assertion }), makeBinding(second, { assertion })];
+  const out = authority.verifyStoryBindings(makeBindingsDoc(bindings), runDir, { asOf: AS_OF });
+  assert.equal(out.ok, true, JSON.stringify(out.errors)); assert.equal(new Set(bindings.map((b) => b.claim_ref.canonical_id)).size, 2);
 });
 
-test('B20: deleted factual claim → binding removal needs no Research approval', () => {
-  const result = mkResult();
-  const runDir = runWith(mkRoot([result]));
-  // script no longer contains the assertion: doc with zero bindings is valid
-  const doc = mkBindingsDoc([], { script: 'No factual content remains.' });
-  const out = authority.verifyStoryBindings(doc, runDir, { asOf: AS_OF });
-  assert.ok(out.ok, JSON.stringify(out.errors));
+test('B20: deleted factual claim permits removal of its binding', () => {
+  const result = makeResult(); const runDir = runWith(makeRoot([result]));
+  assert.equal(authority.verifyStoryBindings(makeBindingsDoc([], { script: 'No factual assertion remains.' }), runDir, { asOf: AS_OF }).ok, true);
 });
 
-// ── claim-19.23 canary ───────────────────────────────────────────────────────
-test('CANARY: claim-19.23 — PARTIALLY_SUPPORTED/WEAK/RESEARCH_MORE blocks ordinary use', () => {
-  const { runDir } = tmpRun();
-  const fixture = JSON.parse(JSON.stringify(POSITIVE));
-  writeRun(runDir, { 'research-results.json': fixture });
-  const ev = authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF });
-  assert.equal(ev.mode, 'canonical');
-  assert.equal(ev.status, 'BLOCKED'); // RESEARCH_MORE blocks
-  const claim = ev.claims[0];
-  assert.equal(claim.claim_ref.canonical_id, 'canon_gd_v10_5b4bf8ef0326bc1392af');
-  assert.equal(claim.support, 'PARTIALLY_SUPPORTED');
-  assert.equal(claim.evidence_quality, 'WEAK');
-  assert.equal(claim.confidence, 'MEDIUM');
-  assert.equal(claim.independence, 'UNKNOWN');
-  assert.equal(claim.recommendation, 'RESEARCH_MORE');
-  assert.equal(claim.qualification_required, true);
-  // script-structure gate blocks drafting
+// M1–M12: prove obsolete Phase B assumptions cannot regain authority.
+test('M1: canonical authorization_ok is authoritative', () => {
+  const result = makeResult({ recommendation: 'DO_NOT_USE', support: 'UNSUPPORTED' }); const runDir = runWith(makeRoot([result]));
+  const evaluation = authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF });
+  assert.equal(evaluation.report.authorization_ok, false); assert.notEqual(evaluation.status, 'READY');
+});
+
+test('M2: STALE cannot authorize despite favorable judgment', () => {
+  const result = makeResult({ temporal: { temporal_class: 'CURRENT_FACT', as_of: '2020-01-01T00:00:00Z', freshness_policy: { mode: 'MAX_AGE_DAYS', max_age_days: 30 } }, freshness: 'FRESH' });
+  const evaluation = authority.evaluateCanonicalResearch(runWith(makeRoot([result])), { asOf: AS_OF });
+  assert.equal(evaluation.claims[0].result_state, 'STALE'); assert.equal(evaluation.status, 'BLOCKED');
+});
+
+test('M3: INVALID cannot authorize', () => {
+  const root = makeRoot([makeResult()]); root.results[0].result_digest_sha256 = hash('invalid'); const evaluation = authority.evaluateCanonicalResearch(runWith(root), { asOf: AS_OF });
+  assert.equal(evaluation.claims[0].result_state, 'INVALID'); assert.equal(evaluation.status, 'BLOCKED');
+});
+
+test('M4: SUPERSEDED binding cannot authorize', () => {
+  const { first, root } = makeChain(); const out = authority.verifyStoryBindings(makeBindingsDoc([makeBinding(first)]), runWith(root), { asOf: AS_OF });
+  assert.equal(out.ok, false); assert.match(out.errors.join(' '), /not current authority/);
+});
+
+test('M5: ambiguous heads cannot authorize', () => {
+  const first = makeResult(); const second = makeResult({ canonical_id: first.claim_ref.canonical_id, text: first.claim.evaluated_text, result_revision: 2 });
+  assert.equal(authority.evaluateCanonicalResearch(runWith(makeRoot([first, second])), { asOf: AS_OF }).status, 'BLOCKED');
+});
+
+test('M6: malformed legacy result ID is rejected', () => {
+  const root = makeRoot([makeResult()]); root.results[0].result_id = 'res-old-shape'; rehash(root);
+  const evaluation = authority.evaluateCanonicalResearch(runWith(root), { asOf: AS_OF });
+  assert.equal(evaluation.status, 'BLOCKED'); assert.equal(evaluation.report.validation_ok, false);
+});
+
+test('M7: non-monotonic result revision is rejected before Phase B use', () => {
+  const first = makeResult(); const second = makeResult({ canonical_id: first.claim_ref.canonical_id, text: first.claim.evaluated_text, result_revision: 1, supersedes: first.result_id });
+  const evaluation = authority.evaluateCanonicalResearch(runWith(makeRoot([first, second])), { asOf: AS_OF });
+  assert.equal(evaluation.status, 'BLOCKED'); assert.ok(evaluation.report.reason_codes.includes('REVISION_NOT_MONOTONIC'));
+});
+
+test('M8: duplicate evidence window invalidation propagates to BLOCKED', () => {
+  const result = makeResult(); const source = result.sources[0].source_ref;
+  const corpus = { evidence_set_id: 'set-1', extracted_idea_id: 'idea-1', evidence_window_id: 'window-1', paragraph_range: { start: 1, end: 1 }, heading_context: 'Test' };
+  result.evidence = [
+    { ...result.evidence[0], ...corpus },
+    { ...clone(result.evidence[0]), evidence_id: 'evidence-duplicate-window', source_ref: source, ...corpus },
+  ];
+  const evaluation = authority.evaluateCanonicalResearch(runWith(makeRoot([result])), { asOf: AS_OF });
+  assert.equal(evaluation.status, 'BLOCKED'); assert.ok(evaluation.report.reason_codes.includes('DUPLICATE_EVIDENCE_WINDOW'));
+});
+
+test('M9: missing source invalidation propagates to BLOCKED', () => {
+  const result = makeResult(); result.evidence[0].source_ref = 'missing-source';
+  const evaluation = authority.evaluateCanonicalResearch(runWith(makeRoot([result])), { asOf: AS_OF });
+  assert.equal(evaluation.status, 'BLOCKED'); assert.ok(evaluation.report.reason_codes.includes('SOURCE_REFERENCE_MISSING'));
+});
+
+test('M10: authority delegates human exceptions to canonical validator', () => {
+  const result = makeResult(); const binding = makeBinding(result); const doc = makeBindingsDoc([binding]); const { exception, bytes } = exceptionFor(result, binding, doc);
+  const original = validator.validateHumanException; let calls = 0;
+  validator.validateHumanException = (...args) => { calls += 1; return original(...args); };
+  try { assert.equal(authority.verifyHumanException(exception, canonicalExceptionOptions(result, binding, doc, bytes)).status, 'VALID'); } finally { validator.validateHumanException = original; }
+  assert.equal(calls, 1);
+});
+
+test('M11: Story binding delegates constraints to canonical validator', () => {
+  const qualification = { qualification_required: true, wording_constraints: [{ constraint_id: 'A', type: 'RETAIN_QUALIFIER', instruction: 'Retain A.' }] };
+  const result = makeResult({ qualification, recommendation: 'ALLOW_USE_WITH_QUALIFICATION' }); const runDir = runWith(makeRoot([result]));
+  const original = validator.validateConstraintSatisfaction; let calls = 0;
+  validator.validateConstraintSatisfaction = (...args) => { calls += 1; return original(...args); };
+  try { assert.equal(authority.verifyStoryBindings(makeBindingsDoc([makeBinding(result, { satisfied_constraint_ids: ['A'] })]), runDir, { asOf: AS_OF }).ok, true); } finally { validator.validateConstraintSatisfaction = original; }
+  assert.equal(calls, 1);
+});
+
+test('M12: append-only violation prevents authority when comparison is supplied', () => {
+  const previous = makeRoot([makeResult()]); const candidate = clone(previous);
+  candidate.results[0].judgment.confidence = 'LOW'; rehash(candidate);
+  const evaluation = authority.evaluateCanonicalResearch(runWith(candidate), { asOf: AS_OF, previousAggregate: previous });
+  assert.equal(evaluation.status, 'BLOCKED'); assert.equal(evaluation.report.append_only.ok, false);
+});
+
+test('claim-19.23 grounded canary stays blocked under ordinary canonical authority', () => {
+  const fixture = clone(POSITIVE); const result = fixture.results[0];
+  assert.equal(result.sources.length, 2); assert.equal(result.evidence.length, 4);
+  assert.deepEqual(new Set(result.evidence.map((e) => e.excerpt.exact_text_sha256)), new Set([
+    '9dc1dcc49e134ab00f52c34f210c436ee38b62c789f7f310d39363812b2a41d1',
+    '1481a2c6390ea900a8e9a3f3b75b807cb450dfac905a4587e7d286931ee3bf54',
+    '0d8b44017b4ab0df2ab70a7b078d0d33051bc9d748ed9e8ed68f237199d2cafc',
+    'd55b67e8c2106f883bf1383b99d60e35a6a0db02f0a3f83c5a60eed1cb12a60d',
+  ]));
+  const runDir = runWith(fixture); const evaluation = authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF });
+  assert.equal(evaluation.status, 'BLOCKED'); assert.equal(evaluation.claims[0].recommendation, 'RESEARCH_MORE');
+  assert.equal(scriptStructure.readResearchGate(runDir, { asOf: AS_OF }).readyToDraft, false);
+});
+
+test('claim-19.23 exact TEST exception allows only exact bound usage', () => {
+  const fixture = clone(POSITIVE); const result = fixture.results[0]; const runDir = runWith(fixture);
+  const ids = result.qualification.wording_constraints.map((constraint) => constraint.constraint_id);
+  const binding = makeBinding(result, { satisfied_constraint_ids: ids, package_run_id: fixture.package_run_id }); const doc = makeBindingsDoc([binding]);
+  const { exception, bytes } = exceptionFor(result, binding, doc);
+  const exact = authority.verifyStoryBindings(doc, runDir, { asOf: AS_OF, humanException: exception, currentExceptionBytes: bytes });
+  assert.equal(exact.ok, true, JSON.stringify(exact.errors)); assert.equal(result.judgment.recommendation, 'RESEARCH_MORE');
+  const changed = clone(doc); changed.script_content_hash = hash('changed script');
+  assert.equal(authority.verifyStoryBindings(changed, runDir, { asOf: AS_OF, humanException: exception, currentExceptionBytes: bytes }).ok, false);
+});
+
+test('canonical READY maps to script-structure PASS', () => {
+  const result = makeResult(); const runDir = runWith(makeRoot([result]), { 'research-pack.md': '# Legacy projection only\n' });
   const gate = scriptStructure.readResearchGate(runDir, { asOf: AS_OF });
-  assert.equal(gate.readyToDraft, false);
-  assert.equal(gate.status, 'BLOCKED');
-  // binding against RESEARCH_MORE claim fails without exception
-  const result = fixture.results[0];
-  const b = mkBinding(result, { satisfied_constraint_ids: claim.wording_constraints.map((c) => c.constraint_id) });
-    const out = authority.verifyStoryBindings(mkBindingsDoc([b]), runDir, { asOf: AS_OF });
-  assert.ok(!out.ok && out.errors.some((e) => /RESEARCH_MORE/.test(e)));
+  assert.equal(gate.status, 'PASS'); assert.equal(gate.readyToDraft, true);
+  assert.match(authority.buildCanonicalResearchMarkdown('test-run', authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF })), /READY/);
 });
 
-test('CANARY: qualified wording alone does not convert RESEARCH_MORE into approval; exact TEST exception authorizes exact use only', () => {
-  const { runDir } = tmpRun();
-  const fixture = JSON.parse(JSON.stringify(POSITIVE));
-  writeRun(runDir, { 'research-results.json': fixture });
-  const result = fixture.results[0];
-  // satisfied qualification constraints — still blocked by recommendation
-  const b = mkBinding(result, { satisfied_constraint_ids: result.qualification.wording_constraints.map((c) => c.constraint_id) });
-    const out = authority.verifyStoryBindings(mkBindingsDoc([b]), runDir, { asOf: AS_OF });
-  assert.ok(!out.ok, 'qualification alone must not authorize');
-  // exact TEST exception (test-only identity, not production Mikko approval)
-  const script = 'Exact test script sentence.';
-  const exception = { exception_id: 'TEST-EX-CANARY', claim_ref: result.claim_ref,
-    result_id: result.result_id, result_digest: result.result_digest, binding_id: b.binding_id,
-    script_sha256: sha(script), reason: 'test editorial risk', acknowledged_risk: 'weak single-source evidence', _root: fixture,
-    approval: { artifact_path: 'script:test', artifact_sha256: sha(script), commit: 'TEST',
-      approved_by: 'TEST-HUMAN', approved_at: AS_OF, scope: 'TEST' } };
-  const ex = authority.verifyHumanException(exception, b, result, Buffer.from(script));
-  assert.ok(ex.ok, JSON.stringify(ex.errors));
-  assert.equal(result.judgment.recommendation, 'RESEARCH_MORE'); // Research verdict unchanged
+test('assertion uniqueness hook fails on zero or repeated canonical-section occurrences', () => {
+  const result = makeResult(); const runDir = runWith(makeRoot([result])); const binding = makeBinding(result); const doc = makeBindingsDoc([binding]);
+  assert.match(authority.verifyStoryBindings(doc, runDir, { asOf: AS_OF, sectionTextById: { body: 'Absent.' } }).errors.join(' '), /absent/);
+  assert.match(authority.verifyStoryBindings(doc, runDir, { asOf: AS_OF, sectionTextById: { body: `${binding.assertion_text} ${binding.assertion_text}` } }).errors.join(' '), /more than once/);
 });
 
-// ── script-structure canonical gate precedence ───────────────────────────────
-test('canonical READY research permits drafting; Markdown-only new flow without canonical falls back to legacy rules', () => {
-  const result = mkResult();
-  const { runDir } = tmpRun();
-  writeRun(runDir, {
-    'selected-package.md': '# Selected\n',
-    'research-results.json': mkRoot([result]),
-    'research-pack.md': '# Research pack\n',
-  });
-  const gate = scriptStructure.readResearchGate(runDir, { asOf: AS_OF });
-  assert.equal(gate.status, 'PASS');
-  assert.equal(gate.readyToDraft, true);
-  // markdown projection present when generated
-  const proj = authority.buildCanonicalResearchMarkdown('2026-08-23-research-canary',
-    authority.evaluateCanonicalResearch(runDir, { asOf: AS_OF }));
-  assert.match(proj, /canonical/);
-  assert.match(proj, /READY/);
-});
+if (require.main === module) {
+  (async () => {
+    let passed = 0;
+    for (const item of tests) {
+      try {
+        await item.fn();
+        passed += 1;
+        console.log(`ok ${passed} - ${item.name}`);
+      } catch (error) {
+        console.error(`not ok ${passed + 1} - ${item.name}`);
+        console.error(error);
+        process.exitCode = 1;
+        return;
+      }
+    }
+    console.log(`${passed}/${tests.length} Research Result Phase B tests passed`);
+  })();
+}
