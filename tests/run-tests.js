@@ -109,6 +109,7 @@ require("./research-result-phase-b.test.js");
 require("./research-director.test.js");
 require("./story-revision-review.test.js");
 require("./story-editor.test.js");
+require("./visual-plan.test.js");
 require("./workflow-path.test.js");
 require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");
