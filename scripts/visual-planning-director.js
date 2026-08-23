@@ -58,6 +58,7 @@ async function invokeModel(prompt, route, options = {}) {
 
 function preflight(task, options = {}) {
   const errors = [];
+  const researchBlockers = [];
   if (!task || typeof task !== 'object') return { ok: false, errors: ['task required'] };
   if (!ACTIONS.includes(task.action)) errors.push('action invalid');
   if (!norm(task.task_id) || !norm(task.requested_by) || !norm(task.project_id)) errors.push('task identity incomplete');
@@ -78,8 +79,12 @@ function preflight(task, options = {}) {
   }
   if (task.creative_doctrine_ref && (!norm(task.creative_doctrine_ref.artifact_id) || !/^[a-f0-9]{64}$/.test(task.creative_doctrine_ref.digest_sha256 || ''))) errors.push('creative doctrine ref invalid');
   if (task.research?.bindings_doc && !Array.isArray(task.research.bindings_doc.bindings)) errors.push('Research bindings invalid');
+  for (const [bindingId, authority] of Object.entries(task.research?.authority_by_binding || {})) {
+    if (!authority || authority.result_state !== 'VALID') researchBlockers.push(`${bindingId}:${authority?.result_state || 'INVALID'}`);
+    else if (authority.recommendation === 'RESEARCH_MORE' || authority.recommendation === 'DO_NOT_USE' || authority.authorization_ok !== true) researchBlockers.push(`${bindingId}:${authority.recommendation || 'UNAUTHORIZED'}`);
+  }
   if (task.action === 'review_coverage' && !task.existing_plan) errors.push('existing_plan required');
-  return { ok: errors.length === 0, errors, sectionIds, beatIds };
+  return { ok: errors.length === 0 && researchBlockers.length === 0, errors, researchBlockers, sectionIds, beatIds };
 }
 
 function hasForbidden(value, pathName = '$', hits = []) {
@@ -178,6 +183,7 @@ async function run(task, options = {}) {
   const out = { agent_id: AGENT_ID, task_id: task?.task_id || null, action: task?.action || null, state: 'PLANNING', attempts: 0, max_attempts: Math.min(task?.retry_budget || 2, task?.cost_budget?.max_model_calls || MAX_ATTEMPTS, MAX_ATTEMPTS), route: null, visual_plan: null, review_bundle: null, semantic: null, generation_handoffs: [], camera_handoffs: [], events: [] };
   if (task?.action === 'status') return finish(out, 'COMPLETE', null, 'hermes');
   const check = preflight(task, options);
+  if (check.researchBlockers?.length) return finish(out, 'RETURN_TO_RESEARCH', check.researchBlockers.join('; '), 'research_director');
   if (!check.ok) return finish(out, 'BLOCKED', check.errors.join('; '), 'hermes');
   if (task.action === 'review_coverage') {
     const validation = vp.validatePlan(task.existing_plan, { currentStory: options.currentStory || task.story });
