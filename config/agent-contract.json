@@ -100,18 +100,30 @@
     {
       "role_id": "editor",
       "role_name": "Editor",
-      "status": "BUILT_IN_PROGRESS",
+      "status": "BUILT",
       "owns": [
         "timeline construction",
         "pacing proposals",
         "coverage-gap detection",
-        "technical editorial assembly"
+        "technical editorial assembly",
+        "Edit Plan V1 construction and immutable revision orchestration",
+        "Resolve and QC handoff preparation"
       ],
       "does_not_own": [
-        "argument authority"
+        "argument authority or canonical Story dialogue",
+        "Research verdicts",
+        "Presenter take selection",
+        "visual asset selection or generation authority",
+        "music composition, Sound selection, or mix treatment",
+        "Camera mechanics or Visual Plan intent",
+        "QC PASS or episode approval",
+        "human edit acceptance",
+        "publication readiness or publication"
       ],
       "boundaries": [
-        "If an edit changes the argument, it must become a decision/escalation, not an invisible edit."
+        "Canonical Edit Plan V1 is the sole timeline authority contract; Editor must not create a parallel edit artifact.",
+        "If an edit changes the argument, it must become a decision/escalation, not an invisible edit.",
+        "ROUGH_CUT_READY_FOR_QC is the maximum Editor authority; QC and human acceptance remain independent."
       ]
     },
     {

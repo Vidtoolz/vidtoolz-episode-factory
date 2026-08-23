@@ -114,6 +114,7 @@ require("./visual-planning-director.test.js");
 require("./audience-packaging-director.test.js");
 require("./presenter-take-manifest.test.js");
 require("./edit-plan.test.js");
+require("./editor-agent.test.js");
 require("./workflow-path.test.js");
 require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");

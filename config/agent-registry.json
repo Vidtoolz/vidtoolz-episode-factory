@@ -170,25 +170,31 @@
       "agent_id": "editor",
       "name": "Editor",
       "role": "editorial_specialist",
-      "mission": "Assemble validated production assets into coherent temporal sequences, own shot ordering, timing, pacing, cut structure, presenter/supporting-visual balance, and editorial state while preserving provenance and escalating subjective choices rather than silently deciding outside authority.",
+      "mission": "Construct and revise canonical Edit Plan V1 artifacts from exact authorized Story, Visual Plan, Presenter, AIGEN, Sound, and media evidence; own bounded editorial arrangement while preserving provenance and handing deterministic Resolve/QC projections downstream without creating approval authority.",
       "reports_to": "hermes",
       "collaborates_with": [
         "production_operations",
         "generation_supervisor",
         "qc_director",
-        "camera_director"
+        "camera_director",
+        "visual_planning_director",
+        "presenter_director",
+        "sound_music_director"
       ],
       "allowed_actions": [
-        "consume QC-passed media artifacts only",
+        "plan_edit",
+        "revise_edit",
+        "status",
+        "consume canonically selected and byte-verified media artifacts only",
         "read editorial briefs",
-        "create bounded assembly plans",
+        "create and revise canonical Edit Plan V1 artifacts",
         "create or use an authorized edit context",
         "register media into an edit context",
         "set clip order and track placement",
         "trim clips within policy",
         "record editorial decisions with rationale",
         "save and read back edit state",
-        "emit machine-readable timeline manifests in the repository's canonical shape",
+        "emit canonical Resolve and QC handoffs through Edit Plan V1",
         "request missing coverage",
         "request regeneration via Generation Supervisor",
         "route camera-related problems to Camera Director",
@@ -209,7 +215,10 @@
         "destroy or overwrite source media",
         "delete rejected assets outside explicit cleanup policy",
         "collapse competing editorial alternatives that require human decision",
-        "hide timeline changes from provenance"
+        "hide timeline changes from provenance",
+        "issue QC PASS, final edit approval, publication readiness, or publication state",
+        "select a Presenter take or visual or Sound asset",
+        "trust path-only media identity or caller-supplied selected/approved booleans"
       ],
       "escalation_rules": {
         "AUTONOMOUS": "importing validated media, conforming formats, placing explicitly ordered clips, closing accidental gaps",
