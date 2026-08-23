@@ -1,0 +1,28 @@
+{
+  "source_repository": "vidtoolz-media-pipeline",
+  "source_path": "tests/fixtures/unit-a-scripts/01KWPNFNFRD0RFY8C6JD0MPPF7-stop-chasing-ai-speed-ask-this-instead/script-package.json",
+  "project_id": "01KWPNFNFRD0RFY8C6JD0MPPF7",
+  "title": "Stop Chasing AI Speed. Ask This Instead.",
+  "central_claim": "The useful question is what makes a video worth watching, not how quickly AI can produce it.",
+  "narrative_spine": "wrong question -> why speed misleads -> better proof-first question",
+  "sections": [
+    {
+      "section_id": "01KWPNFNFR50154VSSS08EE79G",
+      "order": 1,
+      "dialogue": "How do I make AI content faster? I hear this question every week — and it is the wrong question. Speed multiplies your output. It does nothing for your value. Faster junk is still junk, you just get more of it.",
+      "visual_notes": "Calm plate: overflowing conveyor of identical thumbnails fading to grey; nothing readable"
+    },
+    {
+      "section_id": "01KWPNFNFSEXB5HXX8EC49E757",
+      "order": 2,
+      "dialogue": "Here is why the question misleads you. Every hour you save on making a video gets multiplied by the same number: how much that video was worth watching. Save time on a video nobody needed, and you have efficiently produced nothing. The platform does not reward finishing fast. Viewers never see your speed — they only ever see the result.",
+      "visual_notes": "Calm plate: a single hourglass beside a dark, switched-off screen, warm key from camera-left"
+    },
+    {
+      "section_id": "01KWPNFNFSWVMB2X512JNYG2RQ",
+      "order": 3,
+      "dialogue": "So ask the better question: what would make this video worth watching at any speed? Here is a real case from my own pipeline. Last week I stopped one video at the script commitment check — one slow, deliberate decision. That pause killed a weak idea before I generated a single clip, and the replacement idea is the video you are watching now. One good stop beat fifty fast renders. Slow down at the decision. Be as fast as you like everywhere else.",
+      "visual_notes": "Screen capture: the Script Builder finalize screen with the duration check visible, cursor pauses on the approve button, then clicks"
+    }
+  ]
+}

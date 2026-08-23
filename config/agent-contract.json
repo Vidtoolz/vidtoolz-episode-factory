@@ -211,22 +211,31 @@
     {
       "role_id": "visual_planning_director",
       "role_name": "Visual Planning Director",
-      "status": "PLANNED",
+      "status": "BUILT",
       "build_order": 4,
       "renamed_from": "Visual Director",
       "owns": [
-        "translating approved concept/script into visual coverage",
+        "translating exact Story beats into visual coverage",
         "shot briefs",
+        "local illustrative treatment",
         "image/video prompt specification",
-        "coverage plan"
+        "coverage plan",
+        "media-type and presenter-relation proposals",
+        "prompt specifications bound to canonical shot intent",
+        "Research-sensitive visual declarations and constraint preservation",
+        "Camera-intent and neutral generation-requirement handoffs",
+        "coverage, continuity, redundancy, and gap findings"
       ],
       "does_not_own": [
-        "episode creative identity",
-        "camera movement doctrine",
-        "backend/machine selection"
+        "episode creative identity, global mood/style, or master metaphor",
+        "Story thesis or factual Research authority",
+        "Camera mechanics, movement grammar, coordinates, or keyframes",
+        "generation backend, model, host, workflow, or execution",
+        "Presenter performance or take selection",
+        "final asset selection, plan approval, final edit, or publication"
       ],
       "boundaries": [
-        "Visual concept (Creative) is sharply separated from shot/prompt specification (Visual Planning)."
+        "Visual Planning makes bounded shot-level choices against exact Story and Research authority. It creates PREVIEW_ONLY or AWAITING_HUMAN_REVIEW plans only; Mikko approves plans and assets, Camera owns mechanics, and Generation Supervisor owns execution routing."
       ]
     },
     {
