@@ -2,6 +2,7 @@
 const { assert, test, tests } = require('./_helpers.js');
 const vp = require('../scripts/visual-plan.js');
 const director = require('../scripts/visual-planning-director.js');
+const promptAdapter = require('../scripts/visual-plan-prompt-adapter.js');
 
 const H = vp.sha256('story');
 const B1 = 'visual-beat-01HF7YAT010000000000000001';
@@ -73,13 +74,78 @@ test('VP54 CANARY C map intent has no mechanics',async()=>{const s=semantic();Ob
 test('VP55 CANARY D video handoff neutral',async()=>{const s=semantic();Object.assign(s.beats[0].shots[0],{media_type:'GENERATED_VIDEO',generation_mode:'DIRECT_VIDEO'});const out=await director.run(task(),opts(s));assert.equal(out.generation_handoffs[0].brief.input_artifacts.length,0);assert.equal(out.generation_handoffs[0].host,undefined);});
 test('VP56 CANARY E missing coverage blocks',async()=>{const s=semantic();s.beats.pop();assert.equal((await director.run(task(),opts(s))).state,'ESCALATED');});
 test('VP57 CANARY F presenter balance legal',async()=>{const s=semantic();s.beats[0].shots[0].media_type='PRESENTER_A_ROLL';s.beats[0].shots[0].generation_mode='NOT_APPLICABLE';s.beats[0].shots[0].presenter_relation='PRESENT';const out=await director.run(task(),opts(s));assert.equal(out.visual_plan.shots[0].presenter_relation,'PRESENT');});
-test('VP58 prompt adapter uses existing builder with presenter-safe composition',async()=>{const prompt=(await director.run(task(),opts())).visual_plan.prompts[0];assert.equal(prompt.origin,'super-focus-builder');assert.match(prompt.prompt_text,/reserve clear negative space for the presenter/);});
+test('VP58 prompt adapter composes canonical intent with presenter-safe composition',async()=>{const prompt=(await director.run(task(),opts())).visual_plan.prompts[0];assert.equal(prompt.origin,'visual-plan-fidelity-adapter');assert.match(prompt.prompt_text,/reserve clear negative space in the presenter-safe region/);});
 test('VP59 Visual Plan validator invoked',async()=>assert.ok((await director.run(task(),opts())).validation));
 test('VP60 evaluatePlanAuthority invoked',async()=>assert.ok((await director.run(task(),opts())).authority));
 test('VP61 Generation projection no route',async()=>assert.equal((await director.run(task(),opts())).generation_handoffs[0].lane,undefined));
 test('VP62 Camera projection no mechanics',()=>{const shot={shot_id:'s',beat_ref:{canonical_beat_id:B1},camera_intent:{subject:'x',purpose:'y'}};assert.equal(director.cameraProjection({plan_id:'p'},shot).camera_intent.heading,undefined);});
 test('VP63 standalone harness marker',()=>assert.ok(require('fs').readFileSync(__filename,'utf8').includes('Visual Planning Director tests passed')));
 test('VP64 canonical runner registers exactly once',()=>assert.equal(require('fs').readFileSync(require('path').join(__dirname,'run-tests.js'),'utf8').split('visual-planning-director.test.js').length-1,1));
+
+function adapterShot(over = {}) {
+  return {
+    shot_id: 'shot-01HF7YAT000000000000000000',
+    section_ref: { section_id: 'hook' },
+    beat_ref: { canonical_beat_id: B1, section_id: 'hook', aliases: [], source_provenance: null },
+    narrative_function: 'make the production tradeoff immediately legible',
+    subject: 'a precise visual subject',
+    media_type: 'GENERATED_STILL',
+    generation_mode: 'STILL',
+    shot_brief: 'Vertical 9:16 composition with the subject camera-left and deliberate low-key lighting.',
+    visual_assertion: null,
+    presenter_relation: 'BROLL_OVERLAY',
+    research_sensitive: false,
+    research_refs: [],
+    camera_intent: null,
+    generation_requirements: { artifact_class: 'generated_still', aspect_target: '9:16', input_artifact_refs: [], quality_constraints: ['no readable generated text'], candidate_count_request: 2, generation_mode: 'STILL' },
+    continuity_notes: [],
+    edit_placement: 'hook',
+    priority: 'HIGH',
+    status: 'PLANNED',
+    prompt_refs: [],
+    ...over,
+  };
+}
+
+function onePrompt(shotValue) {
+  return promptAdapter.buildPromptRecords([shotValue], { newPromptId: () => 'prompt-01HF7YBT000000000000000000' })[0];
+}
+
+const conveyorBrief = 'Vertical 9:16 composition. The right third is reserved for the presenter. The left two-thirds show a slow-moving conveyor overflowing with dozens of identical, desaturated thumbnail cards. The overwhelming repetition remains visible throughout one continuous shot; cards move slowly from bottom to top while important detail stays out of the presenter-safe region.';
+const hourglassBrief = 'Vertical 9:16 composition. The right third is reserved for the presenter. The left two-thirds feature an hourglass beside a dark monitor. Deliberate warm camera-left lighting isolates the hourglass while the monitor stays dark, expressing the relationship between production time saved and value delivered to the viewer.';
+
+test('VP65 no mid-sentence prompt truncation',()=>{const marker='CRITICAL-END-INSTRUCTION';const s=adapterShot({shot_brief:`${'A complete visual clause. '.repeat(20)}${marker}.`});const text=onePrompt(s).prompt_text;assert.match(text,new RegExp(marker));assert.equal(text.includes('…'),false);});
+test('VP66 over-limit shot intent fails instead of clipping',()=>{const s=adapterShot({shot_brief:`Complete sentence. ${'x'.repeat(4100)}`});assert.throws(()=>onePrompt(s),(error)=>error.code==='SHOT_INTENT_TOO_LONG');});
+test('VP67 canonical subject is retained exactly',()=>{const subject='conveyor overflowing with identical desaturated thumbnails';assert.ok(onePrompt(adapterShot({subject})).prompt_text.includes(subject));});
+test('VP68 direct video receives continuous motion semantics',()=>{const p=onePrompt(adapterShot({media_type:'GENERATED_VIDEO',generation_mode:'DIRECT_VIDEO',generation_requirements:{artifact_class:'generated_video',aspect_target:'9:16',input_artifact_refs:[],quality_constraints:[],generation_mode:'DIRECT_VIDEO'}}));assert.match(p.prompt_text,/one continuous generated-video shot/);assert.equal(p.prompt_type,'VIDEO');});
+test('VP69 still receives still-image semantics',()=>{const p=onePrompt(adapterShot());assert.match(p.prompt_text,/Execution mode: STILL_IMAGE/);assert.doesNotMatch(p.prompt_text,/continuous generated-video/);});
+test('VP70 I2V retains exact source-image dependency',()=>{const p=onePrompt(adapterShot({media_type:'GENERATED_VIDEO',generation_mode:'IMAGE_TO_VIDEO',generation_requirements:{artifact_class:'generated_video',input_artifact_refs:['unit-b-artifact-image-7'],quality_constraints:[],generation_mode:'IMAGE_TO_VIDEO'}}));assert.match(p.prompt_text,/exact source image artifact unit-b-artifact-image-7/);});
+test('VP71 I2V without source image fails safely',()=>{const s=adapterShot({media_type:'GENERATED_VIDEO',generation_mode:'IMAGE_TO_VIDEO',generation_requirements:{artifact_class:'generated_video',input_artifact_refs:[],quality_constraints:[],generation_mode:'IMAGE_TO_VIDEO'}});assert.throws(()=>onePrompt(s),(error)=>error.code==='I2V_INPUT_REQUIRED');});
+test('VP72 presenter-safe requirements remain',()=>assert.match(onePrompt(adapterShot()).prompt_text,/keep important subjects and details outside that region/));
+test('VP73 presenter-safe mode does not inject creator desk',()=>assert.doesNotMatch(onePrompt(adapterShot()).prompt_text,/creator desk|camera gear|tabletop|over-shoulder/i));
+test('VP74 explicit lighting survives exactly',()=>{const lighting='deliberate warm camera-left lighting with a dark monitor';assert.ok(onePrompt(adapterShot({shot_brief:`Vertical composition using ${lighting}.`})).prompt_text.includes(lighting));});
+test('VP75 explicit composition survives exactly',()=>{const composition='subject camera-left with presenter-safe right-third negative space';assert.ok(onePrompt(adapterShot({shot_brief:`Vertical 9:16, ${composition}.`})).prompt_text.includes(composition));});
+test('VP76 unrelated legacy props are absent',()=>assert.doesNotMatch(onePrompt(adapterShot()).prompt_text,/camera gear|production planning materials|timeline-like abstract shapes/));
+test('VP77 screen capture bypasses generic prompt composition',()=>assert.equal(promptAdapter.promptTextFor(adapterShot({media_type:'SCREEN_CAPTURE',generation_mode:'NOT_APPLICABLE'})),null));
+test('VP78 map shot bypasses generic prompt and preserves Camera handoff',()=>{const s=adapterShot({media_type:'MAP_ANIMATION',generation_mode:'NOT_APPLICABLE',camera_intent:{subject:'Helsinki-Tallinn',purpose:'show proximity'}});const prompts=promptAdapter.buildPromptRecords([s],{newPromptId:()=> 'prompt-01HF7YBT000000000000000000'});assert.equal(prompts[0].origin,'camera-intent-handoff');assert.match(prompts[0].prompt_text,/not a generic image\/video generation prompt/);assert.equal(promptAdapter.cameraProjection({plan_id:'p'},s).camera_intent.purpose,'show proximity');});
+test('VP79 infographic uses specialized semantics',()=>{const p=onePrompt(adapterShot({media_type:'INFOGRAPHIC',generation_mode:'NOT_APPLICABLE',generation_requirements:{artifact_class:'infographic',input_artifact_refs:[],quality_constraints:[],generation_mode:'NOT_APPLICABLE'}}));assert.equal(p.prompt_type,'INFOGRAPHIC');assert.match(p.prompt_text,/structured graphic specification/);});
+test('VP80 text graphic uses specialized semantics',()=>{const p=onePrompt(adapterShot({media_type:'TEXT_GRAPHIC',generation_mode:'NOT_APPLICABLE',generation_requirements:{artifact_class:'text_graphic',input_artifact_refs:[],quality_constraints:[],generation_mode:'NOT_APPLICABLE'}}));assert.equal(p.prompt_type,'TEXT_GRAPHIC');assert.match(p.prompt_text,/deterministic text-graphic specification/);});
+test('VP81 Research constraint IDs survive prompt composition',()=>{const ref={required_constraint_ids:['constraint-FORBID_ABSOLUTE'],applied_constraint_ids:['constraint-FORBID_ABSOLUTE']};const p=onePrompt(adapterShot({research_sensitive:true,visual_assertion:'Cloud editing can introduce latency under high-resolution workloads.',research_refs:[ref]}));assert.match(p.prompt_text,/constraint-FORBID_ABSOLUTE/);});
+test('VP82 bounded visual assertion survives prompt composition',()=>{const assertion='Cloud editing can introduce latency under high-resolution workloads.';const p=onePrompt(adapterShot({research_sensitive:true,visual_assertion:assertion,research_refs:[{required_constraint_ids:['c1'],applied_constraint_ids:['c1']}]}));assert.ok(p.prompt_text.includes(assertion));});
+test('VP83 prompt ID remains deterministic-writer supplied',()=>assert.equal(onePrompt(adapterShot()).prompt_id,'prompt-01HF7YBT000000000000000000'));
+test('VP84 prompt revision remains exact',()=>assert.equal(onePrompt(adapterShot()).prompt_revision,1));
+test('VP85 prompt binds exact post-write shot-intent digest',()=>{const s=adapterShot();const p=onePrompt(s);assert.equal(p.shot_intent_digest_sha256,vp.shotIntentDigest(s));});
+test('VP86 changed shot intent still stales prompt',()=>{const s=adapterShot();const p=onePrompt(s);s.shot_brief+=' changed';assert.notEqual(p.shot_intent_digest_sha256,vp.shotIntentDigest(s));});
+test('VP87 underspecified shot fails rather than inventing scene',()=>assert.throws(()=>onePrompt(adapterShot({subject:'x'})),(error)=>error.code==='SHOT_INTENT_INCOMPLETE'));
+test('VP88 unknown generation mode rejects',()=>assert.throws(()=>onePrompt(adapterShot({generation_mode:'UNKNOWN'})),(error)=>error.code==='GENERATION_MODE_UNSUPPORTED'));
+test('VP89 prompt composition adds no routing authority',()=>assert.doesNotMatch(onePrompt(adapterShot()).prompt_text,/backend:|host:|model:|workflow:|engine:/i));
+test('VP90 prompt composition adds no Camera mechanics',()=>assert.doesNotMatch(onePrompt(adapterShot()).prompt_text,/heading:|pitch:|orbit:|keyframes:|trajectory:/i));
+test('VP91 PCH-A conveyor acceptance regression',()=>{const p=onePrompt(adapterShot({subject:'conveyor overflowing with identical desaturated thumbnails',shot_brief:conveyorBrief,media_type:'GENERATED_VIDEO',generation_mode:'DIRECT_VIDEO',generation_requirements:{artifact_class:'generated_video',aspect_target:'9:16',input_artifact_refs:[],quality_constraints:['no readable generated text'],generation_mode:'DIRECT_VIDEO'}}));assert.ok(p.prompt_text.includes(conveyorBrief));assert.match(p.prompt_text,/DIRECT_VIDEO/);assert.doesNotMatch(p.prompt_text,/creator desk|camera gear|tabletop|over-shoulder/i);});
+test('VP92 PCH-B hourglass acceptance regression',()=>{const p=onePrompt(adapterShot({subject:'hourglass beside a dark monitor',shot_brief:hourglassBrief}));assert.ok(p.prompt_text.includes(hourglassBrief));assert.match(p.prompt_text,/Deliberate warm camera-left lighting/);assert.doesNotMatch(p.prompt_text,/natural practical light|creator desk|over-shoulder/i);});
+test('VP93 repaired acceptance prompts pass deterministic fidelity',()=>{const conveyor=adapterShot({subject:'conveyor overflowing with identical desaturated thumbnails',shot_brief:conveyorBrief,media_type:'GENERATED_VIDEO',generation_mode:'DIRECT_VIDEO',generation_requirements:{artifact_class:'generated_video',input_artifact_refs:[],quality_constraints:[],generation_mode:'DIRECT_VIDEO'}});const hourglass=adapterShot({subject:'hourglass beside a dark monitor',shot_brief:hourglassBrief});assert.equal(promptAdapter.validatePromptFidelity(conveyor,onePrompt(conveyor).prompt_text).ok,true);assert.equal(promptAdapter.validatePromptFidelity(hourglass,onePrompt(hourglass).prompt_text).ok,true);});
+test('VP94 Research-sensitive prompt without qualification remains bounded',()=>{const assertion='The interface reports the current saved state.';const p=onePrompt(adapterShot({research_sensitive:true,visual_assertion:assertion,research_refs:[{required_constraint_ids:[],applied_constraint_ids:[]}]}));assert.ok(p.prompt_text.includes(assertion));});
+test('VP95 unapplied Research constraint blocks prompt composition',()=>{const s=adapterShot({research_sensitive:true,visual_assertion:'A qualified assertion.',research_refs:[{required_constraint_ids:['FORBID_ABSOLUTE'],applied_constraint_ids:[]}]});assert.throws(()=>onePrompt(s),(error)=>error.code==='RESEARCH_CONSTRAINTS_INCOMPLETE');});
+test('VP96 production run maps incomplete shot intent to BLOCKED',async()=>{const s=semantic();s.beats[0].shots[0].subject='x';const out=await director.run(task(),opts(s));assert.equal(out.state,'BLOCKED');assert.match(out.reason,/SHOT_INTENT_INCOMPLETE/);assert.equal(out.visual_plan,null);});
 
 if(require.main===module)(async()=>{let passed=0,failed=0;for(const item of tests){try{await item.fn();passed++;console.log(`ok ${passed} - ${item.name}`)}catch(error){failed++;console.error(`not ok - ${item.name}`);console.error(error.stack||error.message)}}console.log(`${passed}/${passed+failed} Visual Planning Director tests passed`);if(failed)process.exitCode=1})();
 module.exports={tests};

@@ -211,7 +211,15 @@ async function run(task, options = {}) {
   if (typeof options.beforeWrite === 'function') await options.beforeWrite();
   const currentStory = options.reloadStory ? await options.reloadStory(task.story) : task.story;
   if (!currentStory || currentStory.project_id !== task.story.project_id || currentStory.version_id !== task.story.version_id || currentStory.content_hash !== task.story.content_hash || JSON.stringify(currentStory.sections.map((s) => s.section_id)) !== JSON.stringify(task.story.sections.map((s) => s.section_id))) return finish(out, 'BLOCKED', 'SOURCE_STORY_CHANGED', 'story_editor');
-  const plan = writePlan(task, semantic, options);
+  let plan;
+  try {
+    plan = writePlan(task, semantic, options);
+  } catch (error) {
+    if (error instanceof promptAdapter.PromptCompositionError) {
+      return finish(out, 'BLOCKED', `${error.code}: ${error.message}`, 'visual_planning_director');
+    }
+    throw error;
+  }
   const validation = vp.validatePlan(plan, { currentStory: { project_id: currentStory.project_id, version_id: currentStory.version_id, content_hash: currentStory.content_hash, approval: currentStory.approval, section_ids: currentStory.sections.map((s) => s.section_id) } });
   const authority = vp.evaluatePlanAuthority(plan, { currentStory: { project_id: currentStory.project_id, version_id: currentStory.version_id, content_hash: currentStory.content_hash, approval: currentStory.approval, section_ids: currentStory.sections.map((s) => s.section_id) }, researchAuthorityByBinding: task.research?.authority_by_binding || {} });
   out.visual_plan = plan; out.validation = validation; out.authority = authority; out.review_bundle = vp.buildReviewBundle(plan, authority);
