@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "beat_sheet": {
+    "source_repository": "/home/vidtoolz/vidtoolz-beat-sheet",
+    "source_file": "tests/run-tests.js",
+    "source_test": "slice 7 assignment model validation, 502/503 no-write, and prompt-injection guard",
+    "alias_namespace": "vidtoolz-beat-sheet/beat",
+    "beat_id": "b-11111111"
+  },
+  "super_focus": {
+    "source_repository": "/home/vidtoolz/vidtoolz-episode-factory",
+    "source_file": "scripts/script-image-assets-dry-run.js",
+    "block_id": "block-001",
+    "prompt_id": "block-001-prompt-01",
+    "identity_role": "legacy_alias"
+  },
+  "unit_b": {
+    "source_repository": "/home/vidtoolz/vidtoolz-media-pipeline",
+    "source_file": "lib/visual-plan-intake.js",
+    "required_future_mapping": [
+      "story.version_id",
+      "shot.section_ref.section_id",
+      "shot.beat_ref.canonical_beat_id",
+      "shot.shot_id",
+      "prompt.prompt_id",
+      "prompt.origin"
+    ],
+    "downstream_provenance_field": "source_prompt_id"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "artifact_type": "visual-plan-contract",
+  "canonical_artifact_type": "visual-plan",
+  "authority": {
+    "structural_validator": "scripts/visual-plan.js#validatePlan",
+    "generation_authority": "scripts/visual-plan.js#evaluatePlanAuthority",
+    "approval_validator": "scripts/visual-plan.js#verifyPlanApprovalBinding",
+    "successor_validator": "scripts/visual-plan.js#validateSuccessorPlan",
+    "ready_state_is_derived": true,
+    "planner_may_record_human_approval": false,
+    "planner_may_select_final_asset": false
+  },
+  "identity_formats": {
+    "plan_id": "visual-plan-<ULID>",
+    "canonical_beat_id": "visual-beat-<ULID>",
+    "shot_id": "shot-<ULID>",
+    "prompt_id": "prompt-<ULID>"
+  },
+  "root_fields": [
+    "schema_version",
+    "artifact_type",
+    "plan_id",
+    "plan_revision",
+    "supersedes",
+    "created_at",
+    "created_by",
+    "lifecycle_state",
+    "story",
+    "required_beats",
+    "coverage",
+    "shots",
+    "prompts",
+    "plan_digest_sha256"
+  ],
+  "lifecycle_states": ["DRAFT", "PREVIEW_ONLY", "AWAITING_HUMAN_REVIEW", "STALE"],
+  "derived_authority_states": ["PREVIEW_ONLY", "AWAITING_HUMAN_REVIEW", "RETURN_TO_RESEARCH", "STALE", "BLOCKED", "READY_FOR_GENERATION"],
+  "coverage_decisions": ["PLAN_SHOTS", "INTENTIONAL_NO_VISUAL"],
+  "media_types": ["GENERATED_STILL", "GENERATED_VIDEO", "INFOGRAPHIC", "MAP_ANIMATION", "SCREEN_CAPTURE", "ARCHIVAL_EXTERNAL", "PRESENTER_A_ROLL", "TEXT_GRAPHIC"],
+  "generation_modes": ["NOT_APPLICABLE", "STILL", "DIRECT_VIDEO", "IMAGE_TO_VIDEO"],
+  "presenter_relations": ["PRESENT", "BROLL_OVERLAY", "REPLACE", "PICTURE_IN_PICTURE", "NONE"],
+  "planner_shot_states": ["PLANNED", "PROMPT_READY"],
+  "camera_intent_fields": ["subject", "purpose", "desired_reveal", "scale_transition_intent", "movement_need", "temporal_context", "geographic_context", "negative_constraints"],
+  "generation_requirement_fields": ["artifact_class", "aspect_target", "duration_target_s", "input_artifact_refs", "quality_constraints", "candidate_count_request", "generation_mode"],
+  "research_binding_fields": ["binding_id", "claim_ref", "result_id", "result_revision", "result_digest_sha256", "assertion_sha256", "required_constraint_ids", "applied_constraint_ids", "human_exception_ref"],
+  "prompt_fields": ["prompt_id", "prompt_revision", "shot_id", "shot_intent_digest_sha256", "prompt_text", "prompt_type", "created_by", "origin", "legacy_aliases"],
+  "approval_binding_fields": ["schema_version", "approval_type", "plan_id", "plan_revision", "plan_digest_sha256", "story", "approved_by", "approved_at", "scope", "binding"],
+  "consistency_rules": [
+    "all objects reject unknown fields",
+    "Story project/version/hash and section set bind the plan",
+    "legacy beat identifiers are aliases only",
+    "every required beat is assessed exactly once",
+    "every planned beat has at least one matching canonical shot",
+    "every prompt resolves to exactly one shot",
+    "prompt shot-intent digest matches current shot intent",
+    "research-sensitive shots carry visual assertion and exact Research authority references",
+    "stored plan digest matches canonical serialization",
+    "plan revisions are immutable and strictly monotonic",
+    "READY_FOR_GENERATION is derived from exact Story approval, validation, coverage, Research, prompt integrity, and exact human plan approval"
+  ]
+}
