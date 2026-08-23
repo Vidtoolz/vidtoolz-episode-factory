@@ -174,23 +174,6 @@
       ]
     },
     {
-      "role_id": "research_director",
-      "role_name": "Research Director",
-      "status": "PLANNED",
-      "build_order": 2,
-      "owns": [
-        "factual research",
-        "evidence packs",
-        "sourcing",
-        "fact-risk detection"
-      ],
-      "does_not_own": [
-        "final argument",
-        "creative framing",
-        "script approval"
-      ]
-    },
-    {
       "role_id": "story_editor",
       "role_name": "Story Editor",
       "status": "PLANNED",
@@ -282,6 +265,41 @@
       ],
       "boundaries": [
         "Deliberately narrow. Built last because the more subjective and cross-domain a role is, the greater the risk it becomes a vague Mikko-replacement or super-agent."
+      ]
+    },
+    {
+      "role_id": "research_director",
+      "role_name": "Research Director",
+      "status": "BUILT",
+      "build_order": 2,
+      "owns": [
+        "factual research",
+        "evidence packs",
+        "sourcing",
+        "fact-risk detection",
+        "semantic claim verification",
+        "source-quality judgment",
+        "effective-independence judgment",
+        "contradiction analysis",
+        "confidence assessment",
+        "qualification",
+        "wording constraints",
+        "Research recommendation",
+        "Research Result semantic production"
+      ],
+      "does_not_own": [
+        "final argument",
+        "script writing",
+        "story structure",
+        "creative direction",
+        "human approval",
+        "final QC",
+        "publication",
+        "deterministic validation",
+        "backend/machine policy"
+      ],
+      "boundaries": [
+        "Semantic judgment only over deterministic Research Result V1. Mikko decides controversial editorial risk. Hermes routes; Story owns wording; QC validates."
       ]
     }
   ],

@@ -14,7 +14,10 @@
       "role": "operations",
       "mission": "Maintain authoritative production state, task ownership, dependencies, resource availability, and next-step routing without making creative decisions.",
       "reports_to": "hermes",
-      "collaborates_with": ["camera_director", "qc_director"],
+      "collaborates_with": [
+        "camera_director",
+        "qc_director"
+      ],
       "allowed_actions": [
         "read canonical promotion state",
         "determine whether required files/services exist",
@@ -43,7 +46,10 @@
       "role": "creative_specialist",
       "mission": "Own virtual camera design, movement quality, framing, spatial continuity, and camera-specific recommendations.",
       "reports_to": "hermes",
-      "collaborates_with": ["production_operations", "qc_director"],
+      "collaborates_with": [
+        "production_operations",
+        "qc_director"
+      ],
       "allowed_actions": [
         "inspect journey/planner output",
         "inspect camera-quality findings",
@@ -75,7 +81,11 @@
       "role": "execution_specialist",
       "mission": "Convert approved production briefs into bounded generation jobs, select an eligible engine/resource through existing routing abstractions, supervise execution, preserve provenance, reject incomplete generation, and hand completed artifacts to QC.",
       "reports_to": "hermes",
-      "collaborates_with": ["production_operations", "qc_director", "camera_director"],
+      "collaborates_with": [
+        "production_operations",
+        "qc_director",
+        "camera_director"
+      ],
       "allowed_actions": [
         "read generation briefs",
         "validate required inputs",
@@ -113,8 +123,14 @@
         "DECISION": "no permitted route can satisfy the brief without changing constraints, or the brief itself must change"
       },
       "retry_policy": {
-        "mechanical": ["RESOURCE_UNAVAILABLE", "DISPATCH_FAILED", "OUTPUT_MISSING"],
-        "creative_blocked": ["OUTPUT_INVALID"],
+        "mechanical": [
+          "RESOURCE_UNAVAILABLE",
+          "DISPATCH_FAILED",
+          "OUTPUT_MISSING"
+        ],
+        "creative_blocked": [
+          "OUTPUT_INVALID"
+        ],
         "max_attempts_default": 2,
         "on_exhaustion": "escalate to production_operations with failure history"
       }
@@ -125,7 +141,10 @@
       "role": "validation",
       "mission": "Independently validate technical and policy compliance and fail closed when evidence does not support acceptance.",
       "reports_to": "hermes",
-      "collaborates_with": ["production_operations", "camera_director"],
+      "collaborates_with": [
+        "production_operations",
+        "camera_director"
+      ],
       "allowed_actions": [
         "verify technical artifact integrity",
         "interpret camera-quality gates",
@@ -146,7 +165,8 @@
         "DECISION": "never; QC fails closed instead",
         "AUTONOMOUS": "failures route to remediation owners without human input unless policy requires it"
       }
-    },    {
+    },
+    {
       "agent_id": "editor",
       "name": "Editor",
       "role": "editorial_specialist",
@@ -299,7 +319,44 @@
         "REVIEW": "candidates awaiting human taste decision; retry budget exhausted",
         "DECISION": "missing approved brief, creative direction conflict, or doctrine exception needed"
       }
+    },
+    {
+      "agent_id": "research_director",
+      "name": "Research Director",
+      "role": "semantic_specialist",
+      "mission": "Assess what the supplied evidence actually supports, its quality, independence, contradictions, and qualifications, and emit canonical hardened Research Result V1 semantic judgments. Deterministic validation/QC remains outside.",
+      "reports_to": "hermes",
+      "collaborates_with": [
+        "story_editor",
+        "qc_director"
+      ],
+      "allowed_actions": [
+        "run deterministic preflight",
+        "invoke local large_text lane through compute authority",
+        "assign canonical stances",
+        "judge support/confidence/independence/contradiction",
+        "emit qualification constraints",
+        "write research-result semantic fields",
+        "escalate unresolved claims"
+      ],
+      "prohibited_actions": [
+        "write scripts or revision instructions",
+        "record human approval",
+        "override QC",
+        "publish",
+        "recompute hashes/digests",
+        "bypass validator",
+        "fabricate sources",
+        "resolve controversy for Mikko"
+      ],
+      "model_route": "local large_text lane via vidtoolz-compute authority; FRONTIER_RECOMMENDED never sent automatically",
+      "escalation_rules": {
+        "AUTONOMOUS": "structured preflight+semantic judgment",
+        "INFORMATION": "model lane unavailable",
+        "REVIEW": "unresolved contradiction or recommendation boundaries",
+        "DECISION": "controversial claim or NEEDS_HUMAN_DECISION"
+      },
+      "disagreement_behavior": "Unresolved evidentiary conflict is preserved as NEEDS_SPECIALIST_REVIEW or NEEDS_HUMAN_DECISION — never fabricated consensus"
     }
   ]
 }
-
