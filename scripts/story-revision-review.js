@@ -40,7 +40,12 @@ function classifyArgumentChange(sourceVersion, candidateVersion, diff, bindingsC
   }
   if ((sourceVersion.narrative_spine || null) !== (candidateVersion.narrative_spine || null)) {
     reasons.push('narrative_spine changed');
-    return { classification: 'ARGUMENT_CHANGE_CONFIRMED_BY_METADATA', reasons };
+    return { classification: 'POTENTIAL_ARGUMENT_CHANGE', reasons };
+  }
+  const candidateSectionKeys = new Set((candidateVersion.sections || []).map((section) => section.id ?? section.order));
+  if ((sourceVersion.sections || []).some((section) => !candidateSectionKeys.has(section.id ?? section.order) && /conclusion|thesis/i.test(`${section.beat || ''} ${section.type || ''}`))) {
+    reasons.push('conclusion/thesis section deleted');
+    return { classification: 'POTENTIAL_ARGUMENT_CHANGE', reasons };
   }
   // potential signals: heavy structural churn, deleted sections, large added mass
   const added = diff.added || 0, removed = diff.removed || 0;
@@ -61,22 +66,46 @@ function classifyArgumentChange(sourceVersion, candidateVersion, diff, bindingsC
 // (association logic inlined in buildReview — rationales are validated, not inferred)
 
 // ── research impact classification ───────────────────────────────────────────
-function classifyResearchImpact(sourceBindingsDoc, candidateBindingsDoc, runDir, options) {
-  const impact = { unchanged: [], invalidated: [], removed: [], newUnbound: [], blocked: [], exceptions: [] };
-  const candByBinding = new Map((candidateBindingsDoc.bindings || []).map((b) => [b.binding_id, b]));
-  const candByClaim = new Map();
-  for (const b of candidateBindingsDoc.bindings || []) {
-    const key = `${b.claim_ref?.namespace}|${b.claim_ref?.canonical_id}`;
-    if (!candByClaim.has(key)) candByClaim.set(key, []);
-    candByClaim.get(key).push(b);
+function sectionText(version, sectionId) {
+  const section = (version.sections || []).find((item) => item.id === sectionId || item.order === sectionId || String(item.order) === String(sectionId));
+  return section ? String(section.dialogue || '') : null;
+}
+function occurrences(text, assertion) {
+  if (typeof text !== 'string' || !assertion) return 0;
+  let count = 0, offset = 0;
+  while ((offset = text.indexOf(assertion, offset)) !== -1) { count += 1; offset += assertion.length; }
+  return count;
+}
+function sectionChanges(source, candidate) {
+  const key = (section) => section.id ?? section.order;
+  const before = new Map((source.sections || []).map((section) => [key(section), section]));
+  const after = new Map((candidate.sections || []).map((section) => [key(section), section]));
+  const added = [], deleted = [], changed = [];
+  for (const [id, section] of after) {
+    if (!before.has(id)) added.push(id);
+    else if (researchValidator.canonicalJson(before.get(id)) !== researchValidator.canonicalJson(section)) changed.push(id);
   }
+  for (const id of before.keys()) if (!after.has(id)) deleted.push(id);
+  return { changed, added, deleted, affected: [...new Set([...changed, ...added, ...deleted])] };
+}
+function classifyResearchImpact(sourceBindingsDoc, candidateBindingsDoc, candidateVersion, verification) {
+  const impact = { unchanged: [], invalidated: [], removed: [], rebound: [], newUnbound: [], blocked: [], exceptions: [] };
+  const candByBinding = new Map((candidateBindingsDoc.bindings || []).map((b) => [b.binding_id, b]));
+  const verified = new Map((verification?.bindings || []).map((item) => [item.binding_id, item.errors || []]));
   for (const sb of sourceBindingsDoc.bindings || []) {
     const cb = candByBinding.get(sb.binding_id);
-    if (!cb) { impact.removed.push({ binding_id: sb.binding_id, claim: sb.claim_ref?.canonical_id, class: 'REMOVED' }); continue; }
+    if (!cb) {
+      if (occurrences(sectionText(candidateVersion, sb.section_id), sb.assertion_text) === 0) impact.removed.push({ binding_id: sb.binding_id, claim: sb.claim_ref?.canonical_id, class: 'REMOVED' });
+      else impact.invalidated.push({ binding_id: sb.binding_id, claim: sb.claim_ref?.canonical_id, class: 'INVALIDATED', reason: 'binding removed while factual assertion remains' });
+      continue;
+    }
     if (cb.assertion_text_sha256 === sb.assertion_text_sha256 &&
         JSON.stringify(cb.claim_ref) === JSON.stringify(sb.claim_ref) &&
         JSON.stringify(cb.research_result_ref) === JSON.stringify(sb.research_result_ref)) {
-      impact.unchanged.push({ binding_id: sb.binding_id, class: 'UNCHANGED' });
+      const bindingErrors = verified.get(cb.binding_id) || [];
+      const mechanicalErrors = bindingErrors.filter((item) => /is (STALE|INVALID)|not current authority|digest mismatch|detached|revision mismatch|claim_ref mismatch|human exception/.test(item));
+      if (mechanicalErrors.length) impact.blocked.push({ binding_id: cb.binding_id, class: 'BLOCKED_BY_RESEARCH', errors: mechanicalErrors });
+      else impact.unchanged.push({ binding_id: sb.binding_id, class: 'UNCHANGED' });
     } else {
       impact.invalidated.push({ binding_id: sb.binding_id, claim: sb.claim_ref?.canonical_id, class: 'INVALIDATED',
         reason: cb.assertion_text_sha256 !== sb.assertion_text_sha256 ? 'assertion changed' : 'claim/result ref changed' });
@@ -84,7 +113,11 @@ function classifyResearchImpact(sourceBindingsDoc, candidateBindingsDoc, runDir,
   }
   const sourceIds = new Set((sourceBindingsDoc.bindings || []).map((b) => b.binding_id));
   for (const cb of candidateBindingsDoc.bindings || []) {
-    if (!sourceIds.has(cb.binding_id)) impact.newUnbound.push({ binding_id: cb.binding_id, claim: cb.claim_ref?.canonical_id, class: 'NEW_UNBOUND_CLAIM' });
+    if (!sourceIds.has(cb.binding_id)) {
+      const bindingErrors = verified.get(cb.binding_id) || [];
+      if (bindingErrors.length) impact.newUnbound.push({ binding_id: cb.binding_id, claim: cb.claim_ref?.canonical_id, class: 'NEW_UNBOUND_CLAIM', errors: bindingErrors });
+      else impact.rebound.push({ binding_id: cb.binding_id, claim: cb.claim_ref?.canonical_id, class: 'REBOUND' });
+    }
   }
   return impact;
 }
@@ -100,16 +133,20 @@ function classifyResearchImpact(sourceBindingsDoc, candidateBindingsDoc, runDir,
 // }
 function buildReview(input, options = {}) {
   const errors = [];
-  for (const f of ['script_builder_root', 'data_root', 'project_id', 'source_version_id', 'candidate_version_id']) {
+  const sourceRef = input.source_version || { version_id: input.source_version_id, content_hash: input.expected_source_content_hash };
+  const candidateRef = input.candidate_version || { version_id: input.candidate_version_id, content_hash: input.expected_candidate_content_hash };
+  for (const f of ['script_builder_root', 'data_root', 'project_id']) {
     if (!input[f]) errors.push(`missing ${f}`);
   }
+  if (!sourceRef.version_id || !sourceRef.content_hash) errors.push('source_version requires version_id and content_hash');
+  if (!candidateRef.version_id || !candidateRef.content_hash) errors.push('candidate_version requires version_id and content_hash');
   if (errors.length) return { ok: false, state: 'BLOCKED', errors, bundle: null };
 
   const versions = loadVersions(input.script_builder_root);
   let source, candidate;
-  try { source = versions.loadVersion(input.data_root, input.project_id, input.source_version_id); }
+  try { source = versions.loadVersion(input.data_root, input.project_id, sourceRef.version_id); }
   catch (e) { return { ok: false, state: 'BLOCKED', errors: [`source version unreadable: ${e.message}`], bundle: null }; }
-  try { candidate = versions.loadVersion(input.data_root, input.project_id, input.candidate_version_id); }
+  try { candidate = versions.loadVersion(input.data_root, input.project_id, candidateRef.version_id); }
   catch (e) { return { ok: false, state: 'BLOCKED', errors: [`candidate version unreadable: ${e.message}`], bundle: null }; }
 
   // version relationship validation — never guess ancestry
@@ -117,13 +154,16 @@ function buildReview(input, options = {}) {
     return { ok: false, state: 'BLOCKED',
       errors: [`candidate.parent_version (${candidate.parent_version}) != source version (${source.id}) — detached revision`], bundle: null };
   }
+  if (source.project_id !== input.project_id || candidate.project_id !== input.project_id) {
+    return { ok: false, state: 'BLOCKED', errors: ['version project identity mismatch'], bundle: null };
+  }
   if (candidate.content_hash === source.content_hash) {
     return { ok: false, state: 'BLOCKED', errors: ['candidate identical to source — no revision to review'], bundle: null };
   }
-  if (input.expected_source_content_hash && input.expected_source_content_hash !== source.content_hash) {
+  if (sourceRef.content_hash !== source.content_hash) {
     return { ok: false, state: 'BLOCKED', errors: ['source content hash mismatch'], bundle: null };
   }
-  if (input.expected_candidate_content_hash && input.expected_candidate_content_hash !== candidate.content_hash) {
+  if (candidateRef.content_hash !== candidate.content_hash) {
     return { ok: false, state: 'BLOCKED', errors: ['candidate content hash mismatch'], bundle: null };
   }
 
@@ -135,6 +175,7 @@ function buildReview(input, options = {}) {
     truncated: Boolean(diff.truncated), truncated_note: diff.truncated || null,
     source_version_id: source.id, candidate_version_id: candidate.id,
   };
+  const changedSections = sectionChanges(source, candidate);
 
   // rationale association
   const rationaleList = input.change_rationales || [];
@@ -146,24 +187,38 @@ function buildReview(input, options = {}) {
     }
     if (rationaleIds.has(r.change_id)) rationaleErrors.push(`duplicate change_id ${r.change_id}`);
     rationaleIds.add(r.change_id);
+    if (!(candidate.sections || []).some((section) => section.id === r.section_id || section.order === r.section_id || String(section.order) === String(r.section_id)) &&
+        !(source.sections || []).some((section) => section.id === r.section_id || section.order === r.section_id || String(section.order) === String(r.section_id))) {
+      rationaleErrors.push(`rationale ${r.change_id || '?'} references nonexistent section ${r.section_id}`);
+    }
+    if (r.section_id !== undefined && !changedSections.affected.some((id) => String(id) === String(r.section_id))) rationaleErrors.push(`rationale ${r.change_id || '?'} references untouched section ${r.section_id}`);
   }
   // material sections changed without rationale: visible, not invented
   const sectionsWithRationale = new Set(rationaleList.map((r) => r.section_id));
-  const unrationalizedSections = (candidate.sections || [])
-    .filter((s) => diff.identical === false && !sectionsWithRationale.has(s.order) && !sectionsWithRationale.has(s.id))
-    .map((s) => s.order ?? s.id);
+  const unrationalizedSections = changedSections.affected.filter((id) => !sectionsWithRationale.has(id) && !sectionsWithRationale.has(String(id)));
 
   // research impact
-  let researchImpact = { unchanged: [], invalidated: [], removed: [], newUnbound: [], blocked: [], exceptions: [] };
+  let researchImpact = { unchanged: [], invalidated: [], removed: [], rebound: [], newUnbound: [], blocked: [], exceptions: [] };
   let constraintReport = [];
   let researchBlockers = [];
   if (input.research) {
     const asOf = input.research.asOf || new Date().toISOString();
-    researchImpact = classifyResearchImpact(input.research.source_bindings_doc, input.research.candidate_bindings_doc, input.research.run_dir, { asOf });
     // canonical binding verification of the CANDIDATE doc against run research
     if (input.research.run_dir) {
-      const verify = researchAuthority.verifyStoryBindings(input.research.candidate_bindings_doc, input.research.run_dir, { asOf });
+      const sectionTextById = Object.fromEntries((candidate.sections || []).flatMap((section) => [[section.id, section.dialogue], [section.order, section.dialogue]]));
+      const verify = researchAuthority.verifyStoryBindings(input.research.candidate_bindings_doc, input.research.run_dir, {
+        asOf,
+        currentScriptRef: { script_version_id: candidate.id, script_content_hash: candidate.content_hash },
+        sectionTextById,
+        humanException: input.research.human_exception,
+        currentExceptionBytes: input.research.current_exception_bytes,
+      });
       researchBlockers = verify.errors || [];
+      researchImpact = classifyResearchImpact(input.research.source_bindings_doc, input.research.candidate_bindings_doc, candidate, verify);
+      if (input.research.human_exception) {
+        if (verify.ok) researchImpact.exceptions.push({ exception_id: input.research.human_exception.exception_id, class: 'HUMAN_EXCEPTION_APPLIES' });
+        else if (researchBlockers.some((item) => /human exception/.test(item))) researchImpact.blocked.push({ exception_id: input.research.human_exception.exception_id, class: 'BLOCKED_BY_RESEARCH', errors: researchBlockers.filter((item) => /human exception/.test(item)) });
+      }
       // constraint satisfaction per claim (canonical helper only)
       const results = (() => { try { return JSON.parse(fs.readFileSync(path.join(input.research.run_dir, 'research-results.json'), 'utf8')).results || []; } catch { return []; } })();
       for (const cb of input.research.candidate_bindings_doc.bindings || []) {
@@ -174,6 +229,10 @@ function buildReview(input, options = {}) {
             research_result_digest_sha256: result.result_digest_sha256,
           });
           constraintReport.push({ binding_id: cb.binding_id, ok: cs.ok,
+            required_constraint_ids: (result.qualification?.wording_constraints || []).map((item) => item.constraint_id),
+            satisfied_constraint_ids: cb.satisfied_constraint_ids || [],
+            missing_constraint_ids: (cs.errors || []).filter((e) => /missing /.test(e.message)).map((e) => e.message.replace(/^missing /, '')),
+            unknown_constraint_ids: (cs.errors || []).filter((e) => /unknown /.test(e.message)).map((e) => e.message.replace(/^unknown /, '')),
             errors: (cs.errors || []).map((e) => e.message || e.code) });
         }
       }
@@ -182,6 +241,10 @@ function buildReview(input, options = {}) {
 
   // argument-change classification (deterministic signals only)
   const argumentChange = classifyArgumentChange(source, candidate, diff, researchImpact);
+  if (input.argument_change_declared === true) {
+    argumentChange.classification = 'ARGUMENT_CHANGE_CONFIRMED_BY_METADATA';
+    argumentChange.reasons.push('candidate explicitly declares argument-level change');
+  }
 
   // overall human-review state
   let state = 'READY_FOR_STORY_REVIEW';
@@ -190,11 +253,14 @@ function buildReview(input, options = {}) {
   if (argumentChange.classification === 'ARGUMENT_CHANGE_CONFIRMED_BY_METADATA') {
     attentionReasons.push(...argumentChange.reasons); state = 'NEEDS_HUMAN_DECISION';
   }
-  if (researchImpact.invalidated.length || researchImpact.newUnbound.length) {
+  if (researchImpact.blocked.length || researchBlockers.some((item) => /is (STALE|INVALID)|not current authority|digest mismatch|detached|human exception/.test(item))) {
+    state = 'BLOCKED';
+    attentionReasons.push('canonical Research authority or exception is invalid');
+  } else if (researchImpact.invalidated.length || researchImpact.newUnbound.length) {
     if (state === 'READY_FOR_STORY_REVIEW') state = 'RETURN_TO_RESEARCH';
     attentionReasons.push(`Research bindings affected: ${researchImpact.invalidated.length} invalidated, ${researchImpact.newUnbound.length} new unbound`);
   }
-  if (constraintReport.some((c) => !c.ok)) {
+  if (constraintReport.some((c) => !c.ok) && state !== 'BLOCKED') {
     if (state === 'READY_FOR_STORY_REVIEW') state = 'RETURN_TO_RESEARCH';
     attentionReasons.push('required Research constraints not satisfied');
   }
@@ -219,6 +285,7 @@ function buildReview(input, options = {}) {
       narrative_spine: candidate.narrative_spine },
     diff_summary: diffSummary,
     diff,
+    section_changes: changedSections,
     change_rationales: rationaleList,
     unrationalized_sections: unrationalizedSections,
     argument_change: argumentChange,
