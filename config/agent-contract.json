@@ -176,16 +176,36 @@
     {
       "role_id": "story_editor",
       "role_name": "Story Editor",
-      "status": "PLANNED",
+      "status": "BUILT",
       "build_order": 3,
       "owns": [
         "script structure",
         "argument coherence",
         "story logic",
+        "narrative progression",
+        "narrative-spine coherence",
+        "section ordering",
+        "semantic repetition detection",
+        "hook/promise/payoff relationship",
+        "counterargument placement",
+        "structural compression",
+        "Research-constraint-aware wording proposals",
+        "candidate script revisions",
+        "semantic argument-change detection",
+        "explicit revision rationale",
         "delivery-readability proposals"
       ],
       "does_not_own": [
-        "final argument/script authority (Mikko)"
+        "final argument/script authority (Mikko)",
+        "factual-support verdicts or Research Result state",
+        "evidence/source selection or Research exceptions",
+        "episode creative identity or visual concept",
+        "camera or timeline final cut",
+        "global QC verdict or override",
+        "publication or human approval"
+      ],
+      "boundaries": [
+        "Story creates immutable Script Builder candidate versions and mandatory Story Revision Review bundles, never approvals. Material argument, thesis, spine, premise, or controversial framing changes require Mikko. Research remains factual authority; Editor remains timeline authority; QC remains independent."
       ]
     },
     {

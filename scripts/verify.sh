@@ -136,6 +136,7 @@ node --check scripts/research-result-validator.js
 node --check scripts/research-result-authority.js
 node --check scripts/research-director.js
 node --check scripts/story-revision-review.js
+node --check scripts/story-editor.js
 node --check publish-gate-decision.js
 node --check idea-engine.js
 node --check idea-engine-prompts.js
