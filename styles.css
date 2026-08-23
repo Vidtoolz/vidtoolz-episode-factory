@@ -1436,6 +1436,127 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.agent-control-room {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 10px 16px;
+  padding: 14px 16px;
+}
+
+.agent-control-room-heading,
+.agent-control-room-refresh,
+.agent-control-room-summary,
+.agent-control-room-card-heading,
+.agent-control-room-badges,
+.agent-planned-list {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.agent-control-room-heading {
+  justify-content: space-between;
+}
+
+.agent-control-room-heading h2,
+.agent-control-room-heading p,
+.agent-control-room-card h3,
+.agent-control-room-card p {
+  margin: 0;
+}
+
+.agent-control-room-heading p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.agent-control-room-refresh button {
+  min-height: 32px;
+  padding: 5px 12px;
+}
+
+.agent-control-room-summary {
+  font-size: 12px;
+  margin: 12px 0;
+}
+
+.agent-control-room-summary span,
+.agent-planned-role,
+.agent-state,
+.agent-attention {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.agent-control-room-rows {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+}
+
+.agent-control-room-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--muted);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 11px;
+}
+
+.agent-control-room-card.decision { border-left-color: var(--accent-purple); }
+.agent-control-room-card.review { border-left-color: #f59e0b; }
+.agent-control-room-card.blocked { border-left-color: var(--danger); }
+.agent-control-room-card.information { border-left-color: var(--accent-blue); }
+
+.agent-control-room-card-heading {
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+
+.agent-control-room-card-heading small,
+.agent-control-room-implementation {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.agent-state,
+.agent-attention {
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.agent-attention.decision { border-color: var(--accent-purple); }
+.agent-attention.review { border-color: #f59e0b; }
+.agent-attention.blocked { border-color: var(--danger); }
+
+.agent-control-room-line {
+  display: grid;
+  font-size: 12px;
+  gap: 6px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  line-height: 1.35;
+  margin: 5px 0;
+}
+
+.agent-control-room-line span { color: var(--muted); }
+.agent-control-room-line strong { overflow-wrap: anywhere; }
+.agent-control-room-implementation { margin-top: 9px; }
+
+.agent-control-room-roles {
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.agent-control-room-roles p { margin: 8px 0 0; }
+.agent-planned-list { margin-top: 6px; }
+
 .creator-cockpit-status,
 .creator-cockpit-actions {
   align-items: center;

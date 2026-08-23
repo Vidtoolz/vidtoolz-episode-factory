@@ -16,6 +16,21 @@
   </div>
   <div id="ooBody" style="margin-top:8px;font-size:13px;line-height:1.5;">Loading current state…</div>
 </section>
+<section id="agentControlRoom" class="agent-control-room" aria-labelledby="agentControlRoomTitle">
+  <div class="agent-control-room-heading">
+    <div>
+      <h2 id="agentControlRoomTitle">Agent Control Room</h2>
+      <p>Registry-derived specialist status. Observation only — no dispatch, approval, or state changes.</p>
+    </div>
+    <div class="agent-control-room-refresh">
+      <span id="agentControlRoomUpdated" class="muted" aria-live="polite"></span>
+      <button id="agentControlRoomRefresh" type="button">Refresh</button>
+    </div>
+  </div>
+  <div id="agentControlRoomSummary" class="agent-control-room-summary">Loading registered agents…</div>
+  <div id="agentControlRoomRows" class="agent-control-room-rows"></div>
+  <div id="agentControlRoomRoles" class="agent-control-room-roles"></div>
+</section>
 <a href="super-focus.html" class="open-super-focus" aria-label="Open Super Focus">
   <span class="osf-title">★ Open Super Focus</span>
   <span class="osf-sub">Continue the focused one-day video workflow.</span>
@@ -233,6 +248,7 @@
     <script src="episode-model.js?v=1.7.4"></script>
     <script src="storage-adapter.js?v=1.7.4"></script>
     <script src="app.js?v=1.7.4"></script>
+    <script src="agent-control-room-ui.js?v=1"></script>
     <script>
       // Operator orientation panel: reads the cockpit's canonical state endpoint
       // (active-state audit + doctor + next-safe-action + index freshness) so the

@@ -10,8 +10,10 @@ node --check score-engine/cue-editor.js
 node --check score-engine/score-provenance.js
 node --check score-engine/score-readiness.js
 node --check scripts/verify-score-package.js
+node --check scripts/agent-control-room.js
 node --check storage-adapter.js
 node --check app.js
+node --check agent-control-room-ui.js
 node --check package-engine-model.js
 node --check package-engine-run.js
 node --check package-engine.js

@@ -18,6 +18,7 @@ const nextSafeActionScript = require('./scripts/package-run-next-safe-action.js'
 const activeStateAuditScript = require('./scripts/package-run-active-state-audit.js');
 const packageRunsIndexScript = require('./scripts/package-runs-index.js');
 const systemRegistryScript = require('./scripts/system-registry.js');
+const agentControlRoom = require('./scripts/agent-control-room.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
@@ -12822,6 +12823,7 @@ function providerConfig(env = process.env) {
 }
 
 const COCKPIT_ORIENTATION_API = '/api/cockpit-orientation';
+const AGENT_CONTROL_ROOM_API = '/api/agent-control-room';
 
 const COCKPIT_OUT_OF_SCOPE = [
   'New AI generation lanes or model integrations',
@@ -18153,6 +18155,21 @@ function createServer(options = {}) {
       return;
     }
 
+    // Registry-driven, observation-only specialist status. No status task is
+    // fabricated when the runtime has no canonical current-task context.
+    if (req.method === 'GET' && url.pathname === AGENT_CONTROL_ROOM_API) {
+      agentControlRoom.buildAgentControlRoom({
+        root: serverOptions.root || ROOT,
+        statusTaskProvider: serverOptions.agentStatusTaskProvider,
+        implementationLoader: serverOptions.agentImplementationLoader,
+        agentRunOptions: serverOptions.agentRunOptions,
+        now: serverOptions.agentControlRoomNow,
+      })
+        .then((payload) => sendJSON(res, 200, payload))
+        .catch((error) => sendError(res, 500, `Agent Control Room unavailable: ${error.message}`, 'agent-control-room-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === ARTIFACT_TEXT_API) {
       try {
         const runId = url.searchParams.get('runId') || '';
@@ -19658,6 +19675,7 @@ if (require.main === module) {
 
 module.exports = {
   API_PREFIX,
+  AGENT_CONTROL_ROOM_API,
   COCKPIT_ORIENTATION_API,
   buildCockpitOrientation,
   buildProjectsLaneOrientation,
