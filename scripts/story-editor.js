@@ -231,6 +231,7 @@ function buildPrompt(task, evaluatorFindings) {
       lines.push(`- ${item.binding_id} | section ${item.section_id} | ${JSON.stringify(item.assertion_text).slice(0, 300)} | ${JSON.stringify(item.constraints)}`);
     }
   }
+  lines.push('', `Canonical binding IDs: ${JSON.stringify((task.script_claim_bindings || []).map((binding) => binding.binding_id))}. In factual_claim_changes, unchanged/rewritten/removed contain ONLY these exact binding IDs, each exactly once across the three arrays. If this list is empty, those three arrays MUST all be empty. The new array contains only genuinely introduced factual assertions, never existing source prose.`);
   if (evaluatorFindings) lines.push('', `Canonical script-evaluator findings: ${JSON.stringify(evaluatorFindings).slice(0, 1200)}`);
   if (Array.isArray(task.human_decisions) && task.human_decisions.length) lines.push('', `Relevant human decisions: ${JSON.stringify(task.human_decisions).slice(0, 800)}`);
   lines.push('', 'Return exactly one JSON object:',
@@ -307,6 +308,10 @@ function validateSemanticOutput(raw, task) {
       ids.add(r.change_id);
       if (!sectionIds.has(String(r.section_id))) errs.push(`change_rationales[${i}].section_id invalid`);
       if (!findingIds.has(r.finding_ref)) errs.push(`change_rationales[${i}].finding_ref invalid`);
+      const argumentAliases = { none: 'NO_ARGUMENT_CHANGE', no_argument_change: 'NO_ARGUMENT_CHANGE', potential_argument_change: 'POTENTIAL_ARGUMENT_CHANGE', argument_change: 'ARGUMENT_CHANGE' };
+      const researchAliases = { none: 'NONE', unchanged: 'UNCHANGED', rewritten: 'REWRITTEN', removed: 'REMOVED', new_factual_claim: 'NEW_FACTUAL_CLAIM' };
+      r.argument_impact = argumentAliases[String(r.argument_impact || '').toLowerCase()] || r.argument_impact;
+      r.research_impact = researchAliases[String(r.research_impact || '').toLowerCase()] || r.research_impact;
       if (!ARG_CLASSES.includes(r.argument_impact)) errs.push(`change_rationales[${i}].argument_impact invalid`);
       if (!['NONE', 'UNCHANGED', 'REWRITTEN', 'REMOVED', 'NEW_FACTUAL_CLAIM'].includes(r.research_impact)) errs.push(`change_rationales[${i}].research_impact invalid`);
     }
@@ -332,8 +337,11 @@ function validateSemanticOutput(raw, task) {
     const changed = new Set();
     for (const [id, source] of sourceById) {
       const candidate = proposalById.get(id);
-      if (!candidate || candidate.order !== source.order || String(candidate.beat || '') !== String(source.beat || '') || candidate.dialogue !== source.dialogue) changed.add(id);
+      if (!candidate || String(candidate.beat || '') !== String(source.beat || '') || candidate.dialogue !== source.dialogue) changed.add(id);
     }
+    const proposedSequence = (rp.sections || []).slice().sort((a, b) => a.order - b.order).map((section) => String(section.id));
+    const survivingSourceSequence = (task.script_sections || []).slice().sort((a, b) => a.order - b.order).map((section) => String(section.id)).filter((id) => proposalById.has(id));
+    if (JSON.stringify(proposedSequence) !== JSON.stringify(survivingSourceSequence)) for (const id of proposedSequence) changed.add(id);
     const rationalized = new Set((rp.change_rationales || []).map((r) => String(r.section_id)));
     for (const id of changed) if (!rationalized.has(id)) errs.push(`changed section ${id} lacks rationale`);
     for (const id of rationalized) if (!changed.has(id)) errs.push(`rationale supplied for unchanged section ${id}`);
