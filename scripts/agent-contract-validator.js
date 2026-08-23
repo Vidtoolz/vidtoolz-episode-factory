@@ -105,7 +105,7 @@ function validateContract(contract, registry) {
     ["machine/backend routing", "generation_supervisor"],
     ["shot briefs", "visual_planning_director"],
     ["episode creative identity", "creative_director"],
-    ["music provenance", "sound_music_director"],
+    ["music generation provenance", "sound_music_director"],
     ["take logging", "presenter_director"],
     ["run-state maintenance", "production_operations"],
   ];

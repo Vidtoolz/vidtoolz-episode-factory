@@ -4,7 +4,6 @@
   "status": "CANONICAL",
   "locked": "2026-08-22",
   "authority": "This contract defines authority decomposition for the VIDTOOLZ production system. The registry (config/agent-registry.json) remains the home of per-agent doctrine; this file is the home of the role roster, shared contract fields, authority boundaries, disagreement model, approval binding, and build order. Agent identity is the ROLE. Models and machines are execution infrastructure and never agent identity.",
-
   "hermes": {
     "role_id": "hermes",
     "role_name": "Executive Producer / Router",
@@ -30,7 +29,6 @@
     ],
     "doctrine": "Hermes may use infrastructure capabilities required to route work, but capability does not confer specialist authority. Hermes is not a super-agent and not specialist #13."
   },
-
   "deterministic_first": {
     "principle": "An agent may never own a check that a deterministic validator can authoritatively make. Agents may interpret validator output or decide next actions when judgment is required.",
     "services": [
@@ -46,71 +44,166 @@
     ],
     "rule": "These must never be represented as autonomous agents in the registry."
   },
-
   "role_roster": [
     {
       "role_id": "production_operations",
       "role_name": "Production Operations Director",
       "status": "BUILT",
-      "owns": ["infrastructure", "execution availability", "workflow state", "machine/resource problems", "run-state maintenance"],
-      "does_not_own": ["creative decisions"],
-      "boundaries": ["Must never convert a creative problem into an infrastructure problem merely because the workflow is blocked."]
+      "owns": [
+        "infrastructure",
+        "execution availability",
+        "workflow state",
+        "machine/resource problems",
+        "run-state maintenance"
+      ],
+      "does_not_own": [
+        "creative decisions"
+      ],
+      "boundaries": [
+        "Must never convert a creative problem into an infrastructure problem merely because the workflow is blocked."
+      ]
     },
     {
       "role_id": "camera_director",
       "role_name": "Camera Director",
       "status": "BUILT",
-      "owns": ["camera movement", "framing behavior", "cinematographic motion quality", "Earth Studio / virtual-camera doctrine"],
-      "does_not_own": ["episode creative identity", "generation routing"]
+      "owns": [
+        "camera movement",
+        "framing behavior",
+        "cinematographic motion quality",
+        "Earth Studio / virtual-camera doctrine"
+      ],
+      "does_not_own": [
+        "episode creative identity",
+        "generation routing"
+      ]
     },
     {
       "role_id": "generation_supervisor",
       "role_name": "Generation Supervisor",
       "status": "BUILT",
-      "owns": ["generation execution", "machine/backend routing", "retry behavior", "generation provenance", "generation integrity"],
-      "does_not_own": ["the creative brief", "route-policy override"],
-      "boundaries": ["Selects only among eligible configured routes; cannot invent missing coverage."]
+      "owns": [
+        "generation execution",
+        "machine/backend routing",
+        "retry behavior",
+        "generation provenance",
+        "generation integrity"
+      ],
+      "does_not_own": [
+        "the creative brief",
+        "route-policy override"
+      ],
+      "boundaries": [
+        "Selects only among eligible configured routes; cannot invent missing coverage."
+      ]
     },
     {
       "role_id": "editor",
       "role_name": "Editor",
       "status": "BUILT_IN_PROGRESS",
-      "owns": ["timeline construction", "pacing proposals", "coverage-gap detection", "technical editorial assembly"],
-      "does_not_own": ["argument authority"],
-      "boundaries": ["If an edit changes the argument, it must become a decision/escalation, not an invisible edit."]
+      "owns": [
+        "timeline construction",
+        "pacing proposals",
+        "coverage-gap detection",
+        "technical editorial assembly"
+      ],
+      "does_not_own": [
+        "argument authority"
+      ],
+      "boundaries": [
+        "If an edit changes the argument, it must become a decision/escalation, not an invisible edit."
+      ]
     },
     {
       "role_id": "qc_director",
       "role_name": "QC Director",
       "status": "BUILT",
-      "owns": ["independent cross-cutting pass/fail", "evidence completeness", "technical/policy conformance", "promotion/durability checks", "export/delivery validation"],
-      "does_not_own": ["repair", "regeneration", "rewriting", "aesthetic selection", "Mikko's authority"],
-      "boundaries": ["QC detects, blocks, explains. It never fixes, regenerates, or chooses aesthetics."]
+      "owns": [
+        "independent cross-cutting pass/fail",
+        "evidence completeness",
+        "technical/policy conformance",
+        "promotion/durability checks",
+        "export/delivery validation"
+      ],
+      "does_not_own": [
+        "repair",
+        "regeneration",
+        "rewriting",
+        "aesthetic selection",
+        "Mikko's authority"
+      ],
+      "boundaries": [
+        "QC detects, blocks, explains. It never fixes, regenerates, or chooses aesthetics."
+      ]
+    },
+    {
+      "role_id": "sound_music_director",
+      "role_name": "Sound & Music Director",
+      "status": "BUILT",
+      "build_order": 1,
+      "owns": [
+        "music cue execution",
+        "score construction",
+        "music-generation supervision",
+        "music-specific technical quality",
+        "cue timing",
+        "duration conformity",
+        "musical continuity",
+        "stems/renders/cue artifacts",
+        "music generation provenance",
+        "retry-vs-escalate inside its retry budget",
+        "music/audio clash detection",
+        "translating an approved music brief into executable music instructions"
+      ],
+      "does_not_own": [
+        "episode argument",
+        "script",
+        "high-level episode creative identity",
+        "final emotional intention",
+        "visual concept",
+        "shot design",
+        "camera movement",
+        "timeline final cut",
+        "QC verdict",
+        "backend/infrastructure policy outside its granted execution scope",
+        "final music approval",
+        "publication"
+      ],
+      "boundaries": [
+        "Creative may propose mood; Mikko approves final music. Editor retains timeline authority; Sound proposes music changes. Execution only through the authorized music_generation lane; unauthorized fallback is impossible (fail-closed)."
+      ]
     },
     {
       "role_id": "research_director",
       "role_name": "Research Director",
       "status": "PLANNED",
       "build_order": 2,
-      "owns": ["factual research", "evidence packs", "sourcing", "fact-risk detection"],
-      "does_not_own": ["final argument", "creative framing", "script approval"]
+      "owns": [
+        "factual research",
+        "evidence packs",
+        "sourcing",
+        "fact-risk detection"
+      ],
+      "does_not_own": [
+        "final argument",
+        "creative framing",
+        "script approval"
+      ]
     },
     {
       "role_id": "story_editor",
       "role_name": "Story Editor",
       "status": "PLANNED",
       "build_order": 3,
-      "owns": ["script structure", "argument coherence", "story logic", "delivery-readability proposals"],
-      "does_not_own": ["final argument/script authority (Mikko)"]
-    },
-    {
-      "role_id": "sound_music_director",
-      "role_name": "Sound & Music Director",
-      "status": "PLANNED",
-      "build_order": 1,
-      "owns": ["music/audio craft", "cue execution", "score/music generation quality", "music provenance"],
-      "does_not_own": ["final music approval (Mikko)"],
-      "boundaries": ["Creative may propose mood; Mikko approves final music."]
+      "owns": [
+        "script structure",
+        "argument coherence",
+        "story logic",
+        "delivery-readability proposals"
+      ],
+      "does_not_own": [
+        "final argument/script authority (Mikko)"
+      ]
     },
     {
       "role_id": "visual_planning_director",
@@ -118,17 +211,34 @@
       "status": "PLANNED",
       "build_order": 4,
       "renamed_from": "Visual Director",
-      "owns": ["translating approved concept/script into visual coverage", "shot briefs", "image/video prompt specification", "coverage plan"],
-      "does_not_own": ["episode creative identity", "camera movement doctrine", "backend/machine selection"],
-      "boundaries": ["Visual concept (Creative) is sharply separated from shot/prompt specification (Visual Planning)."]
+      "owns": [
+        "translating approved concept/script into visual coverage",
+        "shot briefs",
+        "image/video prompt specification",
+        "coverage plan"
+      ],
+      "does_not_own": [
+        "episode creative identity",
+        "camera movement doctrine",
+        "backend/machine selection"
+      ],
+      "boundaries": [
+        "Visual concept (Creative) is sharply separated from shot/prompt specification (Visual Planning)."
+      ]
     },
     {
       "role_id": "audience_packaging_director",
       "role_name": "Audience & Packaging Director",
       "status": "PLANNED",
       "build_order": 5,
-      "owns": ["title/thumbnail/packaging proposals", "distribution packaging", "performance-analysis input"],
-      "does_not_own": ["final packaging/publish approval (Mikko)"]
+      "owns": [
+        "title/thumbnail/packaging proposals",
+        "distribution packaging",
+        "performance-analysis input"
+      ],
+      "does_not_own": [
+        "final packaging/publish approval (Mikko)"
+      ]
     },
     {
       "role_id": "presenter_director",
@@ -144,15 +254,24 @@
         "framing/greenscreen continuity",
         "presenter screen-time strategy"
       ],
-      "does_not_own": ["the argument"],
-      "boundaries": ["Must not invent or rewrite the argument without escalation."]
+      "does_not_own": [
+        "the argument"
+      ],
+      "boundaries": [
+        "Must not invent or rewrite the argument without escalation."
+      ]
     },
     {
       "role_id": "creative_director",
       "role_name": "Creative Director",
       "status": "PLANNED_LAST",
       "build_order": 8,
-      "owns": ["episode creative identity", "high-level visual concept", "overall mood", "conceptual coherence across departments"],
+      "owns": [
+        "episode creative identity",
+        "high-level visual concept",
+        "overall mood",
+        "conceptual coherence across departments"
+      ],
       "does_not_own": [
         "shot prompts",
         "camera mechanics",
@@ -161,10 +280,11 @@
         "QC",
         "generation routing"
       ],
-      "boundaries": ["Deliberately narrow. Built last because the more subjective and cross-domain a role is, the greater the risk it becomes a vague Mikko-replacement or super-agent."]
+      "boundaries": [
+        "Deliberately narrow. Built last because the more subjective and cross-domain a role is, the greater the risk it becomes a vague Mikko-replacement or super-agent."
+      ]
     }
   ],
-
   "knowledge_steward": {
     "role_id": "knowledge_steward",
     "role_name": "Knowledge Steward",
@@ -179,10 +299,12 @@
       "surfacing stale/conflicting knowledge",
       "curating global doctrine proposals, incidents, rejected approaches, provenance references"
     ],
-    "does_not_own": ["doctrine authority", "a parallel knowledge universe"],
+    "does_not_own": [
+      "doctrine authority",
+      "a parallel knowledge universe"
+    ],
     "write_gate": "Authoritative durable rule/decision writes are human-gated. The registry remains the home of agent doctrine; the brain/memory system remains the home of durable production decisions/learnings. No duplicated storage."
   },
-
   "human_authority": {
     "human": "Mikko",
     "exclusive_decisions": [
@@ -200,7 +322,6 @@
       "resolution of NEEDS_HUMAN_DECISION disagreement states"
     ]
   },
-
   "shared_contract": {
     "compatibility": "Fields already expressed in the registry under stable names (agent_id, name, role, mission, reports_to, allowed_actions, prohibited_actions, escalation_rules) are preserved unchanged. The fields below are the required contract surface; registered agents must carry them either natively or via this contract's defaults until individually upgraded.",
     "fields": {
@@ -228,16 +349,27 @@
       "latest_event": "latest meaningful state event"
     }
   },
-
   "approval_binding": {
     "principle": "Every durable human approval binds to the exact artifact it approves. Generalizes the proven Earth Studio durability mechanism (scripts/earth-studio-promotion-durability.js): artifact path + sha256 + source commit + human-review record + byte comparison. No competing mechanism may be introduced.",
-    "required_fields": ["artifact_path", "artifact_sha256", "commit", "approved_by", "approved_at", "scope"],
+    "required_fields": [
+      "artifact_path",
+      "artifact_sha256",
+      "commit",
+      "approved_by",
+      "approved_at",
+      "scope"
+    ],
     "stale_rule": "An approval whose recorded artifact_sha256 does not match the current artifact bytes is STALE and carries no authority. A detached approval (no hash/commit binding) is INVALID.",
     "verification": "verifyApprovalBinding(binding, currentBytes) returns VALID | STALE | INVALID; validators and gates must treat STALE and INVALID identically to no-approval."
   },
-
   "disagreement_model": {
-    "states": ["NONE", "RESOLVED_BY_CONTRACT", "NEEDS_SPECIALIST_REVIEW", "NEEDS_HUMAN_DECISION", "BLOCKED"],
+    "states": [
+      "NONE",
+      "RESOLVED_BY_CONTRACT",
+      "NEEDS_SPECIALIST_REVIEW",
+      "NEEDS_HUMAN_DECISION",
+      "BLOCKED"
+    ],
     "routing": [
       "consult authority scope",
       "if one role owns the decision, route there (RESOLVED_BY_CONTRACT)",
@@ -251,7 +383,6 @@
       "Dissent evidence is preserved whenever a disagreement leaves NEEDS_SPECIALIST_REVIEW."
     ]
   },
-
   "lifecycle_authority": {
     "canonical": "The 14 evidence-gate workflow (scripts/package-run-workflow-map.js GATE_DEFINITIONS) is canonical and governs evidence/promotion.",
     "projections": [
@@ -266,18 +397,45 @@
       "owner": "Production Operations owns run-state maintenance; Hermes reads and routes from it."
     }
   },
-
   "control_room_contract": {
     "extends": "The Earth Studio agent-status approach (scripts/earth-studio-agent-status.js) is the pattern; extend it to all agents rather than creating a second control-room model.",
     "surface_per_agent": [
-      "agent name", "state", "current task", "owner → next owner", "attention level",
-      "one-line blocker", "unresolved disagreement", "resource dependency",
-      "current artifact", "latest meaningful event"
+      "agent name",
+      "state",
+      "current task",
+      "owner → next owner",
+      "attention level",
+      "one-line blocker",
+      "unresolved disagreement",
+      "resource dependency",
+      "current artifact",
+      "latest meaningful event"
     ],
-    "never_exposed_by_default": ["raw logs", "model internals", "validator internals", "large file diffs", "chain-of-thought", "irrelevant infrastructure detail"],
-    "questions_answered": ["What is happening?", "Who owns it?", "Is anything blocked?", "Does Mikko need to decide something?", "What happens next?"]
+    "never_exposed_by_default": [
+      "raw logs",
+      "model internals",
+      "validator internals",
+      "large file diffs",
+      "chain-of-thought",
+      "irrelevant infrastructure detail"
+    ],
+    "questions_answered": [
+      "What is happening?",
+      "Who owns it?",
+      "Is anything blocked?",
+      "Does Mikko need to decide something?",
+      "What happens next?"
+    ]
   },
-
-  "build_order": ["sound_music_director", "research_director", "story_editor", "visual_planning_director", "audience_packaging_director", "knowledge_steward", "presenter_director", "creative_director"],
+  "build_order": [
+    "sound_music_director",
+    "research_director",
+    "story_editor",
+    "visual_planning_director",
+    "audience_packaging_director",
+    "knowledge_steward",
+    "presenter_director",
+    "creative_director"
+  ],
   "build_order_note": "Creative Director is intentionally last: subjective cross-domain roles carry the highest super-agent risk and must not be built until surrounding authority boundaries are proven."
 }

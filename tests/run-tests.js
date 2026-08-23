@@ -103,6 +103,7 @@ require("./score-verify.test.js");
 require("./score-brief-exporter.test.js");
 require("./score-minimax-adapter.test.js");
 require("./score-music-dispatch.test.js");
+require("./sound-music-director.test.js");
 require("./workflow-path.test.js");
 require("./script-commitment-check.test.js");
 require("./resolve-handoff-readiness.test.js");

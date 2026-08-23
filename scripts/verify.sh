@@ -131,6 +131,7 @@ node --check scripts/earth-studio-job-plan.js
 node --check scripts/docs-authority-check.js
 node --check scripts/manual-upload-provenance-audit.js
 node --check scripts/agent-contract-validator.js
+node --check scripts/sound-music-director.js
 node --check publish-gate-decision.js
 node --check idea-engine.js
 node --check idea-engine-prompts.js
