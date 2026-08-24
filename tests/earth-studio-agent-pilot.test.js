@@ -20,6 +20,29 @@ const APPROVAL_SRC = path.join(REPO, 'package-runs',
 const DURABLE_COMMIT = '2586bc491377d1a3c8d584a10ac9be427cd24e2f';
 const PRE_COMMIT = 'ff43a625102b1a6ffec659cce44afcf057fab0f0';
 const os = require('node:os');
+const EARTH_STUDIO_PILOTS = Object.freeze({
+  camera_director: 'Camera Director',
+  generation_supervisor: 'Generation Supervisor',
+  production_operations: 'Production Operations Director',
+  qc_director: 'QC Director',
+});
+
+function assertEarthStudioPilotRegistry(registry) {
+  const agents = Array.isArray(registry?.agents) ? registry.agents : [];
+  const ids = agents.map((agent) => agent.agent_id);
+  assert.equal(new Set(ids).size, ids.length, 'global registry agent IDs must remain unique');
+  const byId = Object.fromEntries(agents.map((agent) => [agent.agent_id, agent]));
+  for (const [agentId, expectedName] of Object.entries(EARTH_STUDIO_PILOTS)) {
+    const agent = byId[agentId];
+    assert.ok(agent, `Earth Studio pilot agent missing from global registry: ${agentId}`);
+    assert.equal(agent.agent_id, agentId);
+    assert.equal(agent.name, expectedName);
+    assert.equal(agent.reports_to, 'hermes');
+    assert.ok(agent.mission);
+    assert.ok(Array.isArray(agent.allowed_actions) && agent.allowed_actions.length > 0);
+    assert.ok(Array.isArray(agent.prohibited_actions) && agent.prohibited_actions.length > 0);
+  }
+}
 
 function runNode(script, args) {
   try {
@@ -44,15 +67,15 @@ function agentView(pkgDir, sourceCommit) {
     ...(sourceCommit ? ['--source-commit', sourceCommit] : [])]);
 }
 
-test('A1: registry identity — four agents with stable unique IDs and role definitions', () => {
+test('A1: Earth Studio pilot identities remain present and defined as the global registry grows', () => {
   const reg = JSON.parse(fs.readFileSync(REGISTRY, 'utf8'));
-  const ids = reg.agents.map((a) => a.agent_id);
-  assert.deepEqual(ids.sort(), ['camera_director', 'generation_supervisor', 'production_operations', 'qc_director']);
-  for (const a of reg.agents) {
-    assert.ok(a.name && a.mission && a.reports_to === 'hermes');
-    assert.ok(Array.isArray(a.allowed_actions) && a.allowed_actions.length > 0);
-    assert.ok(Array.isArray(a.prohibited_actions) && a.prohibited_actions.length > 0);
-  }
+  assertEarthStudioPilotRegistry(reg);
+});
+
+test('A1b: removing an Earth Studio pilot still fails the registry invariant', () => {
+  const reg = JSON.parse(fs.readFileSync(REGISTRY, 'utf8'));
+  reg.agents = reg.agents.filter((agent) => agent.agent_id !== 'camera_director');
+  assert.throws(() => assertEarthStudioPilotRegistry(reg), /camera_director/);
 });
 
 test('A2: authority boundaries are explicit and machine-readable', () => {
