@@ -220,7 +220,7 @@ test('DQ7: resolved items leave the active queue but remain in audited history',
     assert.equal(queue.human_decision_queue.length, 0);
     assert.equal(queue.human_decision_history.length, 1);
     const entry = queue.human_decision_history[0];
-    assert.equal(entry.queue_item_id.split(':')[0], 'REVIEW');
+    assert.match(entry.queue_item_id, /^obligation:[a-f0-9]{64}$/);
     assert.ok(entry.resolution.resolved_at);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

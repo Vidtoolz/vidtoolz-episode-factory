@@ -265,8 +265,9 @@ function scanObligations(root, registeredIds, registrations) {
           continue;
         }
         if (!obligation) continue;
-        if (seenInvocations.has(obligation.invocation_id)) continue;
-        seenInvocations.add(obligation.invocation_id);
+        const invocationKey = `${runId}\u0000${obligation.invocation_id}`;
+        if (seenInvocations.has(invocationKey)) continue;
+        seenInvocations.add(invocationKey);
         seenInvocations.add(`${runId}\u0000${record.agent_id}\u0000${attempt.dir}`);
         obligations.push(obligation);
       }
