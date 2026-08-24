@@ -163,6 +163,7 @@ node --check scripts/story-revision-review.js
 node --check scripts/story-editor.js
 node --check scripts/story-assertion-continuity.js
 node --check scripts/story-successor.js
+node --check scripts/story-edit-contract.js
 node --check scripts/script-builder-compat.js
 node --check scripts/story-manual-edit.js
 node --check scripts/story-workspace.js
