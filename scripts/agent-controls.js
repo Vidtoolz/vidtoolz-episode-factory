@@ -134,8 +134,8 @@ async function applyCancel(input, options = {}) {
     action: 'CANCEL', target_agent_role: context.agentId, target_invocation_id: context.invocationId, target_task_id: context.record.task_id,
     target_artifact: null, action_scope: 'INVOCATION_CANCEL', reason: input.reason,
     requested_parameters: { preview_token: input.preview_token, bound_provider: preview.eligible, remote_may_continue: result.remote_may_continue !== false },
-    result_details: { outcome: result.outcome || result.status || 'NOT_SUPPORTED', provider_id: result.provider_id || null, job_id: result.job_id || null, host: result.host || null, requested_at: result.requested_at || null, certainty: result.certainty || null, remote_may_continue: result.remote_may_continue !== false, provider_response: result.provider_response || null },
-    prior_execution_owner: 'AUTOMATION', resulting_execution_owner: resultStatus === 'COMPLETED' ? 'SUSPENDED' : 'AUTOMATION', supersedes: null, result_status: resultStatus,
+    result_details: { outcome: result.outcome || result.status || 'NOT_SUPPORTED', provider_outcome: result.provider_outcome || null, provider_id: result.provider_id || null, job_id: result.job_id || null, host: result.host || null, requested_at: result.requested_at || null, certainty: result.certainty || null, remote_may_continue: result.remote_may_continue !== false, runner_liveness: result.runner_liveness || null, provider_response: result.provider_response || null },
+    prior_execution_owner: 'AUTOMATION', resulting_execution_owner: 'AUTOMATION', supersedes: null, result_status: resultStatus,
   }, { actor: options.actor || ledger.localActorContext(), now: options.now, recordId: options.recordId });
   return { action: 'CANCEL', result_status: resultStatus, outcome: result.outcome || result.status || 'NOT_SUPPORTED', provider_id: result.provider_id || null, job_id: result.job_id || null, remote_may_continue: result.remote_may_continue !== false, certainty: result.certainty || null, reason: result.reason || null, action_record_id: action.record.record_id };
 }

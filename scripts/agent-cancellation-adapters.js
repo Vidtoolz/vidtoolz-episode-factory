@@ -1,12 +1,13 @@
 'use strict';
 
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const runner = require('./agent-run.js');
 
 const BINDING_FILE = 'resource-job.json';
 const PROVIDERS = Object.freeze(['flux', 'presto', 'earth_studio', 'remotion']);
-const OUTCOMES = Object.freeze(['CANCELLED_CONFIRMED', 'CANCEL_REQUEST_ACCEPTED', 'NOT_SUPPORTED', 'ALREADY_COMPLETE', 'PROVIDER_FAILED', 'REMOTE_MAY_CONTINUE']);
+const OUTCOMES = Object.freeze(['CANCELLED_CONFIRMED', 'CANCEL_REQUEST_ACCEPTED', 'REQUESTED_NOT_CONFIRMED', 'NOT_SUPPORTED', 'ALREADY_COMPLETE', 'PROVIDER_FAILED', 'REMOTE_MAY_CONTINUE']);
 
 class CancellationAdapterError extends Error {
   constructor(code, message) { super(message); this.name = 'CancellationAdapterError'; this.code = code; }
@@ -48,7 +49,24 @@ function activeJob(status, provider) {
   if (provider === 'presto') return status?.active || status?.completed || null;
   return status || null;
 }
-function createProvider(adapters = {}) {
+function reconcileRunnerLiveness(result, context, options = {}) {
+  const lock = context.lock;
+  if (!lock || lock.invocation_id !== context.invocationId) {
+    return { ...result, runner_liveness: { verification: 'NO_MATCHING_RUNNER_LOCK', alive: null } };
+  }
+  if (lock.host !== (options.hostname || os.hostname())) {
+    return { ...result, certainty: result.certainty || 'PROVIDER_DEFINED_REMOTE_RUNNER_UNVERIFIED', runner_liveness: { verification: 'REMOTE_HOST_UNAVAILABLE', host: lock.host, pid: Number(lock.pid), alive: null } };
+  }
+  const alive = (options.pidAlive || runner.pidAlive)(Number(lock.pid));
+  const runnerLiveness = { verification: 'SAME_HOST_PID', host: lock.host, pid: Number(lock.pid), alive };
+  if (alive && ['ALREADY_COMPLETE', 'CANCELLED_CONFIRMED', 'CANCEL_REQUEST_ACCEPTED'].includes(result.outcome)) {
+    return { ...result, status: 'COMPLETED', provider_outcome: result.outcome, outcome: 'REQUESTED_NOT_CONFIRMED', remote_may_continue: true,
+      certainty: 'PROVIDER_RESULT_CONTRADICTED_BY_LIVE_RUNNER', runner_liveness: runnerLiveness };
+  }
+  return { ...result, runner_liveness: runnerLiveness,
+    certainty: result.certainty || (alive ? 'SAME_HOST_RUNNER_ALIVE' : 'SAME_HOST_RUNNER_EXITED') };
+}
+function createProvider(adapters = {}, options = {}) {
   const provider = async function cancelExactInvocation(context) {
     const requestedAt = new Date().toISOString(), binding = readBinding(context);
     if (!binding) return { status: 'NOT_SUPPORTED', outcome: 'NOT_SUPPORTED', requested_at: requestedAt, remote_may_continue: true, reason: 'No exact invocation-to-job binding exists.' };
@@ -60,12 +78,14 @@ function createProvider(adapters = {}) {
     const observedJobId = job?.job_id || null;
     const observedHost = job?.host || job?.worker || job?.comfyui_url || adapter.host || null;
     if (observedJobId !== binding.job_id || (observedHost && observedHost !== binding.host)) throw new CancellationAdapterError('CANCELLATION_JOB_BINDING_STALE', 'live provider job does not match the invocation binding');
-    const active = binding.provider_id === 'presto' ? Boolean(status?.active) : Boolean(job?.active);
-    if (!active) return { status: 'COMPLETED', outcome: 'ALREADY_COMPLETE', provider_id: binding.provider_id, job_id: binding.job_id, host: binding.host, requested_at: requestedAt, remote_may_continue: false, provider_response: status };
+    const activeValue = binding.provider_id === 'presto' ? status?.active : job?.active;
+    if (typeof activeValue !== 'boolean') return reconcileRunnerLiveness({ status: 'FAILED', outcome: 'PROVIDER_FAILED', provider_id: binding.provider_id, job_id: binding.job_id, host: binding.host, requested_at: requestedAt, remote_may_continue: true, certainty: 'PROVIDER_STATUS_AMBIGUOUS', reason: 'Provider did not report an explicit active or terminal state.', provider_response: status }, context, options);
+    const active = activeValue;
+    if (!active) return reconcileRunnerLiveness({ status: 'COMPLETED', outcome: 'ALREADY_COMPLETE', provider_id: binding.provider_id, job_id: binding.job_id, host: binding.host, requested_at: requestedAt, remote_may_continue: false, provider_response: status }, context, options);
     try {
       const response = await adapter.cancel(binding);
       const remote = adapter.remoteMayContinue === true || response?.remote_may_continue === true;
-      return { status: 'COMPLETED', outcome: remote ? 'REMOTE_MAY_CONTINUE' : 'CANCEL_REQUEST_ACCEPTED', provider_id: binding.provider_id, job_id: binding.job_id, host: binding.host, requested_at: requestedAt, remote_may_continue: remote, certainty: remote ? 'LOCAL_PROCESS_SIGNAL_ONLY' : 'SIGNAL_ACCEPTED_NOT_TERMINATION_CONFIRMED', provider_response: response || null };
+      return reconcileRunnerLiveness({ status: 'COMPLETED', outcome: remote ? 'REMOTE_MAY_CONTINUE' : 'CANCEL_REQUEST_ACCEPTED', provider_id: binding.provider_id, job_id: binding.job_id, host: binding.host, requested_at: requestedAt, remote_may_continue: remote, certainty: remote ? 'LOCAL_PROCESS_SIGNAL_ONLY' : 'SIGNAL_ACCEPTED_NOT_TERMINATION_CONFIRMED', provider_response: response || null }, context, options);
     } catch (error) {
       return { status: 'FAILED', outcome: 'PROVIDER_FAILED', provider_id: binding.provider_id, job_id: binding.job_id, host: binding.host, requested_at: requestedAt, remote_may_continue: true, provider_response: { error: error.message } };
     }
@@ -74,4 +94,4 @@ function createProvider(adapters = {}) {
   return provider;
 }
 
-module.exports = { BINDING_FILE, PROVIDERS, OUTCOMES, CancellationAdapterError, bindingPath, validateBinding, readBinding, writeBinding, createProvider };
+module.exports = { BINDING_FILE, PROVIDERS, OUTCOMES, CancellationAdapterError, bindingPath, validateBinding, readBinding, writeBinding, reconcileRunnerLiveness, createProvider };
