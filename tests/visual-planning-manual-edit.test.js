@@ -165,6 +165,13 @@ test('VPE7 editing requires exact HUMAN ownership, revision, and artifact hash',
 test('VPE8 apply rechecks preview, artifact, ownership, and ledger head', async () => {
   const state = setup();
   const input = editInput(state);
+  fs.writeFileSync(`${state.manual.paths.artifactPath}.edit.lock`, 'bounded edit in progress\n');
+  await assert.rejects(() => controls.previewReturnToAutomation({ ...state.f.request, reason: 'Return must not race edit apply.' }, {
+    root: state.root, successorValidation: { currentStory: state.f.plan.story },
+  }), (error) => error.code === 'MANUAL_ARTIFACT_BUSY');
+  fs.unlinkSync(`${state.manual.paths.artifactPath}.edit.lock`);
+  await assert.rejects(() => manualEdit.previewVisualPlanManualEdit({ ...input, preview_created_at: '2026-08-24T15:01:00.000Z' }, editOptions(state)),
+    (error) => error.code === 'VISUAL_PLAN_EDIT_FIELD_FORBIDDEN');
   const preview = await manualEdit.previewVisualPlanManualEdit(input, editOptions(state));
   await assert.rejects(() => manualEdit.applyVisualPlanManualEdit({ ...input, preview_token: preview.preview_token }, editOptions(state)),
     (error) => error.code === 'VISUAL_PLAN_EDIT_PREVIEW_STALE');
