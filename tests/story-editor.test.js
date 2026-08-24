@@ -392,6 +392,7 @@ test('SE31: control-room projection carries required fields, no chain-of-thought
   for (const f of ['role', 'state', 'current_task', 'source_version', 'candidate_version', 'owner', 'next_owner', 'attention_level', 'blocker', 'unresolved_disagreement', 'latest_event', 'story_summary']) {
     assert.ok(f in cr, f);
   }
+  assert.ok(cr.operational_rationale.reason);
   assert.ok(!('prompt' in cr) && !('logs' in cr));
 });
 

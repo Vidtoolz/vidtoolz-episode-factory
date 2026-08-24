@@ -646,6 +646,13 @@ function controlRoomView(result) {
     owner: AGENT_ID, next_owner: result.handoff ? result.handoff.next_owner : null,
     attention_level: result.attention, blocker: result.reason || null,
     unresolved_disagreement: result.disagreement_state,
+    operational_rationale: {
+      decision: result.state,
+      reason: result.reason || (result.attention === 'REVIEW' ? 'Story candidate requires human review' : `Story Editor state is ${result.state}`),
+      evidence_refs: result.candidate_version_id ? [{ ref: 'story-candidate', summary: result.candidate_version_id }] : [],
+      confidence: null,
+      escalation_reason: ['REVIEW', 'DECISION'].includes(result.attention) ? result.reason : null,
+    },
     latest_event: result.events.length ? result.events[result.events.length - 1] : null,
     story_summary: {
       structural_findings: (result.structural_findings || []).length,

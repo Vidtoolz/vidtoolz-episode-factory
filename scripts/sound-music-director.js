@@ -425,6 +425,13 @@ function controlRoomView(result) {
     blocker: result.reason || null,
     unresolved_disagreement: result.disagreement_state,
     resource_dependency: result.dispatch ? `${result.dispatch.lane}@${result.dispatch.host}` : AUTHORIZED_LANE,
+    operational_rationale: {
+      decision: result.state,
+      reason: result.reason || (result.attention === 'REVIEW' ? 'Music candidate requires human review' : `Sound and Music state is ${result.state}`),
+      evidence_refs: result.candidates.map((candidate) => ({ ref: 'music-candidate', summary: candidate.candidate_id })),
+      confidence: null,
+      escalation_reason: ['REVIEW', 'DECISION'].includes(result.attention) ? result.reason : null,
+    },
     latest_event: result.events.length ? result.events[result.events.length - 1] : null,
     music_summary: {
       generating_or_evaluating: ['GENERATING', 'EVALUATING'].includes(result.state),

@@ -348,6 +348,7 @@ test('SM17: control_room projection carries the contract-required fields', async
     'latest_event', 'music_summary']) {
     assert.ok(field in cr, `control room exposes ${field}`);
   }
+  assert.ok(cr.operational_rationale.reason);
   // No raw logs or internals exposed.
   assert.ok(!('logs' in cr) && !('chain_of_thought' in cr));
 });
