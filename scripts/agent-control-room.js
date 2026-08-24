@@ -6,6 +6,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const os = require('node:os');
 const { deriveOperationalRationale } = require('./operational-rationale.js');
+const hermesEscalation = require('./hermes-escalation.js');
 const { scopeForAgent, scopeForHumanGate } = require('./approval-scopes.js');
 
 const DEFAULT_ROOT = path.resolve(__dirname, '..');
@@ -685,6 +686,28 @@ async function buildAgentControlRoom(options = {}) {
     return acc;
   }, {});
   const decisionQueue = buildHumanDecisionQueue(agents, registered);
+  // Hermes Escalation Bridge V1 — derived, read-only orchestration projection
+  // over the decision queue. Never mutates attention, gates, or approvals.
+  const hermes_orchestration = (() => {
+    try {
+      // The projection is per-run; derive the run from the queue item's own
+      // workspace link (each item belongs to exactly one canonical run).
+      const runs = new Map();
+      for (const item of decisionQueue) {
+        const match = /run=([^&]+)/.exec(item.workspace || '');
+        if (!match) continue;
+        const runId = decodeURIComponent(match[1]);
+        if (!runs.has(runId)) runs.set(runId, []);
+        runs.get(runId).push(item);
+      }
+      const perRun = {};
+      for (const [runId, items] of runs) {
+        try { perRun[runId] = hermesEscalation.buildOrchestrationProjection(root, runId, items, registry.agents); }
+        catch (_) { perRun[runId] = null; }
+      }
+      return Object.keys(perRun).length ? perRun : null;
+    } catch (_) { return null; }
+  })();
   return {
     schema_version: 1, artifact_type: 'agent-control-room', read_only: true,
     generated_at: (options.now || (() => new Date().toISOString()))(),
@@ -693,6 +716,7 @@ async function buildAgentControlRoom(options = {}) {
     live_resources: liveResources,
     agents,
     human_decision_queue: decisionQueue,
+    hermes_orchestration,
     planned_roles: plannedRoles(contract, ids),
     non_agent_roles: {
       hermes: contract.hermes ? {

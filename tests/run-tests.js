@@ -119,6 +119,7 @@ require("./edit-plan.test.js");
 require("./editor-agent.test.js");
 require("./agent-control-room.test.js");
 require("./operator-action-ledger.test.js");
+require("./hermes-escalation.test.js");
 require("./execution-ownership.test.js");
 require("./agent-cancellation-adapters.test.js");
 require("./execution-ownership-canary.test.js");
