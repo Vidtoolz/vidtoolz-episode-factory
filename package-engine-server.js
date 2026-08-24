@@ -12903,8 +12903,11 @@ function attachAgentControlState(payload, root, cancelProvider) {
       predecessor_artifact: agent.current_artifact || null,
       editing_method: manualWorkspace?.kind === 'SCRIPT_BUILDER' ? 'TRUSTED_SCRIPT_BUILDER_WORKSPACE' : manual.manual_artifact ? 'TRUSTED_OS_FILE_REVEAL' : null,
       workspace: manualWorkspace,
-      workspace_url: agent.agent_id === 'story_editor' && exact.run_id && exact.invocation_id && agent.current_task
-        ? `/story-editor-workspace.html?run=${encodeURIComponent(exact.run_id)}&agent=${encodeURIComponent(agent.agent_id)}&task=${encodeURIComponent(agent.current_task)}&invocation=${encodeURIComponent(exact.invocation_id)}`
+      workspace_url: agent.agent_id === 'story_editor' && exact.run_id && exact.invocation_id && agent.current_task && state.revision != null
+        && manualWorkspace?.project_id && manualWorkspace?.version_id && manualWorkspace?.content_hash
+        ? `/story-editor-workspace.html?${new URLSearchParams({ run: exact.run_id, agent: agent.agent_id, task: agent.current_task,
+          invocation: exact.invocation_id, ownership_revision: String(state.revision), project_id: manualWorkspace.project_id,
+          version_id: manualWorkspace.version_id, content_hash: manualWorkspace.content_hash }).toString()}`
         : manualWorkspace?.url || null,
       trusted_edit_url: manualWorkspace?.url || null,
       open_api: manual.manual_artifact && !manualWorkspace ? OPEN_FILE_API : null,

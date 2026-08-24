@@ -115,7 +115,12 @@ test('Story takeover canary: trusted manual Script Builder edit returns only thr
   assert.equal(preview.eligible, true); assert.equal(preview.eligibility_policy.adapter_id, 'STORY_EDITOR_SUCCESSOR_V1');
   const taken = controls.applyTakeManualControl({ ...input, preview_token: preview.preview_token }, { root, actor, recordId: 'operator-action-story-canary-take' });
   assert.equal(taken.execution_owner, 'HUMAN'); assert.equal(taken.editing_method, 'TRUSTED_SCRIPT_BUILDER_WORKSPACE'); assert.equal(taken.workspace.project_id, project.id);
-  const workspaceRoute = `/api/story-editor-workspace?run_id=${encodeURIComponent(runId)}&agent_id=story_editor&task_id=story-task-1&invocation_id=${encodeURIComponent(first.invocation.invocation_id)}`;
+  const workspaceIdentity = { run_id: runId, agent_id: 'story_editor', task_id: 'story-task-1', invocation_id: first.invocation.invocation_id,
+    ownership_revision: taken.ownership_revision, project_id: taken.workspace.project_id, version_id: taken.workspace.version_id,
+    content_hash: taken.workspace.content_hash };
+  const workspaceRoute = `/api/story-editor-workspace?${new URLSearchParams(workspaceIdentity).toString()}`;
+  const incompleteWorkspace = await getJson(server, `/api/story-editor-workspace?run_id=${encodeURIComponent(runId)}&agent_id=story_editor&task_id=story-task-1&invocation_id=${encodeURIComponent(first.invocation.invocation_id)}`);
+  assert.equal(incompleteWorkspace.code, 'STORY_WORKSPACE_CONTEXT_INCOMPLETE');
   let workspaceEnvelope = await getJson(server, workspaceRoute), workspace = workspaceEnvelope.data || workspaceEnvelope;
   assert.equal(workspace.workspace_schema_id, 'story-editor-workspace/v1');
   assert.equal(workspace.story.identity.project_id, project.id);
@@ -129,6 +134,7 @@ test('Story takeover canary: trusted manual Script Builder edit returns only thr
   assert.equal(storyRow.control_capabilities.return_to_automation, true);
   assert.equal(storyRow.manual_control.workspace.project_id, project.id);
   assert.match(storyRow.manual_control.workspace_url, /story-editor-workspace\.html\?run=/);
+  for (const field of ['ownership_revision=', 'project_id=', 'version_id=', 'content_hash=']) assert.match(storyRow.manual_control.workspace_url, new RegExp(field));
   assert.match(storyRow.manual_control.trusted_edit_url, /project_id=story-canary-project&version_id=/);
   assert.match(storyRow.manual_control.warning, /does not approve/);
   assert.throws(() => controls.previewRetry({ ...input, reason: 'Automation must remain fenced.' }, { root }), (error) => error.code === 'AUTOMATION_FENCED');

@@ -13,6 +13,10 @@ class StoryWorkspaceError extends Error { constructor(code, message, statusCode 
 function exact(input, options) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new StoryWorkspaceError('STORY_WORKSPACE_CONTEXT_INVALID', 'workspace identity must be an object', 400);
   if (input.agent_id !== 'story_editor') throw new StoryWorkspaceError('STORY_WORKSPACE_SPECIALIST_INVALID', 'workspace is available only for Story Editor', 403);
+  for (const field of ['run_id', 'task_id', 'invocation_id', 'project_id', 'version_id', 'content_hash']) {
+    if (typeof input[field] !== 'string' || !input[field]) throw new StoryWorkspaceError('STORY_WORKSPACE_CONTEXT_INCOMPLETE', `${field} is required for an exact Story workspace`, 400);
+  }
+  if (!Number.isInteger(input.ownership_revision) || input.ownership_revision < 1) throw new StoryWorkspaceError('STORY_WORKSPACE_CONTEXT_INCOMPLETE', 'ownership_revision is required for an exact HUMAN-owned Story workspace', 400);
   const context = controls.locateInvocation(options.root, input);
   if (input.task_id !== context.record.task_id || input.invocation_id !== context.invocationId) throw new StoryWorkspaceError('STORY_WORKSPACE_CONTEXT_MISMATCH', 'task or invocation does not match the exact Story work unit', 400);
   return context;
@@ -27,10 +31,10 @@ function buildStoryWorkspace(input, options = {}) {
   const context = exact(input, options);
   const owner = ownership.readOwnership(context.root, { run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id });
   const manual = manualEdit.registered(context);
-  if (input.ownership_revision != null && Number(input.ownership_revision) !== owner.revision) throw new StoryWorkspaceError('STORY_WORKSPACE_OWNERSHIP_STALE', 'ownership revision changed', 409);
-  if (input.project_id && input.project_id !== manual.value.project_id) throw new StoryWorkspaceError('STORY_WORKSPACE_CONTEXT_MISMATCH', 'project identity mismatch', 400);
-  if (input.version_id && input.version_id !== manual.value.version_id) throw new StoryWorkspaceError('STORY_WORKSPACE_CONTEXT_MISMATCH', 'version identity mismatch', 400);
-  if (input.content_hash && input.content_hash !== manual.value.content_hash) throw new StoryWorkspaceError('STORY_WORKSPACE_CONTEXT_MISMATCH', 'Story content identity mismatch', 400);
+  if (input.ownership_revision !== owner.revision) throw new StoryWorkspaceError('STORY_WORKSPACE_OWNERSHIP_STALE', 'ownership revision changed', 409);
+  if (input.project_id !== manual.value.project_id) throw new StoryWorkspaceError('STORY_WORKSPACE_CONTEXT_MISMATCH', 'project identity mismatch', 400);
+  if (input.version_id !== manual.value.version_id) throw new StoryWorkspaceError('STORY_WORKSPACE_CONTEXT_MISMATCH', 'version identity mismatch', 400);
+  if (input.content_hash !== manual.value.content_hash) throw new StoryWorkspaceError('STORY_WORKSPACE_CONTEXT_MISMATCH', 'Story content identity mismatch', 400);
   const projection = editContract.project({ task: context.task, story: manual.value, ownership: owner,
     title: projectTitle(context.task), operational_rationale: context.invocation.operational_rationale || null,
     scriptBuilderUrl: options.scriptBuilderUrl || 'http://127.0.0.1:8030/' });

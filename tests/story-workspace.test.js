@@ -25,7 +25,7 @@ test('SW3 Story workspace UI is exact-identity driven and keeps authority identi
   const html = fs.readFileSync(path.join(__dirname, '..', 'story-editor-workspace.html'), 'utf8');
   for (const text of ['Sentence edit contract', 'HUMAN_EDITABLE', 'RESEARCH_BOUND', 'REQUIRES_RESEARCH_OR_SPECIALIST',
     'Open exact version in Script Builder', 'Manual edit history', 'Preview Return to Automation', 'Technical details']) assert.match(html, new RegExp(text));
-  assert.match(html, /Exact run, agent, task and invocation are required/);
+  assert.match(html, /Exact run, agent, task, invocation, ownership revision, project, version and content identity are required/);
   assert.doesNotMatch(html, /contenteditable|generic JSON editor/i);
   assert.match(html, /manual-edit-recovery\/preview/);
   assert.match(html, /manual-edit-recovery\/apply/);

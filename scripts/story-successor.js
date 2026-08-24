@@ -117,6 +117,7 @@ function currentManualArtifact(context, metadata, base) {
     relative_path: `script-builder://${value.project_id}/${value.version_id}`,
     workspace: {
       kind: 'SCRIPT_BUILDER', project_id: value.project_id, version_id: value.version_id,
+      content_hash: value.content_hash,
       path: null, url: `http://127.0.0.1:8030/?project_id=${encodeURIComponent(value.project_id)}&version_id=${encodeURIComponent(value.version_id)}`,
       instruction: `Open exact Script Builder project ${value.project_id} at version ${value.version_id}, edit, Snapshot, then register that immutable snapshot in the Story workspace.`,
     },
