@@ -79,7 +79,8 @@ function verifyState(doc, target, actionLedger) {
         || action.target_task_id !== target.task_id || action.target_invocation_id !== record.originating_invocation_id
         || action.result_status !== 'COMPLETED' || action.resulting_execution_owner !== record.current_owner
         || action.prior_execution_owner !== record.prior_owner
-        || !['TAKE_MANUAL_CONTROL', 'RETURN_TO_AUTOMATION', 'SUSPEND_AUTOMATION'].includes(action.action)) {
+        || !['TAKE_MANUAL_CONTROL', 'RETURN_TO_AUTOMATION', 'SUSPEND_AUTOMATION', 'EDIT_MANUAL_ARTIFACT'].includes(action.action)
+        || (action.action === 'EDIT_MANUAL_ARTIFACT' && (record.current_owner !== 'HUMAN' || record.prior_owner !== 'HUMAN'))) {
       throw new OwnershipError('OWNERSHIP_LEDGER_REFERENCE_INVALID', `ownership revision ${index + 1} is not backed by its operator action`);
     }
     if (record.successor != null) {
@@ -183,4 +184,56 @@ function transition(root, input, options = {}) {
   } finally { release(paths); }
 }
 
-module.exports = { SCHEMA_VERSION, OWNERS, SCOPE, OwnershipError, targetIdentity, pathsFor, hashRecord, initialState, ownershipHistoryForTarget, verifyState, readOwnership, assertAutomationAllowed, transition };
+// Record a mutation performed inside an already HUMAN-owned work unit. This is
+// an ownership revision, not an ownership transfer: it advances the durable
+// state/ledger/anchor triple so an edit cannot silently detach the anchor or
+// leave a previously issued return preview current.
+function recordHumanOwnedMutation(root, input, options = {}) {
+  const paths = pathsFor(root, input); acquire(paths);
+  try {
+    if (!fs.existsSync(paths.statePath)) throw new OwnershipError('OWNERSHIP_REQUIRED_MISSING', 'bounded mutation requires durable ownership state');
+    const actionLedgerBefore = ledger.readLedger(paths.root, paths.target.run_id);
+    const current = verifyState(JSON.parse(fs.readFileSync(paths.statePath, 'utf8')), paths.target, actionLedgerBefore);
+    authorityAnchor.assertStateAnchored(paths.root, paths.target, current, actionLedgerBefore);
+    if (current.current_owner !== 'HUMAN') throw new OwnershipError('AUTOMATION_FENCED', `bounded human mutation is unavailable while execution owner is ${current.current_owner}`);
+    if (input.expected_revision !== current.revision || input.expected_state_hash !== current.current_state_hash) {
+      throw new OwnershipError('OWNERSHIP_STALE', 'ownership revision changed since edit preview');
+    }
+    const normalizedReason = String(input.reason || '').replace(/\s+/g, ' ').trim();
+    if (!normalizedReason || normalizedReason.length > 600 || !HASH_RE.test(String(input.task_sha256 || ''))
+        || !HASH_RE.test(String(input.predecessor_artifact_sha256 || '')) || !HASH_RE.test(String(input.resulting_artifact_sha256 || ''))) {
+      throw new OwnershipError('OWNERSHIP_TRANSITION_INVALID', 'bounded mutation reason or hashes are invalid');
+    }
+    ledger.validateActor(options.actor);
+    const recordId = options.recordId || `operator-action-${crypto.randomUUID()}`;
+    safeId(recordId, 'actor_action_record_id');
+    const actionInput = {
+      action: 'EDIT_MANUAL_ARTIFACT', target_agent_role: paths.target.agent_id,
+      target_invocation_id: safeId(input.originating_invocation_id, 'originating_invocation_id'),
+      target_task_id: paths.target.task_id,
+      target_artifact: { artifact_id: safeId(input.artifact_id, 'artifact_id'), sha256: input.predecessor_artifact_sha256 },
+      action_scope: 'TASK_WORK_UNIT_EDIT', reason: normalizedReason,
+      requested_parameters: input.requested_parameters || {}, result_details: input.result_details || null,
+      prior_execution_owner: 'HUMAN', resulting_execution_owner: 'HUMAN', supersedes: null, result_status: 'COMPLETED',
+    };
+    const record = {
+      schema_version: SCHEMA_VERSION, target: paths.target, current_owner: 'HUMAN', prior_owner: 'HUMAN',
+      revision: current.revision + 1, changed_at: options.now || new Date().toISOString(), actor_action_record_id: recordId,
+      reason: normalizedReason,
+      input_hashes: { task_sha256: input.task_sha256, artifact_sha256: input.resulting_artifact_sha256 },
+      originating_invocation_id: input.originating_invocation_id, previous_state_hash: current.current_state_hash, successor: null,
+    };
+    record.state_hash = hashRecord(record);
+    const next = { ...current, current_owner: 'HUMAN', revision: record.revision, current_state_hash: record.state_hash, history: current.history.concat(record) };
+    writeAtomic(paths.statePath, next);
+    const append = options.appendAction || ledger.appendOperatorAction;
+    const action = append(paths.root, paths.target.run_id, actionInput, { actor: options.actor, now: options.now, recordId });
+    const actionLedger = ledger.readLedger(paths.root, paths.target.run_id);
+    verifyState(next, paths.target, actionLedger);
+    authorityAnchor.recordOwnershipTransition(paths.root, paths.target, next, actionLedger, { now: options.now });
+    authorityAnchor.assertStateAnchored(paths.root, paths.target, next, actionLedger);
+    return { state: next, record, action_record: action.record, state_path: path.relative(paths.root, paths.statePath) };
+  } finally { release(paths); }
+}
+
+module.exports = { SCHEMA_VERSION, OWNERS, SCOPE, OwnershipError, targetIdentity, pathsFor, hashRecord, initialState, ownershipHistoryForTarget, verifyState, readOwnership, assertAutomationAllowed, transition, recordHumanOwnedMutation };

@@ -6,6 +6,8 @@ const { assert, fs, os, path, test, packageEngineServer } = require('./_helpers.
 const workspace = require('../scripts/visual-planning-workspace.js');
 const workspaceContract = require('../scripts/visual-planning-workspace-contract.js');
 const controls = require('../scripts/agent-controls.js');
+const ownership = require('../scripts/execution-ownership.js');
+const ledger = require('../scripts/operator-action-ledger.js');
 const workspaceFixture = require('./fixtures/visual-planning-workspace-v1.js');
 
 const SOURCE_RUN = workspaceFixture.RUN_ID;
@@ -72,6 +74,25 @@ function requestJson(server, pathname) {
     });
     req.on('error', reject);
     req.end();
+  });
+}
+
+function postJson(server, pathname, body) {
+  return new Promise((resolve, reject) => {
+    const address = server.address();
+    const bytes = Buffer.from(JSON.stringify({ ...body, localWriteNonce: packageEngineServer.localWriteNonce() }));
+    const req = http.request({ hostname: '127.0.0.1', port: address.port, path: pathname, method: 'POST', headers: {
+      Host: '127.0.0.1:8010', 'Content-Type': 'application/json', 'Content-Length': bytes.length,
+      [packageEngineServer.LOCAL_WRITE_NONCE_HEADER]: packageEngineServer.localWriteNonce(),
+    } }, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => {
+        try { resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString('utf8')) }); }
+        catch (error) { reject(error); }
+      });
+    });
+    req.on('error', reject); req.end(bytes);
   });
 }
 
@@ -314,5 +335,34 @@ test('HTTP workspace route returns one complete bounded payload for the stable f
     const malformed = await requestJson(server, `${packageEngineServer.VISUAL_PLANNING_WORKSPACE_API}?${query}&workspace_schema_version=one`);
     assert.equal(malformed.status, 400);
     assert.equal(malformed.body.code, 'WORKSPACE_SCHEMA_VERSION_INVALID');
+  } finally { await new Promise((resolve) => server.close(resolve)); }
+});
+
+test('HTTP bounded edit preview/apply accepts only exact HUMAN-owned creative patch', async () => {
+  const f = fixture();
+  const actor = ledger.localActorContext({ username: 'mikko' });
+  const takeover = controls.previewTakeManualControl({ ...f.request, reason: 'HTTP bounded edit test.' }, { root: f.root });
+  controls.applyTakeManualControl({ ...f.request, reason: 'HTTP bounded edit test.', preview_token: takeover.preview_token }, { root: f.root, actor });
+  const owner = ownership.readOwnership(f.root, f.request);
+  const humanWorkspace = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root });
+  const base = { ...f.request, expected_ownership_revision: owner.revision, expected_artifact_sha256: humanWorkspace.visual_plan.sha256,
+    reason: 'Clarify the opening shot through the bounded HTTP contract.', creative_patch: { shot_edits: [{ shot_ref: f.plan.shots[0].shot_id,
+      set: { shot_brief: 'An operator-guided editorial view of a completed workstation render.' } }] } };
+  const server = packageEngineServer.createServer({ root: f.root, agentSuccessorValidation: { currentStory: f.plan.story } });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const preview = await postJson(server, packageEngineServer.VISUAL_PLANNING_EDIT_PREVIEW_API, base);
+    assert.equal(preview.status, 200);
+    assert.equal(preview.body.data.eligible, true);
+    const apply = await postJson(server, packageEngineServer.VISUAL_PLANNING_EDIT_APPLY_API, { ...base,
+      preview_token: preview.body.data.preview_token, preview_created_at: preview.body.data.preview_created_at });
+    assert.equal(apply.status, 200);
+    assert.equal(apply.body.data.execution_owner, 'HUMAN');
+    assert.equal(apply.body.data.plan_revision, 2);
+    const forbidden = await postJson(server, packageEngineServer.VISUAL_PLANNING_EDIT_PREVIEW_API, { ...base,
+      expected_ownership_revision: apply.body.data.ownership_revision, expected_artifact_sha256: apply.body.data.artifact_sha256,
+      creative_patch: { shot_edits: [{ shot_ref: apply.body.data.creative_changes[0].shot_ref, set: { plan_digest_sha256: '0'.repeat(64) } }] } });
+    assert.equal(forbidden.status, 400);
+    assert.equal(forbidden.body.code, 'VISUAL_PLAN_EDIT_FIELD_FORBIDDEN');
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });

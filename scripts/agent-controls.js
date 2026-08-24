@@ -233,9 +233,15 @@ function applyTakeManualControl(input, options = {}) {
 async function previewReturnToAutomation(input, options = {}) {
   const context = locateInvocation(options.root, input), normalizedReason = reason(input.reason);
   assertManualControlSpecialist(context.agentId);
+  const manualPaths = successor.manualPaths(context.root, { run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id });
+  if (fs.existsSync(`${manualPaths.artifactPath}.edit.lock`)) {
+    throw new AgentControlError('MANUAL_ARTIFACT_BUSY', 'bounded manual artifact edit is still applying');
+  }
   const owner = ownershipFor(context), manual = successor.readManualArtifact(context), currentLedger = ledger.readLedger(context.root, context.runId);
   if (owner.current_owner !== 'HUMAN') throw new AgentControlError('OWNERSHIP_TRANSITION_INVALID', `current execution owner is ${owner.current_owner}`);
-  const taken = owner.history.at(-1), artifactChanged = taken.input_hashes.artifact_sha256 !== manual.sha256;
+  const taken = owner.history.slice().reverse().find((record) => record.current_owner === 'HUMAN' && record.prior_owner !== 'HUMAN');
+  if (!taken) throw new AgentControlError('OWNERSHIP_LEDGER_REFERENCE_INVALID', 'HUMAN ownership has no attributable takeover transition');
+  const artifactChanged = taken.input_hashes.artifact_sha256 !== manual.sha256;
   const createdAt = input.preview_created_at || options.now || new Date().toISOString();
   const proposal = artifactChanged ? successor.buildProposal(context, owner, manual, { ...(options.successorValidation || {}), createdAt, reason: normalizedReason }) : null;
   const validation = artifactChanged ? proposal.validation : { valid: true, validator_id: 'UNCHANGED_BYTES', reason_codes: [], reason: 'Artifact bytes are unchanged.' };

@@ -28,6 +28,7 @@ const packageRunArchiveAuthority = require('./scripts/package-run-archive-author
 const executionOwnershipAuthorityAnchor = require('./scripts/execution-ownership-authority-anchor.js');
 const successorTaskContract = require('./scripts/successor-task-contract.js');
 const visualPlanningWorkspace = require('./scripts/visual-planning-workspace.js');
+const visualPlanningManualEdit = require('./scripts/visual-planning-manual-edit.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
@@ -12853,6 +12854,8 @@ const AGENT_RETURN_PREVIEW_API = '/api/agent-control-room/return-to-automation/p
 const AGENT_RETURN_APPLY_API = '/api/agent-control-room/return-to-automation/apply';
 const AGENT_MANUAL_ARTIFACT_API = '/api/agent-control-room/manual-artifact';
 const VISUAL_PLANNING_WORKSPACE_API = '/api/visual-planning-workspace';
+const VISUAL_PLANNING_EDIT_PREVIEW_API = '/api/visual-planning-workspace/manual-edit/preview';
+const VISUAL_PLANNING_EDIT_APPLY_API = '/api/visual-planning-workspace/manual-edit/apply';
 
 function defaultAgentCancellationProvider() {
   return cancellationAdapters.createProvider({
@@ -18337,6 +18340,24 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && [VISUAL_PLANNING_EDIT_PREVIEW_API, VISUAL_PLANNING_EDIT_APPLY_API].includes(url.pathname)) {
+      readJsonBody(req, 1024 * 64)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Visual Planning bounded edit' });
+          const options = {
+            root: serverOptions.root || ROOT,
+            actor: operatorActionLedger.localActorContext(),
+            successorValidation: serverOptions.agentSuccessorValidation,
+          };
+          return url.pathname === VISUAL_PLANNING_EDIT_PREVIEW_API
+            ? visualPlanningManualEdit.previewVisualPlanManualEdit(payload, options)
+            : visualPlanningManualEdit.applyVisualPlanManualEdit(payload, options);
+        })
+        .then((payload) => sendJSON(res, 200, payload))
+        .catch((error) => sendError(res, error.statusCode || 409, error.message, error.code || 'visual-planning-edit-error'));
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === AGENT_MANUAL_ARTIFACT_API) {
       try {
         const runId = url.searchParams.get('run_id') || '';
@@ -19875,6 +19896,8 @@ module.exports = {
   API_PREFIX,
   AGENT_CONTROL_ROOM_API,
   VISUAL_PLANNING_WORKSPACE_API,
+  VISUAL_PLANNING_EDIT_PREVIEW_API,
+  VISUAL_PLANNING_EDIT_APPLY_API,
   AGENT_WORKFLOW_MAP_API,
   AGENT_RETRY_PREVIEW_API,
   AGENT_RETRY_APPLY_API,

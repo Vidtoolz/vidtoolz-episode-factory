@@ -316,6 +316,10 @@ function ownershipProjection(context, options = {}) {
     capabilities: {
       take_manual_control: { allowed: manual.take_manual_control === true, reason: manual.take_manual_control ? null : manual.reason || 'NOT_ELIGIBLE' },
       return_to_automation: { allowed: manual.return_to_automation === true, reason: manual.return_to_automation ? null : manual.reason || 'NOT_ELIGIBLE' },
+      bounded_creative_edit: {
+        allowed: state.current_owner === 'HUMAN' && Boolean(manual.manual_artifact),
+        reason: state.current_owner === 'HUMAN' && manual.manual_artifact ? null : 'VISUAL_PLAN_EDIT_REQUIRES_HUMAN_OWNERSHIP',
+      },
       retry,
       cancel,
     },
@@ -374,12 +378,34 @@ async function buildVisualPlanningWorkspace(request, options = {}) {
   if (!validation.structurally_valid) fail('WORKSPACE_VISUAL_PLAN_INVALID', 'canonical Visual Plan failed structural validation');
   const queue = decisionQueueProjection(root, registry, context, artifact, options);
   const ownership = ownershipProjection(context, options);
+  let displayedArtifact = artifact;
+  if (ownership.current_owner === 'HUMAN' && ownership.manual_artifact) {
+    let manual;
+    try { manual = successorTaskContract.readManualArtifact(context); }
+    catch (error) { fail(error.code || 'WORKSPACE_MANUAL_ARTIFACT_INVALID', error.message); }
+    const manualValidation = visualPlan.validatePlan(manual.value, { currentStory: context.task.story || artifact.value.story });
+    const manualIsOriginal = manual.sha256 === manual.metadata.source_artifact_sha256;
+    const manualLineage = manualIsOriginal ? { valid: true } : visualPlan.validateSuccessorPlan(artifact.value, manual.value);
+    if (!manualValidation.structurally_valid || !manualLineage.valid) {
+      fail('WORKSPACE_MANUAL_ARTIFACT_INVALID', 'HUMAN-owned Visual Plan is not a valid bounded-edit artifact');
+    }
+    displayedArtifact = { binding: artifact.binding, artifactPath: manual.paths.artifactPath, bytes: manual.bytes,
+      value: manual.value, sha256: manual.sha256, manual: true, source_sha256: manual.metadata.source_artifact_sha256 };
+    if (!manualIsOriginal) {
+      ownership.stale_approvals = [APPROVAL_SCOPE];
+      ownership.stale_gates = [APPROVAL_SCOPE];
+    }
+  }
   const snapshot = options.liveResourceProvider ? await options.liveResourceProvider([{
     agent_id: context.agentId, runtime_active: context.runtime_status === 'RUNNING',
     lane: result.route?.lane || context.task?.lane || null,
     resource_dependency: context.task?.resource_dependency || null,
   }]) : null;
-  const artifactReference = path.relative(root, artifact.artifactPath);
+  const artifactReference = path.relative(root, displayedArtifact.artifactPath);
+  const displayValidation = visualPlan.validatePlan(displayedArtifact.value, { currentStory: context.task.story || artifact.value.story });
+  const approvalState = displayedArtifact.manual && displayedArtifact.sha256 !== artifact.sha256
+    ? { state: 'STALE', valid: false, reason_codes: ['MANUAL_ARTIFACT_CHANGED'] }
+    : result.authority?.approval || { state: 'INVALID', valid: false, reason_codes: ['PLAN_APPROVAL_MISSING'] };
   const payload = {
     workspace_schema_version: WORKSPACE_SCHEMA_VERSION,
     workspace_schema_id: WORKSPACE_SCHEMA_ID,
@@ -392,18 +418,19 @@ async function buildVisualPlanningWorkspace(request, options = {}) {
       lifecycle: registration.lifecycle, implementation_state: registration.implementation_state || registration.lifecycle?.implementation_state || null,
     },
     visual_plan: {
-      artifact_id: ARTIFACT_ID, artifact_reference: artifactReference, sha256: artifact.sha256,
-      plan_id: artifact.value.plan_id, plan_revision: artifact.value.plan_revision, plan_digest_sha256: artifact.value.plan_digest_sha256,
+      artifact_id: ARTIFACT_ID, artifact_reference: artifactReference, sha256: displayedArtifact.sha256,
+      plan_id: displayedArtifact.value.plan_id, plan_revision: displayedArtifact.value.plan_revision, plan_digest_sha256: displayedArtifact.value.plan_digest_sha256,
       story_dependency: {
-        project_id: artifact.value.story?.project_id || null, version_id: artifact.value.story?.version_id || null,
-        content_hash: artifact.value.story?.content_hash || null,
-        freshness_state: context.task?.story?.version_id === artifact.value.story?.version_id
-          && context.task?.story?.content_hash === artifact.value.story?.content_hash ? 'CURRENT' : 'UNKNOWN',
+        project_id: displayedArtifact.value.story?.project_id || null, version_id: displayedArtifact.value.story?.version_id || null,
+        content_hash: displayedArtifact.value.story?.content_hash || null,
+        freshness_state: context.task?.story?.version_id === displayedArtifact.value.story?.version_id
+          && context.task?.story?.content_hash === displayedArtifact.value.story?.content_hash ? 'CURRENT' : 'UNKNOWN',
       },
-      approval_state: result.authority?.approval || { state: 'INVALID', valid: false, reason_codes: ['PLAN_APPROVAL_MISSING'] },
-      gate_state: { gate: APPROVAL_SCOPE, state: result.authority?.state || artifact.value.lifecycle_state || UNKNOWN, authorization_ok: result.authority?.authorization_ok === true },
-      coverage: buildCoverage(artifact.value, validation),
-      shots: buildShots(artifact.value, result),
+      approval_state: approvalState,
+      gate_state: { gate: APPROVAL_SCOPE, state: displayedArtifact.manual && displayedArtifact.sha256 !== artifact.sha256 ? 'STALE' : result.authority?.state || displayedArtifact.value.lifecycle_state || UNKNOWN,
+        authorization_ok: displayedArtifact.manual && displayedArtifact.sha256 !== artifact.sha256 ? false : result.authority?.authorization_ok === true },
+      coverage: buildCoverage(displayedArtifact.value, displayValidation),
+      shots: buildShots(displayedArtifact.value, result),
     },
     human_attention: queue.obligations,
     queue_binding: queue.binding,
@@ -416,6 +443,8 @@ async function buildVisualPlanningWorkspace(request, options = {}) {
       takeover_apply: '/api/agent-control-room/take-manual-control/apply',
       return_preview: '/api/agent-control-room/return-to-automation/preview',
       return_apply: '/api/agent-control-room/return-to-automation/apply',
+      bounded_edit_preview: '/api/visual-planning-workspace/manual-edit/preview',
+      bounded_edit_apply: '/api/visual-planning-workspace/manual-edit/apply',
       manual_artifact_read: ownership.manual_artifact ? '/api/agent-control-room/manual-artifact' : null,
     },
   };

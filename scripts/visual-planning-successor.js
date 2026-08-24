@@ -105,8 +105,10 @@ function validateShape(value) {
 }
 
 function manualControlDetails(_context, artifact) {
-  return { artifact_path: artifact.relative_path, artifact_sha256: artifact.sha256, editing_method: 'TRUSTED_OS_FILE_REVEAL', workspace: null,
-    warning: 'Automation is fenced for this exact Visual Planning task. The cockpit does not edit artifact bytes.' };
+  return { artifact_path: artifact.relative_path, artifact_sha256: artifact.sha256, editing_method: 'SAFE_BOUNDED_EDITOR',
+    workspace: { kind: 'SAFE_BOUNDED_EDITOR', method: 'PREVIEW_APPLY', reference: artifact.relative_path,
+      preview_endpoint: '/api/visual-planning-workspace/manual-edit/preview', apply_endpoint: '/api/visual-planning-workspace/manual-edit/apply', write_api: 'BOUNDED_CREATIVE_FIELDS_ONLY' },
+    warning: 'Automation is fenced for this exact Visual Planning task. Creative fields are editable; machine metadata remains server authority.' };
 }
 
 module.exports = { AGENT_ID, VALIDATOR_ID, ARTIFACT_ID, REQUIRED_NEXT_GATE, REQUIRED_NEXT_SPECIALIST, CONTINUATION_ACTION, POLICY_ID,

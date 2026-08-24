@@ -126,7 +126,8 @@ function buildProposal(context, owner, artifact, options = {}) {
   const relativeContract = path.relative(context.root, paths.contractPath);
   const task = adapter.buildTask(context, artifact.value, successorTaskId, relativeContract, artifact.sha256);
   const taskBytes = Buffer.from(`${JSON.stringify(task, null, 2)}\n`), taskSha = sha256(taskBytes);
-  const takeover = owner.history.slice().reverse().find((item) => item.current_owner === 'HUMAN');
+  const takeover = owner.history.slice().reverse().find((item) => item.current_owner === 'HUMAN' && item.prior_owner !== 'HUMAN');
+  if (!takeover) throw new SuccessorTaskError('SUCCESSOR_LEDGER_REFERENCE_INVALID', 'successor proposal has no attributable takeover transition');
   const contract = {
     schema_version: SCHEMA_VERSION, contract_type: 'successor-task-resumption', run_id: context.runId,
     agent_id: context.agentId, predecessor_task_id: context.record.task_id,
