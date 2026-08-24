@@ -7,7 +7,7 @@ const crypto = require('node:crypto');
 
 const DEFAULT_ROOT = path.resolve(__dirname, '..');
 const ATTENTION_PRIORITY = Object.freeze({ DECISION: 0, REVIEW: 1 });
-const IDLE_STATES = new Set(['COMPLETE', 'IDLE', 'READY', 'NO_RUNTIME_STATE', 'UNAVAILABLE']);
+const IDLE_STATES = new Set(['COMPLETE', 'IDLE', 'READY', 'NO_RUNTIME_STATE', 'UNAVAILABLE', 'PLANNED_NOT_ENABLED']);
 const JSON_READ_CAP = 16 * 1024 * 1024;
 const INDEX_READ_CAP = 4 * 1024 * 1024;
 
@@ -248,6 +248,26 @@ function modulePathFor(root, agentId) {
   return path.join(root, 'scripts', `${agentId.replaceAll('_', '-')}.js`);
 }
 
+// Registry presence proves doctrine, never executability. A role whose
+// lifecycle does not grant autonomous dispatch is never inspected, loaded, or
+// run by the read-only control room, and never presented as a live specialist.
+// A registration with no lifecycle block predates the lifecycle contract and
+// keeps its previous behavior; the contract validator is what forbids that.
+function dispatchEnabled(agent) {
+  const lifecycle = agent && typeof agent.lifecycle === 'object' && !Array.isArray(agent.lifecycle) ? agent.lifecycle : null;
+  if (!lifecycle) return true;
+  return lifecycle.proven === 'PROVEN' && lifecycle.autonomous_dispatch === 'ENABLED';
+}
+
+function notEnabledImplementation(root, agent) {
+  return {
+    state: 'DISPATCH_NOT_ENABLED', module_path: path.relative(root, modulePathFor(root, agent.agent_id)),
+    status_action_supported: false, control_room_view_supported: false,
+    reason: agent.lifecycle?.dispatch_blocked_reason
+      || 'Doctrine is registered but autonomous dispatch is not enabled for this role.',
+  };
+}
+
 function inspectImplementation(root, agent, options = {}) {
   const modulePath = modulePathFor(root, agent.agent_id);
   if (!fs.existsSync(modulePath)) {
@@ -411,6 +431,17 @@ function sortAgents(agents) {
 async function agentProjection(root, agent, inspected, runtimeContext, implementationsById, options) {
   const publicImplementation = { ...inspected };
   delete publicImplementation.implementation;
+  if (!dispatchEnabled(agent)) {
+    return {
+      ...unavailableProjection(agent, publicImplementation, 'PLANNED_NOT_ENABLED', publicImplementation.reason),
+      registry_status: 'DOCTRINE_REGISTERED',
+      lifecycle: {
+        doctrine: agent.lifecycle?.doctrine ?? null,
+        proven: agent.lifecycle?.proven ?? null,
+        autonomous_dispatch: agent.lifecycle?.autonomous_dispatch ?? null,
+      },
+    };
+  }
   if (runtimeContext) {
     const publicImplementations = new Map();
     for (const [id, value] of implementationsById) {
@@ -466,7 +497,10 @@ async function buildAgentControlRoom(options = {}) {
     ids.add(entry.agent_id);
     return { ...entry, registry_index: index };
   });
-  const implementationsById = new Map(registered.map((agent) => [agent.agent_id, inspectImplementation(root, agent, options)]));
+  const implementationsById = new Map(registered.map((agent) => [
+    agent.agent_id,
+    dispatchEnabled(agent) ? inspectImplementation(root, agent, options) : notEnabledImplementation(root, agent),
+  ]));
   const { latestByAgent, discovery } = discoverRunnerContexts(root, ids);
   const agents = sortAgents(await Promise.all(registered.map((agent) => agentProjection(
     root, agent, implementationsById.get(agent.agent_id), latestByAgent.get(agent.agent_id), implementationsById, options,
@@ -494,7 +528,10 @@ async function buildAgentControlRoom(options = {}) {
       } : null,
     },
     summary: {
-      counts, decision: agents.filter((a) => a.attention === 'DECISION').length,
+      counts,
+      dispatch_enabled: agents.filter((a) => a.state !== 'PLANNED_NOT_ENABLED').length,
+      doctrine_only: agents.filter((a) => a.state === 'PLANNED_NOT_ENABLED').length,
+      decision: agents.filter((a) => a.attention === 'DECISION').length,
       review: agents.filter((a) => a.attention === 'REVIEW').length,
       unavailable: agents.filter((a) => a.state === 'UNAVAILABLE').length,
       runtime_state_missing: agents.filter((a) => a.state === 'NO_RUNTIME_STATE').length,

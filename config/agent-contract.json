@@ -510,6 +510,32 @@
       "What happens next?"
     ]
   },
+  "lifecycle_classification": {
+    "principle": "Doctrine completeness and executability are different facts and must never be inferred from each other. This contract classifies lifecycle; the registry is the doctrine home; only the registry lifecycle block grants execution.",
+    "canonical_role_count": 12,
+    "states": {
+      "doctrine_defined": "The registry carries this role's complete operating doctrine. A documentation fact, never an execution permission.",
+      "proven": "This contract classifies the role BUILT after it has been implemented and demonstrated.",
+      "enabled": "autonomous_dispatch is ENABLED in the registry. Human-authorized, and required before the agent runner will dispatch the role at all."
+    },
+    "status_map": {
+      "BUILT": {
+        "registry_proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED"
+      },
+      "PLANNED": {
+        "registry_proven": "NOT_PROVEN",
+        "autonomous_dispatch": "DISABLED"
+      },
+      "PLANNED_LAST": {
+        "registry_proven": "NOT_PROVEN",
+        "autonomous_dispatch": "DISABLED"
+      }
+    },
+    "doctrine_completeness_invariant": "Every role_roster role_id has exactly one registry agent entry, whether BUILT or PLANNED. A validator PASS therefore means the canonical 12-role authority architecture is structurally complete — not merely that today's proven agents are represented.",
+    "enablement_authority": "Mikko. A PLANNED role with complete doctrine is still refused at dispatch (BLOCKED_AGENT_NOT_ENABLED); doctrine never self-promotes into autonomy.",
+    "registry_exclusivity": "The registry contains role_roster roles and nothing else. Hermes and Knowledge Steward are non-specialist roles defined only in this contract and must never be registered as agents."
+  },
   "build_order": [
     "sound_music_director",
     "research_director",

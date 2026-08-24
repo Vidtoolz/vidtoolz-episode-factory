@@ -11,6 +11,8 @@ const contract = require('../config/agent-contract.json');
 const registry = require('../config/agent-registry.json');
 
 const base = () => JSON.parse(JSON.stringify(contract));
+const baseRegistry = () => JSON.parse(JSON.stringify(registry));
+const registered = (reg, id) => reg.agents.find((a) => a.agent_id === id);
 
 test('AC1: canonical contract validates against the live registry', () => {
   const result = validator.validateContract(contract, registry);
@@ -192,4 +194,229 @@ test('AC18: 14-gate lifecycle is canonical; trackers are projections', () => {
   assert.ok(/14/.test(contract.lifecycle_authority.canonical));
   assert.ok(contract.lifecycle_authority.projections.some((p) => /pipeline-tracker/.test(p)));
   assert.ok(/never become a competing source of truth/.test(contract.lifecycle_authority.rule));
+});
+
+test('AC19: every canonical roster role has a registry doctrine entry', () => {
+  const rosterIds = contract.role_roster.map((r) => r.role_id);
+  assert.equal(rosterIds.length, contract.lifecycle_classification.canonical_role_count);
+  const ids = new Set(registry.agents.map((a) => a.agent_id));
+  for (const id of rosterIds) assert.ok(ids.has(id), `roster role ${id} has no registry doctrine`);
+  // Registry holds exactly the roster: no extra roles, no missing doctrine.
+  assert.equal(registry.agents.length, rosterIds.length);
+  const result = validator.validateContract(contract, registry);
+  assert.equal(result.summary.doctrine_complete, true);
+  assert.equal(result.summary.canonical_roles, 12);
+  // A PASS means structural completeness, not "the proven agents are present".
+  assert.equal(result.summary.registered_doctrine, 12);
+});
+
+test('AC20: a PLANNED role missing its doctrine entry is rejected', () => {
+  const tampered = baseRegistry();
+  tampered.agents = tampered.agents.filter((a) => a.agent_id !== 'creative_director');
+  const r = validator.validateContract(contract, tampered);
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => /planned roster role "creative_director".*no registry doctrine entry/.test(e)));
+  assert.equal(r.summary.doctrine_complete, false);
+});
+
+test('AC21: a PROVEN role missing its doctrine entry is rejected', () => {
+  const tampered = baseRegistry();
+  tampered.agents = tampered.agents.filter((a) => a.agent_id !== 'audience_packaging_director');
+  const r = validator.validateContract(contract, tampered);
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => /proven roster role "audience_packaging_director".*no registry doctrine entry/.test(e)));
+});
+
+test('AC22: complete doctrine never implies autonomous enablement', () => {
+  for (const id of ['presenter_director', 'creative_director']) {
+    const agent = registered(registry, id);
+    assert.equal(agent.lifecycle.doctrine, 'DEFINED', `${id} doctrine must be DEFINED`);
+    assert.equal(agent.lifecycle.proven, 'NOT_PROVEN');
+    assert.equal(agent.lifecycle.autonomous_dispatch, 'DISABLED');
+    assert.ok(agent.lifecycle.dispatch_blocked_reason, `${id} must say why dispatch is refused`);
+    assert.equal(validator.isEnabled(agent), false);
+    // Doctrine completeness is real: the entry is a full operating doctrine.
+    assert.ok(agent.mission && agent.allowed_actions.length && agent.prohibited_actions.length);
+  }
+  const s = validator.validateContract(contract, registry).summary;
+  assert.deepEqual(s.doctrine_only, ['presenter_director', 'creative_director']);
+  assert.equal(s.enabled_for_dispatch.length, 10);
+  for (const id of ['presenter_director', 'creative_director']) {
+    assert.ok(!s.enabled_for_dispatch.includes(id), `${id} must not be dispatch-enabled`);
+  }
+  // Self-promotion to ENABLED while NOT_PROVEN is rejected
+  const tampered = baseRegistry();
+  registered(tampered, 'creative_director').lifecycle.autonomous_dispatch = 'ENABLED';
+  const r = validator.validateContract(contract, tampered);
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => /NOT_PROVEN but autonomous_dispatch is not DISABLED/.test(e)));
+});
+
+test('AC23: registry lifecycle must agree with contract lifecycle status', () => {
+  // Claiming PROVEN/ENABLED for a contract-PLANNED role is rejected
+  const promoted = baseRegistry();
+  registered(promoted, 'creative_director').lifecycle = {
+    doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED',
+  };
+  const r1 = validator.validateContract(contract, promoted);
+  assert.equal(r1.ok, false);
+  assert.ok(r1.errors.some((e) => /contract status PLANNED_LAST requires NOT_PROVEN/.test(e)));
+  // A registration with no lifecycle block at all is rejected
+  const stripped = baseRegistry();
+  delete registered(stripped, 'editor').lifecycle;
+  const r2 = validator.validateContract(contract, stripped);
+  assert.equal(r2.ok, false);
+  assert.ok(r2.errors.some((e) => /"editor" has no lifecycle block/.test(e)));
+  // Demoting a BUILT role's dispatch is also a contradiction
+  const demoted = baseRegistry();
+  registered(demoted, 'editor').lifecycle.autonomous_dispatch = 'DISABLED';
+  const r3 = validator.validateContract(contract, demoted);
+  assert.equal(r3.ok, false);
+});
+
+test('AC24: only roster roles may be registered — Hermes and Knowledge Steward never are', () => {
+  const ids = new Set(registry.agents.map((a) => a.agent_id));
+  assert.ok(!ids.has('hermes'));
+  assert.ok(!ids.has('knowledge_steward'));
+  const rogue = baseRegistry();
+  rogue.agents.push({ agent_id: 'super_agent', name: 'Super Agent', escalation_rules: { AUTONOMOUS: 'everything' } });
+  const r1 = validator.validateContract(contract, rogue);
+  assert.equal(r1.ok, false);
+  assert.ok(r1.errors.some((e) => /unexpected registry role "super_agent"/.test(e)));
+  const steward = baseRegistry();
+  steward.agents.push({ agent_id: 'knowledge_steward', name: 'Knowledge Steward', escalation_rules: { AUTONOMOUS: 'x' } });
+  const r2 = validator.validateContract(contract, steward);
+  assert.equal(r2.ok, false);
+  assert.ok(r2.errors.some((e) => /knowledge_steward.*never be registered as an agent/.test(e)));
+});
+
+test('AC25: packaging escalation is mechanically structured, with prose semantics preserved', () => {
+  const ap = registered(registry, 'audience_packaging_director');
+  assert.equal(typeof ap.escalation_rules, 'object');
+  assert.ok(!Array.isArray(ap.escalation_rules));
+  assert.deepEqual(Object.keys(ap.escalation_rules).sort(), ['AUTONOMOUS', 'DECISION', 'INFORMATION', 'REVIEW']);
+  // The retired prose rule's meaning survives: Research return, Story return, human decision
+  assert.ok(/RETURN_TO_RESEARCH/.test(ap.escalation_rules.REVIEW));
+  assert.ok(/RETURN_TO_STORY/.test(ap.escalation_rules.REVIEW));
+  assert.ok(/NEEDS_HUMAN_DECISION/.test(ap.escalation_rules.DECISION));
+  assert.ok(/provocative framing/.test(ap.escalation_rules.DECISION));
+  // Regressing to a prose string is rejected
+  const tampered = baseRegistry();
+  registered(tampered, 'audience_packaging_director').escalation_rules =
+    'Misleading absolute framing returns to Research; provocative framing escalates to Mikko.';
+  const r = validator.validateContract(contract, tampered);
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => /escalation_rules must be a structured attention map, not prose/.test(e)));
+});
+
+test('AC26: every registered escalation level uses the one canonical attention taxonomy', () => {
+  assert.deepEqual(Object.keys(registry.attention_levels), validator.ATTENTION_LEVELS);
+  for (const agent of registry.agents) {
+    const rules = agent.escalation_rules;
+    assert.equal(typeof rules, 'object', `${agent.agent_id} escalation_rules must be structured`);
+    assert.ok(!Array.isArray(rules));
+    assert.ok(Object.keys(rules).length > 0, `${agent.agent_id} escalation_rules must not be empty`);
+    for (const [level, condition] of Object.entries(rules)) {
+      assert.ok(validator.ATTENTION_LEVELS.includes(level), `${agent.agent_id} level ${level} is not canonical`);
+      assert.equal(typeof condition, 'string');
+      assert.ok(condition.trim().length > 0, `${agent.agent_id}.${level} must be routable`);
+    }
+  }
+  // A second taxonomy is rejected, in an agent and in the registry header
+  const tamperedAgent = baseRegistry();
+  registered(tamperedAgent, 'editor').escalation_rules.URGENT = 'escalate loudly';
+  const r1 = validator.validateContract(contract, tamperedAgent);
+  assert.equal(r1.ok, false);
+  assert.ok(r1.errors.some((e) => /outside the canonical attention taxonomy/.test(e)));
+  const tamperedHeader = baseRegistry();
+  tamperedHeader.attention_levels.URGENT = 'a competing level';
+  const r2 = validator.validateContract(contract, tamperedHeader);
+  assert.equal(r2.ok, false);
+  assert.ok(r2.errors.some((e) => /second attention taxonomy/.test(e)));
+});
+
+test('AC27: Creative Director cannot acquire human-only decision authority', () => {
+  const cd = registered(registry, 'creative_director');
+  const prohibited = cd.prohibited_actions.join(' | ');
+  for (const humanOnly of [/greenlight/i, /final cut/i, /final music/i, /final title/i,
+    /final thumbnail/i, /publish/i, /record human approval/i]) {
+    assert.ok(humanOnly.test(prohibited), `creative_director must prohibit ${humanOnly.source}`);
+  }
+  // It must not absorb specialist responsibilities either (super-agent guard)
+  for (const specialist of [/shot prompts?/i, /camera mechanics/i, /research verdicts/i,
+    /QC verdicts/i, /generation backend/i, /specialist/i]) {
+    assert.ok(specialist.test(prohibited), `creative_director must disown ${specialist.source}`);
+  }
+  assert.ok(/recommendation/i.test(cd.synthesis_doctrine.recommendation_not_execution));
+  assert.ok(/built last|last by design/i.test(cd.synthesis_doctrine.built_last));
+  // Claiming a human-only action is rejected
+  const claiming = baseRegistry();
+  registered(claiming, 'creative_director').allowed_actions.push('approve the final cut');
+  const r1 = validator.validateContract(contract, claiming);
+  assert.equal(r1.ok, false);
+  assert.ok(r1.errors.some((e) => /claims a human-only action/.test(e)));
+  // Dropping a human-only prohibition is rejected
+  const weakened = baseRegistry();
+  const target = registered(weakened, 'creative_director');
+  target.prohibited_actions = target.prohibited_actions.filter((p) => !/publish/i.test(p));
+  const r2 = validator.validateContract(contract, weakened);
+  assert.equal(r2.ok, false);
+  assert.ok(r2.errors.some((e) => /must explicitly prohibit/.test(e)));
+});
+
+test('AC28: Presenter Director cannot acquire final approval or publication authority', () => {
+  const pd = registered(registry, 'presenter_director');
+  const prohibited = pd.prohibited_actions.join(' | ');
+  for (const humanOnly of [/greenlight/i, /final cut/i, /publication|publish/i, /record human approval/i]) {
+    assert.ok(humanOnly.test(prohibited), `presenter_director must prohibit ${humanOnly.source}`);
+  }
+  // Delivery authority must not become meaning, identity, or approval authority
+  assert.ok(/alter the canonical factual meaning/i.test(prohibited));
+  assert.ok(/impersonate/i.test(prohibited));
+  assert.ok(/fabricated human approval/i.test(prohibited));
+  assert.ok(/select the final take/i.test(prohibited));
+  assert.ok(/override Creative Director or human decisions/i.test(prohibited));
+  assert.equal(pd.human_gate_type, 'PRESENTER_PERFORMANCE_APPROVAL');
+  assert.ok(/never what it asserts/i.test(pd.performance_doctrine.meaning_is_not_delivery));
+  // Claiming publication is rejected
+  const claiming = baseRegistry();
+  registered(claiming, 'presenter_director').allowed_actions.push('publish the finished episode');
+  const r1 = validator.validateContract(contract, claiming);
+  assert.equal(r1.ok, false);
+  assert.ok(r1.errors.some((e) => /claims a human-only action/.test(e)));
+  // Dropping the publication prohibition is rejected
+  const weakened = baseRegistry();
+  const target = registered(weakened, 'presenter_director');
+  target.prohibited_actions = target.prohibited_actions.filter((p) => !/publication|publish/i.test(p));
+  const r2 = validator.validateContract(contract, weakened);
+  assert.equal(r2.ok, false);
+});
+
+test('AC29: no registered agent may claim any human-only decision', () => {
+  const humanOnly = contract.human_authority.exclusive_decisions;
+  assert.ok(humanOnly.includes('episode greenlight') && humanOnly.includes('publication'));
+  for (const agent of registry.agents) {
+    for (const action of agent.allowed_actions || []) {
+      assert.ok(!/\bgreenlight\b/i.test(action), `${agent.agent_id} claims greenlight`);
+      assert.ok(!/\bpublish\b(?!-gate)/i.test(action), `${agent.agent_id} claims publication`);
+      assert.ok(!/\brecord\b[^.]*\bhuman approval\b/i.test(action), `${agent.agent_id} claims approval recording`);
+    }
+  }
+  // Every agent carries an explicit publish prohibition, validator-enforced
+  for (const agent of registry.agents) {
+    assert.ok(agent.prohibited_actions.some((p) => /publish/i.test(p)),
+      `${agent.agent_id} must explicitly prohibit publishing`);
+  }
+  const unprohibited = baseRegistry();
+  const target = registered(unprohibited, 'presenter_director');
+  target.prohibited_actions = target.prohibited_actions.filter((p) => !/publish/i.test(p));
+  const rp = validator.validateContract(contract, unprohibited);
+  assert.equal(rp.ok, false);
+  assert.ok(rp.errors.some((e) => /lacks an explicit publish prohibition/.test(e)));
+  // The roster count is contract-declared, not validator-hardcoded
+  const shrunk = base();
+  shrunk.role_roster = shrunk.role_roster.filter((r) => r.role_id !== 'creative_director');
+  const r = validator.validateContract(shrunk, registry);
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => /canonical_role_count/.test(e)));
 });

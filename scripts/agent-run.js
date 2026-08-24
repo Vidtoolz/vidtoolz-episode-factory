@@ -75,6 +75,22 @@ function resolveAgent(repoRoot, agentId, options = {}) {
   const registration = registry.agents.find((agent) => agent.agent_id === agentId);
   if (!registration) throw new RunnerError('RUNNER_AGENT_UNKNOWN', `agent is not registered: ${agentId}`);
 
+  // A registry entry proves doctrine, never executability. Dispatch requires an
+  // explicit human-authorized lifecycle; anything else is refused fail-closed
+  // before any module is resolved or loaded.
+  const lifecycle = registration.lifecycle;
+  if (!lifecycle || lifecycle.proven !== 'PROVEN' || lifecycle.autonomous_dispatch !== 'ENABLED') {
+    throw new RunnerError(
+      'BLOCKED_AGENT_NOT_ENABLED',
+      `registered doctrine exists but autonomous dispatch is not enabled: ${agentId}`,
+      {
+        proven: lifecycle?.proven ?? null,
+        autonomous_dispatch: lifecycle?.autonomous_dispatch ?? null,
+        reason: lifecycle?.dispatch_blocked_reason ?? 'agent registration carries no lifecycle block',
+      },
+    );
+  }
+
   const scriptsRoot = fs.realpathSync(path.join(repoRoot, 'scripts'));
   const conventional = path.join(scriptsRoot, `${agentId.replaceAll('_', '-')}.js`);
   if (!fs.existsSync(conventional)) {

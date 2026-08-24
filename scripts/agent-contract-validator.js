@@ -18,6 +18,51 @@ const REGISTRY_PATH = path.join(REPO_ROOT, "config", "agent-registry.json");
 const DISAGREEMENT_STATES = ["NONE", "RESOLVED_BY_CONTRACT", "NEEDS_SPECIALIST_REVIEW", "NEEDS_HUMAN_DECISION", "BLOCKED"];
 const ATTENTION_LEVELS = ["AUTONOMOUS", "INFORMATION", "REVIEW", "DECISION"];
 
+// Lifecycle: doctrine completeness, provenness, and executability are three
+// different facts. Contract status is the classification; the registry
+// lifecycle block is the only thing that grants dispatch.
+const DEFAULT_STATUS_MAP = {
+  BUILT: { registry_proven: "PROVEN", autonomous_dispatch: "ENABLED" },
+  PLANNED: { registry_proven: "NOT_PROVEN", autonomous_dispatch: "DISABLED" },
+  PLANNED_LAST: { registry_proven: "NOT_PROVEN", autonomous_dispatch: "DISABLED" },
+};
+const PROVEN_VALUES = ["PROVEN", "NOT_PROVEN"];
+const DISPATCH_VALUES = ["ENABLED", "DISABLED"];
+
+// An allowed_action may never claim a human-only decision, whatever the role.
+const FORBIDDEN_ALLOWED_ACTIONS = [
+  /\bgreenlight\b/i,
+  /\brecord\b[^.]*\bhuman approval\b/i,
+  /\bapprove\b[^.]*\b(final|publication|episode|greenlight)\b/i,
+  /\bpublish\b(?!-gate)/i,
+];
+
+// The two highest-risk roles must disown every human-only decision explicitly.
+const HUMAN_ONLY_GUARDS = {
+  creative_director: [
+    /greenlight/i, /final cut/i, /final music/i, /final title/i,
+    /final thumbnail/i, /publish/i, /record human approval/i,
+  ],
+  presenter_director: [
+    /greenlight/i, /final cut/i, /publication|publish/i, /record human approval/i,
+  ],
+};
+
+// Specialist responsibilities the Creative Director must not absorb.
+const CREATIVE_NON_ABSORPTION = [
+  /shot prompts?/i, /camera mechanics/i, /research verdicts/i,
+  /QC verdicts/i, /generation backend/i,
+];
+
+function lifecycleOf(agent) {
+  return agent && typeof agent.lifecycle === "object" && !Array.isArray(agent.lifecycle) ? agent.lifecycle : null;
+}
+
+function isEnabled(agent) {
+  const lifecycle = lifecycleOf(agent);
+  return Boolean(lifecycle && lifecycle.proven === "PROVEN" && lifecycle.autonomous_dispatch === "ENABLED");
+}
+
 function sha256(buf) {
   return crypto.createHash("sha256").update(buf).digest("hex");
 }
@@ -186,7 +231,154 @@ function validateContract(contract, registry) {
     if (a.agent_id === "hermes") add("hermes must never be registered as an agent");
   }
 
-  return { ok: errors.length === 0, errors, warnings };
+  // -------------------------------------------------------------------------
+  // Doctrine completeness. Every canonical roster role carries a registry
+  // doctrine entry regardless of lifecycle: registry presence proves doctrine,
+  // lifecycle decides executability. A PASS therefore means the canonical
+  // role architecture is structurally complete, not that today's proven
+  // agents happen to be represented.
+  // -------------------------------------------------------------------------
+  const lc = contract.lifecycle_classification || {};
+  const statusMap = lc.status_map || DEFAULT_STATUS_MAP;
+  const roster = contract.role_roster || [];
+  const registryById = new Map((registry.agents || []).map((a) => [a.agent_id, a]));
+  const nonAgentRoles = new Set(["hermes", "knowledge_steward"]);
+
+  if (!lc.doctrine_completeness_invariant) add("contract missing lifecycle_classification.doctrine_completeness_invariant");
+  if (typeof lc.canonical_role_count === "number" && roster.length !== lc.canonical_role_count) {
+    add(`role_roster holds ${roster.length} roles but canonical_role_count is ${lc.canonical_role_count}`);
+  }
+
+  for (const role of roster) {
+    const expected = statusMap[role.status];
+    const registered = registryById.get(role.role_id);
+    if (!registered) {
+      if (expected && expected.autonomous_dispatch === "ENABLED") {
+        add(`proven roster role "${role.role_id}" (status ${role.status}) has no registry doctrine entry`);
+      } else {
+        add(`planned roster role "${role.role_id}" (status ${role.status}) has no registry doctrine entry — roster roles carry doctrine regardless of lifecycle`);
+      }
+      continue;
+    }
+    const lifecycle = lifecycleOf(registered);
+    if (!lifecycle) {
+      add(`registry role "${role.role_id}" has no lifecycle block; doctrine presence must never imply enablement`);
+      continue;
+    }
+    if (lifecycle.doctrine !== "DEFINED") add(`registry role "${role.role_id}" lifecycle.doctrine must be DEFINED`);
+    if (!PROVEN_VALUES.includes(lifecycle.proven)) {
+      add(`registry role "${role.role_id}" lifecycle.proven must be one of ${PROVEN_VALUES.join(" | ")}`);
+    }
+    if (!DISPATCH_VALUES.includes(lifecycle.autonomous_dispatch)) {
+      add(`registry role "${role.role_id}" lifecycle.autonomous_dispatch must be one of ${DISPATCH_VALUES.join(" | ")}`);
+    }
+    if (lifecycle.proven === "NOT_PROVEN" && lifecycle.autonomous_dispatch !== "DISABLED") {
+      add(`registry role "${role.role_id}" is NOT_PROVEN but autonomous_dispatch is not DISABLED — doctrine must never self-promote into autonomy`);
+    }
+    if (!expected) {
+      add(`roster role "${role.role_id}" has unmapped lifecycle status ${role.status}`);
+    } else {
+      if (lifecycle.proven !== expected.registry_proven) {
+        add(`registry role "${role.role_id}" is ${lifecycle.proven} but contract status ${role.status} requires ${expected.registry_proven}`);
+      }
+      if (lifecycle.autonomous_dispatch !== expected.autonomous_dispatch) {
+        add(`registry role "${role.role_id}" dispatch ${lifecycle.autonomous_dispatch} contradicts contract status ${role.status} (expected ${expected.autonomous_dispatch})`);
+      }
+    }
+    if (lifecycle.autonomous_dispatch === "DISABLED" && !lifecycle.dispatch_blocked_reason) {
+      add(`registry role "${role.role_id}" is dispatch-DISABLED without a dispatch_blocked_reason`);
+    }
+  }
+
+  // Registry exclusivity: only roster roles are agents.
+  const rosterRoleIds = new Set(roster.map((r) => r.role_id));
+  for (const a of registry.agents || []) {
+    if (a.agent_id === "knowledge_steward") {
+      add("knowledge_steward is a non-specialist contract role and must never be registered as an agent");
+    } else if (!rosterRoleIds.has(a.agent_id) && !nonAgentRoles.has(a.agent_id)) {
+      add(`unexpected registry role "${a.agent_id}" is not in the canonical role_roster`);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Escalation rules must be mechanically routable for every registered role:
+  // a structured map keyed only by the canonical attention taxonomy.
+  // -------------------------------------------------------------------------
+  for (const a of registry.agents || []) {
+    const rules = a.escalation_rules;
+    if (rules === undefined) {
+      add(`registry role "${a.agent_id}" has no escalation_rules`);
+      continue;
+    }
+    if (typeof rules === "string" || typeof rules !== "object" || Array.isArray(rules)) {
+      add(`registry role "${a.agent_id}" escalation_rules must be a structured attention map, not prose`);
+      continue;
+    }
+    const keys = Object.keys(rules);
+    if (!keys.length) add(`registry role "${a.agent_id}" escalation_rules is empty`);
+    for (const key of keys) {
+      if (!ATTENTION_LEVELS.includes(key)) {
+        add(`registry role "${a.agent_id}" escalation level "${key}" is outside the canonical attention taxonomy (${ATTENTION_LEVELS.join(" | ")})`);
+      }
+      if (typeof rules[key] !== "string" || !rules[key].trim()) {
+        add(`registry role "${a.agent_id}" escalation level "${key}" has no routable condition`);
+      }
+    }
+  }
+  for (const level of ATTENTION_LEVELS) {
+    if (!registry.attention_levels || !registry.attention_levels[level]) {
+      add(`registry attention_levels missing canonical level ${level}`);
+    }
+  }
+  for (const level of Object.keys(registry.attention_levels || {})) {
+    if (!ATTENTION_LEVELS.includes(level)) add(`registry defines a second attention taxonomy level: ${level}`);
+  }
+
+  // -------------------------------------------------------------------------
+  // Human-only authority may never be claimed by any agent, and the two
+  // highest-risk roles must disown each human-only decision explicitly.
+  // -------------------------------------------------------------------------
+  for (const a of registry.agents || []) {
+    for (const action of a.allowed_actions || []) {
+      for (const pattern of FORBIDDEN_ALLOWED_ACTIONS) {
+        if (pattern.test(action)) add(`registry role "${a.agent_id}" claims a human-only action: "${action}"`);
+      }
+    }
+    // No agent may publish, and every role must say so explicitly.
+    if (!(a.prohibited_actions || []).some((p) => /publish/i.test(p))) {
+      add(`registry role "${a.agent_id}" lacks an explicit publish prohibition`);
+    }
+  }
+  for (const [roleId, patterns] of Object.entries(HUMAN_ONLY_GUARDS)) {
+    const registered = registryById.get(roleId);
+    if (!registered) continue;
+    const prohibited = (registered.prohibited_actions || []).join(" | ");
+    for (const pattern of patterns) {
+      if (!pattern.test(prohibited)) add(`registry role "${roleId}" must explicitly prohibit ${pattern.source}`);
+    }
+  }
+  const creative = registryById.get("creative_director");
+  if (creative) {
+    const prohibited = (creative.prohibited_actions || []).join(" | ");
+    for (const pattern of CREATIVE_NON_ABSORPTION) {
+      if (!pattern.test(prohibited)) {
+        add(`creative_director must disown the specialist responsibility ${pattern.source} (super-agent guard)`);
+      }
+    }
+    if (!/specialist/i.test(prohibited)) add("creative_director must prohibit seizing specialist-agent responsibilities");
+  }
+
+  const enabled = (registry.agents || []).filter(isEnabled).map((a) => a.agent_id);
+  const summary = {
+    canonical_roles: roster.length,
+    registered_doctrine: (registry.agents || []).length,
+    doctrine_complete: roster.every((r) => registryById.has(r.role_id)),
+    enabled_for_dispatch: enabled,
+    doctrine_only: (registry.agents || []).filter((a) => !isEnabled(a)).map((a) => a.agent_id),
+    hermes_registered: agentIds.has("hermes"),
+  };
+
+  return { ok: errors.length === 0, errors, warnings, summary };
 }
 
 function main(argv) {
@@ -201,13 +393,20 @@ function main(argv) {
   return { contract_path: args.contract || CONTRACT_PATH, registry_path: args.registry || REGISTRY_PATH, ...result };
 }
 
-module.exports = { DISAGREEMENT_STATES, ATTENTION_LEVELS, sha256, verifyApprovalBinding, validateContract, main };
+module.exports = {
+  DISAGREEMENT_STATES, ATTENTION_LEVELS, PROVEN_VALUES, DISPATCH_VALUES, DEFAULT_STATUS_MAP,
+  lifecycleOf, isEnabled, sha256, verifyApprovalBinding, validateContract, main,
+};
 
 if (require.main === module) {
   const result = main(process.argv.slice(2));
   if (result.warnings.length) result.warnings.forEach((w) => console.warn(`warning: ${w}`));
   if (result.ok) {
-    console.log("agent contract: VALID");
+    const s = result.summary;
+    console.log(`agent contract: VALID — ${s.canonical_roles}-role architecture structurally complete`);
+    console.log(`  doctrine entries: ${s.registered_doctrine}/${s.canonical_roles} (complete: ${s.doctrine_complete})`);
+    console.log(`  enabled for dispatch: ${s.enabled_for_dispatch.length} — ${s.enabled_for_dispatch.join(", ")}`);
+    console.log(`  doctrine only, dispatch refused: ${s.doctrine_only.length} — ${s.doctrine_only.join(", ") || "none"}`);
   } else {
     result.errors.forEach((e) => console.error(`error: ${e}`));
     process.exitCode = 1;

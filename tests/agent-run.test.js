@@ -11,7 +11,9 @@ function fixture(options = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-run-'));
   fs.mkdirSync(path.join(root, 'config'), { recursive: true });
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
-  const agents = options.agents || [{ agent_id: 'alpha_agent', name: 'Alpha' }, { agent_id: 'next_agent', name: 'Next' }];
+  const enabled = { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' };
+  const agents = (options.agents || [{ agent_id: 'alpha_agent', name: 'Alpha' }, { agent_id: 'next_agent', name: 'Next' }])
+    .map((agent) => ({ lifecycle: enabled, ...agent }));
   fs.writeFileSync(path.join(root, 'config', 'agent-registry.json'), JSON.stringify({ schema_version: 1, agents }));
   const moduleSource = (id, body = '') => `'use strict';\nconst fs=require('fs');\nconst AGENT_ID=${JSON.stringify(id)};\nconst ACTIONS=['work','status'];\n${body}\nif(require.main===module){const p=process.argv[process.argv.indexOf('--task')+1];const t=JSON.parse(fs.readFileSync(p,'utf8'));if(t.execution_log)fs.appendFileSync(t.execution_log,AGENT_ID+'\\n');if(t.mode==='sleep')return setTimeout(()=>{},10000);if(t.mode==='overflow'){process.stdout.write('x'.repeat(20000));return;}if(t.mode==='malformed'){console.log('not-json');return;}const out={agent_id:AGENT_ID,task_id:t.task_id,state:t.state||'AWAITING_HUMAN_REVIEW',events:[{state:'DONE'}],control_room:{attention_level:t.attention||'REVIEW',blocker:t.blocker||null},handoff:{next_owner:t.next_owner||'next_agent',next_action:'REVIEW'}};if(t.artifact)out.edit_plan=t.artifact;console.log(JSON.stringify(out));if(t.mode==='nonzero')process.exitCode=7;}\nmodule.exports={AGENT_ID,ACTIONS};\n`;
   fs.writeFileSync(path.join(root, 'scripts', 'alpha-agent.js'), moduleSource(options.moduleId || 'alpha_agent', options.moduleBody));
@@ -125,6 +127,58 @@ test('AR23: unsafe implementation is blocked before import', () => {
 test('AR24: index exposes current task context for a read-only consumer', async () => {
   const f = fixture(), t = f.task(); await run(f, t); const index = JSON.parse(fs.readFileSync(path.join(f.root, 'package-runs/run-1/agents/index.json')));
   assert.deepEqual(index.invocations.map((x) => [x.agent_id, x.task_id, x.state]), [['alpha_agent', 'task-1', 'AWAITING_HUMAN_REVIEW']]);
+});
+
+test('AR25: doctrine without enablement is refused before any module is resolved', async () => {
+  // A complete registry entry plus a present, valid module is still not dispatchable.
+  const f = fixture({
+    agents: [{
+      agent_id: 'alpha_agent',
+      name: 'Alpha',
+      lifecycle: {
+        doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED',
+        dispatch_blocked_reason: 'contract status PLANNED',
+      },
+    }],
+    nextModule: false,
+  });
+  assert.ok(fs.existsSync(path.join(f.root, 'scripts', 'alpha-agent.js')), 'module must exist for this proof');
+  assert.throws(() => runner.resolveAgent(f.root, 'alpha_agent'), (e) => {
+    assert.equal(e.code, 'BLOCKED_AGENT_NOT_ENABLED');
+    assert.equal(e.details.autonomous_dispatch, 'DISABLED');
+    assert.equal(e.details.reason, 'contract status PLANNED');
+    return true;
+  });
+  const log = path.join(f.root, 'executions.log');
+  const t = f.task({ execution_log: log });
+  await assert.rejects(() => run(f, t), (e) => e.code === 'BLOCKED_AGENT_NOT_ENABLED');
+  assert.equal(fs.existsSync(log), false, 'a non-enabled agent must never execute');
+});
+
+test('AR26: a registration with no lifecycle block is fail-closed', async () => {
+  // lifecycle: undefined is dropped by JSON serialization, so the persisted
+  // registration genuinely carries no lifecycle block.
+  const f = fixture({ agents: [{ agent_id: 'alpha_agent', name: 'Alpha', lifecycle: undefined }], nextModule: false });
+  const persisted = JSON.parse(fs.readFileSync(path.join(f.root, 'config', 'agent-registry.json'), 'utf8'));
+  assert.equal('lifecycle' in persisted.agents[0], false);
+  assert.throws(() => runner.resolveAgent(f.root, 'alpha_agent'), (e) => {
+    assert.equal(e.code, 'BLOCKED_AGENT_NOT_ENABLED');
+    assert.match(e.details.reason, /no lifecycle block/);
+    return true;
+  });
+});
+
+test('AR27: the canonical registry enables exactly the proven roles', () => {
+  const canonical = require('../config/agent-registry.json');
+  const enabled = canonical.agents.filter((a) => a.lifecycle?.autonomous_dispatch === 'ENABLED').map((a) => a.agent_id);
+  const refused = canonical.agents.filter((a) => a.lifecycle?.autonomous_dispatch !== 'ENABLED').map((a) => a.agent_id);
+  assert.deepEqual(refused, ['presenter_director', 'creative_director']);
+  assert.equal(enabled.length, 10);
+  const root = path.join(__dirname, '..');
+  for (const id of refused) {
+    assert.throws(() => runner.resolveAgent(root, id), (e) => e.code === 'BLOCKED_AGENT_NOT_ENABLED',
+      `${id} has doctrine but must not be dispatchable`);
+  }
 });
 
 if (require.main === module) {

@@ -15,6 +15,12 @@ The task must contain the same `package_run_id`, a safe `task_id`, and the speci
 
 Use `--new-attempt` only to retry the exact same task bytes after preserving prior evidence. A completed invocation without that flag is returned idempotently. A changed task under the same agent/task identity is rejected.
 
+## Enablement gate
+
+A registry entry proves that a role's doctrine is defined. It never means the role may run. Before any module is resolved or loaded, the runner requires the registration's `lifecycle` to carry `proven: "PROVEN"` and `autonomous_dispatch: "ENABLED"`; anything else — including a registration with no lifecycle block at all — is refused fail-closed as `BLOCKED_AGENT_NOT_ENABLED`, with the registry's `dispatch_blocked_reason` reported.
+
+`presenter_director` and `creative_director` carry complete doctrine in `config/agent-registry.json` and are deliberately `NOT_PROVEN` / `DISABLED`: they are contract status `PLANNED` and `PLANNED_LAST`. Enabling a role is Mikko's decision, and `scripts/agent-contract-validator.js` requires the registry lifecycle to agree with the contract's `role_roster` status, so a role cannot be enabled in one file alone. The Agent Control Room shows such roles as `PLANNED_NOT_ENABLED` and never loads or runs their modules.
+
 ## Persistence and completion
 
 Evidence is stored below:

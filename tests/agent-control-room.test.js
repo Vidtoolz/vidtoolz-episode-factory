@@ -437,6 +437,47 @@ test('control-room API omits raw result internals by default', async () => {
   assert.equal(JSON.stringify(output).includes('secret_model_trace'), false);
 });
 
+test('doctrine-registered roles are never presented or executed as live specialists', async () => {
+  const f = fixture(['alpha', 'planned_specialist']);
+  f.registry.agents[1].lifecycle = {
+    doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED',
+    dispatch_blocked_reason: 'contract status PLANNED',
+  };
+  fs.writeFileSync(path.join(f.root, 'config', 'agent-registry.json'), JSON.stringify(f.registry));
+  let loaded = 0;
+  const output = await controlRoom.buildAgentControlRoom({
+    root: f.root,
+    implementationLoader: () => {
+      loaded += 1;
+      return { ACTIONS: ['status'], async run() { return { view: { state: 'WORKING' } }; }, controlRoomView: (r) => r.view };
+    },
+    statusTaskProvider: () => ({ action: 'status' }),
+  });
+  const planned = output.agents.find((a) => a.agent_id === 'planned_specialist');
+  assert.equal(planned.state, 'PLANNED_NOT_ENABLED');
+  assert.equal(planned.registry_status, 'DOCTRINE_REGISTERED');
+  assert.equal(planned.implementation.state, 'DISPATCH_NOT_ENABLED');
+  assert.equal(planned.lifecycle.autonomous_dispatch, 'DISABLED');
+  assert.equal(planned.human_decision_required, false);
+  assert.equal(output.summary.doctrine_only, 1);
+  assert.equal(output.summary.dispatch_enabled, 1);
+  // Its module is never loaded or run merely because doctrine exists
+  assert.equal(loaded, 1);
+  assert.equal(output.agents.find((a) => a.agent_id === 'alpha').state, 'WORKING');
+});
+
+test('canonical cockpit separates dispatch-enabled agents from registered doctrine', async () => {
+  const output = await controlRoom.buildAgentControlRoom({ root: path.join(__dirname, '..') });
+  const registry = require('../config/agent-registry.json');
+  const refused = registry.agents.filter((a) => a.lifecycle?.autonomous_dispatch !== 'ENABLED').map((a) => a.agent_id);
+  assert.deepEqual(refused, ['presenter_director', 'creative_director']);
+  for (const id of refused) {
+    assert.equal(output.agents.find((a) => a.agent_id === id).state, 'PLANNED_NOT_ENABLED');
+  }
+  assert.equal(output.summary.doctrine_only, refused.length);
+  assert.equal(output.summary.dispatch_enabled, registry.agents.length - refused.length);
+});
+
 test('canonical cockpit exposes all registered agents and truthful implementation drift', async () => {
   const output = await controlRoom.buildAgentControlRoom({ root: path.join(__dirname, '..') });
   const registry = require('../config/agent-registry.json');
