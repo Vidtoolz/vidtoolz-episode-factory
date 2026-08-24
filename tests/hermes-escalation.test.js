@@ -285,3 +285,18 @@ test('HB19: implementation readiness comes from registry authority without modul
   assert.equal(readiness.ready_for_route, true);
   assert.equal(readiness.code, null);
 });
+
+test('HB20: Hermes route authorization refuses every live implementation candidate', () => {
+  const root = path.resolve(__dirname, '..');
+  const agents = registryAgents();
+  const candidates = agents.filter((agent) => agent.implementation_state === 'CANDIDATE').map((agent) => agent.agent_id);
+  assert.deepEqual(candidates, ['camera_director', 'qc_director']);
+  for (const id of candidates) {
+    const readiness = bridge.implementationReadiness(root, id);
+    assert.equal(readiness.implementation_state, 'CANDIDATE', id);
+    assert.equal(readiness.ready_for_route, false, id);
+    assert.equal(readiness.code, 'BLOCKED_IMPLEMENTATION_NOT_PROVEN', id);
+    assert.throws(() => bridge.assertRouteTargetAuthorized(agents, id, { root }),
+      (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN', id);
+  }
+});

@@ -262,9 +262,19 @@ test('AC22: complete doctrine never implies autonomous enablement', () => {
     assert.ok(agent.mission && agent.allowed_actions.length && agent.prohibited_actions.length);
   }
   const s = validator.validateContract(contract, registry).summary;
-  assert.deepEqual(s.doctrine_only, ['presenter_director', 'creative_director']);
+  const doctrineOnly = registry.agents.filter((agent) => agent.lifecycle.autonomous_dispatch === 'DISABLED').map((agent) => agent.agent_id);
+  const lifecycleEnabled = registry.agents.filter((agent) => agent.lifecycle.autonomous_dispatch === 'ENABLED').map((agent) => agent.agent_id);
+  const implementationProven = registry.agents.filter((agent) => agent.implementation_state === 'IMPLEMENTATION_PROVEN').map((agent) => agent.agent_id);
+  const implementationCandidates = registry.agents.filter((agent) => agent.implementation_state === 'CANDIDATE').map((agent) => agent.agent_id);
+  assert.deepEqual(s.doctrine_only, doctrineOnly);
+  assert.deepEqual(s.enabled_for_dispatch, lifecycleEnabled);
+  assert.deepEqual(s.implementation_dispatchable, implementationProven);
+  assert.deepEqual(s.implementation_candidates, implementationCandidates);
+  assert.equal(registry.agents.length, 12);
   assert.equal(s.enabled_for_dispatch.length, 10);
   assert.equal(s.implementation_dispatchable.length, 8);
+  assert.equal(s.implementation_candidates.length, 2);
+  assert.equal(s.doctrine_only.length, 2);
   assert.deepEqual(s.implementation_candidates, ['camera_director', 'qc_director']);
   for (const id of ['presenter_director', 'creative_director']) {
     assert.ok(!s.enabled_for_dispatch.includes(id), `${id} must not be dispatch-enabled`);

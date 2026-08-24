@@ -52,6 +52,18 @@ test('AR3b: candidate implementation is refused before module load', () => {
   assert.equal(direct.allowed, false);
   assert.equal(direct.code, 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
 });
+test('AR3c: every live registry candidate is refused by runner and executable boundary', () => {
+  const root = path.resolve(__dirname, '..');
+  const registry = require('../config/agent-registry.json');
+  const candidates = registry.agents.filter((agent) => agent.implementation_state === 'CANDIDATE').map((agent) => agent.agent_id);
+  assert.deepEqual(candidates, ['camera_director', 'qc_director']);
+  for (const id of candidates) {
+    assert.throws(() => runner.resolveAgent(root, id), (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN', id);
+    const direct = executableBoundary.executableLifecycle(id, { repoRoot: root });
+    assert.equal(direct.allowed, false, id);
+    assert.equal(direct.code, 'BLOCKED_IMPLEMENTATION_NOT_PROVEN', id);
+  }
+});
 test('AR4: rejects module AGENT_ID mismatch', () => {
   const f = fixture({ moduleId: 'wrong' }); assert.throws(() => runner.resolveAgent(f.root, 'alpha_agent'), (e) => e.code === 'RUNNER_AGENT_ID_MISMATCH');
 });

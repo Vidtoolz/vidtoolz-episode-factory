@@ -37,9 +37,12 @@ test('direct takeover entrypoint preserves lifecycle/readiness ordering and neve
     assert.equal(require('../scripts/execution-ownership.js').readOwnership(f.root, { run_id: 'run-1', agent_id: agentId, task_id: 'task-1' }).current_owner, 'AUTOMATION');
     assert.equal(ledger.readLedger(f.root, 'run-1').records.length, 0);
   }
-  const candidate = fixture(undefined, 'production_operations'), candidateRun = await completed(candidate);
-  rewriteRegistration(candidate, (entry) => { entry.implementation_state = 'CANDIDATE'; });
-  assert.throws(() => controls.previewTakeManualControl(target(candidateRun, 'Candidate cannot take over.'), { root: candidate.root }), (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
+  for (const agentId of ['camera_director', 'qc_director']) {
+    const candidate = fixture(undefined, agentId), candidateRun = await completed(candidate);
+    rewriteRegistration(candidate, (entry) => { entry.implementation_state = 'CANDIDATE'; });
+    assert.throws(() => controls.previewTakeManualControl(target(candidateRun, 'Candidate cannot take over.'), { root: candidate.root }),
+      (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN', agentId);
+  }
   for (const agentId of ['presenter_director', 'creative_director']) {
     const f = fixture(undefined, agentId), first = await completed(f);
     rewriteRegistration(f, (entry) => { entry.lifecycle = { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED' }; delete entry.implementation_state; });
