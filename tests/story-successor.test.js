@@ -75,7 +75,8 @@ test('Story successor adapter binds a direct immutable Script Builder version an
   const proposal = successor.buildProposal(f.context, ownership.readOwnership(f.root, f.target), manual, { createdAt: '2026-08-24T12:00:00.000Z', reason: 'Return exact human-edited Story version.' });
   assert.equal(proposal.eligible, true);
   assert.equal(proposal.validation.validator_id, 'STORY_EDITOR_SUCCESSOR_V1');
-  assert.deepEqual(proposal.contract.approvals_invalidated, ['PLAN_SCRIPT_APPROVAL', 'VISUAL_PLAN_APPROVAL']);
+  assert.deepEqual(proposal.contract.approvals_invalidated, ['PLAN_SCRIPT_APPROVAL']);
+  assert.deepEqual(proposal.validation.downstream_impacts, [{ specialist: 'visual_planning_director', effect: 'MUST_REEVALUATE_STORY_DEPENDENCY_FRESHNESS' }]);
   assert.equal(proposal.contract.required_next_gate, 'PLAN_SCRIPT_APPROVAL');
   assert.equal(proposal.contract.required_next_specialist, 'story_editor');
   assert.equal(proposal.successor_task.assignment.action, 'review_successor');
@@ -103,9 +104,82 @@ test('Story successor detects Research-binding drift and never carries approval'
   assert.deepEqual(manual.value.research.bindings, []);
   assert.equal(manual.value.approval.state, 'none');
   const proposal = successor.buildProposal(f.context, ownership.readOwnership(f.root, f.target), manual, { reason: 'Require Research review after factual binding drift.' });
-  assert.equal(proposal.eligible, true);
+  assert.equal(proposal.eligible, false);
+  assert.ok(proposal.validation.reason_codes.includes('STORY_RESEARCH_REVIEW_REQUIRED'));
   assert.deepEqual(proposal.validation.research_bindings_invalidated, ['binding-1']);
-  assert.deepEqual(proposal.contract.approvals_still_valid, []);
+  assert.equal(proposal.contract, undefined);
+});
+
+test('Story successor surfaces a newly introduced bounded factual assertion without fabricating evidence', () => {
+  const previous = { sections: [{ id: 'hook', dialogue: 'This is a personal workflow note.' }], research: { bindings: [] } };
+  const next = { sections: [{ id: 'hook', dialogue: 'This is a personal workflow note. A benchmark shows rendering is 40% faster.' }], research: { bindings: [] } };
+  const unsupported = storySuccessor.potentialUnsupportedAssertions(previous, next, []);
+  assert.deepEqual(unsupported, [{ section_id: 'hook', assertion_text: 'A benchmark shows rendering is 40% faster.', classification: 'POTENTIAL_FACTUAL_ASSERTION' }]);
+});
+
+test('Story Research authority follows an exact normalized assertion unit, never a substring', () => {
+  const assertion = 'the render is faster';
+  const binding = { binding_id: 'binding-render', section_id: 'hook', assertion_text: assertion };
+  const previous = { sections: [{ id: 'hook', dialogue: `${assertion}.` }, { id: 'proof', dialogue: 'Separate proof.' }], research: { bindings: [binding] } };
+  const outcome = (sections) => storySuccessor.carryResearchBindings(previous, { sections, research: { bindings: [] } });
+  const same = [{ id: 'hook', dialogue: `${assertion}.` }, { id: 'proof', dialogue: 'Separate proof.' }];
+  assert.deepEqual(outcome(same).carried.map((item) => item.binding_id), ['binding-render']);
+  assert.deepEqual(outcome([{ id: 'hook', dialogue: 'the   render\n is faster.' }, same[1]]).carried.map((item) => item.binding_id), ['binding-render']);
+  for (const sections of [
+    [{ id: 'hook', dialogue: 'the render is slower.' }, same[1]],
+    [{ id: 'hook', dialogue: 'The render result is unknown.' }, same[1]],
+    [{ id: 'hook', dialogue: 'No bound claim remains.' }, { id: 'proof', dialogue: `${assertion}.` }],
+    [{ id: 'hook', dialogue: `It is not true that ${assertion}.` }, same[1]],
+    [{ id: 'hook', dialogue: `Nobody should claim ${assertion}; it is not.` }, same[1]],
+    [{ id: 'hook', dialogue: `The report rejects the statement that ${assertion}.` }, same[1]],
+  ]) {
+    assert.deepEqual(outcome(sections).carried, []);
+    assert.deepEqual(outcome(sections).invalidated, ['binding-render']);
+  }
+  const unicodeBinding = { binding_id: 'binding-unicode', section_id: 'hook', assertion_text: 'The café render is faster' };
+  const unicodePrevious = { sections: [{ id: 'hook', dialogue: 'The café render is faster.' }], research: { bindings: [unicodeBinding] } };
+  assert.deepEqual(storySuccessor.carryResearchBindings(unicodePrevious, { sections: [{ id: 'hook', dialogue: 'The cafe\u0301 render is faster.' }] }).carried.map((item) => item.binding_id), ['binding-unicode']);
+});
+
+test('STORY_RESEARCH_BINDING_DRIFT rejects actual binding mutations', () => {
+  const binding = { binding_id: 'binding-1', section_id: 'hook', assertion_text: 'Local production keeps source media close and observable.', assertion_text_sha256: '0'.repeat(64), claim_ref: { id: 'claim-1' }, research_result_ref: { result_id: 'result-1' }, satisfied_constraint_ids: [] };
+  const f = fixture([binding]); humanSnapshot(f, [{ ...SECTIONS[0], dialogue: `${binding.assertion_text} A calm transition follows.` }, SECTIONS[1]]);
+  const previous = JSON.parse(fs.readFileSync(f.manualPath)); const canonical = successor.readManualArtifact(f.context).value;
+  const mutations = [
+    [],
+    [binding, { ...binding, binding_id: 'binding-added' }],
+    [{ ...binding, research_result_ref: { result_id: 'result-other' } }],
+    [{ ...binding, section_id: 'payoff' }],
+    [binding, binding],
+  ];
+  for (const bindings of mutations) {
+    const next = structuredClone(canonical); next.research.bindings = bindings;
+    const report = storySuccessor.validate(f.context, previous, next);
+    assert.equal(report.valid, false); assert.ok(report.reason_codes.includes('STORY_RESEARCH_BINDING_DRIFT'));
+  }
+});
+
+test('Story validator mutation branches fail with real reason codes', () => {
+  const make = () => { const f = fixture(); humanSnapshot(f); return { f, previous: JSON.parse(fs.readFileSync(f.manualPath)), next: successor.readManualArtifact(f.context).value }; };
+  {
+    const { f, previous, next } = make(); next.approval = { state: 'approved', at: '2026-08-24T10:00:00Z', note: 'not accepted here' };
+    const out = storySuccessor.validate(f.context, previous, next); assert.ok(out.reason_codes.includes('SUCCESSOR_REQUIRES_FRESH_PLAN_SCRIPT_APPROVAL'));
+  }
+  {
+    const { f, previous, next } = make(); const out = storySuccessor.validate({ ...f.context, agentId: 'editor' }, previous, next); assert.ok(out.reason_codes.includes('SPECIALIST_OWNER_MISMATCH'));
+  }
+  {
+    const { f, previous, next } = make(); next.content_hash = 'f'.repeat(64); const out = storySuccessor.validate(f.context, previous, next); assert.ok(out.reason_codes.includes('STORY_CONTENT_HASH_INVALID'));
+  }
+  {
+    const { f, previous, next } = make(); next.central_claim = 'Detached claim'; const out = storySuccessor.validate(f.context, previous, next); assert.ok(out.reason_codes.includes('STORY_CANONICAL_VERSION_MISMATCH'));
+  }
+  {
+    const { f, previous, next } = make(); const out = storySuccessor.validate({ ...f.context, task: { ...f.task, project_id: 'other-project' } }, previous, next); assert.ok(out.reason_codes.includes('STORY_PROJECT_IDENTITY_MISMATCH'));
+  }
+  {
+    const { f, previous, next } = make(); humanSnapshot(f, [{ ...SECTIONS[0], dialogue: 'A newer head supersedes the proposed manual version.' }, SECTIONS[1]]); const out = storySuccessor.validate(f.context, previous, next); assert.ok(out.reason_codes.includes('UPSTREAM_STORY_HEAD_CHANGED'));
+  }
 });
 
 if (require.main === module) { (async () => { let passed = 0; for (const item of tests) { try { await item.fn(); passed++; console.log(`ok - ${item.name}`); } catch (error) { console.error(`not ok - ${item.name}`); console.error(error); process.exitCode = 1; break; } } console.log(`${passed}/${tests.length} Story Successor tests passed`); })(); }

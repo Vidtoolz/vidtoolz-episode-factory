@@ -457,6 +457,22 @@ test('SRR36: a new factual assertion with exact canonical authority is rebound, 
   assert.equal(out.state, 'READY_FOR_STORY_REVIEW');
 });
 
+test('SRR37: unchanged binding text inside negated context is mechanically blocked', () => {
+  const env = mkEnv(); const candidate = [{ ...S1[0], dialogue: 'Cloud tools cost money. It is not true that Local setups avoid recurring fees.' }];
+  const { v1, v2 } = mkVersions(env, S1, candidate); const result = mkResult(); const root = mkRoot([result]); const binding = mkBinding(result);
+  const doc = mkBindingsDoc([binding]); const out = srr.buildReview(inputFor(env, v1, v2, { research: { run_dir: mkRunDir(root), source_bindings_doc: doc, candidate_bindings_doc: doc, asOf: AS_OF } }));
+  assert.equal(out.state, 'BLOCKED'); assert.equal(out.bundle.research_impact.blocked[0].binding_id, binding.binding_id);
+  assert.match(out.bundle.research_impact.blocked[0].errors.join(' '), /assertion context changed/);
+});
+
+test('SRR38: binding moved to another section is mechanically blocked', () => {
+  const env = mkEnv(); const source = [{ ...S1[0], id: 'source' }, { id: 'other', order: 2, type: 'dialogue', beat: 'proof', dialogue: 'Other.' }];
+  const candidate = [{ ...source[0], dialogue: 'Cloud tools cost money.' }, { ...source[1], dialogue: 'Other. Local setups avoid recurring fees.' }];
+  const { v1, v2 } = mkVersions(env, source, candidate); const result = mkResult(); const root = mkRoot([result]); const binding = mkBinding(result, { section_id: 'source' });
+  const doc = mkBindingsDoc([binding]); const out = srr.buildReview(inputFor(env, v1, v2, { research: { run_dir: mkRunDir(root), source_bindings_doc: doc, candidate_bindings_doc: doc, asOf: AS_OF } }));
+  assert.equal(out.state, 'BLOCKED'); assert.match(out.bundle.research_impact.blocked[0].errors.join(' '), /assertion absent/);
+});
+
 
 // ── standalone harness: node tests/story-revision-review.test.js ──────────────
 if (require.main === module) {

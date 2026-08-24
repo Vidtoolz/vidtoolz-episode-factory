@@ -7,6 +7,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const researchValidator = require('./research-result-validator.js');
+const storyAssertions = require('./story-assertion-continuity.js');
 
 const CANONICAL_FILENAME = 'research-results.json';
 
@@ -202,13 +203,15 @@ function verifyStoryBindings(bindingsDoc, runDir, options = {}) {
 
     if (options.sectionTextById) {
       const text = options.sectionTextById[b.section_id];
-      let count = 0;
-      if (typeof text === 'string' && b.assertion_text) {
-        let at = 0;
-        while ((at = text.indexOf(b.assertion_text, at)) !== -1) { count += 1; at += b.assertion_text.length; }
-      }
+      const count = storyAssertions.normalizedAssertionOccurrences(text, b.assertion_text);
       if (count === 0) be.push(`${w}: assertion absent from canonical section`);
       if (count > 1) be.push(`${w}: assertion occurs more than once in canonical section`);
+      if (options.sourceSectionTextById && (!options.continuityBindingIds || options.continuityBindingIds.has(b.binding_id))) {
+        const continuity = storyAssertions.assertionContinuity(
+          options.sourceSectionTextById[b.section_id], text, b.assertion_text,
+        );
+        if (!continuity.retained) be.push(`${w}: assertion context changed from bound source unit`);
+      }
     }
     errors.push(...be);
     out.push({ binding_id: b.binding_id, errors: be });

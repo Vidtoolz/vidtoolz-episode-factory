@@ -103,7 +103,7 @@ function classifyResearchImpact(sourceBindingsDoc, candidateBindingsDoc, candida
         JSON.stringify(cb.claim_ref) === JSON.stringify(sb.claim_ref) &&
         JSON.stringify(cb.research_result_ref) === JSON.stringify(sb.research_result_ref)) {
       const bindingErrors = verified.get(cb.binding_id) || [];
-      const mechanicalErrors = bindingErrors.filter((item) => /is (STALE|INVALID)|not current authority|digest mismatch|detached|revision mismatch|claim_ref mismatch|human exception/.test(item));
+      const mechanicalErrors = bindingErrors.filter((item) => /is (STALE|INVALID)|not current authority|digest mismatch|detached|revision mismatch|claim_ref mismatch|human exception|assertion (?:absent|context changed)/.test(item));
       if (mechanicalErrors.length) impact.blocked.push({ binding_id: cb.binding_id, class: 'BLOCKED_BY_RESEARCH', errors: mechanicalErrors });
       else impact.unchanged.push({ binding_id: sb.binding_id, class: 'UNCHANGED' });
     } else {
@@ -206,10 +206,12 @@ function buildReview(input, options = {}) {
     // canonical binding verification of the CANDIDATE doc against run research
     if (input.research.run_dir) {
       const sectionTextById = Object.fromEntries((candidate.sections || []).flatMap((section) => [[section.id, section.dialogue], [section.order, section.dialogue]]));
+      const sourceSectionTextById = Object.fromEntries((source.sections || []).flatMap((section) => [[section.id, section.dialogue], [section.order, section.dialogue]]));
       const verify = researchAuthority.verifyStoryBindings(input.research.candidate_bindings_doc, input.research.run_dir, {
         asOf,
         currentScriptRef: { script_version_id: candidate.id, script_content_hash: candidate.content_hash },
-        sectionTextById,
+        sectionTextById, sourceSectionTextById,
+        continuityBindingIds: new Set((input.research.source_bindings_doc.bindings || []).map((binding) => binding.binding_id)),
         humanException: input.research.human_exception,
         currentExceptionBytes: input.research.current_exception_bytes,
       });

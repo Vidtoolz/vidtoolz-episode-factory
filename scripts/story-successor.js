@@ -3,6 +3,7 @@
 const path = require('node:path');
 const ledger = require('./operator-action-ledger.js');
 const storyReview = require('./story-revision-review.js');
+const assertions = require('./story-assertion-continuity.js');
 
 const AGENT_ID = 'story_editor';
 const VALIDATOR_ID = 'STORY_EDITOR_SUCCESSOR_V1';
@@ -66,14 +67,40 @@ function changedSectionIds(before, after) {
 }
 
 function carryResearchBindings(previous, next) {
+  const previousSections = new Map((previous.sections || []).map((section) => [String(section.id), String(section.dialogue || '')]));
   const nextSections = new Map((next.sections || []).map((section) => [String(section.id), String(section.dialogue || '')]));
   const carried = [], invalidated = [];
   for (const binding of previous.research?.bindings || []) {
-    const text = nextSections.get(String(binding.section_id));
-    if (typeof text === 'string' && binding.assertion_text && text.includes(binding.assertion_text)) carried.push(structuredClone(binding));
+    const sectionId = String(binding.section_id);
+    const before = previousSections.get(sectionId);
+    const after = nextSections.get(sectionId);
+    const continuity = typeof before === 'string' && typeof after === 'string'
+      ? assertions.assertionContinuity(before, after, binding.assertion_text) : { retained: false };
+    if (continuity.retained) carried.push(structuredClone(binding));
     else invalidated.push(binding.binding_id || null);
   }
   return { carried, invalidated: invalidated.filter(Boolean) };
+}
+
+function potentialUnsupportedAssertions(previous, next, retainedBindings = []) {
+  const before = new Map((previous.sections || []).map((section) => [String(section.id), new Set(assertions.sentenceUnits(section.dialogue))]));
+  const boundUnits = new Set();
+  const nextSections = new Map((next.sections || []).map((section) => [String(section.id), String(section.dialogue || '')]));
+  for (const binding of retainedBindings) {
+    const units = assertions.containingUnits(nextSections.get(String(binding.section_id)), binding.assertion_text);
+    if (units.length === 1) boundUnits.add(`${binding.section_id}|${units[0]}`);
+  }
+  const factualSignal = /(?:\b\d+(?:[.,]\d+)?\s*%|[$€£]\s*\d|\b(?:benchmark|study|research|report|data|evidence)\s+(?:shows?|finds?|found|says?)\b|\b(?:faster|slower|cheaper|costlier|higher|lower|outperforms?|increases?|decreases?|reduces?|improves?|prevents?|requires?|supports?)\b)/iu;
+  const unsupported = [];
+  for (const section of next.sections || []) {
+    const prior = before.get(String(section.id)) || new Set();
+    for (const unit of assertions.sentenceUnits(section.dialogue)) {
+      if (!prior.has(unit) && factualSignal.test(unit) && !boundUnits.has(`${section.id}|${unit}`)) {
+        unsupported.push({ section_id: section.id, assertion_text: unit, classification: 'POTENTIAL_FACTUAL_ASSERTION' });
+      }
+    }
+  }
+  return unsupported;
 }
 
 function currentManualArtifact(context, metadata) {
@@ -110,6 +137,16 @@ function validate(context, previous, next, options = {}) {
   if (!shape.ok) return result(false, reasons, null, [], []);
   const previousShape = validateShape(previous);
   if (!previousShape.ok) reasons.push('SUCCESSOR_PREDECESSOR_SCHEMA_INVALID');
+  if ((previous.research?.bindings || []).length && !context.task.research?.run_dir) reasons.push('RESEARCH_CONTEXT_MISSING');
+  if (context.task.research?.status === 'VERIFIED') {
+    try {
+      const fs = require('node:fs');
+      const resultsBytes = fs.readFileSync(path.join(context.task.research.run_dir, 'research-results.json'));
+      const bindingsBytes = fs.readFileSync(path.join(context.task.research.run_dir, 'script-claim-bindings.json'));
+      const hash = require('./agent-contract-validator.js').sha256;
+      if (hash(resultsBytes) !== context.task.research.research_results_sha256 || hash(bindingsBytes) !== context.task.research.bindings_sha256) reasons.push('STORY_RESEARCH_CONTEXT_HASH_CHANGED');
+    } catch { reasons.push('RESEARCH_CONTEXT_MISSING'); }
+  }
   if (next.project_id !== previous.project_id || next.project_id !== context.task.project_id) reasons.push('STORY_PROJECT_IDENTITY_MISMATCH');
   if (next.version_id === previous.version_id || next.parent_version !== previous.version_id) reasons.push('STORY_PREDECESSOR_LINEAGE_INVALID');
   let versions, current;
@@ -129,6 +166,9 @@ function validate(context, previous, next, options = {}) {
   if (next.approval?.state === 'approved') reasons.push('SUCCESSOR_REQUIRES_FRESH_PLAN_SCRIPT_APPROVAL');
   const bindingImpact = carryResearchBindings(previous, next);
   if (ledger.canonicalize(bindingImpact.carried) !== ledger.canonicalize(next.research.bindings)) reasons.push('STORY_RESEARCH_BINDING_DRIFT');
+  if (bindingImpact.invalidated.length) reasons.push('STORY_RESEARCH_REVIEW_REQUIRED');
+  const unsupportedAssertions = potentialUnsupportedAssertions(previous, next, bindingImpact.carried);
+  if (unsupportedAssertions.length) reasons.push('STORY_NEW_FACTUAL_ASSERTION_UNSUPPORTED');
   let review = null;
   if (!reasons.length) {
     review = storyReview.buildReview({
@@ -149,19 +189,22 @@ function validate(context, previous, next, options = {}) {
     });
     if (review.bundle && options.createdAt) review.bundle.generated_at = options.createdAt;
     if (!review.ok || review.state === 'BLOCKED') reasons.push('STORY_SPECIALIST_VALIDATION_BLOCKED');
+    else if (review.state === 'RETURN_TO_RESEARCH') reasons.push('STORY_RESEARCH_REVIEW_REQUIRED');
   }
-  return result(reasons.length === 0, reasons, review?.bundle || null, bindingImpact.invalidated, changedSectionIds(previous, next));
+  return result(reasons.length === 0, reasons, review?.bundle || null, bindingImpact.invalidated, changedSectionIds(previous, next), unsupportedAssertions);
 }
 
-function result(valid, reasons, review, invalidatedBindings, changedSections) {
+function result(valid, reasons, review, invalidatedBindings, changedSections, unsupportedAssertions = []) {
   return {
     valid, validator_id: VALIDATOR_ID, reason_codes: [...new Set(reasons)],
     story_revision_review: review,
     changed_sections: changedSections,
     upstream_dependencies: [{ artifact_type: 'research-bindings', current: valid && !(review?.research_impact?.blocked || []).length }],
     research_bindings_invalidated: invalidatedBindings,
-    approvals_invalidated: ['PLAN_SCRIPT_APPROVAL', 'VISUAL_PLAN_APPROVAL'],
-    gates_invalidated: ['PLAN_SCRIPT_APPROVAL', 'VISUAL_PLAN_APPROVAL'],
+    unsupported_factual_assertions: unsupportedAssertions,
+    approvals_invalidated: ['PLAN_SCRIPT_APPROVAL'],
+    gates_invalidated: ['PLAN_SCRIPT_APPROVAL'],
+    downstream_impacts: [{ specialist: 'visual_planning_director', effect: 'MUST_REEVALUATE_STORY_DEPENDENCY_FRESHNESS' }],
     approvals_still_valid: [], required_next_gate: REQUIRED_NEXT_GATE,
     required_next_specialist: REQUIRED_NEXT_SPECIALIST, continuation_action: CONTINUATION_ACTION,
     reason: valid ? 'Canonical Story successor is structurally valid and bound to the current immutable Script Builder version; fresh script approval remains required.' : `Story successor refused: ${[...new Set(reasons)].join(', ')}`,
@@ -200,6 +243,6 @@ function manualControlDetails(context, artifact) {
 
 module.exports = {
   AGENT_ID, VALIDATOR_ID, ARTIFACT_ID, REQUIRED_NEXT_GATE, REQUIRED_NEXT_SPECIALIST,
-  CONTINUATION_ACTION, POLICY_ID, versionArtifact, validateShape, carryResearchBindings,
+  CONTINUATION_ACTION, POLICY_ID, versionArtifact, validateShape, carryResearchBindings, potentialUnsupportedAssertions,
   currentManualArtifact, validate, buildTask, manualControlDetails,
 };
