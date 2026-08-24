@@ -69,7 +69,9 @@
       "escalation_rules": {
         "DECISION": "a required human gate is unreachable through any specialist",
         "AUTONOMOUS": "remediation routing is mechanical (e.g. source durability fix)"
-      }
+      },
+      "implementation_state": "CANDIDATE",
+      "implementation_state_note": "Implementation candidate exists/is pending; direct dispatch refuses until Mikko promotes implementation_state to IMPLEMENTATION_PROVEN after proof. Distinct from doctrine lifecycle, which remains PROVEN/ENABLED per contract BUILT status."
     },
     {
       "agent_id": "camera_director",
@@ -109,7 +111,9 @@
         "movement_intent": "a segment labelled zoom_in/zoom_out must produce a meaningful signed framing change or be reclassified to a hold with recorded reason",
         "no_wobble": "camera movement must follow one coherent trajectory; wobble is prohibited",
         "dirn17_lesson": "orbit-to-travel boundaries require SETTLE_THEN_LAUNCH (15-frame settle); a ~73 degree one-frame snap is a defect class"
-      }
+      },
+      "implementation_state": "CANDIDATE",
+      "implementation_state_note": "Implementation candidate exists/is pending; direct dispatch refuses until Mikko promotes implementation_state to IMPLEMENTATION_PROVEN after proof. Distinct from doctrine lifecycle, which remains PROVEN/ENABLED per contract BUILT status."
     },
     {
       "agent_id": "generation_supervisor",
@@ -210,7 +214,9 @@
       "escalation_rules": {
         "DECISION": "never; QC fails closed instead",
         "AUTONOMOUS": "failures route to remediation owners without human input unless policy requires it"
-      }
+      },
+      "implementation_state": "CANDIDATE",
+      "implementation_state_note": "Implementation candidate exists/is pending; direct dispatch refuses until Mikko promotes implementation_state to IMPLEMENTATION_PROVEN after proof. Distinct from doctrine lifecycle, which remains PROVEN/ENABLED per contract BUILT status."
     },
     {
       "agent_id": "editor",
@@ -291,7 +297,7 @@
         "autonomous_dispatch": "ENABLED"
       },
       "role": "creative_specialist",
-      "mission": "Turn an approved musical direction (Scorecraft approved cue sheet / MusicRenderBrief) into technically valid, provenance-bound music candidates through the authorized music_generation lane; judge musical craft within bounded authority; present evidence for Mikko final decision. Scorecraft remains the engine \u2014 this role is the judgment and orchestration layer over it.",
+      "mission": "Turn an approved musical direction (Scorecraft approved cue sheet / MusicRenderBrief) into technically valid, provenance-bound music candidates through the authorized music_generation lane; judge musical craft within bounded authority; present evidence for Mikko final decision. Scorecraft remains the engine — this role is the judgment and orchestration layer over it.",
       "reports_to": "hermes",
       "collaborates_with": [
         "production_operations",
@@ -426,7 +432,7 @@
         "REVIEW": "unresolved contradiction or recommendation boundaries",
         "DECISION": "controversial claim or NEEDS_HUMAN_DECISION"
       },
-      "disagreement_behavior": "Unresolved evidentiary conflict is preserved as NEEDS_SPECIALIST_REVIEW or NEEDS_HUMAN_DECISION \u2014 never fabricated consensus"
+      "disagreement_behavior": "Unresolved evidentiary conflict is preserved as NEEDS_SPECIALIST_REVIEW or NEEDS_HUMAN_DECISION — never fabricated consensus"
     },
     {
       "agent_id": "story_editor",

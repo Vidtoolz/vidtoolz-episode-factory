@@ -241,7 +241,36 @@ function releaseLock(paths, token) {
 // Routing policy — deterministic classification from a queue item.
 // ---------------------------------------------------------------------------
 
-function classifyRouting(queueItem, registryAgents) {
+function implementationReadiness(root, targetAgentId) {
+  // Generic implementation-readiness distinction. Registry lifecycle
+  // (proven/dispatch) is doctrine authority; a role with no runnable module,
+  // or whose registration marks implementation_state CANDIDATE, is not yet a
+  // safe route target even when lifecycle says ENABLED.
+  let moduleExists = false;
+  try { moduleExists = fs.existsSync(path.join(root, 'scripts', `${String(targetAgentId).replaceAll('_', '-')}.js`)); }
+  catch (_) { moduleExists = false; }
+  let implementationState = null;
+  if (moduleExists) {
+    try {
+      const source = fs.readFileSync(path.join(root, 'scripts', `${String(targetAgentId).replaceAll('_', '-')}.js`), 'utf8');
+      const match = /implementation_state\s*[:=]\s*['"]([A-Z_]+)['"]/.exec(source);
+      implementationState = match ? match[1] : 'IMPLEMENTED';
+    } catch (_) { implementationState = null; }
+  }
+  const candidate = !moduleExists || implementationState === 'CANDIDATE';
+  return {
+    module_exists: moduleExists,
+    implementation_state: moduleExists ? (implementationState || 'IMPLEMENTED') : 'MODULE_MISSING',
+    ready_for_route: !candidate,
+    reason: !moduleExists
+      ? `no runnable implementation exists yet for ${targetAgentId}`
+      : implementationState === 'CANDIDATE'
+        ? `implementation is a proof candidate; direct dispatch refuses until implementation proof completes`
+        : null,
+  };
+}
+
+function classifyRouting(queueItem, registryAgents, options = {}) {
   const attention = queueItem.attention;
   if (!['REVIEW', 'DECISION'].includes(attention)) {
     throw new HermesEscalationError('HERMES_ROUTING_REJECTED', 'only REVIEW/DECISION items escalate through Hermes');
@@ -257,9 +286,27 @@ function classifyRouting(queueItem, registryAgents) {
 
   let recommendedAction = 'SURFACE_TO_HUMAN';
   let routeOptions = [];
+  const readinessFor = (target) => implementationReadiness(options.root || path.resolve(__dirname, '..'), target);
   if (infrastructure) {
     recommendedAction = queueItem.agent_id === 'production_operations' || enabled ? 'AWAIT_HUMAN' : 'SURFACE_TO_HUMAN';
-    routeOptions = [{ target: 'production_operations', verb: 'ROUTE', authorized: false, reason: 'no runnable production_operations implementation exists yet' }];
+    // Production Operations is the canonical infrastructure route target.
+    // Authorization now reflects both lifecycle enablement and implementation
+    // readiness — a CANDIDATE module is visible as a route candidate but is
+    // not authorized for launch until its proof completes.
+    const registration = (registryAgents || []).find((agent) => agent.agent_id === 'production_operations') || {};
+    const lc = registration.lifecycle || {};
+    const lifecycleEnabled = lc.proven === 'PROVEN' && lc.autonomous_dispatch === 'ENABLED';
+    const readiness = readinessFor('production_operations');
+    routeOptions = [{
+      target: 'production_operations', verb: 'ROUTE',
+      authorized: Boolean(lifecycleEnabled && readiness.ready_for_route),
+      implementation_state: readiness.implementation_state,
+      module_exists: readiness.module_exists,
+      reason: readiness.reason,
+      note: readiness.ready_for_route
+        ? 'route available; launching the task remains a separate authorized orchestration action'
+        : 'route target exists as an implementation candidate; launch refused until proof completes',
+    }];
   } else if (category === 'HUMAN_REVIEW' && /preflight|missing|remediat/.test(blocker)) {
     recommendedAction = 'REQUEST_SPECIALIST';
     routeOptions = remediationTargets(queueItem, registryAgents);
@@ -490,7 +537,7 @@ function buildOrchestrationProjection(repoRoot, runId, queueItems, registryAgent
 
 module.exports = {
   SCHEMA_VERSION, RECEIPTS_FILE, ACTOR, VERBS, PROHIBITED_VERBS, ROUTING_CATEGORIES,
-  RESUME_CONDITIONS, RECEIPT_STATUSES, HermesEscalationError,
+  RESUME_CONDITIONS, RECEIPT_STATUSES, HermesEscalationError, implementationReadiness,
   canonicalize, receiptHash, receiptsPaths, readReceipts, verifyReceipts,
   classifyRouting, assertRouteTargetAuthorized, createReceipt,
   observeResumeCondition, buildOrchestrationProjection,
