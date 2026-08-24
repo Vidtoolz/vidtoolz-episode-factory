@@ -77,13 +77,10 @@ function currentArtifact(context) {
   return { artifact_id: artifact.field, path: artifact.path, sha256: runner.sha256(fs.readFileSync(artifactPath)), exists: true };
 }
 function ownershipFor(context) { return ownership.readOwnership(context.root, { run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id }); }
-const MANUAL_CONTROL_SPECIALIST = 'visual_planning_director';
 function manualControlSpecialistPolicy(agentId) {
-  const adapterId = successor.successorAdapterIdentity(agentId);
-  if (agentId !== MANUAL_CONTROL_SPECIALIST || !adapterId) {
-    return { eligible: false, code: 'TAKEOVER_SUCCESSOR_ADAPTER_MISSING', policy_id: 'VISUAL_PLANNING_SUCCESSOR_ONLY_V1', adapter_id: adapterId };
-  }
-  return { eligible: true, code: null, policy_id: 'VISUAL_PLANNING_SUCCESSOR_ONLY_V1', adapter_id: adapterId };
+  const adapter = successor.successorAdapterPolicy(agentId);
+  if (!adapter) return { eligible: false, code: 'TAKEOVER_SUCCESSOR_ADAPTER_MISSING', policy_id: 'PROVEN_SPECIALIST_SUCCESSOR_ADAPTERS_V2', adapter_id: null, artifact_id: null };
+  return { eligible: true, code: null, ...adapter };
 }
 function assertManualControlSpecialist(agentId) {
   const policy = manualControlSpecialistPolicy(agentId);
@@ -160,10 +157,10 @@ function previewTakeManualControl(input, options = {}) {
   const owner = ownershipFor(context), artifact = currentArtifact(context), currentLedger = ledger.readLedger(context.root, context.runId);
   if (owner.current_owner !== 'AUTOMATION') throw new AgentControlError('OWNERSHIP_TRANSITION_INVALID', `current execution owner is ${owner.current_owner}`);
   const active = context.live_run_lock, completed = ['COMPLETED', 'ABANDONED'].includes(context.runtime_status);
-  const bounded = artifact.artifact_id === 'visual_plan' && artifact.exists && Boolean(artifact.sha256);
+  const bounded = artifact.artifact_id === policy.artifact_id && artifact.exists && Boolean(artifact.sha256);
   return {
     schema_version: 1, action: 'TAKE_MANUAL_CONTROL', read_only: true, eligible: !active && completed && bounded,
-    blocked_reason: active ? 'AUTOMATION_INVOCATION_ACTIVE' : !completed ? 'EXACT_QUIESCENT_ARTIFACT_REQUIRED' : !bounded ? 'EXACT_VISUAL_PLAN_ARTIFACT_REQUIRED' : null,
+    blocked_reason: active ? 'AUTOMATION_INVOCATION_ACTIVE' : !completed ? 'EXACT_QUIESCENT_ARTIFACT_REQUIRED' : !bounded ? 'EXACT_SPECIALIST_ARTIFACT_REQUIRED' : null,
     target: { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_id: context.record.task_id, artifact_id: artifact.artifact_id },
     current_owner: owner.current_owner, proposed_owner: active ? 'SUSPENDED' : 'HUMAN', ownership_revision: owner.revision,
     active_invocation: context.runtime_status === 'RUNNING', active_worker_job: context.lock?.resource_job || null,
@@ -174,9 +171,7 @@ function previewTakeManualControl(input, options = {}) {
       job_id: context.lock?.resource_job?.job_id || null,
     },
     artifact: { id: artifact.artifact_id, path: artifact.path, sha256: artifact.sha256, exists: artifact.exists },
-    potential_invalidations: context.agentId === 'visual_planning_director'
-      ? { approvals: ['VISUAL_PLAN_APPROVAL_IF_BYTES_CHANGE'], gates: ['VISUAL_PLAN_APPROVAL_IF_BYTES_CHANGE'] }
-      : { approvals: ['BYTE_BOUND_APPROVALS_IF_BYTES_CHANGE'], gates: [] },
+    potential_invalidations: { approvals: [`${policy.required_next_gate}_IF_BYTES_CHANGE`], gates: [`${policy.required_next_gate}_IF_BYTES_CHANGE`] },
     consequences: active ? 'Takeover is blocked until active automation is truthfully stopped.' : 'Automation mutation and redispatch will be fenced for this task work unit.',
     changes_approval: false,
     eligibility_policy: policy,
@@ -194,8 +189,8 @@ function manualControlEligibility(input, options = {}) {
   try { owner = ownershipFor(context); }
   catch (error) { return { take_manual_control: false, return_to_automation: false, reason: error.code || 'OWNERSHIP_INVALID' }; }
   const artifact = currentArtifact(context);
-  if (artifact.artifact_id !== 'visual_plan') {
-    return { take_manual_control: false, return_to_automation: false, reason: 'EXACT_VISUAL_PLAN_ARTIFACT_REQUIRED', artifact };
+  if (artifact.artifact_id !== policy.artifact_id) {
+    return { take_manual_control: false, return_to_automation: false, reason: 'EXACT_SPECIALIST_ARTIFACT_REQUIRED', artifact, eligibility_policy: policy };
   }
   if (owner.current_owner === 'AUTOMATION') {
     const eligible = !context.live_run_lock && ['COMPLETED', 'ABANDONED'].includes(context.runtime_status)
@@ -206,7 +201,7 @@ function manualControlEligibility(input, options = {}) {
     try {
       const manual = successor.readManualArtifact(context);
       return { take_manual_control: false, return_to_automation: true, reason: null, eligibility_policy: policy,
-        manual_artifact: { path: manual.relative_path, sha256: manual.sha256, artifact_id: manual.metadata.artifact_id } };
+        manual_artifact: { path: manual.relative_path, sha256: manual.sha256, artifact_id: manual.metadata.artifact_id, workspace: manual.workspace || null } };
     } catch (error) {
       return { take_manual_control: false, return_to_automation: false, reason: error.code || 'MANUAL_ARTIFACT_INVALID' };
     }
@@ -226,10 +221,13 @@ function applyTakeManualControl(input, options = {}) {
     reason: input.reason, task_sha256: runner.sha256(context.taskBytes), artifact_id: artifact.artifact_id, artifact_sha256: artifact.sha256,
     expected_revision: owner.revision, expected_state_hash: owner.current_state_hash,
   }, { actor: options.actor || ledger.localActorContext(), now: options.now, recordId: options.recordId });
+  const prepared = successor.readManualArtifact(context);
+  const adapter = successor.ADAPTERS[context.agentId];
+  const details = adapter?.manualControlDetails ? adapter.manualControlDetails(context, prepared) : { artifact_path: prepared.relative_path, artifact_sha256: prepared.sha256, editing_method: 'TRUSTED_OS_FILE_REVEAL', workspace: null, warning: 'Automation is fenced for this exact task.' };
   return { action: 'TAKE_MANUAL_CONTROL', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'HUMAN', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash,
-    manual_artifact_path: manualArtifact?.path || null, manual_artifact_sha256: manualArtifact?.sha256 || null,
+    manual_artifact_path: details.artifact_path || manualArtifact?.path || null, manual_artifact_sha256: details.artifact_sha256 || manualArtifact?.sha256 || null,
     predecessor_artifact_path: artifact.path, predecessor_artifact_sha256: artifact.sha256,
-    editing_method: 'REVEAL_VIA_PACKAGE_RUN_OPEN_FILE', warning: 'Automation is fenced for this exact Visual Planning task. The cockpit does not edit artifact bytes.' };
+    editing_method: details.editing_method, workspace: details.workspace || null, warning: details.warning };
 }
 
 async function previewReturnToAutomation(input, options = {}) {

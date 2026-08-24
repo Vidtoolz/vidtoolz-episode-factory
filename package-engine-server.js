@@ -12879,20 +12879,26 @@ function attachAgentControlState(payload, root, cancelProvider) {
     }
     let manual = { take_manual_control: false, return_to_automation: false, reason: 'EXACT_INVOCATION_REQUIRED' };
     if (enabled && exact.run_id && exact.invocation_id) manual = agentControls.manualControlEligibility(exact, { root });
+    const manualWorkspace = manual.manual_artifact?.workspace || null;
+    const manualPolicy = manual.eligibility_policy || null;
     agent.manual_control = {
-      eligible_specialist: agent.agent_id === 'visual_planning_director', reason: manual.reason || null,
+      eligible_specialist: Boolean(manualPolicy?.eligible), reason: manual.reason || null,
       artifact: manual.artifact || manual.manual_artifact || null,
       owner: state.current_owner,
       manual_artifact_path: manual.manual_artifact?.path || null,
       manual_artifact_sha256: manual.manual_artifact?.sha256 || null,
       predecessor_artifact: agent.current_artifact || null,
-      editing_method: manual.manual_artifact ? 'TRUSTED_OS_FILE_REVEAL' : null,
-      open_api: manual.manual_artifact ? OPEN_FILE_API : null,
-      open_file: manual.manual_artifact?.path || null,
-      warning: state.current_owner === 'HUMAN' ? 'Automation is fenced for this exact Visual Planning task. Editing occurs through the trusted local file tool, not the cockpit.' : null,
-      preview_url: manual.manual_artifact
+      editing_method: manualWorkspace?.kind === 'SCRIPT_BUILDER' ? 'TRUSTED_SCRIPT_BUILDER_WORKSPACE' : manual.manual_artifact ? 'TRUSTED_OS_FILE_REVEAL' : null,
+      workspace: manualWorkspace,
+      workspace_url: manualWorkspace?.url || null,
+      open_api: manual.manual_artifact && !manualWorkspace ? OPEN_FILE_API : null,
+      open_file: manual.manual_artifact && !manualWorkspace ? manual.manual_artifact.path : null,
+      warning: state.current_owner === 'HUMAN' ? (agent.agent_id === 'story_editor'
+        ? 'Automation is fenced for this exact Story task. Editing and snapshotting in Script Builder does not approve the script.'
+        : 'Automation is fenced for this exact Visual Planning task. Editing occurs through the trusted local file tool, not the cockpit.') : null,
+      preview_url: manual.manual_artifact && agent.agent_id === 'visual_planning_director'
         ? `${AGENT_MANUAL_ARTIFACT_API}?run_id=${encodeURIComponent(agent.run_id)}&agent_id=${encodeURIComponent(agent.agent_id)}&task_id=${encodeURIComponent(agent.current_task)}` : null,
-      scope_statement: 'Automation will be fenced for this exact Visual Planning task.',
+      scope_statement: `Automation will be fenced for this exact ${agent.agent_id === 'story_editor' ? 'Story' : 'Visual Planning'} task.`,
     };
     agent.control_capabilities = {
       retry: Boolean(enabled && ownershipValid && state.current_owner === 'AUTOMATION' && ['COMPLETED', 'ABANDONED'].includes(agent.runtime_status) && exact.invocation_id),

@@ -96,8 +96,11 @@
       line('Manual artifact hash', manualControl.manual_artifact_sha256) +
       line('Predecessor artifact', manualControl.predecessor_artifact && JSON.stringify(manualControl.predecessor_artifact)) +
       line('Editing method', manualControl.editing_method) +
+      line('Story project / version', manualControl.workspace ? [manualControl.workspace.project_id, manualControl.workspace.version_id].filter(Boolean).join(' · ') : null) +
+      line('Trusted editing instruction', manualControl.workspace && manualControl.workspace.instruction) +
       line('Manual control warning', manualControl.warning) +
       (manualControl.preview_url ? '<a class="agent-manual-artifact-link" target="_blank" rel="noopener" href="' + esc(manualControl.preview_url) + '">Open bounded Visual Plan preview</a>' : '') +
+      (manualControl.workspace_url ? '<a class="agent-manual-artifact-link" target="_blank" rel="noopener" href="' + esc(manualControl.workspace_url) + '">Open trusted Script Builder</a>' : '') +
       (manualControl.open_api && manualControl.open_file ? '<button type="button" class="agent-manual-open" data-open-api="' + esc(manualControl.open_api) + '" data-run-id="' + esc(agent.run_id) + '" data-file="' + esc(manualControl.open_file) + '">Reveal trusted manual artifact</button>' : '') +
       line('Latest event', eventText(agent.latest_event)) +
       controlButtons(agent) +
@@ -191,9 +194,12 @@
     var execution = preview.execution_context || {};
     var invalidations = preview.potential_invalidations || preview.invalidations || {};
     var successor = preview.successor_task || {};
+    var takeoverScope = target.agent_id === 'story_editor'
+      ? 'Automation will be fenced for this exact Story task.'
+      : 'Automation will be fenced for this exact Visual Planning task.';
     return [
       action === 'take-manual-control'
-        ? 'Automation will be fenced for this exact Visual Planning task.'
+        ? takeoverScope
         : action === 'return-to-automation'
           ? (artifact.changed_since_takeover ? 'Changed bytes require an immutable successor and fresh review.' : 'Return unchanged bytes to automation after revalidation.')
           : action === 'retry' ? 'Create a new attempt while preserving all prior evidence.' : 'Request cancellation of the exact invocation-bound worker job.',
@@ -231,7 +237,7 @@
         var output = document.getElementById('agentControlResult-' + body.agent_id);
         if (output) output.textContent = result.result_status + ' · action record ' + result.action_record_id
           + (result.manual_artifact_path ? ' · HUMAN owns ' + result.manual_artifact_path + ' · automation fenced' : '')
-          + (result.successor_task_id ? ' · successor ' + result.successor_task_id + ' · fresh Visual Plan review required' : '');
+          + (result.successor_task_id ? ' · successor ' + result.successor_task_id + ' · fresh ' + (result.required_next_gate || 'specialist') + ' review required' : '');
       });
     }).catch(function (error) { window.alert(error.message); }).finally(function () { button.disabled = false; });
   }

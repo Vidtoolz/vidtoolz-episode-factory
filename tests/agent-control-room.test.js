@@ -725,9 +725,9 @@ function takeoverPlan(revision = 1, previous = null) {
   return plan;
 }
 
-test('Visual Planning alone receives UI takeover and changed-byte successor return', async () => {
-  const unsupportedEnabled = ['story_editor', 'editor', 'research_director', 'audience_packaging_director', 'sound_music_director', 'generation_supervisor'];
-  const ids = ['visual_planning_director', ...unsupportedEnabled, 'presenter_director', 'creative_director', 'production_operations'];
+test('Visual Planning UI takeover regression remains green after Story adapter registration', async () => {
+  const unsupportedEnabled = ['editor', 'research_director', 'audience_packaging_director', 'sound_music_director', 'generation_supervisor'];
+  const ids = ['visual_planning_director', 'story_editor', ...unsupportedEnabled, 'presenter_director', 'creative_director', 'production_operations'];
   const f = fixture(ids);
   for (const id of ['presenter_director', 'creative_director']) {
     const role = f.registry.agents.find((agent) => agent.agent_id === id);
@@ -741,7 +741,7 @@ test('Visual Planning alone receives UI takeover and changed-byte successor retu
   const completed = writeRunnerInvocation(f, { agent_id: 'visual_planning_director', task_id: 'visual-task-ui',
     artifact: firstPlan, artifact_field: 'visual_plan', state: 'AWAITING_HUMAN_REVIEW', attention: 'REVIEW',
     task: { action: 'review_coverage', story, required_beats: firstPlan.required_beats, existing_plan: firstPlan } });
-  const unsupportedInvocations = Object.fromEntries([...unsupportedEnabled, 'presenter_director', 'creative_director', 'production_operations'].map((agentId) => {
+  const unsupportedInvocations = Object.fromEntries(['story_editor', ...unsupportedEnabled, 'presenter_director', 'creative_director', 'production_operations'].map((agentId) => {
     const item = writeRunnerInvocation(f, { agent_id: agentId, task_id: `${agentId}-task`, artifact: { schema_version: 1, artifact_type: 'other' } });
     return [agentId, item];
   }));
@@ -751,7 +751,7 @@ test('Visual Planning alone receives UI takeover and changed-byte successor retu
     let room = JSON.parse((await request(server, '/api/agent-control-room')).body).data;
     const rows = Object.fromEntries(room.agents.map((agent) => [agent.agent_id, agent]));
     assert.equal(rows.visual_planning_director.control_capabilities.take_manual_control, true);
-    for (const id of [...unsupportedEnabled, 'presenter_director', 'creative_director', 'production_operations']) {
+    for (const id of ['story_editor', ...unsupportedEnabled, 'presenter_director', 'creative_director', 'production_operations']) {
       assert.equal(rows[id].control_capabilities.take_manual_control, false, `${id} must not expose takeover`);
     }
     assert.equal(rows.production_operations.implementation.state, 'IMPLEMENTATION_CANDIDATE');
@@ -760,6 +760,9 @@ test('Visual Planning alone receives UI takeover and changed-byte successor retu
       const refused = await postJson(server, packageEngineServer.AGENT_TAKEOVER_PREVIEW_API, { run_id: item.runId, agent_id: id, invocation_id: item.invocation.invocation_id, reason: 'Direct API must enforce successor eligibility.' });
       assert.equal(refused.status, 409); assert.equal(refused.body.code, 'TAKEOVER_SUCCESSOR_ADAPTER_MISSING', id);
     }
+    const unboundedStory = unsupportedInvocations.story_editor;
+    const storyPreview = await postJson(server, packageEngineServer.AGENT_TAKEOVER_PREVIEW_API, { run_id: unboundedStory.runId, agent_id: 'story_editor', invocation_id: unboundedStory.invocation.invocation_id, reason: 'Exact Story candidate artifact is required.' });
+    assert.equal(storyPreview.status, 200); assert.equal(storyPreview.body.data.eligible, false); assert.equal(storyPreview.body.data.blocked_reason, 'EXACT_SPECIALIST_ARTIFACT_REQUIRED');
     for (const id of ['presenter_director', 'creative_director']) {
       const item = unsupportedInvocations[id];
       const refused = await postJson(server, packageEngineServer.AGENT_TAKEOVER_PREVIEW_API, { run_id: item.runId, agent_id: id, invocation_id: item.invocation.invocation_id, reason: 'Disabled lifecycle remains stronger.' });
