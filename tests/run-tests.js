@@ -111,6 +111,7 @@ require("./story-revision-review.test.js");
 require("./story-editor.test.js");
 require("./visual-plan.test.js");
 require("./visual-planning-director.test.js");
+require("./agent-task-visual-planning.test.js");
 require("./audience-packaging-director.test.js");
 require("./presenter-take-manifest.test.js");
 require("./edit-plan.test.js");

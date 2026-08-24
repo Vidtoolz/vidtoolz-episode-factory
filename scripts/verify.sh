@@ -144,6 +144,7 @@ node --check scripts/story-editor.js
 node --check scripts/visual-plan.js
 node --check scripts/visual-plan-prompt-adapter.js
 node --check scripts/visual-planning-director.js
+node --check scripts/agent-task-visual-planning.js
 node --check scripts/audience-package.js
 node --check scripts/audience-packaging-director.js
 node --check scripts/presenter-take-manifest.js

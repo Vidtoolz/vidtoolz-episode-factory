@@ -68,6 +68,48 @@ const newBeatId = (now) => `visual-beat-${ulid(now)}`;
 const newShotId = (now) => `shot-${ulid(now)}`;
 const newPromptId = (now) => `prompt-${ulid(now)}`;
 
+function derivationError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+function deriveRequiredBeats(story, options = {}) {
+  if (!story || typeof story !== 'object' || Array.isArray(story)) throw derivationError('STORY_REQUIRED', 'canonical Story is required');
+  for (const field of ['project_id', 'version_id']) {
+    if (typeof story[field] !== 'string' || !story[field].trim()) throw derivationError('STORY_IDENTITY_INVALID', `Story ${field} must be nonempty text`);
+  }
+  if (!Array.isArray(story.sections) || story.sections.length === 0) throw derivationError('STORY_SECTIONS_REQUIRED', 'canonical Story sections must be nonempty');
+
+  const sectionIds = new Set();
+  const aliases = new Set();
+  const provenance = new Set();
+  const mintBeatId = options.newBeatId || newBeatId;
+  return story.sections.map((section, index) => {
+    if (!section || typeof section !== 'object' || Array.isArray(section) || typeof section.id !== 'string' || !section.id.trim()) {
+      throw derivationError('STORY_SECTION_ID_INVALID', `Story section at index ${index} has no canonical identity`);
+    }
+    if (!Number.isInteger(section.order) || section.order !== index + 1) {
+      throw derivationError('STORY_SECTION_ORDER_INVALID', 'Story sections must use exact contiguous canonical order');
+    }
+    if (sectionIds.has(section.id)) throw derivationError('STORY_SECTION_ID_DUPLICATE', `duplicate Story section ID: ${section.id}`);
+    sectionIds.add(section.id);
+
+    const alias = `vidtoolz-script-builder/section:${section.id}`;
+    const sourceId = `${story.project_id}/${story.version_id}/${section.id}`;
+    if (aliases.has(alias)) throw derivationError('BEAT_ALIAS_COLLISION', `duplicate Story section alias: ${alias}`);
+    if (provenance.has(sourceId)) throw derivationError('BEAT_PROVENANCE_COLLISION', `duplicate Story section provenance: ${sourceId}`);
+    aliases.add(alias);
+    provenance.add(sourceId);
+    return {
+      canonical_beat_id: mintBeatId(),
+      section_id: section.id,
+      aliases: [{ namespace: 'vidtoolz-script-builder/section', id: section.id }],
+      source_provenance: { source_system: 'vidtoolz-script-builder', source_id: sourceId },
+    };
+  });
+}
+
 function canonicalize(value) {
   if (value === undefined) return undefined;
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -223,6 +265,17 @@ function validateShot(shot, issues, index, beatById, storySections, shotIds) {
   if (!GENERATION_MODES.includes(shot.generation_mode)) issues.push(issue('GENERATION_MODE_INVALID', `${path}.generation_mode`, 'generation mode invalid'));
   if (shot.media_type === 'GENERATED_VIDEO' && !['DIRECT_VIDEO', 'IMAGE_TO_VIDEO'].includes(shot.generation_mode)) issues.push(issue('VIDEO_MODE_REQUIRED', `${path}.generation_mode`, 'generated video requires direct or I2V mode'));
   if (shot.media_type !== 'GENERATED_VIDEO' && ['DIRECT_VIDEO', 'IMAGE_TO_VIDEO'].includes(shot.generation_mode)) issues.push(issue('VIDEO_MODE_INCONSISTENT', `${path}.generation_mode`, 'video mode requires generated video'));
+  const expectedModes = {
+    GENERATED_STILL: ['STILL'],
+    GENERATED_VIDEO: ['DIRECT_VIDEO', 'IMAGE_TO_VIDEO'],
+    INFOGRAPHIC: ['NOT_APPLICABLE'],
+    MAP_ANIMATION: ['NOT_APPLICABLE'],
+    SCREEN_CAPTURE: ['NOT_APPLICABLE'],
+    ARCHIVAL_EXTERNAL: ['NOT_APPLICABLE'],
+    PRESENTER_A_ROLL: ['NOT_APPLICABLE'],
+    TEXT_GRAPHIC: ['NOT_APPLICABLE'],
+  };
+  if (expectedModes[shot.media_type] && !expectedModes[shot.media_type].includes(shot.generation_mode)) issues.push(issue('MEDIA_GENERATION_MODE_MISMATCH', `${path}.generation_mode`, `${shot.media_type} does not support ${shot.generation_mode}`));
   if (!PRESENTER_RELATIONS.includes(shot.presenter_relation)) issues.push(issue('PRESENTER_RELATION_INVALID', `${path}.presenter_relation`, 'presenter relation invalid'));
   if (!SHOT_STATUSES.includes(shot.status)) issues.push(issue('SHOT_STATUS_INVALID', `${path}.status`, 'planner shot status invalid'));
   if (!PRIORITIES.includes(shot.priority)) issues.push(issue('PRIORITY_INVALID', `${path}.priority`, 'priority invalid'));
@@ -233,6 +286,9 @@ function validateShot(shot, issues, index, beatById, storySections, shotIds) {
   if (shot.visual_assertion !== null && (typeof shot.visual_assertion !== 'string' || !shot.visual_assertion.trim())) issues.push(issue('VISUAL_ASSERTION_INVALID', `${path}.visual_assertion`, 'visual assertion must be null or nonempty text'));
   if (!shot.research_sensitive && shot.research_refs?.length) issues.push(issue('RESEARCH_SENSITIVITY_MISMATCH', `${path}.research_refs`, 'Research refs require research_sensitive true'));
   validateCameraIntent(shot.camera_intent, issues, `${path}.camera_intent`);
+  if (shot.media_type === 'MAP_ANIMATION' && (!shot.camera_intent || typeof shot.camera_intent.subject !== 'string' || !shot.camera_intent.subject.trim() || typeof shot.camera_intent.purpose !== 'string' || !shot.camera_intent.purpose.trim())) {
+    issues.push(issue('MAP_CAMERA_INTENT_REQUIRED', `${path}.camera_intent`, 'MAP_ANIMATION requires bounded Camera intent with subject and purpose'));
+  }
   validateGenerationRequirements(shot.generation_requirements, issues, `${path}.generation_requirements`, shot);
   if (!Array.isArray(shot.continuity_notes) || shot.continuity_notes.some((note) => typeof note !== 'string' || !note.trim())) issues.push(issue('CONTINUITY_NOTES_INVALID', `${path}.continuity_notes`, 'continuity notes invalid'));
 }
@@ -581,6 +637,7 @@ module.exports = {
   canonicalize,
   newPlanId,
   newBeatId,
+  deriveRequiredBeats,
   newShotId,
   newPromptId,
   planDigest,
