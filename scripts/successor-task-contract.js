@@ -11,6 +11,7 @@ const SCHEMA_VERSION = 1;
 const HASH_RE = /^[a-f0-9]{64}$/;
 const ADAPTERS = Object.freeze({ visual_planning_director: visualPlanning });
 function hasSuccessorAdapter(agentId) { return Object.prototype.hasOwnProperty.call(ADAPTERS, agentId); }
+function successorAdapterIdentity(agentId) { return ADAPTERS[agentId]?.VALIDATOR_ID || null; }
 
 class SuccessorTaskError extends Error {
   constructor(code, message) { super(message); this.name = 'SuccessorTaskError'; this.code = code; this.statusCode = 409; }
@@ -168,4 +169,4 @@ function assertRunnableSuccessor(rootInput, agentId, task, taskBytes) {
   return contract;
 }
 
-module.exports = { SCHEMA_VERSION, ADAPTERS, SuccessorTaskError, sha256, contractHash, manualPaths, prepareManualArtifact, readManualArtifact, resumptionPaths, buildProposal, verifyContract, assertRunnableSuccessor, hasSuccessorAdapter, atomicWrite };
+module.exports = { SCHEMA_VERSION, ADAPTERS, SuccessorTaskError, sha256, contractHash, manualPaths, prepareManualArtifact, readManualArtifact, resumptionPaths, buildProposal, verifyContract, assertRunnableSuccessor, hasSuccessorAdapter, successorAdapterIdentity, atomicWrite };

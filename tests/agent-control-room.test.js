@@ -726,7 +726,8 @@ function takeoverPlan(revision = 1, previous = null) {
 }
 
 test('Visual Planning alone receives UI takeover and changed-byte successor return', async () => {
-  const ids = ['visual_planning_director', 'story_editor', 'editor', 'presenter_director', 'creative_director', 'production_operations'];
+  const unsupportedEnabled = ['story_editor', 'editor', 'research_director', 'audience_packaging_director', 'sound_music_director', 'generation_supervisor'];
+  const ids = ['visual_planning_director', ...unsupportedEnabled, 'presenter_director', 'creative_director', 'production_operations'];
   const f = fixture(ids);
   for (const id of ['presenter_director', 'creative_director']) {
     const role = f.registry.agents.find((agent) => agent.agent_id === id);
@@ -740,16 +741,33 @@ test('Visual Planning alone receives UI takeover and changed-byte successor retu
   const completed = writeRunnerInvocation(f, { agent_id: 'visual_planning_director', task_id: 'visual-task-ui',
     artifact: firstPlan, artifact_field: 'visual_plan', state: 'AWAITING_HUMAN_REVIEW', attention: 'REVIEW',
     task: { action: 'review_coverage', story, required_beats: firstPlan.required_beats, existing_plan: firstPlan } });
+  const unsupportedInvocations = Object.fromEntries([...unsupportedEnabled, 'presenter_director', 'creative_director', 'production_operations'].map((agentId) => {
+    const item = writeRunnerInvocation(f, { agent_id: agentId, task_id: `${agentId}-task`, artifact: { schema_version: 1, artifact_type: 'other' } });
+    return [agentId, item];
+  }));
   const server = packageEngineServer.createServer({ root: f.root, agentLiveResourceProvider: async () => ({ source: 'TEST', compute: null, jobs: null }), agentSuccessorValidation: { currentStory: story } });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
     let room = JSON.parse((await request(server, '/api/agent-control-room')).body).data;
     const rows = Object.fromEntries(room.agents.map((agent) => [agent.agent_id, agent]));
     assert.equal(rows.visual_planning_director.control_capabilities.take_manual_control, true);
-    for (const id of ['story_editor', 'editor', 'presenter_director', 'creative_director', 'production_operations']) {
+    for (const id of [...unsupportedEnabled, 'presenter_director', 'creative_director', 'production_operations']) {
       assert.equal(rows[id].control_capabilities.take_manual_control, false, `${id} must not expose takeover`);
     }
     assert.equal(rows.production_operations.implementation.state, 'IMPLEMENTATION_CANDIDATE');
+    for (const id of unsupportedEnabled) {
+      const item = unsupportedInvocations[id];
+      const refused = await postJson(server, packageEngineServer.AGENT_TAKEOVER_PREVIEW_API, { run_id: item.runId, agent_id: id, invocation_id: item.invocation.invocation_id, reason: 'Direct API must enforce successor eligibility.' });
+      assert.equal(refused.status, 409); assert.equal(refused.body.code, 'TAKEOVER_SUCCESSOR_ADAPTER_MISSING', id);
+    }
+    for (const id of ['presenter_director', 'creative_director']) {
+      const item = unsupportedInvocations[id];
+      const refused = await postJson(server, packageEngineServer.AGENT_TAKEOVER_PREVIEW_API, { run_id: item.runId, agent_id: id, invocation_id: item.invocation.invocation_id, reason: 'Disabled lifecycle remains stronger.' });
+      assert.equal(refused.status, 409); assert.equal(refused.body.code, 'BLOCKED_AGENT_NOT_ENABLED', id);
+    }
+    const candidateItem = unsupportedInvocations.production_operations;
+    const candidateRefused = await postJson(server, packageEngineServer.AGENT_TAKEOVER_PREVIEW_API, { run_id: candidateItem.runId, agent_id: 'production_operations', invocation_id: candidateItem.invocation.invocation_id, reason: 'Candidate readiness remains stronger.' });
+    assert.equal(candidateRefused.status, 409); assert.equal(candidateRefused.body.code, 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
     const input = { run_id: completed.runId, agent_id: completed.agentId, invocation_id: completed.invocation.invocation_id, reason: 'Bounded Visual Plan UI correction.' };
     const before = digestTree(f.root);
     const preview = (await postJson(server, packageEngineServer.AGENT_TAKEOVER_PREVIEW_API, input)).body.data;

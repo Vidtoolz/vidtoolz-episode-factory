@@ -77,10 +77,18 @@ function currentArtifact(context) {
   return { artifact_id: artifact.field, path: artifact.path, sha256: runner.sha256(fs.readFileSync(artifactPath)), exists: true };
 }
 function ownershipFor(context) { return ownership.readOwnership(context.root, { run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id }); }
-function assertManualControlSpecialist(agentId) {
-  if (!successor.hasSuccessorAdapter(agentId)) {
-    throw new AgentControlError('TAKEOVER_SUCCESSOR_ADAPTER_MISSING', `manual takeover is unavailable because ${agentId} has no canonical successor/resumption adapter`);
+const MANUAL_CONTROL_SPECIALIST = 'visual_planning_director';
+function manualControlSpecialistPolicy(agentId) {
+  const adapterId = successor.successorAdapterIdentity(agentId);
+  if (agentId !== MANUAL_CONTROL_SPECIALIST || !adapterId) {
+    return { eligible: false, code: 'TAKEOVER_SUCCESSOR_ADAPTER_MISSING', policy_id: 'VISUAL_PLANNING_SUCCESSOR_ONLY_V1', adapter_id: adapterId };
   }
+  return { eligible: true, code: null, policy_id: 'VISUAL_PLANNING_SUCCESSOR_ONLY_V1', adapter_id: adapterId };
+}
+function assertManualControlSpecialist(agentId) {
+  const policy = manualControlSpecialistPolicy(agentId);
+  if (!policy.eligible) throw new AgentControlError(policy.code, `manual takeover is unavailable because ${agentId} has no production-approved successor/resumption adapter`);
+  return policy;
 }
 function previewDigest(context, action, normalizedReason, ledgerHead, extra = {}) {
   return runner.sha256(Buffer.from(ledger.canonicalize({ action, run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_sha256: runner.sha256(context.taskBytes), reason: normalizedReason, ledger_head: ledgerHead, ...extra })));
@@ -148,13 +156,14 @@ async function applyCancel(input, options = {}) {
 
 function previewTakeManualControl(input, options = {}) {
   const context = locateInvocation(options.root, input), normalizedReason = reason(input.reason);
-  assertManualControlSpecialist(context.agentId);
+  const policy = assertManualControlSpecialist(context.agentId);
   const owner = ownershipFor(context), artifact = currentArtifact(context), currentLedger = ledger.readLedger(context.root, context.runId);
   if (owner.current_owner !== 'AUTOMATION') throw new AgentControlError('OWNERSHIP_TRANSITION_INVALID', `current execution owner is ${owner.current_owner}`);
-  const active = context.live_run_lock, bounded = artifact.exists && Boolean(artifact.artifact_id) && Boolean(artifact.sha256);
+  const active = context.live_run_lock, completed = ['COMPLETED', 'ABANDONED'].includes(context.runtime_status);
+  const bounded = artifact.artifact_id === 'visual_plan' && artifact.exists && Boolean(artifact.sha256);
   return {
-    schema_version: 1, action: 'TAKE_MANUAL_CONTROL', read_only: true, eligible: !active && bounded,
-    blocked_reason: active ? 'AUTOMATION_INVOCATION_ACTIVE' : !bounded ? 'NO_BOUNDED_ARTIFACT' : null,
+    schema_version: 1, action: 'TAKE_MANUAL_CONTROL', read_only: true, eligible: !active && completed && bounded,
+    blocked_reason: active ? 'AUTOMATION_INVOCATION_ACTIVE' : !completed ? 'EXACT_QUIESCENT_ARTIFACT_REQUIRED' : !bounded ? 'EXACT_VISUAL_PLAN_ARTIFACT_REQUIRED' : null,
     target: { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_id: context.record.task_id, artifact_id: artifact.artifact_id },
     current_owner: owner.current_owner, proposed_owner: active ? 'SUSPENDED' : 'HUMAN', ownership_revision: owner.revision,
     active_invocation: context.runtime_status === 'RUNNING', active_worker_job: context.lock?.resource_job || null,
@@ -170,17 +179,17 @@ function previewTakeManualControl(input, options = {}) {
       : { approvals: ['BYTE_BOUND_APPROVALS_IF_BYTES_CHANGE'], gates: [] },
     consequences: active ? 'Takeover is blocked until active automation is truthfully stopped.' : 'Automation mutation and redispatch will be fenced for this task work unit.',
     changes_approval: false,
-    preview_token: previewDigest(context, 'TAKE_MANUAL_CONTROL', normalizedReason, currentLedger.head_hash, { ownership_revision: owner.revision, ownership_state_hash: owner.current_state_hash, artifact_sha256: artifact.sha256 }),
+    eligibility_policy: policy,
+    preview_token: previewDigest(context, 'TAKE_MANUAL_CONTROL', normalizedReason, currentLedger.head_hash, { ownership_revision: owner.revision, ownership_state_hash: owner.current_state_hash, artifact_sha256: artifact.sha256, eligibility_policy: policy }),
   };
 }
 
 function manualControlEligibility(input, options = {}) {
-  if (input.agent_id !== 'visual_planning_director' || !successor.hasSuccessorAdapter(input.agent_id)) {
-    return { take_manual_control: false, return_to_automation: false, reason: 'SPECIALIST_SUCCESSOR_ADAPTER_REQUIRED' };
-  }
   let context;
   try { context = locateInvocation(options.root, input); }
   catch (error) { return { take_manual_control: false, return_to_automation: false, reason: error.code || 'CONTROL_TARGET_INVALID' }; }
+  const policy = manualControlSpecialistPolicy(context.agentId);
+  if (!policy.eligible) return { take_manual_control: false, return_to_automation: false, reason: policy.code, eligibility_policy: policy };
   let owner;
   try { owner = ownershipFor(context); }
   catch (error) { return { take_manual_control: false, return_to_automation: false, reason: error.code || 'OWNERSHIP_INVALID' }; }
@@ -191,12 +200,12 @@ function manualControlEligibility(input, options = {}) {
   if (owner.current_owner === 'AUTOMATION') {
     const eligible = !context.live_run_lock && ['COMPLETED', 'ABANDONED'].includes(context.runtime_status)
       && artifact.exists && Boolean(artifact.artifact_id) && Boolean(artifact.sha256);
-    return { take_manual_control: eligible, return_to_automation: false, reason: eligible ? null : 'EXACT_QUIESCENT_ARTIFACT_REQUIRED', artifact };
+    return { take_manual_control: eligible, return_to_automation: false, reason: eligible ? null : 'EXACT_QUIESCENT_ARTIFACT_REQUIRED', artifact, eligibility_policy: policy };
   }
   if (owner.current_owner === 'HUMAN') {
     try {
       const manual = successor.readManualArtifact(context);
-      return { take_manual_control: false, return_to_automation: true, reason: null,
+      return { take_manual_control: false, return_to_automation: true, reason: null, eligibility_policy: policy,
         manual_artifact: { path: manual.relative_path, sha256: manual.sha256, artifact_id: manual.metadata.artifact_id } };
     } catch (error) {
       return { take_manual_control: false, return_to_automation: false, reason: error.code || 'MANUAL_ARTIFACT_INVALID' };
@@ -282,4 +291,4 @@ async function applyReturnToAutomation(input, options = {}) {
   return { action: 'RETURN_TO_AUTOMATION', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'AUTOMATION', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash };
 }
 
-module.exports = { AgentControlError, locateInvocation, currentArtifact, assertManualControlSpecialist, manualControlEligibility, previewRetry, applyRetry, previewCancel, applyCancel, previewTakeManualControl, applyTakeManualControl, previewReturnToAutomation, applyReturnToAutomation };
+module.exports = { AgentControlError, locateInvocation, currentArtifact, manualControlSpecialistPolicy, assertManualControlSpecialist, manualControlEligibility, previewRetry, applyRetry, previewCancel, applyCancel, previewTakeManualControl, applyTakeManualControl, previewReturnToAutomation, applyReturnToAutomation };
