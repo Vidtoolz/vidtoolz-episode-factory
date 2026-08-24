@@ -22,11 +22,20 @@ const SECTIONS = [
 ];
 
 function write(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`); }
+function advanceUlidClock(previousVersion) {
+  const previousTime = Date.parse(previousVersion.created);
+  while (Date.now() <= previousTime) {
+    // Script Builder ULIDs are sortable by millisecond, but random within one
+    // millisecond. Keep this integration fixture faithful to human snapshots,
+    // which necessarily occur after the predecessor snapshot.
+  }
+}
 function fixture(bindings = []) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'story-successor-'));
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'story-successor-data-'));
   store.ensureLayout(dataRoot);
   const source = versions.createVersion(dataRoot, PROJECT, SECTIONS, CONFIG, { central_claim: 'Local-first production improves recoverability.', narrative_spine: 'failure-investigation-principle-generalization' });
+  advanceUlidClock(source);
   const predecessor = versions.createVersion(dataRoot, PROJECT, [{ ...SECTIONS[0], dialogue: 'Local production keeps source media close and observable.' }, SECTIONS[1]], CONFIG,
     { central_claim: source.central_claim, narrative_spine: source.narrative_spine, source_provenance: { system: 'story_editor', task_id: 'story-task-1', source_version_id: source.id, source_content_hash: source.content_hash } });
   const runId = 'story-run-1', agentId = 'story_editor', taskId = 'story-task-1', invocationId = `${agentId}:${taskId}:1`;
@@ -53,6 +62,8 @@ function fixture(bindings = []) {
 }
 
 function humanSnapshot(f, sections = [{ ...SECTIONS[0], dialogue: 'Local production keeps source media close, observable, and recoverable.' }, SECTIONS[1]]) {
+  const current = versions.listVersions(f.dataRoot, PROJECT.id).at(-1);
+  advanceUlidClock(current);
   return versions.createVersion(f.dataRoot, PROJECT, sections, CONFIG, { central_claim: f.predecessor.central_claim, narrative_spine: f.predecessor.narrative_spine, source_provenance: { system: 'human-script-builder', predecessor_version_id: f.predecessor.id } });
 }
 

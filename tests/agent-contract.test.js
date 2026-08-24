@@ -264,8 +264,8 @@ test('AC22: complete doctrine never implies autonomous enablement', () => {
   const s = validator.validateContract(contract, registry).summary;
   assert.deepEqual(s.doctrine_only, ['presenter_director', 'creative_director']);
   assert.equal(s.enabled_for_dispatch.length, 10);
-  assert.equal(s.implementation_dispatchable.length, 7);
-  assert.deepEqual(s.implementation_candidates, ['production_operations', 'camera_director', 'qc_director']);
+  assert.equal(s.implementation_dispatchable.length, 8);
+  assert.deepEqual(s.implementation_candidates, ['camera_director', 'qc_director']);
   for (const id of ['presenter_director', 'creative_director']) {
     assert.ok(!s.enabled_for_dispatch.includes(id), `${id} must not be dispatch-enabled`);
   }
