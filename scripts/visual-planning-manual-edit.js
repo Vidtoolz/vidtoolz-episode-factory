@@ -15,6 +15,8 @@ const runner = require('./agent-run.js');
 const successor = require('./successor-task-contract.js');
 const visualPlan = require('./visual-plan.js');
 const promptAdapter = require('./visual-plan-prompt-adapter.js');
+const recovery = require('./manual-edit-recovery.js');
+const humanPreview = require('./human-change-preview.js');
 
 const AGENT_ID = 'visual_planning_director';
 const ACTION = 'EDIT_MANUAL_ARTIFACT';
@@ -254,6 +256,22 @@ async function previewVisualPlanManualEdit(input, options = {}) {
     validation: proposal.validation,
     stale_consequences: { scopes: proposal.validation.approvals_invalidated || [], gates: proposal.validation.gates_invalidated || [] },
     changes_approval: false,
+    human_change_preview: humanPreview.buildHumanChangePreview({
+      title: 'Preview Visual Plan creative edit',
+      summary: `${derived.changes.length} bounded creative field${derived.changes.length === 1 ? '' : 's'} will change.`,
+      changed_fields: derived.changes.map((change) => ({ label: `${change.shot_ref} · ${change.field.replace(/_/g, ' ')}`,
+        before: change.before, after: change.after, significance: SEMANTIC_SHOT_FIELDS.includes(change.field) ? 'Changes shot intent and requires a new immutable shot identity.' : 'Updates bounded creative annotation.' })),
+      system_changes: derived.regenerated.map((field) => ({ shot_id: 'Shot identity updated', prompt_revision: 'Prompt binding regenerated',
+        prompt_text: 'Prompt text regenerated', shot_intent_digest_sha256: 'Shot intent digest regenerated', plan_revision: 'Plan revision advanced',
+        supersedes: 'Plan supersession lineage updated', plan_digest_sha256: 'Plan digest regenerated', artifact_sha256: 'Artifact hash regenerated',
+        created_at: 'Artifact timestamp regenerated', created_by: 'Artifact provenance recorded' }[field] || `System field updated: ${field}`)),
+      stale_consequences: [...(proposal.validation.approvals_invalidated || []).map((item) => `${item} becomes stale`),
+        ...(proposal.validation.gates_invalidated || []).map((item) => `${item} requires fresh review`)],
+      warnings: [], next_action: 'Apply this edit to remain HUMAN-owned, then preview Return to Automation separately.',
+      technical_details: { current_artifact_sha256: manual.sha256, proposed_artifact_sha256: proposed.sha256,
+        current_plan_revision: manual.value.plan_revision, proposed_plan_revision: derived.plan.plan_revision,
+        plan_digest_sha256: derived.plan.plan_digest_sha256 },
+    }),
     preview_created_at: createdAt,
     preview_token: eligible ? previewToken(context, owner, manual, patch, proposed.sha256, createdAt, normalizedReason, currentLedger.head_hash) : null,
   };
@@ -284,6 +302,7 @@ async function applyVisualPlanManualEdit(input, options = {}) {
     const nextBytes = Buffer.from(`${JSON.stringify(preview.proposed_visual_plan, null, 2)}\n`);
     if (runner.sha256(nextBytes) !== preview.proposed_artifact.sha256) throw new VisualPlanningManualEditError('VISUAL_PLAN_EDIT_PREVIEW_STALE', 'proposed bytes do not match the preview');
     const previousBytes = manual.bytes;
+    recovery.registerAppliedEdit(context, previousBytes, nextBytes);
     successor.atomicWrite(manual.paths.artifactPath, nextBytes);
     let mutation;
     try {

@@ -366,3 +366,40 @@ test('HTTP bounded edit preview/apply accepts only exact HUMAN-owned creative pa
     assert.equal(forbidden.body.code, 'VISUAL_PLAN_EDIT_FIELD_FORBIDDEN');
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });
+
+test('HTTP generic recovery exposes trusted history and reverts only through preview/apply', async () => {
+  const f = fixture();
+  const actor = ledger.localActorContext({ username: 'mikko' });
+  const takeover = controls.previewTakeManualControl({ ...f.request, reason: 'HTTP recovery test.' }, { root: f.root });
+  controls.applyTakeManualControl({ ...f.request, reason: 'HTTP recovery test.', preview_token: takeover.preview_token }, { root: f.root, actor });
+  let owner = ownership.readOwnership(f.root, f.request);
+  let current = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root });
+  const editBase = { ...f.request, expected_ownership_revision: owner.revision, expected_artifact_sha256: current.visual_plan.sha256,
+    reason: 'Create a trusted revision for HTTP recovery.', creative_patch: { shot_edits: [{ shot_ref: f.plan.shots[0].shot_id,
+      set: { edit_placement: 'Before the final proof beat.' } }] } };
+  const server = packageEngineServer.createServer({ root: f.root, agentSuccessorValidation: { currentStory: f.plan.story } });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const editPreview = await postJson(server, packageEngineServer.VISUAL_PLANNING_EDIT_PREVIEW_API, editBase);
+    const editApply = await postJson(server, packageEngineServer.VISUAL_PLANNING_EDIT_APPLY_API, { ...editBase,
+      preview_token: editPreview.body.data.preview_token, preview_created_at: editPreview.body.data.preview_created_at });
+    assert.equal(editApply.status, 200);
+    owner = ownership.readOwnership(f.root, f.request);
+    const query = new URLSearchParams(f.request).toString();
+    const history = await requestJson(server, `/api/agent-control-room/manual-edit-recovery?${query}`);
+    assert.equal(history.status, 200);
+    assert.equal(history.body.data.available, true);
+    assert.equal(history.body.data.history[0].current, true);
+    const revertBase = { ...f.request, expected_ownership_revision: owner.revision,
+      expected_artifact_sha256: editApply.body.data.artifact_sha256, reason: 'Restore prior trusted revision over HTTP.' };
+    const preview = await postJson(server, packageEngineServer.MANUAL_EDIT_REVERT_PREVIEW_API, revertBase);
+    assert.equal(preview.status, 200);
+    assert.equal(preview.body.data.read_only, true);
+    const apply = await postJson(server, packageEngineServer.MANUAL_EDIT_REVERT_APPLY_API, { ...revertBase,
+      restore_revision_id: preview.body.data.restored_artifact.revision_id,
+      preview_token: preview.body.data.preview_token, preview_created_at: preview.body.data.preview_created_at });
+    assert.equal(apply.status, 200);
+    assert.equal(apply.body.data.execution_owner, 'HUMAN');
+    assert.equal(apply.body.data.creates_approval, false);
+  } finally { await new Promise((resolve) => server.close(resolve)); }
+});

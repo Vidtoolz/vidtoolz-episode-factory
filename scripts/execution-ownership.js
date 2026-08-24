@@ -79,8 +79,8 @@ function verifyState(doc, target, actionLedger) {
         || action.target_task_id !== target.task_id || action.target_invocation_id !== record.originating_invocation_id
         || action.result_status !== 'COMPLETED' || action.resulting_execution_owner !== record.current_owner
         || action.prior_execution_owner !== record.prior_owner
-        || !['TAKE_MANUAL_CONTROL', 'RETURN_TO_AUTOMATION', 'SUSPEND_AUTOMATION', 'EDIT_MANUAL_ARTIFACT'].includes(action.action)
-        || (action.action === 'EDIT_MANUAL_ARTIFACT' && (record.current_owner !== 'HUMAN' || record.prior_owner !== 'HUMAN'))) {
+        || !['TAKE_MANUAL_CONTROL', 'RETURN_TO_AUTOMATION', 'SUSPEND_AUTOMATION', 'EDIT_MANUAL_ARTIFACT', 'REVERT_MANUAL_EDIT'].includes(action.action)
+        || (['EDIT_MANUAL_ARTIFACT', 'REVERT_MANUAL_EDIT'].includes(action.action) && (record.current_owner !== 'HUMAN' || record.prior_owner !== 'HUMAN'))) {
       throw new OwnershipError('OWNERSHIP_LEDGER_REFERENCE_INVALID', `ownership revision ${index + 1} is not backed by its operator action`);
     }
     if (record.successor != null) {
@@ -207,8 +207,10 @@ function recordHumanOwnedMutation(root, input, options = {}) {
     ledger.validateActor(options.actor);
     const recordId = options.recordId || `operator-action-${crypto.randomUUID()}`;
     safeId(recordId, 'actor_action_record_id');
+    const mutationAction = input.action || 'EDIT_MANUAL_ARTIFACT';
+    if (!['EDIT_MANUAL_ARTIFACT', 'REVERT_MANUAL_EDIT'].includes(mutationAction)) throw new OwnershipError('OWNERSHIP_TRANSITION_INVALID', 'bounded mutation action is invalid');
     const actionInput = {
-      action: 'EDIT_MANUAL_ARTIFACT', target_agent_role: paths.target.agent_id,
+      action: mutationAction, target_agent_role: paths.target.agent_id,
       target_invocation_id: safeId(input.originating_invocation_id, 'originating_invocation_id'),
       target_task_id: paths.target.task_id,
       target_artifact: { artifact_id: safeId(input.artifact_id, 'artifact_id'), sha256: input.predecessor_artifact_sha256 },

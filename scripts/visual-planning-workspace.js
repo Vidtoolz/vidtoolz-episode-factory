@@ -13,6 +13,7 @@ const executionOwnership = require('./execution-ownership.js');
 const operationalRationale = require('./operational-rationale.js');
 const runner = require('./agent-run.js');
 const successorTaskContract = require('./successor-task-contract.js');
+const manualEditRecovery = require('./manual-edit-recovery.js');
 const visualPlan = require('./visual-plan.js');
 const workspaceContract = require('./visual-planning-workspace-contract.js');
 
@@ -389,9 +390,15 @@ async function buildVisualPlanningWorkspace(request, options = {}) {
     if (!manualValidation.structurally_valid || !manualLineage.valid) {
       fail('WORKSPACE_MANUAL_ARTIFACT_INVALID', 'HUMAN-owned Visual Plan is not a valid bounded-edit artifact');
     }
+    let manualMutationHistory = false;
+    try { manualMutationHistory = manualEditRecovery.buildHistory(context, manual).mutations_seen; }
+    catch (error) {
+      if (error.code === 'MANUAL_EDIT_RECOVERY_HISTORY_DRIFT') manualMutationHistory = true;
+      else fail(error.code || 'WORKSPACE_MANUAL_EDIT_HISTORY_INVALID', error.message);
+    }
     displayedArtifact = { binding: artifact.binding, artifactPath: manual.paths.artifactPath, bytes: manual.bytes,
-      value: manual.value, sha256: manual.sha256, manual: true, source_sha256: manual.metadata.source_artifact_sha256 };
-    if (!manualIsOriginal) {
+      value: manual.value, sha256: manual.sha256, manual: true, manualMutationHistory, source_sha256: manual.metadata.source_artifact_sha256 };
+    if (!manualIsOriginal || manualMutationHistory) {
       ownership.stale_approvals = [APPROVAL_SCOPE];
       ownership.stale_gates = [APPROVAL_SCOPE];
     }
@@ -403,8 +410,8 @@ async function buildVisualPlanningWorkspace(request, options = {}) {
   }]) : null;
   const artifactReference = path.relative(root, displayedArtifact.artifactPath);
   const displayValidation = visualPlan.validatePlan(displayedArtifact.value, { currentStory: context.task.story || artifact.value.story });
-  const approvalState = displayedArtifact.manual && displayedArtifact.sha256 !== artifact.sha256
-    ? { state: 'STALE', valid: false, reason_codes: ['MANUAL_ARTIFACT_CHANGED'] }
+  const approvalState = displayedArtifact.manual && (displayedArtifact.sha256 !== artifact.sha256 || displayedArtifact.manualMutationHistory)
+    ? { state: 'STALE', valid: false, reason_codes: [displayedArtifact.sha256 !== artifact.sha256 ? 'MANUAL_ARTIFACT_CHANGED' : 'MANUAL_EDIT_HISTORY_REQUIRES_REVALIDATION'] }
     : result.authority?.approval || { state: 'INVALID', valid: false, reason_codes: ['PLAN_APPROVAL_MISSING'] };
   const payload = {
     workspace_schema_version: WORKSPACE_SCHEMA_VERSION,
@@ -427,8 +434,8 @@ async function buildVisualPlanningWorkspace(request, options = {}) {
           && context.task?.story?.content_hash === displayedArtifact.value.story?.content_hash ? 'CURRENT' : 'UNKNOWN',
       },
       approval_state: approvalState,
-      gate_state: { gate: APPROVAL_SCOPE, state: displayedArtifact.manual && displayedArtifact.sha256 !== artifact.sha256 ? 'STALE' : result.authority?.state || displayedArtifact.value.lifecycle_state || UNKNOWN,
-        authorization_ok: displayedArtifact.manual && displayedArtifact.sha256 !== artifact.sha256 ? false : result.authority?.authorization_ok === true },
+      gate_state: { gate: APPROVAL_SCOPE, state: displayedArtifact.manual && (displayedArtifact.sha256 !== artifact.sha256 || displayedArtifact.manualMutationHistory) ? 'STALE' : result.authority?.state || displayedArtifact.value.lifecycle_state || UNKNOWN,
+        authorization_ok: displayedArtifact.manual && (displayedArtifact.sha256 !== artifact.sha256 || displayedArtifact.manualMutationHistory) ? false : result.authority?.authorization_ok === true },
       coverage: buildCoverage(displayedArtifact.value, displayValidation),
       shots: buildShots(displayedArtifact.value, result),
     },

@@ -29,6 +29,7 @@ const executionOwnershipAuthorityAnchor = require('./scripts/execution-ownership
 const successorTaskContract = require('./scripts/successor-task-contract.js');
 const visualPlanningWorkspace = require('./scripts/visual-planning-workspace.js');
 const visualPlanningManualEdit = require('./scripts/visual-planning-manual-edit.js');
+const manualEditRecovery = require('./scripts/manual-edit-recovery.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
@@ -12856,6 +12857,8 @@ const AGENT_MANUAL_ARTIFACT_API = '/api/agent-control-room/manual-artifact';
 const VISUAL_PLANNING_WORKSPACE_API = '/api/visual-planning-workspace';
 const VISUAL_PLANNING_EDIT_PREVIEW_API = '/api/visual-planning-workspace/manual-edit/preview';
 const VISUAL_PLANNING_EDIT_APPLY_API = '/api/visual-planning-workspace/manual-edit/apply';
+const MANUAL_EDIT_REVERT_PREVIEW_API = '/api/agent-control-room/manual-edit-recovery/preview';
+const MANUAL_EDIT_REVERT_APPLY_API = '/api/agent-control-room/manual-edit-recovery/apply';
 
 function defaultAgentCancellationProvider() {
   return cancellationAdapters.createProvider({
@@ -18358,6 +18361,31 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'POST' && [MANUAL_EDIT_REVERT_PREVIEW_API, MANUAL_EDIT_REVERT_APPLY_API].includes(url.pathname)) {
+      readJsonBody(req, 1024 * 32)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Manual edit recovery' });
+          const options = { root: serverOptions.root || ROOT, actor: operatorActionLedger.localActorContext(),
+            successorValidation: serverOptions.agentSuccessorValidation };
+          return url.pathname === MANUAL_EDIT_REVERT_PREVIEW_API
+            ? manualEditRecovery.previewRevertManualEdit(payload, options)
+            : manualEditRecovery.applyRevertManualEdit(payload, options);
+        })
+        .then((payload) => sendJSON(res, 200, payload))
+        .catch((error) => sendError(res, error.statusCode || 409, error.message, error.code || 'manual-edit-recovery-error'));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/agent-control-room/manual-edit-recovery') {
+      try {
+        const payload = manualEditRecovery.recoveryProjection({ run_id: url.searchParams.get('run_id') || '',
+          agent_id: url.searchParams.get('agent_id') || '', task_id: url.searchParams.get('task_id') || '',
+          invocation_id: url.searchParams.get('invocation_id') || '' }, { root: serverOptions.root || ROOT });
+        sendJSON(res, 200, payload);
+      } catch (error) { sendError(res, error.statusCode || 409, error.message, error.code || 'manual-edit-recovery-error'); }
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === AGENT_MANUAL_ARTIFACT_API) {
       try {
         const runId = url.searchParams.get('run_id') || '';
@@ -19898,6 +19926,8 @@ module.exports = {
   VISUAL_PLANNING_WORKSPACE_API,
   VISUAL_PLANNING_EDIT_PREVIEW_API,
   VISUAL_PLANNING_EDIT_APPLY_API,
+  MANUAL_EDIT_REVERT_PREVIEW_API,
+  MANUAL_EDIT_REVERT_APPLY_API,
   AGENT_WORKFLOW_MAP_API,
   AGENT_RETRY_PREVIEW_API,
   AGENT_RETRY_APPLY_API,

@@ -111,5 +111,26 @@ function manualControlDetails(_context, artifact) {
     warning: 'Automation is fenced for this exact Visual Planning task. Creative fields are editable; machine metadata remains server authority.' };
 }
 
+// Recovery is specialist-owned validation over generic trusted revision
+// mechanics. Baseline bytes need structural/current-Story validation; later
+// revisions must additionally preserve canonical successor lineage.
+function validateRecovery(context, artifact, options = {}) {
+  const expectedStory = currentStory(context.task, options);
+  const structure = visualPlan.validatePlan(artifact.value, { currentStory: expectedStory });
+  const reasons = [...structure.reason_codes];
+  if (artifact.sha256 !== artifact.metadata.source_artifact_sha256) {
+    const predecessorBinding = context.invocation.artifacts?.find((item) => item.field === artifact.metadata.artifact_id);
+    const fs = require('node:fs');
+    const path = require('node:path');
+    let predecessor;
+    try { predecessor = JSON.parse(fs.readFileSync(path.resolve(context.directory, predecessorBinding.path), 'utf8')); }
+    catch (_) { reasons.push('SUCCESSOR_PREDECESSOR_INVALID'); }
+    if (predecessor) reasons.push(...visualPlan.validateSuccessorPlan(predecessor, artifact.value).reason_codes);
+  }
+  return { valid: reasons.length === 0, validator_id: VALIDATOR_ID, reason_codes: [...new Set(reasons)],
+    approvals_invalidated: ['VISUAL_PLAN_APPROVAL'], gates_invalidated: ['VISUAL_PLAN_APPROVAL'],
+    required_next_gate: REQUIRED_NEXT_GATE, required_next_specialist: REQUIRED_NEXT_SPECIALIST, continuation_action: CONTINUATION_ACTION };
+}
+
 module.exports = { AGENT_ID, VALIDATOR_ID, ARTIFACT_ID, REQUIRED_NEXT_GATE, REQUIRED_NEXT_SPECIALIST, CONTINUATION_ACTION, POLICY_ID,
-  storyProjection, currentStory, validateShape, validate, buildTask, manualControlDetails };
+  storyProjection, currentStory, validateShape, validate, buildTask, manualControlDetails, validateRecovery };
