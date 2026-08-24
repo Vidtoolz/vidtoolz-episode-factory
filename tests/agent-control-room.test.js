@@ -5,12 +5,13 @@ const controlRoom = require('../scripts/agent-control-room.js');
 const agentRunner = require('../scripts/agent-run.js');
 const workflowMap = require('../scripts/package-run-workflow-map.js');
 const rationale = require('../scripts/operational-rationale.js');
+const visualPlan = require('../scripts/visual-plan.js');
 
 function fixture(agentIds = ['alpha']) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-control-room-'));
   fs.mkdirSync(path.join(root, 'config'), { recursive: true });
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
-  const agents = agentIds.map((id) => ({ agent_id: id, name: `${id} name`, role: 'specialist', human_gate_type: 'CANDIDATE_SELECTION', lifecycle: { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' } }));
+  const agents = agentIds.map((id) => ({ agent_id: id, name: `${id} name`, role: 'specialist', human_gate_type: 'CANDIDATE_SELECTION', lifecycle: { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' }, implementation_state: 'IMPLEMENTATION_PROVEN' }));
   const registry = { schema_version: 1, agents };
   const contract = {
     schema_version: 1,
@@ -78,8 +79,10 @@ function writeRunnerInvocation(f, overrides = {}) {
   const resultWrite = writeJson(path.join(directory, 'result.json'), result);
   const artifacts = [];
   if (overrides.artifact !== undefined) {
-    const artifactWrite = writeJson(path.join(directory, 'artifacts', 'edit-plan.json'), overrides.artifact);
-    artifacts.push({ field: 'edit_plan', path: 'artifacts/edit-plan.json', sha256: artifactWrite.sha256 });
+    const artifactField = overrides.artifact_field || 'edit_plan';
+    const artifactFile = artifactField === 'visual_plan' ? 'visual-plan.json' : 'edit-plan.json';
+    const artifactWrite = writeJson(path.join(directory, 'artifacts', artifactFile), overrides.artifact);
+    artifacts.push({ field: artifactField, path: `artifacts/${artifactFile}`, sha256: artifactWrite.sha256 });
   }
   const invocation = {
     schema_version: 1, runner_version: 'agent-runner-v1', invocation_id: `${agentId}:${taskId}:1`,
@@ -693,7 +696,7 @@ test('operator control API nonce-gates preview/apply and returns the ledger reco
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });
 
-test('ownership control API exposes only eligible bounded takeover and return actions', async () => {
+test('ownership control API refuses takeover for specialists without a successor adapter', async () => {
   const f = fixture(['alpha']);
   const completed = writeRunnerInvocation(f, { state: 'BLOCKED', attention: 'REVIEW', blocker: 'manual correction needed', artifact: { version: 1 } });
   const server = packageEngineServer.createServer({ root: f.root, agentLiveResourceProvider: async () => ({ source: 'TEST', compute: null, jobs: null }) });
@@ -703,19 +706,75 @@ test('ownership control API exposes only eligible bounded takeover and return ac
     assert.equal(room.agents[0].execution_ownership.owner, 'AUTOMATION');
     assert.equal(room.agents[0].control_capabilities.take_manual_control, false);
     const input = { run_id: completed.runId, agent_id: 'alpha', invocation_id: completed.invocation.invocation_id, reason: 'Bounded manual correction.' };
+    const refused = await postJson(server, packageEngineServer.AGENT_TAKEOVER_PREVIEW_API, input);
+    assert.equal(refused.status, 409);
+    assert.equal(refused.body.code, 'MANUAL_CONTROL_SPECIALIST_NOT_SUPPORTED');
+  } finally { await new Promise((resolve) => server.close(resolve)); }
+});
+
+function takeoverPlan(revision = 1, previous = null) {
+  const storyHash = visualPlan.sha256('takeover UI story');
+  const story = { project_id: 'vpd-ui-project', version_id: 'story-v1', content_hash: storyHash,
+    approval: { state: 'approved', approved_by: 'Mikko', approved_at: '2026-08-24T09:00:00.000Z', version_id: 'story-v1', content_hash: storyHash }, section_ids: ['section-1'] };
+  const beat = { canonical_beat_id: 'visual-beat-01HF7YAT010000000000000001', section_id: 'section-1', aliases: [], source_provenance: null };
+  const plan = { schema_version: 1, artifact_type: 'visual-plan', plan_id: 'visual-plan-01HF7YAT000000000000000000', plan_revision: revision,
+    supersedes: previous ? { plan_revision: previous.plan_revision, plan_digest_sha256: previous.plan_digest_sha256 } : null,
+    created_at: `2026-08-24T12:0${revision}:00.000Z`, created_by: 'visual_planning_director', lifecycle_state: 'AWAITING_HUMAN_REVIEW',
+    story, required_beats: [beat], coverage: [{ beat_ref: beat, decision: 'INTENTIONAL_NO_VISUAL', shot_ids: [], reason: revision === 1 ? 'Presenter only.' : 'Human retained presenter continuity.' }], shots: [], prompts: [], plan_digest_sha256: '' };
+  plan.plan_digest_sha256 = visualPlan.planDigest(plan);
+  return plan;
+}
+
+test('Visual Planning alone receives UI takeover and changed-byte successor return', async () => {
+  const ids = ['visual_planning_director', 'story_editor', 'editor', 'presenter_director', 'creative_director', 'production_operations'];
+  const f = fixture(ids);
+  for (const id of ['presenter_director', 'creative_director']) {
+    const role = f.registry.agents.find((agent) => agent.agent_id === id);
+    role.lifecycle = { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED', dispatch_blocked_reason: 'not enabled' };
+    delete role.implementation_state;
+  }
+  f.registry.agents.find((agent) => agent.agent_id === 'production_operations').implementation_state = 'CANDIDATE';
+  writeJson(path.join(f.root, 'config/agent-registry.json'), f.registry);
+  const firstPlan = takeoverPlan();
+  const story = { ...firstPlan.story, sections: [{ section_id: 'section-1', order: 1, dialogue: 'Story.' }] };
+  const completed = writeRunnerInvocation(f, { agent_id: 'visual_planning_director', task_id: 'visual-task-ui',
+    artifact: firstPlan, artifact_field: 'visual_plan', state: 'AWAITING_HUMAN_REVIEW', attention: 'REVIEW',
+    task: { action: 'review_coverage', story, required_beats: firstPlan.required_beats, existing_plan: firstPlan } });
+  const server = packageEngineServer.createServer({ root: f.root, agentLiveResourceProvider: async () => ({ source: 'TEST', compute: null, jobs: null }), agentSuccessorValidation: { currentStory: story } });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    let room = JSON.parse((await request(server, '/api/agent-control-room')).body).data;
+    const rows = Object.fromEntries(room.agents.map((agent) => [agent.agent_id, agent]));
+    assert.equal(rows.visual_planning_director.control_capabilities.take_manual_control, true);
+    for (const id of ['story_editor', 'editor', 'presenter_director', 'creative_director', 'production_operations']) {
+      assert.equal(rows[id].control_capabilities.take_manual_control, false, `${id} must not expose takeover`);
+    }
+    assert.equal(rows.production_operations.implementation.state, 'IMPLEMENTATION_CANDIDATE');
+    const input = { run_id: completed.runId, agent_id: completed.agentId, invocation_id: completed.invocation.invocation_id, reason: 'Bounded Visual Plan UI correction.' };
     const before = digestTree(f.root);
     const preview = (await postJson(server, packageEngineServer.AGENT_TAKEOVER_PREVIEW_API, input)).body.data;
     assert.equal(preview.read_only, true); assert.equal(digestTree(f.root), before);
+    assert.equal(preview.target.task_id, 'visual-task-ui'); assert.equal(preview.artifact.sha256.length, 64);
+    assert.deepEqual(preview.potential_invalidations.gates, ['VISUAL_PLAN_APPROVAL_IF_BYTES_CHANGE']);
     const taken = (await postJson(server, packageEngineServer.AGENT_TAKEOVER_APPLY_API, { ...input, preview_token: preview.preview_token })).body.data;
     assert.equal(taken.execution_owner, 'HUMAN');
     room = JSON.parse((await request(server, '/api/agent-control-room')).body).data;
-    assert.equal(room.agents[0].control_capabilities.retry, false);
-    assert.equal(room.agents[0].control_capabilities.return_to_automation, false);
-    const retInput = { ...input, reason: 'Return unchanged validated bytes.' };
-    const retPreview = (await postJson(server, packageEngineServer.AGENT_RETURN_PREVIEW_API, retInput)).body.data;
-    assert.equal(retPreview.eligible, true);
-    const returned = (await postJson(server, packageEngineServer.AGENT_RETURN_APPLY_API, { ...retInput, preview_token: retPreview.preview_token, preview_created_at: retPreview.preview_created_at })).body.data;
-    assert.equal(returned.execution_owner, 'AUTOMATION');
+    const human = room.agents.find((agent) => agent.agent_id === 'visual_planning_director');
+    assert.equal(human.control_capabilities.return_to_automation, true);
+    assert.match(human.manual_control.preview_url, /manual-artifact/);
+    const artifactPreview = await request(server, human.manual_control.preview_url);
+    assert.equal(artifactPreview.status, 200); assert.equal(JSON.parse(artifactPreview.body).data.read_only, true);
+    const nextPlan = takeoverPlan(2, firstPlan);
+    fs.writeFileSync(path.join(f.root, taken.manual_artifact_path), `${JSON.stringify(nextPlan, null, 2)}\n`);
+    const returnInput = { ...input, reason: 'Create validated immutable Visual Plan successor.' };
+    const returnPreview = (await postJson(server, packageEngineServer.AGENT_RETURN_PREVIEW_API, returnInput)).body.data;
+    assert.equal(returnPreview.eligible, true); assert.equal(returnPreview.artifact.changed_since_takeover, true);
+    assert.deepEqual(returnPreview.invalidations.prior_scope_bindings, ['VISUAL_PLAN_APPROVAL']);
+    assert.equal(returnPreview.successor_task.required_next_gate, 'VISUAL_PLAN_APPROVAL');
+    const returned = (await postJson(server, packageEngineServer.AGENT_RETURN_APPLY_API, { ...returnInput, preview_token: returnPreview.preview_token, preview_created_at: returnPreview.preview_created_at })).body.data;
+    assert.equal(returned.predecessor_execution_owner, 'SUSPENDED'); assert.equal(returned.required_next_gate, 'VISUAL_PLAN_APPROVAL');
+    assert.equal(require('../scripts/execution-ownership.js').readOwnership(f.root, { run_id: completed.runId, agent_id: completed.agentId, task_id: returned.successor_task_id }).current_owner, 'AUTOMATION');
+    assert.equal(require('../scripts/operator-action-ledger.js').readLedger(f.root, completed.runId).records.length, 2);
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });
 
@@ -760,7 +819,8 @@ test('canonical cockpit separates dispatch-enabled agents from registered doctri
     assert.deepEqual(row.control_capabilities, { retry: false, cancel: false, pause: false, resume: false, take_manual_control: false });
   }
   assert.equal(output.summary.doctrine_only, refused.length);
-  assert.equal(output.summary.dispatch_enabled, registry.agents.length - refused.length);
+  assert.equal(output.summary.lifecycle_enabled, registry.agents.length - refused.length);
+  assert.equal(output.summary.dispatch_enabled, registry.agents.filter((agent) => agent.implementation_state === 'IMPLEMENTATION_PROVEN').length);
 });
 
 test('canonical cockpit exposes all registered agents and truthful implementation drift', async () => {
@@ -769,9 +829,24 @@ test('canonical cockpit exposes all registered agents and truthful implementatio
   assert.equal(output.agents.length, registry.agents.length);
   for (const id of ['production_operations', 'camera_director', 'qc_director']) {
     const row = output.agents.find((item) => item.agent_id === id);
-    assert.equal(row.implementation.state, 'IMPLEMENTATION_MISSING');
+    assert.equal(row.implementation.state, 'IMPLEMENTATION_CANDIDATE');
+    assert.equal(row.implementation.implementation_state, 'CANDIDATE');
+    assert.equal(row.control_capabilities.retry, false);
   }
+  assert.equal(output.summary.implementation_candidate, 3);
   assert.equal(output.agents.find((item) => item.agent_id === 'generation_supervisor').implementation.state, 'STATUS_UNSUPPORTED');
+});
+
+test('candidate implementation is visible but never loaded by Control Room', async () => {
+  const f = fixture(['alpha']);
+  f.registry.agents[0].implementation_state = 'CANDIDATE';
+  writeJson(path.join(f.root, 'config/agent-registry.json'), f.registry);
+  let loaded = 0;
+  const output = await controlRoom.buildAgentControlRoom({ root: f.root, implementationLoader: () => { loaded += 1; return {}; } });
+  assert.equal(output.agents[0].implementation.state, 'IMPLEMENTATION_CANDIDATE');
+  assert.equal(output.agents[0].state, 'UNAVAILABLE');
+  assert.equal(output.agents[0].control_capabilities.retry, false);
+  assert.equal(loaded, 0);
 });
 
 test('latest canonical Story Editor canary is visible as blocked review runtime truth', async () => {
@@ -785,7 +860,7 @@ test('latest canonical Story Editor canary is visible as blocked review runtime 
   assert.equal(story.attention, 'REVIEW');
   assert.match(story.blocker, /narrative_spine missing/);
   assert.equal(story.next_owner, 'production_operations');
-  assert.equal(story.handoff.current_implementation_state, 'IMPLEMENTATION_MISSING');
+  assert.equal(story.handoff.current_implementation_state, 'IMPLEMENTATION_CANDIDATE');
   assert.equal(story.automatic_chaining, false);
 });
 
@@ -813,6 +888,12 @@ test('cockpit UI renders a registry-driven panel with manual refresh', () => {
   assert.match(ui, /Confidence/);
   assert.match(ui, /Preview retry/);
   assert.match(ui, /Preview cancel/);
+  assert.match(ui, /Take manual control/);
+  assert.match(ui, /Return to automation/);
+  assert.match(ui, /Automation will be fenced for this exact Visual Planning task/);
+  assert.match(ui, /Approvals becoming stale/);
+  assert.match(ui, /Gates becoming stale/);
+  assert.match(ui, /Open bounded Visual Plan preview/);
   assert.match(ui, /action record/);
   assert.match(ui, /preview_token/);
   assert.match(css, /\.agent-control-room-card/);

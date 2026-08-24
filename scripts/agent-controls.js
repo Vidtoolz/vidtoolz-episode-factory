@@ -152,11 +152,51 @@ function previewTakeManualControl(input, options = {}) {
     target: { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_id: context.record.task_id, artifact_id: artifact.artifact_id },
     current_owner: owner.current_owner, proposed_owner: active ? 'SUSPENDED' : 'HUMAN', ownership_revision: owner.revision,
     active_invocation: context.runtime_status === 'RUNNING', active_worker_job: context.lock?.resource_job || null,
+    execution_context: {
+      lane: context.task?.execution?.lane || context.task?.lane || null,
+      model: context.task?.execution?.model || context.task?.model || null,
+      worker: context.lock?.host || null,
+      job_id: context.lock?.resource_job?.job_id || null,
+    },
     artifact: { id: artifact.artifact_id, path: artifact.path, sha256: artifact.sha256, exists: artifact.exists },
+    potential_invalidations: context.agentId === 'visual_planning_director'
+      ? { approvals: ['VISUAL_PLAN_APPROVAL_IF_BYTES_CHANGE'], gates: ['VISUAL_PLAN_APPROVAL_IF_BYTES_CHANGE'] }
+      : { approvals: ['BYTE_BOUND_APPROVALS_IF_BYTES_CHANGE'], gates: [] },
     consequences: active ? 'Takeover is blocked until active automation is truthfully stopped.' : 'Automation mutation and redispatch will be fenced for this task work unit.',
     changes_approval: false,
     preview_token: previewDigest(context, 'TAKE_MANUAL_CONTROL', normalizedReason, currentLedger.head_hash, { ownership_revision: owner.revision, ownership_state_hash: owner.current_state_hash, artifact_sha256: artifact.sha256 }),
   };
+}
+
+function manualControlEligibility(input, options = {}) {
+  if (input.agent_id !== 'visual_planning_director' || !successor.hasSuccessorAdapter(input.agent_id)) {
+    return { take_manual_control: false, return_to_automation: false, reason: 'SPECIALIST_SUCCESSOR_ADAPTER_REQUIRED' };
+  }
+  let context;
+  try { context = locateInvocation(options.root, input); }
+  catch (error) { return { take_manual_control: false, return_to_automation: false, reason: error.code || 'CONTROL_TARGET_INVALID' }; }
+  let owner;
+  try { owner = ownershipFor(context); }
+  catch (error) { return { take_manual_control: false, return_to_automation: false, reason: error.code || 'OWNERSHIP_INVALID' }; }
+  const artifact = currentArtifact(context);
+  if (artifact.artifact_id !== 'visual_plan') {
+    return { take_manual_control: false, return_to_automation: false, reason: 'EXACT_VISUAL_PLAN_ARTIFACT_REQUIRED', artifact };
+  }
+  if (owner.current_owner === 'AUTOMATION') {
+    const eligible = !context.live_run_lock && ['COMPLETED', 'ABANDONED'].includes(context.runtime_status)
+      && artifact.exists && Boolean(artifact.artifact_id) && Boolean(artifact.sha256);
+    return { take_manual_control: eligible, return_to_automation: false, reason: eligible ? null : 'EXACT_QUIESCENT_ARTIFACT_REQUIRED', artifact };
+  }
+  if (owner.current_owner === 'HUMAN') {
+    try {
+      const manual = successor.readManualArtifact(context);
+      return { take_manual_control: false, return_to_automation: true, reason: null,
+        manual_artifact: { path: manual.relative_path, sha256: manual.sha256, artifact_id: manual.metadata.artifact_id } };
+    } catch (error) {
+      return { take_manual_control: false, return_to_automation: false, reason: error.code || 'MANUAL_ARTIFACT_INVALID' };
+    }
+  }
+  return { take_manual_control: false, return_to_automation: false, reason: `OWNERSHIP_${owner.current_owner}` };
 }
 
 function applyTakeManualControl(input, options = {}) {
@@ -219,7 +259,7 @@ async function applyReturnToAutomation(input, options = {}) {
       const contract = { ...proposal.contract, return_resumption_ledger_record_id: out.action_record.record_id, contract_sha256: '' };
       contract.contract_sha256 = successor.contractHash(contract);
       successor.atomicWrite(proposal.paths.contractPath, Buffer.from(`${JSON.stringify(contract, null, 2)}\n`));
-      return { action: 'RETURN_TO_AUTOMATION', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'AUTOMATION', predecessor_execution_owner: 'SUSPENDED', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash, successor_task_id: contract.successor_task_id, successor_task_sha256: contract.successor_task_sha256, successor_task_path: path.relative(context.root, proposal.paths.taskPath), successor_contract_path: path.relative(context.root, proposal.paths.contractPath) };
+      return { action: 'RETURN_TO_AUTOMATION', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'AUTOMATION', predecessor_execution_owner: 'SUSPENDED', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash, successor_task_id: contract.successor_task_id, successor_task_sha256: contract.successor_task_sha256, successor_task_path: path.relative(context.root, proposal.paths.taskPath), successor_contract_path: path.relative(context.root, proposal.paths.contractPath), required_next_gate: contract.required_next_gate, required_next_specialist: contract.required_next_specialist, continuation_action: contract.continuation_action };
     } finally { try { fs.unlinkSync(proposal.paths.lockPath); } catch (_) {} }
   }
   const artifact = { artifact_id: manual.metadata.artifact_id, sha256: manual.sha256 };
@@ -232,4 +272,4 @@ async function applyReturnToAutomation(input, options = {}) {
   return { action: 'RETURN_TO_AUTOMATION', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'AUTOMATION', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash };
 }
 
-module.exports = { AgentControlError, locateInvocation, currentArtifact, previewRetry, applyRetry, previewCancel, applyCancel, previewTakeManualControl, applyTakeManualControl, previewReturnToAutomation, applyReturnToAutomation };
+module.exports = { AgentControlError, locateInvocation, currentArtifact, manualControlEligibility, previewRetry, applyRetry, previewCancel, applyCancel, previewTakeManualControl, applyTakeManualControl, previewReturnToAutomation, applyReturnToAutomation };

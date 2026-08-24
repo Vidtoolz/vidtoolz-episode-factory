@@ -25,6 +25,7 @@ const operatorActionLedger = require('./scripts/operator-action-ledger.js');
 const cancellationAdapters = require('./scripts/agent-cancellation-adapters.js');
 const executionOwnership = require('./scripts/execution-ownership.js');
 const packageRunArchiveAuthority = require('./scripts/package-run-archive-authority.js');
+const successorTaskContract = require('./scripts/successor-task-contract.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
@@ -12844,6 +12845,7 @@ const AGENT_TAKEOVER_PREVIEW_API = '/api/agent-control-room/take-manual-control/
 const AGENT_TAKEOVER_APPLY_API = '/api/agent-control-room/take-manual-control/apply';
 const AGENT_RETURN_PREVIEW_API = '/api/agent-control-room/return-to-automation/preview';
 const AGENT_RETURN_APPLY_API = '/api/agent-control-room/return-to-automation/apply';
+const AGENT_MANUAL_ARTIFACT_API = '/api/agent-control-room/manual-artifact';
 
 function defaultAgentCancellationProvider() {
   return cancellationAdapters.createProvider({
@@ -12856,7 +12858,8 @@ function defaultAgentCancellationProvider() {
 
 function attachAgentControlState(payload, root, cancelProvider) {
   for (const agent of payload.agents || []) {
-    const enabled = agent.lifecycle?.proven === 'PROVEN' && agent.lifecycle?.autonomous_dispatch === 'ENABLED';
+    const enabled = agent.lifecycle?.proven === 'PROVEN' && agent.lifecycle?.autonomous_dispatch === 'ENABLED'
+      && agent.implementation?.implementation_state === 'IMPLEMENTATION_PROVEN';
     let state = { current_owner: 'AUTOMATION', revision: 0, current_state_hash: null };
     let ownershipValid = true;
     if (agent.run_id && agent.current_task) {
@@ -12869,13 +12872,20 @@ function attachAgentControlState(payload, root, cancelProvider) {
     if (enabled && ownershipValid && state.current_owner === 'AUTOMATION' && agent.runtime_status === 'RUNNING' && exact.run_id && exact.invocation_id) {
       try { cancel = cancelProvider.supports(agentControls.locateInvocation(root, exact)); } catch (_) { cancel = false; }
     }
+    let manual = { take_manual_control: false, return_to_automation: false, reason: 'EXACT_INVOCATION_REQUIRED' };
+    if (enabled && exact.run_id && exact.invocation_id) manual = agentControls.manualControlEligibility(exact, { root });
+    agent.manual_control = {
+      eligible_specialist: agent.agent_id === 'visual_planning_director', reason: manual.reason || null,
+      artifact: manual.artifact || manual.manual_artifact || null,
+      preview_url: manual.manual_artifact
+        ? `${AGENT_MANUAL_ARTIFACT_API}?run_id=${encodeURIComponent(agent.run_id)}&agent_id=${encodeURIComponent(agent.agent_id)}&task_id=${encodeURIComponent(agent.current_task)}` : null,
+      scope_statement: 'Automation will be fenced for this exact Visual Planning task.',
+    };
     agent.control_capabilities = {
       retry: Boolean(enabled && ownershipValid && state.current_owner === 'AUTOMATION' && ['COMPLETED', 'ABANDONED'].includes(agent.runtime_status) && exact.invocation_id),
       cancel, pause: false, resume: false,
-      // Backend semantics exist for bounded testing, but cockpit affordances stay
-      // hidden until changed manual bytes have a specialist successor-task contract.
-      take_manual_control: false,
-      return_to_automation: false,
+      take_manual_control: Boolean(enabled && ownershipValid && manual.take_manual_control),
+      return_to_automation: Boolean(enabled && ownershipValid && manual.return_to_automation),
     };
   }
   return payload;
@@ -18261,11 +18271,16 @@ function createServer(options = {}) {
       readJsonBody(req, 1024 * 32)
         .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Agent operator control' });
+          if ([AGENT_TAKEOVER_PREVIEW_API, AGENT_TAKEOVER_APPLY_API, AGENT_RETURN_PREVIEW_API, AGENT_RETURN_APPLY_API].includes(url.pathname)
+              && payload.agent_id !== 'visual_planning_director') {
+            throw Object.assign(new Error('manual takeover is production-visible only for Visual Planning Director'), { code: 'MANUAL_CONTROL_SPECIALIST_NOT_SUPPORTED', statusCode: 409 });
+          }
           const options = {
             root: serverOptions.root || ROOT,
             actor: operatorActionLedger.localActorContext(),
             runAgent: serverOptions.agentControlRunAgent,
             cancelProvider: serverOptions.agentCancelProvider || defaultAgentCancellationProvider(),
+            successorValidation: serverOptions.agentSuccessorValidation,
           };
           if (url.pathname === AGENT_RETRY_PREVIEW_API) return agentControls.previewRetry(payload, options);
           if (url.pathname === AGENT_RETRY_APPLY_API) return agentControls.applyRetry(payload, options);
@@ -18278,6 +18293,24 @@ function createServer(options = {}) {
         })
         .then((payload) => sendJSON(res, 200, payload))
         .catch((error) => sendError(res, error.statusCode || 409, error.message, error.code || 'agent-control-error'));
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === AGENT_MANUAL_ARTIFACT_API) {
+      try {
+        const runId = url.searchParams.get('run_id') || '';
+        const agentId = url.searchParams.get('agent_id') || '';
+        const taskId = url.searchParams.get('task_id') || '';
+        if (agentId !== 'visual_planning_director') throw Object.assign(new Error('manual artifact preview is supported only for Visual Planning Director'), { statusCode: 403 });
+        const paths = successorTaskContract.manualPaths(serverOptions.root || ROOT, { run_id: runId, agent_id: agentId, task_id: taskId });
+        if (!fs.existsSync(paths.artifactPath) || !fs.existsSync(paths.metadataPath)) throw Object.assign(new Error('bounded manual artifact is unavailable'), { statusCode: 404 });
+        const bytes = fs.readFileSync(paths.artifactPath);
+        if (bytes.length > 2 * 1024 * 1024) throw Object.assign(new Error('bounded manual artifact exceeds preview limit'), { statusCode: 413 });
+        const metadata = JSON.parse(fs.readFileSync(paths.metadataPath, 'utf8'));
+        if (metadata.run_id !== runId || metadata.agent_id !== agentId || metadata.task_id !== taskId) throw Object.assign(new Error('manual artifact identity mismatch'), { statusCode: 409 });
+        sendJSON(res, 200, { schema_version: 1, read_only: true, run_id: runId, agent_id: agentId, task_id: taskId,
+          artifact_path: path.relative(serverOptions.root || ROOT, paths.artifactPath), artifact_sha256: crypto.createHash('sha256').update(bytes).digest('hex'), artifact: JSON.parse(bytes) });
+      } catch (error) { sendError(res, error.statusCode || 409, error.message, 'manual-artifact-preview-error'); }
       return;
     }
 
@@ -19809,6 +19842,7 @@ module.exports = {
   AGENT_TAKEOVER_APPLY_API,
   AGENT_RETURN_PREVIEW_API,
   AGENT_RETURN_APPLY_API,
+  AGENT_MANUAL_ARTIFACT_API,
   COCKPIT_ORIENTATION_API,
   buildCockpitOrientation,
   defaultAgentCancellationProvider,

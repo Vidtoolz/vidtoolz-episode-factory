@@ -34,6 +34,8 @@
     var buttons = [];
     if (capabilities.retry) buttons.push('<button type="button" class="agent-control-action" data-action="retry"' + target + '>Preview retry</button>');
     if (capabilities.cancel) buttons.push('<button type="button" class="agent-control-action danger" data-action="cancel"' + target + '>Preview cancel</button>');
+    if (capabilities.take_manual_control) buttons.push('<button type="button" class="agent-control-action" data-action="take-manual-control"' + target + '>Take manual control</button>');
+    if (capabilities.return_to_automation) buttons.push('<button type="button" class="agent-control-action" data-action="return-to-automation"' + target + '>Return to automation</button>');
     return buttons.length ? '<div class="agent-control-actions">' + buttons.join('') + '</div><div class="agent-control-result" id="agentControlResult-' + esc(agent.agent_id) + '" aria-live="polite"></div>' : '';
   }
 
@@ -59,6 +61,7 @@
     var rationale = agent.operational_rationale || {};
     var resourceStatus = agent.resource_status || {};
     var executionOwnership = agent.execution_ownership || {};
+    var manualControl = agent.manual_control || {};
     return '<article class="agent-control-room-card ' + badgeClass + '" data-agent-id="' + esc(agent.agent_id) + '">' +
       '<div class="agent-control-room-card-heading"><div><h3>' + esc(agent.name) + '</h3><small>' + esc(agent.agent_id) + '</small></div>' +
       '<div class="agent-control-room-badges"><span class="agent-state">' + esc(agent.state) + '</span>' +
@@ -88,6 +91,8 @@
       line('Escalation reason', rationale.escalation_reason) +
       line('Confidence', rationale.confidence) +
       line('Artifact', agent.current_artifact && typeof agent.current_artifact === 'object' ? JSON.stringify(agent.current_artifact) : agent.current_artifact) +
+      line('Manual artifact', manualControl.artifact && [manualControl.artifact.path, manualControl.artifact.sha256].filter(Boolean).join(' · ')) +
+      (manualControl.preview_url ? '<a class="agent-manual-artifact-link" target="_blank" rel="noopener" href="' + esc(manualControl.preview_url) + '">Open bounded Visual Plan preview</a>' : '') +
       line('Latest event', eventText(agent.latest_event)) +
       controlButtons(agent) +
       '<div class="agent-control-room-implementation">Implementation: ' + esc(implementation.state || 'UNKNOWN') +
@@ -143,6 +148,7 @@
       '<span>Decision ' + esc(counts.decision || 0) + '</span>' +
       '<span>Review ' + esc(counts.review || 0) + '</span>' +
       '<span>Unavailable ' + esc(counts.unavailable || 0) + '</span>' +
+      '<span>Implementation candidates ' + esc(counts.implementation_candidate || 0) + '</span>' +
       '<span>Runner context ' + esc(counts.runner_context || 0) + '</span>' +
       '<span>No runtime context ' + esc(counts.runtime_state_missing || 0) + '</span>';
     rows.innerHTML = agents.map(renderAgent).join('');
@@ -173,6 +179,33 @@
     });
   }
 
+  function confirmationFor(action, preview) {
+    var target = preview.target || {};
+    var artifact = preview.artifact || {};
+    var execution = preview.execution_context || {};
+    var invalidations = preview.potential_invalidations || preview.invalidations || {};
+    var successor = preview.successor_task || {};
+    return [
+      action === 'take-manual-control'
+        ? 'Automation will be fenced for this exact Visual Planning task.'
+        : action === 'return-to-automation'
+          ? (artifact.changed_since_takeover ? 'Changed bytes require an immutable successor and fresh review.' : 'Return unchanged bytes to automation after revalidation.')
+          : action === 'retry' ? 'Create a new attempt while preserving all prior evidence.' : 'Request cancellation of the exact invocation-bound worker job.',
+      'Agent: ' + (target.agent_id || 'UNKNOWN'),
+      'Run: ' + (target.run_id || 'UNKNOWN'),
+      'Task: ' + (target.task_id || 'UNKNOWN'),
+      'Invocation: ' + (target.invocation_id || 'UNKNOWN'),
+      'Current owner: ' + (preview.current_owner || preview.execution_owner || 'UNKNOWN'),
+      'Artifact: ' + (artifact.id || target.artifact_id || 'UNKNOWN'),
+      'Artifact hash: ' + (artifact.sha256 || 'UNKNOWN'),
+      'Tool / lane / model / job: ' + ([execution.worker, execution.lane, execution.model, execution.job_id].filter(Boolean).join(' · ') || 'UNKNOWN'),
+      'Work active: ' + (preview.active_invocation === true ? 'YES' : 'NO'),
+      'Approvals becoming stale: ' + JSON.stringify(invalidations.approvals || invalidations.prior_scope_bindings || []),
+      'Gates becoming stale: ' + JSON.stringify(invalidations.gates || []),
+      successor.task_id ? 'Successor: ' + successor.task_id + ' · next gate ' + successor.required_next_gate : null,
+    ].filter(Boolean).join('\n');
+  }
+
   function runControl(button) {
     var action = button.getAttribute('data-action');
     var reason = window.prompt('Reason for ' + action.toUpperCase() + ' (recorded in the operator ledger):');
@@ -181,17 +214,17 @@
     button.disabled = true;
     postControl('/api/agent-control-room/' + action + '/preview', Object.assign({}, body)).then(function (preview) {
       if (!preview.eligible) throw new Error(action.toUpperCase() + ' is not supported for this exact invocation; remote work may continue.');
-      var consequence = action === 'retry' ? 'Create a new attempt while preserving all prior evidence?'
-        : action === 'cancel' ? 'Request cancellation of the exact invocation-bound worker job?'
-          : action === 'take-manual-control' ? 'Fence automation for this exact task work unit? This does not grant approval.'
-            : 'Return this exact work unit to automation after server-side revalidation?';
-      if (!window.confirm(consequence)) return null;
-      return postControl('/api/agent-control-room/' + action + '/apply', Object.assign({}, body, { preview_token: preview.preview_token }));
+      if (!window.confirm(confirmationFor(action, preview))) return null;
+      return postControl('/api/agent-control-room/' + action + '/apply', Object.assign({}, body, {
+        preview_token: preview.preview_token,
+        preview_created_at: preview.preview_created_at,
+      }));
     }).then(function (result) {
       if (!result) return;
       return load().then(function () {
         var output = document.getElementById('agentControlResult-' + body.agent_id);
-        if (output) output.textContent = result.result_status + ' · action record ' + result.action_record_id;
+        if (output) output.textContent = result.result_status + ' · action record ' + result.action_record_id
+          + (result.successor_task_id ? ' · successor ' + result.successor_task_id + ' · fresh Visual Plan review required' : '');
       });
     }).catch(function (error) { window.alert(error.message); }).finally(function () { button.disabled = false; });
   }

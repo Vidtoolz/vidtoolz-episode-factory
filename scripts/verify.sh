@@ -11,6 +11,7 @@ node --check score-engine/score-provenance.js
 node --check score-engine/score-readiness.js
 node --check scripts/verify-score-package.js
 node --check scripts/agent-control-room.js
+node --check scripts/agent-dispatch-authority.js
 node --check scripts/agent-run.js
 node --check scripts/agent-task-story-editor.js
 node --check storage-adapter.js
@@ -99,6 +100,7 @@ node --check scripts/package-run-export-checklist.js
 node --check scripts/package-run-publication-metadata.js
 node --check scripts/package-run-newsletter.js
 node --check scripts/package-run-archive-manifest.js
+node --check scripts/package-run-archive-authority.js
 node --check scripts/package-run-repurpose.js
 node --check scripts/package-run-broll-prompts.js
 node --check scripts/package-run-creator-qa.js
