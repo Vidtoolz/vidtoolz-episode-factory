@@ -39,6 +39,20 @@ function pathsFor(rootInput, input) {
 }
 function hashRecord(record) { const copy = { ...record }; delete copy.state_hash; return crypto.createHash('sha256').update(ledger.canonicalize(copy)).digest('hex'); }
 function initialState(target) { return { schema_version: SCHEMA_VERSION, kind: 'execution_ownership', target, current_owner: 'AUTOMATION', revision: 0, current_state_hash: null, history: [] }; }
+function ownershipHistoryForTarget(actionLedger, target) {
+  return actionLedger.records.filter((record) => record.action_scope === 'TASK_WORK_UNIT_OWNERSHIP'
+    && record.run_id === target.run_id
+    && record.target_agent_role === target.agent_id
+    && record.target_task_id === target.task_id
+    && ['TAKE_MANUAL_CONTROL', 'RETURN_TO_AUTOMATION', 'SUSPEND_AUTOMATION'].includes(record.action));
+}
+function initialStateIfUnowned(root, target) {
+  const actionLedger = ledger.readLedger(root, target.run_id);
+  if (ownershipHistoryForTarget(actionLedger, target).length) {
+    throw new OwnershipError('OWNERSHIP_REQUIRED_MISSING', 'ownership state is missing but its durable operator history exists');
+  }
+  return initialState(target);
+}
 function verifyState(doc, target, actionLedger) {
   if (!doc || doc.schema_version !== SCHEMA_VERSION || doc.kind !== 'execution_ownership'
       || ledger.canonicalize(doc.target) !== ledger.canonicalize(target) || !Array.isArray(doc.history)
@@ -78,7 +92,7 @@ function readOwnership(root, input, options = {}) {
   if (fs.existsSync(paths.lockPath)) throw new OwnershipError('OWNERSHIP_BUSY', 'ownership transition is in progress');
   if (!fs.existsSync(paths.statePath)) {
     if (options.required) throw new OwnershipError('OWNERSHIP_REQUIRED_MISSING', 'required ownership state is missing');
-    return initialState(paths.target);
+    return initialStateIfUnowned(paths.root, paths.target);
   }
   const stat = fs.lstatSync(paths.statePath);
   if (!stat.isFile() || stat.isSymbolicLink()) throw new OwnershipError('OWNERSHIP_PATH_INVALID', 'ownership state is not a regular file');
@@ -110,7 +124,7 @@ function transition(root, input, options = {}) {
   try {
     const current = fs.existsSync(paths.statePath)
       ? verifyState(JSON.parse(fs.readFileSync(paths.statePath, 'utf8')), paths.target, ledger.readLedger(paths.root, paths.target.run_id))
-      : initialState(paths.target);
+      : initialStateIfUnowned(paths.root, paths.target);
     if (input.expected_revision !== current.revision || input.expected_state_hash !== current.current_state_hash) throw new OwnershipError('OWNERSHIP_STALE', 'ownership revision changed since preview');
     const nextOwner = input.next_owner;
     if (!OWNERS.includes(nextOwner) || nextOwner === current.current_owner) throw new OwnershipError('OWNERSHIP_TRANSITION_INVALID', 'ownership transition is invalid');
@@ -149,4 +163,4 @@ function transition(root, input, options = {}) {
   } finally { release(paths); }
 }
 
-module.exports = { SCHEMA_VERSION, OWNERS, SCOPE, OwnershipError, targetIdentity, pathsFor, hashRecord, initialState, verifyState, readOwnership, assertAutomationAllowed, transition };
+module.exports = { SCHEMA_VERSION, OWNERS, SCOPE, OwnershipError, targetIdentity, pathsFor, hashRecord, initialState, ownershipHistoryForTarget, verifyState, readOwnership, assertAutomationAllowed, transition };
