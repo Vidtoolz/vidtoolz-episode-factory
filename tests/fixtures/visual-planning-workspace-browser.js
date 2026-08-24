@@ -57,6 +57,10 @@ async function bootWorkspacePage(payloadOrProvider, options = {}) {
     const body = init.body ? JSON.parse(init.body) : null;
     requests.push({ url, init, body });
     if (url === '/api/package-engine/status') return response(200, { localWriteNonce: 'fixture-nonce', nonceHeader: 'x-vidtoolz-local-write-nonce' });
+    if (String(url).startsWith('/api/agent-control-room/manual-edit-recovery?')) {
+      const value = options.recoveryProvider ? await options.recoveryProvider(url) : { schema_version:1, read_only:true, available:false, reason:'MANUAL_EDIT_RECOVERY_NOT_AVAILABLE', history:[] };
+      return response(200, { ok:true, data:value });
+    }
     if (controls[url]) {
       try { return response(200, { ok: true, data: await controls[url](body) }); }
       catch (error) { return response(error.statusCode || 409, { error: error.code || error.message, code: error.code || null }); }

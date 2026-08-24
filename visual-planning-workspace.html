@@ -34,6 +34,11 @@
   .panel-out { margin-top:10px; white-space:pre-wrap; font:12px/1.45 monospace; background:#0d1218; border:1px solid var(--line); border-radius:6px; padding:10px; max-height:340px; overflow:auto; }
   .error-banner { background:#3a1518; border:1px solid var(--bad); color:#ffd7da; padding:12px 16px; border-radius:8px; margin:16px 20px; }
   .note { color:var(--muted); font-size:12px; margin-top:8px; }
+  .change-preview { background:#111922; border:1px solid var(--line); border-radius:6px; padding:12px; }
+  .change-preview h3 { margin:0 0 4px; color:var(--accent); }
+  .change-row { padding:8px 0; border-top:1px solid var(--line); }
+  .change-before { color:var(--muted); } .change-after { color:var(--text); }
+  details { margin-top:10px; color:var(--muted); } details pre { white-space:pre-wrap; word-break:break-word; }
   a { color:var(--accent); }
 </style>
 </head>
@@ -94,6 +99,7 @@
   var nonceHeader = 'x-vidtoolz-local-write-nonce';
   var localWriteNonce = '';
   var state = null; // last successful workspace payload
+  var recoveryState = { available:false, reason:'MANUAL_EDIT_RECOVERY_UNAVAILABLE', history:[] };
 
   function esc(value) {
     return String(value == null ? '' : value)
@@ -109,7 +115,7 @@
   function failClosed(message) {
     state = null;
     el('workspace').hidden = true;
-    ['btnTakePreview', 'btnTakeApply', 'btnReturnPreview', 'btnReturnApply', 'btnRetryPreview', 'btnCancelPreview', 'btnReveal', 'btnEditPreview', 'btnEditApply'].forEach(function (id) {
+    ['btnTakePreview', 'btnTakeApply', 'btnReturnPreview', 'btnReturnApply', 'btnRetryPreview', 'btnCancelPreview', 'btnReveal', 'btnEditPreview', 'btnEditApply', 'btnRevertPreview', 'btnRevertApply'].forEach(function (id) {
       var control = el(id);
       if (control) control.disabled = true;
     });
@@ -153,6 +159,14 @@
     var payload = await res.json();
     if (!res.ok) throw new Error((payload && payload.error) || ('HTTP ' + res.status));
     // The cockpit wraps successful payloads as { ok: true, data: ... }.
+    return (payload && payload.data) || payload;
+  }
+
+  async function loadRecovery(ctx) {
+    var params = new URLSearchParams({ run_id:ctx.run_id, agent_id:ctx.agent_id, task_id:ctx.task_id, invocation_id:ctx.invocation_id });
+    var res = await fetch('/api/agent-control-room/manual-edit-recovery?' + params.toString(), { cache:'no-store' });
+    var payload = await res.json();
+    if (!res.ok) return { available:false, reason:(payload && (payload.code || payload.error)) || 'MANUAL_EDIT_RECOVERY_UNAVAILABLE', history:[] };
     return (payload && payload.data) || payload;
   }
 
@@ -202,11 +216,21 @@
       ? '<div class="error-banner"><strong>Decision queue diagnostics:</strong> ' + diags.map(function (d) { return esc(d.code) + (d.detail ? ' (' + esc(JSON.stringify(d.detail)) + ')' : ''); }).join('; ') + '</div>'
       : '';
     var binding = ws.queue_binding || {};
-    var bindingHtml = '<div class="note">Queue binding: ' + badge(binding.obligation_state || binding.status || 'NOT_BOUND',
+    var bindingState = binding.obligation_state || binding.status || 'NOT_BOUND';
+    var bindingMessages = {
+      ACTIVE: 'This workspace is linked to an active human obligation.',
+      RESOLVED: 'This human obligation has already been resolved.',
+      SUPERSEDED: 'This obligation was superseded.',
+      STALE: 'This obligation is stale.',
+      INVALID: 'This obligation evidence is invalid.',
+      UNAVAILABLE: 'Queue state cannot currently be verified.',
+    };
+    var bindingHtml = '<div class="note">Queue binding: ' + badge(bindingState,
       binding.status === 'VERIFIED' ? 'ok' : binding.status === 'HISTORICAL' ? 'warn' : 'bad') +
-      (binding.obligation_id ? ' · <code>' + esc(binding.obligation_id) + '</code>' : '') + '</div>';
+      (binding.obligation_id ? ' · <code>' + esc(binding.obligation_id) + '</code>' : '') +
+      '<br>' + esc(bindingMessages[bindingState] || 'No active queue obligation is verified for this workspace.') + '</div>';
     if (!items.length && !diags.length) {
-      el('attentionPanel').innerHTML = bindingHtml + '<div class="note">No unresolved obligation is bound to this exact invocation. Obligations for other tasks by this agent remain in the global queue.</div>';
+      el('attentionPanel').innerHTML = bindingHtml;
       return;
     }
     el('attentionPanel').innerHTML = bindingHtml + diagHtml + items.map(function (item) {
@@ -351,6 +375,7 @@
       ['Take manual control', caps.take_manual_control && caps.take_manual_control.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.take_manual_control && caps.take_manual_control.reason || 'n/a'), 'bad')],
       ['Return to automation', caps.return_to_automation && caps.return_to_automation.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.return_to_automation && caps.return_to_automation.reason || 'n/a'), 'bad')],
       ['Bounded creative edit', caps.bounded_creative_edit && caps.bounded_creative_edit.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.bounded_creative_edit && caps.bounded_creative_edit.reason || 'n/a'), 'bad')],
+      ['Revert latest manual edit', recoveryState.available ? badge('eligible', 'ok') : badge('blocked: ' + (recoveryState.reason || 'n/a'), 'bad')],
       ['Retry', caps.retry && caps.retry.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.retry && caps.retry.reason || 'n/a'), 'bad')],
       ['Cancel', caps.cancel && caps.cancel.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.cancel && caps.cancel.reason || 'n/a'), 'bad')],
       ['Manual artifact', manual.reference ? '<code>' + esc(manual.reference) + '</code>' : 'None'],
@@ -363,6 +388,31 @@
     ]);
     renderControls(ws, caps);
     renderManualEditor(ws, caps);
+  }
+
+  function renderHumanChangePreview(preview, label) {
+    if (!preview || preview.kind !== 'human_change_preview') return '<div class="note">Structured operator preview unavailable.</div>';
+    var changes = (preview.changed_fields || []).map(function (change) {
+      return '<div class="change-row"><strong>' + esc(change.label) + '</strong>' +
+        '<div class="change-before">Before: ' + esc(Array.isArray(change.before) ? change.before.join('; ') : change.before) + '</div>' +
+        '<div class="change-after">After: ' + esc(Array.isArray(change.after) ? change.after.join('; ') : change.after) + '</div>' +
+        (change.significance ? '<div class="note">' + esc(change.significance) + '</div>' : '') + '</div>';
+    }).join('');
+    function bullets(title, items, cls) {
+      if (!items || !items.length) return '';
+      return '<h4>' + esc(title) + '</h4><ul class="' + (cls || '') + '">' + items.map(function (item) { return '<li>' + esc(item) + '</li>'; }).join('') + '</ul>';
+    }
+    return '<div class="change-preview"><div class="note">' + esc(label || 'READ-ONLY PREVIEW') + '</div><h3>' + esc(preview.title) + '</h3>' +
+      '<p>' + esc(preview.summary) + '</p>' + changes + bullets('System-managed updates', preview.system_changes) +
+      bullets('Consequences', preview.stale_consequences, 'warnline') + bullets('Warnings', preview.warnings, 'warnline') +
+      '<p><strong>Next:</strong> ' + esc(preview.next_action) + '</p><details><summary>Technical details</summary><pre>' +
+      esc(JSON.stringify(preview.technical_details || {}, null, 2)) + '</pre></details></div>';
+  }
+
+  function showStructuredPreview(data, label) {
+    el('actionOut').innerHTML = data && data.human_change_preview
+      ? renderHumanChangePreview(data.human_change_preview, label)
+      : '<strong>' + esc(label) + '</strong><details open><summary>Technical result</summary><pre>' + esc(JSON.stringify(data, null, 2)) + '</pre></details>';
   }
 
   function workspaceMutationAllowed(ws) {
@@ -477,13 +527,21 @@
       return;
     }
     var html = '<div class="note"><strong>HUMAN-owned exact task.</strong> Automation is fenced. Edit creative values only; Return to Automation remains a separate validated action.</div>';
+    var history = recoveryState.history || [];
+    if (history.length) html += '<div class="shot"><h3>Manual edit history</h3>' + history.map(function (entry) {
+      return '<div>' + badge(entry.current ? 'CURRENT' : entry.restorable ? 'RESTORABLE' : 'HISTORICAL', entry.current ? 'ok' : 'info') +
+        ' ' + esc(entry.label) + (entry.timestamp ? ' · ' + esc(entry.timestamp) : '') +
+        '<details><summary>Machine binding</summary><code>' + esc(entry.revision_id) + ' · ' + esc(entry.sha256) + '</code></details></div>';
+    }).join('') + '</div>';
     (ws.visual_plan.shots || []).forEach(function (shot, index) {
       html += '<div class="shot"><h3>' + esc(shot.shot_id) + '</h3>' +
         '<label for="editShotBrief' + index + '">Shot brief</label><textarea id="editShotBrief' + index + '" rows="3"></textarea>' +
         '<label for="editShotPurpose' + index + '">Purpose / narrative intent</label><textarea id="editShotPurpose' + index + '" rows="2"></textarea>' +
         '<div class="note">System managed: shot identity when intent changes, prompt revision and intent digest, plan revision, supersedes, plan digest and artifact SHA-256.</div></div>';
     });
-    html += '<button id="btnEditPreview">Preview Creative Edit</button><button id="btnEditApply" class="apply" disabled>Apply Creative Edit</button>';
+    html += '<button id="btnEditPreview">Preview Creative Edit</button><button id="btnEditApply" class="apply" disabled>Apply Creative Edit</button>' +
+      '<button id="btnRevertPreview" ' + (recoveryState.available ? '' : 'disabled') + '>Preview Revert Latest Edit</button>' +
+      '<button id="btnRevertApply" class="apply" disabled>Apply Revert</button>';
     panel.innerHTML = html;
     (ws.visual_plan.shots || []).forEach(function (shot, index) {
       el('editShotBrief' + index).value = String((shot.framing_composition || {}).shot_brief || '');
@@ -497,7 +555,7 @@
         if (!base.creative_patch.shot_edits.length) throw new Error('No creative changes to preview.');
         preview = await postControl(ws.links.bounded_edit_preview, base);
         el('btnEditApply').disabled = !preview.eligible;
-        el('actionOut').textContent = '— BOUNDED EDIT PREVIEW (read-only) —\n' + JSON.stringify(preview, null, 2);
+        showStructuredPreview(preview, 'BOUNDED EDIT PREVIEW · READ-ONLY');
       } catch (e) { el('actionOut').textContent = '— BOUNDED EDIT PREVIEW FAILED —\n' + String(e.message || e); }
     };
     el('btnEditApply').onclick = async function () {
@@ -508,6 +566,32 @@
         el('actionOut').textContent = '— BOUNDED EDIT APPLIED —\n' + JSON.stringify(data, null, 2) + '\nReturn to Automation is still required.';
         await refresh();
       } catch (e) { el('actionOut').textContent = '— BOUNDED EDIT APPLY FAILED —\n' + String(e.message || e); }
+    };
+    var revertPreview = null;
+    el('btnRevertPreview').onclick = async function () {
+      try {
+        var why = el('opReason').value.trim() || 'operator manual edit recovery preview';
+        var body = { run_id: ws.context.run_id, agent_id: ws.context.agent_id, task_id: ws.context.task_id,
+          invocation_id: ws.context.invocation_id, expected_ownership_revision: ws.ownership.revision,
+          expected_artifact_sha256: ws.visual_plan.sha256, reason: why };
+        revertPreview = await postControl('/api/agent-control-room/manual-edit-recovery/preview', body);
+        el('btnRevertApply').disabled = !revertPreview.eligible;
+        showStructuredPreview(revertPreview, 'REVERT PREVIEW · READ-ONLY');
+      } catch (e) { el('actionOut').textContent = '— REVERT PREVIEW FAILED —\n' + String(e.message || e); }
+    };
+    el('btnRevertApply').onclick = async function () {
+      try {
+        var why = el('opReason').value.trim();
+        if (!why || !revertPreview) throw new Error('A fresh preview and operator reason are required.');
+        var body = { run_id: ws.context.run_id, agent_id: ws.context.agent_id, task_id: ws.context.task_id,
+          invocation_id: ws.context.invocation_id, expected_ownership_revision: ws.ownership.revision,
+          expected_artifact_sha256: ws.visual_plan.sha256, reason: why,
+          restore_revision_id: revertPreview.restored_artifact.revision_id, preview_token: revertPreview.preview_token,
+          preview_created_at: revertPreview.preview_created_at };
+        var data = await postControl('/api/agent-control-room/manual-edit-recovery/apply', body);
+        el('actionOut').textContent = '— MANUAL EDIT REVERTED —\n' + JSON.stringify(data, null, 2) + '\nOwnership remains HUMAN; no approval was restored.';
+        await refresh();
+      } catch (e) { el('actionOut').textContent = '— REVERT APPLY FAILED —\n' + String(e.message || e); }
     };
   }
 
@@ -531,7 +615,9 @@
     var ctx = contextFromUrl();
     if (!ctx) return;
     try {
-      var ws = assertWorkspaceSchema(await loadWorkspace(ctx));
+      var loaded = await Promise.all([loadWorkspace(ctx), loadRecovery(ctx)]);
+      var ws = assertWorkspaceSchema(loaded[0]);
+      recoveryState = loaded[1] || { available:false, reason:'MANUAL_EDIT_RECOVERY_UNAVAILABLE', history:[] };
       state = ws;
       el('errorBanner').innerHTML = '';
       el('workspace').hidden = false;
@@ -553,6 +639,7 @@
     serializeApplyBody: serializeApplyBody,
     collectCreativePatch: collectCreativePatch,
     serializeBoundedEditApply: serializeBoundedEditApply,
+    renderHumanChangePreview: renderHumanChangePreview,
     renderAttention: renderAttention,
     renderPlan: renderPlan,
     renderShots: renderShots,

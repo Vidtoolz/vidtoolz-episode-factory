@@ -18,6 +18,7 @@ const controls = require('../scripts/agent-controls.js');
 const ownership = require('../scripts/execution-ownership.js');
 const ledger = require('../scripts/operator-action-ledger.js');
 const manualEdit = require('../scripts/visual-planning-manual-edit.js');
+const recovery = require('../scripts/manual-edit-recovery.js');
 const workspaceFixture = require('./fixtures/visual-planning-workspace-v1.js');
 const { bootWorkspacePage } = require('./fixtures/visual-planning-workspace-browser.js');
 
@@ -280,6 +281,13 @@ test('WS10: actual DOM performs bounded creative preview/apply without client au
   await page.click('btnEditPreview');
   assert.equal(editPreview.eligible, true);
   assert.equal(page.node('btnEditApply').disabled, false);
+  assert.match(page.node('actionOut').innerHTML, /Preview Visual Plan creative edit/);
+  assert.match(page.node('actionOut').innerHTML, /Before:/);
+  assert.match(page.node('actionOut').innerHTML, /After:/);
+  assert.match(page.node('actionOut').innerHTML, /System-managed updates/);
+  assert.match(page.node('actionOut').innerHTML, /VISUAL_PLAN_APPROVAL becomes stale/);
+  assert.match(page.node('actionOut').innerHTML, /<details><summary>Technical details/);
+  assert.doesNotMatch(page.node('actionOut').innerHTML, /proposed_visual_plan|"creative_changes"/);
   const previewRequest = page.requests.find((request) => request.url === '/api/visual-planning-workspace/manual-edit/preview');
   assert.deepEqual(Object.keys(previewRequest.body.creative_patch.shot_edits[0].set), ['shot_brief']);
   for (const forbidden of ['plan_id', 'plan_revision', 'supersedes', 'plan_digest_sha256', 'shot_id', 'artifact_sha256', 'approved_by']) {
@@ -303,7 +311,53 @@ test('WS11: historical obligation state is explicit and mutation controls are di
   payload.human_attention = [];
   const page = await bootWorkspacePage(payload);
   assert.match(page.node('attentionPanel').innerHTML, /RESOLVED/);
+  assert.match(page.node('attentionPanel').innerHTML, /human obligation has already been resolved/);
+  assert.doesNotMatch(page.node('attentionPanel').innerHTML, /No unresolved obligation is bound/);
   assert.match(page.node('attentionPanel').innerHTML, /historical-obligation-1/);
   assert.equal(page.node('btnTakePreview').disabled, true);
   assert.match(page.node('editPanel').innerHTML, /historical obligations are read-only/);
+});
+
+test('WS12: DOM shows trusted edit history and serializes latest-only revert preview/apply', async () => {
+  const { root, fixture } = await canonicalWorkspaceFixture();
+  const actor = ledger.localActorContext({ username: 'mikko' });
+  const take = controls.previewTakeManualControl({ ...fixture.request, reason: 'Open recovery UI proof.' }, { root });
+  controls.applyTakeManualControl({ ...fixture.request, reason: 'Open recovery UI proof.', preview_token: take.preview_token },
+    { root, actor, recordId: 'workspace-recovery-take', now: '2026-08-24T16:20:00.000Z' });
+  let context = controls.locateInvocation(root, fixture.request);
+  let owner = ownership.readOwnership(root, fixture.request);
+  let manual = require('../scripts/successor-task-contract.js').readManualArtifact(context);
+  const editInput = { ...fixture.request, expected_ownership_revision: owner.revision, expected_artifact_sha256: manual.sha256,
+    reason: 'Create a restorable creative edit.', creative_patch: { shot_edits: [{ shot_ref: manual.value.shots[0].shot_id,
+      set: { shot_brief: 'A quiet wide shot that makes the proof legible.' } }] } };
+  const editOptions = { root, actor, recordId: 'workspace-recovery-edit', now: '2026-08-24T16:21:00.000Z', applyNow: '2026-08-24T16:21:00.000Z',
+    successorValidation: { currentStory: fixture.plan.story }, newShotId: () => 'shot-01HF7YAT0B000000000000000B' };
+  const editPreview = await manualEdit.previewVisualPlanManualEdit(editInput, editOptions);
+  await manualEdit.applyVisualPlanManualEdit({ ...editInput, preview_token: editPreview.preview_token, preview_created_at: editPreview.preview_created_at }, editOptions);
+  const currentPayload = () => workspace.buildVisualPlanningWorkspace(fixture.request, { root });
+  const page = await bootWorkspacePage(currentPayload, {
+    recoveryProvider: () => recovery.recoveryProjection(fixture.request, { root }),
+    controls: {
+      '/api/agent-control-room/manual-edit-recovery/preview': (body) => recovery.previewRevertManualEdit(body,
+        { root, successorValidation: { currentStory: fixture.plan.story }, now: '2026-08-24T16:22:00.000Z' }),
+      '/api/agent-control-room/manual-edit-recovery/apply': (body) => recovery.applyRevertManualEdit(body,
+        { root, actor, recordId: 'workspace-recovery-revert', successorValidation: { currentStory: fixture.plan.story }, now: '2026-08-24T16:22:00.000Z', applyNow: '2026-08-24T16:23:00.000Z' }),
+    },
+  });
+  assert.match(page.node('editPanel').innerHTML, /Manual edit history/);
+  assert.match(page.node('editPanel').innerHTML, /CURRENT/);
+  assert.match(page.node('editPanel').innerHTML, /RESTORABLE/);
+  assert.match(page.node('editPanel').innerHTML, /Technical|Machine binding/);
+  page.node('opReason').value = 'Restore the takeover baseline through the trusted UI.';
+  await page.click('btnRevertPreview');
+  assert.match(page.node('actionOut').innerHTML, /Revert latest manual edit/);
+  assert.match(page.node('actionOut').innerHTML, /No prior approval is resurrected/);
+  assert.equal(page.node('btnRevertApply').disabled, false);
+  await page.click('btnRevertApply');
+  const request = page.requests.find((item) => item.url === '/api/agent-control-room/manual-edit-recovery/apply');
+  assert.equal(request.body.preview_created_at, '2026-08-24T16:22:00.000Z');
+  assert.equal(request.body.restore_revision_id, 'TAKEOVER_BASELINE');
+  assert.equal(ownership.readOwnership(root, fixture.request).current_owner, 'HUMAN');
+  assert.deepEqual(ledger.readLedger(root, fixture.request.run_id).records.map((record) => record.action),
+    ['TAKE_MANUAL_CONTROL', 'EDIT_MANUAL_ARTIFACT', 'REVERT_MANUAL_EDIT']);
 });
