@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visual Planning Workspace</title>
+<style>
+  :root { --bg:#0f141a; --panel:#161d26; --line:#263241; --text:#dce6f0; --muted:#8fa3b8;
+          --accent:#4da3ff; --ok:#41c98d; --warn:#e8b34b; --bad:#e5636c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 system-ui, sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:12px; align-items:baseline; }
+  header h1 { font-size:17px; margin:0; }
+  header .ctx { color:var(--muted); font-size:12px; word-break:break-all; }
+  main { padding:16px 20px; display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; }
+  section.wide { grid-column:1 / -1; }
+  h2 { font-size:14px; margin:0 0 10px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); }
+  dl { margin:0; display:grid; grid-template-columns:max-content 1fr; gap:4px 12px; }
+  dt { color:var(--muted); } dd { margin:0; word-break:break-word; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; border:1px solid var(--line); }
+  .badge.ok { color:var(--ok); border-color:var(--ok); }
+  .badge.warn { color:var(--warn); border-color:var(--warn); }
+  .badge.bad { color:var(--bad); border-color:var(--bad); }
+  .badge.info { color:var(--accent); border-color:var(--accent); }
+  .shots { display:grid; gap:10px; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); }
+  .shot { border:1px solid var(--line); border-radius:6px; padding:10px; font-size:13px; }
+  .shot h3 { margin:0 0 6px; font-size:13px; color:var(--accent); }
+  .shot .warnline { color:var(--warn); }
+  button { background:#1d2836; color:var(--text); border:1px solid var(--accent); border-radius:6px; padding:7px 12px; font-size:13px; cursor:pointer; margin:4px 6px 0 0; }
+  button:disabled { opacity:.45; cursor:not-allowed; border-color:var(--line); }
+  button.apply { border-color:var(--warn); }
+  textarea { width:100%; background:#0d1218; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:8px; font:13px/1.4 monospace; }
+  .panel-out { margin-top:10px; white-space:pre-wrap; font:12px/1.45 monospace; background:#0d1218; border:1px solid var(--line); border-radius:6px; padding:10px; max-height:340px; overflow:auto; }
+  .error-banner { background:#3a1518; border:1px solid var(--bad); color:#ffd7da; padding:12px 16px; border-radius:8px; margin:16px 20px; }
+  .note { color:var(--muted); font-size:12px; margin-top:8px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Visual Planning Director — Workspace V1</h1>
+    <div class="ctx" id="ctxLine">Loading exact context…</div>
+  </div>
+  <div style="margin-left:auto"><a href="/index.html#agentDecisionQueue">← Human Decision Queue / Production Cockpit</a></div>
+</header>
+<div id="errorBanner"></div>
+<main id="workspace" hidden>
+  <section>
+    <h2>Context</h2>
+    <dl id="contextPanel"></dl>
+  </section>
+  <section>
+    <h2>Human Attention</h2>
+    <div id="attentionPanel"></div>
+    <div class="note">Items are obligations bound to this exact invocation. Approval actions stay on their canonical gate surfaces — this workspace never approves.</div>
+  </section>
+  <section>
+    <h2>Visual Plan</h2>
+    <dl id="planPanel"></dl>
+  </section>
+  <section>
+    <h2>Ownership / Control</h2>
+    <dl id="ownershipPanel"></dl>
+    <div id="controls"></div>
+    <div class="note">Preview is read-only. Apply executes only with a fresh operator reason and server-side authority checks. No approval is created by any control here.</div>
+  </section>
+  <section>
+    <h2>Tool / Resource</h2>
+    <dl id="resourcePanel"></dl>
+  </section>
+  <section class="wide">
+    <h2>Shot Cards (read-only)</h2>
+    <div class="shots" id="shotsPanel"></div>
+  </section>
+  <section class="wide">
+    <h2>Action Result</h2>
+    <div class="panel-out" id="actionOut">No action performed this session. After any apply, this workspace re-reads server truth — it never assumes success locally.</div>
+  </section>
+</main>
+<script>
+(function () {
+  'use strict';
+  var WORKSPACE_API = '/api/visual-planning-workspace';
+  var NONCE_STATUS_API = '/api/package-engine/status';
+  var nonceHeader = 'x-vidtoolz-local-write-nonce';
+  var localWriteNonce = '';
+  var state = null; // last successful workspace payload
+
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function qs(name) { return new URLSearchParams(window.location.search).get(name) || ''; }
+  function el(id) { return document.getElementById(id); }
+  function badge(text, cls) { return '<span class="badge ' + (cls || '') + '">' + esc(text) + '</span>'; }
+  function dl(pairs) {
+    return pairs.map(function (p) { return '<dt>' + esc(p[0]) + '</dt><dd>' + p[1] + '</dd>'; }).join('');
+  }
+  function failClosed(message) {
+    el('errorBanner').innerHTML = '<div class="error-banner"><strong>Workspace refused to load.</strong> ' + esc(message) +
+      ' The workspace requires an exact run, agent, task and invocation from a Decision Queue link. <a href="/index.html#agentDecisionQueue">Return to the queue</a>.</div>';
+  }
+
+  function contextFromUrl() {
+    var run = qs('run'), agent = qs('agent'), task = qs('task'), invocation = qs('invocation');
+    if (!run || !agent || !task || !invocation) {
+      failClosed('Missing query context (run, agent, task, invocation are all required).');
+      return null;
+    }
+    // The backend re-validates every field against canonical evidence; the
+    // client performs no authority checks and trusts no local derivation.
+    return { run_id: run, agent_id: agent, task_id: task, invocation_id: invocation };
+  }
+
+  async function loadWorkspace(ctx) {
+    var params = new URLSearchParams({
+      run_id: ctx.run_id, agent_id: ctx.agent_id, task_id: ctx.task_id, invocation_id: ctx.invocation_id,
+    });
+    var res = await fetch(WORKSPACE_API + '?' + params.toString(), { cache: 'no-store' });
+    var payload = await res.json();
+    if (!res.ok) throw new Error((payload && payload.error) || ('HTTP ' + res.status));
+    // The cockpit wraps successful payloads as { ok: true, data: ... }.
+    return (payload && payload.data) || payload;
+  }
+
+  async function ensureNonce() {
+    if (localWriteNonce) return localWriteNonce;
+    try {
+      var res = await fetch(NONCE_STATUS_API, { cache: 'no-store' });
+      var payload = await res.json();
+      if (payload && payload.localWriteNonce) { localWriteNonce = payload.localWriteNonce; nonceHeader = payload.nonceHeader || nonceHeader; }
+    } catch (e) { /* server will reject the write; that is the safe outcome */ }
+    return localWriteNonce;
+  }
+
+  async function postControl(endpoint, body) {
+    var nonce = await ensureNonce();
+    var headers = { 'Content-Type': 'application/json' };
+    headers[nonceHeader] = nonce;
+    var res = await fetch(endpoint, { method: 'POST', headers: headers, body: JSON.stringify(Object.assign({ localWriteNonce: nonce }, body)) });
+    var data = await res.json();
+    if (!res.ok) throw new Error((data && (data.error || data.code)) || ('HTTP ' + res.status));
+    // The cockpit wraps successful payloads as { ok: true, data: ... }.
+    return (data && data.data) || data;
+  }
+
+  function renderContext(ws) {
+    var c = ws.context;
+    el('ctxLine').textContent = c.run_id + ' · ' + c.agent_id + ' · ' + c.task_id + ' · ' + c.invocation_id;
+    el('contextPanel').innerHTML = dl([
+      ['Run', esc(c.run_id)],
+      ['Agent', esc(c.agent_id)],
+      ['Task', esc(c.task_id)],
+      ['Invocation', esc(c.invocation_id)],
+      ['Semantic state', badge(c.semantic_state, 'info')],
+      ['Runtime state', esc(c.runtime_state)],
+      ['Lifecycle', badge((c.lifecycle && c.lifecycle.proven) + ' / ' + (c.lifecycle && c.lifecycle.autonomous_dispatch), 'info')],
+      ['Implementation', badge(c.implementation_state || 'UNKNOWN', c.implementation_state === 'IMPLEMENTATION_PROVEN' ? 'ok' : 'warn')],
+    ]);
+  }
+
+  function renderAttention(ws) {
+    var items = ws.human_attention || [];
+    // Failsafe UX: if the canonical queue produced diagnostics or was
+    // unavailable, show a visible warning. Never render an empty list as
+    // "no decisions" when construction failed.
+    var diags = ws.decision_queue_diagnostics || [];
+    var diagHtml = diags.length
+      ? '<div class="error-banner"><strong>Decision queue diagnostics:</strong> ' + diags.map(function (d) { return esc(d.code) + (d.detail ? ' (' + esc(JSON.stringify(d.detail)) + ')' : ''); }).join('; ') + '</div>'
+      : '';
+    if (!items.length && !diags.length) {
+      el('attentionPanel').innerHTML = '<div class="note">No unresolved obligation is bound to this exact invocation. Obligations for other tasks by this agent remain in the global queue.</div>';
+      return;
+    }
+    el('attentionPanel').innerHTML = diagHtml + items.map(function (item) {
+      var handoff = item.handoff || {};
+      return '<div class="shot"><h3>' + badge(item.attention, item.attention === 'DECISION' ? 'bad' : 'warn') + ' ' + esc(item.invocation_id) + '</h3>' +
+        dl([
+          ['Queue item', '<code>' + esc(item.queue_item_id || '—') + '</code>'],
+          ['Reason', esc(item.reason)],
+          ['Rationale', esc(item.operational_rationale || '—')],
+          ['Blocker', esc(item.blocker || '—')],
+          ['Gate', esc(item.owning_gate || '—')],
+          ['Scope', esc(item.approval_scope_required || '—')],
+          ['Next owner', esc(handoff.next_owner || '—') + ' / ' + esc(handoff.next_action || '—')],
+          ['Hermes', badge(handoff.next_owner === 'hermes' ? 'ROUTED' : 'NOT_ROUTED', handoff.next_owner === 'hermes' ? 'ok' : 'info') + ' auto_executed: ' + esc(String(handoff.auto_executed === true))],
+        ]) + '</div>';
+    }).join('');
+  }
+
+  function renderPlan(ws) {
+    var p = ws.visual_plan;
+    var approval = p.approval_state || {};
+    var coverage = p.coverage || {};
+    var warnings = (coverage.validation_warnings || []).concat(coverage.warnings || []);
+    el('planPanel').innerHTML = dl([
+      ['Plan ID', esc(p.plan_id)],
+      ['Revision', esc(p.plan_revision)],
+      ['Artifact', esc(p.artifact_reference)],
+      ['SHA-256', '<code>' + esc(p.sha256) + '</code>'],
+      ['Plan digest', '<code>' + esc(p.plan_digest_sha256 || '—') + '</code>'],
+      ['Story dependency', esc((p.story_dependency && p.story_dependency.version_id) || 'none') + ' @ ' + esc((p.story_dependency && p.story_dependency.content_hash || '—').slice(0, 16))],
+      ['Approval', badge(approval.state || 'UNKNOWN', approval.valid ? 'ok' : 'bad') + ' ' + esc((approval.reason_codes || []).join(', '))],
+      ['Gate', esc(p.gate_state.gate) + ' ' + badge(p.gate_state.state, p.gate_state.authorization_ok ? 'ok' : 'warn')],
+      ['Coverage', esc((coverage.sections || []).length) + ' sections / ' + esc((coverage.shots || p.shots || []).length) + ' shots'],
+      ['Warnings', warnings.length ? '<span class="warnline">' + warnings.map(esc).join('; ') + '</span>' : 'none'],
+    ]);
+  }
+
+  function renderShots(ws) {
+    var shots = ws.visual_plan.shots || [];
+    el('shotsPanel').innerHTML = shots.map(function (s) {
+      var framing = s.framing_composition || {};
+      var warnings = s.warnings || [];
+      return '<div class="shot">' +
+        '<h3>' + esc(s.shot_id) + '</h3>' +
+        dl([
+          ['Beat', esc(s.beat_id)],
+          ['Purpose', esc(s.purpose)],
+          ['Media', badge(s.media_type, 'info')],
+          ['Framing', esc(framing.shot_brief || '—')],
+          ['Prompt', badge(s.prompt_state, s.prompt_state === 'READY' ? 'ok' : 'warn')],
+          ['Generation', badge(s.generation_state, 'info')],
+          ['Story linkage', esc(s.story_linkage || '—')],
+          ['Research', esc(s.research_linkage || '—')],
+          ['Why it serves story', esc(s.why_it_serves_story || '—')],
+        ]) +
+        (warnings.length ? '<div class="warnline">⚠ ' + warnings.map(esc).join('; ') + '</div>' : '') +
+        '</div>';
+    }).join('') || '<div class="note">No shots.</div>';
+  }
+
+  function renderResource(ws) {
+    var r = ws.resource_tool || {};
+    el('resourcePanel').innerHTML = dl([
+      ['Lane', esc(r.lane || '—')],
+      ['Model', esc(r.model || '—')],
+      ['Host', esc(r.host || '—')],
+      ['Worker', esc(r.worker || '—')],
+      ['Job', esc(r.job_id || '—') + ' (' + esc(r.job_state || '—') + ')'],
+      ['Health', badge(r.health || 'UNKNOWN', r.health === 'HEALTHY' ? 'ok' : 'warn')],
+      ['Source', esc(r.telemetry_source || '—')],
+    ]);
+  }
+
+  function renderOwnership(ws) {
+    var o = ws.ownership || {};
+    var caps = o.capabilities || {};
+    el('ownershipPanel').innerHTML = dl([
+      ['Current owner', badge(o.current_owner, o.current_owner === 'HUMAN' ? 'warn' : 'ok')],
+      ['Revision', esc(o.revision)],
+      ['Take manual control', caps.take_manual_control && caps.take_manual_control.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.take_manual_control && caps.take_manual_control.reason || 'n/a'), 'bad')],
+      ['Return to automation', caps.return_to_automation && caps.return_to_automation.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.return_to_automation && caps.return_to_automation.reason || 'n/a'), 'bad')],
+      ['Retry', caps.retry && caps.retry.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.retry && caps.retry.reason || 'n/a'), 'bad')],
+      ['Cancel', caps.cancel && caps.cancel.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.cancel && caps.cancel.reason || 'n/a'), 'bad')],
+    ]);
+    renderControls(ws, caps);
+  }
+
+  function renderControls(ws, caps) {
+    var ctx = ws.context;
+    var target = { run_id: ctx.run_id, agent_id: ctx.agent_id, invocation_id: ctx.invocation_id, task_id: ctx.task_id };
+    var html = '';
+    html += '<label class="note" for="opReason">Operator reason (required for apply):</label>';
+    html += '<textarea id="opReason" rows="2" placeholder="Why is a human taking or returning control of this exact task?"></textarea>';
+    html += '<div>';
+    html += '<button id="btnTakePreview">Preview Take Manual Control</button>';
+    html += '<button id="btnTakeApply" class="apply" disabled>Apply Take Manual Control</button>';
+    html += '<button id="btnReturnPreview">Preview Return to Automation</button>';
+    html += '<button id="btnReturnApply" class="apply" disabled>Apply Return to Automation</button>';
+    if (caps.retry && caps.retry.allowed) html += '<button id="btnRetryPreview">Preview RETRY</button>';
+    if (caps.cancel && caps.cancel.allowed) html += '<button id="btnCancelPreview">Preview CANCEL</button>';
+    html += '<button id="btnReveal" ' + (o_manualArtifactAvailable(ws) ? '' : 'disabled') + '>Reveal Manual Artifact</button>';
+    html += '<button id="btnRefresh">Refresh Server Truth</button>';
+    html += '</div>';
+    el('controls').innerHTML = html;
+
+    var previewTokens = { takeover: null, returnTo: null };
+
+    function out(data, label) { el('actionOut').textContent = '— ' + label + ' —\n' + JSON.stringify(data, null, 2); }
+    function reasonText() { return el('opReason').value.trim(); }
+
+    el('btnTakePreview').onclick = async function () {
+      try {
+        var data = await postControl(ws.links.takeover_preview, Object.assign({}, target, { reason: reasonText() || 'operator preview' }));
+        previewTokens.takeover = data.preview_token;
+        el('btnTakeApply').disabled = !data.eligible;
+        out(data, 'TAKEOVER PREVIEW (read-only)');
+      } catch (e) { out(String(e.message || e), 'TAKEOVER PREVIEW FAILED'); }
+    };
+    el('btnTakeApply').onclick = async function () {
+      if (!reasonText()) { out('An operator reason is required before applying.', 'VALIDATION'); return; }
+      try {
+        var data = await postControl(ws.links.takeover_apply, Object.assign({}, target, { reason: reasonText(), preview_token: previewTokens.takeover }));
+        out(data, 'TAKEOVER APPLIED — refreshing server truth');
+        await refresh();
+      } catch (e) { out(String(e.message || e), 'TAKEOVER APPLY FAILED'); }
+    };
+    el('btnReturnPreview').onclick = async function () {
+      try {
+        var data = await postControl(ws.links.return_preview, Object.assign({}, target, { reason: reasonText() || 'operator preview' }));
+        previewTokens.returnTo = data.preview_token;
+        el('btnReturnApply').disabled = !data.eligible;
+        out(data, 'RETURN PREVIEW (read-only) — distinct from Apply');
+      } catch (e) { out(String(e.message || e), 'RETURN PREVIEW FAILED'); }
+    };
+    el('btnReturnApply').onclick = async function () {
+      if (!reasonText()) { out('An operator reason is required before applying.', 'VALIDATION'); return; }
+      try {
+        var data = await postControl(ws.links.return_apply, Object.assign({}, target, { reason: reasonText(), preview_token: previewTokens.returnTo }));
+        out(data, 'RETURN APPLIED — successor created; refreshing server truth');
+        await refresh();
+      } catch (e) { out(String(e.message || e), 'RETURN APPLY FAILED'); }
+    };
+    if (el('btnRetryPreview')) el('btnRetryPreview').onclick = async function () {
+      try { out(await postControl('/api/agent-control-room/retry/preview', Object.assign({}, target, { reason: reasonText() || 'operator preview' })), 'RETRY PREVIEW (read-only)'); }
+      catch (e) { out(String(e.message || e), 'RETRY PREVIEW FAILED'); }
+    };
+    if (el('btnCancelPreview')) el('btnCancelPreview').onclick = async function () {
+      try { out(await postControl('/api/agent-control-room/cancel/preview', Object.assign({}, target, { reason: reasonText() || 'operator preview' })), 'CANCEL PREVIEW (read-only)'); }
+      catch (e) { out(String(e.message || e), 'CANCEL PREVIEW FAILED'); }
+    };
+    el('btnReveal').onclick = function () {
+      var link = '/api/agent-control-room/manual-artifact?run_id=' + encodeURIComponent(ctx.run_id) +
+        '&agent_id=' + encodeURIComponent(ctx.agent_id) + '&task_id=' + encodeURIComponent(ctx.task_id);
+      window.open(link, '_blank');
+    };
+    el('btnRefresh').onclick = refresh;
+  }
+
+  function o_manualArtifactAvailable(ws) {
+    // Reveal only when ownership says a manual artifact exists for this task.
+    var o = ws.ownership || {};
+    return o.current_owner === 'HUMAN' || (o.manual_artifact && o.manual_artifact.exists === true);
+  }
+
+  async function refresh() {
+    var ctx = contextFromUrl();
+    if (!ctx) return;
+    try {
+      var ws = await loadWorkspace(ctx);
+      state = ws;
+      el('workspace').hidden = false;
+      renderContext(ws);
+      renderAttention(ws);
+      renderPlan(ws);
+      renderShots(ws);
+      renderResource(ws);
+      renderOwnership(ws);
+    } catch (e) {
+      failClosed(String(e.message || e));
+    }
+  }
+
+  refresh();
+})();
+</script>
+</body>
+</html>
