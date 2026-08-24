@@ -170,7 +170,7 @@ function finish(task, out, state, attention, nextOwner, reason, refs) {
   out.attention = attention;
   out.reason = reason || null;
   out.operational_rationale = operationalRationale(attention, reason, refs);
-  out.handoff = { next_owner: nextOwner, next_action: nextOwner === 'hermes' ? 'ESCALATE_WITH_EVIDENCE' : nextOwner === 'production_operations' ? null : 'REMEDIATE' };
+  out.handoff = { next_owner: nextOwner, next_action: nextOwner === 'mikko' ? 'HUMAN_REVIEW_OR_APPROVAL' : nextOwner === 'hermes' ? 'ESCALATE_WITH_EVIDENCE' : nextOwner === 'production_operations' ? null : 'REMEDIATE' };
   out.provenance = { acting_agent: AGENT_ID, lane: LANE, recorded_at: new Date().toISOString(), implementation_state: implementationState(registration()) };
   out.events.push({ at: new Date().toISOString(), actor: AGENT_ID, state, detail: reason || null });
   return out;
@@ -308,7 +308,9 @@ if (require.main === module) {
       if (!args.task) { console.error('usage: production-operations.js --task <task.json>'); process.exitCode = 2; }
       else {
         run(JSON.parse(fs.readFileSync(path.resolve(args.task), 'utf8'))).then((result) => {
-          process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+          // Canonical success envelope: controlRoomView is the Control Room
+          // projection and must ride the result so validateEnvelope passes.
+          process.stdout.write(`${JSON.stringify({ ...result, control_room: controlRoomView(result) }, null, 2)}\n`);
           process.exitCode = ['COMPLETE'].includes(result.state) ? 0 : 1;
         }).catch((error) => {
           process.stdout.write(`${JSON.stringify({ schema_version: 1, agent_id: AGENT_ID, infrastructure_state: 'PRODUCTION_OPERATIONS_FAILED', reason: error.message }, null, 2)}\n`);

@@ -78,6 +78,15 @@ function buildProposal(context, owner, artifact, options = {}) {
   const adapter = ADAPTERS[context.agentId];
   if (!adapter) return { eligible: false, validation: { valid: false, validator_id: null, reason: `No canonical successor validator exists for ${context.agentId}.`, reason_codes: ['SUCCESSOR_SPECIALIST_NOT_SUPPORTED'], approvals_invalidated: [], gates_invalidated: [] }, artifact };
   if (!context.invocation || !artifact || !artifact.value) throw new SuccessorTaskError('SUCCESSOR_PREDECESSOR_INVALID', 'completed predecessor and manual artifact are required');
+  if (context.agentId === 'visual_planning_director') {
+    const value = artifact.value;
+    if (!value || typeof value !== 'object' || Array.isArray(value) || value.schema_version !== 1 || value.artifact_type !== 'visual-plan'
+        || !value.story || typeof value.story !== 'object' || Array.isArray(value.story)
+        || typeof value.story.project_id !== 'string' || !value.story.project_id
+        || !Array.isArray(value.required_beats) || !Array.isArray(value.coverage) || !Array.isArray(value.shots) || !Array.isArray(value.prompts)) {
+      throw new SuccessorTaskError('SUCCESSOR_ARTIFACT_SCHEMA_INVALID', 'manual Visual Plan does not satisfy the canonical artifact shape');
+    }
+  }
   const predecessorArtifact = context.invocation.artifacts?.find((item) => item.field === artifact.metadata.artifact_id);
   if (!predecessorArtifact) throw new SuccessorTaskError('SUCCESSOR_PREDECESSOR_INVALID', 'predecessor artifact binding is missing');
   const predecessorPath = path.resolve(context.directory, predecessorArtifact.path);
@@ -87,7 +96,12 @@ function buildProposal(context, owner, artifact, options = {}) {
     throw new SuccessorTaskError('SUCCESSOR_PREDECESSOR_MUTATED', 'predecessor artifact is not immutable');
   }
   let previous; try { previous = JSON.parse(predecessorBytes); } catch (_) { throw new SuccessorTaskError('SUCCESSOR_PREDECESSOR_INVALID', 'predecessor artifact is malformed'); }
-  const validation = adapter.validate(context, previous, artifact.value, options);
+  let validation;
+  try { validation = adapter.validate(context, previous, artifact.value, options); }
+  catch (error) {
+    if (error instanceof SuccessorTaskError) throw error;
+    throw new SuccessorTaskError('SUCCESSOR_ARTIFACT_SCHEMA_INVALID', `manual Visual Plan validation failed safely: ${error.message}`);
+  }
   if (!validation.valid) return { eligible: false, validation, artifact };
   const seed = canonicalize({ run_id: context.runId, agent_id: context.agentId, predecessor_task_id: context.record.task_id, predecessor_task_sha256: context.invocation.task_sha256, artifact_sha256: artifact.sha256, ownership_revision: owner.revision });
   const successorTaskId = `successor-${sha256(seed).slice(0, 32)}`;

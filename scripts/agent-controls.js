@@ -77,6 +77,11 @@ function currentArtifact(context) {
   return { artifact_id: artifact.field, path: artifact.path, sha256: runner.sha256(fs.readFileSync(artifactPath)), exists: true };
 }
 function ownershipFor(context) { return ownership.readOwnership(context.root, { run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id }); }
+function assertManualControlSpecialist(agentId) {
+  if (!successor.hasSuccessorAdapter(agentId)) {
+    throw new AgentControlError('TAKEOVER_SUCCESSOR_ADAPTER_MISSING', `manual takeover is unavailable because ${agentId} has no canonical successor/resumption adapter`);
+  }
+}
 function previewDigest(context, action, normalizedReason, ledgerHead, extra = {}) {
   return runner.sha256(Buffer.from(ledger.canonicalize({ action, run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_sha256: runner.sha256(context.taskBytes), reason: normalizedReason, ledger_head: ledgerHead, ...extra })));
 }
@@ -143,6 +148,7 @@ async function applyCancel(input, options = {}) {
 
 function previewTakeManualControl(input, options = {}) {
   const context = locateInvocation(options.root, input), normalizedReason = reason(input.reason);
+  assertManualControlSpecialist(context.agentId);
   const owner = ownershipFor(context), artifact = currentArtifact(context), currentLedger = ledger.readLedger(context.root, context.runId);
   if (owner.current_owner !== 'AUTOMATION') throw new AgentControlError('OWNERSHIP_TRANSITION_INVALID', `current execution owner is ${owner.current_owner}`);
   const active = context.live_run_lock, bounded = artifact.exists && Boolean(artifact.artifact_id) && Boolean(artifact.sha256);
@@ -272,4 +278,4 @@ async function applyReturnToAutomation(input, options = {}) {
   return { action: 'RETURN_TO_AUTOMATION', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'AUTOMATION', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash };
 }
 
-module.exports = { AgentControlError, locateInvocation, currentArtifact, manualControlEligibility, previewRetry, applyRetry, previewCancel, applyCancel, previewTakeManualControl, applyTakeManualControl, previewReturnToAutomation, applyReturnToAutomation };
+module.exports = { AgentControlError, locateInvocation, currentArtifact, assertManualControlSpecialist, manualControlEligibility, previewRetry, applyRetry, previewCancel, applyCancel, previewTakeManualControl, applyTakeManualControl, previewReturnToAutomation, applyReturnToAutomation };

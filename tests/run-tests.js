@@ -122,6 +122,7 @@ require("./agent-control-room.test.js");
 require("./operator-action-ledger.test.js");
 require("./hermes-escalation.test.js");
 require("./production-operations.test.js");
+require("./production-operations-production-path.test.js");
 require("./execution-ownership.test.js");
 require("./successor-task-contract.test.js");
 require("./agent-cancellation-adapters.test.js");

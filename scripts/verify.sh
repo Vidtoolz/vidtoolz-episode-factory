@@ -151,6 +151,10 @@ node --check scripts/sound-music-director.js
 node --check scripts/research-result-validator.js
 node --check scripts/research-result-authority.js
 node --check scripts/research-director.js
+node --check scripts/hermes-escalation.js
+node --check scripts/production-operations.js
+node --check scripts/production-operations-proof.js
+node --check scripts/production-operations-proof-v2.js
 node --check scripts/story-revision-review.js
 node --check scripts/story-editor.js
 node --check scripts/visual-plan.js

@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "package": "production-operations-production-path-proof-v2",
+  "predecessor": "package-runs/2026-08-24-production-operations-proof (V1, internal candidate proof)",
+  "bound_commit": "9df6b23e78dbd52a0f43184104e727143189e5c7",
+  "registry_snapshot": {
+    "implementation_state": "CANDIDATE",
+    "lifecycle": {
+      "doctrine": "DEFINED",
+      "proven": "PROVEN",
+      "autonomous_dispatch": "ENABLED"
+    }
+  },
+  "live_registry_canditate_throughout": true,
+  "promotion_criteria_version": "v1 (docs/implementation-promotion-criteria.md)",
+  "dispatch_chain_proven": [
+    "canonical resolve",
+    "implementation readiness (fixture PROVEN)",
+    "module load + identity",
+    "action validation",
+    "child-process invocation",
+    "canonical envelope validation",
+    "result writing",
+    "invocation completion"
+  ],
+  "envelope_validation": "canonical scripts/agent-run.js validateEnvelope on every case result",
+  "verdict": "PRODUCTION_PATH_PROOF_PASS",
+  "promotion": "NOT_PERFORMED \u2014 implementation_state remains CANDIDATE; Mikko decides",
+  "reproducibility": [
+    "node scripts/production-operations-proof-v2.js --emit <dir>   # isolated fixture registry; live registry untouched",
+    "node tests/run-tests.js                                        # includes production-path suite (PV1-PV15)",
+    "bash scripts/verify.sh                                         # node --check registration included"
+  ],
+  "artifacts": {
+    "production-path-summary.json": "79c4c3977b49df1415f9b21b5af6fc402259f51dffb5caca40cd54b48cccfd65",
+    "D-decision-storage/invocation.json": "ea2c79e81acf0ceb10f4a03cbfca5560eb43d5acf98bddca94d5cabda048e67b",
+    "D-decision-storage/result.json": "546e395fb31336b2023642405490dbc5e2cf28ed353c7645dbdeaa8b23e59525",
+    "D-decision-storage/task.json": "efe0d875b94bbda673ff2cf3d27dcf74d96bea0f44cfaa20fd624d57948ef859",
+    "C-review-resource-lane/invocation.json": "89a8441fc376b885f0ad3fdae143fe9c85565c5e82e6caf907039b15367cbcf7",
+    "C-review-resource-lane/result.json": "2bcada71e4038122545e6c0f54033d8345449383b9dae4ca50545d6da4b86f48",
+    "C-review-resource-lane/task.json": "0a9d6bdc51a63db988a32b65684ca7d5c23f6f3b74ab52a982c15b9a2224ef59",
+    "G-model-lane-vs-resource-lane/invocation.json": "1e9d3a26d31746efc6655a257654ec66518667b84bf42251d0653228225d889b",
+    "G-model-lane-vs-resource-lane/result.json": "c5a4562ba28ac873adb27e0a09f346430590ad138d842b1df011881e779e0ab1",
+    "G-model-lane-vs-resource-lane/task.json": "d0f3f6befc060f26a2fdcbc6a3148816cc38de3989513c82a4f211b7bf139355",
+    "F-review-abandoned-invocation/invocation.json": "e189af8df71fdf22280bfd47a571742a414e61a74048f47272715154a79f380e",
+    "F-review-abandoned-invocation/result.json": "e7427a70d4d775c4032d1df14f733e797bdf3c03b32b1dc9a4f053c0b01a5b43",
+    "F-review-abandoned-invocation/task.json": "855b02d04d6f82f4d6ca9150ad7260c86bb7dcf7d395e3436de5ef281a547e07",
+    "A-information-status/invocation.json": "aa13616f073e27c7667961feda27ce944fa643ca28c5a7b718c34dcfff884a2e",
+    "A-information-status/result.json": "d87d64672b75513ed5e6241cf8f6fa55595e7ee76a769ca6d9abba0167cbb1e1",
+    "A-information-status/task.json": "d9029f6484820bebc085fe6a2fc4a0d2a6b7fa4317fab818cd0f87835a68a288",
+    "B-review-model-endpoint/invocation.json": "24bd5abf451fbb4d0010a29fb4e0f246c9ece761c5d8bdbdae9a7244f8f7411c",
+    "B-review-model-endpoint/result.json": "9cf65dce4f30f0af5d99dc401f76f0e3d7db1e846c3cbb20b4446cc48567da5a",
+    "B-review-model-endpoint/task.json": "92b4a6433f9190b8a53da9857a608da836e41f69a3a8e82170b5219ce5526ac0",
+    "E-creative-out-of-mandate/invocation.json": "15d391aefc8b3addc4050d471537fb9b8600ca569720da1ddc8cc45067d38aea",
+    "E-creative-out-of-mandate/result.json": "ff6a1d258ef871b0a4fbead9d942aeaeb55d383fc047405aa9b237d6c5899983",
+    "E-creative-out-of-mandate/task.json": "cc4302b5802f9b2caf79893cc91e5ab948c5ef3e92ed04779709e803be6649c9"
+  }
+}

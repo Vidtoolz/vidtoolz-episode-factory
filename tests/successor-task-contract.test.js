@@ -47,6 +47,26 @@ function mutateToSuccessor(f) { const next = makePlan(2, f.previous); write(f.ma
 
 test('Visual Planning adapter creates a complete immutable successor proposal', () => { const f = fixture(), next = mutateToSuccessor(f); const manual = successor.readManualArtifact(f.context), owner = ownership.readOwnership(f.root, f.target); const out = successor.buildProposal(f.context, owner, manual, { currentStory: f.task.story, createdAt: '2026-08-24T11:00:00.000Z', reason: 'Resume validated manual plan.' }); assert.equal(out.eligible, true); assert.equal(out.validation.validator_id, 'VISUAL_PLAN_SUCCESSOR_V1'); assert.equal(out.contract.predecessor_task_id, f.taskId); assert.equal(out.contract.predecessor_artifact_sha256, runner.sha256(fs.readFileSync(path.join(f.directory, 'artifacts/visual-plan.json')))); assert.equal(out.contract.new_artifact_sha256, runner.sha256(fs.readFileSync(f.manualPath))); assert.deepEqual(out.contract.approvals_invalidated, ['VISUAL_PLAN_APPROVAL']); assert.equal(out.contract.required_next_gate, 'VISUAL_PLAN_APPROVAL'); assert.equal(out.successor_task.action, 'review_coverage'); assert.deepEqual(out.successor_task.existing_plan, next); assert.equal(runner.sha256(out.successor_task_bytes), out.contract.successor_task_sha256); });
 test('malformed or deleted manual targets fail closed', () => { const malformed = fixture(); fs.writeFileSync(malformed.manualPath, '{bad'); assert.throws(() => successor.readManualArtifact(malformed.context), (e) => e.code === 'SUCCESSOR_ARTIFACT_MALFORMED'); const deleted = fixture(); fs.unlinkSync(deleted.manualPath); assert.throws(() => successor.readManualArtifact(deleted.context), (e) => e.code === 'MANUAL_ARTIFACT_MISSING'); });
+test('valid JSON with invalid Visual Plan shape is a typed refusal', () => {
+  for (const value of [{}, [], { schema_version: 1, artifact_type: 'visual-plan', story: {} },
+    { schema_version: 2, artifact_type: 'visual-plan', story: { project_id: 'p1' }, required_beats: [], coverage: [], shots: [], prompts: [] },
+    { schema_version: 1, artifact_type: 'other', story: { project_id: 'p1' }, required_beats: [], coverage: [], shots: [], prompts: [] },
+    { schema_version: 1, artifact_type: 'visual-plan', story: { project_id: 'p1' }, required_beats: [], coverage: [], shots: {}, prompts: [] }]) {
+    const f = fixture(); write(f.manualPath, value);
+    assert.throws(() => successor.buildProposal(f.context, ownership.readOwnership(f.root, f.target), successor.readManualArtifact(f.context), { currentStory: f.task.story, reason: 'Reject invalid manual shape.' }),
+      (error) => error.code === 'SUCCESSOR_ARTIFACT_SCHEMA_INVALID');
+    assert.equal(ownership.readOwnership(f.root, f.target).current_owner, 'HUMAN');
+    assert.equal(ledger.readLedger(f.root, f.runId).records.length, 1);
+  }
+  const nested = fixture();
+  const nestedValue = makePlan(2, nested.previous);
+  nestedValue.shots = [null];
+  write(nested.manualPath, nestedValue);
+  assert.throws(() => successor.buildProposal(nested.context, ownership.readOwnership(nested.root, nested.target), successor.readManualArtifact(nested.context), { currentStory: nested.task.story, reason: 'Reject malformed nested shot.' }),
+    (error) => error.code === 'SUCCESSOR_ARTIFACT_SCHEMA_INVALID');
+  assert.equal(ownership.readOwnership(nested.root, nested.target).current_owner, 'HUMAN');
+  assert.equal(ledger.readLedger(nested.root, nested.runId).records.length, 1);
+});
 test('upstream Story drift blocks successor eligibility', () => { const f = fixture(); mutateToSuccessor(f); const manual = successor.readManualArtifact(f.context), owner = ownership.readOwnership(f.root, f.target); const changedStory = { ...f.task.story, content_hash: visualPlan.sha256('changed upstream') }; changedStory.approval = { ...changedStory.approval, content_hash: changedStory.content_hash }; const out = successor.buildProposal(f.context, owner, manual, { currentStory: changedStory, createdAt: '2026-08-24T11:00:00.000Z', reason: 'Unsafe stale upstream.' }); assert.equal(out.eligible, false); assert.ok(out.validation.reason_codes.includes('UPSTREAM_STORY_CHANGED')); });
 test('predecessor artifact mutation is detected independently of the manual copy', () => { const f = fixture(); mutateToSuccessor(f); write(path.join(f.directory, 'artifacts/visual-plan.json'), makePlan(2, f.previous)); assert.throws(() => successor.buildProposal(f.context, ownership.readOwnership(f.root, f.target), successor.readManualArtifact(f.context), { currentStory: f.task.story, reason: 'Reject predecessor mutation.' }), (e) => e.code === 'SUCCESSOR_PREDECESSOR_MUTATED'); });
 
