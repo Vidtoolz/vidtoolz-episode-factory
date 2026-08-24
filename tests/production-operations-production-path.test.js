@@ -141,10 +141,10 @@ test('PV13: abandoned invocation class routes to operator retry recommendation, 
   assert.equal(abandoned.handoff.next_owner, 'hermes');
 });
 
-test('PV14: production-path canary dispatches through the canonical runner on an isolated PROVEN fixture', async () => {
+test('PV14: production-path canary dispatches through the canonical runner on an isolated promoted fixture', async () => {
   const proof = await proofV2.runProductionPath({ sourceRoot: ROOT, runId: 'po-test-prodpath' });
   try {
-    assert.equal(proof.fixtureFlippedFrom, 'CANDIDATE');
+    assert.equal(proof.fixtureFlippedFrom, 'IMPLEMENTATION_PROVEN');
     for (const result of proof.results) {
       assert.equal(result.error, null, `${result.id} errored: ${result.error && result.error.message}`);
       assert.equal(result.output.infrastructure_state, result.expect.infrastructure_state, `${result.id} infra state`);
@@ -155,9 +155,9 @@ test('PV14: production-path canary dispatches through the canonical runner on an
     const decisionCase = proof.results.find((r) => r.id === 'D-decision-storage');
     assert.equal(decisionCase.output.result.handoff.next_owner, 'mikko', 'DECISION must name mikko explicitly');
   } finally { fs.rmSync(proof.root, { recursive: true, force: true }); }
-  // live registry untouched
+  // live promoted registry untouched
   const live = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'agent-registry.json'), 'utf8'));
-  assert.equal(live.agents.find((a) => a.agent_id === po.AGENT_ID).implementation_state, 'CANDIDATE');
+  assert.equal(live.agents.find((a) => a.agent_id === po.AGENT_ID).implementation_state, 'IMPLEMENTATION_PROVEN');
 });
 
 test('PV16: nominal status path loads the exact committed system registry (no degraded fallback)', async () => {
@@ -180,20 +180,15 @@ test('PV16: nominal status path loads the exact committed system registry (no de
   } finally { fs.rmSync(proof.root, { recursive: true, force: true }); }
 });
 
-test('PV15: live canonical dispatch stays refused while CANDIDATE (runner + direct CLI)', async () => {
-  try {
-    runner.resolveAgent(ROOT, 'production_operations');
-    assert.fail('live runner must refuse CANDIDATE');
-  } catch (error) {
-    assert.equal(error.code, 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
-  }
+test('PV15: live canonical dispatch and direct CLI honor the promoted readiness state', async () => {
+  assert.equal(runner.resolveAgent(ROOT, 'production_operations').registration.agent_id, 'production_operations');
   const { execFileSync } = require('node:child_process');
-  const taskPath = path.join(os.tmpdir(), `po-live-refusal-${process.pid}.json`);
+  const taskPath = path.join(os.tmpdir(), `po-live-promoted-${process.pid}.json`);
   fs.writeFileSync(taskPath, JSON.stringify(statusTask()));
-  let refused = false;
   try {
-    execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'production-operations.js'), '--task', taskPath], { encoding: 'utf8' });
-  } catch (error) { refused = /BLOCKED_IMPLEMENTATION_NOT_PROVEN/.test(String(error.stdout)); }
+    const output = JSON.parse(execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'production-operations.js'), '--task', taskPath], { encoding: 'utf8' }));
+    assert.equal(output.state, 'COMPLETE');
+    assert.equal(output.provenance.implementation_state, 'IMPLEMENTATION_PROVEN');
+  }
   finally { fs.rmSync(taskPath, { force: true }); }
-  assert.ok(refused, 'direct CLI must refuse while CANDIDATE');
 });

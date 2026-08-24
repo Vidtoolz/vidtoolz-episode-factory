@@ -226,8 +226,11 @@ test('HB15: classifyRouting keeps human gates human; DECISION never auto-resolve
   const classification = bridge.classifyRouting(item, registryAgents());
   assert.equal(classification.waiting_for.kind, 'HUMAN_DECISION');
   assert.ok(!['APPROVE', 'RESUME_ORCHESTRATION'].includes(classification.recommended_action));
-  // Infrastructure blocker routes nowhere executable while production_operations has no module.
-  assert.ok(classification.route_options.every((option) => option.authorized === false || option.target !== 'production_operations'));
+  // The promoted route is visible, but classification remains a pure proposal:
+  // it creates neither a receipt nor an execution.
+  const option = classification.route_options.find((entry) => entry.target === 'production_operations');
+  assert.equal(option.authorized, true);
+  assert.equal(option.implementation_state, 'IMPLEMENTATION_PROVEN');
 });
 
 test('HB16: REVIEW with remediable preflight proposes lifecycle-enabled specialist only', () => {
@@ -278,7 +281,7 @@ test('HB19: implementation readiness comes from registry authority without modul
   const source = fs.readFileSync(path.resolve(__dirname, '../scripts/hermes-escalation.js'), 'utf8');
   assert.equal(/implementation_state\\s\*\[:=\]/.test(source), false);
   const readiness = bridge.implementationReadiness(path.resolve(__dirname, '..'), 'production_operations');
-  assert.equal(readiness.implementation_state, 'CANDIDATE');
-  assert.equal(readiness.ready_for_route, false);
-  assert.equal(readiness.code, 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
+  assert.equal(readiness.implementation_state, 'IMPLEMENTATION_PROVEN');
+  assert.equal(readiness.ready_for_route, true);
+  assert.equal(readiness.code, null);
 });

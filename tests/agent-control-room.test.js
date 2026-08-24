@@ -858,13 +858,16 @@ test('canonical cockpit exposes all registered agents and truthful implementatio
   const output = await controlRoom.buildAgentControlRoom({ root: path.join(__dirname, '..') });
   const registry = require('../config/agent-registry.json');
   assert.equal(output.agents.length, registry.agents.length);
-  for (const id of ['production_operations', 'camera_director', 'qc_director']) {
+  for (const id of ['camera_director', 'qc_director']) {
     const row = output.agents.find((item) => item.agent_id === id);
     assert.equal(row.implementation.state, 'IMPLEMENTATION_CANDIDATE');
     assert.equal(row.implementation.implementation_state, 'CANDIDATE');
     assert.equal(row.control_capabilities.retry, false);
   }
-  assert.equal(output.summary.implementation_candidate, 3);
+  const production = output.agents.find((item) => item.agent_id === 'production_operations');
+  assert.equal(production.implementation.state, 'AVAILABLE');
+  assert.equal(production.implementation.implementation_state, 'IMPLEMENTATION_PROVEN');
+  assert.equal(output.summary.implementation_candidate, 2);
   assert.equal(output.agents.find((item) => item.agent_id === 'generation_supervisor').implementation.state, 'STATUS_UNSUPPORTED');
 });
 
@@ -891,7 +894,7 @@ test('latest canonical Story Editor canary is visible as blocked review runtime 
   assert.equal(story.attention, 'REVIEW');
   assert.match(story.blocker, /narrative_spine missing/);
   assert.equal(story.next_owner, 'production_operations');
-  assert.equal(story.handoff.current_implementation_state, 'IMPLEMENTATION_CANDIDATE');
+  assert.equal(story.handoff.current_implementation_state, 'AVAILABLE');
   assert.equal(story.automatic_chaining, false);
 });
 

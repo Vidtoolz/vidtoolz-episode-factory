@@ -43,30 +43,29 @@ test('PO1: module import is side-effect-free and does not execute', () => {
   } finally { fs.rmSync(watched, { recursive: true, force: true }); }
 });
 
-test('PO2: direct execution refuses while implementation_state is CANDIDATE', () => {
+test('PO2: direct execution follows the human-authorized IMPLEMENTATION_PROVEN state', () => {
   const registration = po.registration();
-  assert.equal(po.implementationState(registration), 'CANDIDATE');
+  assert.equal(po.implementationState(registration), 'IMPLEMENTATION_PROVEN');
   const { execFileSync } = require('node:child_process');
-  let stdout = '';
-  let code = 0;
+  const taskPath = path.join(os.tmpdir(), `po-promoted-cli-${process.pid}.json`);
+  fs.writeFileSync(taskPath, JSON.stringify(baseTask({ assignment: { action: 'status' } })));
   try {
-    execFileSync(process.execPath, [path.resolve(__dirname, '../scripts/production-operations.js'),
-      '--task', path.resolve(__dirname, '../package.json')], { encoding: 'utf8' });
-  } catch (error) { code = error.status; stdout = error.stdout || ''; }
-  assert.notEqual(code, 0);
-  assert.match(stdout, /BLOCKED_IMPLEMENTATION_NOT_PROVEN/);
+    const stdout = execFileSync(process.execPath, [path.resolve(__dirname, '../scripts/production-operations.js'),
+      '--task', taskPath], { encoding: 'utf8' });
+    const output = JSON.parse(stdout);
+    assert.equal(output.state, 'COMPLETE');
+    assert.equal(output.provenance.implementation_state, 'IMPLEMENTATION_PROVEN');
+  } finally { fs.rmSync(taskPath, { force: true }); }
 });
 
-test('PO2b: canonical runner, retry, and Hermes refuse candidate before substantive execution', () => {
+test('PO2b: canonical runner and Hermes authorize only the promoted Production Operations entry', () => {
   let loaded = 0;
-  assert.throws(() => runner.resolveAgent(path.resolve(__dirname, '..'), 'production_operations', {
+  const resolved = runner.resolveAgent(path.resolve(__dirname, '..'), 'production_operations', {
     loadModule: () => { loaded += 1; return po; },
-  }), (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
-  assert.equal(loaded, 0);
-  assert.throws(() => controls.previewRetry({ run_id: 'proof-run', agent_id: 'production_operations', invocation_id: 'proof:1', reason: 'Candidate must not retry.' }, { root: path.resolve(__dirname, '..') }),
-    (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
-  assert.throws(() => bridge.assertRouteTargetAuthorized(registryAgents(), 'production_operations'),
-    (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
+  });
+  assert.equal(resolved.registration.agent_id, 'production_operations');
+  assert.equal(loaded, 1);
+  assert.equal(bridge.assertRouteTargetAuthorized(registryAgents(), 'production_operations').agent_id, 'production_operations');
   assert.equal(typeof po.run, 'function', 'bounded proof harness may import internal functions');
 });
 
@@ -148,7 +147,7 @@ test('PO10: production operations cannot route itself recursively', async () => 
     || result.route_preparation.dispatched === false && !result.route_preparation.lifecycle_enabled);
 });
 
-test('PO11: Hermes infrastructure route recognizes the candidate but stays unauthorized until proof', () => {
+test('PO11: Hermes infrastructure route recognizes the promoted implementation without auto-execution', () => {
   const classification = bridge.classifyRouting({
     agent_id: 'visual_planning_director', attention: 'DECISION',
     reason: 'semantic retry exhausted: MODEL_FAILED: fetch failed',
@@ -157,9 +156,9 @@ test('PO11: Hermes infrastructure route recognizes the candidate but stays unaut
   const option = classification.route_options.find((entry) => entry.target === 'production_operations');
   assert.ok(option, 'infrastructure escalation must propose production_operations');
   assert.equal(option.module_exists, true);
-  assert.equal(option.implementation_state, 'CANDIDATE');
-  assert.equal(option.authorized, false);
-  assert.match(option.note, /proof completes/);
+  assert.equal(option.implementation_state, 'IMPLEMENTATION_PROVEN');
+  assert.equal(option.authorized, true);
+  assert.match(option.note, /separate authorized orchestration action/);
 });
 
 test('PO12: readiness gate is generic — missing-module roles also unauthorized', () => {
@@ -191,4 +190,17 @@ test('PO14: lifecycle/readiness remain fail-closed if registry block vanishes', 
     // No lifecycle block: implementationState defaults to CANDIDATE (fail-closed).
     assert.equal(po.implementationState(reg), 'CANDIDATE');
   } finally { fs.rmSync(repo, { recursive: true, force: true }); }
+});
+
+test('PO15: promotion changes no other lifecycle or implementation-readiness boundary', () => {
+  const agents = registryAgents();
+  for (const id of ['presenter_director', 'creative_director']) {
+    assert.throws(() => runner.resolveAgent(path.resolve(__dirname, '..'), id),
+      (error) => error.code === 'BLOCKED_AGENT_NOT_ENABLED');
+  }
+  for (const id of ['camera_director', 'qc_director']) {
+    assert.throws(() => runner.resolveAgent(path.resolve(__dirname, '..'), id),
+      (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
+    assert.equal(agents.find((agent) => agent.agent_id === id).implementation_state, 'CANDIDATE');
+  }
 });
