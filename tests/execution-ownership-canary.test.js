@@ -12,6 +12,7 @@ const ledger = require('../scripts/operator-action-ledger.js');
 const validator = require('../scripts/agent-contract-validator.js');
 const packageEngineServer = require('../package-engine-server.js');
 const visualPlanningWorkspace = require('../scripts/visual-planning-workspace.js');
+const { bootWorkspacePage } = require('./fixtures/visual-planning-workspace-browser.js');
 
 function write(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`); }
 test('ownership canary: specialists without successor adapters cannot enter manual ownership', async () => {
@@ -63,8 +64,36 @@ test('extended ownership canary: changed Visual Plan resumes only through an imm
   assert.equal(initialWorkspace.ownership.capabilities.take_manual_control.allowed, true);
   assert.equal(initialWorkspace.ownership.successor_capability.adapter_id, 'VISUAL_PLAN_SUCCESSOR_V1');
   const input = { run_id: runId, agent_id: 'visual_planning_director', invocation_id: first.invocation.invocation_id, reason: 'Canary manual Visual Plan revision.' };
-  const actor = ledger.localActorContext({ username: 'mikko' }), preview = controls.previewTakeManualControl(input, { root });
-  const taken = controls.applyTakeManualControl({ ...input, preview_token: preview.preview_token }, { root, actor, recordId: 'operator-action-successor-take' });
+  const actor = ledger.localActorContext({ username: 'mikko' });
+  let preview;
+  let taken;
+  let browserReturnPreview;
+  let browserReturned;
+  const browser = await bootWorkspacePage(() => visualPlanningWorkspace.buildVisualPlanningWorkspace({
+    run_id: runId, agent_id: 'visual_planning_director', task_id: task.task_id, invocation_id: first.invocation.invocation_id,
+  }, workspaceOptions), { controls: {
+    '/api/agent-control-room/take-manual-control/preview': (body) => {
+      preview = controls.previewTakeManualControl(body, { root });
+      return preview;
+    },
+    '/api/agent-control-room/take-manual-control/apply': (body) => {
+      taken = controls.applyTakeManualControl(body, { root, actor, recordId: 'operator-action-successor-take' });
+      return taken;
+    },
+    '/api/agent-control-room/return-to-automation/preview': async (body) => {
+      browserReturnPreview = await controls.previewReturnToAutomation(body, { root, successorValidation: { currentStory: task.story }, now: '2026-08-24T11:00:00.000Z' });
+      return browserReturnPreview;
+    },
+    '/api/agent-control-room/return-to-automation/apply': async (body) => {
+      browserReturned = await controls.applyReturnToAutomation(body, { root, actor, recordId: 'operator-action-successor-return', successorValidation: { currentStory: task.story }, now: '2026-08-24T11:01:00.000Z' });
+      return browserReturned;
+    },
+  } });
+  browser.node('opReason').value = input.reason;
+  await browser.click('btnTakePreview');
+  assert.equal(browser.node('btnTakeApply').disabled, false);
+  await browser.click('btnTakeApply');
+  assert.equal(taken.execution_owner, 'HUMAN');
   const humanWorkspace = await visualPlanningWorkspace.buildVisualPlanningWorkspace({
     run_id: runId, agent_id: 'visual_planning_director', task_id: task.task_id, invocation_id: first.invocation.invocation_id,
   }, workspaceOptions);
@@ -87,9 +116,13 @@ test('extended ownership canary: changed Visual Plan resumes only through an imm
   nextPlan.coverage[0].reason = 'A later bounded manual correction.'; nextPlan.plan_digest_sha256 = require('../scripts/visual-plan.js').planDigest(nextPlan); write(path.join(root, taken.manual_artifact_path), nextPlan);
   await assert.rejects(() => controls.applyReturnToAutomation({ ...returnInput, preview_token: stalePreview.preview_token, preview_created_at: stalePreview.preview_created_at }, { root, actor, successorValidation: { currentStory: task.story }, now: '2026-08-24T10:59:30.000Z' }), (e) => e.code === 'AGENT_CONTROL_PREVIEW_STALE');
   const beforePreview = fs.readFileSync(path.join(root, taken.manual_artifact_path));
-  const returnPreview = await controls.previewReturnToAutomation(returnInput, { root, successorValidation: { currentStory: task.story }, now: '2026-08-24T11:00:00.000Z' });
-  assert.equal(returnPreview.eligible, true); assert.equal(returnPreview.successor_task.continuation_action, 'review_coverage'); assert.deepEqual(fs.readFileSync(path.join(root, taken.manual_artifact_path)), beforePreview);
-  const returned = await controls.applyReturnToAutomation({ ...returnInput, preview_token: returnPreview.preview_token, preview_created_at: returnPreview.preview_created_at }, { root, actor, recordId: 'operator-action-successor-return', successorValidation: { currentStory: task.story }, now: '2026-08-24T11:01:00.000Z' });
+  browser.node('opReason').value = returnInput.reason;
+  await browser.click('btnReturnPreview');
+  assert.equal(browserReturnPreview.eligible, true); assert.equal(browserReturnPreview.successor_task.continuation_action, 'review_coverage'); assert.deepEqual(fs.readFileSync(path.join(root, taken.manual_artifact_path)), beforePreview);
+  await browser.click('btnReturnApply');
+  const returnApplyRequest = browser.requests.find((request) => request.url === '/api/agent-control-room/return-to-automation/apply');
+  assert.equal(returnApplyRequest.body.preview_created_at, browserReturnPreview.preview_created_at);
+  const returned = browserReturned;
   assert.equal(returned.predecessor_execution_owner, 'SUSPENDED'); assert.deepEqual(fs.readFileSync(predecessorArtifact), predecessorBytes);
   const successorTaskPath = path.join(root, returned.successor_task_path);
   const second = await runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath: successorTaskPath });
