@@ -94,6 +94,26 @@ function writeRunnerInvocation(f, overrides = {}) {
   return { runId, agentId, taskId, directory, indexPath, task, result, invocation };
 }
 
+function writeRuntimeLock(f, overrides = {}) {
+  const runId = overrides.run_id || 'run-live';
+  const agentId = overrides.agent_id || 'alpha';
+  const taskId = overrides.task_id || 'task-live';
+  const agentsRoot = path.join(f.root, 'package-runs', runId, 'agents');
+  const taskDirectory = `${agentId}/${taskId}`;
+  writeJson(path.join(agentsRoot, taskDirectory, 'task.json'), {
+    task_id: taskId, package_run_id: runId, project_id: 'project-live', action: 'work',
+  });
+  writeJson(path.join(agentsRoot, '.lock'), {
+    schema_version: 1, token: 'test-lock', pid: overrides.pid ?? process.pid,
+    host: overrides.host || os.hostname(), acquired_at: '2026-08-24T10:00:00.000Z',
+    started_at: '2026-08-24T10:00:01.000Z', agent_id: agentId, task_id: taskId,
+    invocation_id: `${agentId}:${taskId}:1`, task_directory: taskDirectory,
+    lane: 'local_gpu', model: 'model-test', resource_dependency: 'comfyui@test-host',
+    artifact_ids: ['artifact-live'],
+  });
+  return { agentsRoot, runId, agentId, taskId };
+}
+
 function implementation(views, calls, failures = new Set()) {
   return (agent) => ({
     ACTIONS: ['status'],
@@ -234,7 +254,7 @@ test('valid Runner invocation becomes canonical latest runtime context', async (
   const output = await controlRoom.buildAgentControlRoom({ root: f.root, implementationLoader: implementation({}, []) });
   const row = output.agents[0];
   assert.equal(row.runtime_source, 'AGENT_RUNNER');
-  assert.equal(row.runtime_status, 'LATEST_COMPLETED_INVOCATION');
+  assert.equal(row.runtime_status, 'COMPLETED');
   assert.equal(row.state, 'BLOCKED');
   assert.equal(row.attention, 'REVIEW');
   assert.equal(row.blocker, 'narrative spine missing');
@@ -347,7 +367,7 @@ test('Runner history is never represented as currently running or automatically 
   writeRunnerInvocation(f, { state: 'RUNNING', auto_executed: false });
   const output = await controlRoom.buildAgentControlRoom({ root: f.root });
   assert.equal(output.agents[0].state, 'RUNNING');
-  assert.equal(output.agents[0].runtime_status, 'LATEST_COMPLETED_INVOCATION');
+  assert.equal(output.agents[0].runtime_status, 'COMPLETED');
   assert.equal(output.agents[0].runtime_active, false);
   assert.equal(output.agents[0].automatic_chaining, false);
 });
@@ -469,6 +489,41 @@ test('runner evidence without those fields still projects null, not undefined', 
   const row = output.agents.find((a) => a.agent_id === 'alpha');
   assert.equal(row.disagreement, null);
   assert.equal(row.resource_dependency, null);
+});
+
+test('live same-host PID plus valid lock is projected as RUNNING', async () => {
+  const f = fixture(['alpha']); writeRuntimeLock(f);
+  const output = await controlRoom.buildAgentControlRoom({ root: f.root });
+  const row = output.agents[0];
+  assert.equal(row.state, 'RUNNING'); assert.equal(row.runtime_status, 'RUNNING'); assert.equal(row.runtime_active, true);
+  assert.equal(row.invocation.invocation_id, 'alpha:task-live:1'); assert.equal(row.host, os.hostname());
+  assert.equal(row.lane, 'local_gpu'); assert.equal(row.model, 'model-test');
+  assert.equal(row.resource_dependency, 'comfyui@test-host'); assert.deepEqual(row.current_artifact, ['artifact-live']);
+});
+
+test('dead PID plus incomplete task is projected as ABANDONED', async () => {
+  const f = fixture(['alpha']); writeRuntimeLock(f, { pid: 2147483647 });
+  const row = (await controlRoom.buildAgentControlRoom({ root: f.root })).agents[0];
+  assert.equal(row.state, 'ABANDONED'); assert.equal(row.runtime_status, 'ABANDONED');
+  assert.equal(row.runtime_active, false); assert.equal(row.attention, 'REVIEW');
+});
+
+test('disabled doctrine role never appears RUNNING even with a live lock', async () => {
+  const f = fixture(['alpha']);
+  f.registry.agents[0].lifecycle = { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED' };
+  fs.writeFileSync(path.join(f.root, 'config', 'agent-registry.json'), JSON.stringify(f.registry));
+  writeRuntimeLock(f);
+  const row = (await controlRoom.buildAgentControlRoom({ root: f.root })).agents[0];
+  assert.equal(row.state, 'PLANNED_NOT_ENABLED'); assert.equal(row.runtime_status, 'BLOCKED_NOT_ENABLED'); assert.equal(row.runtime_active, false);
+});
+
+test('corrupt lock evidence fails safely and does not claim RUNNING', async () => {
+  const f = fixture(['alpha']);
+  const agentsRoot = path.join(f.root, 'package-runs', 'bad-lock', 'agents'); fs.mkdirSync(agentsRoot, { recursive: true });
+  fs.writeFileSync(path.join(agentsRoot, '.lock'), '{bad');
+  const output = await controlRoom.buildAgentControlRoom({ root: f.root });
+  assert.equal(output.agents[0].runtime_active, false); assert.equal(output.agents[0].runtime_status, 'NEVER_RUN');
+  assert.equal(output.runtime_discovery.diagnostics[0].code, 'RUNNER_LOCK_MALFORMED');
 });
 
 test('operational rationale survives runner evidence into Control Room projection', async () => {

@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const os = require('node:os');
 const { deriveOperationalRationale } = require('./operational-rationale.js');
 
 const DEFAULT_ROOT = path.resolve(__dirname, '..');
@@ -45,6 +46,11 @@ function regularFile(filePath) {
   } catch (_error) {
     return false;
   }
+}
+
+function pidAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try { process.kill(pid, 0); return true; } catch (error) { return error?.code !== 'ESRCH'; }
 }
 
 function safeTaskDirectory(value) {
@@ -200,6 +206,63 @@ function runnerContextFromRecord(root, runId, agentsRoot, record, discovery) {
   };
 }
 
+function runnerContextFromLock(root, runId, agentsRoot, discovery) {
+  const lockPath = path.join(agentsRoot, '.lock');
+  if (!regularFile(lockPath)) return null;
+  let lock;
+  try { lock = readJson(lockPath, 'runner lock', INDEX_READ_CAP); } catch (error) {
+    discoveryDiagnostic(discovery, 'RUNNER_LOCK_MALFORMED', { run_id: runId, reason: error.message });
+    return null;
+  }
+  if (lock.host !== os.hostname()) {
+    discoveryDiagnostic(discovery, 'RUNNER_LOCK_REMOTE_UNVERIFIED', { run_id: runId, host: oneLine(lock.host) });
+    return null;
+  }
+  if (typeof lock.agent_id !== 'string' || typeof lock.task_id !== 'string' || !safeTaskDirectory(lock.task_directory)
+      || lock.task_directory.split('/')[0] !== lock.agent_id || !Number.isFinite(Date.parse(lock.started_at || lock.acquired_at))) {
+    discoveryDiagnostic(discovery, 'RUNNER_LOCK_IDENTITY_INCOMPLETE', { run_id: runId });
+    return null;
+  }
+  const taskDirectory = path.resolve(agentsRoot, lock.task_directory);
+  if (!containedPath(agentsRoot, taskDirectory) || !regularFile(path.join(taskDirectory, 'task.json'))) {
+    discoveryDiagnostic(discovery, 'RUNNER_LOCK_TASK_INVALID', { run_id: runId, agent_id: lock.agent_id, task_id: lock.task_id });
+    return null;
+  }
+  let task;
+  try { task = readJson(path.join(taskDirectory, 'task.json'), 'runner in-flight task'); } catch (error) {
+    discoveryDiagnostic(discovery, 'RUNNER_LOCK_TASK_INVALID', { run_id: runId, agent_id: lock.agent_id, task_id: lock.task_id, reason: error.message });
+    return null;
+  }
+  if (task.task_id !== lock.task_id || (task.package_run_id && task.package_run_id !== runId)) {
+    discoveryDiagnostic(discovery, 'RUNNER_LOCK_TASK_IDENTITY_INVALID', { run_id: runId, agent_id: lock.agent_id, task_id: lock.task_id });
+    return null;
+  }
+  const alive = pidAlive(Number(lock.pid));
+  const startedAt = oneLine(lock.started_at || lock.acquired_at);
+  return {
+    run_id: runId, package_run_id: oneLine(task.package_run_id) || runId,
+    project_id: oneLine(task.project_id), agent_id: lock.agent_id, task_id: lock.task_id,
+    state: alive ? 'RUNNING' : 'ABANDONED', attention: alive ? 'INFORMATION' : 'REVIEW',
+    owner: lock.agent_id, next_owner: null,
+    blocker: alive ? null : 'Runner lock PID is no longer alive and task evidence is incomplete',
+    disagreement: null, resource_dependency: oneLine(lock.resource_dependency),
+    operational_rationale: deriveOperationalRationale({
+      state: alive ? 'RUNNING' : 'ABANDONED',
+      blocker: alive ? null : 'Runner lock PID is no longer alive and task evidence is incomplete',
+    }, alive ? 'INFORMATION' : 'REVIEW'),
+    latest_event: { at: startedAt, state: alive ? 'RUNNING' : 'ABANDONED' },
+    current_artifact: Array.isArray(lock.artifact_ids) && lock.artifact_ids.length ? lock.artifact_ids : null,
+    started_at: startedAt, completed_at: null, completed_epoch: Date.parse(startedAt),
+    invocation_id: oneLine(lock.invocation_id), attempt_number: Number(lock.attempt_number || 1),
+    infrastructure_state: alive ? 'RUNNING' : 'ABANDONED', semantic_state: alive ? 'RUNNING' : 'ABANDONED',
+    exit_code: null, module_path: null, repository_head: null, human_gate: !alive,
+    next_action: alive ? null : 'REVIEW_ABANDONED_INVOCATION', next_owner_implementation_at_completion: null,
+    auto_executed: false, runtime_status: alive ? 'RUNNING' : 'ABANDONED', runtime_active: alive,
+    host: oneLine(lock.host), pid: Number(lock.pid), lane: oneLine(lock.lane), model: oneLine(lock.model),
+    sort_key: `${runId}\u0000${lock.task_id}\u0000${lock.invocation_id || ''}`,
+  };
+}
+
 function discoverRunnerContexts(root, registeredIds) {
   const discovery = {
     source: 'package-runs/*/agents/index.json', scanned_runs: 0, indexes_found: 0,
@@ -219,6 +282,17 @@ function discoverRunnerContexts(root, registeredIds) {
       const agentsStat = fs.lstatSync(agentsRoot);
       if (!agentsStat.isDirectory() || agentsStat.isSymbolicLink()) continue;
     } catch (_error) { continue; }
+    const lockContext = runnerContextFromLock(root, runId, agentsRoot, discovery);
+    if (lockContext) {
+      if (!registeredIds.has(lockContext.agent_id)) {
+        discoveryDiagnostic(discovery, 'UNREGISTERED_AGENT_LOCK', { run_id: runId, agent_id: lockContext.agent_id });
+      } else {
+        const prior = latestByAgent.get(lockContext.agent_id);
+        if (lockContext.runtime_active || !prior || lockContext.completed_epoch >= prior.completed_epoch) {
+          latestByAgent.set(lockContext.agent_id, lockContext);
+        }
+      }
+    }
     const indexPath = path.join(agentsRoot, 'index.json');
     if (!regularFile(indexPath)) continue;
     discovery.indexes_found += 1;
@@ -246,8 +320,8 @@ function discoverRunnerContexts(root, registeredIds) {
       }
       discovery.valid_invocations += 1;
       const prior = latestByAgent.get(context.agent_id);
-      if (!prior || context.completed_epoch > prior.completed_epoch
-          || (context.completed_epoch === prior.completed_epoch && context.sort_key.localeCompare(prior.sort_key) > 0)) {
+      if (!prior || (!prior.runtime_active && (context.completed_epoch > prior.completed_epoch
+          || (context.completed_epoch === prior.completed_epoch && context.sort_key.localeCompare(prior.sort_key) > 0)))) {
         latestByAgent.set(context.agent_id, context);
       }
     }
@@ -367,6 +441,8 @@ function unavailableProjection(agent, implementation, state, blocker) {
     registry_index: agent.registry_index, registry_status: 'REGISTERED',
     implementation: { ...implementation, implementation: undefined },
     state, current_task: null, owner: agent.agent_id, next_owner: null,
+    runtime_status: state === 'PLANNED_NOT_ENABLED' ? 'BLOCKED_NOT_ENABLED' : 'NEVER_RUN',
+    runtime_active: false,
     attention: 'INFORMATION', blocker, disagreement: null,
     resource_dependency: null, current_artifact: null, latest_event: null,
     operational_rationale: null,
@@ -388,8 +464,8 @@ function normalizeRunnerProjection(agent, implementation, context, implementatio
     registry_index: agent.registry_index, registry_status: 'REGISTERED',
     implementation,
     runtime_source: 'AGENT_RUNNER',
-    runtime_status: 'LATEST_COMPLETED_INVOCATION',
-    runtime_active: false,
+    runtime_status: context.runtime_status || 'COMPLETED',
+    runtime_active: context.runtime_active === true,
     state: context.state,
     run_id: context.run_id,
     package_run_id: context.package_run_id,
@@ -407,6 +483,10 @@ function normalizeRunnerProjection(agent, implementation, context, implementatio
     latest_event: context.latest_event,
     started_at: context.started_at,
     completed_at: context.completed_at,
+    host: context.host || null,
+    pid: context.pid || null,
+    lane: context.lane || null,
+    model: context.model || null,
     human_decision_required: attention === 'DECISION' || /HUMAN_DECISION/.test(context.state),
     review_required: attention === 'REVIEW' || /HUMAN_REVIEW/.test(context.state),
     human_gate: context.human_gate,
@@ -550,6 +630,10 @@ async function buildAgentControlRoom(options = {}) {
       unavailable: agents.filter((a) => a.state === 'UNAVAILABLE').length,
       runtime_state_missing: agents.filter((a) => a.state === 'NO_RUNTIME_STATE').length,
       runner_context: agents.filter((a) => a.runtime_source === 'AGENT_RUNNER').length,
+      running: agents.filter((a) => a.runtime_status === 'RUNNING').length,
+      completed: agents.filter((a) => a.runtime_status === 'COMPLETED').length,
+      abandoned: agents.filter((a) => a.runtime_status === 'ABANDONED').length,
+      never_run: agents.filter((a) => a.runtime_status === 'NEVER_RUN').length,
     },
   };
 }

@@ -223,6 +223,13 @@ function releaseRunLock(handle) {
   } catch (_) { /* lock recovery remains possible */ }
 }
 
+function updateRunLock(handle, fields) {
+  if (!handle) return;
+  const current = JSON.parse(fs.readFileSync(handle.lockPath, 'utf8'));
+  if (current.token !== handle.token) throw new RunnerError('RUNNER_LOCK_LOST', 'agent invocation lock ownership changed');
+  atomicJson(handle.lockPath, { ...current, ...fields });
+}
+
 function gitHead(repoRoot) {
   try { return childProcess.execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim(); }
   catch (_) { return null; }
@@ -321,6 +328,18 @@ async function runRegisteredAgent(options) {
     atomicWrite(persistedTaskPath, rawTask);
 
     const started = (options.now ? options.now() : new Date());
+    updateRunLock(lock, {
+      agent_id: agentId,
+      task_id: taskId,
+      invocation_id: `${agentId}:${taskId}:${attempt.number}`,
+      task_directory: path.relative(runAgentsDir, attempt.directory),
+      action,
+      started_at: started.toISOString(),
+      lane: task.lane || task.assignment?.lane || task.resource_dependency?.lane || null,
+      model: task.model || task.assignment?.model || task.resource_dependency?.model || null,
+      resource_dependency: task.resource_dependency || null,
+      artifact_ids: Array.isArray(task.artifact_ids) ? task.artifact_ids : [],
+    });
     const invoke = options.invokeProcess || processInvocation;
     const timeoutMs = options.timeoutMs ?? TIMEOUTS_MS[agentId] ?? DEFAULT_TIMEOUT_MS;
     const stdoutCap = options.stdoutCap ?? DEFAULT_STDOUT_CAP;
@@ -421,7 +440,7 @@ module.exports = {
   RUNNER_VERSION, DEFAULT_TIMEOUT_MS, DEFAULT_STDOUT_CAP, TIMEOUTS_MS, RunnerError,
   sha256, safeId, atomicWrite, loadRegistry, resolveAgent, requestedAction,
   validateEnvelope, normalizeHandoff, processInvocation, acquireRunLock,
-  releaseRunLock, readExisting, runRegisteredAgent, parseArgs,
+  releaseRunLock, updateRunLock, pidAlive, readExisting, runRegisteredAgent, parseArgs,
 };
 
 if (require.main === module) main();
