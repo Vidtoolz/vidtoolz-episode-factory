@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "kind": "OPERATIONAL_EVIDENCE_ADDENDUM \u2014 not approval evidence",
+  "note": "live-routing-evidence.json receipt selector captured only the ROUTE receipt; both orchestration receipts for the live escalation are recorded here.",
+  "receipts": [
+    {
+      "receipt_id": "hermes-receipt-7ed7d9ad-913d-4a10-835d-945d309cdbf3",
+      "action": "RECEIVE",
+      "route_target": null,
+      "status": "OPEN",
+      "receipt_hash": "d3f10375ffcd8a4c344811548ab7631d89e56655ae098a9820c97a34c323930e",
+      "reason": "semantic retry exhausted: MODEL_FAILED: fetch failed"
+    },
+    {
+      "receipt_id": "hermes-receipt-e71947f5-e8de-444e-94fd-81959b3f1226",
+      "action": "ROUTE",
+      "route_target": "production_operations",
+      "status": "OPEN",
+      "receipt_hash": "8dd6c694bd5f8f23502a09df63f4676edd5ae7a59e8ac346cf194f8937025e94",
+      "reason": "infrastructure escalation classified; routing to production_operations after implementation promotion b23c9bb; launch remains an explicit orchestration action, no auto-chain"
+    }
+  ],
+  "ledger_head_hash": "8dd6c694bd5f8f23502a09df63f4676edd5ae7a59e8ac346cf194f8937025e94",
+  "receipts_ledger_location": "package-runs/visual-planning-stage1-20260823/orchestration/hermes-receipts.json"
+}
