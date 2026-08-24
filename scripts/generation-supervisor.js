@@ -24,6 +24,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const http = require('node:http');
+const { guardExecutableLifecycle } = require('./agent-executable-boundary.js');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const mediaRouting = require(path.join(REPO_ROOT, 'media-routing.js'));
@@ -198,4 +199,6 @@ async function main() {
   }
 }
 
-main().catch((e) => { console.error(e.message); process.exit(2); });
+if (require.main === module && guardExecutableLifecycle(AGENT_ID)) {
+  main().catch((e) => { console.error(e.message); process.exit(2); });
+}

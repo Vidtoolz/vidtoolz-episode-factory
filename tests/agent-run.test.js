@@ -6,6 +6,8 @@ const os = require('os');
 const path = require('path');
 const { tests, test } = require('./_helpers');
 const runner = require('../scripts/agent-run');
+const executableBoundary = require('../scripts/agent-executable-boundary.js');
+const childProcess = require('node:child_process');
 
 function fixture(options = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-run-'));
@@ -193,6 +195,34 @@ test('AR29: bounded rationale with null confidence is accepted and preserved', a
   const out = await run(f, t);
   assert.equal(out.result.operational_rationale.confidence, null);
   assert.equal(out.result.control_room.operational_rationale.reason, 'inspect bound artifact');
+});
+
+test('AR30: operational rationale is bounded, attributed, and confidence is fail-closed', () => {
+  const base = { decision: 'REVIEW', reason: 'bounded reason', evidence_refs: [], confidence: null, escalation_reason: 'inspect it' };
+  assert.equal(runner.validateEnvelope({ agent_id: 'alpha_agent', task_id: 'task-1', state: 'REVIEW', events: [], control_room: { attention_level: 'REVIEW' }, operational_rationale: base }, 'alpha_agent', 'task-1'), null);
+  for (const mutation of [
+    { ...base, reason: 'x'.repeat(20000) },
+    { ...base, confidence: 5 },
+    { ...base, hidden_reasoning: 'not allowed' },
+  ]) {
+    assert.match(runner.validateEnvelope({ agent_id: 'alpha_agent', task_id: 'task-1', state: 'REVIEW', events: [], control_room: { attention_level: 'REVIEW' }, operational_rationale: mutation }, 'alpha_agent', 'task-1'), /requires valid operational_rationale/);
+  }
+});
+
+test('AR31: executable boundary refuses disabled roles before task loading', () => {
+  const root = path.join(__dirname, '..');
+  assert.equal(executableBoundary.executableLifecycle('presenter_director', { repoRoot: root }).code, 'BLOCKED_AGENT_NOT_ENABLED');
+  assert.equal(executableBoundary.executableLifecycle('creative_director', { repoRoot: root }).code, 'BLOCKED_AGENT_NOT_ENABLED');
+  let failure;
+  try { childProcess.execFileSync(process.execPath, [path.join(root, 'scripts/presenter-director.js'), '--task', '/definitely/missing/task.json'], { encoding: 'utf8' }); }
+  catch (error) { failure = error; }
+  assert.equal(failure.status, 1);
+  const refusal = JSON.parse(failure.stdout);
+  assert.equal(refusal.infrastructure_state, 'BLOCKED_AGENT_NOT_ENABLED');
+  assert.equal(refusal.agent_id, 'presenter_director');
+  assert.equal(fs.existsSync(path.join(root, 'scripts/creative-director.js')), false, 'Creative has no executable module to bypass its lifecycle');
+  const enabled = childProcess.execFileSync(process.execPath, [path.join(root, 'scripts/editor.js'), '--help'], { encoding: 'utf8' });
+  assert.match(enabled, /usage: editor\.js/);
 });
 
 if (require.main === module) {

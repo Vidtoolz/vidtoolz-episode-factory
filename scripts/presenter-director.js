@@ -13,6 +13,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { guardExecutableLifecycle } = require('./agent-executable-boundary.js');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 
@@ -403,7 +404,7 @@ module.exports = { AGENT_ID, LANE, ACTIONS, MAX_ATTEMPTS, EVIDENCE_SOURCES, FIND
   routeCapability, selectComputeRoute, invokeModel, requestedAction, actionMode, preflight, buildPreparePrompt, buildReviewPrompt,
   validatePrepareOutput, validateReviewOutput, validateSessionOutput, writeSessionProjection, run, controlRoomView };
 
-if (require.main === module) {
+if (require.main === module && guardExecutableLifecycle(AGENT_ID)) {
   (async () => {
     const i = process.argv.indexOf('--task');
     if (i < 0) process.exit(2);

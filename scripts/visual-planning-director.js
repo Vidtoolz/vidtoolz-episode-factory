@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { guardExecutableLifecycle } = require('./agent-executable-boundary.js');
 const { execFileSync } = require('node:child_process');
 const crypto = require('node:crypto');
 const vp = require('./visual-plan.js');
@@ -241,4 +242,4 @@ function controlRoomView(out) { const plan = out.visual_plan; const media = {}; 
 
 module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, routeCapability, selectComputeRoute, invokeModel, preflight, validateSemanticOutput, buildPrompt, writePlan, run, controlRoomView, generationSupervisorProjection: promptAdapter.generationSupervisorProjection, cameraProjection: promptAdapter.cameraProjection };
 
-if (require.main === module) (async () => { const i = process.argv.indexOf('--task'); if (i < 0) process.exit(2); const out = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...out, control_room: controlRoomView(out) }, null, 2)); process.exit(out.state === 'COMPLETE' || out.state === 'AWAITING_HUMAN_REVIEW' || out.state === 'PREVIEW_ONLY' ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });
+if (require.main === module && guardExecutableLifecycle(AGENT_ID)) (async () => { const i = process.argv.indexOf('--task'); if (i < 0) process.exit(2); const out = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...out, control_room: controlRoomView(out) }, null, 2)); process.exit(out.state === 'COMPLETE' || out.state === 'AWAITING_HUMAN_REVIEW' || out.state === 'PREVIEW_ONLY' ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });

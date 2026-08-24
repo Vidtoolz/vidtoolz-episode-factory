@@ -70,7 +70,10 @@
       line('Resource', agent.resource_dependency) +
       line('Resource live', [resourceStatus.health || 'UNKNOWN', resourceStatus.job_state || 'UNKNOWN', resourceStatus.worker || 'UNKNOWN'].join(' · ')) +
       line('Resource job', resourceStatus.job_id || 'UNKNOWN') +
+      line('Rationale source', rationale.source === 'DERIVED' ? 'DERIVED · projection fallback' : rationale.source) +
       line('Why', rationale.reason) +
+      line('Escalation reason', rationale.escalation_reason) +
+      line('Confidence', rationale.confidence) +
       line('Artifact', agent.current_artifact && typeof agent.current_artifact === 'object' ? JSON.stringify(agent.current_artifact) : agent.current_artifact) +
       line('Latest event', eventText(agent.latest_event)) +
       '<div class="agent-control-room-implementation">Implementation: ' + esc(implementation.state || 'UNKNOWN') +
@@ -85,6 +88,9 @@
       '<div><strong>' + esc(item.attention) + ' · ' + esc(item.role || item.agent_id) + '</strong>' +
       '<small>' + esc(item.task_id || item.invocation_id || 'current') + '</small></div>' +
       '<p>' + esc(item.reason || 'Human attention required') + '</p>' +
+      line('Rationale source', item.operational_rationale && item.operational_rationale.source === 'DERIVED' ? 'DERIVED · projection fallback' : item.operational_rationale && item.operational_rationale.source) +
+      line('Escalation reason', item.operational_rationale && item.operational_rationale.escalation_reason) +
+      line('Confidence', item.operational_rationale && item.operational_rationale.confidence) +
       line('Artifact', artifact) + line('Gate / scope', item.owning_gate + ' / ' + item.approval_scope_required) +
       line('Lifecycle', item.lifecycle_state) +
       '<a href="' + esc(item.workspace) + '">Open relevant workspace</a></article>';

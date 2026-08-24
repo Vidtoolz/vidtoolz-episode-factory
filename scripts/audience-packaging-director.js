@@ -4,6 +4,7 @@ const fs = require("node:fs"),
   path = require("node:path"),
   crypto = require("node:crypto");
 const { execFileSync } = require("node:child_process");
+const { guardExecutableLifecycle } = require("./agent-executable-boundary.js");
 const ap = require("./audience-package.js");
 const episodeModel = require("../episode-model.js");
 const AGENT_ID = "audience_packaging_director",
@@ -1133,7 +1134,7 @@ module.exports = {
   run,
   controlRoomView,
 };
-if (require.main === module)
+if (require.main === module && guardExecutableLifecycle(AGENT_ID))
   (async () => {
     const i = process.argv.indexOf("--task");
     if (i < 0) process.exit(2);

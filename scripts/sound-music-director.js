@@ -31,6 +31,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { guardExecutableLifecycle } = require('./agent-executable-boundary.js');
 const crypto = require('node:crypto');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -466,4 +467,4 @@ module.exports = {
   judgeCandidate, approvalBindingStatus, run, controlRoomView,
 };
 
-if (require.main === module) main();
+if (require.main === module && guardExecutableLifecycle(AGENT_ID)) main();

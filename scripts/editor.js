@@ -8,6 +8,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { guardExecutableLifecycle } = require('./agent-executable-boundary.js');
 const editPlan = require('./edit-plan.js');
 const aigenAuthority = require('../aigen-authority-chain.js');
 const scoreLane = require('../score-engine/score-lane.js');
@@ -326,4 +327,4 @@ module.exports = {
   authorityOptions, constructPlan, deriveAttention, verifyRenderedMediaRef, controlRoomView, run, parseArgs, main,
 };
 
-if (require.main === module) main();
+if (require.main === module && guardExecutableLifecycle(AGENT_ID)) main();

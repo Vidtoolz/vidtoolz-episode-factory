@@ -6,6 +6,7 @@
 // authorization authority.
 const fs = require('node:fs');
 const path = require('node:path');
+const { guardExecutableLifecycle } = require('./agent-executable-boundary.js');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const http = require('node:http');
@@ -134,4 +135,4 @@ async function run(task, options = {}) {
 function controlRoomView(out) { const r = out.research_result; return { role: 'Research Director', state: out.state, current_task: out.task_id, current_claim: r?.claim_ref?.canonical_id || null, current_result_id: r?.result_id || null, owner: AGENT_ID, next_owner: out.handoff?.next_owner || null, attention_level: out.attention, blocker: out.reason || null, disagreement: r?.judgment?.disagreement_state || null, route: out.route, latest_event: out.events.at(-1) || null, operational_rationale: { decision: out.state, reason: out.reason || `Research state is ${out.state}`, evidence_refs: r ? [{ ref: 'research-result', summary: r.result_id }] : [], confidence: r?.judgment?.confidence ?? null, escalation_reason: ['REVIEW', 'DECISION'].includes(out.attention) ? out.reason : null }, research_summary: r ? { source_count: r.sources.length, independent_support_count: r.derived.independent_support_count, support_status: r.judgment.support_status, evidence_quality: r.judgment.evidence_quality, confidence: r.judgment.confidence, qualification_required: r.qualification.qualification_required, contradiction_status: r.judgment.contradiction_status, recommendation: r.judgment.recommendation } : null }; }
 
 module.exports = { AGENT_ID, LANE, ACTIONS, DEFAULT_MAX_ATTEMPTS, MAX_ATTEMPTS_HARD_CAP, RoutingError, routeCapability, selectComputeRoute, invokeModel, buildPrompt, validateSemanticOutput, deriveEvidenceQuality, deterministicConstraintId, preflight, buildSemanticResult, mapAgentState, run, controlRoomView };
-if (require.main === module) (async () => { const i = process.argv.indexOf('--task'); if (i < 0 || !process.argv[i + 1]) process.exit(2); const output = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...output, control_room: controlRoomView(output) }, null, 2)); process.exit(output.state === 'COMPLETE' ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });
+if (require.main === module && guardExecutableLifecycle(AGENT_ID)) (async () => { const i = process.argv.indexOf('--task'); if (i < 0 || !process.argv[i + 1]) process.exit(2); const output = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...output, control_room: controlRoomView(output) }, null, 2)); process.exit(output.state === 'COMPLETE' ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });

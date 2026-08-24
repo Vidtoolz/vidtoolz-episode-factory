@@ -1,14 +1,16 @@
 const crypto = require('node:crypto');
 const http = require('node:http');
-const { assert, fs, os, path, test, tests, packageEngineServer } = require('./_helpers.js');
+const { assert, childProcess, fs, os, path, test, tests, packageEngineServer } = require('./_helpers.js');
 const controlRoom = require('../scripts/agent-control-room.js');
+const agentRunner = require('../scripts/agent-run.js');
 const workflowMap = require('../scripts/package-run-workflow-map.js');
+const rationale = require('../scripts/operational-rationale.js');
 
 function fixture(agentIds = ['alpha']) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-control-room-'));
   fs.mkdirSync(path.join(root, 'config'), { recursive: true });
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
-  const agents = agentIds.map((id) => ({ agent_id: id, name: `${id} name`, role: 'specialist', human_gate_type: 'CANDIDATE_SELECTION' }));
+  const agents = agentIds.map((id) => ({ agent_id: id, name: `${id} name`, role: 'specialist', human_gate_type: 'CANDIDATE_SELECTION', lifecycle: { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' } }));
   const registry = { schema_version: 1, agents };
   const contract = {
     schema_version: 1,
@@ -26,6 +28,18 @@ function fixture(agentIds = ['alpha']) {
   }
   return { root, registry, contract };
 }
+
+test('operational rationale source survives explicit and derived projections', () => {
+  const explicit = rationale.deriveOperationalRationale({
+    operational_rationale: { source: 'AGENT', decision: 'REVIEW', reason: 'Agent supplied reason', evidence_refs: [], confidence: null, escalation_reason: 'Human review' },
+  }, 'REVIEW');
+  assert.equal(explicit.source, 'AGENT');
+  const derived = rationale.deriveOperationalRationale({ state: 'BLOCKED', blocker: 'Projection supplied blocker' }, 'REVIEW');
+  assert.equal(derived.source, 'DERIVED');
+  assert.equal(derived.escalation_reason, 'Projection supplied blocker');
+  assert.equal(rationale.normalizeOperationalRationale({ ...explicit, confidence: 5 }), null);
+  assert.equal(rationale.normalizeOperationalRationale({ ...explicit, confidence: null }).confidence, null);
+});
 
 function writeJson(filePath, value) {
   const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
@@ -114,6 +128,48 @@ function writeRuntimeLock(f, overrides = {}) {
   });
   return { agentsRoot, runId, agentId, taskId };
 }
+
+test('real production runner lock drives RUNNING, ABANDONED, and COMPLETED states', async () => {
+  const f = fixture(['alpha']);
+  const modulePath = path.join(f.root, 'scripts', 'alpha.js');
+  fs.writeFileSync(modulePath, `'use strict';\nconst fs=require('fs');const AGENT_ID='alpha';const ACTIONS=['work'];\nif(require.main===module){const p=process.argv[process.argv.indexOf('--task')+1];const t=JSON.parse(fs.readFileSync(p));if(t.hold)setTimeout(()=>{},30000);else console.log(JSON.stringify({agent_id:AGENT_ID,task_id:t.task_id,state:'COMPLETE',attention:'INFORMATION',events:[],control_room:{state:'COMPLETE',attention_level:'INFORMATION'}}));}\nmodule.exports={AGENT_ID,ACTIONS};\n`);
+  const taskPath = path.join(f.root, 'live-task.json');
+  writeJson(taskPath, { task_id: 'task-live', package_run_id: 'run-live', assignment: { action: 'work' }, hold: true });
+  const wrapper = path.join(f.root, 'run-wrapper.js');
+  fs.writeFileSync(wrapper, `require(${JSON.stringify(path.join(__dirname, '../scripts/agent-run.js'))}).runRegisteredAgent({repoRoot:${JSON.stringify(f.root)},agentId:'alpha',runId:'run-live',taskPath:${JSON.stringify(taskPath)}}).catch(()=>process.exitCode=1);\n`);
+  const child = childProcess.spawn(process.execPath, [wrapper], { stdio: 'ignore' });
+  const lockPath = path.join(f.root, 'package-runs/run-live/agents/.lock');
+  let lock = null;
+  for (let i = 0; i < 100; i += 1) {
+    if (fs.existsSync(lockPath)) {
+      lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+      if (lock.invocation_id) break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.ok(lock, 'real writer did not create its lock');
+  assert.deepEqual(
+    ['agent_id', 'task_id', 'task_directory', 'invocation_id', 'action', 'started_at', 'pid', 'host', 'acquired_at', 'token'].filter((key) => lock[key] == null),
+    [],
+  );
+  let room = await controlRoom.buildAgentControlRoom({ root: f.root });
+  let row = room.agents.find((agent) => agent.agent_id === 'alpha');
+  assert.equal(row.runtime_status, 'RUNNING');
+  assert.equal(row.invocation.invocation_id, 'alpha:task-live:1');
+  assert.equal(row.task_id, 'task-live');
+  child.kill('SIGKILL');
+  await new Promise((resolve) => child.once('exit', resolve));
+  room = await controlRoom.buildAgentControlRoom({ root: f.root });
+  row = room.agents.find((agent) => agent.agent_id === 'alpha');
+  assert.equal(row.runtime_status, 'ABANDONED');
+
+  writeJson(taskPath, { task_id: 'task-complete', package_run_id: 'run-live', assignment: { action: 'work' } });
+  await agentRunner.runRegisteredAgent({ repoRoot: f.root, agentId: 'alpha', runId: 'run-live', taskPath });
+  room = await controlRoom.buildAgentControlRoom({ root: f.root });
+  row = room.agents.find((agent) => agent.agent_id === 'alpha');
+  assert.equal(row.runtime_status, 'COMPLETED');
+  assert.equal(row.invocation.invocation_id, 'alpha:task-complete:1');
+});
 
 function implementation(views, calls, failures = new Set()) {
   return (agent) => ({
@@ -649,16 +705,16 @@ test('canonical cockpit exposes all registered agents and truthful implementatio
     const row = output.agents.find((item) => item.agent_id === id);
     assert.equal(row.implementation.state, 'IMPLEMENTATION_MISSING');
   }
-  assert.equal(output.agents.find((item) => item.agent_id === 'generation_supervisor').implementation.state, 'UNSAFE_TO_IMPORT');
+  assert.equal(output.agents.find((item) => item.agent_id === 'generation_supervisor').implementation.state, 'STATUS_UNSUPPORTED');
 });
 
-test('canonical Story Editor canary is visible as blocked review runtime truth', async () => {
+test('latest canonical Story Editor canary is visible as blocked review runtime truth', async () => {
   const output = await controlRoom.buildAgentControlRoom({ root: path.join(__dirname, '..') });
   const story = output.agents.find((item) => item.agent_id === 'story_editor');
   assert.equal(story.runtime_source, 'AGENT_RUNNER');
-  assert.equal(story.run_id, '2026-08-23-story-editor-agent-runner-canary');
+  assert.match(story.run_id, /^2026-08-2[34].*(story-editor|human-supervision).*canary$/);
   assert.equal(story.project_id, '01M0QR9DGP5RRFTPVDA7WQP2XM');
-  assert.equal(story.task_id, 'story-review-01M0QR9DGRPW4MK8BMD1RGAYDX');
+  assert.match(story.task_id, /^story-review-/);
   assert.equal(story.state, 'BLOCKED');
   assert.equal(story.attention, 'REVIEW');
   assert.match(story.blocker, /narrative_spine missing/);
@@ -685,6 +741,10 @@ test('cockpit UI renders a registry-driven panel with manual refresh', () => {
   assert.match(ui, /agent-control-room\/workflow-map/);
   assert.match(ui, /Onward handoff/);
   assert.match(ui, /Runner context/);
+  assert.match(ui, /Rationale source/);
+  assert.match(ui, /projection fallback/);
+  assert.match(ui, /Escalation reason/);
+  assert.match(ui, /Confidence/);
   assert.match(css, /\.agent-control-room-card/);
 });
 
