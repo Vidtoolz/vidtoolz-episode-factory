@@ -437,6 +437,40 @@ test('control-room API omits raw result internals by default', async () => {
   assert.equal(JSON.stringify(output).includes('secret_model_trace'), false);
 });
 
+test('runner evidence preserves unresolved disagreement and resource dependency', async () => {
+  const f = fixture(['alpha']);
+  writeRunnerInvocation(f, {
+    state: 'AWAITING_HUMAN_DECISION',
+    attention: 'DECISION',
+    result: {
+      control_room: {
+        role: 'alpha role', state: 'AWAITING_HUMAN_DECISION', current_task: 'task-1',
+        owner: 'alpha', next_owner: null, attention_level: 'DECISION',
+        blocker: 'creative direction conflict',
+        unresolved_disagreement: 'NEEDS_HUMAN_DECISION: sound vs editor',
+        resource_dependency: 'music_generation@vidlap2',
+        latest_event: { at: '2026-08-23T12:00:00.000Z', state: 'AWAITING_HUMAN_DECISION' },
+      },
+    },
+  });
+  const output = await controlRoom.buildAgentControlRoom({ root: f.root });
+  const row = output.agents.find((a) => a.agent_id === 'alpha');
+  assert.equal(row.runtime_source, 'AGENT_RUNNER');
+  // The contract requires both surfaces per agent; runner evidence must not drop them.
+  assert.equal(row.disagreement, 'NEEDS_HUMAN_DECISION: sound vs editor');
+  assert.equal(row.resource_dependency, 'music_generation@vidlap2');
+  assert.equal(row.human_decision_required, true);
+});
+
+test('runner evidence without those fields still projects null, not undefined', async () => {
+  const f = fixture(['alpha']);
+  writeRunnerInvocation(f, { state: 'COMPLETE' });
+  const output = await controlRoom.buildAgentControlRoom({ root: f.root });
+  const row = output.agents.find((a) => a.agent_id === 'alpha');
+  assert.equal(row.disagreement, null);
+  assert.equal(row.resource_dependency, null);
+});
+
 test('doctrine-registered roles are never presented or executed as live specialists', async () => {
   const f = fixture(['alpha', 'planned_specialist']);
   f.registry.agents[1].lifecycle = {

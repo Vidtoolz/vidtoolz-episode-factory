@@ -169,6 +169,12 @@ function runnerContextFromRecord(root, runId, agentsRoot, record, discovery) {
     owner: oneLine(view.owner) || record.agent_id,
     next_owner: oneLine(handoff.next_owner || result.handoff?.next_owner || result.next_owner || view.next_owner),
     blocker: oneLine(handoff.blocker || result.reason || view.blocker),
+    // The contract's control_room_contract requires unresolved disagreement and
+    // resource dependency per agent. Both are reported by the specialist in its
+    // own control_room projection, so runner evidence must carry them through
+    // rather than dropping the only signal that specialists disagree.
+    disagreement: oneLine(view.unresolved_disagreement || view.disagreement),
+    resource_dependency: oneLine(view.resource_dependency),
     latest_event: event,
     current_artifact: currentArtifact(view) || extractedArtifact,
     started_at: oneLine(invocation.started_at),
@@ -387,8 +393,8 @@ function normalizeRunnerProjection(agent, implementation, context, implementatio
     next_owner: context.next_owner,
     attention,
     blocker: context.blocker,
-    disagreement: null,
-    resource_dependency: null,
+    disagreement: context.disagreement ?? null,
+    resource_dependency: context.resource_dependency ?? null,
     current_artifact: context.current_artifact,
     latest_event: context.latest_event,
     started_at: context.started_at,
