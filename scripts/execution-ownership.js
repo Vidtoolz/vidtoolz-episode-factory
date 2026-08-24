@@ -116,23 +116,33 @@ function transition(root, input, options = {}) {
     if (!OWNERS.includes(nextOwner) || nextOwner === current.current_owner) throw new OwnershipError('OWNERSHIP_TRANSITION_INVALID', 'ownership transition is invalid');
     const actionName = nextOwner === 'HUMAN' ? 'TAKE_MANUAL_CONTROL' : nextOwner === 'AUTOMATION' ? 'RETURN_TO_AUTOMATION' : null;
     if (!actionName || input.action !== actionName) throw new OwnershipError('OWNERSHIP_TRANSITION_INVALID', 'ownership action does not match the requested owner');
-    const action = ledger.appendOperatorAction(paths.root, paths.target.run_id, {
+    const normalizedReason = String(input.reason || '').replace(/\s+/g, ' ').trim();
+    if (!normalizedReason || normalizedReason.length > 600 || !HASH_RE.test(String(input.task_sha256 || ''))
+        || (input.artifact_sha256 != null && !HASH_RE.test(input.artifact_sha256))) throw new OwnershipError('OWNERSHIP_TRANSITION_INVALID', 'transition reason or input hashes are invalid');
+    ledger.validateActor(options.actor);
+    const recordId = options.recordId || `operator-action-${crypto.randomUUID()}`;
+    safeId(recordId, 'actor_action_record_id');
+    const actionInput = {
       action: actionName, target_agent_role: paths.target.agent_id, target_invocation_id: safeId(input.originating_invocation_id, 'originating_invocation_id'),
       target_task_id: paths.target.task_id, target_artifact: input.artifact_id ? { artifact_id: input.artifact_id, sha256: input.artifact_sha256 || null } : null,
-      action_scope: 'TASK_WORK_UNIT_OWNERSHIP', reason: input.reason,
+      action_scope: 'TASK_WORK_UNIT_OWNERSHIP', reason: normalizedReason,
       requested_parameters: { expected_revision: current.revision, expected_state_hash: current.current_state_hash, task_sha256: input.task_sha256, artifact_sha256: input.artifact_sha256 || null },
       prior_execution_owner: current.current_owner, resulting_execution_owner: nextOwner, supersedes: null, result_status: 'COMPLETED',
-    }, { actor: options.actor, now: options.now, recordId: options.recordId });
+    };
     const record = {
       schema_version: SCHEMA_VERSION, target: paths.target, current_owner: nextOwner, prior_owner: current.current_owner,
-      revision: current.revision + 1, changed_at: options.now || new Date().toISOString(), actor_action_record_id: action.record.record_id,
-      reason: String(input.reason || '').replace(/\s+/g, ' ').trim(), input_hashes: { task_sha256: input.task_sha256, artifact_sha256: input.artifact_sha256 || null },
+      revision: current.revision + 1, changed_at: options.now || new Date().toISOString(), actor_action_record_id: recordId,
+      reason: normalizedReason, input_hashes: { task_sha256: input.task_sha256, artifact_sha256: input.artifact_sha256 || null },
       originating_invocation_id: input.originating_invocation_id, previous_state_hash: current.current_state_hash,
     };
     record.state_hash = hashRecord(record);
     const next = { ...current, current_owner: nextOwner, revision: record.revision, current_state_hash: record.state_hash, history: current.history.concat(record) };
-    verifyState(next, paths.target, ledger.readLedger(paths.root, paths.target.run_id));
+    // Fence first while the ownership lock is held. If the append fails, the
+    // unresolved ledger reference makes every later read fail closed.
     writeAtomic(paths.statePath, next);
+    const append = options.appendAction || ledger.appendOperatorAction;
+    const action = append(paths.root, paths.target.run_id, actionInput, { actor: options.actor, now: options.now, recordId });
+    verifyState(next, paths.target, ledger.readLedger(paths.root, paths.target.run_id));
     return { state: next, record, action_record: action.record, state_path: path.relative(paths.root, paths.statePath) };
   } finally { release(paths); }
 }
