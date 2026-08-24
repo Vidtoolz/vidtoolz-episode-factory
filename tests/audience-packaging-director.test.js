@@ -1031,7 +1031,7 @@ function testApproval(pkg, over = {}) {
     pair_candidate_id: pair.pair_candidate_id,
     approver: "TEST_HUMAN",
     approved_at: "2026-08-23T12:00:00Z",
-    scope: "PACKAGE_SELECTION",
+    scope: "TITLE_THUMBNAIL_APPROVAL",
     created_by: "TEST_FIXTURE",
     ...over,
   };

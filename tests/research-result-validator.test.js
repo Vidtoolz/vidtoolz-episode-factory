@@ -125,7 +125,7 @@ function makeException() {
   // Approval is a separate authority record and binds the exception artifact
   // projection without the approval_binding field (avoids a recursive hash).
   const bytes = v.exceptionApprovalBytes(e);
-  e.approval_binding = { artifact_path: 'tests/fixtures/research-result/test-human-exception.json', artifact_sha256: v.sha256(bytes), commit: 'TEST_COMMIT', approved_by: 'TEST_HUMAN', approved_at: '2026-08-23T10:00:00Z', scope: 'TEST_ONLY' };
+  e.approval_binding = { artifact_path: 'tests/fixtures/research-result/test-human-exception.json', artifact_sha256: v.sha256(bytes), commit: 'TEST_COMMIT', approved_by: 'TEST_HUMAN', approved_at: '2026-08-23T10:00:00Z', scope: 'RESEARCH_EXCEPTION' };
   return { e, bytes, result: r, script };
 }
 test('R10 exact human exception binding is VALID and verdict unchanged', () => { const { e, bytes, result, script } = makeException(); const before = result.judgment.support_status; const out = v.validateHumanException(e, { current_exception_bytes: bytes, current_result_ref: e.research_result_ref, current_script_usage_ref: script, current_result_state: 'VALID' }); assert.equal(out.status, 'VALID'); assert.equal(result.judgment.support_status, before); });

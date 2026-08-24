@@ -649,11 +649,12 @@ function buildResolveHandoff(plan, options = {}) {
 
 function createEditApprovalBinding(plan, input, options = {}) {
   strictInputObject(input, ['approver', 'approved_at', 'scope'], 'edit approval input'); if (input.approver?.type !== 'HUMAN' || typeof options.verifyHuman !== 'function' || options.verifyHuman(input.approver) !== true) throw new Error('verified human required');
+  if (input.scope !== 'FINAL_CUT_APPROVAL') throw new Error('edit approval scope must be FINAL_CUT_APPROVAL');
   const approval = { approval_type: 'HUMAN_EDIT_ACCEPTANCE', edit_plan_id: plan.edit_plan_id, edit_plan_revision: plan.edit_plan_revision, edit_plan_digest_sha256: plan.edit_plan_digest_sha256, approver: input.approver, approved_at: input.approved_at, scope: input.scope, binding_digest_sha256: '' }; approval.binding_digest_sha256 = sha256(canonicalize({ ...approval, binding_digest_sha256: undefined })); return approval;
 }
 function verifyEditApprovalBinding(plan, approval, options = {}) {
   const issues = []; strictObject(issues, approval, FIELDS.approval, '$.approval'); const copy = { ...approval }; delete copy.binding_digest_sha256;
-  const ok = issues.length === 0 && approval.approval_type === 'HUMAN_EDIT_ACCEPTANCE' && approval.edit_plan_id === plan.edit_plan_id && approval.edit_plan_revision === plan.edit_plan_revision && approval.edit_plan_digest_sha256 === plan.edit_plan_digest_sha256 && approval.approver?.type === 'HUMAN' && typeof options.verifyHuman === 'function' && options.verifyHuman(approval.approver) === true && validDate(approval.approved_at) && sha256(canonicalize(copy)) === approval.binding_digest_sha256;
+  const ok = issues.length === 0 && approval.approval_type === 'HUMAN_EDIT_ACCEPTANCE' && approval.scope === 'FINAL_CUT_APPROVAL' && approval.edit_plan_id === plan.edit_plan_id && approval.edit_plan_revision === plan.edit_plan_revision && approval.edit_plan_digest_sha256 === plan.edit_plan_digest_sha256 && approval.approver?.type === 'HUMAN' && typeof options.verifyHuman === 'function' && options.verifyHuman(approval.approver) === true && validDate(approval.approved_at) && sha256(canonicalize(copy)) === approval.binding_digest_sha256;
   return { ok, state: ok ? 'HUMAN_ACCEPTED' : 'INVALID_OR_STALE', errors: issues.map((item) => item.code) };
 }
 

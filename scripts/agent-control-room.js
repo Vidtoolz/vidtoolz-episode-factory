@@ -6,20 +6,13 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const os = require('node:os');
 const { deriveOperationalRationale } = require('./operational-rationale.js');
+const { scopeForAgent, scopeForHumanGate } = require('./approval-scopes.js');
 
 const DEFAULT_ROOT = path.resolve(__dirname, '..');
 const ATTENTION_PRIORITY = Object.freeze({ DECISION: 0, REVIEW: 1 });
 const IDLE_STATES = new Set(['COMPLETE', 'IDLE', 'READY', 'NO_RUNTIME_STATE', 'UNAVAILABLE', 'PLANNED_NOT_ENABLED']);
 const JSON_READ_CAP = 16 * 1024 * 1024;
 const INDEX_READ_CAP = 4 * 1024 * 1024;
-const ROLE_HUMAN_GATES = Object.freeze({
-  production_operations: 'PUBLICATION_APPROVAL', camera_director: 'CANDIDATE_SELECTION',
-  generation_supervisor: 'CANDIDATE_SELECTION', qc_director: 'FINAL_CUT_APPROVAL',
-  editor: 'FINAL_CUT_APPROVAL', sound_music_director: 'FINAL_MUSIC_APPROVAL',
-  research_director: 'PLAN_SCRIPT_APPROVAL', story_editor: 'PLAN_SCRIPT_APPROVAL',
-  visual_planning_director: 'VISUAL_PLAN_APPROVAL', audience_packaging_director: 'TITLE_THUMBNAIL_APPROVAL',
-  presenter_director: 'PRESENTER_PERFORMANCE_APPROVAL', creative_director: 'VISUAL_IDENTITY_APPROVAL',
-});
 
 function readBytes(filePath, label, cap = JSON_READ_CAP) {
   const size = fs.statSync(filePath).size;
@@ -598,7 +591,8 @@ function buildHumanDecisionQueue(agents, registrations) {
   return agents.filter((agent) => ['REVIEW', 'DECISION'].includes(agent.attention)).map((agent) => {
     const registration = registrationById.get(agent.agent_id) || {};
     const artifact = decisionArtifact(agent);
-    const gate = registration.human_gate_type || ROLE_HUMAN_GATES[agent.agent_id] || 'HUMAN_REVIEW';
+    const gate = scopeForHumanGate(registration.human_gate_type) || scopeForAgent(agent.agent_id);
+    if (!gate) throw new Error(`no canonical approval scope for decision queue role ${agent.agent_id}`);
     const invocationId = agent.invocation?.invocation_id || null;
     const workspace = agent.run_id
       ? `/package-runs-dashboard.html?run=${encodeURIComponent(agent.run_id)}&agent=${encodeURIComponent(agent.agent_id)}&task=${encodeURIComponent(agent.task_id || '')}`

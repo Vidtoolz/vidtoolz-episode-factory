@@ -448,9 +448,9 @@ function verifyPlanApprovalBinding(plan, approval) {
   for (const field of ['project_id', 'version_id', 'content_hash']) if (approval.story?.[field] !== plan.story?.[field]) reasons.push('PLAN_APPROVAL_STORY_STALE');
   if (!approval.approved_by || /visual.planning|visual-planning|agent|hermes/i.test(approval.approved_by)) reasons.push('PLAN_APPROVER_NOT_HUMAN');
   if (Number.isNaN(Date.parse(approval.approved_at || ''))) reasons.push('PLAN_APPROVAL_TIMESTAMP_INVALID');
-  if (approval.scope !== 'generation-dispatch') reasons.push('PLAN_APPROVAL_SCOPE_INVALID');
+  if (approval.scope !== 'VISUAL_PLAN_APPROVAL') reasons.push('PLAN_APPROVAL_SCOPE_INVALID');
   if (approval.binding?.approved_by !== approval.approved_by || approval.binding?.approved_at !== approval.approved_at || approval.binding?.scope !== approval.scope) reasons.push('PLAN_APPROVAL_BINDING_SCOPE_MISMATCH');
-  const binding = verifyApprovalBinding(approval.binding, planApprovalBytes(plan));
+  const binding = verifyApprovalBinding(approval.binding, planApprovalBytes(plan), 'VISUAL_PLAN_APPROVAL');
   if (binding.verdict !== 'VALID') reasons.push(binding.reason || 'PLAN_APPROVAL_BINDING_INVALID');
   reasons.push(...issues.map((item) => item.code));
   const stale = reasons.some((code) => /STALE|HASH_CHANGED|COMMIT_CHANGED/.test(code));

@@ -572,7 +572,7 @@ function verifyPackageApprovalBinding(p, a, c = {}) {
     !a?.approver ||
     !a?.approved_at ||
     Number.isNaN(Date.parse(a?.approved_at)) ||
-    a?.scope !== "PACKAGE_SELECTION"
+    a?.scope !== "TITLE_THUMBNAIL_APPROVAL"
   )
     e.push("approval metadata invalid");
   for (const k of [

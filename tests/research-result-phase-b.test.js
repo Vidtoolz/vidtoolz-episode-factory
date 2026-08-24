@@ -171,7 +171,7 @@ function exceptionFor(result, binding, bindingsDoc) {
     commit: 'TEST_COMMIT',
     approved_by: 'TEST_HUMAN',
     approved_at: AS_OF,
-    scope: 'TEST_ONLY',
+    scope: 'RESEARCH_EXCEPTION',
   };
   return { exception, bytes };
 }

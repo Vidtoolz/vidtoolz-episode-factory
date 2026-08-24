@@ -131,8 +131,8 @@ function makeApproval(plan) {
     schema_version: 1, approval_type: 'visual-plan-approval', plan_id: plan.plan_id,
     plan_revision: plan.plan_revision, plan_digest_sha256: plan.plan_digest_sha256,
     story: { project_id: plan.story.project_id, version_id: plan.story.version_id, content_hash: plan.story.content_hash },
-    approved_by: 'TEST_HUMAN', approved_at: '2026-08-23T10:00:00.000Z', scope: 'generation-dispatch',
-    binding: { artifact_path: 'test://visual-plan', artifact_sha256: vp.sha256(bytes), commit: 'TEST_COMMIT', approved_by: 'TEST_HUMAN', approved_at: '2026-08-23T10:00:00.000Z', scope: 'generation-dispatch' },
+    approved_by: 'TEST_HUMAN', approved_at: '2026-08-23T10:00:00.000Z', scope: 'VISUAL_PLAN_APPROVAL',
+    binding: { artifact_path: 'test://visual-plan', artifact_sha256: vp.sha256(bytes), commit: 'TEST_COMMIT', approved_by: 'TEST_HUMAN', approved_at: '2026-08-23T10:00:00.000Z', scope: 'VISUAL_PLAN_APPROVAL' },
   };
 }
 

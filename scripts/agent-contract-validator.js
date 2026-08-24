@@ -10,6 +10,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { APPROVAL_SCOPES, isApprovalScope } = require('./approval-scopes.js');
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const CONTRACT_PATH = path.join(REPO_ROOT, "config", "agent-contract.json");
@@ -72,7 +73,7 @@ function sha256(buf) {
 // A durable approval binds to: artifact path, sha256, commit, approver,
 // timestamp, scope. STALE/INVALID approvals carry no authority.
 // ---------------------------------------------------------------------------
-function verifyApprovalBinding(binding, currentArtifactBytes) {
+function verifyApprovalBinding(binding, currentArtifactBytes, expectedScope = null) {
   if (!binding || typeof binding !== "object") {
     return { verdict: "INVALID", reason: "no approval binding present" };
   }
@@ -80,6 +81,13 @@ function verifyApprovalBinding(binding, currentArtifactBytes) {
     if (!binding[field]) {
       return { verdict: "INVALID", reason: `detached approval: missing ${field}` };
     }
+  }
+  if (!isApprovalScope(binding.scope)) {
+    return { verdict: "INVALID", reason: `approval scope is not canonical: ${binding.scope}` };
+  }
+  const requiredScope = typeof expectedScope === 'object' ? expectedScope.expectedScope : expectedScope;
+  if (requiredScope && (!isApprovalScope(requiredScope) || binding.scope !== requiredScope)) {
+    return { verdict: "INVALID", reason: `approval scope mismatch: expected ${requiredScope}, received ${binding.scope}` };
   }
   if (!currentArtifactBytes) {
     return { verdict: "STALE", reason: "artifact no longer exists" };
@@ -394,7 +402,7 @@ function main(argv) {
 }
 
 module.exports = {
-  DISAGREEMENT_STATES, ATTENTION_LEVELS, PROVEN_VALUES, DISPATCH_VALUES, DEFAULT_STATUS_MAP,
+  DISAGREEMENT_STATES, ATTENTION_LEVELS, APPROVAL_SCOPES, PROVEN_VALUES, DISPATCH_VALUES, DEFAULT_STATUS_MAP,
   lifecycleOf, isEnabled, sha256, verifyApprovalBinding, validateContract, main,
 };
 

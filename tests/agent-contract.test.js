@@ -65,7 +65,7 @@ test('AC5: approval binding rejects stale and detached approvals', () => {
     commit: 'c1b63cf',
     approved_by: 'Mikko',
     approved_at: '2026-08-22T19:00:00+03:00',
-    scope: 'earth-studio promotion',
+    scope: 'CANDIDATE_SELECTION',
   };
   assert.equal(validator.verifyApprovalBinding(binding, artifact).verdict, 'VALID');
   // Byte drift → STALE
@@ -76,6 +76,21 @@ test('AC5: approval binding rejects stale and detached approvals', () => {
   const detached = { artifact_path: 'x', commit: 'c1b63cf', approved_by: 'Mikko' };
   const r = validator.verifyApprovalBinding(detached, artifact);
   assert.equal(r.verdict, 'INVALID');
+});
+
+test('AC5b: approval scope substitutions fail closed across human gates', () => {
+  const artifact = Buffer.from('scope-bound-artifact');
+  const binding = {
+    artifact_path: 'artifact.bin', artifact_sha256: validator.sha256(artifact), commit: 'abc123',
+    approved_by: 'Mikko', approved_at: '2026-08-24T12:00:00+03:00', scope: 'CANDIDATE_SELECTION',
+  };
+  for (const expected of ['FINAL_CUT_APPROVAL', 'FINAL_MUSIC_APPROVAL', 'TITLE_THUMBNAIL_APPROVAL', 'PUBLICATION_APPROVAL']) {
+    assert.equal(validator.verifyApprovalBinding(binding, artifact, expected).verdict, 'INVALID');
+  }
+  assert.equal(validator.verifyApprovalBinding(binding, artifact, 'CANDIDATE_SELECTION').verdict, 'VALID');
+  const plan = { ...binding, scope: 'PLAN_SCRIPT_APPROVAL' };
+  assert.equal(validator.verifyApprovalBinding(plan, artifact, 'PUBLICATION_APPROVAL').verdict, 'INVALID');
+  assert.equal(validator.verifyApprovalBinding({ ...binding, scope: 'invented-scope' }, artifact).verdict, 'INVALID');
 });
 
 test('AC6: unresolved disagreement reaches escalation — states are first-class', () => {

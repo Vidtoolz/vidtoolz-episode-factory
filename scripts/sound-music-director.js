@@ -210,10 +210,10 @@ function approvalBindingStatus(meta, recordDir) {
     commit: meta.approval_source_commit || null,
     approved_by: meta.approved_by || null,
     approved_at: meta.approved_at || null,
-    scope: `music candidate ${meta.candidate_id}`,
+    scope: 'FINAL_MUSIC_APPROVAL',
   };
   const currentBytes = fs.existsSync(wavPath) ? fs.readFileSync(wavPath) : null;
-  const r = contractValidator.verifyApprovalBinding(binding, currentBytes);
+  const r = contractValidator.verifyApprovalBinding(binding, currentBytes, 'FINAL_MUSIC_APPROVAL');
   return { state: r.verdict, detail: r.reason || 'binding verified against exact artifact bytes', verifier: 'agent-contract verifyApprovalBinding' };
 }
 

@@ -8,7 +8,7 @@ function fixture(agentIds = ['alpha']) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-control-room-'));
   fs.mkdirSync(path.join(root, 'config'), { recursive: true });
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
-  const agents = agentIds.map((id) => ({ agent_id: id, name: `${id} name`, role: 'specialist' }));
+  const agents = agentIds.map((id) => ({ agent_id: id, name: `${id} name`, role: 'specialist', human_gate_type: 'CANDIDATE_SELECTION' }));
   const registry = { schema_version: 1, agents };
   const contract = {
     schema_version: 1,

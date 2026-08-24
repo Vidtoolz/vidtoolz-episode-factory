@@ -266,7 +266,7 @@ test('SRR16: exact human exception surfaces without changing Research verdict', 
       binding_id: binding.binding_id, assertion_text_sha256: binding.assertion_text_sha256 },
     reason: 'r', acknowledged_risks: ['risk'],
     approval_binding: { artifact_path: 'exception:test', artifact_sha256: null, commit: 'T',
-      approved_by: 'TEST-HUMAN', approved_at: AS_OF, scope: 'T' },
+      approved_by: 'TEST-HUMAN', approved_at: AS_OF, scope: 'RESEARCH_EXCEPTION' },
   };
   const exceptionBytes = () => rrv.exceptionApprovalBytes(JSON.parse(JSON.stringify(exception)));
   exception.approval_binding.artifact_sha256 = sha(exceptionBytes().toString('utf8'));
@@ -287,7 +287,7 @@ test('SRR17: exception drift blocks', () => {
     research_result_ref: { result_id: result.result_id, result_revision: result.result_revision, result_digest_sha256: sha('drifted') },
     script_usage_ref: { script_version_id: v2.id, script_content_hash: v2.content_hash, binding_id: binding.binding_id, assertion_text_sha256: binding.assertion_text_sha256 },
     reason: 'r', acknowledged_risks: ['r'],
-    approval_binding: { artifact_path: 'x', artifact_sha256: null, commit: 'T', approved_by: 'TEST-HUMAN', approved_at: AS_OF, scope: 'T' } };
+    approval_binding: { artifact_path: 'x', artifact_sha256: null, commit: 'T', approved_by: 'TEST-HUMAN', approved_at: AS_OF, scope: 'RESEARCH_EXCEPTION' } };
   e.approval_binding.artifact_sha256 = sha(rrv.exceptionApprovalBytes(JSON.parse(JSON.stringify(e))).toString('utf8'));
   const out = srr.buildReview(inputFor(env, v1, v2, { research: {
     run_dir: mkRunDir(root), source_bindings_doc: mkBindingsDoc([binding]), candidate_bindings_doc: mkBindingsDoc([binding]),
