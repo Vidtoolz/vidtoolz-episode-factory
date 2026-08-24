@@ -187,6 +187,21 @@ function stateHandoff(authority) {
   return { next_owner: 'editor', next_action: 'REMEDIATE_EDIT_PLAN_BLOCKERS' };
 }
 
+const EDITOR_DECISION_CODES = Object.freeze(new Set([
+  'STORY_ORDER_CHANGED', 'OMISSION_AUTHORITY_REQUIRED', 'OMISSION_EXCEPTION_INVALID',
+  'HUMAN_EXCEPTION_INVALID', 'STORY_COVERAGE_MISSING', 'COVERAGE_ENTRY_MISSING',
+]));
+
+function deriveAttention(authority, errors = []) {
+  const state = String(authority?.state || 'BLOCKED').toUpperCase();
+  const reasons = [...(authority?.reasons || []), ...(errors || [])].map(String);
+  if (state === 'INVALID' || state === 'STALE') return 'DECISION';
+  if ((authority?.blocking_conflicts || []).length) return 'DECISION';
+  if (reasons.some((reason) => [...EDITOR_DECISION_CODES].some((code) => reason.includes(code)))) return 'DECISION';
+  if (state === 'PREVIEW_ONLY' || state === 'BLOCKED' || (authority?.blocking_gaps || []).length) return 'REVIEW';
+  return 'INFORMATION';
+}
+
 function verifyRenderedMediaRef(input) {
   if (input === null || input === undefined) return null;
   strictObject(input, ['path_or_artifact_ref', 'sha256', 'byte_size'], 'rendered media ref');
@@ -199,10 +214,13 @@ function verifyRenderedMediaRef(input) {
 function controlRoomView(result) {
   const plan = result.edit_plan;
   const authority = result.authority || {};
+  const attention = result.attention || deriveAttention(authority, result.errors);
   return {
     role: AGENT_ID,
     action: result.action,
     state: result.state,
+    attention,
+    attention_level: attention,
     story: plan?.story_ref || null,
     visual_plan: plan?.visual_plan_ref || null,
     edit_plan: plan ? { edit_plan_id: plan.edit_plan_id, revision: plan.edit_plan_revision, digest: plan.edit_plan_digest_sha256 } : null,
@@ -249,6 +267,8 @@ function run(task, options = {}) {
       edit_plan: plan, authority, resolve_handoff: resolveHandoff, qc_handoff: qcHandoff,
       human_acceptance: humanAcceptance, handoff: stateHandoff(authority), events,
     };
+    output.attention = deriveAttention(authority);
+    output.attention_level = output.attention;
     output.control_room = controlRoomView(output);
     return output;
   } catch (error) {
@@ -260,6 +280,8 @@ function run(task, options = {}) {
       human_acceptance: { ok: false, state: 'NOT_RECORDED', errors: [] },
       handoff: { next_owner: 'production_operations', next_action: 'REMEDIATE_EDITOR_INPUTS' }, events,
     };
+    output.attention = deriveAttention(null, output.errors);
+    output.attention_level = output.attention;
     output.control_room = controlRoomView(output);
     return output;
   }
@@ -294,7 +316,7 @@ module.exports = {
   AGENT_ID, ACTIONS, TASK_FIELDS, VISUAL_CONTEXT_FIELDS, SOUND_CONTEXT_FIELDS,
   normalizeApproval, validateTask, verifyAigenSource, verifyHumanCaptureSource,
   verifyScorecraftSource, buildVisualVerifier, buildSoundVerifier,
-  authorityOptions, constructPlan, verifyRenderedMediaRef, controlRoomView, run, parseArgs, main,
+  authorityOptions, constructPlan, deriveAttention, verifyRenderedMediaRef, controlRoomView, run, parseArgs, main,
 };
 
 if (require.main === module) main();
