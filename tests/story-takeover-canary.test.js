@@ -14,6 +14,8 @@ const authorityAnchor = require('../scripts/execution-ownership-authority-anchor
 const ledger = require('../scripts/operator-action-ledger.js');
 const validator = require('../scripts/agent-contract-validator.js');
 const successor = require('../scripts/successor-task-contract.js');
+const storyManualEdit = require('../scripts/story-manual-edit.js');
+const manualRecovery = require('../scripts/manual-edit-recovery.js');
 const packageEngineServer = require('../package-engine-server.js');
 const researchValidator = require('../scripts/research-result-validator.js');
 
@@ -24,6 +26,7 @@ const CONFIG = { wpm: { value: 130, calibrated: false } };
 
 function write(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`); }
 function getJson(server, route) { return new Promise((resolve, reject) => { require('node:http').get({ host: '127.0.0.1', port: server.address().port, path: route }, (response) => { const chunks = []; response.on('data', (chunk) => chunks.push(chunk)); response.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch (error) { reject(error); } }); }).on('error', reject); }); }
+function getText(server, route) { return new Promise((resolve, reject) => { require('node:http').get({ host: '127.0.0.1', port: server.address().port, path: route }, (response) => { const chunks = []; response.on('data', (chunk) => chunks.push(chunk)); response.on('end', () => resolve({ status: response.statusCode, text: Buffer.concat(chunks).toString('utf8') })); }).on('error', reject); }); }
 function semantic(task) {
   return {
     structural_findings: [{ finding_id: 'tighten-opening', section_ids: ['hook'], category: 'OPENING_TENSION', severity: 'MEDIUM', rationale: 'The opening can reach its concrete tension sooner.', recommended_action: 'Tighten the opening without changing its claim.' }],
@@ -96,6 +99,8 @@ test('Story takeover canary: trusted manual Script Builder edit returns only thr
   const server = packageEngineServer.createServer({ root, agentLiveResourceProvider: async () => ({ source: 'TEST', compute: null, jobs: null }) });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   server.unref();
+  const workspacePage = await getText(server, '/story-editor-workspace.html');
+  assert.equal(workspacePage.status, 200); assert.match(workspacePage.text, /Sentence edit contract/); assert.match(workspacePage.text, /Open exact version in Script Builder/);
   let roomEnvelope = await getJson(server, '/api/agent-control-room');
   let room = roomEnvelope.data || roomEnvelope;
   assert.ok(Array.isArray(room.agents), JSON.stringify(roomEnvelope));
@@ -110,12 +115,21 @@ test('Story takeover canary: trusted manual Script Builder edit returns only thr
   assert.equal(preview.eligible, true); assert.equal(preview.eligibility_policy.adapter_id, 'STORY_EDITOR_SUCCESSOR_V1');
   const taken = controls.applyTakeManualControl({ ...input, preview_token: preview.preview_token }, { root, actor, recordId: 'operator-action-story-canary-take' });
   assert.equal(taken.execution_owner, 'HUMAN'); assert.equal(taken.editing_method, 'TRUSTED_SCRIPT_BUILDER_WORKSPACE'); assert.equal(taken.workspace.project_id, project.id);
+  const workspaceRoute = `/api/story-editor-workspace?run_id=${encodeURIComponent(runId)}&agent_id=story_editor&task_id=story-task-1&invocation_id=${encodeURIComponent(first.invocation.invocation_id)}`;
+  let workspaceEnvelope = await getJson(server, workspaceRoute), workspace = workspaceEnvelope.data || workspaceEnvelope;
+  assert.equal(workspace.workspace_schema_id, 'story-editor-workspace/v1');
+  assert.equal(workspace.story.identity.project_id, project.id);
+  assert.equal(workspace.story.identity.version_id, taken.workspace.version_id);
+  assert.ok(workspace.story.sections.flatMap((section) => section.sentences).some((sentence) => sentence.classification === 'RESEARCH_BOUND'));
+  assert.ok(workspace.story.sections.flatMap((section) => section.sentences).some((sentence) => sentence.classification === 'HUMAN_EDITABLE'));
+  assert.match(workspace.story.handoff.url, new RegExp(`project_id=${project.id}.*version_id=${taken.workspace.version_id}`));
   roomEnvelope = await getJson(server, '/api/agent-control-room');
   room = roomEnvelope.data || roomEnvelope;
   storyRow = room.agents.find((agent) => agent.agent_id === 'story_editor');
   assert.equal(storyRow.control_capabilities.return_to_automation, true);
   assert.equal(storyRow.manual_control.workspace.project_id, project.id);
-  assert.equal(storyRow.manual_control.workspace_url, 'http://127.0.0.1:8030/');
+  assert.match(storyRow.manual_control.workspace_url, /story-editor-workspace\.html\?run=/);
+  assert.match(storyRow.manual_control.trusted_edit_url, /project_id=story-canary-project&version_id=/);
   assert.match(storyRow.manual_control.warning, /does not approve/);
   assert.throws(() => controls.previewRetry({ ...input, reason: 'Automation must remain fenced.' }, { root }), (error) => error.code === 'AUTOMATION_FENCED');
   const boundedManualPath = successor.manualPaths(root, { run_id: runId, agent_id: 'story_editor', task_id: 'story-task-1' }).artifactPath;
@@ -128,13 +142,45 @@ test('Story takeover canary: trusted manual Script Builder edit returns only thr
   const predecessor = versions.listVersions(dataRoot, project.id).at(-1);
   const manualVersion = versions.createVersion(dataRoot, project, [{ ...predecessor.sections[0], dialogue: 'Remote workflows look simple until recovery depends on invisible infrastructure and unclear ownership.' }, predecessor.sections[1]], CONFIG,
     { central_claim: predecessor.central_claim, narrative_spine: predecessor.narrative_spine, source_provenance: { system: 'human-script-builder', predecessor_version_id: predecessor.id } });
+  workspaceEnvelope = await getJson(server, workspaceRoute); workspace = workspaceEnvelope.data || workspaceEnvelope;
+  assert.equal(workspace.script_builder.pending_snapshot.version_id, manualVersion.id);
+  assert.equal(workspace.controls.register_snapshot, true);
+  const editContext = controls.locateInvocation(root, input);
+  const editOwner = ownership.readOwnership(root, { run_id: runId, agent_id: 'story_editor', task_id: 'story-task-1' });
+  const registered = storyManualEdit.registered(editContext);
+  const editInput = { ...input, task_id: 'story-task-1', resulting_version_id: manualVersion.id,
+    expected_ownership_revision: editOwner.revision, expected_artifact_sha256: registered.sha256,
+    reason: 'Register exact immutable Script Builder snapshot.' };
+  const editPreview = storyManualEdit.previewStoryManualEdit(editInput, { root, now: '2026-08-24T12:30:00.000Z' });
+  storyManualEdit.applyStoryManualEdit({ ...editInput, preview_token: editPreview.preview_token, preview_created_at: editPreview.preview_created_at },
+    { root, actor, recordId: 'operator-action-story-canary-edit', now: '2026-08-24T12:31:00.000Z' });
+  const secondManualVersion = versions.createVersion(dataRoot, project,
+    [{ ...manualVersion.sections[0], dialogue: `${manualVersion.sections[0].dialogue} The workflow remains understandable.` }, manualVersion.sections[1]], CONFIG,
+    { central_claim: manualVersion.central_claim, narrative_spine: manualVersion.narrative_spine,
+      source_provenance: { system: 'human-script-builder', predecessor_version_id: manualVersion.id } });
+  let currentOwner = ownership.readOwnership(root, { run_id: runId, agent_id: 'story_editor', task_id: 'story-task-1' });
+  let currentRegistered = storyManualEdit.registered(editContext);
+  const editBInput = { ...editInput, resulting_version_id: secondManualVersion.id, expected_ownership_revision: currentOwner.revision,
+    expected_artifact_sha256: currentRegistered.sha256, reason: 'Register second trusted immutable Story snapshot.' };
+  const editBPreview = storyManualEdit.previewStoryManualEdit(editBInput, { root, now: '2026-08-24T12:32:00.000Z' });
+  storyManualEdit.applyStoryManualEdit({ ...editBInput, preview_token: editBPreview.preview_token, preview_created_at: editBPreview.preview_created_at },
+    { root, actor, recordId: 'operator-action-story-canary-edit-b', now: '2026-08-24T12:33:00.000Z' });
+  currentOwner = ownership.readOwnership(root, { run_id: runId, agent_id: 'story_editor', task_id: 'story-task-1' });
+  currentRegistered = storyManualEdit.registered(editContext);
+  const recoverInput = { ...input, task_id: 'story-task-1', expected_ownership_revision: currentOwner.revision,
+    expected_artifact_sha256: currentRegistered.sha256, reason: 'Recover the immediately previous trusted Story edit.' };
+  const recoverPreview = await manualRecovery.previewRevertManualEdit(recoverInput, { root, now: '2026-08-24T12:34:00.000Z' });
+  const recovered = await manualRecovery.applyRevertManualEdit({ ...recoverInput, preview_token: recoverPreview.preview_token,
+    preview_created_at: recoverPreview.preview_created_at }, { root, actor, recordId: 'operator-action-story-canary-recover', now: '2026-08-24T12:35:00.000Z' });
+  assert.equal(recovered.execution_owner, 'HUMAN');
+  assert.notEqual(recovered.materialized_version_id, manualVersion.id, 'recovery creates a new forward immutable version');
   const manual = successor.readManualArtifact(controls.locateInvocation(root, input));
-  assert.equal(manual.value.version_id, manualVersion.id);
+  assert.equal(manual.value.sections[0].dialogue, manualVersion.sections[0].dialogue);
   assert.deepEqual(manual.value.research.bindings.map((item) => item.binding_id), ['binding-story-canary']);
   assert.equal(validator.verifyApprovalBindingForScope(oldApproval, manual.bytes, 'PLAN_SCRIPT_APPROVAL').verdict, 'STALE');
   const returnInput = { ...input, reason: 'Create validated immutable Story successor.' };
   const returnPreview = await controls.previewReturnToAutomation(returnInput, { root, now: '2026-08-24T13:00:00.000Z' });
-  assert.equal(returnPreview.eligible, true); assert.equal(returnPreview.successor_task.required_next_gate, 'PLAN_SCRIPT_APPROVAL');
+  assert.equal(returnPreview.eligible, true, JSON.stringify(returnPreview.revalidation)); assert.equal(returnPreview.successor_task.required_next_gate, 'PLAN_SCRIPT_APPROVAL');
   assert.deepEqual(returnPreview.invalidations.prior_scope_bindings, ['PLAN_SCRIPT_APPROVAL']);
   const returned = await controls.applyReturnToAutomation({ ...returnInput, preview_token: returnPreview.preview_token, preview_created_at: returnPreview.preview_created_at }, { root, actor, recordId: 'operator-action-story-canary-return', now: '2026-08-24T13:01:00.000Z' });
   assert.equal(returned.predecessor_execution_owner, 'SUSPENDED'); assert.equal(returned.required_next_gate, 'PLAN_SCRIPT_APPROVAL');
@@ -146,8 +192,8 @@ test('Story takeover canary: trusted manual Script Builder edit returns only thr
   await assert.rejects(() => runner.runRegisteredAgent({ repoRoot: root, agentId: 'story_editor', runId, taskPath, newAttempt: true, loadModule: () => storyEditor, invokeProcess: invokeStory }), (error) => error.code === 'AUTOMATION_FENCED');
   assert.equal(ownership.readOwnership(root, { run_id: runId, agent_id: 'story_editor', task_id: returned.successor_task_id }).current_owner, 'AUTOMATION');
   assert.equal(manual.value.approval.state, 'none', 'Visual Planning receives no approved Story authority from the successor');
-  const actionLedger = ledger.readLedger(root, runId); ledger.verifyLedger(actionLedger, runId); assert.equal(actionLedger.records.length, 2);
-  const anchor = authorityAnchor.readAnchor(root); assert.equal(anchor.records.filter((record) => record.run_id === runId && record.event === 'OWNERSHIP_TRANSITION').length, 2);
+  const actionLedger = ledger.readLedger(root, runId); ledger.verifyLedger(actionLedger, runId); assert.equal(actionLedger.records.length, 5);
+  const anchor = authorityAnchor.readAnchor(root); assert.equal(anchor.records.filter((record) => record.run_id === runId && record.event === 'OWNERSHIP_TRANSITION').length, 5);
   successor.assertRunnableSuccessor(root, 'story_editor', JSON.parse(fs.readFileSync(successorTaskPath)), fs.readFileSync(successorTaskPath));
   assert.throws(() => controls.previewTakeManualControl({ run_id: runId, agent_id: 'presenter_director', invocation_id: 'presenter_director:x:1', reason: 'No lifecycle bypass.' }, { root }), (error) => error.code === 'BLOCKED_AGENT_NOT_ENABLED');
   assert.equal(actionLedger.records.some((record) => JSON.stringify(record).includes('approved_by')), false);

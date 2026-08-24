@@ -10,6 +10,7 @@ const ledger = require('../scripts/operator-action-ledger.js');
 const ownership = require('../scripts/execution-ownership.js');
 const successor = require('../scripts/successor-task-contract.js');
 const storySuccessor = require('../scripts/story-successor.js');
+const storyManualEdit = require('../scripts/story-manual-edit.js');
 
 const SB_ROOT = '/home/vidtoolz/vidtoolz-script-builder';
 const versions = require(path.join(SB_ROOT, 'lib', 'versions.js'));
@@ -32,6 +33,10 @@ function advanceUlidClock(previousVersion) {
 }
 function fixture(bindings = []) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'story-successor-'));
+  fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'scripts/story-editor.js'), `'use strict'; const AGENT_ID='story_editor'; const ACTIONS=['review_script','review_successor','status']; if(require.main===module){} module.exports={AGENT_ID,ACTIONS};\n`);
+  write(path.join(root, 'config/agent-registry.json'), { schema_version: 1, agents: [{ agent_id: 'story_editor', name: 'Story Editor', lifecycle: { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' }, implementation_state: 'IMPLEMENTATION_PROVEN' }] });
+  fs.copyFileSync(path.join(__dirname, '../config/agent-contract.json'), path.join(root, 'config/agent-contract.json'));
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'story-successor-data-'));
   store.ensureLayout(dataRoot);
   const source = versions.createVersion(dataRoot, PROJECT, SECTIONS, CONFIG, { central_claim: 'Local-first production improves recoverability.', narrative_spine: 'failure-investigation-principle-generalization' });
@@ -53,6 +58,7 @@ function fixture(bindings = []) {
   const taskBytes = fs.readFileSync(path.join(directory, 'task.json')), artifactBytes = fs.readFileSync(path.join(directory, 'artifacts/story-candidate.json'));
   const invocation = { invocation_id: invocationId, agent_id: agentId, task_id: taskId, task_sha256: runner.sha256(taskBytes), artifacts: [{ field: 'story_candidate', path: 'artifacts/story-candidate.json', sha256: runner.sha256(artifactBytes) }] };
   write(path.join(directory, 'invocation.json'), invocation);
+  write(path.join(root, 'package-runs', runId, 'agents/index.json'), { schema_version: 1, invocations: [{ agent_id: agentId, task_id: taskId, invocation_id: invocationId, task_directory: `${agentId}/${taskId}`, attempt_number: 1, state: 'COMPLETED' }] });
   const context = { root, runId, agentId, invocationId, record: { task_id: taskId }, directory, taskPath: path.join(directory, 'task.json'), taskBytes, task, invocation };
   const manual = successor.prepareManualArtifact(context, { artifact_id: 'story_candidate', path: 'artifacts/story-candidate.json', sha256: invocation.artifacts[0].sha256, exists: true });
   const actor = ledger.localActorContext({ username: 'mikko' }), target = { run_id: runId, agent_id: agentId, task_id: taskId };
@@ -66,9 +72,20 @@ function humanSnapshot(f, sections = [{ ...SECTIONS[0], dialogue: 'Local product
   advanceUlidClock(current);
   return versions.createVersion(f.dataRoot, PROJECT, sections, CONFIG, { central_claim: f.predecessor.central_claim, narrative_spine: f.predecessor.narrative_spine, source_provenance: { system: 'human-script-builder', predecessor_version_id: f.predecessor.id } });
 }
+function registerSnapshot(f, next, id = 'operator-action-story-edit') {
+  const owner = ownership.readOwnership(f.root, f.target), current = storyManualEdit.registered(f.context);
+  const input = { run_id: f.context.runId, agent_id: f.context.agentId, task_id: f.context.record.task_id,
+    invocation_id: f.context.invocationId, resulting_version_id: next.id, expected_ownership_revision: owner.revision,
+    expected_artifact_sha256: current.sha256, reason: 'Register exact immutable human Story snapshot.' };
+  const preview = storyManualEdit.previewStoryManualEdit(input, { root: f.root, now: '2026-08-24T11:00:00.000Z' });
+  storyManualEdit.applyStoryManualEdit({ ...input, preview_token: preview.preview_token, preview_created_at: preview.preview_created_at },
+    { root: f.root, actor: f.actor, recordId: id, now: '2026-08-24T11:01:00.000Z' });
+  return preview;
+}
 
 test('Story successor adapter binds a direct immutable Script Builder version and requires fresh script approval', () => {
   const f = fixture(), next = humanSnapshot(f);
+  registerSnapshot(f, next);
   const manual = successor.readManualArtifact(f.context);
   assert.equal(manual.value.version_id, next.id);
   assert.equal(manual.workspace.kind, 'SCRIPT_BUILDER');
@@ -90,8 +107,12 @@ test('Story successor adapter refuses malformed manual metadata and detached ver
   const malformed = fixture(); fs.writeFileSync(malformed.manualPath, '{}\n');
   assert.throws(() => successor.readManualArtifact(malformed.context), (error) => error.code === 'SUCCESSOR_UPSTREAM_DEPENDENCY_UNAVAILABLE' || error.code === 'SUCCESSOR_ARTIFACT_SCHEMA_INVALID');
   assert.equal(ownership.readOwnership(malformed.root, malformed.target).current_owner, 'HUMAN');
-  const detached = fixture(); humanSnapshot(detached); humanSnapshot(detached, [{ ...SECTIONS[0], dialogue: 'A second manual snapshot detached from the bounded predecessor.' }, SECTIONS[1]]);
-  assert.throws(() => successor.readManualArtifact(detached.context), (error) => error.code === 'SUCCESSOR_LINEAGE_INVALID');
+  const detached = fixture(); humanSnapshot(detached); const detachedHead = humanSnapshot(detached, [{ ...SECTIONS[0], dialogue: 'A second manual snapshot detached from the bounded predecessor.' }, SECTIONS[1]]);
+  const detachedOwner = ownership.readOwnership(detached.root, detached.target), detachedCurrent = storyManualEdit.registered(detached.context);
+  assert.throws(() => storyManualEdit.previewStoryManualEdit({ run_id: detached.context.runId, agent_id: detached.context.agentId,
+    task_id: detached.context.record.task_id, invocation_id: detached.context.invocationId, resulting_version_id: detachedHead.id,
+    expected_ownership_revision: detachedOwner.revision, expected_artifact_sha256: detachedCurrent.sha256, reason: 'Reject detached head.' }, { root: detached.root }),
+  (error) => error.code === 'UPSTREAM_STORY_HEAD_CHANGED');
   assert.equal(ownership.readOwnership(detached.root, detached.target).current_owner, 'HUMAN');
 });
 
@@ -99,10 +120,12 @@ test('Story successor detects Research-binding drift and never carries approval'
   const binding = { binding_id: 'binding-1', section_id: 'hook', assertion_text: 'Local production keeps source media close and observable.', assertion_text_sha256: '0'.repeat(64), claim_ref: {}, research_result_ref: {}, satisfied_constraint_ids: [] };
   const f = fixture([binding]);
   const next = humanSnapshot(f, [{ ...SECTIONS[0], dialogue: 'A different factual assertion now appears here.' }, SECTIONS[1]]);
+  const editPreview = registerSnapshot(f, next);
   const manual = successor.readManualArtifact(f.context);
   assert.equal(manual.value.version_id, next.id);
   assert.deepEqual(manual.value.research.bindings, []);
   assert.equal(manual.value.approval.state, 'none');
+  assert.equal(editPreview.return_to_automation_eligible, false);
   const proposal = successor.buildProposal(f.context, ownership.readOwnership(f.root, f.target), manual, { reason: 'Require Research review after factual binding drift.' });
   assert.equal(proposal.eligible, false);
   assert.ok(proposal.validation.reason_codes.includes('STORY_RESEARCH_REVIEW_REQUIRED'));

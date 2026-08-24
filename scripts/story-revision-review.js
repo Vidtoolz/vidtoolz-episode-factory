@@ -151,8 +151,20 @@ function buildReview(input, options = {}) {
 
   // version relationship validation — never guess ancestry
   if (candidate.parent_version !== source.id) {
-    return { ok: false, state: 'BLOCKED',
-      errors: [`candidate.parent_version (${candidate.parent_version}) != source version (${source.id}) — detached revision`], bundle: null };
+    let reachesSource = false;
+    if (input.allow_descendant_lineage === true) {
+      let cursor = candidate, steps = 0; const seen = new Set();
+      try {
+        while (cursor && cursor.id !== source.id && cursor.parent_version && steps < 128) {
+          if (seen.has(cursor.id)) break;
+          seen.add(cursor.id); steps += 1;
+          cursor = versions.loadVersion(input.data_root, input.project_id, cursor.parent_version);
+        }
+        reachesSource = Boolean(cursor && cursor.id === source.id);
+      } catch (_) { reachesSource = false; }
+    }
+    if (!reachesSource) return { ok: false, state: 'BLOCKED',
+      errors: [`candidate.parent_version (${candidate.parent_version}) does not descend from source version (${source.id}) — detached revision`], bundle: null };
   }
   if (source.project_id !== input.project_id || candidate.project_id !== input.project_id) {
     return { ok: false, state: 'BLOCKED', errors: ['version project identity mismatch'], bundle: null };

@@ -30,6 +30,8 @@ const successorTaskContract = require('./scripts/successor-task-contract.js');
 const visualPlanningWorkspace = require('./scripts/visual-planning-workspace.js');
 const visualPlanningManualEdit = require('./scripts/visual-planning-manual-edit.js');
 const manualEditRecovery = require('./scripts/manual-edit-recovery.js');
+const storyWorkspace = require('./scripts/story-workspace.js');
+const storyManualEdit = require('./scripts/story-manual-edit.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
@@ -12859,6 +12861,9 @@ const VISUAL_PLANNING_EDIT_PREVIEW_API = '/api/visual-planning-workspace/manual-
 const VISUAL_PLANNING_EDIT_APPLY_API = '/api/visual-planning-workspace/manual-edit/apply';
 const MANUAL_EDIT_REVERT_PREVIEW_API = '/api/agent-control-room/manual-edit-recovery/preview';
 const MANUAL_EDIT_REVERT_APPLY_API = '/api/agent-control-room/manual-edit-recovery/apply';
+const STORY_WORKSPACE_API = '/api/story-editor-workspace';
+const STORY_EDIT_PREVIEW_API = '/api/story-editor-workspace/manual-edit/preview';
+const STORY_EDIT_APPLY_API = '/api/story-editor-workspace/manual-edit/apply';
 
 function defaultAgentCancellationProvider() {
   return cancellationAdapters.createProvider({
@@ -12898,7 +12903,10 @@ function attachAgentControlState(payload, root, cancelProvider) {
       predecessor_artifact: agent.current_artifact || null,
       editing_method: manualWorkspace?.kind === 'SCRIPT_BUILDER' ? 'TRUSTED_SCRIPT_BUILDER_WORKSPACE' : manual.manual_artifact ? 'TRUSTED_OS_FILE_REVEAL' : null,
       workspace: manualWorkspace,
-      workspace_url: manualWorkspace?.url || null,
+      workspace_url: agent.agent_id === 'story_editor' && exact.run_id && exact.invocation_id && agent.current_task
+        ? `/story-editor-workspace.html?run=${encodeURIComponent(exact.run_id)}&agent=${encodeURIComponent(agent.agent_id)}&task=${encodeURIComponent(agent.current_task)}&invocation=${encodeURIComponent(exact.invocation_id)}`
+        : manualWorkspace?.url || null,
+      trusted_edit_url: manualWorkspace?.url || null,
       open_api: manual.manual_artifact && !manualWorkspace ? OPEN_FILE_API : null,
       open_file: manual.manual_artifact && !manualWorkspace ? manual.manual_artifact.path : null,
       warning: state.current_owner === 'HUMAN' ? (agent.agent_id === 'story_editor'
@@ -18317,6 +18325,28 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === STORY_WORKSPACE_API) {
+      try {
+        const payload = storyWorkspace.buildStoryWorkspace({ run_id: url.searchParams.get('run_id') || '',
+          agent_id: url.searchParams.get('agent_id') || '', task_id: url.searchParams.get('task_id') || '',
+          invocation_id: url.searchParams.get('invocation_id') || '', ownership_revision: url.searchParams.get('ownership_revision') == null ? undefined : Number(url.searchParams.get('ownership_revision')),
+          project_id: url.searchParams.get('project_id') || undefined, version_id: url.searchParams.get('version_id') || undefined,
+          content_hash: url.searchParams.get('content_hash') || undefined }, { root: serverOptions.root || ROOT });
+        sendJSON(res, 200, payload);
+      } catch (error) { sendError(res, error.statusCode || 409, error.message, error.code || 'story-workspace-error'); }
+      return;
+    }
+
+    if (req.method === 'POST' && [STORY_EDIT_PREVIEW_API, STORY_EDIT_APPLY_API].includes(url.pathname)) {
+      readJsonBody(req, 1024 * 32).then((payload) => {
+        validateLocalWriteRequest(req, payload, { label: 'Story immutable snapshot registration' });
+        const options = { root: serverOptions.root || ROOT, actor: operatorActionLedger.localActorContext(), successorValidation: serverOptions.agentSuccessorValidation };
+        return url.pathname === STORY_EDIT_PREVIEW_API ? storyManualEdit.previewStoryManualEdit(payload, options) : storyManualEdit.applyStoryManualEdit(payload, options);
+      }).then((payload) => sendJSON(res, 200, payload))
+        .catch((error) => sendError(res, error.statusCode || 409, error.message, error.code || 'story-manual-edit-error'));
+      return;
+    }
+
     if (req.method === 'POST' && [AGENT_RETRY_PREVIEW_API, AGENT_RETRY_APPLY_API, AGENT_CANCEL_PREVIEW_API, AGENT_CANCEL_APPLY_API,
       AGENT_TAKEOVER_PREVIEW_API, AGENT_TAKEOVER_APPLY_API, AGENT_RETURN_PREVIEW_API, AGENT_RETURN_APPLY_API].includes(url.pathname)) {
       readJsonBody(req, 1024 * 32)
@@ -19928,6 +19958,9 @@ module.exports = {
   VISUAL_PLANNING_EDIT_APPLY_API,
   MANUAL_EDIT_REVERT_PREVIEW_API,
   MANUAL_EDIT_REVERT_APPLY_API,
+  STORY_WORKSPACE_API,
+  STORY_EDIT_PREVIEW_API,
+  STORY_EDIT_APPLY_API,
   AGENT_WORKFLOW_MAP_API,
   AGENT_RETRY_PREVIEW_API,
   AGENT_RETRY_APPLY_API,

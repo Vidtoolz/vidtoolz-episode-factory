@@ -103,30 +103,84 @@ function potentialUnsupportedAssertions(previous, next, retainedBindings = []) {
   return unsupported;
 }
 
-function currentManualArtifact(context, metadata) {
-  const versions = versionsFor(context.task);
-  const list = versions.listVersions(context.task.data_root, context.task.project_id);
-  const current = list.at(-1);
-  if (!current) { const error = new Error('canonical Script Builder has no current version'); error.code = 'SUCCESSOR_UPSTREAM_DEPENDENCY_UNAVAILABLE'; throw error; }
-  const previous = JSON.parse(require('node:fs').readFileSync(path.join(context.root, 'package-runs', context.runId, 'agents', 'manual-work', context.agentId, context.record.task_id, 'artifact.json'), 'utf8'));
-  const previousShape = validateShape(previous);
+function currentManualArtifact(context, metadata, base) {
+  // The registered manual artifact is the exact trusted state. A newer Script
+  // Builder head is only a *pending* edit until Story manual-edit preview/apply
+  // binds it to ownership + ledger evidence. Auto-following latest made an
+  // unrelated snapshot silently become the HUMAN-owned artifact and bypassed
+  // recovery history.
+  const value = base?.value;
+  const previousShape = validateShape(value);
   if (!previousShape.ok) { const error = new Error(`manual Story artifact is structurally invalid: ${previousShape.reason_codes.join(', ')}`); error.code = 'SUCCESSOR_ARTIFACT_SCHEMA_INVALID'; throw error; }
-  if (current.id !== previous.version_id && current.parent_version !== previous.version_id) {
-    const error = new Error('current Script Builder version is not the predecessor or its direct immutable successor'); error.code = 'SUCCESSOR_LINEAGE_INVALID'; throw error;
-  }
-  const bindings = current.id === previous.version_id ? previous.research.bindings : carryResearchBindings(previous, current).carried;
-  const value = versionArtifact(current, context.task, bindings);
-  const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
   return {
-    value, bytes, sha256: require('./agent-run.js').sha256(bytes),
-    relative_path: current._file || `script-builder://${current.project_id}/${current.id}`,
+    value, bytes: base.bytes, sha256: base.sha256,
+    relative_path: `script-builder://${value.project_id}/${value.version_id}`,
     workspace: {
-      kind: 'SCRIPT_BUILDER', project_id: current.project_id, version_id: current.id,
-      path: current._file || null, url: 'http://127.0.0.1:8030/',
-      instruction: `Open Script Builder project ${current.project_id}, edit the working script, then Snapshot version before Return to automation.`,
+      kind: 'SCRIPT_BUILDER', project_id: value.project_id, version_id: value.version_id,
+      path: null, url: `http://127.0.0.1:8030/?project_id=${encodeURIComponent(value.project_id)}&version_id=${encodeURIComponent(value.version_id)}`,
+      instruction: `Open exact Script Builder project ${value.project_id} at version ${value.version_id}, edit, Snapshot, then register that immutable snapshot in the Story workspace.`,
     },
     metadata,
   };
+}
+
+function validateRecovery(context, candidate) {
+  const reasons = [];
+  const shape = validateShape(candidate?.value);
+  if (!shape.ok) reasons.push(...shape.reason_codes);
+  if (context.agentId !== AGENT_ID) reasons.push('SPECIALIST_OWNER_MISMATCH');
+  if (shape.ok) {
+    if (candidate.value.project_id !== context.task.project_id) reasons.push('STORY_PROJECT_IDENTITY_MISMATCH');
+    try {
+      const versions = versionsFor(context.task);
+      const stored = versions.loadVersion(context.task.data_root, candidate.value.project_id, candidate.value.version_id);
+      if (stored.content_hash !== candidate.value.content_hash || versions.scriptContentHash(stored.sections) !== candidate.value.content_hash) reasons.push('STORY_CONTENT_HASH_INVALID');
+      const canonical = versionArtifact(stored, context.task, candidate.value.research.bindings);
+      if (ledger.canonicalize(canonical) !== ledger.canonicalize(candidate.value)) reasons.push('STORY_CANONICAL_VERSION_MISMATCH');
+    } catch (_) { reasons.push('SUCCESSOR_UPSTREAM_DEPENDENCY_UNAVAILABLE'); }
+  }
+  return { valid: reasons.length === 0, validator_id: `${VALIDATOR_ID}_RECOVERY`, reason_codes: [...new Set(reasons)],
+    approvals_invalidated: ['PLAN_SCRIPT_APPROVAL'], gates_invalidated: ['PLAN_SCRIPT_APPROVAL'],
+    reason: reasons.length ? `Trusted Story revision cannot be restored safely: ${[...new Set(reasons)].join(', ')}`
+      : 'Trusted immutable Story revision is structurally and canonically valid; semantic authority is not granted and return still requires Story successor validation.' };
+}
+
+function materializeRecovery(context, candidate, options = {}) {
+  const shape = validateShape(candidate?.value);
+  if (!shape.ok) { const error = new Error(`Story recovery source is invalid: ${shape.reason_codes.join(', ')}`); error.code = 'MANUAL_EDIT_RECOVERY_VALIDATION_FAILED'; throw error; }
+  const versions = versionsFor(context.task);
+  const store = require(path.join(path.resolve(context.task.script_builder_root), 'lib', 'store.js'));
+  const project = store.loadProject(context.task.data_root, candidate.value.project_id);
+  const head = versions.listVersions(context.task.data_root, candidate.value.project_id).at(-1);
+  const registered = JSON.parse(require('node:fs').readFileSync(path.join(context.root, 'package-runs', context.runId, 'agents', 'manual-work', context.agentId, context.record.task_id, 'artifact.json'), 'utf8'));
+  if (!head || head.id !== registered.version_id || head.content_hash !== registered.content_hash) {
+    const error = new Error('Script Builder head changed before Story recovery could be materialized'); error.code = 'UPSTREAM_STORY_HEAD_CHANGED'; throw error;
+  }
+  const storedSections = store.listSections(context.task.data_root, project.id);
+  const currentSections = storedSections.length ? storedSections : head.sections.map((section) => ({ ...section, state: 'development', human_decisions: [] }));
+  const currentById = new Map(currentSections.map((item) => [String(item.id), item]));
+  if (candidate.value.sections.length !== currentSections.length || candidate.value.sections.some((item) => !currentById.has(String(item.id)))) {
+    const error = new Error('Story recovery cannot silently add, remove, or retarget Script Builder sections'); error.code = 'STORY_CANONICAL_VERSION_MISMATCH'; throw error;
+  }
+  if (storedSections.length) for (const section of candidate.value.sections) {
+    const working = currentById.get(String(section.id));
+    store.saveSection(context.task.data_root, project.id, { ...working, dialogue: section.dialogue, beat: section.beat,
+      type: section.type, background: section.background, framing_preset: section.framing_preset,
+      visual_notes: section.visual_notes, media_refs: section.media_refs,
+      human_decisions: [...(working.human_decisions || []), { timestamp: options.now || new Date().toISOString(), action: 'manual-edit-recovered', note: options.reason || 'Restore trusted HUMAN-owned Story revision' }] });
+  }
+  const restored = versions.createVersion(context.task.data_root, project, candidate.value.sections,
+    { wpm: { value: head.wpm_used || 130, calibrated: Boolean(head.wpm_calibrated) } }, {
+      allowDuplicate: true, label: 'manual recovery', central_claim: candidate.value.central_claim,
+      narrative_spine: candidate.value.narrative_spine,
+      source_provenance: { system: 'episode-factory-manual-recovery', predecessor_version_id: head.id,
+        recovery_source_version_id: candidate.value.version_id, recovery_source_revision_id: options.source_revision_id || null },
+    });
+  if (restored.parent_version !== head.id) { const error = new Error('Story recovery did not create a direct immutable forward version'); error.code = 'SUCCESSOR_LINEAGE_INVALID'; throw error; }
+  const value = versionArtifact(restored, context.task, candidate.value.research.bindings);
+  const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
+  return { ...candidate, value, bytes, sha256: require('./agent-run.js').sha256(bytes),
+    relative_path: `script-builder://${value.project_id}/${value.version_id}` };
 }
 
 function validate(context, previous, next, options = {}) {
@@ -148,11 +202,20 @@ function validate(context, previous, next, options = {}) {
     } catch { reasons.push('RESEARCH_CONTEXT_MISSING'); }
   }
   if (next.project_id !== previous.project_id || next.project_id !== context.task.project_id) reasons.push('STORY_PROJECT_IDENTITY_MISMATCH');
-  if (next.version_id === previous.version_id || next.parent_version !== previous.version_id) reasons.push('STORY_PREDECESSOR_LINEAGE_INVALID');
+  if (next.version_id === previous.version_id) reasons.push('STORY_PREDECESSOR_LINEAGE_INVALID');
   let versions, current;
   try {
     versions = versionsFor(context.task);
     current = versions.loadVersion(context.task.data_root, next.project_id, next.version_id);
+    let cursor = current, lineageSteps = 0, reachesPredecessor = false;
+    const seen = new Set();
+    while (cursor && cursor.id !== previous.version_id && cursor.parent_version && lineageSteps < 128) {
+      if (seen.has(cursor.id)) break;
+      seen.add(cursor.id); lineageSteps += 1;
+      cursor = versions.loadVersion(context.task.data_root, next.project_id, cursor.parent_version);
+    }
+    reachesPredecessor = Boolean(cursor && cursor.id === previous.version_id);
+    if (!reachesPredecessor) reasons.push('STORY_PREDECESSOR_LINEAGE_INVALID');
     const latest = versions.listVersions(context.task.data_root, next.project_id).at(-1);
     if (!latest || latest.id !== next.version_id) reasons.push('UPSTREAM_STORY_HEAD_CHANGED');
     if (versions.scriptContentHash(next.sections) !== next.content_hash || current.content_hash !== next.content_hash) reasons.push('STORY_CONTENT_HASH_INVALID');
@@ -177,6 +240,7 @@ function validate(context, previous, next, options = {}) {
       project_id: next.project_id,
       source_version: { version_id: previous.version_id, content_hash: previous.content_hash },
       candidate_version: { version_id: next.version_id, content_hash: next.content_hash },
+      allow_descendant_lineage: true,
       change_rationales: [],
       research: context.task.research?.run_dir ? {
         run_dir: context.task.research.run_dir,
@@ -244,5 +308,5 @@ function manualControlDetails(context, artifact) {
 module.exports = {
   AGENT_ID, VALIDATOR_ID, ARTIFACT_ID, REQUIRED_NEXT_GATE, REQUIRED_NEXT_SPECIALIST,
   CONTINUATION_ACTION, POLICY_ID, versionArtifact, validateShape, carryResearchBindings, potentialUnsupportedAssertions,
-  currentManualArtifact, validate, buildTask, manualControlDetails,
+  currentManualArtifact, validateRecovery, materializeRecovery, validate, buildTask, manualControlDetails,
 };

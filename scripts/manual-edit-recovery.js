@@ -91,12 +91,19 @@ function buildHistory(context, manual = successor.readManualArtifact(context)) {
         timestamp: action.timestamp, label: `Manual edit ${action.sequence}`, summary: action.result_details?.change_summary || 'Bounded creative edit' });
     } else if (action.action === ACTION) {
       const current = stack.at(-1), target = stack.at(-2);
+      const restoredSourceSha = action.result_details?.restored_source_artifact_sha256 || action.result_details?.restored_artifact_sha256;
       if (!target || action.target_artifact?.sha256 !== current.sha256
-          || action.result_details?.restored_artifact_sha256 !== target.sha256
+          || restoredSourceSha !== target.sha256
+          || !HASH_RE.test(action.result_details?.restored_artifact_sha256 || '')
           || action.result_details?.restored_source_record_id !== target.source_record_id) {
         throw new ManualEditRecoveryError('MANUAL_EDIT_RECOVERY_HISTORY_INVALID', 'manual revert history is not a valid stack pop');
       }
       stack.pop();
+      if (action.result_details.restored_artifact_sha256 !== target.sha256) {
+        stack[stack.length - 1] = { ...target, revision_id: action.record_id, source_record_id: action.record_id,
+          recovery_source_record_id: target.source_record_id, sha256: action.result_details.restored_artifact_sha256,
+          timestamp: action.timestamp, label: `Recovered ${target.label}` };
+      }
     }
   }
   if (stack.at(-1).sha256 !== manual.sha256) throw new ManualEditRecoveryError('MANUAL_EDIT_RECOVERY_HISTORY_DRIFT', 'manual artifact bytes are outside the trusted applied-edit history');
@@ -218,7 +225,10 @@ async function applyRevertManualEdit(input, options = {}) {
     if (input.preview_token !== preview.preview_token || input.preview_created_at !== preview.preview_created_at) throw new ManualEditRecoveryError('MANUAL_EDIT_RECOVERY_PREVIEW_STALE', 'recovery preview is missing or stale');
     const context = controls.locateInvocation(options.root, input), manual = successor.readManualArtifact(context);
     const history = buildHistory(context, manual), target = history.restore_target;
-    const restored = candidateFor(context, manual, history, target), previousBytes = manual.bytes;
+    const adapter = successor.ADAPTERS[context.agentId];
+    const source = candidateFor(context, manual, history, target), previousBytes = manual.bytes;
+    const restored = adapter?.materializeRecovery ? adapter.materializeRecovery(context, source, { now: options.applyNow || options.now,
+      reason: input.reason, source_revision_id: target.revision_id }) : source;
     successor.atomicWrite(manual.paths.artifactPath, restored.bytes);
     let mutation;
     try {
@@ -230,13 +240,14 @@ async function applyRevertManualEdit(input, options = {}) {
         task_sha256: runner.sha256(context.taskBytes), reason: input.reason,
         requested_parameters: { preview_token: input.preview_token, preview_created_at: input.preview_created_at,
           restore_revision_id: target.revision_id, restore_artifact_sha256: target.sha256 },
-        result_details: { restored_artifact_sha256: target.sha256, restored_source_record_id: target.source_record_id,
+        result_details: { restored_source_artifact_sha256: target.sha256, restored_artifact_sha256: restored.sha256, restored_source_record_id: target.source_record_id,
           reverted_record_id: history.current.source_record_id, stale_scopes_preserved: true, stale_gates_preserved: true },
       }, { actor: options.actor || ledger.localActorContext(), now: options.applyNow || options.now, recordId: options.recordId });
     } catch (error) { successor.atomicWrite(manual.paths.artifactPath, previousBytes); throw error; }
     return { schema_version: SCHEMA_VERSION, action: ACTION, result_status: 'COMPLETED', action_record_id: mutation.action_record.record_id,
       execution_owner: 'HUMAN', ownership_revision: mutation.state.revision, ownership_state_hash: mutation.state.current_state_hash,
-      artifact_sha256: restored.sha256, restored_revision_id: target.revision_id, creates_approval: false, return_to_automation_required: true };
+      artifact_sha256: restored.sha256, restored_revision_id: target.revision_id,
+      materialized_version_id: restored.value?.version_id || null, creates_approval: false, return_to_automation_required: true };
   } finally { try { fs.unlinkSync(lock); } catch (_) {} }
 }
 
