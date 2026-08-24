@@ -659,6 +659,21 @@ async function buildAgentControlRoom(options = {}) {
   const agents = sortAgents(await Promise.all(registered.map((agent) => agentProjection(
     root, agent, implementationsById.get(agent.agent_id), latestByAgent.get(agent.agent_id), implementationsById, options,
   ))));
+  for (const agent of agents) {
+    const registration = registered.find((entry) => entry.agent_id === agent.agent_id);
+    agent.lifecycle ||= {
+      doctrine: registration?.lifecycle?.doctrine ?? null,
+      proven: registration?.lifecycle?.proven ?? null,
+      autonomous_dispatch: registration?.lifecycle?.autonomous_dispatch ?? null,
+      enablement_prerequisites: Array.isArray(registration?.lifecycle?.enablement_prerequisites) ? [...registration.lifecycle.enablement_prerequisites] : [],
+    };
+    const enabled = agent.lifecycle.proven === 'PROVEN' && agent.lifecycle.autonomous_dispatch === 'ENABLED';
+    agent.control_capabilities = {
+      retry: Boolean(enabled && ['COMPLETED', 'ABANDONED'].includes(agent.runtime_status) && agent.invocation?.invocation_id),
+      cancel: Boolean(enabled && agent.runtime_status === 'RUNNING' && options.cancelSupported === true && agent.invocation?.invocation_id),
+      pause: false, resume: false, take_manual_control: false,
+    };
+  }
   let liveResources = { source: 'UNAVAILABLE', probed_at: null, compute: null, jobs: null };
   if (typeof options.liveResourceProvider === 'function') {
     try { liveResources = await options.liveResourceProvider(agents); }

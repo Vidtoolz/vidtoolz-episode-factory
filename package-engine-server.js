@@ -20,6 +20,8 @@ const packageRunsIndexScript = require('./scripts/package-runs-index.js');
 const systemRegistryScript = require('./scripts/system-registry.js');
 const agentControlRoom = require('./scripts/agent-control-room.js');
 const packageRunWorkflowMap = require('./scripts/package-run-workflow-map.js');
+const agentControls = require('./scripts/agent-controls.js');
+const operatorActionLedger = require('./scripts/operator-action-ledger.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
@@ -12826,6 +12828,10 @@ function providerConfig(env = process.env) {
 const COCKPIT_ORIENTATION_API = '/api/cockpit-orientation';
 const AGENT_CONTROL_ROOM_API = '/api/agent-control-room';
 const AGENT_WORKFLOW_MAP_API = '/api/agent-control-room/workflow-map';
+const AGENT_RETRY_PREVIEW_API = '/api/agent-control-room/retry/preview';
+const AGENT_RETRY_APPLY_API = '/api/agent-control-room/retry/apply';
+const AGENT_CANCEL_PREVIEW_API = '/api/agent-control-room/cancel/preview';
+const AGENT_CANCEL_APPLY_API = '/api/agent-control-room/cancel/apply';
 
 async function buildAgentLiveResourceSnapshot(agents = []) {
   const needsCompute = agents.some((agent) => agent.runtime_active
@@ -18193,9 +18199,30 @@ function createServer(options = {}) {
         agentRunOptions: serverOptions.agentRunOptions,
         now: serverOptions.agentControlRoomNow,
         liveResourceProvider: serverOptions.agentLiveResourceProvider || buildAgentLiveResourceSnapshot,
+        cancelSupported: typeof serverOptions.agentCancelProvider === 'function',
       })
-        .then((payload) => sendJSON(res, 200, payload))
+        .then((payload) => sendJSON(res, 200, { ...payload, operator_controls: { nonce_header: LOCAL_WRITE_NONCE_HEADER, local_write_nonce: LOCAL_WRITE_NONCE } }))
         .catch((error) => sendError(res, 500, `Agent Control Room unavailable: ${error.message}`, 'agent-control-room-error'));
+      return;
+    }
+
+    if (req.method === 'POST' && [AGENT_RETRY_PREVIEW_API, AGENT_RETRY_APPLY_API, AGENT_CANCEL_PREVIEW_API, AGENT_CANCEL_APPLY_API].includes(url.pathname)) {
+      readJsonBody(req, 1024 * 32)
+        .then(async (payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Agent operator control' });
+          const options = {
+            root: serverOptions.root || ROOT,
+            actor: operatorActionLedger.localActorContext(),
+            runAgent: serverOptions.agentControlRunAgent,
+            cancelProvider: serverOptions.agentCancelProvider,
+          };
+          if (url.pathname === AGENT_RETRY_PREVIEW_API) return agentControls.previewRetry(payload, options);
+          if (url.pathname === AGENT_RETRY_APPLY_API) return agentControls.applyRetry(payload, options);
+          if (url.pathname === AGENT_CANCEL_PREVIEW_API) return agentControls.previewCancel(payload, options);
+          return agentControls.applyCancel(payload, options);
+        })
+        .then((payload) => sendJSON(res, 200, payload))
+        .catch((error) => sendError(res, error.statusCode || 409, error.message, error.code || 'agent-control-error'));
       return;
     }
 
@@ -19719,6 +19746,10 @@ module.exports = {
   API_PREFIX,
   AGENT_CONTROL_ROOM_API,
   AGENT_WORKFLOW_MAP_API,
+  AGENT_RETRY_PREVIEW_API,
+  AGENT_RETRY_APPLY_API,
+  AGENT_CANCEL_PREVIEW_API,
+  AGENT_CANCEL_APPLY_API,
   COCKPIT_ORIENTATION_API,
   buildCockpitOrientation,
   buildProjectsLaneOrientation,

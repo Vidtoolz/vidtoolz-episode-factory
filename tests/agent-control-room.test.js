@@ -195,6 +195,18 @@ function request(server, pathname, method = 'GET') {
   });
 }
 
+function postJson(server, pathname, body, authorized = true) {
+  return new Promise((resolve, reject) => {
+    const bytes = Buffer.from(JSON.stringify(body));
+    const headers = { host: '127.0.0.1:8010', 'content-type': 'application/json', 'content-length': bytes.length };
+    if (authorized) headers[packageEngineServer.LOCAL_WRITE_NONCE_HEADER] = packageEngineServer.localWriteNonce();
+    const req = http.request({ hostname: '127.0.0.1', port: server.address().port, path: pathname, method: 'POST', headers }, (res) => {
+      let raw = ''; res.on('data', (chunk) => { raw += chunk; }); res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(raw) }));
+    });
+    req.on('error', reject); req.end(bytes);
+  });
+}
+
 function digestTree(root) {
   const hash = crypto.createHash('sha256');
   function walk(dir) {
@@ -655,6 +667,31 @@ test('workflow map route renders the canonical gate definitions read only', asyn
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });
 
+test('operator control API nonce-gates preview/apply and returns the ledger record identity', async () => {
+  const f = fixture(['alpha']);
+  const completed = writeRunnerInvocation(f, { state: 'BLOCKED', attention: 'REVIEW', blocker: 'retry exact work' });
+  const server = packageEngineServer.createServer({
+    root: f.root,
+    agentControlRunAgent: async () => ({ invocation: { invocation_id: 'alpha:task-1:2' }, infrastructure_state: 'COMPLETE' }),
+    agentLiveResourceProvider: async () => ({ source: 'TEST', compute: null, jobs: null }),
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const room = JSON.parse((await request(server, '/api/agent-control-room')).body).data;
+    assert.equal(room.agents[0].control_capabilities.retry, true);
+    assert.ok(room.operator_controls.local_write_nonce);
+    const input = { run_id: completed.runId, agent_id: 'alpha', invocation_id: completed.invocation.invocation_id, reason: 'Retry exact work.' };
+    assert.equal((await postJson(server, packageEngineServer.AGENT_RETRY_PREVIEW_API, input, false)).status, 403);
+    const preview = (await postJson(server, packageEngineServer.AGENT_RETRY_PREVIEW_API, input)).body.data;
+    assert.equal(preview.read_only, true);
+    const applied = (await postJson(server, packageEngineServer.AGENT_RETRY_APPLY_API, { ...input, preview_token: preview.preview_token })).body.data;
+    assert.equal(applied.new_invocation_id, 'alpha:task-1:2');
+    assert.match(applied.action_record_id, /^operator-action-/);
+    const persisted = require('../scripts/operator-action-ledger.js').readLedger(f.root, completed.runId);
+    assert.equal(persisted.records[0].record_id, applied.action_record_id);
+  } finally { await new Promise((resolve) => server.close(resolve)); }
+});
+
 test('doctrine-registered roles are never presented or executed as live specialists', async () => {
   const f = fixture(['alpha', 'planned_specialist']);
   f.registry.agents[1].lifecycle = {
@@ -691,7 +728,9 @@ test('canonical cockpit separates dispatch-enabled agents from registered doctri
   const refused = registry.agents.filter((a) => a.lifecycle?.autonomous_dispatch !== 'ENABLED').map((a) => a.agent_id);
   assert.deepEqual(refused, ['presenter_director', 'creative_director']);
   for (const id of refused) {
-    assert.equal(output.agents.find((a) => a.agent_id === id).state, 'PLANNED_NOT_ENABLED');
+    const row = output.agents.find((a) => a.agent_id === id);
+    assert.equal(row.state, 'PLANNED_NOT_ENABLED');
+    assert.deepEqual(row.control_capabilities, { retry: false, cancel: false, pause: false, resume: false, take_manual_control: false });
   }
   assert.equal(output.summary.doctrine_only, refused.length);
   assert.equal(output.summary.dispatch_enabled, registry.agents.length - refused.length);
@@ -745,6 +784,10 @@ test('cockpit UI renders a registry-driven panel with manual refresh', () => {
   assert.match(ui, /projection fallback/);
   assert.match(ui, /Escalation reason/);
   assert.match(ui, /Confidence/);
+  assert.match(ui, /Preview retry/);
+  assert.match(ui, /Preview cancel/);
+  assert.match(ui, /action record/);
+  assert.match(ui, /preview_token/);
   assert.match(css, /\.agent-control-room-card/);
 });
 

@@ -8,6 +8,7 @@
   var workflow = document.getElementById('agentWorkflowMap');
   var updated = document.getElementById('agentControlRoomUpdated');
   var refresh = document.getElementById('agentControlRoomRefresh');
+  var controlConfig = null;
   if (!rows || !summary || !roles || !queue || !workflow || !refresh) return;
 
   function esc(value) {
@@ -25,6 +26,15 @@
     if (!event) return null;
     if (typeof event === 'string') return event;
     return [event.state, event.detail, event.at].filter(Boolean).join(' · ');
+  }
+
+  function controlButtons(agent) {
+    var capabilities = agent.control_capabilities || {};
+    var target = ' data-run-id="' + esc(agent.run_id) + '" data-agent-id="' + esc(agent.agent_id) + '" data-invocation-id="' + esc(agent.invocation && agent.invocation.invocation_id) + '"';
+    var buttons = [];
+    if (capabilities.retry) buttons.push('<button type="button" class="agent-control-action" data-action="retry"' + target + '>Preview retry</button>');
+    if (capabilities.cancel) buttons.push('<button type="button" class="agent-control-action danger" data-action="cancel"' + target + '>Preview cancel</button>');
+    return buttons.length ? '<div class="agent-control-actions">' + buttons.join('') + '</div><div class="agent-control-result" id="agentControlResult-' + esc(agent.agent_id) + '" aria-live="polite"></div>' : '';
   }
 
   function renderAgent(agent) {
@@ -76,6 +86,7 @@
       line('Confidence', rationale.confidence) +
       line('Artifact', agent.current_artifact && typeof agent.current_artifact === 'object' ? JSON.stringify(agent.current_artifact) : agent.current_artifact) +
       line('Latest event', eventText(agent.latest_event)) +
+      controlButtons(agent) +
       '<div class="agent-control-room-implementation">Implementation: ' + esc(implementation.state || 'UNKNOWN') +
       (implementation.module_path ? ' · ' + esc(implementation.module_path) : '') + '</div>' +
       '</article>';
@@ -123,6 +134,7 @@
 
   function render(payload) {
     var agents = payload.agents || [];
+    controlConfig = payload.operator_controls || null;
     var counts = payload.summary || {};
     summary.innerHTML = '<strong>' + esc(agents.length) + ' registered specialists</strong>' +
       '<span>Decision ' + esc(counts.decision || 0) + '</span>' +
@@ -148,10 +160,40 @@
     updated.textContent = 'Updated ' + new Date(payload.generated_at).toLocaleTimeString();
   }
 
+  function postControl(path, body) {
+    if (!controlConfig || !controlConfig.local_write_nonce) return Promise.reject(new Error('Local operator authorization is unavailable'));
+    var headers = { 'Content-Type': 'application/json' };
+    headers[controlConfig.nonce_header || 'x-vidtoolz-local-write-nonce'] = controlConfig.local_write_nonce;
+    body.localWriteNonce = controlConfig.local_write_nonce;
+    return fetch(path, { method: 'POST', headers: headers, body: JSON.stringify(body) }).then(function (response) {
+      return response.json().then(function (payload) { if (!response.ok) throw new Error(payload.error || ('HTTP ' + response.status)); return payload.data || payload; });
+    });
+  }
+
+  function runControl(button) {
+    var action = button.getAttribute('data-action');
+    var reason = window.prompt('Reason for ' + action.toUpperCase() + ' (recorded in the operator ledger):');
+    if (!reason || !reason.trim()) return;
+    var body = { run_id: button.getAttribute('data-run-id'), agent_id: button.getAttribute('data-agent-id'), invocation_id: button.getAttribute('data-invocation-id'), reason: reason.trim() };
+    button.disabled = true;
+    postControl('/api/agent-control-room/' + action + '/preview', Object.assign({}, body)).then(function (preview) {
+      if (!preview.eligible) throw new Error(action.toUpperCase() + ' is not supported for this exact invocation; remote work may continue.');
+      var consequence = action === 'retry' ? 'Create a new attempt while preserving all prior evidence?' : 'Request cancellation through the bound provider?';
+      if (!window.confirm(consequence)) return null;
+      return postControl('/api/agent-control-room/' + action + '/apply', Object.assign({}, body, { preview_token: preview.preview_token }));
+    }).then(function (result) {
+      if (!result) return;
+      return load().then(function () {
+        var output = document.getElementById('agentControlResult-' + body.agent_id);
+        if (output) output.textContent = result.result_status + ' · action record ' + result.action_record_id;
+      });
+    }).catch(function (error) { window.alert(error.message); }).finally(function () { button.disabled = false; });
+  }
+
   function load() {
     refresh.disabled = true;
     updated.textContent = 'Refreshing…';
-    fetch('/api/agent-control-room', { method: 'GET', cache: 'no-store' })
+    return fetch('/api/agent-control-room', { method: 'GET', cache: 'no-store' })
       .then(function (response) {
         if (!response.ok) throw new Error('HTTP ' + response.status);
         return response.json();
@@ -169,5 +211,6 @@
   }
 
   refresh.addEventListener('click', load);
+  rows.addEventListener('click', function (event) { var button = event.target.closest('.agent-control-action'); if (button) runControl(button); });
   load();
 })();

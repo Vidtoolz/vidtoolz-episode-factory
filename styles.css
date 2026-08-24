@@ -1547,6 +1547,11 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
   font-size: 11px;
 }
 
+.agent-control-actions { display: flex; gap: .5rem; margin-top: .75rem; }
+.agent-control-actions button { min-height: 2rem; }
+.agent-control-actions .danger { border-color: var(--danger, #b34a4a); }
+.agent-control-result { margin-top: .45rem; color: var(--muted); font-size: .82rem; }
+
 .agent-state,
 .agent-attention {
   font-size: 10px;
