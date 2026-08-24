@@ -3,6 +3,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const dispatchAuthority = require('./agent-dispatch-authority.js');
 const crypto = require('node:crypto');
 const os = require('node:os');
 const { deriveOperationalRationale } = require('./operational-rationale.js');
@@ -356,10 +357,21 @@ function notEnabledImplementation(root, agent) {
 }
 
 function inspectImplementation(root, agent, options = {}) {
-  const modulePath = modulePathFor(root, agent.agent_id);
-  if (!fs.existsSync(modulePath)) {
+  const readiness = dispatchAuthority.implementationReadiness(root, agent);
+  const modulePath = readiness.module_path;
+  if (readiness.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN') {
+    return {
+      state: agent.implementation_state === 'CANDIDATE' ? 'IMPLEMENTATION_CANDIDATE' : 'IMPLEMENTATION_NOT_PROVEN',
+      module_path: path.relative(root, modulePath), module_exists: readiness.module_exists,
+      implementation_state: readiness.implementation_state,
+      status_action_supported: false, control_room_view_supported: false,
+      reason: readiness.reason,
+    };
+  }
+  if (!readiness.module_exists) {
     return {
       state: 'IMPLEMENTATION_MISSING', module_path: path.relative(root, modulePath),
+      module_exists: false, implementation_state: readiness.implementation_state,
       status_action_supported: false, control_room_view_supported: false,
       reason: 'No general registered-agent implementation module exists at the canonical convention path.',
     };
@@ -382,6 +394,7 @@ function inspectImplementation(root, agent, options = {}) {
     const runSupported = typeof implementation.run === 'function';
     return {
       state: statusSupported && viewSupported && runSupported ? 'AVAILABLE' : 'STATUS_UNSUPPORTED',
+      module_exists: true, implementation_state: readiness.implementation_state,
       module_path: path.relative(root, modulePath), status_action_supported: statusSupported,
       control_room_view_supported: viewSupported, reason: statusSupported && viewSupported && runSupported
         ? null
@@ -668,7 +681,8 @@ async function buildAgentControlRoom(options = {}) {
       autonomous_dispatch: registration?.lifecycle?.autonomous_dispatch ?? null,
       enablement_prerequisites: Array.isArray(registration?.lifecycle?.enablement_prerequisites) ? [...registration.lifecycle.enablement_prerequisites] : [],
     };
-    const enabled = agent.lifecycle.proven === 'PROVEN' && agent.lifecycle.autonomous_dispatch === 'ENABLED';
+    const enabled = agent.lifecycle.proven === 'PROVEN' && agent.lifecycle.autonomous_dispatch === 'ENABLED'
+      && registration?.implementation_state === 'IMPLEMENTATION_PROVEN';
     agent.control_capabilities = {
       retry: Boolean(enabled && ['COMPLETED', 'ABANDONED'].includes(agent.runtime_status) && agent.invocation?.invocation_id),
       cancel: Boolean(enabled && agent.runtime_status === 'RUNNING' && options.cancelSupported === true && agent.invocation?.invocation_id),
@@ -731,7 +745,10 @@ async function buildAgentControlRoom(options = {}) {
     },
     summary: {
       counts,
-      dispatch_enabled: agents.filter((a) => a.state !== 'PLANNED_NOT_ENABLED').length,
+      lifecycle_enabled: agents.filter((a) => a.lifecycle?.proven === 'PROVEN' && a.lifecycle?.autonomous_dispatch === 'ENABLED').length,
+      dispatch_enabled: agents.filter((a) => a.lifecycle?.proven === 'PROVEN' && a.lifecycle?.autonomous_dispatch === 'ENABLED'
+        && a.implementation?.implementation_state === 'IMPLEMENTATION_PROVEN').length,
+      implementation_candidate: agents.filter((a) => a.implementation?.state === 'IMPLEMENTATION_CANDIDATE').length,
       doctrine_only: agents.filter((a) => a.state === 'PLANNED_NOT_ENABLED').length,
       decision: agents.filter((a) => a.attention === 'DECISION').length,
       review: agents.filter((a) => a.attention === 'REVIEW').length,
