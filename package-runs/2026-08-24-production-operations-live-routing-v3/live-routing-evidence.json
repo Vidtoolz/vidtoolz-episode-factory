@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "package": "production-operations-live-routing-v3",
+  "kind": "OPERATIONAL_EVIDENCE \u2014 not approval evidence",
+  "generated_head": "c083673c2d9e486e6cf39234d21f3f811511896d",
+  "promotion_commit": "b23c9bb (authored by Mikko/Codex lane \u2014 not by this agent)",
+  "test_update_commit": "c083673 (Codex)",
+  "registry_sha256_before_promotion": "33cee763519511b68f58f2d14fb66b23f05426774970e8c5d35e90442795ed2d",
+  "registry_sha256_after_promotion": "98f16f6959794f55ee2771b0bce416d1e6105a921387df3beb268ff1b8a978d6",
+  "implementation_state": "IMPLEMENTATION_PROVEN",
+  "hermes_route_authorization": {
+    "before_promotion": {
+      "authorized": false,
+      "implementation_state": "CANDIDATE"
+    },
+    "after_promotion": {
+      "authorized": true,
+      "implementation_state": "IMPLEMENTATION_PROVEN"
+    }
+  },
+  "source_escalation": {
+    "invocation_id": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX:2",
+    "blocker": "semantic retry exhausted: MODEL_FAILED: fetch failed",
+    "result_sha256": "fce144a20dfd8560d30c11bc36e85f77897a6ef4b6d522c234b4fe63eb8f283b"
+  },
+  "hermes_receipts": [
+    {
+      "receipt_id": "hermes-receipt-e71947f5-e8de-444e-94fd-81959b3f1226",
+      "action": "ROUTE",
+      "route_target": "production_operations",
+      "status": "OPEN",
+      "receipt_hash": "8dd6c694bd5f8f23502a09df63f4676edd5ae7a59e8ac346cf194f8937025e94"
+    }
+  ],
+  "receipts_ledger_location": "package-runs/visual-planning-stage1-20260823/orchestration/hermes-receipts.json",
+  "live_runner_run": {
+    "invocation_id": "production_operations:live-v3-infra-diagnose:1",
+    "module_sha256": "afd8ae21ecbe79cded42072addcdc91b014d766abf1b4c29e22565c11a0a0314",
+    "task_sha256": "8ad34fadda0f0d9ad3baee7b23c66f558b919fcaa7a22c726a722ccf64983139",
+    "result_sha256": "db57963c87edbee27b3ca9a0099b96302d76168f539cb241a16413f3d68e7df7",
+    "semantic_state": "REMEDIATION_RECOMMENDED",
+    "diagnosis": {
+      "kind": "NETWORK_ENDPOINT_UNAVAILABLE",
+      "in_mandate": true,
+      "source_reason": "semantic retry exhausted: MODEL_FAILED: fetch failed"
+    },
+    "recommendation": {
+      "recommendation": "VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+      "steps": [
+        "probe the endpoint named in the blocker reason",
+        "if reachable, request specialist rerun through the operator control plane",
+        "if unreachable, surface host/network state to Hermes"
+      ],
+      "resume_condition": "BLOCKER_RESOLVED",
+      "executes_retry": false,
+      "executes_cancel": false,
+      "approval_requested": false
+    },
+    "handoff": {
+      "next_owner": "hermes",
+      "next_action": "ESCALATE_WITH_EVIDENCE",
+      "attention": "REVIEW",
+      "human_gate": true,
+      "blocker": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+      "next_owner_implementation": "NOT_REGISTERED",
+      "auto_executed": false
+    }
+  },
+  "storage_decision_case": {
+    "invocation_id": "production_operations:live-v3-storage-decision:1",
+    "semantic_state": "AWAITING_HUMAN_DECISION",
+    "handoff": {
+      "next_owner": "mikko",
+      "next_action": "HUMAN_REVIEW_OR_APPROVAL",
+      "attention": "DECISION",
+      "human_gate": true,
+      "blocker": "STORAGE_EXHAUSTED: HUMAN_DECISION_ON_STORAGE_RECOVERY",
+      "next_owner_implementation": "NOT_REGISTERED",
+      "auto_executed": false
+    },
+    "assertion": "post-promotion DECISION still routes next_owner=mikko; no autonomous remediation"
+  },
+  "automatic_chain_count": 0,
+  "operator_retry": {
+    "exercised": false,
+    "reason": "actual RETRY execution belongs to Mikko/operator control plane; read-only eligibility preview only",
+    "preview": {
+      "eligible": true,
+      "target_invocation": "story_editor:story-review-canary-20260824-h1:1",
+      "read_only": true
+    },
+    "agent_ledger_impersonation": false
+  },
+  "resource_evidence": {
+    "vidnux_ollama_http": 200,
+    "vidnux_ollama_models": 9,
+    "presto_ollama_http": "unreachable from vidnux at probe time",
+    "note": "real endpoint finding consistent with NETWORK_ENDPOINT_UNAVAILABLE class"
+  },
+  "authority_negatives": {
+    "prohibited_actions_unchanged": true,
+    "no_operator_ledger_import": true,
+    "no_agent_controls_import": true,
+    "no_shell": true,
+    "storage_decision_not_autonomous": true
+  },
+  "resume_semantics": {
+    "condition": "BLOCKER_RESOLVED",
+    "met": false,
+    "reason": "PRESTO endpoint still unreachable at evidence time; rerun eligibility returns once blocker resolves; rerun execution remains a separate explicit orchestration action"
+  },
+  "open_finding": {
+    "id": "AC22_STALE_AFTER_PROMOTION",
+    "detail": "tests/agent-contract.test.js AC22 still asserts pre-promotion summary counts (implementation_dispatchable length 7, candidates include production_operations); validator now reports 8 dispatchable and candidates [camera_director, qc_director]. Codex c083673 updated 4 test files but missed this one.",
+    "recommendation": "Codex updates AC22 counts; no authority semantics change."
+  },
+  "verdict": "PRODUCTION OPERATIONS LIVE ROUTING PROVEN"
+}

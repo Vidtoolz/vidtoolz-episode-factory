@@ -1,0 +1,11 @@
+{
+  "task_id": "live-v3-storage-decision",
+  "project_id": "01M0QR9DGP5RRFTPVDA7WQP2XM",
+  "package_run_id": "2026-08-24-production-operations-live-routing-v3",
+  "requested_by": "hermes",
+  "assignment": { "action": "recommend_remediation" },
+  "blocker_evidence": {
+    "reason": "disk full on media volume; generation output cannot be written",
+    "source_invocation_id": "production_operations:live-fixture:1"
+  }
+}

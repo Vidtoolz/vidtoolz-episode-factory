@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "runner_version": "agent-runner-v1",
+  "invocations": [
+    {
+      "invocation_id": "production_operations:live-v3-infra-diagnose:1",
+      "agent_id": "production_operations",
+      "task_id": "live-v3-infra-diagnose",
+      "attempt_number": 1,
+      "state": "REMEDIATION_RECOMMENDED",
+      "attention": "REVIEW",
+      "next_owner": "hermes",
+      "task_directory": "production_operations/live-v3-infra-diagnose",
+      "completed_at": "2026-08-24T07:56:38.096Z"
+    },
+    {
+      "invocation_id": "production_operations:live-v3-storage-decision:1",
+      "agent_id": "production_operations",
+      "task_id": "live-v3-storage-decision",
+      "attempt_number": 1,
+      "state": "AWAITING_HUMAN_DECISION",
+      "attention": "DECISION",
+      "next_owner": "mikko",
+      "task_directory": "production_operations/live-v3-storage-decision",
+      "completed_at": "2026-08-24T07:56:49.793Z"
+    }
+  ]
+}
