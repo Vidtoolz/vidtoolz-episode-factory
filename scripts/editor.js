@@ -91,7 +91,7 @@ function verifyHumanCaptureSource(source, context, options) {
       || options.verifyHumanIdentity(context.approval_binding.approved_by) !== true) return false;
   let bytes;
   try { bytes = fs.readFileSync(source.media.path_or_artifact_ref); } catch { return false; }
-  if (contractValidator.verifyApprovalBinding(context.approval_binding, bytes, 'CANDIDATE_SELECTION').verdict !== 'VALID') return false;
+  if (contractValidator.verifyApprovalBindingForScope(context.approval_binding, bytes, 'CANDIDATE_SELECTION').verdict !== 'VALID') return false;
   if (source.selection_authority.authority_digest_sha256 !== editPlan.sha256(editPlan.canonicalize(context.approval_binding))) return false;
   if (context.kind === 'SUPERVISED_CAPTURE') {
     const verified = supervisedCapture.verifyCaptureFile(source.media.path_or_artifact_ref, { metadataFile: context.metadata_file });

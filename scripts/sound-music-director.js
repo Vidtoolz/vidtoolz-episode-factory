@@ -214,7 +214,7 @@ function approvalBindingStatus(meta, recordDir) {
     scope: 'FINAL_MUSIC_APPROVAL',
   };
   const currentBytes = fs.existsSync(wavPath) ? fs.readFileSync(wavPath) : null;
-  const r = contractValidator.verifyApprovalBinding(binding, currentBytes, 'FINAL_MUSIC_APPROVAL');
+  const r = contractValidator.verifyApprovalBindingForScope(binding, currentBytes, 'FINAL_MUSIC_APPROVAL');
   return { state: r.verdict, detail: r.reason || 'binding verified against exact artifact bytes', verifier: 'agent-contract verifyApprovalBinding' };
 }
 

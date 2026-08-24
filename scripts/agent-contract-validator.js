@@ -101,6 +101,13 @@ function verifyApprovalBinding(binding, currentArtifactBytes, expectedScope = nu
   return { verdict: "VALID" };
 }
 
+// Gate authorization is intentionally separate from generic forensic structure
+// validation. A gate consumer must name the exact scope it is consuming.
+function verifyApprovalBindingForScope(binding, currentArtifactBytes, expectedScope) {
+  if (!expectedScope) return { verdict: 'INVALID', reason: 'gate authorization requires expectedScope' };
+  return verifyApprovalBinding(binding, currentArtifactBytes, expectedScope);
+}
+
 // ---------------------------------------------------------------------------
 // Contract validation — returns { ok, errors: [], warnings: [] }.
 // ---------------------------------------------------------------------------
@@ -405,7 +412,7 @@ function main(argv) {
 
 module.exports = {
   DISAGREEMENT_STATES, ATTENTION_LEVELS, APPROVAL_SCOPES, PROVEN_VALUES, DISPATCH_VALUES, DEFAULT_STATUS_MAP,
-  lifecycleOf, isEnabled, sha256, verifyApprovalBinding, validateContract, main,
+  lifecycleOf, isEnabled, sha256, verifyApprovalBinding, verifyApprovalBindingForScope, validateContract, main,
 };
 
 if (require.main === module) {

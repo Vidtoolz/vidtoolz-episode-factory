@@ -39,13 +39,13 @@ function main() {
     errors.push(`approved commit ${rec.approved_commit} not retrievable`);
   }
   if (bytes) {
-    const v = validator.verifyApprovalBinding(b, bytes, 'SOUND_MUSIC_DIRECTOR_PRODUCTION_BASELINE');
+    const v = validator.verifyApprovalBindingForScope(b, bytes, 'SOUND_MUSIC_DIRECTOR_PRODUCTION_BASELINE');
     if (v.verdict !== 'VALID') errors.push(`approval binding not VALID: ${v.verdict} — ${v.reason || ''}`);
   }
   // Approved commit must remain an ancestor of the recorded commit itself (immutability is inherent).
   const out = { record: path.relative(process.cwd(), recordPath), decision: rec.decision,
     approved_commit: rec.approved_commit, scope: rec.scope,
-    binding: bytes ? validator.verifyApprovalBinding(b, bytes, 'SOUND_MUSIC_DIRECTOR_PRODUCTION_BASELINE') : null };
+    binding: bytes ? validator.verifyApprovalBindingForScope(b, bytes, 'SOUND_MUSIC_DIRECTOR_PRODUCTION_BASELINE') : null };
   if (errors.length) {
     console.error(JSON.stringify({ ...out, verdict: 'INVALID', errors }, null, 2));
     process.exit(1);

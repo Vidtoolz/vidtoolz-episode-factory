@@ -93,6 +93,14 @@ test('AC5b: approval scope substitutions fail closed across human gates', () => 
   assert.equal(validator.verifyApprovalBinding({ ...binding, scope: 'invented-scope' }, artifact).verdict, 'INVALID');
 });
 
+test('AC5c: gate authorization cannot omit expected scope', () => {
+  const artifact = Buffer.from('gate-bound-artifact');
+  const binding = { artifact_path: 'artifact.bin', artifact_sha256: validator.sha256(artifact), commit: 'abc123', approved_by: 'Mikko', approved_at: '2026-08-24T12:00:00+03:00', scope: 'FINAL_CUT_APPROVAL' };
+  assert.equal(validator.verifyApprovalBindingForScope(binding, artifact).verdict, 'INVALID');
+  assert.equal(validator.verifyApprovalBindingForScope(binding, artifact, 'FINAL_CUT_APPROVAL').verdict, 'VALID');
+  assert.equal(validator.verifyApprovalBinding(binding, artifact).verdict, 'VALID'); // forensic structure/byte validation only
+});
+
 test('AC6: unresolved disagreement reaches escalation — states are first-class', () => {
   assert.deepEqual(contract.disagreement_model.states,
     ['NONE', 'RESOLVED_BY_CONTRACT', 'NEEDS_SPECIALIST_REVIEW', 'NEEDS_HUMAN_DECISION', 'BLOCKED']);

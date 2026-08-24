@@ -4,7 +4,7 @@
 // semantic planning, generation routing, Camera mechanics, or asset approval.
 
 const crypto = require('node:crypto');
-const { verifyApprovalBinding } = require('./agent-contract-validator.js');
+const { verifyApprovalBindingForScope } = require('./agent-contract-validator.js');
 const researchValidator = require('./research-result-validator.js');
 
 const SCHEMA_VERSION = 1;
@@ -450,7 +450,7 @@ function verifyPlanApprovalBinding(plan, approval) {
   if (Number.isNaN(Date.parse(approval.approved_at || ''))) reasons.push('PLAN_APPROVAL_TIMESTAMP_INVALID');
   if (approval.scope !== 'VISUAL_PLAN_APPROVAL') reasons.push('PLAN_APPROVAL_SCOPE_INVALID');
   if (approval.binding?.approved_by !== approval.approved_by || approval.binding?.approved_at !== approval.approved_at || approval.binding?.scope !== approval.scope) reasons.push('PLAN_APPROVAL_BINDING_SCOPE_MISMATCH');
-  const binding = verifyApprovalBinding(approval.binding, planApprovalBytes(plan), 'VISUAL_PLAN_APPROVAL');
+  const binding = verifyApprovalBindingForScope(approval.binding, planApprovalBytes(plan), 'VISUAL_PLAN_APPROVAL');
   if (binding.verdict !== 'VALID') reasons.push(binding.reason || 'PLAN_APPROVAL_BINDING_INVALID');
   reasons.push(...issues.map((item) => item.code));
   const stale = reasons.some((code) => /STALE|HASH_CHANGED|COMMIT_CHANGED/.test(code));
