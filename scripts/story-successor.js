@@ -90,7 +90,7 @@ function potentialUnsupportedAssertions(previous, next, retainedBindings = []) {
     const units = assertions.containingUnits(nextSections.get(String(binding.section_id)), binding.assertion_text);
     if (units.length === 1) boundUnits.add(`${binding.section_id}|${units[0]}`);
   }
-  const factualSignal = /(?:\b\d+(?:[.,]\d+)?\s*%|[$€£]\s*\d|\b(?:benchmark|study|research|report|data|evidence)\s+(?:shows?|finds?|found|says?)\b|\b(?:faster|slower|cheaper|costlier|higher|lower|outperforms?|increases?|decreases?|reduces?|improves?|prevents?|requires?|supports?)\b)/iu;
+  const factualSignal = /(?:\b\d+(?:[.,]\d+)?(?:\s*%|\b)|[$€£]\s*\d|\b(?:benchmark|study|research|report|data|evidence)\s+(?:shows?|finds?|found|says?)\b|\b(?:faster|slower|cheaper|costlier|higher|lower|outperforms?|increases?|decreases?|reduces?|improves?|prevents?|requires?|supports?|launched|released|founded)\b)/iu;
   const unsupported = [];
   for (const section of next.sections || []) {
     const prior = before.get(String(section.id)) || new Set();

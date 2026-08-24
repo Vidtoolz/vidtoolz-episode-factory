@@ -115,6 +115,7 @@ test('Story successor surfaces a newly introduced bounded factual assertion with
   const next = { sections: [{ id: 'hook', dialogue: 'This is a personal workflow note. A benchmark shows rendering is 40% faster.' }], research: { bindings: [] } };
   const unsupported = storySuccessor.potentialUnsupportedAssertions(previous, next, []);
   assert.deepEqual(unsupported, [{ section_id: 'hook', assertion_text: 'A benchmark shows rendering is 40% faster.', classification: 'POTENTIAL_FACTUAL_ASSERTION' }]);
+  assert.equal(storySuccessor.potentialUnsupportedAssertions(previous, { sections: [{ id: 'hook', dialogue: 'This is a personal workflow note. OpenAI was founded in 2015.' }] }, []).length, 1);
 });
 
 test('Story Research authority follows an exact normalized assertion unit, never a substring', () => {
