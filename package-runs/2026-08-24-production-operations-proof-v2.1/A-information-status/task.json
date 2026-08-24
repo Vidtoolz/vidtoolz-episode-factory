@@ -1,0 +1,8 @@
+{
+  "task_id": "v2-A-status",
+  "package_run_id": "po-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "status"
+  }
+}

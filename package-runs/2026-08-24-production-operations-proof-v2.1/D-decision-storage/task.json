@@ -1,0 +1,12 @@
+{
+  "task_id": "v2-D-storage",
+  "package_run_id": "po-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "recommend_remediation"
+  },
+  "blocker_evidence": {
+    "reason": "disk full on media volume; generation output cannot be written",
+    "source_invocation_id": "production_operations:fixture:1"
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "proof": "PRODUCTION_PATH_PROOF_V2.1",
+  "generated_at": "2026-08-24T07:31:39.698Z",
+  "implementation_commit": "16ccedaf3787121e87e7fe322058d2ed7b1a6874",
+  "runner_commit": null,
+  "promotion_criteria_version": "v1 (docs/implementation-promotion-criteria.md)",
+  "predecessor_proof": {
+    "package": "package-runs/2026-08-24-production-operations-proof-v2",
+    "verdict": "PRODUCTION_PATH_PROOF_PASS"
+  },
+  "live_registry": {
+    "sha256_before": "33cee763519511b68f58f2d14fb66b23f05426774970e8c5d35e90442795ed2d",
+    "sha256_after": "33cee763519511b68f58f2d14fb66b23f05426774970e8c5d35e90442795ed2d",
+    "unchanged": true,
+    "implementation_state": "CANDIDATE",
+    "lifecycle": {
+      "doctrine": "DEFINED",
+      "proven": "PROVEN",
+      "autonomous_dispatch": "ENABLED"
+    }
+  },
+  "isolated_fixture": {
+    "registry_flipped_from": "CANDIDATE",
+    "to": "IMPLEMENTATION_PROVEN",
+    "root": "temporary (os.tmpdir)"
+  },
+  "dispatch_chain_proven": [
+    "canonical resolve",
+    "implementation readiness (fixture PROVEN)",
+    "module load + identity",
+    "action validation",
+    "child-process invocation",
+    "canonical envelope validation",
+    "result writing",
+    "invocation completion"
+  ],
+  "cases": {
+    "A-information-status": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "COMPLETE",
+      "semantic_reason": "systems registry readable; no operational anomaly asserted",
+      "attention": "INFORMATION",
+      "next_owner": null,
+      "envelope_valid": true,
+      "task_sha256": "d9029f6484820bebc085fe6a2fc4a0d2a6b7fa4317fab818cd0f87835a68a288",
+      "result_sha256": "cf7449e3974d1bc2e4e8c23d8ba7029e6d8dbab9cba3a45c70ce7bf6f91969f0"
+    },
+    "B-review-model-endpoint": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "REMEDIATION_RECOMMENDED",
+      "semantic_reason": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+      "attention": "REVIEW",
+      "next_owner": "hermes",
+      "envelope_valid": true,
+      "task_sha256": "92b4a6433f9190b8a53da9857a608da836e41f69a3a8e82170b5219ce5526ac0",
+      "result_sha256": "14f12f19ff6fea2af440a012a492ef896c8d75435290cc9d5aa894ec2509847f"
+    },
+    "C-review-resource-lane": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "REMEDIATION_RECOMMENDED",
+      "semantic_reason": "RESOURCE_LANE_UNAVAILABLE: OBSERVE_RESOURCE_READINESS_THEN_RERUN",
+      "attention": "REVIEW",
+      "next_owner": "hermes",
+      "envelope_valid": true,
+      "task_sha256": "0a9d6bdc51a63db988a32b65684ca7d5c23f6f3b74ab52a982c15b9a2224ef59",
+      "result_sha256": "a01a8f063f26672e5361fabe978d5047374a39140d1517178bd0e79dc454b333"
+    },
+    "D-decision-storage": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "AWAITING_HUMAN_DECISION",
+      "semantic_reason": "STORAGE_EXHAUSTED: HUMAN_DECISION_ON_STORAGE_RECOVERY",
+      "attention": "DECISION",
+      "next_owner": "mikko",
+      "envelope_valid": true,
+      "task_sha256": "efe0d875b94bbda673ff2cf3d27dcf74d96bea0f44cfaa20fd624d57948ef859",
+      "result_sha256": "087b38da7fa126701c7f4db245f8b525af2f01e4ed019f7ebfb2b7658d6935a2"
+    },
+    "E-creative-out-of-mandate": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "REFUSED_OUT_OF_MANDATE",
+      "semantic_reason": "blocker classified OUT_OF_MANDATE_CREATIVE: production operations does not own creative problems",
+      "attention": "REVIEW",
+      "next_owner": "hermes",
+      "envelope_valid": true,
+      "task_sha256": "cc4302b5802f9b2caf79893cc91e5ab948c5ef3e92ed04779709e803be6649c9",
+      "result_sha256": "b8a11b846985c81cdbf82edf1bf81273f97ab9cf164d8253a02219a2c0e2931e"
+    },
+    "F-review-abandoned-invocation": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "REMEDIATION_RECOMMENDED",
+      "semantic_reason": "INVOCATION_ABANDONED: OPERATOR_RETRY_REQUIRED",
+      "attention": "REVIEW",
+      "next_owner": "hermes",
+      "envelope_valid": true,
+      "task_sha256": "855b02d04d6f82f4d6ca9150ad7260c86bb7dcf7d395e3436de5ef281a547e07",
+      "result_sha256": "478b01e25c7d1118aae4e782d4cf0fab804e9314c2a7d0e8d62490ef26c254fe"
+    },
+    "G-model-lane-vs-resource-lane": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "REMEDIATION_RECOMMENDED",
+      "semantic_reason": "MODEL_LANE_UNAVAILABLE: RESTORE_MODEL_LANE_OR_ESCALATE_HOST_DECISION",
+      "attention": "REVIEW",
+      "next_owner": "hermes",
+      "envelope_valid": true,
+      "task_sha256": "d0f3f6befc060f26a2fdcbc6a3148816cc38de3989513c82a4f211b7bf139355",
+      "result_sha256": "19355a9510ce7fc473e728de672f1dfdb51af6745ab9013f51d0da439ac41912"
+    }
+  },
+  "verdict": "PRODUCTION_PATH_PROOF_PASS \u2014 live registry remained CANDIDATE; promotion stays a human decision",
+  "source_system_registry": {
+    "sha256": "fbd60b725c8ba19799adbc8bdcbda2f2aebbb3b83897119ab23893a8d153bef8",
+    "isolated_copy_byte_identical": true,
+    "case_a_reason": "systems registry readable; no operational anomaly asserted",
+    "degraded_fallback_absent": true
+  },
+  "implementation_module_commit": "f87c26c (V1 candidate) + d60c2ae (envelope/handoff repair) + this commit (nominal status fidelity)",
+  "runner_dispatch_commit": "16ccedaf3787121e87e7fe322058d2ed7b1a6874"
+}

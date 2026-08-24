@@ -32,13 +32,15 @@ const AGENT_ID = 'production_operations';
 function buildIsolatedRoot(options = {}) {
   // Copy scripts/ and a fixture registry into an isolated root. Only the
   // fixture registry is modified (implementation_state flip); no source code
-  // changes, no authority changes.
+  // changes, no authority changes. config/system-registry.json is copied as
+  // exact source bytes so the nominal status path loads the real canonical
+  // system registry instead of degrading to the unreadable fallback.
   const root = options.root || fs.mkdtempSync(path.join(os.tmpdir(), 'po-prodpath-'));
   fs.mkdirSync(path.join(root, 'config'), { recursive: true });
   fs.mkdirSync(path.join(root, 'package-runs'), { recursive: true });
   const sourceRoot = path.resolve(__dirname, '..');
   copyTree(path.join(sourceRoot, 'scripts'), path.join(root, 'scripts'));
-  for (const file of ['agent-registry.json', 'agent-contract.json']) {
+  for (const file of ['agent-registry.json', 'agent-contract.json', 'system-registry.json']) {
     fs.copyFileSync(path.join(sourceRoot, 'config', file), path.join(root, 'config', file));
   }
   const registryPath = path.join(root, 'config', 'agent-registry.json');
@@ -77,7 +79,7 @@ const REAL_ESCALATION = {
 function cases(runId) {
   return [
     { id: 'A-information-status', task: { task_id: 'v2-A-status', package_run_id: runId, requested_by: 'hermes', assignment: { action: 'status' } },
-      expect: { infrastructure_state: 'COMPLETE', state: 'COMPLETE', attention: 'INFORMATION' } },
+      expect: { infrastructure_state: 'COMPLETE', state: 'COMPLETE', attention: 'INFORMATION', reason_must_not_contain: 'systems registry unreadable' } },
     { id: 'B-review-model-endpoint', task: { task_id: 'v2-B-model-endpoint', package_run_id: runId, requested_by: 'hermes', assignment: { action: 'recommend_remediation' }, blocker_evidence: REAL_ESCALATION },
       expect: { infrastructure_state: 'COMPLETE', state: 'REMEDIATION_RECOMMENDED', attention: 'REVIEW', next_owner: 'hermes' } },
     { id: 'C-review-resource-lane', task: { task_id: 'v2-C-resource-lane', package_run_id: runId, requested_by: 'hermes', assignment: { action: 'diagnose_blocker' }, blocker_evidence: { reason: 'presto wan_i2v lane reports BLOCKED: compute readiness probe denied routing; no worker reported ready', source_invocation_id: 'visual_planning_director:resource-probe:1' } },
@@ -143,6 +145,7 @@ if (require.main === module) {
         runner_error: result.error,
         runner_infrastructure_state: result.output?.infrastructure_state ?? null,
         semantic_state: invocation?.semantic_state ?? result.output?.result?.state ?? null,
+        semantic_reason: result.output?.result?.reason ?? null,
         attention: invocation?.handoff_summary?.attention ?? result.output?.result?.attention ?? null,
         next_owner: invocation?.handoff_summary?.next_owner ?? result.output?.result?.handoff?.next_owner ?? null,
         envelope_valid: invocation ? invocation.envelope_error === null : false,
@@ -170,10 +173,24 @@ if (require.main === module) {
       cases: artifacts,
       verdict: null, // filled below
     };
-    const failures = proof.results.filter((r) => r.error || r.output?.infrastructure_state !== r.expect.infrastructure_state);
+    const failures = proof.results.filter((r) => r.error
+      || r.output?.infrastructure_state !== r.expect.infrastructure_state
+      || (r.expect.reason_must_not_contain && String(r.output?.result?.reason || '').includes(r.expect.reason_must_not_contain)));
+    // Nominal status fidelity: the isolated root carries the exact committed
+    // system registry; record its source hash and prove the copy byte-matches.
+    const sourceRegistryPath = path.join(sourceRoot, 'config', 'system-registry.json');
+    const sourceRegistryBytes = fs.readFileSync(sourceRegistryPath);
+    const copiedRegistryBytes = fs.readFileSync(path.join(proof.root, 'config', 'system-registry.json'));
+    summary.source_system_registry = {
+      sha256: sha256(sourceRegistryBytes.toString('utf8')),
+      isolated_copy_byte_identical: sha256(sourceRegistryBytes.toString('utf8')) === sha256(copiedRegistryBytes.toString('utf8')),
+      case_a_reason: artifacts['A-information-status']?.semantic_reason ?? null,
+      degraded_fallback_absent: !String(artifacts['A-information-status']?.semantic_reason || '').includes('systems registry unreadable'),
+    };
     summary.verdict = failures.length === 0 && summary.live_registry.implementation_state === 'CANDIDATE' && summary.live_registry.unchanged
+      && summary.source_system_registry.isolated_copy_byte_identical && summary.source_system_registry.degraded_fallback_absent
       ? 'PRODUCTION_PATH_PROOF_PASS — live registry remained CANDIDATE; promotion stays a human decision'
-      : `PRODUCTION_PATH_PROOF_FAIL — ${failures.map((f) => f.id).join(', ')}`;
+      : `PRODUCTION_PATH_PROOF_FAIL — ${failures.map((f) => f.id).join(', ') || 'registry fidelity check failed'}`;
     fs.writeFileSync(path.join(emitDir, 'production-path-summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
     process.stdout.write(`${JSON.stringify({ verdict: summary.verdict, cases: Object.keys(artifacts).length, live_registry_unchanged: summary.live_registry.unchanged }, null, 2)}\n`);
     process.exitCode = summary.verdict.startsWith('PRODUCTION_PATH_PROOF_PASS') ? 0 : 1;

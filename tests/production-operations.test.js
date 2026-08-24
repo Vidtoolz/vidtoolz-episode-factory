@@ -30,10 +30,17 @@ function baseTask(overrides = {}) {
 test('PO1: module import is side-effect-free and does not execute', () => {
   assert.equal(po.AGENT_ID, 'production_operations');
   assert.ok(Array.isArray(po.ACTIONS));
-  // Import must not have written any evidence anywhere.
-  const before = fs.readdirSync(os.tmpdir()).length;
-  require('../scripts/production-operations.js');
-  assert.equal(fs.readdirSync(os.tmpdir()).length, before);
+  // Isolated probe: importing under a fresh watched directory must write
+  // nothing there, regardless of test order or shared module cache.
+  const watched = fs.mkdtempSync(path.join(os.tmpdir(), 'po-import-probe-'));
+  try {
+    delete require.cache[require.resolve('../scripts/production-operations.js')];
+    const cwd = process.cwd();
+    process.chdir(watched);
+    try { require('../scripts/production-operations.js'); }
+    finally { process.chdir(cwd); }
+    assert.deepEqual(fs.readdirSync(watched), [], 'import must not write into the watched directory');
+  } finally { fs.rmSync(watched, { recursive: true, force: true }); }
 });
 
 test('PO2: direct execution refuses while implementation_state is CANDIDATE', () => {

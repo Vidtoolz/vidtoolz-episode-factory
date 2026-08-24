@@ -160,6 +160,26 @@ test('PV14: production-path canary dispatches through the canonical runner on an
   assert.equal(live.agents.find((a) => a.agent_id === po.AGENT_ID).implementation_state, 'CANDIDATE');
 });
 
+test('PV16: nominal status path loads the exact committed system registry (no degraded fallback)', async () => {
+  const crypto = require('node:crypto');
+  const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex');
+  const proof = await proofV2.runProductionPath({ sourceRoot: ROOT, runId: 'po-test-nominal' });
+  try {
+    const sourceBytes = fs.readFileSync(path.join(ROOT, 'config', 'system-registry.json'));
+    const copiedBytes = fs.readFileSync(path.join(proof.root, 'config', 'system-registry.json'));
+    assert.equal(sha256(copiedBytes), sha256(sourceBytes), 'isolated system registry must be byte-identical');
+    const statusCase = proof.results.find((r) => r.id === 'A-information-status');
+    assert.equal(statusCase.error, null);
+    assert.equal(statusCase.output.result.state, 'COMPLETE');
+    assert.equal(statusCase.output.result.attention, 'INFORMATION');
+    assert.ok(!String(statusCase.output.result.reason || '').includes('systems registry unreadable'), 'degraded fallback must be absent');
+    assert.match(String(statusCase.output.result.reason || ''), /systems registry readable/);
+    // Envelope with control_room projection (canonical CLI shape) validates.
+    const envelope = { ...statusCase.output.result, control_room: po.controlRoomView(statusCase.output.result) };
+    assert.equal(runner.validateEnvelope(envelope, po.AGENT_ID, 'v2-A-status'), null);
+  } finally { fs.rmSync(proof.root, { recursive: true, force: true }); }
+});
+
 test('PV15: live canonical dispatch stays refused while CANDIDATE (runner + direct CLI)', async () => {
   try {
     runner.resolveAgent(ROOT, 'production_operations');

@@ -1,0 +1,12 @@
+{
+  "task_id": "v2-E-creative",
+  "package_run_id": "po-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "recommend_remediation"
+  },
+  "blocker_evidence": {
+    "reason": "narrative_spine missing in the script structure",
+    "source_invocation_id": "adversarial:fixture:1"
+  }
+}

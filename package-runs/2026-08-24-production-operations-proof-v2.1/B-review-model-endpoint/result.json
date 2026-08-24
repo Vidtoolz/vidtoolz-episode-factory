@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "agent_id": "production_operations",
+  "role_id": "production_operations",
+  "task_id": "v2-B-model-endpoint",
+  "package_run_id": "po-production-path-canary",
+  "requested_by": "hermes",
+  "state": "REMEDIATION_RECOMMENDED",
+  "attention": "REVIEW",
+  "reason": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+  "diagnosis": {
+    "kind": "NETWORK_ENDPOINT_UNAVAILABLE",
+    "in_mandate": true,
+    "source_reason": "semantic retry exhausted: MODEL_FAILED: fetch failed"
+  },
+  "recommendation": {
+    "recommendation": "VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+    "steps": [
+      "probe the endpoint named in the blocker reason",
+      "if reachable, request specialist rerun through the operator control plane",
+      "if unreachable, surface host/network state to Hermes"
+    ],
+    "resume_condition": "BLOCKER_RESOLVED",
+    "executes_retry": false,
+    "executes_cancel": false,
+    "approval_requested": false
+  },
+  "route_preparation": null,
+  "disagreement_state": "NONE",
+  "handoff": {
+    "next_owner": "hermes",
+    "next_action": "ESCALATE_WITH_EVIDENCE"
+  },
+  "provenance": {
+    "acting_agent": "production_operations",
+    "lane": "local_readonly",
+    "recorded_at": "2026-08-24T07:31:39.547Z",
+    "implementation_state": "IMPLEMENTATION_PROVEN"
+  },
+  "events": [
+    {
+      "at": "2026-08-24T07:31:39.546Z",
+      "actor": "production_operations",
+      "state": "ASSIGNMENT_RECEIVED",
+      "detail": "recommend_remediation from hermes"
+    },
+    {
+      "at": "2026-08-24T07:31:39.547Z",
+      "actor": "production_operations",
+      "state": "REMEDIATION_RECOMMENDED",
+      "detail": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST"
+    }
+  ],
+  "operational_rationale": {
+    "source": "AGENT",
+    "decision": "REVIEW",
+    "reason": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+    "evidence_refs": [
+      {
+        "ref": "source_invocation",
+        "summary": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX:2"
+      }
+    ],
+    "confidence": null,
+    "escalation_reason": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST"
+  },
+  "control_room": {
+    "role": "Production Operations Director",
+    "state": "REMEDIATION_RECOMMENDED",
+    "current_task": "v2-B-model-endpoint",
+    "owner": "production_operations",
+    "next_owner": "hermes",
+    "attention_level": "REVIEW",
+    "blocker": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+    "unresolved_disagreement": "NONE",
+    "diagnosis": {
+      "kind": "NETWORK_ENDPOINT_UNAVAILABLE",
+      "in_mandate": true,
+      "source_reason": "semantic retry exhausted: MODEL_FAILED: fetch failed"
+    },
+    "recommendation": {
+      "recommendation": "VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+      "steps": [
+        "probe the endpoint named in the blocker reason",
+        "if reachable, request specialist rerun through the operator control plane",
+        "if unreachable, surface host/network state to Hermes"
+      ],
+      "resume_condition": "BLOCKER_RESOLVED",
+      "executes_retry": false,
+      "executes_cancel": false,
+      "approval_requested": false
+    },
+    "route_preparation": null,
+    "operational_rationale": {
+      "decision": "REMEDIATION_RECOMMENDED",
+      "reason": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+      "evidence_refs": [
+        {
+          "ref": "task",
+          "summary": "v2-B-model-endpoint"
+        }
+      ],
+      "confidence": null,
+      "escalation_reason": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST"
+    },
+    "latest_event": {
+      "at": "2026-08-24T07:31:39.547Z",
+      "actor": "production_operations",
+      "state": "REMEDIATION_RECOMMENDED",
+      "detail": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "task_id": "v2-C-resource-lane",
+  "package_run_id": "po-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "diagnose_blocker"
+  },
+  "blocker_evidence": {
+    "reason": "presto wan_i2v lane reports BLOCKED: compute readiness probe denied routing; no worker reported ready",
+    "source_invocation_id": "visual_planning_director:resource-probe:1"
+  }
+}

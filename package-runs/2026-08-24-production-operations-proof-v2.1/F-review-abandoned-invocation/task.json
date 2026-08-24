@@ -1,0 +1,12 @@
+{
+  "task_id": "v2-F-abandoned",
+  "package_run_id": "po-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "recommend_remediation"
+  },
+  "blocker_evidence": {
+    "reason": "runner lock pid no longer alive; abandoned invocation left incomplete task evidence",
+    "source_invocation_id": "story_editor:abandoned-fixture:1"
+  }
+}

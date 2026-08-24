@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "package": "production-operations-production-path-proof-v2.1",
+  "predecessors": [
+    "2026-08-24-production-operations-proof (V1)",
+    "2026-08-24-production-operations-proof-v2 (V2) \u2014 both preserved"
+  ],
+  "bound_commit": "16ccedaf3787121e87e7fe322058d2ed7b1a6874",
+  "system_registry_sha256": "fbd60b725c8ba19799adbc8bdcbda2f2aebbb3b83897119ab23893a8d153bef8",
+  "registry_snapshot": {
+    "implementation_state": "CANDIDATE",
+    "lifecycle": {
+      "doctrine": "DEFINED",
+      "proven": "PROVEN",
+      "autonomous_dispatch": "ENABLED"
+    }
+  },
+  "live_registry_canditate_throughout": true,
+  "nominal_status_fidelity": {
+    "sha256": "fbd60b725c8ba19799adbc8bdcbda2f2aebbb3b83897119ab23893a8d153bef8",
+    "isolated_copy_byte_identical": true,
+    "case_a_reason": "systems registry readable; no operational anomaly asserted",
+    "degraded_fallback_absent": true
+  },
+  "promotion_criteria_version": "v1 (docs/implementation-promotion-criteria.md)",
+  "criteria_matrix": [
+    {
+      "id": 1,
+      "criterion": "module import side-effect-free",
+      "evidence": "PO1 test (pristine tmpdir write probe)",
+      "status": "PASS"
+    },
+    {
+      "id": 2,
+      "criterion": "canonical envelope valid incl. control_room",
+      "evidence": "PV1-PV4 via runner.validateEnvelope; every V2.1 case envelope_valid:true",
+      "status": "PASS"
+    },
+    {
+      "id": 3,
+      "criterion": "CANDIDATE refusal on all production paths",
+      "evidence": "PV15 runner+CLI refusal; V2 refusal trio in V1 package; retry preview refusal",
+      "status": "PASS"
+    },
+    {
+      "id": 4,
+      "criterion": "production-path canary via isolated PROVEN fixture",
+      "evidence": "V2.1 7/7 cases through canonical runner; live registry byte-identical",
+      "status": "PASS"
+    },
+    {
+      "id": 5,
+      "criterion": "authority-negative adversarial tests",
+      "evidence": "PV5-PV9 + PO5-PO10 mutation probes",
+      "status": "PASS"
+    },
+    {
+      "id": 6,
+      "criterion": "real/reachable task cases incl. nominal status",
+      "evidence": "V2.1 Case A nominal (degraded fallback proven absent, system registry hash fbd60b72... byte-identical copy)",
+      "status": "PASS"
+    },
+    {
+      "id": 7,
+      "criterion": "deterministic evidence package",
+      "evidence": "this package: per-case task/result/invocation + sha256s + manifest",
+      "status": "PASS"
+    },
+    {
+      "id": 8,
+      "criterion": "canonical test registration + verify.sh",
+      "evidence": "tests/run-tests.js (PO/PV suites) + node --check entries; verify green except pre-existing unrelated Earth Studio coherence failure",
+      "status": "PASS"
+    },
+    {
+      "id": 9,
+      "criterion": "no unresolved HIGH/MEDIUM implementation defects",
+      "evidence": "Claude V2 findings closed; nominal-status fidelity defect closed by V2.1; no open defects",
+      "status": "PASS"
+    },
+    {
+      "id": 10,
+      "criterion": "human promotion decision required and external",
+      "evidence": "no approval record anywhere in package; implementation_state CANDIDATE preserved (registry sha256 unchanged across runs)",
+      "status": "PASS"
+    }
+  ],
+  "verdict": "PRODUCTION_PATH_PROOF_PASS (V2.1)",
+  "technical_recommendation": "all ten promotion criteria PASS; READY FOR MIKKO PROMOTION DECISION",
+  "authorized_promotion_change": "production_operations.implementation_state: CANDIDATE -> IMPLEMENTATION_PROVEN (single field, nothing else)",
+  "promotion": "NOT_PERFORMED \u2014 Mikko decides",
+  "artifacts": {
+    "production-path-summary.json": "86fbefed5d27f3be2181849841af0ba246c67995ddff011a57d996e952c441f3",
+    "D-decision-storage/invocation.json": "7cbe539c62d4f131b539ac3cad5a5e15da8a87a7678d8b247c5aa259866a193e",
+    "D-decision-storage/result.json": "087b38da7fa126701c7f4db245f8b525af2f01e4ed019f7ebfb2b7658d6935a2",
+    "D-decision-storage/task.json": "efe0d875b94bbda673ff2cf3d27dcf74d96bea0f44cfaa20fd624d57948ef859",
+    "C-review-resource-lane/invocation.json": "74df7dc6c629b5c357a28f8decac6a95b0f0dfe9247060c74062e4493c50af8d",
+    "C-review-resource-lane/result.json": "a01a8f063f26672e5361fabe978d5047374a39140d1517178bd0e79dc454b333",
+    "C-review-resource-lane/task.json": "0a9d6bdc51a63db988a32b65684ca7d5c23f6f3b74ab52a982c15b9a2224ef59",
+    "G-model-lane-vs-resource-lane/invocation.json": "1fd12464ac30faa878489f63b75ee7a3892113a01f7da162d84907c32398f31d",
+    "G-model-lane-vs-resource-lane/result.json": "19355a9510ce7fc473e728de672f1dfdb51af6745ab9013f51d0da439ac41912",
+    "G-model-lane-vs-resource-lane/task.json": "d0f3f6befc060f26a2fdcbc6a3148816cc38de3989513c82a4f211b7bf139355",
+    "F-review-abandoned-invocation/invocation.json": "35f5af9087aa6b6437991b59009326e6bb1a74fa3ecf8fa7e43bbe3cd4ed0e20",
+    "F-review-abandoned-invocation/result.json": "478b01e25c7d1118aae4e782d4cf0fab804e9314c2a7d0e8d62490ef26c254fe",
+    "F-review-abandoned-invocation/task.json": "855b02d04d6f82f4d6ca9150ad7260c86bb7dcf7d395e3436de5ef281a547e07",
+    "A-information-status/invocation.json": "6958909a41b27184ec8c76e107bba2d010b315d4df65f5001eca7a37025d2656",
+    "A-information-status/result.json": "cf7449e3974d1bc2e4e8c23d8ba7029e6d8dbab9cba3a45c70ce7bf6f91969f0",
+    "A-information-status/task.json": "d9029f6484820bebc085fe6a2fc4a0d2a6b7fa4317fab818cd0f87835a68a288",
+    "B-review-model-endpoint/invocation.json": "76b6b652e2bf5ddd4486a5e40d66f519944ed0e8fa0c8f755fde93d140ed3d8e",
+    "B-review-model-endpoint/result.json": "14f12f19ff6fea2af440a012a492ef896c8d75435290cc9d5aa894ec2509847f",
+    "B-review-model-endpoint/task.json": "92b4a6433f9190b8a53da9857a608da836e41f69a3a8e82170b5219ce5526ac0",
+    "E-creative-out-of-mandate/invocation.json": "a558e7cc7ebac335ed7554efdc1abd67bfcb271c2dc85d35f51484b6d47cb8cb",
+    "E-creative-out-of-mandate/result.json": "b8a11b846985c81cdbf82edf1bf81273f97ab9cf164d8253a02219a2c0e2931e",
+    "E-creative-out-of-mandate/task.json": "cc4302b5802f9b2caf79893cc91e5ab948c5ef3e92ed04779709e803be6649c9"
+  }
+}
