@@ -304,6 +304,10 @@ async function runRegisteredAgent(options) {
   if (resolved.actions && !resolved.actions.includes(action)) {
     throw new RunnerError('RUNNER_ACTION_UNSUPPORTED', `agent does not support action: ${action}`);
   }
+  if (task.resumption_context) {
+    try { require('./successor-task-contract.js').assertRunnableSuccessor(repoRoot, agentId, task, rawTask); }
+    catch (error) { throw new RunnerError(error.code || 'SUCCESSOR_CONTRACT_INVALID', error.message); }
+  }
 
   const runAgentsDir = path.join(repoRoot, 'package-runs', runId, 'agents');
   const lock = acquireRunLock(runAgentsDir, options.now);

@@ -191,8 +191,10 @@ async function run(task, options = {}) {
   if (!check.ok) return finish(out, 'BLOCKED', check.errors.join('; '), 'hermes');
   if (task.action === 'review_coverage') {
     const validation = vp.validatePlan(task.existing_plan, { currentStory: options.currentStory || task.story });
+    out.visual_plan = task.existing_plan;
+    out.validation = validation;
     out.review_bundle = vp.buildReviewBundle(task.existing_plan, { validation, state: validation.result_state, reason_codes: validation.reason_codes });
-    return finish(out, validation.ok ? 'COMPLETE' : 'BLOCKED', validation.ok ? null : validation.errors.join('; '), validation.ok ? 'hermes' : 'visual_planning_director');
+    return finish(out, validation.ok ? 'AWAITING_HUMAN_REVIEW' : 'BLOCKED', validation.ok ? null : validation.errors.join('; '), validation.ok ? 'mikko' : 'visual_planning_director');
   }
   const capability = routeCapability(task);
   if (!capability.ok) return finish(out, capability.code === 'PRIVACY_LOCAL_ONLY' ? 'BLOCKED' : 'ESCALATED', capability.code, 'hermes');

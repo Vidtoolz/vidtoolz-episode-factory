@@ -5,6 +5,7 @@ const path = require('node:path');
 const runner = require('./agent-run.js');
 const ledger = require('./operator-action-ledger.js');
 const ownership = require('./execution-ownership.js');
+const successor = require('./successor-task-contract.js');
 
 class AgentControlError extends Error {
   constructor(code, message, statusCode = 409) { super(message); this.name = 'AgentControlError'; this.code = code; this.statusCode = statusCode; }
@@ -144,10 +145,10 @@ function previewTakeManualControl(input, options = {}) {
   const context = locateInvocation(options.root, input), normalizedReason = reason(input.reason);
   const owner = ownershipFor(context), artifact = currentArtifact(context), currentLedger = ledger.readLedger(context.root, context.runId);
   if (owner.current_owner !== 'AUTOMATION') throw new AgentControlError('OWNERSHIP_TRANSITION_INVALID', `current execution owner is ${owner.current_owner}`);
-  const active = context.live_run_lock;
+  const active = context.live_run_lock, bounded = artifact.exists && Boolean(artifact.artifact_id) && Boolean(artifact.sha256);
   return {
-    schema_version: 1, action: 'TAKE_MANUAL_CONTROL', read_only: true, eligible: !active,
-    blocked_reason: active ? 'AUTOMATION_INVOCATION_ACTIVE' : null,
+    schema_version: 1, action: 'TAKE_MANUAL_CONTROL', read_only: true, eligible: !active && bounded,
+    blocked_reason: active ? 'AUTOMATION_INVOCATION_ACTIVE' : !bounded ? 'NO_BOUNDED_ARTIFACT' : null,
     target: { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_id: context.record.task_id, artifact_id: artifact.artifact_id },
     current_owner: owner.current_owner, proposed_owner: active ? 'SUSPENDED' : 'HUMAN', ownership_revision: owner.revision,
     active_invocation: context.runtime_status === 'RUNNING', active_worker_job: context.lock?.resource_job || null,
@@ -163,30 +164,34 @@ function applyTakeManualControl(input, options = {}) {
   if (!preview.eligible) throw new AgentControlError('TAKEOVER_REQUIRES_STOP', preview.blocked_reason);
   if (input.preview_token !== preview.preview_token) throw new AgentControlError('AGENT_CONTROL_PREVIEW_STALE', 'takeover preview is missing or stale');
   const context = locateInvocation(options.root, input), owner = ownershipFor(context), artifact = currentArtifact(context);
+  const manualArtifact = successor.prepareManualArtifact(context, artifact);
   const out = ownership.transition(context.root, {
     run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id,
     action: 'TAKE_MANUAL_CONTROL', next_owner: 'HUMAN', originating_invocation_id: context.invocationId,
     reason: input.reason, task_sha256: runner.sha256(context.taskBytes), artifact_id: artifact.artifact_id, artifact_sha256: artifact.sha256,
     expected_revision: owner.revision, expected_state_hash: owner.current_state_hash,
   }, { actor: options.actor || ledger.localActorContext(), now: options.now, recordId: options.recordId });
-  return { action: 'TAKE_MANUAL_CONTROL', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'HUMAN', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash };
+  return { action: 'TAKE_MANUAL_CONTROL', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'HUMAN', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash, manual_artifact_path: manualArtifact?.path || null };
 }
 
 async function previewReturnToAutomation(input, options = {}) {
   const context = locateInvocation(options.root, input), normalizedReason = reason(input.reason);
-  const owner = ownershipFor(context), artifact = currentArtifact(context), currentLedger = ledger.readLedger(context.root, context.runId);
+  const owner = ownershipFor(context), manual = successor.readManualArtifact(context), currentLedger = ledger.readLedger(context.root, context.runId);
   if (owner.current_owner !== 'HUMAN') throw new AgentControlError('OWNERSHIP_TRANSITION_INVALID', `current execution owner is ${owner.current_owner}`);
-  const taken = owner.history.at(-1), artifactChanged = taken.input_hashes.artifact_sha256 !== artifact.sha256;
-  const validation = { valid: !artifactChanged, validator_id: artifactChanged ? null : 'UNCHANGED_BYTES', reason: artifactChanged ? 'Artifact bytes changed; no canonical specialist successor-task contract can yet bind automation to the current manual bytes.' : 'Artifact bytes are unchanged.' };
+  const taken = owner.history.at(-1), artifactChanged = taken.input_hashes.artifact_sha256 !== manual.sha256;
+  const createdAt = input.preview_created_at || options.now || new Date().toISOString();
+  const proposal = artifactChanged ? successor.buildProposal(context, owner, manual, { ...(options.successorValidation || {}), createdAt, reason: normalizedReason }) : null;
+  const validation = artifactChanged ? proposal.validation : { valid: true, validator_id: 'UNCHANGED_BYTES', reason_codes: [], reason: 'Artifact bytes are unchanged.' };
   const eligible = validation.valid === true;
   return {
     schema_version: 1, action: 'RETURN_TO_AUTOMATION', read_only: true, eligible,
-    target: { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_id: context.record.task_id, artifact_id: artifact.artifact_id },
+    target: { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_id: context.record.task_id, artifact_id: manual.metadata.artifact_id },
     current_owner: owner.current_owner, proposed_owner: eligible ? 'AUTOMATION' : 'SUSPENDED', ownership_revision: owner.revision,
-    artifact: { id: artifact.artifact_id, path: artifact.path, sha256: artifact.sha256, changed_since_takeover: artifactChanged },
-    invalidations: artifactChanged ? { prior_evidence: 'STALE', prior_scope_bindings: 'STALE_IF_BOUND_TO_CHANGED_BYTES' } : { prior_evidence: 'CURRENT', prior_scope_bindings: 'UNCHANGED' },
-    revalidation: validation, changes_approval: false,
-    preview_token: previewDigest(context, 'RETURN_TO_AUTOMATION', normalizedReason, currentLedger.head_hash, { ownership_revision: owner.revision, ownership_state_hash: owner.current_state_hash, artifact_sha256: artifact.sha256, validation: validation || null }),
+    artifact: { id: manual.metadata.artifact_id, path: manual.relative_path, sha256: manual.sha256, changed_since_takeover: artifactChanged },
+    invalidations: artifactChanged ? { prior_evidence: 'STALE', prior_scope_bindings: validation.approvals_invalidated || ['STALE_IF_BOUND_TO_CHANGED_BYTES'], gates: validation.gates_invalidated || [] } : { prior_evidence: 'CURRENT', prior_scope_bindings: 'UNCHANGED', gates: [] },
+    revalidation: validation, successor_task: proposal?.eligible ? { task_id: proposal.contract.successor_task_id, task_sha256: proposal.contract.successor_task_sha256, required_next_gate: proposal.contract.required_next_gate, required_next_specialist: proposal.contract.required_next_specialist, continuation_action: proposal.contract.continuation_action, contract_sha256: proposal.contract.contract_sha256 } : null,
+    preview_created_at: createdAt, changes_approval: false,
+    preview_token: previewDigest(context, 'RETURN_TO_AUTOMATION', normalizedReason, currentLedger.head_hash, { ownership_revision: owner.revision, ownership_state_hash: owner.current_state_hash, artifact_sha256: manual.sha256, validation: validation || null, successor_contract_sha256: proposal?.contract?.contract_sha256 || null, preview_created_at: createdAt }),
   };
 }
 
@@ -194,7 +199,30 @@ async function applyReturnToAutomation(input, options = {}) {
   const preview = await previewReturnToAutomation(input, options);
   if (!preview.eligible) throw new AgentControlError('REVALIDATION_REQUIRED', preview.revalidation?.reason || 'revalidation is required');
   if (input.preview_token !== preview.preview_token) throw new AgentControlError('AGENT_CONTROL_PREVIEW_STALE', 'return preview is missing or stale');
-  const context = locateInvocation(options.root, input), owner = ownershipFor(context), artifact = currentArtifact(context);
+  const context = locateInvocation(options.root, input), owner = ownershipFor(context), manual = successor.readManualArtifact(context);
+  if (preview.artifact.changed_since_takeover) {
+    const proposal = successor.buildProposal(context, owner, manual, { ...(options.successorValidation || {}), createdAt: input.preview_created_at, reason: reason(input.reason) });
+    if (!proposal.eligible || proposal.contract.contract_sha256 !== preview.successor_task?.contract_sha256) throw new AgentControlError('AGENT_CONTROL_PREVIEW_STALE', 'successor proposal changed since preview');
+    fs.mkdirSync(path.dirname(proposal.paths.lockPath), { recursive: true });
+    let lockFd; try { lockFd = fs.openSync(proposal.paths.lockPath, 'wx', 0o600); } catch (error) { throw new AgentControlError('SUCCESSOR_TASK_BUSY', error.code === 'EEXIST' ? 'successor task creation is already active' : error.message); }
+    fs.closeSync(lockFd);
+    try {
+      if (fs.existsSync(proposal.paths.taskPath) || fs.existsSync(proposal.paths.contractPath)) throw new AgentControlError('SUCCESSOR_TASK_EXISTS', 'immutable successor task already exists');
+      successor.atomicWrite(proposal.paths.taskPath, proposal.successor_task_bytes);
+      const out = ownership.transition(context.root, {
+        run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id,
+        action: 'RETURN_TO_AUTOMATION', next_owner: 'SUSPENDED', originating_invocation_id: context.invocationId,
+        reason: input.reason, task_sha256: runner.sha256(context.taskBytes), artifact_id: manual.metadata.artifact_id, artifact_sha256: manual.sha256,
+        successor_task_id: proposal.contract.successor_task_id, successor_task_sha256: proposal.contract.successor_task_sha256,
+        expected_revision: owner.revision, expected_state_hash: owner.current_state_hash,
+      }, { actor: options.actor || ledger.localActorContext(), now: options.now, recordId: options.recordId });
+      const contract = { ...proposal.contract, return_resumption_ledger_record_id: out.action_record.record_id, contract_sha256: '' };
+      contract.contract_sha256 = successor.contractHash(contract);
+      successor.atomicWrite(proposal.paths.contractPath, Buffer.from(`${JSON.stringify(contract, null, 2)}\n`));
+      return { action: 'RETURN_TO_AUTOMATION', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'AUTOMATION', predecessor_execution_owner: 'SUSPENDED', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash, successor_task_id: contract.successor_task_id, successor_task_sha256: contract.successor_task_sha256, successor_task_path: path.relative(context.root, proposal.paths.taskPath), successor_contract_path: path.relative(context.root, proposal.paths.contractPath) };
+    } finally { try { fs.unlinkSync(proposal.paths.lockPath); } catch (_) {} }
+  }
+  const artifact = { artifact_id: manual.metadata.artifact_id, sha256: manual.sha256 };
   const out = ownership.transition(context.root, {
     run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id,
     action: 'RETURN_TO_AUTOMATION', next_owner: 'AUTOMATION', originating_invocation_id: context.invocationId,

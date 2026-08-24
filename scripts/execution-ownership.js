@@ -80,6 +80,16 @@ function verifyState(doc, target, actionLedger) {
         || !['TAKE_MANUAL_CONTROL', 'RETURN_TO_AUTOMATION', 'SUSPEND_AUTOMATION'].includes(action.action)) {
       throw new OwnershipError('OWNERSHIP_LEDGER_REFERENCE_INVALID', `ownership revision ${index + 1} is not backed by its operator action`);
     }
+    if (record.successor != null) {
+      if (record.current_owner !== 'SUSPENDED' || action.action !== 'RETURN_TO_AUTOMATION'
+          || !ID_RE.test(String(record.successor.task_id || '')) || !HASH_RE.test(String(record.successor.task_sha256 || ''))
+          || action.requested_parameters?.successor_task_id !== record.successor.task_id
+          || action.requested_parameters?.successor_task_sha256 !== record.successor.task_sha256) {
+        throw new OwnershipError('OWNERSHIP_LEDGER_REFERENCE_INVALID', `ownership revision ${index + 1} has an invalid successor reference`);
+      }
+    } else if (action.action === 'RETURN_TO_AUTOMATION' && record.current_owner === 'SUSPENDED') {
+      throw new OwnershipError('OWNERSHIP_LEDGER_REFERENCE_INVALID', `ownership revision ${index + 1} omits its required successor reference`);
+    }
     previous = record.state_hash;
   });
   if (doc.current_state_hash !== previous || (doc.history.length && doc.current_owner !== doc.history.at(-1).current_owner)) {
@@ -128,9 +138,11 @@ function transition(root, input, options = {}) {
     if (input.expected_revision !== current.revision || input.expected_state_hash !== current.current_state_hash) throw new OwnershipError('OWNERSHIP_STALE', 'ownership revision changed since preview');
     const nextOwner = input.next_owner;
     if (!OWNERS.includes(nextOwner) || nextOwner === current.current_owner) throw new OwnershipError('OWNERSHIP_TRANSITION_INVALID', 'ownership transition is invalid');
+    const successorReturn = nextOwner === 'SUSPENDED' && input.action === 'RETURN_TO_AUTOMATION'
+      && ID_RE.test(String(input.successor_task_id || '')) && HASH_RE.test(String(input.successor_task_sha256 || ''));
     const actionName = nextOwner === 'HUMAN' ? 'TAKE_MANUAL_CONTROL'
       : nextOwner === 'AUTOMATION' ? 'RETURN_TO_AUTOMATION'
-        : nextOwner === 'SUSPENDED' ? 'SUSPEND_AUTOMATION' : null;
+        : nextOwner === 'SUSPENDED' ? (successorReturn ? 'RETURN_TO_AUTOMATION' : 'SUSPEND_AUTOMATION') : null;
     if (!actionName || input.action !== actionName) throw new OwnershipError('OWNERSHIP_TRANSITION_INVALID', 'ownership action does not match the requested owner');
     const normalizedReason = String(input.reason || '').replace(/\s+/g, ' ').trim();
     if (!normalizedReason || normalizedReason.length > 600 || !HASH_RE.test(String(input.task_sha256 || ''))
@@ -142,7 +154,8 @@ function transition(root, input, options = {}) {
       action: actionName, target_agent_role: paths.target.agent_id, target_invocation_id: safeId(input.originating_invocation_id, 'originating_invocation_id'),
       target_task_id: paths.target.task_id, target_artifact: input.artifact_id ? { artifact_id: input.artifact_id, sha256: input.artifact_sha256 || null } : null,
       action_scope: 'TASK_WORK_UNIT_OWNERSHIP', reason: normalizedReason,
-      requested_parameters: { expected_revision: current.revision, expected_state_hash: current.current_state_hash, task_sha256: input.task_sha256, artifact_sha256: input.artifact_sha256 || null },
+      requested_parameters: { expected_revision: current.revision, expected_state_hash: current.current_state_hash, task_sha256: input.task_sha256, artifact_sha256: input.artifact_sha256 || null,
+        successor_task_id: successorReturn ? input.successor_task_id : null, successor_task_sha256: successorReturn ? input.successor_task_sha256 : null },
       prior_execution_owner: current.current_owner, resulting_execution_owner: nextOwner, supersedes: null, result_status: 'COMPLETED',
     };
     const record = {
@@ -150,6 +163,7 @@ function transition(root, input, options = {}) {
       revision: current.revision + 1, changed_at: options.now || new Date().toISOString(), actor_action_record_id: recordId,
       reason: normalizedReason, input_hashes: { task_sha256: input.task_sha256, artifact_sha256: input.artifact_sha256 || null },
       originating_invocation_id: input.originating_invocation_id, previous_state_hash: current.current_state_hash,
+      successor: successorReturn ? { task_id: input.successor_task_id, task_sha256: input.successor_task_sha256 } : null,
     };
     record.state_hash = hashRecord(record);
     const next = { ...current, current_owner: nextOwner, revision: record.revision, current_state_hash: record.state_hash, history: current.history.concat(record) };

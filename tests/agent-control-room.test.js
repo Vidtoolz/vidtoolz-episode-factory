@@ -695,7 +695,7 @@ test('operator control API nonce-gates preview/apply and returns the ledger reco
 
 test('ownership control API exposes only eligible bounded takeover and return actions', async () => {
   const f = fixture(['alpha']);
-  const completed = writeRunnerInvocation(f, { state: 'BLOCKED', attention: 'REVIEW', blocker: 'manual correction needed' });
+  const completed = writeRunnerInvocation(f, { state: 'BLOCKED', attention: 'REVIEW', blocker: 'manual correction needed', artifact: { version: 1 } });
   const server = packageEngineServer.createServer({ root: f.root, agentLiveResourceProvider: async () => ({ source: 'TEST', compute: null, jobs: null }) });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
@@ -714,7 +714,7 @@ test('ownership control API exposes only eligible bounded takeover and return ac
     const retInput = { ...input, reason: 'Return unchanged validated bytes.' };
     const retPreview = (await postJson(server, packageEngineServer.AGENT_RETURN_PREVIEW_API, retInput)).body.data;
     assert.equal(retPreview.eligible, true);
-    const returned = (await postJson(server, packageEngineServer.AGENT_RETURN_APPLY_API, { ...retInput, preview_token: retPreview.preview_token })).body.data;
+    const returned = (await postJson(server, packageEngineServer.AGENT_RETURN_APPLY_API, { ...retInput, preview_token: retPreview.preview_token, preview_created_at: retPreview.preview_created_at })).body.data;
     assert.equal(returned.execution_owner, 'AUTOMATION');
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });

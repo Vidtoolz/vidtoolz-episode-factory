@@ -26,10 +26,10 @@ test('ownership canary: takeover fences automation and changed bytes cannot sile
   const preview = controls.previewTakeManualControl(input, { root });
   assert.equal(preview.read_only, true); assert.equal(fs.readdirSync(path.join(root, 'package-runs/run-1/agents')).sort().join(','), beforePreview);
   const actor = ledger.localActorContext({ username: 'mikko' });
-  controls.applyTakeManualControl({ ...input, preview_token: preview.preview_token }, { root, actor, recordId: 'operator-action-canary-take' });
+  const taken = controls.applyTakeManualControl({ ...input, preview_token: preview.preview_token }, { root, actor, recordId: 'operator-action-canary-take' });
   assert.equal(ownership.readOwnership(root, { run_id: 'run-1', agent_id: 'alpha', task_id: 'task-1' }).current_owner, 'HUMAN');
   await assert.rejects(() => runner.runRegisteredAgent({ repoRoot: root, agentId: 'alpha', runId: 'run-1', taskPath, newAttempt: true }), (e) => e.code === 'AUTOMATION_FENCED');
-  const artifactPath = path.join(root, 'package-runs/run-1/agents/alpha/task-1/artifacts/visual-plan.json');
+  const artifactPath = path.join(root, taken.manual_artifact_path);
   const oldBytes = fs.readFileSync(artifactPath); const binding = { artifact_path: artifactPath, artifact_sha256: validator.sha256(oldBytes), commit: 'canary', approved_by: 'Mikko', approved_at: '2026-08-24T10:00:00.000Z', scope: 'VISUAL_PLAN_APPROVAL' };
   fs.writeFileSync(artifactPath, '{"version":2}\n');
   assert.equal(validator.verifyApprovalBindingForScope(binding, fs.readFileSync(artifactPath), 'VISUAL_PLAN_APPROVAL').verdict, 'STALE');
@@ -39,6 +39,60 @@ test('ownership canary: takeover fences automation and changed bytes cannot sile
   assert.equal(ownership.readOwnership(root, { run_id: 'run-1', agent_id: 'alpha', task_id: 'task-1' }).current_owner, 'HUMAN');
   assert.equal(ledger.readLedger(root, 'run-1').records.length, 1);
   assert.throws(() => controls.previewTakeManualControl({ run_id: 'run-1', agent_id: 'presenter_director', invocation_id: 'presenter_director:task-1:1', reason: 'No bypass.' }, { root }), (e) => e.code === 'BLOCKED_AGENT_NOT_ENABLED');
+  fs.unlinkSync(ownership.pathsFor(root, { run_id: 'run-1', agent_id: 'alpha', task_id: 'task-1' }).statePath);
+  await assert.rejects(() => runner.runRegisteredAgent({ repoRoot: root, agentId: 'alpha', runId: 'run-1', taskPath, newAttempt: true }), (e) => e.code === 'OWNERSHIP_REQUIRED_MISSING');
+});
+
+function maturePlan(revision = 1, previous = null) {
+  const vp = require('../scripts/visual-plan.js');
+  const storyHash = vp.sha256('successor canary story');
+  const story = { project_id: 'p1', version_id: 'v1', content_hash: storyHash, approval: { state: 'approved', approved_by: 'Mikko', approved_at: '2026-08-24T09:00:00.000Z', version_id: 'v1', content_hash: storyHash }, section_ids: ['s1'] };
+  const beat = { canonical_beat_id: 'visual-beat-01HF7YAT010000000000000001', section_id: 's1', aliases: [], source_provenance: null };
+  const plan = { schema_version: 1, artifact_type: 'visual-plan', plan_id: 'visual-plan-01HF7YAT000000000000000000', plan_revision: revision, supersedes: previous ? { plan_revision: previous.plan_revision, plan_digest_sha256: previous.plan_digest_sha256 } : null, created_at: `2026-08-24T10:0${revision}:00.000Z`, created_by: 'visual_planning_director', lifecycle_state: 'AWAITING_HUMAN_REVIEW', story, required_beats: [beat], coverage: [{ beat_ref: beat, decision: 'INTENTIONAL_NO_VISUAL', shot_ids: [], reason: revision === 1 ? 'Presenter only.' : 'Presenter remains intentionally uninterrupted.' }], shots: [], prompts: [], plan_digest_sha256: '' };
+  plan.plan_digest_sha256 = vp.planDigest(plan); return plan;
+}
+
+test('extended ownership canary: changed Visual Plan resumes only through an immutable successor', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'successor-canary-'));
+  const sourceScripts = path.join(__dirname, '..', 'scripts');
+  const dependencies = ['visual-planning-director.js', 'agent-executable-boundary.js', 'execution-ownership.js', 'operator-action-ledger.js', 'successor-task-contract.js', 'visual-planning-successor.js', 'agent-task-visual-planning.js', 'agent-run.js', 'operational-rationale.js', 'visual-plan.js', 'visual-plan-prompt-adapter.js', 'research-result-validator.js', 'agent-contract-validator.js', 'approval-scopes.js'];
+  fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
+  dependencies.forEach((name) => fs.copyFileSync(path.join(sourceScripts, name), path.join(root, 'scripts', name)));
+  write(path.join(root, 'config/agent-registry.json'), { schema_version: 1, agents: [
+    { agent_id: 'visual_planning_director', name: 'Visual Planning Director', lifecycle: { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' } },
+    { agent_id: 'presenter_director', name: 'Presenter', lifecycle: { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED' } },
+  ] });
+  const runId = 'run-successor', firstPlan = maturePlan();
+  const task = { task_id: 'visual-task-1', package_run_id: runId, action: 'review_coverage', requested_by: 'mikko', project_id: 'p1', privacy: { local_only: true }, story: { ...firstPlan.story, sections: [{ section_id: 's1', order: 1, dialogue: 'Story.' }] }, required_beats: firstPlan.required_beats, existing_plan: firstPlan };
+  const taskPath = path.join(root, 'task.json'); write(taskPath, task);
+  const first = await runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath });
+  assert.equal(first.result.state, 'AWAITING_HUMAN_REVIEW');
+  const input = { run_id: runId, agent_id: 'visual_planning_director', invocation_id: first.invocation.invocation_id, reason: 'Canary manual Visual Plan revision.' };
+  const actor = ledger.localActorContext({ username: 'mikko' }), preview = controls.previewTakeManualControl(input, { root });
+  const taken = controls.applyTakeManualControl({ ...input, preview_token: preview.preview_token }, { root, actor, recordId: 'operator-action-successor-take' });
+  const predecessorArtifact = path.join(root, 'package-runs', runId, 'agents', 'visual_planning_director', 'visual-task-1', 'artifacts', 'visual-plan.json');
+  const predecessorBytes = fs.readFileSync(predecessorArtifact), oldBinding = { artifact_path: predecessorArtifact, artifact_sha256: validator.sha256(predecessorBytes), commit: 'canary', approved_by: 'Mikko', approved_at: '2026-08-24T10:00:00.000Z', scope: 'VISUAL_PLAN_APPROVAL' };
+  const nextPlan = maturePlan(2, firstPlan); write(path.join(root, taken.manual_artifact_path), nextPlan);
+  assert.equal(validator.verifyApprovalBindingForScope(oldBinding, fs.readFileSync(path.join(root, taken.manual_artifact_path)), 'VISUAL_PLAN_APPROVAL').verdict, 'STALE');
+  const returnInput = { ...input, reason: 'Resume exact validated successor Visual Plan.' };
+  const stalePreview = await controls.previewReturnToAutomation(returnInput, { root, successorValidation: { currentStory: task.story }, now: '2026-08-24T10:59:00.000Z' });
+  nextPlan.coverage[0].reason = 'A later bounded manual correction.'; nextPlan.plan_digest_sha256 = require('../scripts/visual-plan.js').planDigest(nextPlan); write(path.join(root, taken.manual_artifact_path), nextPlan);
+  await assert.rejects(() => controls.applyReturnToAutomation({ ...returnInput, preview_token: stalePreview.preview_token, preview_created_at: stalePreview.preview_created_at }, { root, actor, successorValidation: { currentStory: task.story }, now: '2026-08-24T10:59:30.000Z' }), (e) => e.code === 'AGENT_CONTROL_PREVIEW_STALE');
+  const beforePreview = fs.readFileSync(path.join(root, taken.manual_artifact_path));
+  const returnPreview = await controls.previewReturnToAutomation(returnInput, { root, successorValidation: { currentStory: task.story }, now: '2026-08-24T11:00:00.000Z' });
+  assert.equal(returnPreview.eligible, true); assert.equal(returnPreview.successor_task.continuation_action, 'review_coverage'); assert.deepEqual(fs.readFileSync(path.join(root, taken.manual_artifact_path)), beforePreview);
+  const returned = await controls.applyReturnToAutomation({ ...returnInput, preview_token: returnPreview.preview_token, preview_created_at: returnPreview.preview_created_at }, { root, actor, recordId: 'operator-action-successor-return', successorValidation: { currentStory: task.story }, now: '2026-08-24T11:01:00.000Z' });
+  assert.equal(returned.predecessor_execution_owner, 'SUSPENDED'); assert.deepEqual(fs.readFileSync(predecessorArtifact), predecessorBytes);
+  const successorTaskPath = path.join(root, returned.successor_task_path);
+  const second = await runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath: successorTaskPath });
+  assert.equal(second.invocation.task_id, returned.successor_task_id); assert.equal(second.result.state, 'AWAITING_HUMAN_REVIEW'); assert.equal(second.result.visual_plan.plan_revision, 2);
+  await assert.rejects(() => runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath, newAttempt: true }), (e) => e.code === 'AUTOMATION_FENCED');
+  assert.equal(ownership.readOwnership(root, { run_id: runId, agent_id: 'visual_planning_director', task_id: returned.successor_task_id }).current_owner, 'AUTOMATION');
+  assert.equal(ledger.readLedger(root, runId).records.length, 2); ownership.readOwnership(root, { run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1' });
+  assert.throws(() => controls.previewTakeManualControl({ run_id: runId, agent_id: 'presenter_director', invocation_id: 'presenter_director:task-1:1', reason: 'No successor bypass.' }, { root }), (e) => e.code === 'BLOCKED_AGENT_NOT_ENABLED');
+  const contractPath = path.join(root, returned.successor_contract_path), contractBytes = fs.readFileSync(contractPath); const corrupt = JSON.parse(contractBytes); corrupt.reason = 'tampered'; write(contractPath, corrupt); assert.throws(() => require('../scripts/successor-task-contract.js').assertRunnableSuccessor(root, 'visual_planning_director', JSON.parse(fs.readFileSync(successorTaskPath)), fs.readFileSync(successorTaskPath)), (e) => e.code === 'SUCCESSOR_CONTRACT_INVALID'); fs.writeFileSync(contractPath, contractBytes);
+  fs.unlinkSync(ownership.pathsFor(root, { run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1' }).statePath);
+  await assert.rejects(() => runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath, newAttempt: true }), (e) => e.code === 'OWNERSHIP_REQUIRED_MISSING');
 });
 
 if (require.main === module) { (async () => { let passed = 0; for (const item of tests) { try { await item.fn(); passed++; console.log(`ok - ${item.name}`); } catch (error) { console.error(`not ok - ${item.name}`); console.error(error); process.exitCode = 1; break; } } console.log(`${passed}/${tests.length} Ownership Canary tests passed`); })(); }
