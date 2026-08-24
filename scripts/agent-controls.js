@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const runner = require('./agent-run.js');
 const ledger = require('./operator-action-ledger.js');
+const ownership = require('./execution-ownership.js');
 
 class AgentControlError extends Error {
   constructor(code, message, statusCode = 409) { super(message); this.name = 'AgentControlError'; this.code = code; this.statusCode = statusCode; }
@@ -62,20 +63,31 @@ function locateInvocation(rootInput, target) {
   const latest = index.invocations.filter((item) => item.agent_id === agentId && item.task_id === record.task_id)
     .sort((a, b) => Number(b.attempt_number || 0) - Number(a.attempt_number || 0))[0];
   if (latest && latest.invocation_id !== invocationId) throw new AgentControlError('AGENT_CONTROL_NOT_LATEST', 'only the latest exact attempt may be controlled');
-  const running = lock?.invocation_id === invocationId && lock.host === require('node:os').hostname() && runner.pidAlive(Number(lock.pid));
-  return { root, runId, agentId, invocationId, record, directory, taskPath, taskBytes, task, invocation, lock, runtime_status: running ? 'RUNNING' : invocation ? 'COMPLETED' : 'ABANDONED' };
+  const liveRunLock = lock?.host === require('node:os').hostname() && runner.pidAlive(Number(lock.pid));
+  const running = liveRunLock && lock?.invocation_id === invocationId;
+  return { root, runId, agentId, invocationId, record, directory, taskPath, taskBytes, task, invocation, lock, live_run_lock: Boolean(liveRunLock), runtime_status: running ? 'RUNNING' : invocation ? 'COMPLETED' : 'ABANDONED' };
 }
 
-function previewDigest(context, action, normalizedReason, ledgerHead) {
-  return runner.sha256(Buffer.from(ledger.canonicalize({ action, run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_sha256: runner.sha256(context.taskBytes), reason: normalizedReason, ledger_head: ledgerHead })));
+function currentArtifact(context) {
+  const artifact = context.invocation?.artifacts?.[0];
+  if (!artifact) return { artifact_id: null, path: null, sha256: null, exists: false };
+  const artifactPath = path.resolve(context.directory, artifact.path);
+  if (!contained(context.directory, artifactPath) || !fs.existsSync(artifactPath)) return { artifact_id: artifact.field, path: artifact.path, sha256: null, exists: false };
+  return { artifact_id: artifact.field, path: artifact.path, sha256: runner.sha256(fs.readFileSync(artifactPath)), exists: true };
+}
+function ownershipFor(context) { return ownership.readOwnership(context.root, { run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id }); }
+function previewDigest(context, action, normalizedReason, ledgerHead, extra = {}) {
+  return runner.sha256(Buffer.from(ledger.canonicalize({ action, run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_sha256: runner.sha256(context.taskBytes), reason: normalizedReason, ledger_head: ledgerHead, ...extra })));
 }
 
 function previewRetry(input, options = {}) {
   const context = locateInvocation(options.root, input);
   const normalizedReason = reason(input.reason);
+  const owner = ownershipFor(context);
+  if (owner.current_owner !== 'AUTOMATION') throw new AgentControlError('AUTOMATION_FENCED', `retry is fenced while execution owner is ${owner.current_owner}`);
   if (context.runtime_status === 'RUNNING') throw new AgentControlError('AGENT_CONTROL_ALREADY_RUNNING', 'a running invocation cannot be retried');
   const currentLedger = ledger.readLedger(context.root, context.runId);
-  return { schema_version: 1, action: 'RETRY', read_only: true, eligible: true, target: { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_id: context.record.task_id }, current_runtime_status: context.runtime_status, creates_new_attempt: true, preserves_previous_evidence: true, preserves_lane: true, preserves_model: true, changes_approval: false, preview_token: previewDigest(context, 'RETRY', normalizedReason, currentLedger.head_hash) };
+  return { schema_version: 1, action: 'RETRY', read_only: true, eligible: true, target: { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_id: context.record.task_id }, current_runtime_status: context.runtime_status, execution_owner: owner.current_owner, ownership_revision: owner.revision, creates_new_attempt: true, preserves_previous_evidence: true, preserves_lane: true, preserves_model: true, changes_approval: false, preview_token: previewDigest(context, 'RETRY', normalizedReason, currentLedger.head_hash, { ownership_revision: owner.revision, ownership_state_hash: owner.current_state_hash }) };
 }
 
 async function applyRetry(input, options = {}) {
@@ -99,8 +111,11 @@ async function applyRetry(input, options = {}) {
 
 function previewCancel(input, options = {}) {
   const context = locateInvocation(options.root, input), normalizedReason = reason(input.reason);
+  const owner = ownershipFor(context);
+  if (owner.current_owner !== 'AUTOMATION') throw new AgentControlError('AUTOMATION_FENCED', `cancel is fenced while execution owner is ${owner.current_owner}`);
   if (context.runtime_status !== 'RUNNING') throw new AgentControlError('AGENT_CONTROL_NOT_RUNNING', 'only an exact RUNNING invocation can be cancelled');
-  const supported = typeof options.cancelProvider === 'function';
+  const supported = typeof options.cancelProvider === 'function'
+    && (typeof options.cancelProvider.supports !== 'function' || options.cancelProvider.supports(context));
   const currentLedger = ledger.readLedger(context.root, context.runId);
   return { schema_version: 1, action: 'CANCEL', read_only: true, eligible: supported, support: supported ? 'SUPPORTED_BY_BOUND_PROVIDER' : 'NOT_SUPPORTED', remote_may_continue: !supported, changes_approval: false, target: { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_id: context.record.task_id }, preview_token: previewDigest(context, 'CANCEL', normalizedReason, currentLedger.head_hash) };
 }
@@ -119,9 +134,74 @@ async function applyCancel(input, options = {}) {
     action: 'CANCEL', target_agent_role: context.agentId, target_invocation_id: context.invocationId, target_task_id: context.record.task_id,
     target_artifact: null, action_scope: 'INVOCATION_CANCEL', reason: input.reason,
     requested_parameters: { preview_token: input.preview_token, bound_provider: preview.eligible, remote_may_continue: result.remote_may_continue !== false },
+    result_details: { outcome: result.outcome || result.status || 'NOT_SUPPORTED', provider_id: result.provider_id || null, job_id: result.job_id || null, host: result.host || null, requested_at: result.requested_at || null, certainty: result.certainty || null, remote_may_continue: result.remote_may_continue !== false, provider_response: result.provider_response || null },
     prior_execution_owner: 'AUTOMATION', resulting_execution_owner: resultStatus === 'COMPLETED' ? 'SUSPENDED' : 'AUTOMATION', supersedes: null, result_status: resultStatus,
   }, { actor: options.actor || ledger.localActorContext(), now: options.now, recordId: options.recordId });
-  return { action: 'CANCEL', result_status: resultStatus, remote_may_continue: result.remote_may_continue !== false, reason: result.reason || null, action_record_id: action.record.record_id };
+  return { action: 'CANCEL', result_status: resultStatus, outcome: result.outcome || result.status || 'NOT_SUPPORTED', provider_id: result.provider_id || null, job_id: result.job_id || null, remote_may_continue: result.remote_may_continue !== false, certainty: result.certainty || null, reason: result.reason || null, action_record_id: action.record.record_id };
 }
 
-module.exports = { AgentControlError, locateInvocation, previewRetry, applyRetry, previewCancel, applyCancel };
+function previewTakeManualControl(input, options = {}) {
+  const context = locateInvocation(options.root, input), normalizedReason = reason(input.reason);
+  const owner = ownershipFor(context), artifact = currentArtifact(context), currentLedger = ledger.readLedger(context.root, context.runId);
+  if (owner.current_owner !== 'AUTOMATION') throw new AgentControlError('OWNERSHIP_TRANSITION_INVALID', `current execution owner is ${owner.current_owner}`);
+  const active = context.live_run_lock;
+  return {
+    schema_version: 1, action: 'TAKE_MANUAL_CONTROL', read_only: true, eligible: !active,
+    blocked_reason: active ? 'AUTOMATION_INVOCATION_ACTIVE' : null,
+    target: { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_id: context.record.task_id, artifact_id: artifact.artifact_id },
+    current_owner: owner.current_owner, proposed_owner: active ? 'SUSPENDED' : 'HUMAN', ownership_revision: owner.revision,
+    active_invocation: context.runtime_status === 'RUNNING', active_worker_job: context.lock?.resource_job || null,
+    artifact: { id: artifact.artifact_id, path: artifact.path, sha256: artifact.sha256, exists: artifact.exists },
+    consequences: active ? 'Takeover is blocked until active automation is truthfully stopped.' : 'Automation mutation and redispatch will be fenced for this task work unit.',
+    changes_approval: false,
+    preview_token: previewDigest(context, 'TAKE_MANUAL_CONTROL', normalizedReason, currentLedger.head_hash, { ownership_revision: owner.revision, ownership_state_hash: owner.current_state_hash, artifact_sha256: artifact.sha256 }),
+  };
+}
+
+function applyTakeManualControl(input, options = {}) {
+  const preview = previewTakeManualControl(input, options);
+  if (!preview.eligible) throw new AgentControlError('TAKEOVER_REQUIRES_STOP', preview.blocked_reason);
+  if (input.preview_token !== preview.preview_token) throw new AgentControlError('AGENT_CONTROL_PREVIEW_STALE', 'takeover preview is missing or stale');
+  const context = locateInvocation(options.root, input), owner = ownershipFor(context), artifact = currentArtifact(context);
+  const out = ownership.transition(context.root, {
+    run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id,
+    action: 'TAKE_MANUAL_CONTROL', next_owner: 'HUMAN', originating_invocation_id: context.invocationId,
+    reason: input.reason, task_sha256: runner.sha256(context.taskBytes), artifact_id: artifact.artifact_id, artifact_sha256: artifact.sha256,
+    expected_revision: owner.revision, expected_state_hash: owner.current_state_hash,
+  }, { actor: options.actor || ledger.localActorContext(), now: options.now, recordId: options.recordId });
+  return { action: 'TAKE_MANUAL_CONTROL', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'HUMAN', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash };
+}
+
+async function previewReturnToAutomation(input, options = {}) {
+  const context = locateInvocation(options.root, input), normalizedReason = reason(input.reason);
+  const owner = ownershipFor(context), artifact = currentArtifact(context), currentLedger = ledger.readLedger(context.root, context.runId);
+  if (owner.current_owner !== 'HUMAN') throw new AgentControlError('OWNERSHIP_TRANSITION_INVALID', `current execution owner is ${owner.current_owner}`);
+  const taken = owner.history.at(-1), artifactChanged = taken.input_hashes.artifact_sha256 !== artifact.sha256;
+  const validation = { valid: !artifactChanged, validator_id: artifactChanged ? null : 'UNCHANGED_BYTES', reason: artifactChanged ? 'Artifact bytes changed; no canonical specialist successor-task contract can yet bind automation to the current manual bytes.' : 'Artifact bytes are unchanged.' };
+  const eligible = validation.valid === true;
+  return {
+    schema_version: 1, action: 'RETURN_TO_AUTOMATION', read_only: true, eligible,
+    target: { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId, task_id: context.record.task_id, artifact_id: artifact.artifact_id },
+    current_owner: owner.current_owner, proposed_owner: eligible ? 'AUTOMATION' : 'SUSPENDED', ownership_revision: owner.revision,
+    artifact: { id: artifact.artifact_id, path: artifact.path, sha256: artifact.sha256, changed_since_takeover: artifactChanged },
+    invalidations: artifactChanged ? { prior_evidence: 'STALE', prior_scope_bindings: 'STALE_IF_BOUND_TO_CHANGED_BYTES' } : { prior_evidence: 'CURRENT', prior_scope_bindings: 'UNCHANGED' },
+    revalidation: validation, changes_approval: false,
+    preview_token: previewDigest(context, 'RETURN_TO_AUTOMATION', normalizedReason, currentLedger.head_hash, { ownership_revision: owner.revision, ownership_state_hash: owner.current_state_hash, artifact_sha256: artifact.sha256, validation: validation || null }),
+  };
+}
+
+async function applyReturnToAutomation(input, options = {}) {
+  const preview = await previewReturnToAutomation(input, options);
+  if (!preview.eligible) throw new AgentControlError('REVALIDATION_REQUIRED', preview.revalidation?.reason || 'revalidation is required');
+  if (input.preview_token !== preview.preview_token) throw new AgentControlError('AGENT_CONTROL_PREVIEW_STALE', 'return preview is missing or stale');
+  const context = locateInvocation(options.root, input), owner = ownershipFor(context), artifact = currentArtifact(context);
+  const out = ownership.transition(context.root, {
+    run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id,
+    action: 'RETURN_TO_AUTOMATION', next_owner: 'AUTOMATION', originating_invocation_id: context.invocationId,
+    reason: input.reason, task_sha256: runner.sha256(context.taskBytes), artifact_id: artifact.artifact_id, artifact_sha256: artifact.sha256,
+    expected_revision: owner.revision, expected_state_hash: owner.current_state_hash,
+  }, { actor: options.actor || ledger.localActorContext(), now: options.now, recordId: options.recordId });
+  return { action: 'RETURN_TO_AUTOMATION', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'AUTOMATION', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash };
+}
+
+module.exports = { AgentControlError, locateInvocation, currentArtifact, previewRetry, applyRetry, previewCancel, applyCancel, previewTakeManualControl, applyTakeManualControl, previewReturnToAutomation, applyReturnToAutomation };

@@ -17,6 +17,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
+const cancellationBindings = require('./agent-cancellation-adapters.js');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const COCKPIT_DEFAULT = 'http://127.0.0.1:8010';
@@ -121,6 +122,9 @@ async function main() {
   }
   ev('JOB_DISPATCHED', submit.body.job_id);
   const jobId = submit.body.job_id;
+  if (process.env.VIDTOOLZ_AGENT_INVOCATION_ID) {
+    cancellationBindings.writeBinding(args.task, { provider_id: 'flux', job_id: jobId, host: 'vidnux' });
+  }
 
   // Poll job status until terminal or timeout. Response shape:
   // { ok, data: { active, job_id, exit_state, exit_code, ... } }

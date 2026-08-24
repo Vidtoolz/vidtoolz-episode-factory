@@ -98,6 +98,7 @@ function validateRecord(record, index, runId, previousHash, ids, records) {
   safeId(record.target_invocation_id, 'target_invocation_id');
   if (record.target_task_id != null) safeId(record.target_task_id, 'target_task_id');
   if (!plain(record.requested_parameters) || forbiddenApprovalMetadata(record.requested_parameters)) throw new OperatorLedgerError('OPERATOR_LEDGER_CORRUPT', 'requested parameters are invalid or contain approval metadata');
+  if (record.result_details != null && (!plain(record.result_details) || forbiddenApprovalMetadata(record.result_details))) throw new OperatorLedgerError('OPERATOR_LEDGER_CORRUPT', 'result details are invalid or contain approval metadata');
   safeText(record.reason, 'reason', true);
   if (record.target_artifact != null && (!plain(record.target_artifact) || !safeText(record.target_artifact.artifact_id, 'artifact_id', true)
       || (record.target_artifact.sha256 != null && !HASH_RE.test(record.target_artifact.sha256)))) throw new OperatorLedgerError('OPERATOR_LEDGER_CORRUPT', 'target artifact is invalid');
@@ -174,6 +175,7 @@ function appendOperatorAction(repoRoot, runId, input, options = {}) {
       target_agent_role: safeId(input.target_agent_role, 'target_agent_role'), target_invocation_id: safeId(input.target_invocation_id, 'target_invocation_id'),
       target_task_id: input.target_task_id == null ? null : safeId(input.target_task_id, 'target_task_id'), target_artifact: targetArtifact,
       action_scope: scope, reason: safeText(input.reason, 'reason', true), requested_parameters: input.requested_parameters || {},
+      result_details: input.result_details || null,
       prior_execution_owner: input.prior_execution_owner, resulting_execution_owner: input.resulting_execution_owner,
       previous_record_hash: current.head_hash, supersedes: input.supersedes || null, result_status: input.result_status,
     };

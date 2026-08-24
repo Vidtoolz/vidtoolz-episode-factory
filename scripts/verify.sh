@@ -139,6 +139,7 @@ node --check scripts/agent-executable-boundary.js
 node --check scripts/operational-rationale.js
 node --check scripts/operator-action-ledger.js
 node --check scripts/execution-ownership.js
+node --check scripts/agent-cancellation-adapters.js
 node --check scripts/agent-controls.js
 node --check scripts/approval-scopes.js
 node --check scripts/sound-music-director.js

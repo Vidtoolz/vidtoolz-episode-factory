@@ -22,6 +22,8 @@ const agentControlRoom = require('./scripts/agent-control-room.js');
 const packageRunWorkflowMap = require('./scripts/package-run-workflow-map.js');
 const agentControls = require('./scripts/agent-controls.js');
 const operatorActionLedger = require('./scripts/operator-action-ledger.js');
+const cancellationAdapters = require('./scripts/agent-cancellation-adapters.js');
+const executionOwnership = require('./scripts/execution-ownership.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
@@ -9410,6 +9412,7 @@ function serializePrestoJob(job, running, now = Date.now()) {
   const etaSeconds = running ? Math.max(0, WAN_81F_TYPICAL_SECONDS - elapsed) : 0;
   const etaPct = Math.min(100, Math.round((elapsed / WAN_81F_TYPICAL_SECONDS) * 100));
   return {
+    job_id: job.job_id || null,
     running,
     package_id: job.packageId,
     comfyui_url: job.comfyuiUrl,
@@ -12832,6 +12835,46 @@ const AGENT_RETRY_PREVIEW_API = '/api/agent-control-room/retry/preview';
 const AGENT_RETRY_APPLY_API = '/api/agent-control-room/retry/apply';
 const AGENT_CANCEL_PREVIEW_API = '/api/agent-control-room/cancel/preview';
 const AGENT_CANCEL_APPLY_API = '/api/agent-control-room/cancel/apply';
+const AGENT_TAKEOVER_PREVIEW_API = '/api/agent-control-room/take-manual-control/preview';
+const AGENT_TAKEOVER_APPLY_API = '/api/agent-control-room/take-manual-control/apply';
+const AGENT_RETURN_PREVIEW_API = '/api/agent-control-room/return-to-automation/preview';
+const AGENT_RETURN_APPLY_API = '/api/agent-control-room/return-to-automation/apply';
+
+function defaultAgentCancellationProvider() {
+  return cancellationAdapters.createProvider({
+    flux: { host: 'vidnux', status: async () => currentFluxJobStatus(), cancel: async () => cancelFluxJob(), remoteMayContinue: true },
+    presto: { status: async () => currentPrestoJobStatus(), cancel: async () => cancelPrestoJob(), remoteMayContinue: true },
+    earth_studio: { host: 'vidnux', status: async () => earthStudioLane.currentJobStatus(), cancel: async () => earthStudioLane.cancelRender(), remoteMayContinue: false },
+    remotion: { host: 'vidnux', status: async () => remotionLane.currentJobStatus(), cancel: async () => remotionLane.cancelRender(), remoteMayContinue: false },
+  });
+}
+
+function attachAgentControlState(payload, root, cancelProvider) {
+  for (const agent of payload.agents || []) {
+    const enabled = agent.lifecycle?.proven === 'PROVEN' && agent.lifecycle?.autonomous_dispatch === 'ENABLED';
+    let state = { current_owner: 'AUTOMATION', revision: 0, current_state_hash: null };
+    let ownershipValid = true;
+    if (agent.run_id && agent.current_task) {
+      try { state = executionOwnership.readOwnership(root, { run_id: agent.run_id, agent_id: agent.agent_id, task_id: agent.current_task }); }
+      catch (error) { state = { current_owner: 'SUSPENDED', revision: null, current_state_hash: null, error: error.code || 'OWNERSHIP_INVALID' }; ownershipValid = false; }
+    }
+    agent.execution_ownership = { owner: state.current_owner, revision: state.revision, state_hash: state.current_state_hash, valid: ownershipValid, error: state.error || null };
+    const exact = { run_id: agent.run_id, agent_id: agent.agent_id, invocation_id: agent.invocation?.invocation_id };
+    let cancel = false;
+    if (enabled && ownershipValid && state.current_owner === 'AUTOMATION' && agent.runtime_status === 'RUNNING' && exact.run_id && exact.invocation_id) {
+      try { cancel = cancelProvider.supports(agentControls.locateInvocation(root, exact)); } catch (_) { cancel = false; }
+    }
+    agent.control_capabilities = {
+      retry: Boolean(enabled && ownershipValid && state.current_owner === 'AUTOMATION' && ['COMPLETED', 'ABANDONED'].includes(agent.runtime_status) && exact.invocation_id),
+      cancel, pause: false, resume: false,
+      // Backend semantics exist for bounded testing, but cockpit affordances stay
+      // hidden until changed manual bytes have a specialist successor-task contract.
+      take_manual_control: false,
+      return_to_automation: false,
+    };
+  }
+  return payload;
+}
 
 async function buildAgentLiveResourceSnapshot(agents = []) {
   const needsCompute = agents.some((agent) => agent.runtime_active
@@ -18192,6 +18235,7 @@ function createServer(options = {}) {
     // Registry-driven, observation-only specialist status. No status task is
     // fabricated when the runtime has no canonical current-task context.
     if (req.method === 'GET' && url.pathname === AGENT_CONTROL_ROOM_API) {
+      const cancelProvider = serverOptions.agentCancelProvider || defaultAgentCancellationProvider();
       agentControlRoom.buildAgentControlRoom({
         root: serverOptions.root || ROOT,
         statusTaskProvider: serverOptions.agentStatusTaskProvider,
@@ -18199,14 +18243,16 @@ function createServer(options = {}) {
         agentRunOptions: serverOptions.agentRunOptions,
         now: serverOptions.agentControlRoomNow,
         liveResourceProvider: serverOptions.agentLiveResourceProvider || buildAgentLiveResourceSnapshot,
-        cancelSupported: typeof serverOptions.agentCancelProvider === 'function',
+        cancelSupported: false,
       })
+        .then((payload) => attachAgentControlState(payload, serverOptions.root || ROOT, cancelProvider))
         .then((payload) => sendJSON(res, 200, { ...payload, operator_controls: { nonce_header: LOCAL_WRITE_NONCE_HEADER, local_write_nonce: LOCAL_WRITE_NONCE } }))
         .catch((error) => sendError(res, 500, `Agent Control Room unavailable: ${error.message}`, 'agent-control-room-error'));
       return;
     }
 
-    if (req.method === 'POST' && [AGENT_RETRY_PREVIEW_API, AGENT_RETRY_APPLY_API, AGENT_CANCEL_PREVIEW_API, AGENT_CANCEL_APPLY_API].includes(url.pathname)) {
+    if (req.method === 'POST' && [AGENT_RETRY_PREVIEW_API, AGENT_RETRY_APPLY_API, AGENT_CANCEL_PREVIEW_API, AGENT_CANCEL_APPLY_API,
+      AGENT_TAKEOVER_PREVIEW_API, AGENT_TAKEOVER_APPLY_API, AGENT_RETURN_PREVIEW_API, AGENT_RETURN_APPLY_API].includes(url.pathname)) {
       readJsonBody(req, 1024 * 32)
         .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Agent operator control' });
@@ -18214,12 +18260,16 @@ function createServer(options = {}) {
             root: serverOptions.root || ROOT,
             actor: operatorActionLedger.localActorContext(),
             runAgent: serverOptions.agentControlRunAgent,
-            cancelProvider: serverOptions.agentCancelProvider,
+            cancelProvider: serverOptions.agentCancelProvider || defaultAgentCancellationProvider(),
           };
           if (url.pathname === AGENT_RETRY_PREVIEW_API) return agentControls.previewRetry(payload, options);
           if (url.pathname === AGENT_RETRY_APPLY_API) return agentControls.applyRetry(payload, options);
           if (url.pathname === AGENT_CANCEL_PREVIEW_API) return agentControls.previewCancel(payload, options);
-          return agentControls.applyCancel(payload, options);
+          if (url.pathname === AGENT_CANCEL_APPLY_API) return agentControls.applyCancel(payload, options);
+          if (url.pathname === AGENT_TAKEOVER_PREVIEW_API) return agentControls.previewTakeManualControl(payload, options);
+          if (url.pathname === AGENT_TAKEOVER_APPLY_API) return agentControls.applyTakeManualControl(payload, options);
+          if (url.pathname === AGENT_RETURN_PREVIEW_API) return agentControls.previewReturnToAutomation(payload, options);
+          return agentControls.applyReturnToAutomation(payload, options);
         })
         .then((payload) => sendJSON(res, 200, payload))
         .catch((error) => sendError(res, error.statusCode || 409, error.message, error.code || 'agent-control-error'));
@@ -19750,8 +19800,14 @@ module.exports = {
   AGENT_RETRY_APPLY_API,
   AGENT_CANCEL_PREVIEW_API,
   AGENT_CANCEL_APPLY_API,
+  AGENT_TAKEOVER_PREVIEW_API,
+  AGENT_TAKEOVER_APPLY_API,
+  AGENT_RETURN_PREVIEW_API,
+  AGENT_RETURN_APPLY_API,
   COCKPIT_ORIENTATION_API,
   buildCockpitOrientation,
+  defaultAgentCancellationProvider,
+  attachAgentControlState,
   buildProjectsLaneOrientation,
   isResolveSafeFilename,
   DAILY_SCOUT_RUN_API,

@@ -58,6 +58,7 @@
       ? agent.lifecycle.enablement_prerequisites.join('; ') : null;
     var rationale = agent.operational_rationale || {};
     var resourceStatus = agent.resource_status || {};
+    var executionOwnership = agent.execution_ownership || {};
     return '<article class="agent-control-room-card ' + badgeClass + '" data-agent-id="' + esc(agent.agent_id) + '">' +
       '<div class="agent-control-room-card-heading"><div><h3>' + esc(agent.name) + '</h3><small>' + esc(agent.agent_id) + '</small></div>' +
       '<div class="agent-control-room-badges"><span class="agent-state">' + esc(agent.state) + '</span>' +
@@ -66,6 +67,8 @@
       line('Run', agent.run_id) +
       line('Project', agent.project_id) +
       line('Runtime', runtime) +
+      line('Execution owner', executionOwnership.owner ? executionOwnership.owner + ' · revision ' + executionOwnership.revision : null) +
+      line('Ownership integrity', executionOwnership.valid === false ? executionOwnership.error || 'INVALID' : null) +
       line('Lifecycle', lifecycle) +
       line('Prerequisites', prerequisites) +
       line('Invocation', agent.invocation && agent.invocation.invocation_id) +
@@ -178,7 +181,10 @@
     button.disabled = true;
     postControl('/api/agent-control-room/' + action + '/preview', Object.assign({}, body)).then(function (preview) {
       if (!preview.eligible) throw new Error(action.toUpperCase() + ' is not supported for this exact invocation; remote work may continue.');
-      var consequence = action === 'retry' ? 'Create a new attempt while preserving all prior evidence?' : 'Request cancellation through the bound provider?';
+      var consequence = action === 'retry' ? 'Create a new attempt while preserving all prior evidence?'
+        : action === 'cancel' ? 'Request cancellation of the exact invocation-bound worker job?'
+          : action === 'take-manual-control' ? 'Fence automation for this exact task work unit? This does not grant approval.'
+            : 'Return this exact work unit to automation after server-side revalidation?';
       if (!window.confirm(consequence)) return null;
       return postControl('/api/agent-control-room/' + action + '/apply', Object.assign({}, body, { preview_token: preview.preview_token }));
     }).then(function (result) {

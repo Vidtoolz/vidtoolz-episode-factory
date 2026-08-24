@@ -7,6 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { normalizeOperationalRationale } = require('./operational-rationale.js');
+const executionOwnership = require('./execution-ownership.js');
 
 const RUNNER_VERSION = 'agent-runner-v1';
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -160,7 +161,7 @@ function normalizeHandoff(result, repoRoot) {
   };
 }
 
-function processInvocation(modulePath, taskPath, { timeoutMs, stdoutCap } = {}) {
+function processInvocation(modulePath, taskPath, { timeoutMs, stdoutCap, invocationId, taskSha256 } = {}) {
   return new Promise((resolve) => {
     childProcess.execFile(process.execPath, [modulePath, '--task', taskPath], {
       shell: false,
@@ -168,6 +169,7 @@ function processInvocation(modulePath, taskPath, { timeoutMs, stdoutCap } = {}) 
       maxBuffer: stdoutCap,
       encoding: 'utf8',
       windowsHide: true,
+      env: { ...process.env, VIDTOOLZ_AGENT_INVOCATION_ID: invocationId || '', VIDTOOLZ_AGENT_TASK_SHA256: taskSha256 || '', VIDTOOLZ_AGENT_RESOURCE_BINDING_PATH: path.join(path.dirname(taskPath), 'resource-job.json') },
     }, (error, stdout, stderr) => {
       const overflow = Boolean(error && (error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' || /maxBuffer/i.test(error.message || '')));
       const timedOut = Boolean(error && !overflow && error.killed && error.signal === 'SIGTERM');
@@ -306,6 +308,8 @@ async function runRegisteredAgent(options) {
   const runAgentsDir = path.join(repoRoot, 'package-runs', runId, 'agents');
   const lock = acquireRunLock(runAgentsDir, options.now);
   try {
+    try { executionOwnership.assertAutomationAllowed(repoRoot, { run_id: runId, agent_id: agentId, task_id: taskId }); }
+    catch (error) { throw new RunnerError(error.code || 'AUTOMATION_FENCED', error.message); }
     const taskDir = path.join(runAgentsDir, agentId, taskId);
     if (!options.newAttempt) {
       const existing = readExisting(taskDir);
@@ -344,7 +348,7 @@ async function runRegisteredAgent(options) {
     const invoke = options.invokeProcess || processInvocation;
     const timeoutMs = options.timeoutMs ?? TIMEOUTS_MS[agentId] ?? DEFAULT_TIMEOUT_MS;
     const stdoutCap = options.stdoutCap ?? DEFAULT_STDOUT_CAP;
-    const processResult = await invoke(resolved.modulePath, persistedTaskPath, { timeoutMs, stdoutCap, agentId, task });
+    const processResult = await invoke(resolved.modulePath, persistedTaskPath, { timeoutMs, stdoutCap, agentId, task, invocationId: `${agentId}:${taskId}:${attempt.number}`, taskSha256: sha256(rawTask) });
     const ended = (options.now ? options.now() : new Date());
     atomicWrite(path.join(attempt.directory, 'stderr.log'), processResult.stderr || '');
 

@@ -693,6 +693,32 @@ test('operator control API nonce-gates preview/apply and returns the ledger reco
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });
 
+test('ownership control API exposes only eligible bounded takeover and return actions', async () => {
+  const f = fixture(['alpha']);
+  const completed = writeRunnerInvocation(f, { state: 'BLOCKED', attention: 'REVIEW', blocker: 'manual correction needed' });
+  const server = packageEngineServer.createServer({ root: f.root, agentLiveResourceProvider: async () => ({ source: 'TEST', compute: null, jobs: null }) });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    let room = JSON.parse((await request(server, '/api/agent-control-room')).body).data;
+    assert.equal(room.agents[0].execution_ownership.owner, 'AUTOMATION');
+    assert.equal(room.agents[0].control_capabilities.take_manual_control, false);
+    const input = { run_id: completed.runId, agent_id: 'alpha', invocation_id: completed.invocation.invocation_id, reason: 'Bounded manual correction.' };
+    const before = digestTree(f.root);
+    const preview = (await postJson(server, packageEngineServer.AGENT_TAKEOVER_PREVIEW_API, input)).body.data;
+    assert.equal(preview.read_only, true); assert.equal(digestTree(f.root), before);
+    const taken = (await postJson(server, packageEngineServer.AGENT_TAKEOVER_APPLY_API, { ...input, preview_token: preview.preview_token })).body.data;
+    assert.equal(taken.execution_owner, 'HUMAN');
+    room = JSON.parse((await request(server, '/api/agent-control-room')).body).data;
+    assert.equal(room.agents[0].control_capabilities.retry, false);
+    assert.equal(room.agents[0].control_capabilities.return_to_automation, false);
+    const retInput = { ...input, reason: 'Return unchanged validated bytes.' };
+    const retPreview = (await postJson(server, packageEngineServer.AGENT_RETURN_PREVIEW_API, retInput)).body.data;
+    assert.equal(retPreview.eligible, true);
+    const returned = (await postJson(server, packageEngineServer.AGENT_RETURN_APPLY_API, { ...retInput, preview_token: retPreview.preview_token })).body.data;
+    assert.equal(returned.execution_owner, 'AUTOMATION');
+  } finally { await new Promise((resolve) => server.close(resolve)); }
+});
+
 test('doctrine-registered roles are never presented or executed as live specialists', async () => {
   const f = fixture(['alpha', 'planned_specialist']);
   f.registry.agents[1].lifecycle = {

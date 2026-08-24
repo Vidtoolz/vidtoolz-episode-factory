@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const executionOwnership = require('./execution-ownership.js');
 
 const REFUSAL = 'BLOCKED_AGENT_NOT_ENABLED';
 
@@ -29,7 +30,22 @@ function executableLifecycle(agentId, options = {}) {
 
 function guardExecutableLifecycle(agentId, options = {}) {
   const result = executableLifecycle(agentId, options);
-  if (result.allowed) return true;
+  if (result.allowed) {
+    const argv = options.argv || process.argv.slice(2);
+    const taskIndex = argv.indexOf('--task');
+    if (taskIndex >= 0 && argv[taskIndex + 1]) {
+      try {
+        const task = JSON.parse(fs.readFileSync(path.resolve(argv[taskIndex + 1]), 'utf8'));
+        if (task.package_run_id && task.task_id) executionOwnership.assertAutomationAllowed(options.repoRoot || path.join(__dirname, '..'), { run_id: task.package_run_id, agent_id: agentId, task_id: task.task_id });
+      } catch (error) {
+        if (!String(error.code || '').startsWith('OWNERSHIP') && error.code !== 'AUTOMATION_FENCED') throw error;
+        (options.stdout || process.stdout).write(`${JSON.stringify({ runner_version: 'agent-runner-v1', infrastructure_state: error.code, agent_id: agentId, reason: error.message }, null, 2)}\n`);
+        if (options.setExitCode !== false) process.exitCode = 1;
+        return false;
+      }
+    }
+    return true;
+  }
   (options.stdout || process.stdout).write(`${JSON.stringify({
     runner_version: 'agent-runner-v1', infrastructure_state: result.code,
     agent_id: agentId, reason: result.reason, details: result.lifecycle || null,
