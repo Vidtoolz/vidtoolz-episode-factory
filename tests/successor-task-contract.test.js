@@ -62,10 +62,17 @@ test('valid JSON with invalid Visual Plan shape is a typed refusal', () => {
   const nestedValue = makePlan(2, nested.previous);
   nestedValue.shots = [null];
   write(nested.manualPath, nestedValue);
-  assert.throws(() => successor.buildProposal(nested.context, ownership.readOwnership(nested.root, nested.target), successor.readManualArtifact(nested.context), { currentStory: nested.task.story, reason: 'Reject malformed nested shot.' }),
+  assert.throws(() => successor.buildProposal(nested.context, ownership.readOwnership(nested.root, nested.target), successor.readManualArtifact(nested.context), { scriptBuilderRoot: path.join(nested.root, 'missing-story-store'), reason: 'Reject malformed nested shot.' }),
     (error) => error.code === 'SUCCESSOR_ARTIFACT_SCHEMA_INVALID');
   assert.equal(ownership.readOwnership(nested.root, nested.target).current_owner, 'HUMAN');
   assert.equal(ledger.readLedger(nested.root, nested.runId).records.length, 1);
+});
+test('structurally valid artifact reports unavailable canonical Story as a typed dependency error', () => {
+  const f = fixture(); mutateToSuccessor(f);
+  assert.throws(() => successor.buildProposal(f.context, ownership.readOwnership(f.root, f.target), successor.readManualArtifact(f.context), { scriptBuilderRoot: path.join(f.root, 'missing-story-store'), reason: 'Require canonical upstream Story.' }),
+    (error) => error.code === 'SUCCESSOR_UPSTREAM_DEPENDENCY_UNAVAILABLE' && /canonical Story dependency/.test(error.message));
+  assert.equal(ownership.readOwnership(f.root, f.target).current_owner, 'HUMAN');
+  assert.equal(ledger.readLedger(f.root, f.runId).records.length, 1);
 });
 test('upstream Story drift blocks successor eligibility', () => { const f = fixture(); mutateToSuccessor(f); const manual = successor.readManualArtifact(f.context), owner = ownership.readOwnership(f.root, f.target); const changedStory = { ...f.task.story, content_hash: visualPlan.sha256('changed upstream') }; changedStory.approval = { ...changedStory.approval, content_hash: changedStory.content_hash }; const out = successor.buildProposal(f.context, owner, manual, { currentStory: changedStory, createdAt: '2026-08-24T11:00:00.000Z', reason: 'Unsafe stale upstream.' }); assert.equal(out.eligible, false); assert.ok(out.validation.reason_codes.includes('UPSTREAM_STORY_CHANGED')); });
 test('predecessor artifact mutation is detected independently of the manual copy', () => { const f = fixture(); mutateToSuccessor(f); write(path.join(f.directory, 'artifacts/visual-plan.json'), makePlan(2, f.previous)); assert.throws(() => successor.buildProposal(f.context, ownership.readOwnership(f.root, f.target), successor.readManualArtifact(f.context), { currentStory: f.task.story, reason: 'Reject predecessor mutation.' }), (e) => e.code === 'SUCCESSOR_PREDECESSOR_MUTATED'); });

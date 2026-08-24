@@ -101,6 +101,9 @@ function buildProposal(context, owner, artifact, options = {}) {
   try { validation = adapter.validate(context, previous, artifact.value, options); }
   catch (error) {
     if (error instanceof SuccessorTaskError) throw error;
+    if (error?.code === 'SUCCESSOR_UPSTREAM_DEPENDENCY_UNAVAILABLE') {
+      throw new SuccessorTaskError(error.code, error.message);
+    }
     throw new SuccessorTaskError('SUCCESSOR_ARTIFACT_SCHEMA_INVALID', `manual Visual Plan validation failed safely: ${error.message}`);
   }
   if (!validation.valid) return { eligible: false, validation, artifact };

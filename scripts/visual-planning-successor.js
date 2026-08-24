@@ -29,11 +29,29 @@ function currentStory(task, options = {}) {
 function validate(context, previousPlan, nextPlan, options = {}) {
   const reasons = [];
   if (context.agentId !== AGENT_ID) reasons.push('SPECIALIST_OWNER_MISMATCH');
-  const upstream = currentStory(context.task, options);
   const expectedStory = storyProjection(context.task.story);
+  // Reject malformed manual bytes before consulting the external Story store.
+  const preliminaryStructure = visualPlan.validatePlan(nextPlan, { currentStory: expectedStory });
+  const lineage = visualPlan.validateSuccessorPlan(previousPlan, nextPlan);
+  if (!preliminaryStructure.ok || !lineage.valid) {
+    reasons.push(...preliminaryStructure.reason_codes, ...lineage.reason_codes);
+    return {
+      valid: false, validator_id: VALIDATOR_ID, reason_codes: [...new Set(reasons)],
+      structural_validation: { ok: preliminaryStructure.ok, current: preliminaryStructure.current, reason_codes: preliminaryStructure.reason_codes },
+      lineage_validation: lineage, upstream_dependencies: [], approvals_invalidated: ['VISUAL_PLAN_APPROVAL'],
+      gates_invalidated: ['VISUAL_PLAN_APPROVAL'], approvals_still_valid: [], required_next_gate: 'VISUAL_PLAN_APPROVAL',
+      required_next_specialist: AGENT_ID, continuation_action: 'review_coverage',
+    };
+  }
+  let upstream;
+  try { upstream = currentStory(context.task, options); }
+  catch (error) {
+    const failure = new Error(`canonical Story dependency is unavailable: ${error.message}`);
+    failure.code = 'SUCCESSOR_UPSTREAM_DEPENDENCY_UNAVAILABLE';
+    throw failure;
+  }
   if (visualPlan.canonicalize(upstream) !== visualPlan.canonicalize(expectedStory)) reasons.push('UPSTREAM_STORY_CHANGED');
   const structure = visualPlan.validatePlan(nextPlan, { currentStory: upstream });
-  const lineage = visualPlan.validateSuccessorPlan(previousPlan, nextPlan);
   if (!structure.ok) reasons.push(...structure.reason_codes);
   if (!lineage.valid) reasons.push(...lineage.reason_codes);
   if (nextPlan.story?.project_id !== expectedStory.project_id || nextPlan.story?.version_id !== expectedStory.version_id
