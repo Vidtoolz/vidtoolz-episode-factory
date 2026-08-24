@@ -11,6 +11,7 @@ const authorityAnchor = require('../scripts/execution-ownership-authority-anchor
 const ledger = require('../scripts/operator-action-ledger.js');
 const validator = require('../scripts/agent-contract-validator.js');
 const packageEngineServer = require('../package-engine-server.js');
+const visualPlanningWorkspace = require('../scripts/visual-planning-workspace.js');
 
 function write(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`); }
 test('ownership canary: specialists without successor adapters cannot enter manual ownership', async () => {
@@ -54,9 +55,23 @@ test('extended ownership canary: changed Visual Plan resumes only through an imm
   const taskPath = path.join(root, 'task.json'); write(taskPath, task);
   const first = await runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath });
   assert.equal(first.result.state, 'AWAITING_HUMAN_REVIEW');
+  const workspaceOptions = { root, decisionQueueProjection: { available: true, human_decision_queue: [], human_decision_history: [], diagnostics: [] } };
+  const initialWorkspace = await visualPlanningWorkspace.buildVisualPlanningWorkspace({
+    run_id: runId, agent_id: 'visual_planning_director', task_id: task.task_id, invocation_id: first.invocation.invocation_id,
+  }, workspaceOptions);
+  assert.equal(initialWorkspace.ownership.current_owner, 'AUTOMATION');
+  assert.equal(initialWorkspace.ownership.capabilities.take_manual_control.allowed, true);
+  assert.equal(initialWorkspace.ownership.successor_capability.adapter_id, 'VISUAL_PLAN_SUCCESSOR_V1');
   const input = { run_id: runId, agent_id: 'visual_planning_director', invocation_id: first.invocation.invocation_id, reason: 'Canary manual Visual Plan revision.' };
   const actor = ledger.localActorContext({ username: 'mikko' }), preview = controls.previewTakeManualControl(input, { root });
   const taken = controls.applyTakeManualControl({ ...input, preview_token: preview.preview_token }, { root, actor, recordId: 'operator-action-successor-take' });
+  const humanWorkspace = await visualPlanningWorkspace.buildVisualPlanningWorkspace({
+    run_id: runId, agent_id: 'visual_planning_director', task_id: task.task_id, invocation_id: first.invocation.invocation_id,
+  }, workspaceOptions);
+  assert.equal(humanWorkspace.ownership.current_owner, 'HUMAN');
+  assert.equal(humanWorkspace.ownership.capabilities.take_manual_control.allowed, false);
+  assert.equal(humanWorkspace.ownership.capabilities.return_to_automation.allowed, true);
+  assert.equal(humanWorkspace.ownership.manual_artifact.reference, taken.manual_artifact_path);
   assert.throws(() => packageEngineServer.archivePackageRun({ runId }, { root }), (error) => error.code === 'PACKAGE_RUN_ARCHIVE_AUTHORITY_ACTIVE');
   assert.throws(() => controls.previewRetry({ ...input, reason: 'Retry must stay fenced.' }, { root }), (error) => error.code === 'AUTOMATION_FENCED');
   const liveRun = path.join(root, 'package-runs', runId), movedRun = path.join(root, 'package-runs', 'stale-runs', runId);
@@ -79,6 +94,13 @@ test('extended ownership canary: changed Visual Plan resumes only through an imm
   const successorTaskPath = path.join(root, returned.successor_task_path);
   const second = await runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath: successorTaskPath });
   assert.equal(second.invocation.task_id, returned.successor_task_id); assert.equal(second.result.state, 'AWAITING_HUMAN_REVIEW'); assert.equal(second.result.visual_plan.plan_revision, 2);
+  const successorWorkspace = await visualPlanningWorkspace.buildVisualPlanningWorkspace({
+    run_id: runId, agent_id: 'visual_planning_director', task_id: returned.successor_task_id, invocation_id: second.invocation.invocation_id,
+  }, workspaceOptions);
+  assert.equal(successorWorkspace.context.task_id, returned.successor_task_id);
+  assert.equal(successorWorkspace.ownership.current_owner, 'AUTOMATION');
+  assert.equal(successorWorkspace.ownership.predecessor_task_id, task.task_id);
+  assert.deepEqual(successorWorkspace.ownership.stale_approvals, ['VISUAL_PLAN_APPROVAL']);
   await assert.rejects(() => runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath, newAttempt: true }), (e) => e.code === 'AUTOMATION_FENCED');
   assert.equal(ownership.readOwnership(root, { run_id: runId, agent_id: 'visual_planning_director', task_id: returned.successor_task_id }).current_owner, 'AUTOMATION');
   const actionLedger = ledger.readLedger(root, runId); assert.equal(actionLedger.records.length, 2); ledger.verifyLedger(actionLedger, runId);
