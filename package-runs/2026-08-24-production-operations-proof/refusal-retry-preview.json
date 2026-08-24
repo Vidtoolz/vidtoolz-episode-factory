@@ -1,0 +1,4 @@
+{
+  "code": "BLOCKED_IMPLEMENTATION_NOT_PROVEN",
+  "message": "implementation is a proof candidate and is not authorized for production dispatch"
+}

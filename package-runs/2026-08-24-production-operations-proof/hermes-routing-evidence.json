@@ -1,0 +1,23 @@
+{
+  "source_escalation": {
+    "invocation_id": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX:2",
+    "semantic_state": "ESCALATED",
+    "blocker": "semantic retry exhausted: MODEL_FAILED: fetch failed",
+    "result_sha256": "fce144a20dfd8560d30c11bc36e85f77897a6ef4b6d522c234b4fe63eb8f283b",
+    "task_sha256": "7d8c602c078108096cd42f9f0ed0302d4fd90b75c09ead3f8b73458bde087a97"
+  },
+  "hermes_classification": {
+    "category": "HUMAN_DECISION",
+    "recommended_action": "AWAIT_HUMAN"
+  },
+  "route_option": {
+    "target": "production_operations",
+    "verb": "ROUTE",
+    "authorized": false,
+    "implementation_state": "CANDIDATE",
+    "module_exists": true,
+    "reason": "implementation is a proof candidate and is not authorized for production dispatch",
+    "note": "route target exists as an implementation candidate; launch refused until proof completes"
+  },
+  "automatic_chaining": false
+}

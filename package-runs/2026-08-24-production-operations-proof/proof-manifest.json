@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "package": "production-operations-implementation-proof",
+  "generated_at": "2026-08-24T06:38:25.162Z",
+  "implementation_commit": "96a79cbf824f26a58c7ae0577eb035bd209ab8d0",
+  "candidate_module_commit": "f87c26c",
+  "registry_state": {
+    "lifecycle": {
+      "doctrine": "DEFINED",
+      "proven": "PROVEN",
+      "autonomous_dispatch": "ENABLED"
+    },
+    "implementation_state": "CANDIDATE"
+  },
+  "promotion": "NOT_PERFORMED — implementation_state remains CANDIDATE; promotion is Mikko's decision only",
+  "artifacts": {
+    "hermes-routing-evidence.json": "a499c5864b5290b0a7fffdc5db07ef941a21222b300d3c7a906500aec7c5d13c",
+    "proof-report.json": "7bbe735bdfc32a6eae5ab13ad05053b6bd61d65511f41ad0314e7bf02dc95f3e",
+    "refusal-direct-cli.json": "7608b04736a2d7afc808a2ae5d95bc15020fa104c24d9c8bd8cd9cbb046708ca",
+    "refusal-retry-preview.json": "963ba778c51f6d5d506de9124effd92c903e5926797c5a178efc305b8693faf1",
+    "refusal-runner.json": "44635689df8c35c8b8ac5969a184e018b8ff5ee56a76249ab2cbca740520c77c"
+  },
+  "proof_verdict": "IMPLEMENTATION_PROOF_PASS",
+  "reproducibility": [
+    "node scripts/production-operations-proof.js --out /tmp/rerun.json  # exit 0, verdict IMPLEMENTATION_PROOF_PASS",
+    "node scripts/production-operations.js --task <status-task>        # refuses BLOCKED_IMPLEMENTATION_NOT_PROVEN",
+    "node -e \"require('./scripts/agent-run.js').resolveAgent('.','production_operations')\"  # throws BLOCKED_IMPLEMENTATION_NOT_PROVEN"
+  ]
+}

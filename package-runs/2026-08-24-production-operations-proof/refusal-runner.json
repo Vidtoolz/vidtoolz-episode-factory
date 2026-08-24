@@ -1,0 +1,11 @@
+{
+  "code": "BLOCKED_IMPLEMENTATION_NOT_PROVEN",
+  "message": "implementation is a proof candidate and is not authorized for production dispatch",
+  "details": {
+    "proven": "PROVEN",
+    "autonomous_dispatch": "ENABLED",
+    "implementation_state": "CANDIDATE",
+    "module_exists": true,
+    "reason": "implementation is a proof candidate and is not authorized for production dispatch"
+  }
+}

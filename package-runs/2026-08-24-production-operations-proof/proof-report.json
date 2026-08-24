@@ -1,0 +1,400 @@
+{
+  "schema_version": 1,
+  "proof": "IMPLEMENTATION_PROOF_PASS",
+  "generated_at": "2026-08-24T06:37:43.721Z",
+  "implementation_commit": "96a79cbf824f26a58c7ae0577eb035bd209ab8d0",
+  "agent_id": "production_operations",
+  "registry_implementation_state": "CANDIDATE",
+  "registry_lifecycle": {
+    "doctrine": "DEFINED",
+    "proven": "PROVEN",
+    "autonomous_dispatch": "ENABLED"
+  },
+  "cases": {
+    "A": {
+      "case": "A-model-network-endpoint",
+      "source_invocation": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX:2",
+      "source_blocker": "semantic retry exhausted: MODEL_FAILED: fetch failed",
+      "task": {
+        "task_id": "proof-case-a-model-endpoint",
+        "package_run_id": "visual-planning-stage1-20260823",
+        "requested_by": "hermes",
+        "assignment": {
+          "action": "recommend_remediation"
+        },
+        "blocker_evidence": {
+          "reason": "semantic retry exhausted: MODEL_FAILED: fetch failed",
+          "source_agent_id": "visual_planning_director",
+          "source_invocation_id": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX:2"
+        }
+      },
+      "result": {
+        "schema_version": 1,
+        "agent_id": "production_operations",
+        "role_id": "production_operations",
+        "task_id": "proof-case-a-model-endpoint",
+        "package_run_id": "visual-planning-stage1-20260823",
+        "requested_by": "hermes",
+        "state": "REMEDIATION_RECOMMENDED",
+        "attention": "REVIEW",
+        "reason": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+        "diagnosis": {
+          "kind": "NETWORK_ENDPOINT_UNAVAILABLE",
+          "in_mandate": true,
+          "source_reason": "semantic retry exhausted: MODEL_FAILED: fetch failed"
+        },
+        "recommendation": {
+          "recommendation": "VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+          "steps": [
+            "probe the endpoint named in the blocker reason",
+            "if reachable, request specialist rerun through the operator control plane",
+            "if unreachable, surface host/network state to Hermes"
+          ],
+          "resume_condition": "BLOCKER_RESOLVED",
+          "executes_retry": false,
+          "executes_cancel": false,
+          "approval_requested": false
+        },
+        "route_preparation": null,
+        "disagreement_state": "NONE",
+        "handoff": {
+          "next_owner": "hermes",
+          "next_action": "ESCALATE_WITH_EVIDENCE"
+        },
+        "provenance": {
+          "acting_agent": "production_operations",
+          "lane": "local_readonly",
+          "recorded_at": "2026-08-24T06:37:43.718Z",
+          "implementation_state": "CANDIDATE"
+        },
+        "events": [
+          {
+            "at": "2026-08-24T06:37:43.718Z",
+            "actor": "production_operations",
+            "state": "ASSIGNMENT_RECEIVED",
+            "detail": "recommend_remediation from hermes"
+          },
+          {
+            "at": "2026-08-24T06:37:43.718Z",
+            "actor": "production_operations",
+            "state": "REMEDIATION_RECOMMENDED",
+            "detail": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST"
+          }
+        ],
+        "operational_rationale": {
+          "source": "AGENT",
+          "decision": "REVIEW",
+          "reason": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+          "evidence_refs": [
+            {
+              "ref": "source_invocation",
+              "summary": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX:2"
+            }
+          ],
+          "confidence": null,
+          "escalation_reason": "NETWORK_ENDPOINT_UNAVAILABLE: VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST"
+        }
+      }
+    },
+    "B": {
+      "case": "B-compute-resource-unavailable",
+      "task": {
+        "task_id": "proof-case-b-resource-lane",
+        "package_run_id": "visual-planning-stage1-20260823",
+        "requested_by": "hermes",
+        "assignment": {
+          "action": "diagnose_blocker"
+        },
+        "blocker_evidence": {
+          "reason": "presto wan_i2v lane reports BLOCKED: compute readiness probe denied routing; no worker reported ready",
+          "source_invocation_id": "visual_planning_director:resource-probe:1"
+        }
+      },
+      "result": {
+        "schema_version": 1,
+        "agent_id": "production_operations",
+        "role_id": "production_operations",
+        "task_id": "proof-case-b-resource-lane",
+        "package_run_id": "visual-planning-stage1-20260823",
+        "requested_by": "hermes",
+        "state": "REMEDIATION_RECOMMENDED",
+        "attention": "REVIEW",
+        "reason": "RESOURCE_LANE_UNAVAILABLE: OBSERVE_RESOURCE_READINESS_THEN_RERUN",
+        "diagnosis": {
+          "kind": "RESOURCE_LANE_UNAVAILABLE",
+          "in_mandate": true,
+          "source_reason": "presto wan_i2v lane reports BLOCKED: compute readiness probe denied routing; no worker reported ready"
+        },
+        "recommendation": {
+          "recommendation": "OBSERVE_RESOURCE_READINESS_THEN_RERUN",
+          "steps": [
+            "check live resource probe state for the named lane",
+            "rerun source specialist when the lane reports AVAILABLE"
+          ],
+          "resume_condition": "WAITING_FOR_RESOURCE",
+          "executes_retry": false,
+          "executes_cancel": false,
+          "approval_requested": false
+        },
+        "route_preparation": null,
+        "disagreement_state": "NONE",
+        "handoff": {
+          "next_owner": "hermes",
+          "next_action": "ESCALATE_WITH_EVIDENCE"
+        },
+        "provenance": {
+          "acting_agent": "production_operations",
+          "lane": "local_readonly",
+          "recorded_at": "2026-08-24T06:37:43.719Z",
+          "implementation_state": "CANDIDATE"
+        },
+        "events": [
+          {
+            "at": "2026-08-24T06:37:43.719Z",
+            "actor": "production_operations",
+            "state": "ASSIGNMENT_RECEIVED",
+            "detail": "diagnose_blocker from hermes"
+          },
+          {
+            "at": "2026-08-24T06:37:43.719Z",
+            "actor": "production_operations",
+            "state": "REMEDIATION_RECOMMENDED",
+            "detail": "RESOURCE_LANE_UNAVAILABLE: OBSERVE_RESOURCE_READINESS_THEN_RERUN"
+          }
+        ],
+        "operational_rationale": {
+          "source": "AGENT",
+          "decision": "REVIEW",
+          "reason": "RESOURCE_LANE_UNAVAILABLE: OBSERVE_RESOURCE_READINESS_THEN_RERUN",
+          "evidence_refs": [
+            {
+              "ref": "source_invocation",
+              "summary": "visual_planning_director:resource-probe:1"
+            }
+          ],
+          "confidence": null,
+          "escalation_reason": "RESOURCE_LANE_UNAVAILABLE: OBSERVE_RESOURCE_READINESS_THEN_RERUN"
+        }
+      }
+    },
+    "C": {
+      "case": "C-storage-human-decision",
+      "task": {
+        "task_id": "proof-case-c-storage",
+        "package_run_id": "visual-planning-stage1-20260823",
+        "requested_by": "hermes",
+        "assignment": {
+          "action": "recommend_remediation"
+        },
+        "blocker_evidence": {
+          "reason": "disk full on media volume; generation output cannot be written",
+          "source_invocation_id": "production_operations:fixture:1"
+        }
+      },
+      "result": {
+        "schema_version": 1,
+        "agent_id": "production_operations",
+        "role_id": "production_operations",
+        "task_id": "proof-case-c-storage",
+        "package_run_id": "visual-planning-stage1-20260823",
+        "requested_by": "hermes",
+        "state": "AWAITING_HUMAN_DECISION",
+        "attention": "DECISION",
+        "reason": "STORAGE_EXHAUSTED: HUMAN_DECISION_ON_STORAGE_RECOVERY",
+        "diagnosis": {
+          "kind": "STORAGE_EXHAUSTED",
+          "in_mandate": true,
+          "source_reason": "disk full on media volume; generation output cannot be written"
+        },
+        "recommendation": {
+          "recommendation": "HUMAN_DECISION_ON_STORAGE_RECOVERY",
+          "steps": [
+            "storage recovery may involve deleting/archiving production evidence — that is always a human decision",
+            "present VIDNAS/archive state to Mikko"
+          ],
+          "resume_condition": "BLOCKER_RESOLVED",
+          "executes_retry": false,
+          "executes_cancel": false,
+          "approval_requested": false
+        },
+        "route_preparation": null,
+        "disagreement_state": "NONE",
+        "handoff": {
+          "next_owner": "mikko",
+          "next_action": "REMEDIATE"
+        },
+        "provenance": {
+          "acting_agent": "production_operations",
+          "lane": "local_readonly",
+          "recorded_at": "2026-08-24T06:37:43.719Z",
+          "implementation_state": "CANDIDATE"
+        },
+        "events": [
+          {
+            "at": "2026-08-24T06:37:43.719Z",
+            "actor": "production_operations",
+            "state": "ASSIGNMENT_RECEIVED",
+            "detail": "recommend_remediation from hermes"
+          },
+          {
+            "at": "2026-08-24T06:37:43.719Z",
+            "actor": "production_operations",
+            "state": "AWAITING_HUMAN_DECISION",
+            "detail": "STORAGE_EXHAUSTED: HUMAN_DECISION_ON_STORAGE_RECOVERY"
+          }
+        ],
+        "operational_rationale": {
+          "source": "AGENT",
+          "decision": "DECISION",
+          "reason": "STORAGE_EXHAUSTED: HUMAN_DECISION_ON_STORAGE_RECOVERY",
+          "evidence_refs": [
+            {
+              "ref": "source_invocation",
+              "summary": "production_operations:fixture:1"
+            }
+          ],
+          "confidence": null,
+          "escalation_reason": "STORAGE_EXHAUSTED: HUMAN_DECISION_ON_STORAGE_RECOVERY"
+        }
+      }
+    },
+    "D": {
+      "case": "D-creative-boundary-adversarial",
+      "results": [
+        {
+          "reason": "narrative_spine missing in script",
+          "state": "REFUSED_OUT_OF_MANDATE",
+          "classification": "OUT_OF_MANDATE_CREATIVE",
+          "next_owner": "hermes"
+        },
+        {
+          "reason": "the story argument is unclear",
+          "state": "REFUSED_OUT_OF_MANDATE",
+          "classification": "OUT_OF_MANDATE_CREATIVE",
+          "next_owner": "hermes"
+        },
+        {
+          "reason": "research findings conflict with the claim",
+          "state": "REFUSED_OUT_OF_MANDATE",
+          "classification": "OUT_OF_MANDATE_CREATIVE",
+          "next_owner": "hermes"
+        },
+        {
+          "reason": "the visual aesthetic feels too flat",
+          "state": "REFUSED_OUT_OF_MANDATE",
+          "classification": "OUT_OF_MANDATE_CREATIVE",
+          "next_owner": "hermes"
+        },
+        {
+          "reason": "camera framing choice is wrong",
+          "state": "REFUSED_OUT_OF_MANDATE",
+          "classification": "UNCLASSIFIED",
+          "next_owner": "hermes"
+        },
+        {
+          "reason": "title/thumbnail preference disagreement",
+          "state": "REFUSED_OUT_OF_MANDATE",
+          "classification": "UNCLASSIFIED",
+          "next_owner": "hermes"
+        }
+      ]
+    },
+    "E": {
+      "case": "E-operator-action-boundary",
+      "approval_smuggle_result": {
+        "schema_version": 1,
+        "agent_id": "production_operations",
+        "role_id": "production_operations",
+        "task_id": "proof-case-e-smuggle",
+        "package_run_id": "visual-planning-stage1-20260823",
+        "requested_by": "hermes",
+        "state": "BLOCKED",
+        "attention": "REVIEW",
+        "reason": "deterministic preflight failed: task carries forbidden approved_by metadata",
+        "diagnosis": null,
+        "recommendation": null,
+        "route_preparation": null,
+        "disagreement_state": "NONE",
+        "handoff": {
+          "next_owner": "hermes",
+          "next_action": "ESCALATE_WITH_EVIDENCE"
+        },
+        "provenance": {
+          "acting_agent": "production_operations",
+          "lane": "local_readonly",
+          "recorded_at": "2026-08-24T06:37:43.720Z",
+          "implementation_state": "CANDIDATE"
+        },
+        "events": [
+          {
+            "at": "2026-08-24T06:37:43.720Z",
+            "actor": "production_operations",
+            "state": "ASSIGNMENT_RECEIVED",
+            "detail": "status from hermes"
+          },
+          {
+            "at": "2026-08-24T06:37:43.720Z",
+            "actor": "production_operations",
+            "state": "BLOCKED",
+            "detail": "deterministic preflight failed: task carries forbidden approved_by metadata"
+          }
+        ],
+        "operational_rationale": {
+          "source": "AGENT",
+          "decision": "REVIEW",
+          "reason": "deterministic preflight failed: task carries forbidden approved_by metadata",
+          "evidence_refs": [],
+          "confidence": null,
+          "escalation_reason": "deterministic preflight failed: task carries forbidden approved_by metadata"
+        }
+      },
+      "checks": [
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5"
+      ]
+    },
+    "F": {
+      "case": "F-hermes-routing-candidate",
+      "classification_category": "HUMAN_DECISION",
+      "route_option": {
+        "target": "production_operations",
+        "verb": "ROUTE",
+        "authorized": false,
+        "implementation_state": "CANDIDATE",
+        "module_exists": true,
+        "reason": "implementation is a proof candidate and is not authorized for production dispatch",
+        "note": "route target exists as an implementation candidate; launch refused until proof completes"
+      },
+      "recommended_action": "AWAIT_HUMAN"
+    },
+    "G": {
+      "case": "G-attention-levels",
+      "information": {
+        "attention": "INFORMATION",
+        "state": "COMPLETE"
+      },
+      "review": {
+        "attention": "REVIEW",
+        "resume": "BLOCKER_RESOLVED"
+      },
+      "decision": {
+        "attention": "DECISION",
+        "next_owner": "mikko"
+      }
+    }
+  },
+  "case_hashes": {
+    "A": "9939a229cac64d81a8fef1ef4f866841f8fd447687d06e865a24e311ca3fc654",
+    "B": "9f550d299f4c67435fdb9b906fa1e440e0efc060bdd7e1451e65565e15efbbf7",
+    "C": "f7f81ad1184615f14b7c93258a2c73570caa72d7c146c4098a7d7522acf3f1a5",
+    "D": "4bc5d157208c2902cf55f2664e13a215d6b945f31cda6c6a1d6d9a934b8844ca",
+    "E": "64b49eeb6d0568ae8dc6bb412e9d2b2c31df0c1245ab41d6022ce6304c26ca98",
+    "F": "5c9dfe1e5c9d11b14edeff3b3a380d000e5ef9f33505ea81c95ecdbd4bf91fb1",
+    "G": "da4e49d2ddc1c6b4acd2c5980b7a34db461faf129d20ca8ad216dd791b5fd555"
+  },
+  "verdict": "IMPLEMENTATION_PROOF_PASS — candidate behavior bounded; promotion remains a human decision",
+  "candidate_module_commit": "f87c26c"
+}
