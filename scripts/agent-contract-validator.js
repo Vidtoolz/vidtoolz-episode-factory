@@ -85,7 +85,9 @@ function verifyApprovalBinding(binding, currentArtifactBytes, expectedScope = nu
   if (!isApprovalScope(binding.scope)) {
     return { verdict: "INVALID", reason: `approval scope is not canonical: ${binding.scope}` };
   }
-  const requiredScope = typeof expectedScope === 'object' ? expectedScope.expectedScope : expectedScope;
+  const requiredScope = expectedScope && typeof expectedScope === 'object'
+    ? expectedScope.expectedScope
+    : expectedScope;
   if (requiredScope && (!isApprovalScope(requiredScope) || binding.scope !== requiredScope)) {
     return { verdict: "INVALID", reason: `approval scope mismatch: expected ${requiredScope}, received ${binding.scope}` };
   }
