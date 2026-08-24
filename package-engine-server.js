@@ -27,6 +27,7 @@ const executionOwnership = require('./scripts/execution-ownership.js');
 const packageRunArchiveAuthority = require('./scripts/package-run-archive-authority.js');
 const executionOwnershipAuthorityAnchor = require('./scripts/execution-ownership-authority-anchor.js');
 const successorTaskContract = require('./scripts/successor-task-contract.js');
+const visualPlanningWorkspace = require('./scripts/visual-planning-workspace.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
@@ -12851,6 +12852,7 @@ const AGENT_TAKEOVER_APPLY_API = '/api/agent-control-room/take-manual-control/ap
 const AGENT_RETURN_PREVIEW_API = '/api/agent-control-room/return-to-automation/preview';
 const AGENT_RETURN_APPLY_API = '/api/agent-control-room/return-to-automation/apply';
 const AGENT_MANUAL_ARTIFACT_API = '/api/agent-control-room/manual-artifact';
+const VISUAL_PLANNING_WORKSPACE_API = '/api/visual-planning-workspace';
 
 function defaultAgentCancellationProvider() {
   return cancellationAdapters.createProvider({
@@ -18285,6 +18287,27 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === VISUAL_PLANNING_WORKSPACE_API) {
+      const request = {
+        run_id: url.searchParams.get('run_id') || '',
+        agent_id: url.searchParams.get('agent_id') || '',
+        task_id: url.searchParams.get('task_id') || '',
+        invocation_id: url.searchParams.get('invocation_id') || '',
+        artifact_id: url.searchParams.get('artifact_id') || undefined,
+        artifact_sha256: url.searchParams.get('artifact_sha256') || undefined,
+      };
+      visualPlanningWorkspace.buildVisualPlanningWorkspace(request, {
+        root: serverOptions.root || ROOT,
+        liveResourceProvider: serverOptions.agentLiveResourceProvider || buildAgentLiveResourceSnapshot,
+        cancelProvider: serverOptions.agentCancelProvider || defaultAgentCancellationProvider(),
+        decisionQueueProjection: serverOptions.agentDecisionQueueProjection,
+        decisionQueueOptions: serverOptions.agentDecisionQueueOptions,
+      })
+        .then((payload) => sendJSON(res, 200, payload))
+        .catch((error) => sendError(res, error.statusCode || 409, error.message, error.code || 'visual-planning-workspace-error'));
+      return;
+    }
+
     if (req.method === 'POST' && [AGENT_RETRY_PREVIEW_API, AGENT_RETRY_APPLY_API, AGENT_CANCEL_PREVIEW_API, AGENT_CANCEL_APPLY_API,
       AGENT_TAKEOVER_PREVIEW_API, AGENT_TAKEOVER_APPLY_API, AGENT_RETURN_PREVIEW_API, AGENT_RETURN_APPLY_API].includes(url.pathname)) {
       readJsonBody(req, 1024 * 32)
@@ -19848,6 +19871,7 @@ if (require.main === module) {
 module.exports = {
   API_PREFIX,
   AGENT_CONTROL_ROOM_API,
+  VISUAL_PLANNING_WORKSPACE_API,
   AGENT_WORKFLOW_MAP_API,
   AGENT_RETRY_PREVIEW_API,
   AGENT_RETRY_APPLY_API,
