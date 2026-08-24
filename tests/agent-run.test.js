@@ -225,6 +225,19 @@ test('AR31: executable boundary refuses disabled roles before task loading', () 
   assert.match(enabled, /usage: editor\.js/);
 });
 
+test('AR32: retry lock carries the explicit current attempt number', async () => {
+  const f = fixture(), t = f.task(); await run(f, t);
+  let observed;
+  await run(f, t, { newAttempt: true, invokeProcess: async () => {
+    observed = JSON.parse(fs.readFileSync(path.join(f.root, 'package-runs/run-1/agents/.lock'), 'utf8'));
+    const rationale = { source: 'AGENT', decision: 'COMPLETE', reason: 'retry completed', evidence_refs: [], confidence: null, escalation_reason: null };
+    return { stdout: JSON.stringify({ agent_id: 'alpha_agent', task_id: 'task-1', state: 'COMPLETE', attention: 'INFORMATION', events: [], operational_rationale: rationale, control_room: { state: 'COMPLETE', attention_level: 'INFORMATION', operational_rationale: rationale } }), stderr: '', exitCode: 0, signal: null, timedOut: false, overflow: false };
+  } });
+  assert.equal(observed.invocation_id, 'alpha_agent:task-1:2');
+  assert.equal(observed.attempt_number, 2);
+  assert.equal(observed.task_directory, 'alpha_agent/task-1/attempts/0002');
+});
+
 if (require.main === module) {
   (async () => { let passed = 0, failed = 0; for (const item of tests) { try { await item.fn(); passed++; console.log(`ok - ${item.name}`); } catch (e) { failed++; console.error(`not ok - ${item.name}`); console.error(e); } } console.log(`${passed}/${passed + failed} Agent Runner tests passed`); if (failed) process.exitCode = 1; })();
 }

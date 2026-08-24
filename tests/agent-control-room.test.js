@@ -149,13 +149,14 @@ test('real production runner lock drives RUNNING, ABANDONED, and COMPLETED state
   }
   assert.ok(lock, 'real writer did not create its lock');
   assert.deepEqual(
-    ['agent_id', 'task_id', 'task_directory', 'invocation_id', 'action', 'started_at', 'pid', 'host', 'acquired_at', 'token'].filter((key) => lock[key] == null),
+    ['agent_id', 'task_id', 'task_directory', 'invocation_id', 'attempt_number', 'action', 'started_at', 'pid', 'host', 'acquired_at', 'token'].filter((key) => lock[key] == null),
     [],
   );
   let room = await controlRoom.buildAgentControlRoom({ root: f.root });
   let row = room.agents.find((agent) => agent.agent_id === 'alpha');
   assert.equal(row.runtime_status, 'RUNNING');
   assert.equal(row.invocation.invocation_id, 'alpha:task-live:1');
+  assert.equal(row.invocation.attempt_number, 1);
   assert.equal(row.task_id, 'task-live');
   child.kill('SIGKILL');
   await new Promise((resolve) => child.once('exit', resolve));

@@ -332,6 +332,7 @@ async function runRegisteredAgent(options) {
       agent_id: agentId,
       task_id: taskId,
       invocation_id: `${agentId}:${taskId}:${attempt.number}`,
+      attempt_number: attempt.number,
       task_directory: path.relative(runAgentsDir, attempt.directory),
       action,
       started_at: started.toISOString(),
