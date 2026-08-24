@@ -537,6 +537,22 @@ test('operational rationale survives runner evidence into Control Room projectio
   assert.equal(output.agents[0].operational_rationale.confidence, null);
 });
 
+test('human decision queue includes every REVIEW or DECISION agent exactly once', async () => {
+  const f = fixture(['review', 'decision', 'info']);
+  const views = {
+    review: { state: 'AWAITING_HUMAN_REVIEW', current_task: 'review-task', attention: 'REVIEW', blocker: 'inspect plan' },
+    decision: { state: 'NEEDS_HUMAN_DECISION', current_task: 'decision-task', attention: 'DECISION', blocker: 'choose direction' },
+    info: { state: 'COMPLETE', current_task: 'info-task', attention: 'INFORMATION' },
+  };
+  const output = await controlRoom.buildAgentControlRoom({ root: f.root, implementationLoader: implementation(views, []), statusTaskProvider: () => ({ action: 'status' }) });
+  assert.deepEqual(output.human_decision_queue.map((item) => item.agent_id).sort(), ['decision', 'review']);
+  assert.equal(new Set(output.human_decision_queue.map((item) => item.queue_item_id)).size, 2);
+  for (const item of output.human_decision_queue) {
+    assert.ok(item.artifact.value); assert.ok(item.role); assert.ok(item.owning_gate); assert.ok(item.approval_scope_required);
+    assert.ok(item.operational_rationale.reason); assert.match(item.workspace, /^\//);
+  }
+});
+
 test('doctrine-registered roles are never presented or executed as live specialists', async () => {
   const f = fixture(['alpha', 'planned_specialist']);
   f.registry.agents[1].lifecycle = {
@@ -558,6 +574,7 @@ test('doctrine-registered roles are never presented or executed as live speciali
   assert.equal(planned.registry_status, 'DOCTRINE_REGISTERED');
   assert.equal(planned.implementation.state, 'DISPATCH_NOT_ENABLED');
   assert.equal(planned.lifecycle.autonomous_dispatch, 'DISABLED');
+  assert.deepEqual(planned.lifecycle.enablement_prerequisites, []);
   assert.equal(planned.human_decision_required, false);
   assert.equal(output.summary.doctrine_only, 1);
   assert.equal(output.summary.dispatch_enabled, 1);
@@ -611,9 +628,12 @@ test('cockpit UI renders a registry-driven panel with manual refresh', () => {
   const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
   assert.match(html, /Agent Control Room/);
   assert.match(html, /id="agentControlRoomRefresh"/);
+  assert.match(html, /id="agentDecisionQueue"/);
   assert.match(ui, /\/api\/agent-control-room/);
   assert.match(ui, /payload\.agents/);
-  assert.match(ui, /historical completion/);
+  assert.match(ui, /human_decision_queue/);
+  assert.match(ui, /Open relevant workspace/);
+  assert.match(ui, /DISPATCH /);
   assert.match(ui, /Onward handoff/);
   assert.match(ui, /Runner context/);
   assert.match(css, /\.agent-control-room-card/);

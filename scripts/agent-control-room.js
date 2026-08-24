@@ -12,6 +12,14 @@ const ATTENTION_PRIORITY = Object.freeze({ DECISION: 0, REVIEW: 1 });
 const IDLE_STATES = new Set(['COMPLETE', 'IDLE', 'READY', 'NO_RUNTIME_STATE', 'UNAVAILABLE', 'PLANNED_NOT_ENABLED']);
 const JSON_READ_CAP = 16 * 1024 * 1024;
 const INDEX_READ_CAP = 4 * 1024 * 1024;
+const ROLE_HUMAN_GATES = Object.freeze({
+  production_operations: 'PUBLICATION_APPROVAL', camera_director: 'CANDIDATE_SELECTION',
+  generation_supervisor: 'CANDIDATE_SELECTION', qc_director: 'FINAL_CUT_APPROVAL',
+  editor: 'FINAL_CUT_APPROVAL', sound_music_director: 'FINAL_MUSIC_APPROVAL',
+  research_director: 'PLAN_SCRIPT_APPROVAL', story_editor: 'PLAN_SCRIPT_APPROVAL',
+  visual_planning_director: 'VISUAL_PLAN_APPROVAL', audience_packaging_director: 'TITLE_THUMBNAIL_APPROVAL',
+  presenter_director: 'PRESENTER_PERFORMANCE_APPROVAL', creative_director: 'VISUAL_IDENTITY_APPROVAL',
+});
 
 function readBytes(filePath, label, cap = JSON_READ_CAP) {
   const size = fs.statSync(filePath).size;
@@ -533,6 +541,8 @@ async function agentProjection(root, agent, inspected, runtimeContext, implement
         doctrine: agent.lifecycle?.doctrine ?? null,
         proven: agent.lifecycle?.proven ?? null,
         autonomous_dispatch: agent.lifecycle?.autonomous_dispatch ?? null,
+        enablement_prerequisites: Array.isArray(agent.lifecycle?.enablement_prerequisites)
+          ? [...agent.lifecycle.enablement_prerequisites] : [],
       },
     };
   }
@@ -578,6 +588,34 @@ function plannedRoles(contract, registeredIds) {
     }));
 }
 
+function decisionArtifact(agent) {
+  if (agent.current_artifact) return { kind: 'artifact', value: agent.current_artifact };
+  return { kind: 'task', value: agent.task_id || agent.current_task || `${agent.agent_id}:unbound-task` };
+}
+
+function buildHumanDecisionQueue(agents, registrations) {
+  const registrationById = new Map(registrations.map((agent) => [agent.agent_id, agent]));
+  return agents.filter((agent) => ['REVIEW', 'DECISION'].includes(agent.attention)).map((agent) => {
+    const registration = registrationById.get(agent.agent_id) || {};
+    const artifact = decisionArtifact(agent);
+    const gate = registration.human_gate_type || ROLE_HUMAN_GATES[agent.agent_id] || 'HUMAN_REVIEW';
+    const invocationId = agent.invocation?.invocation_id || null;
+    const workspace = agent.run_id
+      ? `/package-runs-dashboard.html?run=${encodeURIComponent(agent.run_id)}&agent=${encodeURIComponent(agent.agent_id)}&task=${encodeURIComponent(agent.task_id || '')}`
+      : `/#agentControlRoom?agent=${encodeURIComponent(agent.agent_id)}`;
+    return {
+      queue_item_id: `${agent.attention}:${agent.agent_id}:${invocationId || agent.task_id || agent.current_task || 'current'}`,
+      agent_id: agent.agent_id, role: agent.role, invocation_id: invocationId,
+      task_id: agent.task_id || agent.current_task || null, artifact, attention: agent.attention,
+      reason: agent.operational_rationale?.reason || agent.blocker,
+      operational_rationale: agent.operational_rationale,
+      owning_gate: gate, approval_scope_required: gate,
+      lifecycle_state: agent.runtime_status || agent.state,
+      dispatch_enabled: dispatchEnabled(registration), workspace,
+    };
+  });
+}
+
 async function buildAgentControlRoom(options = {}) {
   const root = path.resolve(options.root || DEFAULT_ROOT);
   const registry = options.registry || readJson(path.join(root, 'config', 'agent-registry.json'), 'agent registry');
@@ -603,12 +641,14 @@ async function buildAgentControlRoom(options = {}) {
     acc[agent.state] = (acc[agent.state] || 0) + 1;
     return acc;
   }, {});
+  const decisionQueue = buildHumanDecisionQueue(agents, registered);
   return {
     schema_version: 1, artifact_type: 'agent-control-room', read_only: true,
     generated_at: (options.now || (() => new Date().toISOString()))(),
     registry: { schema_version: registry.schema_version, registered_count: registered.length },
     runtime_discovery: discovery,
     agents,
+    human_decision_queue: decisionQueue,
     planned_roles: plannedRoles(contract, ids),
     non_agent_roles: {
       hermes: contract.hermes ? {
@@ -640,5 +680,5 @@ async function buildAgentControlRoom(options = {}) {
 
 module.exports = {
   modulePathFor, inspectImplementation, normalizeProjection, sortAgents,
-  discoverRunnerContexts, normalizeRunnerProjection, plannedRoles, buildAgentControlRoom,
+  discoverRunnerContexts, normalizeRunnerProjection, plannedRoles, buildHumanDecisionQueue, buildAgentControlRoom,
 };

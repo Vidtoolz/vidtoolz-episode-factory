@@ -1493,6 +1493,20 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
   padding: 3px 8px;
 }
 
+.agent-decision-queue {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 0 0 12px;
+  padding: 10px;
+}
+
+.agent-decision-queue h3 { margin: 0 0 8px; }
+.agent-decision-queue-list { display: grid; gap: 8px; }
+.agent-decision-item { background: var(--panel-soft); border-left: 4px solid #f59e0b; padding: 9px; }
+.agent-decision-item.decision { border-left-color: var(--accent-purple); }
+.agent-decision-item small { color: var(--muted); display: block; }
+.agent-decision-item p { margin: 6px 0; }
+
 .agent-control-room-rows {
   display: grid;
   gap: 10px;
