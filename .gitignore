@@ -48,6 +48,10 @@ package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/renders/
 # config/presto/comfyui/ IS committed).
 /state/comfyui-deployments/
 
+# Repository-level execution ownership authority anchor. This machine-local,
+# hash-chained state must survive package-run archival and is never evidence to commit.
+/state/execution-ownership-authority/
+
 # Earth Studio journey visual-acceptance gate: raw per-frame Earth Studio captures
 # are large and local-only. Contact sheets + the observation record + SHA256SUMS
 # are tracked; the raw PNGs are pinned by hash in SHA256SUMS-raw-captures.txt.

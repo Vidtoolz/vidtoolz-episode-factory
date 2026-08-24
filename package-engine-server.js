@@ -25,6 +25,7 @@ const operatorActionLedger = require('./scripts/operator-action-ledger.js');
 const cancellationAdapters = require('./scripts/agent-cancellation-adapters.js');
 const executionOwnership = require('./scripts/execution-ownership.js');
 const packageRunArchiveAuthority = require('./scripts/package-run-archive-authority.js');
+const executionOwnershipAuthorityAnchor = require('./scripts/execution-ownership-authority-anchor.js');
 const successorTaskContract = require('./scripts/successor-task-contract.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
@@ -1423,11 +1424,15 @@ function archivePackageRun(payload = {}, options = {}) {
     }
   }
   const destDir = path.join(staleRoot, destName);
+  const archivedTo = `${PACKAGE_RUNS_DIR}/stale-runs/${destName}`;
+  // Reserve the textual run ID outside package-runs before any bytes move.
+  // A crash may leave an unresolved reservation, which is intentionally fail-closed.
+  executionOwnershipAuthorityAnchor.reserveArchive(options.root || ROOT, resolved.runId, archivedTo, { now: options.now });
   // Relocate media first (run dir still in place), then archive the run folder.
   const media = relocateRunMedia(resolved.runId, options);
   fs.mkdirSync(staleRoot, { recursive: true });
   fs.renameSync(resolved.runDir, destDir);
-  const archivedTo = `${PACKAGE_RUNS_DIR}/stale-runs/${destName}`;
+  executionOwnershipAuthorityAnchor.completeArchive(options.root || ROOT, resolved.runId, archivedTo, { now: options.now });
   return {
     ok: true,
     runId: resolved.runId,

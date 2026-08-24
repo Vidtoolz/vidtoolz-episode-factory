@@ -17,6 +17,17 @@ Before any legacy package mutation route becomes eligible for manual takeover, i
 
 ## Package-run relocation and deletion audit
 
-The canonical package-run archive route is the only production path in `package-engine-server.js` that renames an entire package-run directory. It now refuses before relocating media or run bytes when a runner/ledger lock, Operator Action Ledger history, execution-ownership history, bounded manual work, or successor/resumption history exists. This preserves the canonical run-ID address of every ownership fence.
+The canonical package-run archive route (`POST /api/package-runs/archive` → `archivePackageRun()`) is the only production path in `package-engine-server.js` that renames an entire package-run directory. It refuses before relocating media or run bytes when a runner/ledger lock, Operator Action Ledger history, execution-ownership history, bounded manual work, or successor/resumption history exists. V1 also refuses a run that returned to AUTOMATION after any takeover: historical ownership is not considered disposable merely because its current owner is AUTOMATION.
 
-Other `package-engine-server.js` rename/remove operations are bounded artifact writes, media supersession, or Super Focus lifecycle operations outside `package-runs/<run-id>/agents`; they do not move or delete this ownership namespace. A future whole-run move, purge, restore, or run-ID reuse route must call the same archive-authority inspection or establish a separately verifiable canonical tombstone before mutation.
+Before a clean run moves, the route appends a reservation to the repository-level hash-chained anchor at `state/execution-ownership-authority/anchor.json`. After the rename it appends completion. The textual run ID is permanently reserved; recreating it cannot yield virgin AUTOMATION. Ownership transitions also bind a run-incarnation marker to this anchor, so moving the entire live directory and recreating the same run ID fails with `OWNERSHIP_RUN_INCARNATION_MISMATCH` even when both run-local ownership and ledger files moved together.
+
+Audited whole-run operations:
+
+- archive: implemented and anchored as above;
+- restore: no canonical package-run restore route exists;
+- purge/delete: no destructive whole-run route exists; the UI “Delete” operation is archive;
+- import/copy: no canonical route installs a copied directory as an existing run identity;
+- stale-run purge: no production route exists;
+- Super Focus deletion/archival: operates in `super-focus-projects/`, not the package-run ownership namespace.
+
+Other `package-engine-server.js` rename/remove operations are bounded artifact writes, media supersession, or lifecycle operations outside `package-runs/<run-id>/agents`; they do not move or delete this ownership namespace. A future whole-run move, purge, restore, import, or run-ID reuse route must consult the repository anchor and implement explicit incarnation reconciliation. Path resemblance or a stale-runs directory scan is insufficient.

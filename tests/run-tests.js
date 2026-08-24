@@ -36,6 +36,7 @@ require("./pipeline-status.test.js");
 require("./video-prompts.test.js");
 require("./package-run-candidate-discovery.test.js");
 require("./package-run-archive.test.js");
+require("./execution-ownership-authority-anchor.test.js");
 require("./media-routing.test.js");
 require("./project-cockpit.test.js");
 require("./idea-promotion.test.js");

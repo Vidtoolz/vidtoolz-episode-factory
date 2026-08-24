@@ -26,6 +26,7 @@ const {
 const crypto = require('node:crypto');
 const ownership = require('../scripts/execution-ownership.js');
 const operatorLedger = require('../scripts/operator-action-ledger.js');
+const authorityAnchor = require('../scripts/execution-ownership-authority-anchor.js');
 
 // ── Helper: temp root with a run folder + a linked script-image-assets folder ──
 // The asset folder is linked to the run via generation-manifest.json's
@@ -120,6 +121,11 @@ test("archivePackageRun moves the run folder into stale-runs/ and preserves file
   assert.equal(fs.existsSync(dest), true);
   assert.equal(fs.existsSync(path.join(dest, "selected-package.json")), true);
   assert.equal(fs.existsSync(path.join(dest, "package-run-state.md")), true);
+  const anchor = authorityAnchor.readAnchor(tempRoot);
+  assert.deepEqual(anchor.records.map((record) => record.event), ['RUN_ARCHIVE_RESERVED', 'RUN_ARCHIVED']);
+  assert.equal(anchor.records.at(-1).archived_location, `package-runs/stale-runs/${runId}`);
+  assert.throws(() => ownership.readOwnership(tempRoot, { run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1' }),
+    (error) => error.code === 'OWNERSHIP_ARCHIVED_REQUIRES_RECONCILIATION');
 });
 
 test("archivePackageRun rejects a missing run with 404", () => {
@@ -166,6 +172,48 @@ test("archivePackageRun refuses SUSPENDED ownership and authority remains canoni
   assert.throws(() => archivePackageRun({ runId }, { root: tempRoot }),
     (error) => error.code === 'PACKAGE_RUN_ARCHIVE_AUTHORITY_ACTIVE');
   assert.equal(ownership.readOwnership(tempRoot, { run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1' }).current_owner, 'SUSPENDED');
+});
+
+test("archivePackageRun refuses returned AUTOMATION history under the conservative V1 policy", () => {
+  const { tempRoot, runId } = createRunRoot('2026-06-30-returned-run');
+  const taken = setOwnership(tempRoot, runId, 'HUMAN');
+  ownership.transition(tempRoot, {
+    run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1', action: 'RETURN_TO_AUTOMATION', next_owner: 'AUTOMATION',
+    originating_invocation_id: 'visual_planning_director:visual-task-1:1', reason: 'Return unchanged bytes before archive attempt.',
+    task_sha256: crypto.createHash('sha256').update('task').digest('hex'), expected_revision: taken.state.revision,
+    expected_state_hash: taken.state.current_state_hash,
+  }, { actor: operatorLedger.localActorContext({ username: 'mikko' }), recordId: 'operator-action-returned-archive' });
+  assert.equal(ownership.readOwnership(tempRoot, { run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1' }).current_owner, 'AUTOMATION');
+  assert.throws(() => archivePackageRun({ runId }, { root: tempRoot }),
+    (error) => error.code === 'PACKAGE_RUN_ARCHIVE_AUTHORITY_ACTIVE');
+});
+
+test("repository anchor survives a whole-run move and fences textual run-ID reuse", () => {
+  const { tempRoot, runId } = createRunRoot('2026-06-30-direct-move-attack');
+  setOwnership(tempRoot, runId, 'HUMAN');
+  const live = path.join(tempRoot, 'package-runs', runId), archived = path.join(tempRoot, 'package-runs', 'stale-runs', runId);
+  fs.mkdirSync(path.dirname(archived), { recursive: true });
+  fs.renameSync(live, archived);
+  writeTestFile(tempRoot, `package-runs/${runId}/package-run-state.md`, '# recreated textual run ID\n');
+  assert.throws(() => ownership.assertAutomationAllowed(tempRoot, { run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1' }),
+    (error) => error.code === 'OWNERSHIP_RUN_INCARNATION_MISMATCH');
+});
+
+test("corrupt repository anchor and stale archive location both fail closed", () => {
+  const corrupt = createRunRoot('2026-06-30-corrupt-anchor');
+  const anchorPaths = authorityAnchor.pathsFor(corrupt.tempRoot);
+  fs.mkdirSync(anchorPaths.directory, { recursive: true });
+  fs.writeFileSync(anchorPaths.anchorPath, '{"schema_version":1,"records":[]}\n');
+  assert.throws(() => archivePackageRun({ runId: corrupt.runId }, { root: corrupt.tempRoot }),
+    (error) => error.code === 'PACKAGE_RUN_ARCHIVE_AUTHORITY_INVALID');
+
+  const stale = createRunRoot('2026-06-30-stale-anchor');
+  const archived = archivePackageRun({ runId: stale.runId }, { root: stale.tempRoot });
+  fs.rmSync(path.join(stale.tempRoot, archived.archived_to), { recursive: true });
+  writeTestFile(stale.tempRoot, `package-runs/${stale.runId}/package-run-state.md`, '# recreated\n');
+  const inspection = packageEngineServer.inspectPackageRunArchiveAuthority(stale.tempRoot, stale.runId);
+  assert.equal(inspection.safe, false);
+  assert.equal(inspection.blockers.includes('ARCHIVED_LOCATION_MISSING'), true);
 });
 
 test("archivePackageRun refuses active locks and successor authority but still permits an unowned run", () => {

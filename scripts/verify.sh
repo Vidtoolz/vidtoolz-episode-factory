@@ -101,6 +101,7 @@ node --check scripts/package-run-publication-metadata.js
 node --check scripts/package-run-newsletter.js
 node --check scripts/package-run-archive-manifest.js
 node --check scripts/package-run-archive-authority.js
+node --check scripts/execution-ownership-authority-anchor.js
 node --check scripts/package-run-repurpose.js
 node --check scripts/package-run-broll-prompts.js
 node --check scripts/package-run-creator-qa.js

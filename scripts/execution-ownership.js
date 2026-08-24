@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const ledger = require('./operator-action-ledger.js');
+const authorityAnchor = require('./execution-ownership-authority-anchor.js');
 
 const SCHEMA_VERSION = 1;
 const OWNERS = Object.freeze(['AUTOMATION', 'HUMAN', 'SUSPENDED']);
@@ -47,8 +48,9 @@ function ownershipHistoryForTarget(actionLedger, target) {
     && ['TAKE_MANUAL_CONTROL', 'RETURN_TO_AUTOMATION', 'SUSPEND_AUTOMATION'].includes(record.action));
 }
 function initialStateIfUnowned(root, target) {
+  authorityAnchor.assertRunNotArchived(root, target.run_id);
   const actionLedger = ledger.readLedger(root, target.run_id);
-  if (ownershipHistoryForTarget(actionLedger, target).length) {
+  if (ownershipHistoryForTarget(actionLedger, target).length || authorityAnchor.targetRecords(root, target).length) {
     throw new OwnershipError('OWNERSHIP_REQUIRED_MISSING', 'ownership state is missing but its durable operator history exists');
   }
   return initialState(target);
@@ -107,7 +109,8 @@ function readOwnership(root, input, options = {}) {
   const stat = fs.lstatSync(paths.statePath);
   if (!stat.isFile() || stat.isSymbolicLink()) throw new OwnershipError('OWNERSHIP_PATH_INVALID', 'ownership state is not a regular file');
   let doc; try { doc = JSON.parse(fs.readFileSync(paths.statePath, 'utf8')); } catch (_) { throw new OwnershipError('OWNERSHIP_CORRUPT', 'ownership state is not valid JSON'); }
-  return verifyState(doc, paths.target, ledger.readLedger(paths.root, paths.target.run_id));
+  const actionLedger = ledger.readLedger(paths.root, paths.target.run_id);
+  return authorityAnchor.assertStateAnchored(paths.root, paths.target, verifyState(doc, paths.target, actionLedger), actionLedger);
 }
 function assertAutomationAllowed(root, input) {
   const state = readOwnership(root, input);
@@ -172,7 +175,10 @@ function transition(root, input, options = {}) {
     writeAtomic(paths.statePath, next);
     const append = options.appendAction || ledger.appendOperatorAction;
     const action = append(paths.root, paths.target.run_id, actionInput, { actor: options.actor, now: options.now, recordId });
-    verifyState(next, paths.target, ledger.readLedger(paths.root, paths.target.run_id));
+    const actionLedger = ledger.readLedger(paths.root, paths.target.run_id);
+    verifyState(next, paths.target, actionLedger);
+    authorityAnchor.recordOwnershipTransition(paths.root, paths.target, next, actionLedger, { now: options.now });
+    authorityAnchor.assertStateAnchored(paths.root, paths.target, next, actionLedger);
     return { state: next, record, action_record: action.record, state_path: path.relative(paths.root, paths.statePath) };
   } finally { release(paths); }
 }

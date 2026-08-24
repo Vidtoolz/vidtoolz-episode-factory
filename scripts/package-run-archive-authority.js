@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const ledger = require('./operator-action-ledger.js');
+const authorityAnchor = require('./execution-ownership-authority-anchor.js');
 
 class PackageRunArchiveAuthorityError extends Error {
   constructor(code, message) { super(message); this.name = 'PackageRunArchiveAuthorityError'; this.code = code; this.statusCode = 409; }
@@ -16,9 +17,17 @@ function hasAnyEntry(directory) {
 }
 
 function inspectArchiveAuthority(root, runId) {
+  let repositoryAnchor;
+  try { repositoryAnchor = authorityAnchor.readAnchor(root); }
+  catch (error) { throw new PackageRunArchiveAuthorityError('PACKAGE_RUN_ARCHIVE_AUTHORITY_INVALID', `repository authority anchor cannot be verified: ${error.code || error.message}`); }
   const paths = ledger.ledgerPaths(root, runId);
   const agents = paths.agentsDir;
   const blockers = [];
+  const archived = repositoryAnchor.records.filter((record) => record.run_id === runId && ['RUN_ARCHIVE_RESERVED', 'RUN_ARCHIVED'].includes(record.event));
+  if (archived.length) blockers.push('RUN_ID_RESERVED_BY_ARCHIVE');
+  const completedArchive = archived.filter((record) => record.event === 'RUN_ARCHIVED').at(-1);
+  if (completedArchive && !fs.existsSync(path.join(root, completedArchive.archived_location))) blockers.push('ARCHIVED_LOCATION_MISSING');
+  if (repositoryAnchor.records.some((record) => record.run_id === runId && record.event === 'OWNERSHIP_TRANSITION')) blockers.push('REPOSITORY_OWNERSHIP_HISTORY');
   for (const name of ['.lock', '.operator-action-ledger.lock']) {
     if (fs.existsSync(path.join(agents, name))) blockers.push(name === '.lock' ? 'ACTIVE_OR_STALE_RUNNER_LOCK' : 'OPERATOR_LEDGER_WRITE_IN_PROGRESS');
   }
@@ -35,7 +44,7 @@ function inspectArchiveAuthority(root, runId) {
   ]) {
     if (hasAnyEntry(path.join(agents, name))) blockers.push(reason);
   }
-  return { safe: blockers.length === 0, run_id: runId, blockers: [...new Set(blockers)] };
+  return { safe: blockers.length === 0, run_id: runId, blockers: [...new Set(blockers)], repository_anchor_head: repositoryAnchor.head_hash };
 }
 
 function assertArchiveAuthoritySafe(root, runId) {
