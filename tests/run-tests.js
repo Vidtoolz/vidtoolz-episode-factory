@@ -114,6 +114,7 @@ require("./visual-planning-director.test.js");
 require("./agent-task-visual-planning.test.js");
 require("./audience-packaging-director.test.js");
 require("./presenter-take-manifest.test.js");
+require("./presenter-director.test.js");
 require("./edit-plan.test.js");
 require("./editor-agent.test.js");
 require("./agent-control-room.test.js");
