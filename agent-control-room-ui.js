@@ -91,8 +91,14 @@
       line('Escalation reason', rationale.escalation_reason) +
       line('Confidence', rationale.confidence) +
       line('Artifact', agent.current_artifact && typeof agent.current_artifact === 'object' ? JSON.stringify(agent.current_artifact) : agent.current_artifact) +
-      line('Manual artifact', manualControl.artifact && [manualControl.artifact.path, manualControl.artifact.sha256].filter(Boolean).join(' · ')) +
+      line('Manual owner', manualControl.owner) +
+      line('Manual artifact path', manualControl.manual_artifact_path) +
+      line('Manual artifact hash', manualControl.manual_artifact_sha256) +
+      line('Predecessor artifact', manualControl.predecessor_artifact && JSON.stringify(manualControl.predecessor_artifact)) +
+      line('Editing method', manualControl.editing_method) +
+      line('Manual control warning', manualControl.warning) +
       (manualControl.preview_url ? '<a class="agent-manual-artifact-link" target="_blank" rel="noopener" href="' + esc(manualControl.preview_url) + '">Open bounded Visual Plan preview</a>' : '') +
+      (manualControl.open_api && manualControl.open_file ? '<button type="button" class="agent-manual-open" data-open-api="' + esc(manualControl.open_api) + '" data-run-id="' + esc(agent.run_id) + '" data-file="' + esc(manualControl.open_file) + '">Reveal trusted manual artifact</button>' : '') +
       line('Latest event', eventText(agent.latest_event)) +
       controlButtons(agent) +
       '<div class="agent-control-room-implementation">Implementation: ' + esc(implementation.state || 'UNKNOWN') +
@@ -224,6 +230,7 @@
       return load().then(function () {
         var output = document.getElementById('agentControlResult-' + body.agent_id);
         if (output) output.textContent = result.result_status + ' · action record ' + result.action_record_id
+          + (result.manual_artifact_path ? ' · HUMAN owns ' + result.manual_artifact_path + ' · automation fenced' : '')
           + (result.successor_task_id ? ' · successor ' + result.successor_task_id + ' · fresh Visual Plan review required' : '');
       });
     }).catch(function (error) { window.alert(error.message); }).finally(function () { button.disabled = false; });
@@ -251,5 +258,12 @@
 
   refresh.addEventListener('click', load);
   rows.addEventListener('click', function (event) { var button = event.target.closest('.agent-control-action'); if (button) runControl(button); });
+  rows.addEventListener('click', function (event) {
+    var button = event.target.closest('.agent-manual-open');
+    if (!button) return;
+    button.disabled = true;
+    postControl(button.getAttribute('data-open-api'), { runId: button.getAttribute('data-run-id'), file: button.getAttribute('data-file') })
+      .catch(function (error) { window.alert(error.message); }).finally(function () { button.disabled = false; });
+  });
   load();
 })();

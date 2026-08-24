@@ -12882,6 +12882,14 @@ function attachAgentControlState(payload, root, cancelProvider) {
     agent.manual_control = {
       eligible_specialist: agent.agent_id === 'visual_planning_director', reason: manual.reason || null,
       artifact: manual.artifact || manual.manual_artifact || null,
+      owner: state.current_owner,
+      manual_artifact_path: manual.manual_artifact?.path || null,
+      manual_artifact_sha256: manual.manual_artifact?.sha256 || null,
+      predecessor_artifact: agent.current_artifact || null,
+      editing_method: manual.manual_artifact ? 'TRUSTED_OS_FILE_REVEAL' : null,
+      open_api: manual.manual_artifact ? OPEN_FILE_API : null,
+      open_file: manual.manual_artifact?.path || null,
+      warning: state.current_owner === 'HUMAN' ? 'Automation is fenced for this exact Visual Planning task. Editing occurs through the trusted local file tool, not the cockpit.' : null,
       preview_url: manual.manual_artifact
         ? `${AGENT_MANUAL_ARTIFACT_API}?run_id=${encodeURIComponent(agent.run_id)}&agent_id=${encodeURIComponent(agent.agent_id)}&task_id=${encodeURIComponent(agent.current_task)}` : null,
       scope_statement: 'Automation will be fenced for this exact Visual Planning task.',
@@ -18276,10 +18284,6 @@ function createServer(options = {}) {
       readJsonBody(req, 1024 * 32)
         .then(async (payload) => {
           validateLocalWriteRequest(req, payload, { label: 'Agent operator control' });
-          if ([AGENT_TAKEOVER_PREVIEW_API, AGENT_TAKEOVER_APPLY_API, AGENT_RETURN_PREVIEW_API, AGENT_RETURN_APPLY_API].includes(url.pathname)
-              && payload.agent_id !== 'visual_planning_director') {
-            throw Object.assign(new Error('manual takeover is production-visible only for Visual Planning Director'), { code: 'MANUAL_CONTROL_SPECIALIST_NOT_SUPPORTED', statusCode: 409 });
-          }
           const options = {
             root: serverOptions.root || ROOT,
             actor: operatorActionLedger.localActorContext(),

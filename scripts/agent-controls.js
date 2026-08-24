@@ -217,11 +217,15 @@ function applyTakeManualControl(input, options = {}) {
     reason: input.reason, task_sha256: runner.sha256(context.taskBytes), artifact_id: artifact.artifact_id, artifact_sha256: artifact.sha256,
     expected_revision: owner.revision, expected_state_hash: owner.current_state_hash,
   }, { actor: options.actor || ledger.localActorContext(), now: options.now, recordId: options.recordId });
-  return { action: 'TAKE_MANUAL_CONTROL', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'HUMAN', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash, manual_artifact_path: manualArtifact?.path || null };
+  return { action: 'TAKE_MANUAL_CONTROL', result_status: 'COMPLETED', action_record_id: out.action_record.record_id, execution_owner: 'HUMAN', ownership_revision: out.state.revision, ownership_state_hash: out.state.current_state_hash,
+    manual_artifact_path: manualArtifact?.path || null, manual_artifact_sha256: manualArtifact?.sha256 || null,
+    predecessor_artifact_path: artifact.path, predecessor_artifact_sha256: artifact.sha256,
+    editing_method: 'REVEAL_VIA_PACKAGE_RUN_OPEN_FILE', warning: 'Automation is fenced for this exact Visual Planning task. The cockpit does not edit artifact bytes.' };
 }
 
 async function previewReturnToAutomation(input, options = {}) {
   const context = locateInvocation(options.root, input), normalizedReason = reason(input.reason);
+  assertManualControlSpecialist(context.agentId);
   const owner = ownershipFor(context), manual = successor.readManualArtifact(context), currentLedger = ledger.readLedger(context.root, context.runId);
   if (owner.current_owner !== 'HUMAN') throw new AgentControlError('OWNERSHIP_TRANSITION_INVALID', `current execution owner is ${owner.current_owner}`);
   const taken = owner.history.at(-1), artifactChanged = taken.input_hashes.artifact_sha256 !== manual.sha256;

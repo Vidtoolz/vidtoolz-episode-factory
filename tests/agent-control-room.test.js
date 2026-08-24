@@ -708,7 +708,7 @@ test('ownership control API refuses takeover for specialists without a successor
     const input = { run_id: completed.runId, agent_id: 'alpha', invocation_id: completed.invocation.invocation_id, reason: 'Bounded manual correction.' };
     const refused = await postJson(server, packageEngineServer.AGENT_TAKEOVER_PREVIEW_API, input);
     assert.equal(refused.status, 409);
-    assert.equal(refused.body.code, 'MANUAL_CONTROL_SPECIALIST_NOT_SUPPORTED');
+    assert.equal(refused.body.code, 'TAKEOVER_SUCCESSOR_ADAPTER_MISSING');
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });
 
@@ -758,12 +758,25 @@ test('Visual Planning alone receives UI takeover and changed-byte successor retu
     assert.deepEqual(preview.potential_invalidations.gates, ['VISUAL_PLAN_APPROVAL_IF_BYTES_CHANGE']);
     const taken = (await postJson(server, packageEngineServer.AGENT_TAKEOVER_APPLY_API, { ...input, preview_token: preview.preview_token })).body.data;
     assert.equal(taken.execution_owner, 'HUMAN');
+    assert.match(taken.manual_artifact_path, /agents\/manual-work\/visual_planning_director\/visual-task-ui\/artifact\.json$/);
+    assert.equal(taken.manual_artifact_sha256, preview.artifact.sha256);
+    assert.equal(taken.predecessor_artifact_sha256, preview.artifact.sha256);
     room = JSON.parse((await request(server, '/api/agent-control-room')).body).data;
     const human = room.agents.find((agent) => agent.agent_id === 'visual_planning_director');
     assert.equal(human.control_capabilities.return_to_automation, true);
     assert.match(human.manual_control.preview_url, /manual-artifact/);
+    assert.equal(human.manual_control.owner, 'HUMAN');
+    assert.equal(human.manual_control.manual_artifact_path, taken.manual_artifact_path);
+    assert.equal(human.manual_control.open_api, packageEngineServer.OPEN_FILE_API);
+    assert.equal(human.manual_control.open_file, taken.manual_artifact_path);
+    assert.match(human.manual_control.warning, /Automation is fenced/);
     const artifactPreview = await request(server, human.manual_control.preview_url);
     assert.equal(artifactPreview.status, 200); assert.equal(JSON.parse(artifactPreview.body).data.read_only, true);
+    fs.writeFileSync(path.join(f.root, taken.manual_artifact_path), '{}\n');
+    const invalidShape = await postJson(server, packageEngineServer.AGENT_RETURN_PREVIEW_API, { ...input, reason: 'Reject malformed manual Visual Plan shape.' });
+    assert.equal(invalidShape.status, 409); assert.equal(invalidShape.body.code, 'SUCCESSOR_ARTIFACT_SCHEMA_INVALID');
+    assert.equal(require('../scripts/execution-ownership.js').readOwnership(f.root, { run_id: completed.runId, agent_id: completed.agentId, task_id: 'visual-task-ui' }).current_owner, 'HUMAN');
+    assert.equal(require('../scripts/operator-action-ledger.js').readLedger(f.root, completed.runId).records.length, 1);
     const nextPlan = takeoverPlan(2, firstPlan);
     fs.writeFileSync(path.join(f.root, taken.manual_artifact_path), `${JSON.stringify(nextPlan, null, 2)}\n`);
     const returnInput = { ...input, reason: 'Create validated immutable Visual Plan successor.' };
@@ -890,6 +903,9 @@ test('cockpit UI renders a registry-driven panel with manual refresh', () => {
   assert.match(ui, /Preview cancel/);
   assert.match(ui, /Take manual control/);
   assert.match(ui, /Return to automation/);
+  assert.match(ui, /Manual artifact path/);
+  assert.match(ui, /Reveal trusted manual artifact/);
+  assert.match(ui, /automation fenced/);
   assert.match(ui, /Automation will be fenced for this exact Visual Planning task/);
   assert.match(ui, /Approvals becoming stale/);
   assert.match(ui, /Gates becoming stale/);

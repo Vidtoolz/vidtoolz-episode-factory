@@ -9,9 +9,10 @@ const controls = require('../scripts/agent-controls.js');
 const ownership = require('../scripts/execution-ownership.js');
 const ledger = require('../scripts/operator-action-ledger.js');
 const validator = require('../scripts/agent-contract-validator.js');
+const packageEngineServer = require('../package-engine-server.js');
 
 function write(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`); }
-test('ownership canary: takeover fences automation and changed bytes cannot silently return', async () => {
+test('ownership canary: specialists without successor adapters cannot enter manual ownership', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ownership-canary-'));
   write(path.join(root, 'config/agent-registry.json'), { schema_version: 1, agents: [
     { agent_id: 'alpha', name: 'Alpha', lifecycle: { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' }, implementation_state: 'IMPLEMENTATION_PROVEN' },
@@ -23,24 +24,9 @@ test('ownership canary: takeover fences automation and changed bytes cannot sile
   const first = await runner.runRegisteredAgent({ repoRoot: root, agentId: 'alpha', runId: 'run-1', taskPath });
   const input = { run_id: 'run-1', agent_id: 'alpha', invocation_id: first.invocation.invocation_id, reason: 'Bounded canary takeover.' };
   const beforePreview = fs.readdirSync(path.join(root, 'package-runs/run-1/agents')).sort().join(',');
-  const preview = controls.previewTakeManualControl(input, { root });
-  assert.equal(preview.read_only, true); assert.equal(fs.readdirSync(path.join(root, 'package-runs/run-1/agents')).sort().join(','), beforePreview);
-  const actor = ledger.localActorContext({ username: 'mikko' });
-  const taken = controls.applyTakeManualControl({ ...input, preview_token: preview.preview_token }, { root, actor, recordId: 'operator-action-canary-take' });
-  assert.equal(ownership.readOwnership(root, { run_id: 'run-1', agent_id: 'alpha', task_id: 'task-1' }).current_owner, 'HUMAN');
-  await assert.rejects(() => runner.runRegisteredAgent({ repoRoot: root, agentId: 'alpha', runId: 'run-1', taskPath, newAttempt: true }), (e) => e.code === 'AUTOMATION_FENCED');
-  const artifactPath = path.join(root, taken.manual_artifact_path);
-  const oldBytes = fs.readFileSync(artifactPath); const binding = { artifact_path: artifactPath, artifact_sha256: validator.sha256(oldBytes), commit: 'canary', approved_by: 'Mikko', approved_at: '2026-08-24T10:00:00.000Z', scope: 'VISUAL_PLAN_APPROVAL' };
-  fs.writeFileSync(artifactPath, '{"version":2}\n');
-  assert.equal(validator.verifyApprovalBindingForScope(binding, fs.readFileSync(artifactPath), 'VISUAL_PLAN_APPROVAL').verdict, 'STALE');
-  const ret = await controls.previewReturnToAutomation({ ...input, reason: 'Attempt unsafe return.' }, { root });
-  assert.equal(ret.eligible, false); assert.equal(ret.invalidations.prior_evidence, 'STALE');
-  await assert.rejects(() => controls.applyReturnToAutomation({ ...input, reason: 'Attempt unsafe return.', preview_token: ret.preview_token }, { root, actor }), (e) => e.code === 'REVALIDATION_REQUIRED');
-  assert.equal(ownership.readOwnership(root, { run_id: 'run-1', agent_id: 'alpha', task_id: 'task-1' }).current_owner, 'HUMAN');
-  assert.equal(ledger.readLedger(root, 'run-1').records.length, 1);
-  assert.throws(() => controls.previewTakeManualControl({ run_id: 'run-1', agent_id: 'presenter_director', invocation_id: 'presenter_director:task-1:1', reason: 'No bypass.' }, { root }), (e) => e.code === 'BLOCKED_AGENT_NOT_ENABLED');
-  fs.unlinkSync(ownership.pathsFor(root, { run_id: 'run-1', agent_id: 'alpha', task_id: 'task-1' }).statePath);
-  await assert.rejects(() => runner.runRegisteredAgent({ repoRoot: root, agentId: 'alpha', runId: 'run-1', taskPath, newAttempt: true }), (e) => e.code === 'OWNERSHIP_REQUIRED_MISSING');
+  assert.throws(() => controls.previewTakeManualControl(input, { root }), (error) => error.code === 'TAKEOVER_SUCCESSOR_ADAPTER_MISSING');
+  assert.equal(fs.readdirSync(path.join(root, 'package-runs/run-1/agents')).sort().join(','), beforePreview);
+  assert.equal(ownership.readOwnership(root, { run_id: 'run-1', agent_id: 'alpha', task_id: 'task-1' }).current_owner, 'AUTOMATION');
 });
 
 function maturePlan(revision = 1, previous = null) {
@@ -55,14 +41,14 @@ function maturePlan(revision = 1, previous = null) {
 test('extended ownership canary: changed Visual Plan resumes only through an immutable successor', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'successor-canary-'));
   const sourceScripts = path.join(__dirname, '..', 'scripts');
-  const dependencies = ['visual-planning-director.js', 'agent-executable-boundary.js', 'agent-dispatch-authority.js', 'execution-ownership.js', 'operator-action-ledger.js', 'successor-task-contract.js', 'visual-planning-successor.js', 'agent-task-visual-planning.js', 'agent-run.js', 'operational-rationale.js', 'visual-plan.js', 'visual-plan-prompt-adapter.js', 'research-result-validator.js', 'agent-contract-validator.js', 'approval-scopes.js'];
+  const dependencies = ['visual-planning-director.js', 'agent-executable-boundary.js', 'agent-dispatch-authority.js', 'execution-ownership.js', 'execution-ownership-authority-anchor.js', 'operator-action-ledger.js', 'successor-task-contract.js', 'visual-planning-successor.js', 'agent-task-visual-planning.js', 'agent-run.js', 'operational-rationale.js', 'visual-plan.js', 'visual-plan-prompt-adapter.js', 'research-result-validator.js', 'agent-contract-validator.js', 'approval-scopes.js'];
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
   dependencies.forEach((name) => fs.copyFileSync(path.join(sourceScripts, name), path.join(root, 'scripts', name)));
   write(path.join(root, 'config/agent-registry.json'), { schema_version: 1, agents: [
     { agent_id: 'visual_planning_director', name: 'Visual Planning Director', lifecycle: { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' }, implementation_state: 'IMPLEMENTATION_PROVEN' },
     { agent_id: 'presenter_director', name: 'Presenter', lifecycle: { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED' } },
   ] });
-  const runId = 'run-successor', firstPlan = maturePlan();
+  const runId = '2026-08-24-run-successor', firstPlan = maturePlan();
   const task = { task_id: 'visual-task-1', package_run_id: runId, action: 'review_coverage', requested_by: 'mikko', project_id: 'p1', privacy: { local_only: true }, story: { ...firstPlan.story, sections: [{ section_id: 's1', order: 1, dialogue: 'Story.' }] }, required_beats: firstPlan.required_beats, existing_plan: firstPlan };
   const taskPath = path.join(root, 'task.json'); write(taskPath, task);
   const first = await runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath });
@@ -70,6 +56,12 @@ test('extended ownership canary: changed Visual Plan resumes only through an imm
   const input = { run_id: runId, agent_id: 'visual_planning_director', invocation_id: first.invocation.invocation_id, reason: 'Canary manual Visual Plan revision.' };
   const actor = ledger.localActorContext({ username: 'mikko' }), preview = controls.previewTakeManualControl(input, { root });
   const taken = controls.applyTakeManualControl({ ...input, preview_token: preview.preview_token }, { root, actor, recordId: 'operator-action-successor-take' });
+  assert.throws(() => packageEngineServer.archivePackageRun({ runId }, { root }), (error) => error.code === 'PACKAGE_RUN_ARCHIVE_AUTHORITY_ACTIVE');
+  assert.throws(() => controls.previewRetry({ ...input, reason: 'Retry must stay fenced.' }, { root }), (error) => error.code === 'AUTOMATION_FENCED');
+  const liveRun = path.join(root, 'package-runs', runId), movedRun = path.join(root, 'package-runs', 'stale-runs', runId);
+  fs.mkdirSync(path.dirname(movedRun), { recursive: true }); fs.renameSync(liveRun, movedRun); fs.mkdirSync(liveRun, { recursive: true });
+  await assert.rejects(() => runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath, newAttempt: true }), (error) => error.code === 'OWNERSHIP_RUN_INCARNATION_MISMATCH');
+  fs.rmSync(liveRun, { recursive: true }); fs.renameSync(movedRun, liveRun);
   const predecessorArtifact = path.join(root, 'package-runs', runId, 'agents', 'visual_planning_director', 'visual-task-1', 'artifacts', 'visual-plan.json');
   const predecessorBytes = fs.readFileSync(predecessorArtifact), oldBinding = { artifact_path: predecessorArtifact, artifact_sha256: validator.sha256(predecessorBytes), commit: 'canary', approved_by: 'Mikko', approved_at: '2026-08-24T10:00:00.000Z', scope: 'VISUAL_PLAN_APPROVAL' };
   const nextPlan = maturePlan(2, firstPlan); write(path.join(root, taken.manual_artifact_path), nextPlan);
@@ -93,6 +85,7 @@ test('extended ownership canary: changed Visual Plan resumes only through an imm
   const contractPath = path.join(root, returned.successor_contract_path), contractBytes = fs.readFileSync(contractPath); const corrupt = JSON.parse(contractBytes); corrupt.reason = 'tampered'; write(contractPath, corrupt); assert.throws(() => require('../scripts/successor-task-contract.js').assertRunnableSuccessor(root, 'visual_planning_director', JSON.parse(fs.readFileSync(successorTaskPath)), fs.readFileSync(successorTaskPath)), (e) => e.code === 'SUCCESSOR_CONTRACT_INVALID'); fs.writeFileSync(contractPath, contractBytes);
   fs.unlinkSync(ownership.pathsFor(root, { run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1' }).statePath);
   await assert.rejects(() => runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath, newAttempt: true }), (e) => e.code === 'OWNERSHIP_REQUIRED_MISSING');
+  assert.throws(() => packageEngineServer.archivePackageRun({ runId }, { root }), (error) => error.code === 'PACKAGE_RUN_ARCHIVE_AUTHORITY_ACTIVE');
 });
 
 if (require.main === module) { (async () => { let passed = 0; for (const item of tests) { try { await item.fn(); passed++; console.log(`ok - ${item.name}`); } catch (error) { console.error(`not ok - ${item.name}`); console.error(error); process.exitCode = 1; break; } } console.log(`${passed}/${tests.length} Ownership Canary tests passed`); })(); }
