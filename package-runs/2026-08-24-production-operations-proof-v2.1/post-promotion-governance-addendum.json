@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "record_type": "implementation_promotion_governance_addendum",
+  "role": "production_operations",
+  "supersedes_promotion_status_only": "package-runs/2026-08-24-production-operations-proof-v2.1/proof-manifest-v2.1.json#promotion",
+  "historical_manifests_unchanged": true,
+  "proof_history": [
+    {
+      "stage": "V1_CANDIDATE_PROOF",
+      "manifest": "package-runs/2026-08-24-production-operations-proof/proof-manifest.json",
+      "sha256": "bd26e582fea53e57887c308b1dd6e50b73de222d9497614486d9f908015aa0b8"
+    },
+    {
+      "stage": "V2_PRODUCTION_PATH_PROOF",
+      "manifest": "package-runs/2026-08-24-production-operations-proof-v2/proof-manifest-v2.json",
+      "sha256": "553e85ee573ab8a39d6fc3155fbb64f93981d791fe3f2f42e818b60df4b4a4d0"
+    },
+    {
+      "stage": "V2_1_NOMINAL_STATUS_PROOF_PROMOTION_PENDING",
+      "manifest": "package-runs/2026-08-24-production-operations-proof-v2.1/proof-manifest-v2.1.json",
+      "sha256": "818384a6981dd3306b2584537e24f3aab1e34d7ff19c713330e050edb864e56a"
+    },
+    {
+      "stage": "HUMAN_AUTHORIZED_IMPLEMENTATION_PROMOTION",
+      "governance_record": "governance/production-operations-implementation-promotion.json",
+      "sha256": "db04eb93250d72bd33e3cffe57d24337f3bc1eb41d266638b3bfdd86ef4a2347"
+    }
+  ],
+  "promotion": {
+    "decision": "PERFORMED",
+    "human_authorized": true,
+    "role": "production_operations",
+    "prior_implementation_state": "CANDIDATE",
+    "resulting_implementation_state": "IMPLEMENTATION_PROVEN",
+    "promotion_commit": "b23c9bb90ff16c0b86c1f4a236c3f9d7097a8ae6",
+    "effective_at": "2026-08-24T10:54:51+03:00"
+  },
+  "scope_limits": {
+    "lifecycle_changed": false,
+    "authority_changed": false,
+    "other_role_changed": false,
+    "human_approval_created": false,
+    "automatic_execution_created": false
+  },
+  "current_registry_binding": {
+    "path": "config/agent-registry.json",
+    "promotion_commit_sha256": "98f16f6959794f55ee2771b0bce416d1e6105a921387df3beb268ff1b8a978d6",
+    "implementation_state": "IMPLEMENTATION_PROVEN"
+  },
+  "note": "V1, V2, and V2.1 remain immutable historical evidence of candidate proof and the then-pending decision. This addendum records the later human-authorized promotion without rewriting that history."
+}

@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "record_type": "agent_implementation_promotion_decision",
+  "decision": "PROMOTE_IMPLEMENTATION",
+  "role": "production_operations",
+  "prior_implementation_state": "CANDIDATE",
+  "resulting_implementation_state": "IMPLEMENTATION_PROVEN",
+  "decision_maker": {
+    "identity_type": "HUMAN_ORCHESTRATION_AUTHORIZATION",
+    "identity": "Mikko",
+    "authenticated": false,
+    "authentication_note": "Authorization was explicitly supplied by Mikko in the orchestration prompt. This repository record has no cryptographic proof of human identity."
+  },
+  "authorization": {
+    "source": "explicit human authorization in the controlling orchestration prompt",
+    "authorized_change": "production_operations.implementation_state: CANDIDATE -> IMPLEMENTATION_PROVEN",
+    "scope": "production_operations implementation readiness only",
+    "authorization_received": "before promotion commit b23c9bb90ff16c0b86c1f4a236c3f9d7097a8ae6; exact prompt timestamp is not available as repository evidence",
+    "effective_at": "2026-08-24T10:54:51+03:00",
+    "recorded_at": "2026-08-24T11:36:25+03:00"
+  },
+  "promotion_commit": {
+    "commit": "b23c9bb90ff16c0b86c1f4a236c3f9d7097a8ae6",
+    "subject": "promote(agents): prove production operations implementation",
+    "commit_object_sha256": "31e67aee8ddaa0ae5a9d4d705b77a660c523d059e2bd6eb855a4b453a3eabe82",
+    "registry_sha256_before": "33cee763519511b68f58f2d14fb66b23f05426774970e8c5d35e90442795ed2d",
+    "registry_sha256_after": "98f16f6959794f55ee2771b0bce416d1e6105a921387df3beb268ff1b8a978d6",
+    "semantic_diff": {
+      "changed_fields": [
+        "production_operations.implementation_state"
+      ],
+      "lifecycle_or_authority_fields_changed": false,
+      "other_roles_changed": false
+    }
+  },
+  "implementation_binding": {
+    "proof_bound_commit": "16ccedaf3787121e87e7fe322058d2ed7b1a6874",
+    "proof_bound_commit_object_sha256": "2c233b9e71e939c9f6f12872b90c96b7d8d43671818fbf7a2a7eb9717949f6fc",
+    "module_path": "scripts/production-operations.js",
+    "module_sha256": "afd8ae21ecbe79cded42072addcdc91b014d766abf1b4c29e22565c11a0a0314"
+  },
+  "proof_binding": {
+    "proof_package": "package-runs/2026-08-24-production-operations-proof-v2.1",
+    "proof_manifest": "package-runs/2026-08-24-production-operations-proof-v2.1/proof-manifest-v2.1.json",
+    "proof_manifest_sha256": "818384a6981dd3306b2584537e24f3aab1e34d7ff19c713330e050edb864e56a",
+    "promotion_criteria_version": "v1 (docs/implementation-promotion-criteria.md)",
+    "promotion_criteria_sha256": "005ae7d914f8e7a52333c02b02527c1cc4b77bffc8fe1c5b1be1ac9d0ca4997d",
+    "criteria_result": "10/10 PASS"
+  },
+  "authority_effect": {
+    "implementation_dispatch_eligibility_changed": true,
+    "doctrine_changed": false,
+    "lifecycle_proven_changed": false,
+    "autonomous_dispatch_changed": false,
+    "allowed_actions_changed": false,
+    "prohibited_actions_changed": false,
+    "human_gates_changed": false,
+    "approval_created": false,
+    "publication_authority_created": false,
+    "takeover_eligibility_created": false
+  },
+  "statement": "PROMOTION WAS HUMAN-AUTHORIZED. The decision promotes only the Production Operations implementation readiness axis. It is not a creative, artifact, final-cut, music, packaging, publication, or other approval."
+}

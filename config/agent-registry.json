@@ -77,7 +77,7 @@
         "AUTONOMOUS": "remediation routing is mechanical (e.g. source durability fix)"
       },
       "implementation_state": "IMPLEMENTATION_PROVEN",
-      "implementation_state_note": "Implementation candidate exists/is pending; direct dispatch refuses until Mikko promotes implementation_state to IMPLEMENTATION_PROVEN after proof. Distinct from doctrine lifecycle, which remains PROVEN/ENABLED per contract BUILT status."
+      "implementation_state_note": "Implementation proven by the V2.1 proof package and promoted by Mikko's explicit human authorization, durably recorded in governance/production-operations-implementation-promotion.json. Dispatch remains subject to lifecycle and policy gates."
     },
     {
       "agent_id": "camera_director",
