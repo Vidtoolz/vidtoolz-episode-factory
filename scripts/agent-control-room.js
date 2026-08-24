@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const os = require('node:os');
 const { deriveOperationalRationale } = require('./operational-rationale.js');
 const hermesEscalation = require('./hermes-escalation.js');
+const decisionQueueModule = require('./decision-queue.js');
 const { scopeForAgent, scopeForHumanGate } = require('./approval-scopes.js');
 
 const DEFAULT_ROOT = path.resolve(__dirname, '..');
@@ -700,6 +701,14 @@ async function buildAgentControlRoom(options = {}) {
     return acc;
   }, {});
   const decisionQueue = buildHumanDecisionQueue(agents, registered);
+  // Human Decision Queue V2 — obligation semantics. Every unresolved human
+  // obligation is an item; a newer same-agent completion never removes an
+  // unrelated still-required decision. Resolved/superseded/stale obligations
+  // are preserved in history. Read-only; never fabricates approval.
+  const obligationQueue = (() => {
+    try { return decisionQueueModule.buildDecisionQueue(root, registry, options.decisionQueueOptions || {}); }
+    catch (_) { return null; }
+  })();
   // Hermes Escalation Bridge V1 — derived, read-only orchestration projection
   // over the decision queue. Never mutates attention, gates, or approvals.
   const hermes_orchestration = (() => {
@@ -730,6 +739,7 @@ async function buildAgentControlRoom(options = {}) {
     live_resources: liveResources,
     agents,
     human_decision_queue: decisionQueue,
+    human_decision_queue_v2: obligationQueue,
     hermes_orchestration,
     planned_roles: plannedRoles(contract, ids),
     non_agent_roles: {

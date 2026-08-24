@@ -124,6 +124,30 @@
       '<a href="' + esc(item.workspace) + '">Open relevant workspace</a></article>';
   }
 
+  // V2 obligation queue: every unresolved human obligation, not just the
+  // latest completion per agent.
+  function renderObligationItem(item) {
+    var gate = item.owning_gate || item.approval_scope_required;
+    return '<article class="agent-decision-item ' + esc((item.attention || 'review').toLowerCase()) + '">' +
+      '<div><strong>' + esc(item.attention) + ' · ' + esc(item.agent_id) + '</strong>' +
+      '<small>' + esc(item.invocation_id || item.task_id || '') + '</small></div>' +
+      '<p>' + esc(item.reason || item.blocker || 'Human attention required') + '</p>' +
+      line('Run', item.run_id) +
+      line('Gate / scope', gate) +
+      line('Semantic state', item.semantic_state) +
+      line('Blocker', item.blocker) +
+      '<a href="' + esc(item.workspace) + '">Open relevant workspace</a></article>';
+  }
+
+  function renderObligationHistory(entry) {
+    return '<article class="agent-decision-item ' + esc((entry.state || '').toLowerCase()) + '">' +
+      '<div><strong>' + esc(entry.state) + ' · ' + esc(entry.agent_id) + '</strong>' +
+      '<small>' + esc(entry.invocation_id || '') + '</small></div>' +
+      line('Resolved by', entry.resolution && entry.resolution.resolved_by) +
+      line('Resolution', entry.resolution && entry.resolution.reason) +
+      '</article>';
+  }
+
   function renderWorkflow(report) {
     var next = report.nextSafeHumanAction || {};
     workflow.innerHTML = (report.gates || []).map(function (gate) {
@@ -161,9 +185,17 @@
       '<span>Runner context ' + esc(counts.runner_context || 0) + '</span>' +
       '<span>No runtime context ' + esc(counts.runtime_state_missing || 0) + '</span>';
     rows.innerHTML = agents.map(renderAgent).join('');
-    var decisionItems = payload.human_decision_queue || [];
-    queue.innerHTML = decisionItems.length ? decisionItems.map(renderQueueItem).join('')
+    var obligation = payload.human_decision_queue_v2;
+    var decisionItems = obligation && obligation.human_decision_queue
+      ? obligation.human_decision_queue : (payload.human_decision_queue || []);
+    var renderer = obligation && obligation.human_decision_queue ? renderObligationItem : renderQueueItem;
+    queue.innerHTML = decisionItems.length ? decisionItems.map(renderer).join('')
       : '<p class="muted">No review or decision items require attention.</p>';
+    var historyItems = obligation && obligation.human_decision_queue ? obligation.human_decision_history : [];
+    if (historyItems && historyItems.length) {
+      queue.innerHTML += '<details class="agent-decision-history"><summary>Resolved / superseded obligations (' + historyItems.length + ')</summary>' +
+        historyItems.map(renderObligationHistory).join('') + '</details>';
+    }
     loadWorkflow(payload);
 
     var planned = (payload.planned_roles || []).map(function (role) {
