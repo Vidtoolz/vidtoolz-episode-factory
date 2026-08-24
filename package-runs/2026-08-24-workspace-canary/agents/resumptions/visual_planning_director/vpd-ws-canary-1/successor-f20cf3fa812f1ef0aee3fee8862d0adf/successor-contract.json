@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "contract_type": "successor-task-resumption",
+  "run_id": "2026-08-24-workspace-canary",
+  "agent_id": "visual_planning_director",
+  "predecessor_task_id": "vpd-ws-canary-1",
+  "predecessor_task_sha256": "9790544d8f4947e8c3743ed4f37047aa5a34952687b8898fa817bbba0a5e9791",
+  "predecessor_invocation_id": "visual_planning_director:vpd-ws-canary-1:1",
+  "predecessor_artifact_id": "visual_plan",
+  "predecessor_artifact_sha256": "090d3634d8c0e834d5511ce9037b766d437112a35a6cf8571e8676274fbcf839",
+  "new_artifact_path": "package-runs/2026-08-24-workspace-canary/agents/manual-work/visual_planning_director/vpd-ws-canary-1/artifact.json",
+  "new_artifact_id": "visual_plan",
+  "new_artifact_sha256": "f55bc13d084bd2730f8d53e88c1958d804375308402029b7feb6186df8cf2c37",
+  "human_ownership_revision": 1,
+  "takeover_ledger_record_id": "operator-action-789e7a9a-9562-420e-9e25-0640e2768a54",
+  "return_resumption_ledger_record_id": "operator-action-b5e371df-f1f9-4377-9eb7-60d13e3a717c",
+  "validation_results": {
+    "valid": true,
+    "validator_id": "VISUAL_PLAN_SUCCESSOR_V1",
+    "reason_codes": [],
+    "structural_validation": {
+      "ok": true,
+      "current": true,
+      "reason_codes": []
+    },
+    "lineage_validation": {
+      "valid": true,
+      "state": "VALID",
+      "reason_codes": []
+    },
+    "upstream_dependencies": [
+      {
+        "artifact_type": "story",
+        "project_id": "01M0QR9DGP5RRFTPVDA7WQP2XM",
+        "version_id": "01M0QR9DGRPW4MK8BMD1RGAYDX",
+        "sha256": "f6d38d2bc156ab537256ac0d0843a6ca9919e5749c55d581dd98cb36ef457671",
+        "current": true
+      }
+    ],
+    "approvals_invalidated": [
+      "VISUAL_PLAN_APPROVAL"
+    ],
+    "gates_invalidated": [
+      "VISUAL_PLAN_APPROVAL"
+    ],
+    "approvals_still_valid": [],
+    "required_next_gate": "VISUAL_PLAN_APPROVAL",
+    "required_next_specialist": "visual_planning_director",
+    "continuation_action": "review_coverage"
+  },
+  "approvals_invalidated": [
+    "VISUAL_PLAN_APPROVAL"
+  ],
+  "gates_invalidated": [
+    "VISUAL_PLAN_APPROVAL"
+  ],
+  "approvals_still_valid": [],
+  "required_next_gate": "VISUAL_PLAN_APPROVAL",
+  "required_next_specialist": "visual_planning_director",
+  "continuation_action": "review_coverage",
+  "successor_task_id": "successor-f20cf3fa812f1ef0aee3fee8862d0adf",
+  "successor_task_sha256": "251b0ae8de43bc8d8efe2d3afa39086c4582ff2e11e05b1503aad55ceb5915f7",
+  "created_at": "2026-08-24T11:46:42.012Z",
+  "reason": "workspace-canary: operator returning edited plan",
+  "provenance": {
+    "source": "HUMAN_OWNED_MANUAL_ARTIFACT",
+    "validator_id": "VISUAL_PLAN_SUCCESSOR_V1"
+  },
+  "contract_sha256": "bd115c58bea9edc77adc3cc74d55ba7169f85a7c9ebd51e0c0a6abf3b262ef38"
+}

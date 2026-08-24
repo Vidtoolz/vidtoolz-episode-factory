@@ -1,0 +1,1033 @@
+{
+  "schema_version": 1,
+  "artifact_type": "visual-plan",
+  "plan_id": "visual-plan-01M0SS5PJCK95Y28DB682Y4JPK",
+  "plan_revision": 1,
+  "supersedes": null,
+  "created_at": "2026-08-24T11:40:57.292Z",
+  "created_by": "visual_planning_director",
+  "lifecycle_state": "PREVIEW_ONLY",
+  "story": {
+    "project_id": "01M0QR9DGP5RRFTPVDA7WQP2XM",
+    "version_id": "01M0QR9DGRPW4MK8BMD1RGAYDX",
+    "content_hash": "f6d38d2bc156ab537256ac0d0843a6ca9919e5749c55d581dd98cb36ef457671",
+    "approval": {
+      "state": "none",
+      "approved_by": null,
+      "approved_at": null,
+      "version_id": "01M0QR9DGRPW4MK8BMD1RGAYDX",
+      "content_hash": "f6d38d2bc156ab537256ac0d0843a6ca9919e5749c55d581dd98cb36ef457671"
+    },
+    "section_ids": [
+      "01M0QR9DGPJ29KR4PPNFXGB6GZ",
+      "01M0QR9DGQVSKPCFJ1RSRN1R1P",
+      "01M0QR9DGQ974AHKBQA06Z3TQT",
+      "01M0QR9DGQEDPB0GZ6VQ4XV90P",
+      "01M0QR9DGQN6ZYSN9NH4219YHS",
+      "01M0QR9DGQVW72X19PPFKE6MCZ",
+      "01M0QR9DGQPFE29WNHB84H0T27",
+      "01M0QR9DGQP03DGQZ4SPE3YPFM",
+      "01M0QR9DGQ6WD2KY32GHVS2VGC",
+      "01M0QR9DGQP0TZHB2CMFCFCNJ6",
+      "01M0QR9DGQRN3KB64TSE6R8R2C"
+    ]
+  },
+  "required_beats": [
+    {
+      "canonical_beat_id": "visual-beat-01M0SS2AZ7RSFJRX04PT9ZRWQW",
+      "section_id": "01M0QR9DGPJ29KR4PPNFXGB6GZ",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0QR9DGPJ29KR4PPNFXGB6GZ"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGPJ29KR4PPNFXGB6GZ"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0SS2AZ7HEF52CP8XPAE7P1B",
+      "section_id": "01M0QR9DGQVSKPCFJ1RSRN1R1P",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0QR9DGQVSKPCFJ1RSRN1R1P"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQVSKPCFJ1RSRN1R1P"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0SS2AZ74TZMW5XZFJVEZGXK",
+      "section_id": "01M0QR9DGQ974AHKBQA06Z3TQT",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0QR9DGQ974AHKBQA06Z3TQT"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQ974AHKBQA06Z3TQT"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0SS2AZ7ABGAM1N8A7RVJ0TK",
+      "section_id": "01M0QR9DGQEDPB0GZ6VQ4XV90P",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0QR9DGQEDPB0GZ6VQ4XV90P"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQEDPB0GZ6VQ4XV90P"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0SS2AZ7VMYY65Y7K9GP1K0A",
+      "section_id": "01M0QR9DGQN6ZYSN9NH4219YHS",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0QR9DGQN6ZYSN9NH4219YHS"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQN6ZYSN9NH4219YHS"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0SS2AZ75M7A9GS71B8NQ6PW",
+      "section_id": "01M0QR9DGQVW72X19PPFKE6MCZ",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0QR9DGQVW72X19PPFKE6MCZ"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQVW72X19PPFKE6MCZ"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0SS2AZ8Q9RPCP9NBJHEE5P5",
+      "section_id": "01M0QR9DGQPFE29WNHB84H0T27",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0QR9DGQPFE29WNHB84H0T27"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQPFE29WNHB84H0T27"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0SS2AZ88YBGB588C75KZQQ4",
+      "section_id": "01M0QR9DGQP03DGQZ4SPE3YPFM",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0QR9DGQP03DGQZ4SPE3YPFM"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQP03DGQZ4SPE3YPFM"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0SS2AZ82XY5BFSKF1HHY2G8",
+      "section_id": "01M0QR9DGQ6WD2KY32GHVS2VGC",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0QR9DGQ6WD2KY32GHVS2VGC"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQ6WD2KY32GHVS2VGC"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0SS2AZ82R2EN9XPNSH2C2PY",
+      "section_id": "01M0QR9DGQP0TZHB2CMFCFCNJ6",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0QR9DGQP0TZHB2CMFCFCNJ6"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQP0TZHB2CMFCFCNJ6"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0SS2AZ8197C2P9NWP5ZQPYZ",
+      "section_id": "01M0QR9DGQRN3KB64TSE6R8R2C",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0QR9DGQRN3KB64TSE6R8R2C"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQRN3KB64TSE6R8R2C"
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ7RSFJRX04PT9ZRWQW",
+        "section_id": "01M0QR9DGPJ29KR4PPNFXGB6GZ",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGPJ29KR4PPNFXGB6GZ"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGPJ29KR4PPNFXGB6GZ"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0SS5PJCKPC8TVZR8CZFF0YR"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ7HEF52CP8XPAE7P1B",
+        "section_id": "01M0QR9DGQVSKPCFJ1RSRN1R1P",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQVSKPCFJ1RSRN1R1P"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQVSKPCFJ1RSRN1R1P"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0SS5PJCNN7M9R4WG5JQNXS3"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ74TZMW5XZFJVEZGXK",
+        "section_id": "01M0QR9DGQ974AHKBQA06Z3TQT",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQ974AHKBQA06Z3TQT"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQ974AHKBQA06Z3TQT"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0SS5PJCPCWV6Y34DA1A68AJ"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ7ABGAM1N8A7RVJ0TK",
+        "section_id": "01M0QR9DGQEDPB0GZ6VQ4XV90P",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQEDPB0GZ6VQ4XV90P"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQEDPB0GZ6VQ4XV90P"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0SS5PJCMW2KAQ93G7489121"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ7VMYY65Y7K9GP1K0A",
+        "section_id": "01M0QR9DGQN6ZYSN9NH4219YHS",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQN6ZYSN9NH4219YHS"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQN6ZYSN9NH4219YHS"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0SS5PJCEYAYWQXZXA0XYXW3"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ75M7A9GS71B8NQ6PW",
+        "section_id": "01M0QR9DGQVW72X19PPFKE6MCZ",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQVW72X19PPFKE6MCZ"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQVW72X19PPFKE6MCZ"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0SS5PJC10S4QXCDJTD6RK96"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ8Q9RPCP9NBJHEE5P5",
+        "section_id": "01M0QR9DGQPFE29WNHB84H0T27",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQPFE29WNHB84H0T27"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQPFE29WNHB84H0T27"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0SS5PJCSKY47F8JC6V15K9P"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ88YBGB588C75KZQQ4",
+        "section_id": "01M0QR9DGQP03DGQZ4SPE3YPFM",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQP03DGQZ4SPE3YPFM"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQP03DGQZ4SPE3YPFM"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0SS5PJCE26EA4S774ZVS3S0"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ82XY5BFSKF1HHY2G8",
+        "section_id": "01M0QR9DGQ6WD2KY32GHVS2VGC",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQ6WD2KY32GHVS2VGC"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQ6WD2KY32GHVS2VGC"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0SS5PJC3ZKS28PHP76986CA"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ82R2EN9XPNSH2C2PY",
+        "section_id": "01M0QR9DGQP0TZHB2CMFCFCNJ6",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQP0TZHB2CMFCFCNJ6"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQP0TZHB2CMFCFCNJ6"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0SS5PJCB486NMEDEKHQR1VT"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ8197C2P9NWP5ZQPYZ",
+        "section_id": "01M0QR9DGQRN3KB64TSE6R8R2C",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQRN3KB64TSE6R8R2C"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQRN3KB64TSE6R8R2C"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0SS5PJCB60R1ZQM3QGX9VN5"
+      ],
+      "reason": null
+    }
+  ],
+  "shots": [
+    {
+      "shot_id": "shot-01M0SS5PJCKPC8TVZR8CZFF0YR",
+      "section_ref": {
+        "section_id": "01M0QR9DGPJ29KR4PPNFXGB6GZ"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ7RSFJRX04PT9ZRWQW",
+        "section_id": "01M0QR9DGPJ29KR4PPNFXGB6GZ",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGPJ29KR4PPNFXGB6GZ"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGPJ29KR4PPNFXGB6GZ"
+        }
+      },
+      "narrative_function": "Hook/Thesis Statement",
+      "subject": "Presenter speaking directly to camera in a vertical 9:16 frame, positioned in the right third.",
+      "media_type": "PRESENTER_A_ROLL",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "Medium close-up of the presenter. Neutral background. Presenter looks directly into the lens with a serious, conspiratorial tone. Lighting is clean and professional.",
+      "visual_assertion": null,
+      "presenter_relation": "PRESENT",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "presenter_a_roll",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "High resolution face capture",
+          "Stable audio sync"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "9:16",
+        "duration_target_s": 5
+      },
+      "continuity_notes": [
+        "Maintain consistent eye line and framing for the first three beats."
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "HIGH",
+      "status": "PLANNED",
+      "prompt_refs": []
+    },
+    {
+      "shot_id": "shot-01M0SS5PJCNN7M9R4WG5JQNXS3",
+      "section_ref": {
+        "section_id": "01M0QR9DGQVSKPCFJ1RSRN1R1P"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ7HEF52CP8XPAE7P1B",
+        "section_id": "01M0QR9DGQVSKPCFJ1RSRN1R1P",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQVSKPCFJ1RSRN1R1P"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQVSKPCFJ1RSRN1R1P"
+        }
+      },
+      "narrative_function": "Problem Illustration",
+      "subject": "Animated graphic showing generic video production elements (script icons, thumbnail templates, color wheels) being duplicated or cloned rapidly.",
+      "media_type": "INFOGRAPHIC",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "Clean, minimalist infographic animation. Icons for 'Script', 'Thumbnail', and 'Edit' appear and are instantly copied into multiple identical stacks. The motion is fast and mechanical to suggest ease of replication.",
+      "visual_assertion": null,
+      "presenter_relation": "BROLL_OVERLAY",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "infographic",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "Legible text/icons at mobile scale"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "9:16",
+        "duration_target_s": 8
+      },
+      "continuity_notes": [
+        "Ensure graphic style matches the vertical 9:16 aspect ratio without cropping key elements."
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "NORMAL",
+      "status": "PROMPT_READY",
+      "prompt_refs": [
+        "prompt-01M0SS5PJDJ800HJW3AVW1TQN8"
+      ]
+    },
+    {
+      "shot_id": "shot-01M0SS5PJCPCWV6Y34DA1A68AJ",
+      "section_ref": {
+        "section_id": "01M0QR9DGQ974AHKBQA06Z3TQT"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ74TZMW5XZFJVEZGXK",
+        "section_id": "01M0QR9DGQ974AHKBQA06Z3TQT",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQ974AHKBQA06Z3TQT"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQ974AHKBQA06Z3TQT"
+        }
+      },
+      "narrative_function": "Solution/Reveal",
+      "subject": "Presenter in a tighter close-up, emphasizing facial expressions and personal presence.",
+      "media_type": "PRESENTER_A_ROLL",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "Close-up shot. The presenter leans slightly forward or gestures subtly to emphasize 'You'. The background remains neutral but the focus is sharply on the presenter's face and eyes.",
+      "visual_assertion": null,
+      "presenter_relation": "PRESENT",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "presenter_a_roll",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "Sharp focus on eyes"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "9:16",
+        "duration_target_s": 6
+      },
+      "continuity_notes": [
+        "Maintain continuity of wardrobe and lighting from Beat 1."
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "HIGH",
+      "status": "PLANNED",
+      "prompt_refs": []
+    },
+    {
+      "shot_id": "shot-01M0SS5PJCMW2KAQ93G7489121",
+      "section_ref": {
+        "section_id": "01M0QR9DGQEDPB0GZ6VQ4XV90P"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ7ABGAM1N8A7RVJ0TK",
+        "section_id": "01M0QR9DGQEDPB0GZ6VQ4XV90P",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQEDPB0GZ6VQ4XV90P"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQEDPB0GZ6VQ4XV90P"
+        }
+      },
+      "narrative_function": "Elaboration/Example",
+      "subject": "Abstract or stylized representation of a 'personality' that cannot be digitized, such as a glitching digital face trying to mimic human emotion but failing.",
+      "media_type": "GENERATED_VIDEO",
+      "generation_mode": "DIRECT_VIDEO",
+      "shot_brief": "A generated video clip showing a digital avatar attempting to replicate a human gesture or expression but resulting in an uncanny, hollow version. This contrasts with the presenter's authentic delivery.",
+      "visual_assertion": null,
+      "presenter_relation": "REPLACE",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "generated_video",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "High fidelity animation"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "DIRECT_VIDEO",
+        "aspect_target": "9:16",
+        "duration_target_s": 7
+      },
+      "continuity_notes": [
+        "Ensure the generated video does not look like a direct copy of the presenter to avoid confusion."
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "NORMAL",
+      "status": "PROMPT_READY",
+      "prompt_refs": [
+        "prompt-01M0SS5PJDT4M8PVXC2Z4ZGJ60"
+      ]
+    },
+    {
+      "shot_id": "shot-01M0SS5PJCEYAYWQXZXA0XYXW3",
+      "section_ref": {
+        "section_id": "01M0QR9DGQN6ZYSN9NH4219YHS"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ7VMYY65Y7K9GP1K0A",
+        "section_id": "01M0QR9DGQN6ZYSN9NH4219YHS",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQN6ZYSN9NH4219YHS"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQN6ZYSN9NH4219YHS"
+        }
+      },
+      "narrative_function": "Argument/Contrast",
+      "subject": "A split-screen or divided graphic showing 'Boring 80%' (automated tasks) vs. 'The Moat' (creative identity).",
+      "media_type": "INFOGRAPHIC",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "An infographic that visually separates background tasks (editing, scoring) from core creative decisions (jokes, face, opinions). The 'Moat' section is highlighted or protected by a visual barrier.",
+      "visual_assertion": null,
+      "presenter_relation": "BROLL_OVERLAY",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "infographic",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "Clear visual hierarchy"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "9:16",
+        "duration_target_s": 10
+      },
+      "continuity_notes": [
+        "Use consistent color coding for 'AI' vs. 'Human' elements."
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "NORMAL",
+      "status": "PROMPT_READY",
+      "prompt_refs": [
+        "prompt-01M0SS5PJDRK703PXNM6G2K42R"
+      ]
+    },
+    {
+      "shot_id": "shot-01M0SS5PJC10S4QXCDJTD6RK96",
+      "section_ref": {
+        "section_id": "01M0QR9DGQVW72X19PPFKE6MCZ"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ75M7A9GS71B8NQ6PW",
+        "section_id": "01M0QR9DGQVW72X19PPFKE6MCZ",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQVW72X19PPFKE6MCZ"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQVW72X19PPFKE6MCZ"
+        }
+      },
+      "narrative_function": "Consequence/Impact",
+      "subject": "A stylized image of a viewer looking at a screen with a skeptical or disappointed expression, representing the 'nose for hollow'.",
+      "media_type": "GENERATED_STILL",
+      "generation_mode": "STILL",
+      "shot_brief": "A high-quality generated still of a person watching a video on a phone, their face showing subtle disengagement or skepticism. The lighting is moody to reflect the feeling of 'nobody's actually home'.",
+      "visual_assertion": null,
+      "presenter_relation": "REPLACE",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "generated_still",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "Realistic facial expressions"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "STILL",
+        "aspect_target": "9:16",
+        "duration_target_s": 5
+      },
+      "continuity_notes": [
+        "Ensure the viewer's expression is subtle but clear."
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "NORMAL",
+      "status": "PROMPT_READY",
+      "prompt_refs": [
+        "prompt-01M0SS5PJDK0WWK1B7H4J3JBEZ"
+      ]
+    },
+    {
+      "shot_id": "shot-01M0SS5PJCSKY47F8JC6V15K9P",
+      "section_ref": {
+        "section_id": "01M0QR9DGQPFE29WNHB84H0T27"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ8Q9RPCP9NBJHEE5P5",
+        "section_id": "01M0QR9DGQPFE29WNHB84H0T27",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQPFE29WNHB84H0T27"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQPFE29WNHB84H0T27"
+        }
+      },
+      "narrative_function": "Analogy/Support",
+      "subject": "Archival footage or images of a classic band recording session, focusing on the musicians' interaction rather than just the equipment.",
+      "media_type": "ARCHIVAL_EXTERNAL",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "Black and white or vintage-style archival clip of a band in a studio. The focus is on the lead singer's expression and the band's dynamic, not just the instruments. This supports the idea that 'taste is the band'.",
+      "visual_assertion": null,
+      "presenter_relation": "REPLACE",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "archival_external",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "Historical accuracy"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "9:16",
+        "duration_target_s": 6
+      },
+      "continuity_notes": [
+        "Ensure archival footage is licensed and appropriate for the context."
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "LOW",
+      "status": "PLANNED",
+      "prompt_refs": []
+    },
+    {
+      "shot_id": "shot-01M0SS5PJCE26EA4S774ZVS3S0",
+      "section_ref": {
+        "section_id": "01M0QR9DGQP03DGQZ4SPE3YPFM"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ88YBGB588C75KZQQ4",
+        "section_id": "01M0QR9DGQP03DGQZ4SPE3YPFM",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQP03DGQZ4SPE3YPFM"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQP03DGQZ4SPE3YPFM"
+        }
+      },
+      "narrative_function": "Synthesis/Advice",
+      "subject": "Presenter in a medium shot, gesturing with hands to emphasize 'keeping your hands on the part'.",
+      "media_type": "PRESENTER_A_ROLL",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "Medium shot. The presenter uses hand gestures to physically represent holding onto something valuable. The tone is encouraging but firm.",
+      "visual_assertion": null,
+      "presenter_relation": "PRESENT",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "presenter_a_roll",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "Clear hand gestures"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "9:16",
+        "duration_target_s": 8
+      },
+      "continuity_notes": [
+        "Maintain consistent framing and lighting."
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "NORMAL",
+      "status": "PLANNED",
+      "prompt_refs": []
+    },
+    {
+      "shot_id": "shot-01M0SS5PJC3ZKS28PHP76986CA",
+      "section_ref": {
+        "section_id": "01M0QR9DGQ6WD2KY32GHVS2VGC"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ82XY5BFSKF1HHY2G8",
+        "section_id": "01M0QR9DGQ6WD2KY32GHVS2VGC",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQ6WD2KY32GHVS2VGC"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQ6WD2KY32GHVS2VGC"
+        }
+      },
+      "narrative_function": "Climax/Key Insight",
+      "subject": "Bold text overlay: 'The only scarce thing left is a person who means it.'",
+      "media_type": "TEXT_GRAPHIC",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "A clean, high-contrast text graphic that appears on screen. The text is large and readable, centered in the vertical frame. The background is dark to make the text pop.",
+      "visual_assertion": null,
+      "presenter_relation": "REPLACE",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "text_graphic",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "High contrast typography"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "9:16",
+        "duration_target_s": 4
+      },
+      "continuity_notes": [
+        "Ensure text is legible on mobile devices."
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "HIGH",
+      "status": "PROMPT_READY",
+      "prompt_refs": [
+        "prompt-01M0SS5PJD0WGT77YPNV28CEH7"
+      ]
+    },
+    {
+      "shot_id": "shot-01M0SS5PJCB486NMEDEKHQR1VT",
+      "section_ref": {
+        "section_id": "01M0QR9DGQP0TZHB2CMFCFCNJ6"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ82R2EN9XPNSH2C2PY",
+        "section_id": "01M0QR9DGQP0TZHB2CMFCFCNJ6",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQP0TZHB2CMFCFCNJ6"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQP0TZHB2CMFCFCNJ6"
+        }
+      },
+      "narrative_function": "Conclusion/Resolution",
+      "subject": "Presenter in a close-up, delivering the final line with conviction.",
+      "media_type": "PRESENTER_A_ROLL",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "Close-up. The presenter looks directly at the camera, nodding slightly or giving a subtle smile to convey confidence and finality. The lighting is warm and inviting.",
+      "visual_assertion": null,
+      "presenter_relation": "PRESENT",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "presenter_a_roll",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "Strong eye contact"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "9:16",
+        "duration_target_s": 5
+      },
+      "continuity_notes": [
+        "Ensure the final shot matches the opening framing for a sense of closure."
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "HIGH",
+      "status": "PLANNED",
+      "prompt_refs": []
+    },
+    {
+      "shot_id": "shot-01M0SS5PJCB60R1ZQM3QGX9VN5",
+      "section_ref": {
+        "section_id": "01M0QR9DGQRN3KB64TSE6R8R2C"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0SS2AZ8197C2P9NWP5ZQPYZ",
+        "section_id": "01M0QR9DGQRN3KB64TSE6R8R2C",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0QR9DGQRN3KB64TSE6R8R2C"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0QR9DGP5RRFTPVDA7WQP2XM/01M0QR9DGRPW4MK8BMD1RGAYDX/01M0QR9DGQRN3KB64TSE6R8R2C"
+        }
+      },
+      "narrative_function": "Outro/Comedy Beat",
+      "subject": "Presenter breaking character slightly with a smirk or a wink, acknowledging the AI comparison.",
+      "media_type": "PRESENTER_A_ROLL",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "Medium close-up. The presenter smiles or winks at the camera, delivering the final joke about the AI version being better at thumbnails. The tone is playful and self-aware.",
+      "visual_assertion": null,
+      "presenter_relation": "PRESENT",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "presenter_a_roll",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "Natural facial expression"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "9:16",
+        "duration_target_s": 4
+      },
+      "continuity_notes": [
+        "Ensure the transition from serious to playful is smooth."
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "NORMAL",
+      "status": "PLANNED",
+      "prompt_refs": []
+    }
+  ],
+  "prompts": [
+    {
+      "prompt_id": "prompt-01M0SS5PJDJ800HJW3AVW1TQN8",
+      "prompt_revision": 1,
+      "shot_id": "shot-01M0SS5PJCNN7M9R4WG5JQNXS3",
+      "shot_intent_digest_sha256": "5ce1be263bbb6439424085baf3a7e543fe51c1867ca4a232421d276442b2ffb3",
+      "prompt_text": "Canonical subject: Animated graphic showing generic video production elements (script icons, thumbnail templates, color wheels) being duplicated or cloned rapidly.\nCanonical shot brief: Clean, minimalist infographic animation. Icons for 'Script', 'Thumbnail', and 'Edit' appear and are instantly copied into multiple identical stacks. The motion is fast and mechanical to suggest ease of replication.\nStory purpose: Problem Illustration\nExecution mode: INFOGRAPHIC. Produce a structured graphic specification with clear hierarchy; do not substitute photorealistic creator-workspace imagery or rely on generated mission-critical readable text.\nPresenter-composite requirement: preserve the canonical subject and framing, reserve clear negative space in the presenter-safe region, keep important subjects and details outside that region, and place no critical generated text beneath the presenter.\nQuality constraints: Legible text/icons at mobile scale.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+      "prompt_type": "INFOGRAPHIC",
+      "created_by": "visual_planning_director",
+      "origin": "visual-plan-fidelity-adapter",
+      "legacy_aliases": [
+        "block-002-prompt-01"
+      ]
+    },
+    {
+      "prompt_id": "prompt-01M0SS5PJDT4M8PVXC2Z4ZGJ60",
+      "prompt_revision": 1,
+      "shot_id": "shot-01M0SS5PJCMW2KAQ93G7489121",
+      "shot_intent_digest_sha256": "3a453f0c31de07e7b78a3164127426f769af7cf5c2e09a9f00adc6aad71ac47f",
+      "prompt_text": "Canonical subject: Abstract or stylized representation of a 'personality' that cannot be digitized, such as a glitching digital face trying to mimic human emotion but failing.\nCanonical shot brief: A generated video clip showing a digital avatar attempting to replicate a human gesture or expression but resulting in an uncanny, hollow version. This contrasts with the presenter's authentic delivery.\nStory purpose: Elaboration/Example\nExecution mode: DIRECT_VIDEO. Create one continuous generated-video shot; preserve the specified action, movement, pace, and temporal behavior. Do not reduce the intent to a still photograph or introduce unrelated cuts.\nQuality constraints: High fidelity animation.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+      "prompt_type": "VIDEO",
+      "created_by": "visual_planning_director",
+      "origin": "visual-plan-fidelity-adapter",
+      "legacy_aliases": [
+        "block-004-prompt-01"
+      ]
+    },
+    {
+      "prompt_id": "prompt-01M0SS5PJDRK703PXNM6G2K42R",
+      "prompt_revision": 1,
+      "shot_id": "shot-01M0SS5PJCEYAYWQXZXA0XYXW3",
+      "shot_intent_digest_sha256": "ecab02901cb144c6f0d0e831466cc41fb062faaea9c55c88b7d8b5526d3cf73b",
+      "prompt_text": "Canonical subject: A split-screen or divided graphic showing 'Boring 80%' (automated tasks) vs. 'The Moat' (creative identity).\nCanonical shot brief: An infographic that visually separates background tasks (editing, scoring) from core creative decisions (jokes, face, opinions). The 'Moat' section is highlighted or protected by a visual barrier.\nStory purpose: Argument/Contrast\nExecution mode: INFOGRAPHIC. Produce a structured graphic specification with clear hierarchy; do not substitute photorealistic creator-workspace imagery or rely on generated mission-critical readable text.\nPresenter-composite requirement: preserve the canonical subject and framing, reserve clear negative space in the presenter-safe region, keep important subjects and details outside that region, and place no critical generated text beneath the presenter.\nQuality constraints: Clear visual hierarchy.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+      "prompt_type": "INFOGRAPHIC",
+      "created_by": "visual_planning_director",
+      "origin": "visual-plan-fidelity-adapter",
+      "legacy_aliases": [
+        "block-005-prompt-01"
+      ]
+    },
+    {
+      "prompt_id": "prompt-01M0SS5PJDK0WWK1B7H4J3JBEZ",
+      "prompt_revision": 1,
+      "shot_id": "shot-01M0SS5PJC10S4QXCDJTD6RK96",
+      "shot_intent_digest_sha256": "75aeef3980b588f2bf79c77ffddf60b18961810f767b7d616b20fd0733a5d9c3",
+      "prompt_text": "Canonical subject: A stylized image of a viewer looking at a screen with a skeptical or disappointed expression, representing the 'nose for hollow'.\nCanonical shot brief: A high-quality generated still of a person watching a video on a phone, their face showing subtle disengagement or skepticism. The lighting is moody to reflect the feeling of 'nobody's actually home'.\nStory purpose: Consequence/Impact\nExecution mode: STILL_IMAGE. Compose one deliberate still frame; preserve every explicit subject, lighting, and framing requirement.\nQuality constraints: Realistic facial expressions.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+      "prompt_type": "FULL_FRAME",
+      "created_by": "visual_planning_director",
+      "origin": "visual-plan-fidelity-adapter",
+      "legacy_aliases": [
+        "block-006-prompt-01"
+      ]
+    },
+    {
+      "prompt_id": "prompt-01M0SS5PJD0WGT77YPNV28CEH7",
+      "prompt_revision": 1,
+      "shot_id": "shot-01M0SS5PJC3ZKS28PHP76986CA",
+      "shot_intent_digest_sha256": "0aae6c69deb12a7070787e591d7d2230d2d60a51bc3b9cea0037e61df6d6cdc4",
+      "prompt_text": "Canonical subject: Bold text overlay: 'The only scarce thing left is a person who means it.'\nCanonical shot brief: A clean, high-contrast text graphic that appears on screen. The text is large and readable, centered in the vertical frame. The background is dark to make the text pop.\nStory purpose: Climax/Key Insight\nExecution mode: TEXT_GRAPHIC. Produce a deterministic text-graphic specification with explicit hierarchy and safe placement; do not substitute a photorealistic scene.\nQuality constraints: High contrast typography.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+      "prompt_type": "TEXT_GRAPHIC",
+      "created_by": "visual_planning_director",
+      "origin": "visual-plan-fidelity-adapter",
+      "legacy_aliases": [
+        "block-009-prompt-01"
+      ]
+    }
+  ],
+  "plan_digest_sha256": "4c697aafceb2ccac901eb29ae3c9dfc1f7516059288bc087617a74752ce38d33"
+}

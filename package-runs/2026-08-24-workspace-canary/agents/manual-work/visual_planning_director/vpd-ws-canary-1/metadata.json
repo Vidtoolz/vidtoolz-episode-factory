@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "kind": "manual_artifact_work_unit",
+  "run_id": "2026-08-24-workspace-canary",
+  "agent_id": "visual_planning_director",
+  "task_id": "vpd-ws-canary-1",
+  "originating_invocation_id": "visual_planning_director:vpd-ws-canary-1:1",
+  "artifact_id": "visual_plan",
+  "source_artifact_path": "artifacts/visual-plan.json",
+  "source_artifact_sha256": "090d3634d8c0e834d5511ce9037b766d437112a35a6cf8571e8676274fbcf839",
+  "created_at": "2026-08-24T11:43:07.060Z"
+}

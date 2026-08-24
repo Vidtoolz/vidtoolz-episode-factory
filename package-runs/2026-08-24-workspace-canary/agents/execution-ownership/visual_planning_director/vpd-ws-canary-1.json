@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "kind": "execution_ownership",
+  "target": {
+    "run_id": "2026-08-24-workspace-canary",
+    "agent_id": "visual_planning_director",
+    "task_id": "vpd-ws-canary-1",
+    "scope": "TASK_WORK_UNIT"
+  },
+  "current_owner": "SUSPENDED",
+  "revision": 2,
+  "current_state_hash": "64952b3ba51ca3b0d290ceaeb56a9839b958fa7da1c3b76e1d536bb9790d8a1c",
+  "history": [
+    {
+      "schema_version": 1,
+      "target": {
+        "run_id": "2026-08-24-workspace-canary",
+        "agent_id": "visual_planning_director",
+        "task_id": "vpd-ws-canary-1",
+        "scope": "TASK_WORK_UNIT"
+      },
+      "current_owner": "HUMAN",
+      "prior_owner": "AUTOMATION",
+      "revision": 1,
+      "changed_at": "2026-08-24T11:43:07.063Z",
+      "actor_action_record_id": "operator-action-789e7a9a-9562-420e-9e25-0640e2768a54",
+      "reason": "workspace-canary: operator verifies takeover loop",
+      "input_hashes": {
+        "task_sha256": "9790544d8f4947e8c3743ed4f37047aa5a34952687b8898fa817bbba0a5e9791",
+        "artifact_sha256": "090d3634d8c0e834d5511ce9037b766d437112a35a6cf8571e8676274fbcf839"
+      },
+      "originating_invocation_id": "visual_planning_director:vpd-ws-canary-1:1",
+      "previous_state_hash": null,
+      "successor": null,
+      "state_hash": "d695fc57a20bab0ccd3860ab1fb1f38ed10fc4467f7df6d6a886e7ad510885a9"
+    },
+    {
+      "schema_version": 1,
+      "target": {
+        "run_id": "2026-08-24-workspace-canary",
+        "agent_id": "visual_planning_director",
+        "task_id": "vpd-ws-canary-1",
+        "scope": "TASK_WORK_UNIT"
+      },
+      "current_owner": "SUSPENDED",
+      "prior_owner": "HUMAN",
+      "revision": 2,
+      "changed_at": "2026-08-24T11:46:42.025Z",
+      "actor_action_record_id": "operator-action-b5e371df-f1f9-4377-9eb7-60d13e3a717c",
+      "reason": "workspace-canary: operator returning edited plan",
+      "input_hashes": {
+        "task_sha256": "9790544d8f4947e8c3743ed4f37047aa5a34952687b8898fa817bbba0a5e9791",
+        "artifact_sha256": "f55bc13d084bd2730f8d53e88c1958d804375308402029b7feb6186df8cf2c37"
+      },
+      "originating_invocation_id": "visual_planning_director:vpd-ws-canary-1:1",
+      "previous_state_hash": "d695fc57a20bab0ccd3860ab1fb1f38ed10fc4467f7df6d6a886e7ad510885a9",
+      "successor": {
+        "task_id": "successor-f20cf3fa812f1ef0aee3fee8862d0adf",
+        "task_sha256": "251b0ae8de43bc8d8efe2d3afa39086c4582ff2e11e05b1503aad55ceb5915f7"
+      },
+      "state_hash": "64952b3ba51ca3b0d290ceaeb56a9839b958fa7da1c3b76e1d536bb9790d8a1c"
+    }
+  ]
+}

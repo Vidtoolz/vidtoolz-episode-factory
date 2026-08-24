@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "kind": "operator_action_ledger",
+  "run_id": "2026-08-24-workspace-canary",
+  "head_hash": "518b3c2ba01ca05f1a22da31f21991576bbf93cef8eba097bd14336a3cb6e65e",
+  "records": [
+    {
+      "schema_version": 1,
+      "sequence": 1,
+      "run_id": "2026-08-24-workspace-canary",
+      "record_id": "operator-action-789e7a9a-9562-420e-9e25-0640e2768a54",
+      "timestamp": "2026-08-24T11:43:07.068Z",
+      "actor": {
+        "identity_type": "LOCAL_OS_USER",
+        "identity": "vidtoolz",
+        "authenticated": false,
+        "context": "same-host nonce-gated cockpit"
+      },
+      "action": "TAKE_MANUAL_CONTROL",
+      "target_agent_role": "visual_planning_director",
+      "target_invocation_id": "visual_planning_director:vpd-ws-canary-1:1",
+      "target_task_id": "vpd-ws-canary-1",
+      "target_artifact": {
+        "artifact_id": "visual_plan",
+        "sha256": "090d3634d8c0e834d5511ce9037b766d437112a35a6cf8571e8676274fbcf839"
+      },
+      "action_scope": "TASK_WORK_UNIT_OWNERSHIP",
+      "reason": "workspace-canary: operator verifies takeover loop",
+      "requested_parameters": {
+        "expected_revision": 0,
+        "expected_state_hash": null,
+        "task_sha256": "9790544d8f4947e8c3743ed4f37047aa5a34952687b8898fa817bbba0a5e9791",
+        "artifact_sha256": "090d3634d8c0e834d5511ce9037b766d437112a35a6cf8571e8676274fbcf839",
+        "successor_task_id": null,
+        "successor_task_sha256": null
+      },
+      "result_details": null,
+      "prior_execution_owner": "AUTOMATION",
+      "resulting_execution_owner": "HUMAN",
+      "previous_record_hash": null,
+      "supersedes": null,
+      "result_status": "COMPLETED",
+      "record_hash": "ccc40076f78d6a7807e2e2e50cf8879f8856c5d26ba095243a82b1b8d3438f16"
+    },
+    {
+      "schema_version": 1,
+      "sequence": 2,
+      "run_id": "2026-08-24-workspace-canary",
+      "record_id": "operator-action-b5e371df-f1f9-4377-9eb7-60d13e3a717c",
+      "timestamp": "2026-08-24T11:46:42.029Z",
+      "actor": {
+        "identity_type": "LOCAL_OS_USER",
+        "identity": "vidtoolz",
+        "authenticated": false,
+        "context": "same-host nonce-gated cockpit"
+      },
+      "action": "RETURN_TO_AUTOMATION",
+      "target_agent_role": "visual_planning_director",
+      "target_invocation_id": "visual_planning_director:vpd-ws-canary-1:1",
+      "target_task_id": "vpd-ws-canary-1",
+      "target_artifact": {
+        "artifact_id": "visual_plan",
+        "sha256": "f55bc13d084bd2730f8d53e88c1958d804375308402029b7feb6186df8cf2c37"
+      },
+      "action_scope": "TASK_WORK_UNIT_OWNERSHIP",
+      "reason": "workspace-canary: operator returning edited plan",
+      "requested_parameters": {
+        "expected_revision": 1,
+        "expected_state_hash": "d695fc57a20bab0ccd3860ab1fb1f38ed10fc4467f7df6d6a886e7ad510885a9",
+        "task_sha256": "9790544d8f4947e8c3743ed4f37047aa5a34952687b8898fa817bbba0a5e9791",
+        "artifact_sha256": "f55bc13d084bd2730f8d53e88c1958d804375308402029b7feb6186df8cf2c37",
+        "successor_task_id": "successor-f20cf3fa812f1ef0aee3fee8862d0adf",
+        "successor_task_sha256": "251b0ae8de43bc8d8efe2d3afa39086c4582ff2e11e05b1503aad55ceb5915f7"
+      },
+      "result_details": null,
+      "prior_execution_owner": "HUMAN",
+      "resulting_execution_owner": "SUSPENDED",
+      "previous_record_hash": "ccc40076f78d6a7807e2e2e50cf8879f8856c5d26ba095243a82b1b8d3438f16",
+      "supersedes": null,
+      "result_status": "COMPLETED",
+      "record_hash": "518b3c2ba01ca05f1a22da31f21991576bbf93cef8eba097bd14336a3cb6e65e"
+    }
+  ]
+}

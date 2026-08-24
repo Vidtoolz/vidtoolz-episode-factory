@@ -1,0 +1,118 @@
+{
+ "evidence_type": "OPERATIONAL / UI EVIDENCE \u2014 NOT APPROVAL EVIDENCE",
+ "verdict": "WORKSPACE_LOOP_PROVEN",
+ "generated_at": "2026-08-24T14:50:00+03:00",
+ "commit_head": "8a552d0feaa31f804eb535b0093205d3a3096539",
+ "backend_schema": {
+  "workspace_schema_version": 1,
+  "workspace_schema_id": "visual-planning-workspace/v1",
+  "backend_commit": "45ee1c8",
+  "queue_commit": "b468f03",
+  "docs_freeze_commit": "b54d2da"
+ },
+ "workspace_url": "/visual-planning-workspace.html?run=2026-08-24-workspace-canary&agent=visual_planning_director&task=vpd-ws-canary-1&invocation=visual_planning_director%3Avpd-ws-canary-1%3A1",
+ "obligation_id": null,
+ "steps": [
+  {
+   "step": 1,
+   "name": "fresh canonical VPD run dispatched via agent-run.js",
+   "evidence": "runner exit 0, PREVIEW_ONLY"
+  },
+  {
+   "step": 2,
+   "name": "workspace GET with exact context",
+   "evidence": "HTTP 200, schema v1"
+  },
+  {
+   "step": 3,
+   "name": "artifact sha matches evidence",
+   "before": "090d3634d8c0e834",
+   "workspace_reported": "090d3634d8c0e834",
+   "match": true
+  },
+  {
+   "step": 4,
+   "name": "shot cards",
+   "count": 11
+  },
+  {
+   "step": 5,
+   "name": "gate/approval truth",
+   "gate": "VISUAL_PLAN_APPROVAL PREVIEW_ONLY",
+   "approval": "INVALID PLAN_APPROVAL_MISSING"
+  },
+  {
+   "step": 6,
+   "name": "takeover preview read-only",
+   "eligible": true
+  },
+  {
+   "step": 7,
+   "name": "takeover apply",
+   "owner": "HUMAN",
+   "revision": 1
+  },
+  {
+   "step": 8,
+   "name": "manual artifact target",
+   "path": "package-runs/2026-08-24-workspace-canary/agents/manual-work/visual_planning_director/vpd-ws-canary-1/artifact.json"
+  },
+  {
+   "step": 9,
+   "name": "valid manual edit (continuity_notes, revision 2, correct supersedes digest)",
+   "before_sha16": "090d3634d8c0e834",
+   "after_sha16": "f55bc13d084bd273",
+   "structural_valid": true
+  },
+  {
+   "step": 10,
+   "name": "return preview detects changed bytes",
+   "changed_since_takeover": true,
+   "invalidations": {
+    "prior_evidence": "STALE",
+    "gates": [
+     "VISUAL_PLAN_APPROVAL"
+    ]
+   },
+   "revalidation_valid": true
+  },
+  {
+   "step": 11,
+   "name": "return apply",
+   "successor_task_id": "successor-f20cf3fa812f1ef0aee3fee8862d0adf",
+   "predecessor_owner": "SUSPENDED",
+   "execution_owner": "AUTOMATION",
+   "revision": 2,
+   "required_next_gate": "VISUAL_PLAN_APPROVAL"
+  },
+  {
+   "step": 12,
+   "name": "queue agreement",
+   "note": "INFORMATION result created no obligation; unrelated PO DECISION obligations remain ACTIVE; no approval fabricated"
+  }
+ ],
+ "operator_ledger": [
+  {
+   "action": "TAKE_MANUAL_CONTROL",
+   "actor_identity_type": "LOCAL_OS_USER",
+   "actor": "vidtoolz"
+  },
+  {
+   "action": "RETURN_TO_AUTOMATION",
+   "actor_identity_type": "LOCAL_OS_USER",
+   "actor": "vidtoolz"
+  }
+ ],
+ "hashes": {
+  "predecessor_artifact_sha256": "090d3634d8c0e834d5511ce9037b766d437112a35a6cf8571e8676274fbcf839",
+  "manual_artifact_sha256": "f55bc13d084bd2730f8d53e88c1958d804375308402029b7feb6186df8cf2c37",
+  "execution_ownership_sha256": "85ab43c5e555fe42919de0486e4d99a673c8b6457d892563fa2d9bec399e825e",
+  "operator_ledger_sha256": "50165b61cf75152c8c0c9cea13505e65fca06dc29de6a10ba1d6c8bf85b91798"
+ },
+ "authority_guarantees": {
+  "no_approval_fabricated": true,
+  "auto_chain_count": 0,
+  "implementation_state": "IMPLEMENTATION_PROVEN (unchanged)",
+  "lifecycle_readiness": "unchanged"
+ }
+}
