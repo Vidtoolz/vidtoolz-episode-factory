@@ -1507,6 +1507,15 @@ body[data-package-engine-view-mode="focused"] .package-engine-shell #generatedTh
 .agent-decision-item small { color: var(--muted); display: block; }
 .agent-decision-item p { margin: 6px 0; }
 
+.agent-workflow-map { margin: 0 0 12px; }
+.agent-workflow-map h3 { margin: 0 0 8px; }
+.agent-workflow-map-list { display: grid; gap: 6px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.agent-workflow-gate { border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+.agent-workflow-gate strong, .agent-workflow-gate small { display: block; }
+.agent-workflow-gate small { color: var(--muted); }
+.agent-workflow-gate.complete { border-color: var(--success); }
+.agent-workflow-gate.current-blocked { border-color: var(--danger); }
+
 .agent-control-room-rows {
   display: grid;
   gap: 10px;

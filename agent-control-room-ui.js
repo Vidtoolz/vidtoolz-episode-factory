@@ -5,9 +5,10 @@
   var summary = document.getElementById('agentControlRoomSummary');
   var roles = document.getElementById('agentControlRoomRoles');
   var queue = document.getElementById('agentDecisionQueue');
+  var workflow = document.getElementById('agentWorkflowMap');
   var updated = document.getElementById('agentControlRoomUpdated');
   var refresh = document.getElementById('agentControlRoomRefresh');
-  if (!rows || !summary || !roles || !queue || !refresh) return;
+  if (!rows || !summary || !roles || !queue || !workflow || !refresh) return;
 
   function esc(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
@@ -89,6 +90,31 @@
       '<a href="' + esc(item.workspace) + '">Open relevant workspace</a></article>';
   }
 
+  function renderWorkflow(report) {
+    var next = report.nextSafeHumanAction || {};
+    workflow.innerHTML = (report.gates || []).map(function (gate) {
+      var current = gate.status === 'current-blocked';
+      return '<article class="agent-workflow-gate ' + esc(gate.status) + '">' +
+        '<strong>' + esc(gate.label) + '</strong><small>' + esc(gate.id) + ' · ' + esc(gate.status) + '</small>' +
+        (current ? line('Blocker', report.currentBlocker || (gate.missingArtifacts || []).join('; ')) : '') +
+        (current ? line('Approval', next.humanApprovalRequired ? 'Human approval required' : 'No approval claimed') : '') +
+        (current ? line('Next safe action', next.label || 'UNKNOWN') : '') + '</article>';
+    }).join('');
+  }
+
+  function loadWorkflow(payload) {
+    var agent = (payload.agents || []).find(function (item) { return item.runtime_active && item.run_id; })
+      || (payload.human_decision_queue || []).map(function (item) {
+        return (payload.agents || []).find(function (agentRow) { return agentRow.agent_id === item.agent_id && agentRow.run_id; });
+      }).find(Boolean)
+      || (payload.agents || []).find(function (item) { return item.run_id; });
+    if (!agent) { workflow.innerHTML = '<p class="muted">No package run is bound to current agent evidence.</p>'; return; }
+    fetch('/api/agent-control-room/workflow-map?runId=' + encodeURIComponent(agent.run_id), { method: 'GET', cache: 'no-store' })
+      .then(function (response) { if (!response.ok) throw new Error('HTTP ' + response.status); return response.json(); })
+      .then(function (envelope) { renderWorkflow(envelope && envelope.data ? envelope.data : envelope); })
+      .catch(function (error) { workflow.innerHTML = '<p class="muted">Workflow map unavailable: ' + esc(error.message) + '</p>'; });
+  }
+
   function render(payload) {
     var agents = payload.agents || [];
     var counts = payload.summary || {};
@@ -102,6 +128,7 @@
     var decisionItems = payload.human_decision_queue || [];
     queue.innerHTML = decisionItems.length ? decisionItems.map(renderQueueItem).join('')
       : '<p class="muted">No review or decision items require attention.</p>';
+    loadWorkflow(payload);
 
     var planned = (payload.planned_roles || []).map(function (role) {
       return '<span class="agent-planned-role"><strong>' + esc(role.name) + '</strong> · ' + esc(role.runtime_status) + '</span>';
@@ -128,6 +155,7 @@
         summary.innerHTML = '<strong>Control room unavailable</strong><span>' + esc(error.message) + '</span>';
         rows.innerHTML = '';
         queue.innerHTML = '';
+        workflow.innerHTML = '';
         roles.innerHTML = '<p class="muted">Start the Episode Factory cockpit server to inspect registered agents.</p>';
         updated.textContent = '';
       })

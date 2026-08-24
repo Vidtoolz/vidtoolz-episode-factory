@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const http = require('node:http');
 const { assert, fs, os, path, test, tests, packageEngineServer } = require('./_helpers.js');
 const controlRoom = require('../scripts/agent-control-room.js');
+const workflowMap = require('../scripts/package-run-workflow-map.js');
 
 function fixture(agentIds = ['alpha']) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-control-room-'));
@@ -580,6 +581,24 @@ test('orientation labels system registry provenance as static, never live health
   assert.match(html, /Static provenance unavailable · live health unknown/);
 });
 
+test('workflow map route renders the canonical gate definitions read only', async () => {
+  const f = fixture(['alpha']);
+  const runId = 'workflow-route-run';
+  const runDir = path.join(f.root, 'package-runs', runId); fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, 'selected-package.json'), JSON.stringify({ package: { proposedTitle: 'Route Test' } }));
+  const before = digestTree(f.root);
+  const server = packageEngineServer.createServer({ root: f.root });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const response = await request(server, `${packageEngineServer.AGENT_WORKFLOW_MAP_API}?runId=${runId}`);
+    assert.equal(response.status, 200);
+    const report = JSON.parse(response.body).data;
+    assert.equal(report.gates.length, workflowMap.GATE_DEFINITIONS.length);
+    assert.deepEqual(report.gates.map((gate) => gate.id), workflowMap.GATE_DEFINITIONS.map((gate) => gate.id));
+    assert.equal(report.safety.readOnly, true); assert.equal(digestTree(f.root), before);
+  } finally { await new Promise((resolve) => server.close(resolve)); }
+});
+
 test('doctrine-registered roles are never presented or executed as live specialists', async () => {
   const f = fixture(['alpha', 'planned_specialist']);
   f.registry.agents[1].lifecycle = {
@@ -656,12 +675,14 @@ test('cockpit UI renders a registry-driven panel with manual refresh', () => {
   assert.match(html, /Agent Control Room/);
   assert.match(html, /id="agentControlRoomRefresh"/);
   assert.match(html, /id="agentDecisionQueue"/);
+  assert.match(html, /id="agentWorkflowMap"/);
   assert.match(ui, /\/api\/agent-control-room/);
   assert.match(ui, /payload\.agents/);
   assert.match(ui, /human_decision_queue/);
   assert.match(ui, /Open relevant workspace/);
   assert.match(ui, /DISPATCH /);
   assert.match(ui, /Resource live/);
+  assert.match(ui, /agent-control-room\/workflow-map/);
   assert.match(ui, /Onward handoff/);
   assert.match(ui, /Runner context/);
   assert.match(css, /\.agent-control-room-card/);

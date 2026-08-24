@@ -19,6 +19,7 @@ const activeStateAuditScript = require('./scripts/package-run-active-state-audit
 const packageRunsIndexScript = require('./scripts/package-runs-index.js');
 const systemRegistryScript = require('./scripts/system-registry.js');
 const agentControlRoom = require('./scripts/agent-control-room.js');
+const packageRunWorkflowMap = require('./scripts/package-run-workflow-map.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
@@ -12824,6 +12825,7 @@ function providerConfig(env = process.env) {
 
 const COCKPIT_ORIENTATION_API = '/api/cockpit-orientation';
 const AGENT_CONTROL_ROOM_API = '/api/agent-control-room';
+const AGENT_WORKFLOW_MAP_API = '/api/agent-control-room/workflow-map';
 
 async function buildAgentLiveResourceSnapshot(agents = []) {
   const needsCompute = agents.some((agent) => agent.runtime_active
@@ -18197,6 +18199,19 @@ function createServer(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === AGENT_WORKFLOW_MAP_API) {
+      try {
+        const runId = url.searchParams.get('runId') || '';
+        if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(runId)) throw Object.assign(new Error('A safe runId is required'), { statusCode: 400 });
+        sendJSON(res, 200, packageRunWorkflowMap.buildWorkflowMap(path.join('package-runs', runId), {
+          repoRoot: serverOptions.root || ROOT,
+        }));
+      } catch (error) {
+        sendError(res, error.statusCode || 404, `Workflow map unavailable: ${error.message}`, 'workflow-map-error');
+      }
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === ARTIFACT_TEXT_API) {
       try {
         const runId = url.searchParams.get('runId') || '';
@@ -19703,6 +19718,7 @@ if (require.main === module) {
 module.exports = {
   API_PREFIX,
   AGENT_CONTROL_ROOM_API,
+  AGENT_WORKFLOW_MAP_API,
   COCKPIT_ORIENTATION_API,
   buildCockpitOrientation,
   buildProjectsLaneOrientation,
