@@ -267,6 +267,11 @@
             return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
           });
         }
+        function registryLabel(o) {
+          return o && o.registry && o.registry.displayLabel
+            ? row("System registry", o.registry.displayLabel)
+            : row("System registry", "Static provenance unavailable · live health unknown");
+        }
         function row(label, value) {
           if (!value) return "";
           return (
@@ -320,6 +325,7 @@
                 row("Needs Mikko", o.needsMikko) +
                 row("AI-safe action", o.aiSafeAction) +
                 row("Media system", o.linkedMediaSystem) +
+                registryLabel(o) +
                 row("Out of scope", (o.outOfScope || []).join("; "));
               return;
             }
@@ -341,6 +347,7 @@
                 "<br>Normal next-action guidance is disabled until active state is resolved.</div>" +
                 row("Next valid action", o.nextValidAction) +
                 row("Needs Mikko", o.needsMikko) +
+                registryLabel(o) +
                 laneNote +
                 ((o.warnings && o.warnings.length)
                   ? '<div style="margin-top:6px;color:var(--danger);font-size:12px;">' + o.warnings.map(esc).join("<br>") + "</div>"
@@ -358,6 +365,7 @@
               row("AI-safe action", o.aiSafeAction) +
               row("Path", o.activeRunPath) +
               row("Media system", o.linkedMediaSystem) +
+              registryLabel(o) +
               row("Out of scope", (o.outOfScope || []).join("; "));
             if (f.stale) {
               body.innerHTML +=

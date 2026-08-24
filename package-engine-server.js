@@ -12825,6 +12825,28 @@ function providerConfig(env = process.env) {
 const COCKPIT_ORIENTATION_API = '/api/cockpit-orientation';
 const AGENT_CONTROL_ROOM_API = '/api/agent-control-room';
 
+async function buildAgentLiveResourceSnapshot(agents = []) {
+  const needsCompute = agents.some((agent) => agent.runtime_active
+    && /presto|wan_i2v|comfyui/i.test(`${agent.lane || ''} ${agent.resource_dependency || ''}`));
+  const compute = needsCompute
+    ? { lane: 'wan_i2v', ...(await computeReadinessGate('wan_i2v')) }
+    : { lane: 'wan_i2v', decision: 'UNKNOWN', reason: 'No active agent requires the PRESTO compute lane' };
+  const flux = currentFluxJobStatus();
+  const earth = earthStudioLane.currentJobStatus();
+  const remotion = remotionLane.currentJobStatus();
+  const normalizeFlatJob = (status) => ({
+    active: status && status.active ? status : null,
+    completed: status && !status.active && status.exit_state && status.exit_state !== 'idle' ? status : null,
+  });
+  return {
+    source: 'LIVE_PROBES', probed_at: new Date().toISOString(), compute,
+    jobs: {
+      presto: currentPrestoJobStatus(), flux: normalizeFlatJob(flux),
+      earth_studio: normalizeFlatJob(earth), remotion: normalizeFlatJob(remotion),
+    },
+  };
+}
+
 const COCKPIT_OUT_OF_SCOPE = [
   'New AI generation lanes or model integrations',
   'Advancing gates, approvals, publishing, or upload prep',
@@ -12879,11 +12901,15 @@ function buildCockpitOrientation(options = {}) {
     const loaded = systemRegistryScript.loadRegistry();
     registry = {
       lastVerified: loaded.last_verified || '',
+      recordType: 'STATIC_PROVENANCE',
+      liveHealth: false,
+      displayLabel: `Verified ${loaded.last_verified || 'unknown'} · static record · not live health`,
       components: (loaded.components || []).map((component) => ({
         id: component.id,
         name: component.name,
         machine: component.machine || null,
         url: component.url || null,
+        health: 'NOT_LIVE',
       })),
     };
   } catch (_error) {
@@ -18164,6 +18190,7 @@ function createServer(options = {}) {
         implementationLoader: serverOptions.agentImplementationLoader,
         agentRunOptions: serverOptions.agentRunOptions,
         now: serverOptions.agentControlRoomNow,
+        liveResourceProvider: serverOptions.agentLiveResourceProvider || buildAgentLiveResourceSnapshot,
       })
         .then((payload) => sendJSON(res, 200, payload))
         .catch((error) => sendError(res, 500, `Agent Control Room unavailable: ${error.message}`, 'agent-control-room-error'));

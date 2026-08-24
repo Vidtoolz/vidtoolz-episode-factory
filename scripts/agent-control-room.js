@@ -616,6 +616,34 @@ function buildHumanDecisionQueue(agents, registrations) {
   });
 }
 
+function resourceKind(agent) {
+  const text = `${agent.lane || ''} ${agent.resource_dependency || ''}`.toLowerCase();
+  if (/presto|wan_i2v|comfyui/.test(text)) return 'presto';
+  if (/flux|image_generation/.test(text)) return 'flux';
+  if (/earth/.test(text)) return 'earth_studio';
+  if (/remotion/.test(text)) return 'remotion';
+  return null;
+}
+
+function joinResourceStatus(agent, snapshot) {
+  const kind = resourceKind(agent);
+  const job = kind && snapshot?.jobs ? snapshot.jobs[kind] : null;
+  const compute = snapshot?.compute || null;
+  const selectedHost = oneLine(compute?.selected_host);
+  const health = compute && (agent.lane === compute.lane || kind === 'presto')
+    ? (compute.decision === 'ROUTE' && compute.ok !== false ? 'AVAILABLE' : compute.decision === 'BLOCKED' || compute.ok === false ? 'UNAVAILABLE' : 'UNKNOWN')
+    : 'UNKNOWN';
+  const active = job?.active && typeof job.active === 'object' ? job.active : null;
+  return {
+    source: snapshot?.source || 'UNAVAILABLE', probed_at: snapshot?.probed_at || null,
+    kind: kind || 'UNKNOWN', lane: agent.lane || oneLine(compute?.lane) || 'UNKNOWN',
+    host: agent.host || selectedHost || 'UNKNOWN', model: agent.model || oneLine(compute?.model) || 'UNKNOWN',
+    worker: oneLine(active?.worker || active?.host || selectedHost) || 'UNKNOWN',
+    health, job_id: oneLine(active?.job_id || active?.id || active?.packageId || active?.package_id) || 'UNKNOWN',
+    job_state: active ? 'RUNNING' : job ? 'IDLE' : 'UNKNOWN',
+  };
+}
+
 async function buildAgentControlRoom(options = {}) {
   const root = path.resolve(options.root || DEFAULT_ROOT);
   const registry = options.registry || readJson(path.join(root, 'config', 'agent-registry.json'), 'agent registry');
@@ -637,6 +665,12 @@ async function buildAgentControlRoom(options = {}) {
   const agents = sortAgents(await Promise.all(registered.map((agent) => agentProjection(
     root, agent, implementationsById.get(agent.agent_id), latestByAgent.get(agent.agent_id), implementationsById, options,
   ))));
+  let liveResources = { source: 'UNAVAILABLE', probed_at: null, compute: null, jobs: null };
+  if (typeof options.liveResourceProvider === 'function') {
+    try { liveResources = await options.liveResourceProvider(agents); }
+    catch (error) { liveResources = { source: 'PROBE_FAILED', probed_at: null, error: error.message, compute: null, jobs: null }; }
+  }
+  for (const agent of agents) agent.resource_status = joinResourceStatus(agent, liveResources);
   const counts = agents.reduce((acc, agent) => {
     acc[agent.state] = (acc[agent.state] || 0) + 1;
     return acc;
@@ -647,6 +681,7 @@ async function buildAgentControlRoom(options = {}) {
     generated_at: (options.now || (() => new Date().toISOString()))(),
     registry: { schema_version: registry.schema_version, registered_count: registered.length },
     runtime_discovery: discovery,
+    live_resources: liveResources,
     agents,
     human_decision_queue: decisionQueue,
     planned_roles: plannedRoles(contract, ids),
@@ -680,5 +715,6 @@ async function buildAgentControlRoom(options = {}) {
 
 module.exports = {
   modulePathFor, inspectImplementation, normalizeProjection, sortAgents,
-  discoverRunnerContexts, normalizeRunnerProjection, plannedRoles, buildHumanDecisionQueue, buildAgentControlRoom,
+  discoverRunnerContexts, normalizeRunnerProjection, plannedRoles, buildHumanDecisionQueue,
+  resourceKind, joinResourceStatus, buildAgentControlRoom,
 };

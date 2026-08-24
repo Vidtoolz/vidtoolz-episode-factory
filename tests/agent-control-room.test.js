@@ -553,6 +553,33 @@ test('human decision queue includes every REVIEW or DECISION agent exactly once'
   }
 });
 
+test('active agent joins live resource state without treating missing telemetry as healthy', async () => {
+  const f = fixture(['alpha']); writeRuntimeLock(f);
+  const output = await controlRoom.buildAgentControlRoom({
+    root: f.root,
+    liveResourceProvider: async () => ({
+      source: 'LIVE_PROBES', probed_at: '2026-08-24T10:00:02.000Z',
+      compute: { lane: 'wan_i2v', decision: 'ROUTE', selected_host: 'presto', model: 'wan-test' },
+      jobs: { presto: { active: { job_id: 'job-1', host: 'presto-worker' } } },
+    }),
+  });
+  const status = output.agents[0].resource_status;
+  assert.equal(status.health, 'AVAILABLE'); assert.equal(status.worker, 'presto-worker');
+  assert.equal(status.job_id, 'job-1'); assert.equal(status.job_state, 'RUNNING');
+  const unknown = controlRoom.joinResourceStatus({ lane: 'unprobed' }, null);
+  assert.equal(unknown.health, 'UNKNOWN'); assert.equal(unknown.worker, 'UNKNOWN'); assert.equal(unknown.job_state, 'UNKNOWN');
+});
+
+test('orientation labels system registry provenance as static, never live health', () => {
+  const orientation = packageEngineServer.buildCockpitOrientation({ repoRoot: path.join(__dirname, '..') });
+  assert.equal(orientation.registry.recordType, 'STATIC_PROVENANCE');
+  assert.equal(orientation.registry.liveHealth, false);
+  assert.match(orientation.registry.displayLabel, /static record · not live health/);
+  assert.ok(orientation.registry.components.every((component) => component.health === 'NOT_LIVE'));
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(html, /Static provenance unavailable · live health unknown/);
+});
+
 test('doctrine-registered roles are never presented or executed as live specialists', async () => {
   const f = fixture(['alpha', 'planned_specialist']);
   f.registry.agents[1].lifecycle = {
@@ -634,6 +661,7 @@ test('cockpit UI renders a registry-driven panel with manual refresh', () => {
   assert.match(ui, /human_decision_queue/);
   assert.match(ui, /Open relevant workspace/);
   assert.match(ui, /DISPATCH /);
+  assert.match(ui, /Resource live/);
   assert.match(ui, /Onward handoff/);
   assert.match(ui, /Runner context/);
   assert.match(css, /\.agent-control-room-card/);

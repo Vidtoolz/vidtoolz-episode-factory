@@ -46,6 +46,7 @@
     var prerequisites = agent.lifecycle && agent.lifecycle.enablement_prerequisites
       ? agent.lifecycle.enablement_prerequisites.join('; ') : null;
     var rationale = agent.operational_rationale || {};
+    var resourceStatus = agent.resource_status || {};
     return '<article class="agent-control-room-card ' + badgeClass + '" data-agent-id="' + esc(agent.agent_id) + '">' +
       '<div class="agent-control-room-card-heading"><div><h3>' + esc(agent.name) + '</h3><small>' + esc(agent.agent_id) + '</small></div>' +
       '<div class="agent-control-room-badges"><span class="agent-state">' + esc(agent.state) + '</span>' +
@@ -66,6 +67,8 @@
       line('Completed', agent.completed_at) +
       line('Disagreement', agent.disagreement) +
       line('Resource', agent.resource_dependency) +
+      line('Resource live', [resourceStatus.health || 'UNKNOWN', resourceStatus.job_state || 'UNKNOWN', resourceStatus.worker || 'UNKNOWN'].join(' · ')) +
+      line('Resource job', resourceStatus.job_id || 'UNKNOWN') +
       line('Why', rationale.reason) +
       line('Artifact', agent.current_artifact && typeof agent.current_artifact === 'object' ? JSON.stringify(agent.current_artifact) : agent.current_artifact) +
       line('Latest event', eventText(agent.latest_event)) +
