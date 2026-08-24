@@ -111,6 +111,7 @@ require("./research-director.test.js");
 require("./story-revision-review.test.js");
 require("./story-editor.test.js");
 require("./story-successor.test.js");
+require("./story-takeover-canary.test.js");
 require("./visual-plan.test.js");
 require("./visual-planning-director.test.js");
 require("./agent-task-visual-planning.test.js");
