@@ -86,7 +86,10 @@ function buildPlan() {
   return plan;
 }
 
-function materialize(root) {
+function materialize(root, identity = {}) {
+  const runId = identity.run_id || RUN_ID;
+  const taskId = identity.task_id || TASK_ID;
+  const invocationId = identity.invocation_id || INVOCATION_ID;
   const registry = { schema_version: 1, agents: [{
     agent_id: AGENT_ID, name: 'Visual Planning Director', role: 'visual_planning',
     human_gate_type: 'VISUAL_PLAN_APPROVAL', implementation: 'scripts/visual-planning-director.js',
@@ -96,14 +99,14 @@ function materialize(root) {
   writeJson(path.join(root, 'config', 'agent-registry.json'), registry);
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
   fs.writeFileSync(path.join(root, 'scripts', 'visual-planning-director.js'), "'use strict'; module.exports = {};\n");
-  const directory = path.join(root, 'package-runs', RUN_ID, 'agents', AGENT_ID, TASK_ID);
+  const directory = path.join(root, 'package-runs', runId, 'agents', AGENT_ID, taskId);
   const plan = buildPlan();
   const task = {
-    task_id: TASK_ID, package_run_id: RUN_ID, project_id: plan.story.project_id,
+    task_id: taskId, package_run_id: runId, project_id: plan.story.project_id,
     assignment: { action: 'review_visual_plan' }, story: plan.story,
   };
   const result = {
-    agent_id: AGENT_ID, task_id: TASK_ID, state: 'AWAITING_HUMAN_REVIEW', attention: 'REVIEW',
+    agent_id: AGENT_ID, task_id: taskId, state: 'AWAITING_HUMAN_REVIEW', attention: 'REVIEW',
     events: [], visual_plan: plan,
     operational_rationale: {
       source: 'AGENT', decision: 'REVIEW', reason: 'Review complete beat coverage and the exact planned shots.',
@@ -122,8 +125,8 @@ function materialize(root) {
   const artifactWrite = writeJson(path.join(directory, 'artifacts', 'visual-plan.json'), plan);
   const endedAt = '2026-08-24T09:00:01.000Z';
   const invocation = {
-    schema_version: 1, runner_version: 'agent-runner-v1', invocation_id: INVOCATION_ID,
-    infrastructure_state: 'COMPLETE', agent_id: AGENT_ID, task_id: TASK_ID, attempt_number: 1,
+    schema_version: 1, runner_version: 'agent-runner-v1', invocation_id: invocationId,
+    infrastructure_state: 'COMPLETE', agent_id: AGENT_ID, task_id: taskId, attempt_number: 1,
     module_path: 'scripts/visual-planning-director.js', repository_head: 'fixture',
     task_sha256: taskWrite.sha256, result_sha256: resultWrite.sha256,
     started_at: '2026-08-24T09:00:00.000Z', ended_at: endedAt, exit_code: 0,
@@ -132,16 +135,16 @@ function materialize(root) {
     artifacts: [{ field: 'visual_plan', path: 'artifacts/visual-plan.json', sha256: artifactWrite.sha256 }],
   };
   writeJson(path.join(directory, 'invocation.json'), invocation);
-  writeJson(path.join(root, 'package-runs', RUN_ID, 'agents', 'index.json'), {
+  writeJson(path.join(root, 'package-runs', runId, 'agents', 'index.json'), {
     schema_version: 1, runner_version: 'agent-runner-v1', invocations: [{
-      invocation_id: INVOCATION_ID, agent_id: AGENT_ID, task_id: TASK_ID, attempt_number: 1,
+      invocation_id: invocationId, agent_id: AGENT_ID, task_id: taskId, attempt_number: 1,
       state: 'AWAITING_HUMAN_REVIEW', attention: 'REVIEW', next_owner: 'mikko',
-      task_directory: `${AGENT_ID}/${TASK_ID}`, completed_at: endedAt,
+      task_directory: `${AGENT_ID}/${taskId}`, completed_at: endedAt,
     }],
   });
   return {
     root, plan, artifact_sha256: artifactWrite.sha256,
-    request: { run_id: RUN_ID, agent_id: AGENT_ID, task_id: TASK_ID, invocation_id: INVOCATION_ID },
+    request: { run_id: runId, agent_id: AGENT_ID, task_id: taskId, invocation_id: invocationId },
   };
 }
 

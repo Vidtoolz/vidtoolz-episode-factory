@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const http = require('node:http');
 const { assert, fs, os, path, test, packageEngineServer } = require('./_helpers.js');
 const workspace = require('../scripts/visual-planning-workspace.js');
+const workspaceContract = require('../scripts/visual-planning-workspace-contract.js');
 const controls = require('../scripts/agent-controls.js');
 const workspaceFixture = require('./fixtures/visual-planning-workspace-v1.js');
 
@@ -25,7 +26,23 @@ function expectCode(fn, code) {
 }
 
 function artifactPath(f) {
-  return path.join(f.root, 'package-runs', SOURCE_RUN, 'agents', AGENT_ID, TASK_ID, 'artifacts', 'visual-plan.json');
+  return path.join(f.root, 'package-runs', f.request.run_id, 'agents', AGENT_ID, f.request.task_id, 'artifacts', 'visual-plan.json');
+}
+
+function exactWorkspaceLink(request) {
+  return `/visual-planning-workspace.html?run=${encodeURIComponent(request.run_id)}&agent=${encodeURIComponent(request.agent_id)}&task=${encodeURIComponent(request.task_id)}&invocation=${encodeURIComponent(request.invocation_id)}`;
+}
+
+function exactQueueItem(f, out, overrides = {}) {
+  return {
+    queue_item_id: 'obligation:exact', state: 'ACTIVE', run_id: f.request.run_id, agent_id: f.request.agent_id,
+    task_id: f.request.task_id, invocation_id: f.request.invocation_id, attention: 'REVIEW', reason: 'Review exact plan', blocker: null,
+    owning_gate: 'VISUAL_PLAN_APPROVAL', approval_scope_required: 'VISUAL_PLAN_APPROVAL',
+    artifacts: [{ artifact_id: 'visual_plan', sha256: out.visual_plan.sha256 }],
+    operational_rationale: { source: 'AGENT', decision: 'REVIEW', reason: 'Review exact plan', evidence_refs: [], confidence: null, escalation_reason: null },
+    handoff: { next_owner: 'mikko', next_action: 'Review plan' }, workspace: exactWorkspaceLink(f.request),
+    ...overrides,
+  };
 }
 
 function treeDigest(root) {
@@ -72,7 +89,9 @@ test('Visual Planning workspace resolves the deterministic canonical V1 fixture'
   assert.equal(out.visual_plan.coverage.required_beats.length, 2);
   assert.equal(out.visual_plan.coverage.uncovered_beats.length, 0);
   assert.equal(out.visual_plan.shots.length, 2);
+  assert.equal(out.visual_plan.story_dependency.freshness_state, 'CURRENT');
   assert.equal(out.ownership.current_owner, 'AUTOMATION');
+  assert.equal(out.ownership.successor_capability.adapter_id, 'VISUAL_PLAN_SUCCESSOR_V1');
   assert.equal(out.resource_tool.health, 'UNKNOWN');
   assert.equal(out.resource_tool.telemetry_source, 'INVOCATION_EVIDENCE_ONLY');
 });
@@ -84,6 +103,8 @@ test('workspace consumes the committed canonical Decision Queue V2 projection', 
   assert.equal(out.human_attention[0].attention, 'REVIEW');
   assert.equal(out.human_attention[0].owning_gate, 'VISUAL_PLAN_APPROVAL');
   assert.match(out.human_attention[0].workspace, /invocation=visual_planning_director%3Avisual-planning-workspace-v1-task%3A1/);
+  assert.equal(out.queue_binding.status, 'VERIFIED');
+  assert.equal(out.queue_binding.obligation_id, out.human_attention[0].queue_item_id);
   assert.ok(Array.isArray(out.decision_queue_diagnostics));
 });
 
@@ -94,8 +115,12 @@ test('workspace V1 stable schema fields are frozen and complete', async () => {
   assert.deepEqual(Object.keys(out).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.top_level].sort());
   assert.deepEqual(Object.keys(out.context).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.context].sort());
   assert.deepEqual(Object.keys(out.visual_plan).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.visual_plan].sort());
+  assert.deepEqual(Object.keys(out.visual_plan.story_dependency).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.story_dependency].sort());
+  assert.deepEqual(Object.keys(out.queue_binding).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.queue_binding].sort());
   assert.deepEqual(Object.keys(out.ownership).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.ownership].sort());
+  assert.deepEqual(Object.keys(out.ownership.successor_capability).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.successor_capability].sort());
   assert.deepEqual(Object.keys(out.resource_tool).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.resource_tool].sort());
+  assert.deepEqual(workspaceContract.validateWorkspaceV1(out), { valid: true, errors: [] });
 });
 
 test('workspace refuses wrong agent, task, invocation, traversal, and artifact substitution', async () => {
@@ -129,14 +154,7 @@ test('workspace rejects a symlink even when it points to identical Visual Plan b
 test('Decision Queue V2 projection is filtered to exact invocation, artifact, and Visual Plan gate', async () => {
   const f = fixture();
   const first = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root, decisionQueueProjection: { human_decision_queue: [], diagnostics: [] } });
-  const exact = {
-    queue_item_id: 'REVIEW:exact', state: 'ACTIVE', run_id: SOURCE_RUN, agent_id: AGENT_ID,
-    task_id: TASK_ID, invocation_id: INVOCATION_ID, attention: 'REVIEW', reason: 'Review exact plan', blocker: null,
-    owning_gate: 'VISUAL_PLAN_APPROVAL', approval_scope_required: 'VISUAL_PLAN_APPROVAL',
-    artifacts: [{ artifact_id: 'visual_plan', sha256: first.visual_plan.sha256 }],
-    operational_rationale: { source: 'AGENT', decision: 'REVIEW', reason: 'Review exact plan', evidence_refs: [], confidence: null, escalation_reason: null },
-    handoff: { next_owner: 'mikko', next_action: 'Review plan' }, workspace: '/visual-planning-workspace.html?exact=1',
-  };
+  const exact = exactQueueItem(f, first, { queue_item_id: 'REVIEW:exact' });
   const queue = { human_decision_queue: [
     exact,
     { ...exact, queue_item_id: 'wrong-task', task_id: 'other-task' },
@@ -148,6 +166,82 @@ test('Decision Queue V2 projection is filtered to exact invocation, artifact, an
   const out = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root, decisionQueueProjection: queue });
   assert.deepEqual(out.human_attention.map((item) => item.queue_item_id), ['REVIEW:exact']);
   assert.equal(out.human_attention[0].approval_scope_required, 'VISUAL_PLAN_APPROVAL');
+  assert.equal(out.queue_binding.status, 'VERIFIED');
+});
+
+test('queue deep link, workspace request, and projection bind the exact same context', async () => {
+  const f = fixture();
+  const baseline = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root, decisionQueueProjection: { human_decision_queue: [], diagnostics: [] } });
+  const item = exactQueueItem(f, baseline);
+  const linked = new URL(item.workspace, 'http://workspace.invalid');
+  const request = { run_id: linked.searchParams.get('run'), agent_id: linked.searchParams.get('agent'), task_id: linked.searchParams.get('task'), invocation_id: linked.searchParams.get('invocation') };
+  const out = await workspace.buildVisualPlanningWorkspace(request, { root: f.root, decisionQueueProjection: { available: true, human_decision_queue: [item], human_decision_history: [], diagnostics: [] } });
+  assert.deepEqual([out.context.run_id, out.context.agent_id, out.context.task_id, out.context.invocation_id], [item.run_id, item.agent_id, item.task_id, item.invocation_id]);
+  await expectCode(() => workspace.buildVisualPlanningWorkspace(f.request, { root: f.root, decisionQueueProjection: { available: true, human_decision_queue: [{ ...item, workspace: exactWorkspaceLink({ ...f.request, task_id: 'other-task' }) }], diagnostics: [] } }), 'WORKSPACE_QUEUE_LINK_INVALID');
+});
+
+test('resolved or superseded exact obligations remain historical and never retarget', async () => {
+  const f = fixture();
+  const baseline = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root, decisionQueueProjection: { human_decision_queue: [], diagnostics: [] } });
+  for (const state of ['RESOLVED', 'SUPERSEDED']) {
+    const historical = exactQueueItem(f, baseline, { state, queue_item_id: `obligation:${state.toLowerCase()}` });
+    const out = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root, decisionQueueProjection: { available: true, human_decision_queue: [], human_decision_history: [historical], diagnostics: [] } });
+    assert.equal(out.human_attention.length, 0);
+    assert.equal(out.queue_binding.status, 'HISTORICAL');
+    assert.equal(out.queue_binding.obligation_state, state);
+  }
+});
+
+test('unavailable queue is explicit and cannot claim an active binding', async () => {
+  const f = fixture();
+  const baseline = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root, decisionQueueProjection: { human_decision_queue: [], diagnostics: [] } });
+  const out = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root, decisionQueueProjection: {
+    available: false, status: 'INVALID', human_decision_queue: [exactQueueItem(f, baseline)],
+    diagnostics: [{ code: 'HUMAN_DECISION_QUEUE_INVALID', run_id: f.request.run_id }],
+  } });
+  assert.equal(out.human_attention.length, 0);
+  assert.deepEqual(out.queue_binding, { status: 'UNAVAILABLE', queue_available: false, obligation_id: null, obligation_state: null, diagnostic_codes: ['HUMAN_DECISION_QUEUE_INVALID'] });
+});
+
+test('workspace version compatibility is explicit and never silently downgrades', async () => {
+  const f = fixture();
+  const options = { root: f.root, decisionQueueProjection: { human_decision_queue: [], diagnostics: [] } };
+  assert.equal((await workspace.buildVisualPlanningWorkspace({ ...f.request, workspace_schema_version: 1, workspace_schema_id: 'visual-planning-workspace/v1' }, options)).workspace_schema_version, 1);
+  assert.equal((await workspace.buildVisualPlanningWorkspace(f.request, options)).workspace_schema_version, 1);
+  await expectCode(() => workspace.buildVisualPlanningWorkspace({ ...f.request, workspace_schema_version: 2 }, options), 'WORKSPACE_SCHEMA_VERSION_UNSUPPORTED');
+  await expectCode(() => workspace.buildVisualPlanningWorkspace({ ...f.request, workspace_schema_version: '1' }, options), 'WORKSPACE_SCHEMA_VERSION_INVALID');
+  await expectCode(() => workspace.buildVisualPlanningWorkspace({ ...f.request, workspace_schema_id: 'visual-planning-workspace/v2' }, options), 'WORKSPACE_SCHEMA_ID_UNSUPPORTED');
+});
+
+test('workspace rejects hostile identifiers without becoming a filesystem API', async () => {
+  const f = fixture();
+  const options = { root: f.root, decisionQueueProjection: { human_decision_queue: [], diagnostics: [] } };
+  for (const run_id of ['/tmp/elsewhere', '..', '../escape', 'bad\0id']) {
+    await expectCode(() => workspace.buildVisualPlanningWorkspace({ ...f.request, run_id }, options), 'AGENT_CONTROL_TARGET_INVALID');
+  }
+  for (const run_id of [{}, []]) await expectCode(() => workspace.buildVisualPlanningWorkspace({ ...f.request, run_id }, options), 'WORKSPACE_CONTEXT_INVALID');
+  await expectCode(() => workspace.buildVisualPlanningWorkspace({ ...f.request, run_id: null }, options), 'WORKSPACE_CONTEXT_INCOMPLETE');
+  await expectCode(() => workspace.buildVisualPlanningWorkspace({ ...f.request, task_id: {} }, options), 'WORKSPACE_CONTEXT_INVALID');
+  await expectCode(() => workspace.buildVisualPlanningWorkspace({ ...f.request, invocation_id: [] }, options), 'WORKSPACE_CONTEXT_INVALID');
+});
+
+test('same task and invocation strings remain isolated by exact run identity', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-planning-workspace-cross-run-'));
+  const first = workspaceFixture.materialize(root, { run_id: '2026-08-24-workspace-v1-a' });
+  const second = workspaceFixture.materialize(root, { run_id: '2026-08-24-workspace-v1-b' });
+  const a = await workspace.buildVisualPlanningWorkspace(first.request, { root, decisionQueueProjection: { human_decision_queue: [], diagnostics: [] } });
+  const b = await workspace.buildVisualPlanningWorkspace(second.request, { root, decisionQueueProjection: { human_decision_queue: [], diagnostics: [] } });
+  assert.equal(a.context.run_id, first.request.run_id);
+  assert.equal(b.context.run_id, second.request.run_id);
+  assert.equal(a.context.invocation_id, b.context.invocation_id);
+  await expectCode(() => workspace.buildVisualPlanningWorkspace({ ...first.request, artifact_sha256: b.visual_plan.sha256.replace(/^./, b.visual_plan.sha256[0] === 'a' ? 'b' : 'a') }, { root }), 'WORKSPACE_ARTIFACT_HASH_MISMATCH');
+});
+
+test('semantic V1 snapshot guards authority and identity fields without HTML coupling', async () => {
+  const f = fixture();
+  const out = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root });
+  const expected = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'visual-planning-workspace-v1.snapshot.json'), 'utf8'));
+  assert.deepEqual(workspaceContract.semanticSnapshot(out), expected);
 });
 
 test('workspace consumes only REVIEW and DECISION queue obligations', async () => {

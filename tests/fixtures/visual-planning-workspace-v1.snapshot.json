@@ -1,0 +1,90 @@
+{
+  "workspace_schema_id": "visual-planning-workspace/v1",
+  "workspace_schema_version": 1,
+  "top_level_fields": [
+    "context",
+    "decision_queue_diagnostics",
+    "human_attention",
+    "links",
+    "ownership",
+    "queue_binding",
+    "read_only",
+    "resource_tool",
+    "schema_version",
+    "visual_plan",
+    "workspace_schema_id",
+    "workspace_schema_version",
+    "workspace_type"
+  ],
+  "context_fields": [
+    "agent_id",
+    "implementation_state",
+    "invocation_id",
+    "lifecycle",
+    "run_id",
+    "runtime_state",
+    "semantic_state",
+    "task_id"
+  ],
+  "visual_plan_fields": [
+    "approval_state",
+    "artifact_id",
+    "artifact_reference",
+    "coverage",
+    "gate_state",
+    "plan_digest_sha256",
+    "plan_id",
+    "plan_revision",
+    "sha256",
+    "shots",
+    "story_dependency"
+  ],
+  "story_dependency_fields": [
+    "content_hash",
+    "freshness_state",
+    "project_id",
+    "version_id"
+  ],
+  "queue_binding_fields": [
+    "diagnostic_codes",
+    "obligation_id",
+    "obligation_state",
+    "queue_available",
+    "status"
+  ],
+  "ownership_fields": [
+    "capabilities",
+    "current_owner",
+    "manual_artifact",
+    "predecessor_task_id",
+    "revision",
+    "stale_approvals",
+    "stale_gates",
+    "state_hash",
+    "successor_capability",
+    "successor_task_id"
+  ],
+  "successor_capability_fields": [
+    "adapter_id",
+    "artifact_id",
+    "available",
+    "continuation_action",
+    "required_next_gate",
+    "required_next_specialist"
+  ],
+  "resource_tool_fields": [
+    "health",
+    "host",
+    "job_id",
+    "job_state",
+    "lane",
+    "model",
+    "probed_at",
+    "telemetry_source",
+    "worker"
+  ],
+  "authority": {
+    "gate": "VISUAL_PLAN_APPROVAL",
+    "approval_scope": "VISUAL_PLAN_APPROVAL"
+  }
+}

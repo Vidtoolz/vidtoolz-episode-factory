@@ -14,16 +14,9 @@ const operationalRationale = require('./operational-rationale.js');
 const runner = require('./agent-run.js');
 const successorTaskContract = require('./successor-task-contract.js');
 const visualPlan = require('./visual-plan.js');
+const workspaceContract = require('./visual-planning-workspace-contract.js');
 
-const WORKSPACE_SCHEMA_VERSION = 1;
-const WORKSPACE_SCHEMA_ID = 'visual-planning-workspace/v1';
-const WORKSPACE_STABLE_FIELDS = Object.freeze({
-  top_level: Object.freeze(['workspace_schema_version', 'workspace_schema_id', 'schema_version', 'workspace_type', 'read_only', 'context', 'visual_plan', 'human_attention', 'decision_queue_diagnostics', 'ownership', 'resource_tool', 'links']),
-  context: Object.freeze(['run_id', 'agent_id', 'task_id', 'invocation_id', 'runtime_state', 'semantic_state', 'lifecycle', 'implementation_state']),
-  visual_plan: Object.freeze(['artifact_id', 'artifact_reference', 'sha256', 'plan_id', 'plan_revision', 'plan_digest_sha256', 'story_dependency', 'approval_state', 'gate_state', 'coverage', 'shots']),
-  ownership: Object.freeze(['current_owner', 'revision', 'state_hash', 'capabilities', 'manual_artifact', 'predecessor_task_id', 'successor_task_id', 'stale_approvals', 'stale_gates']),
-  resource_tool: Object.freeze(['lane', 'model', 'host', 'worker', 'job_id', 'job_state', 'health', 'telemetry_source', 'probed_at']),
-});
+const { WORKSPACE_SCHEMA_VERSION, WORKSPACE_SCHEMA_ID, WORKSPACE_STABLE_FIELDS } = workspaceContract;
 const AGENT_ID = 'visual_planning_director';
 const ARTIFACT_ID = 'visual_plan';
 const APPROVAL_SCOPE = 'VISUAL_PLAN_APPROVAL';
@@ -41,6 +34,23 @@ class VisualPlanningWorkspaceError extends Error {
 
 function fail(code, message, statusCode = 409) {
   throw new VisualPlanningWorkspaceError(code, message, statusCode);
+}
+
+function assertRequestedVersion(request) {
+  const requestedVersion = request?.workspace_schema_version;
+  const requestedId = request?.workspace_schema_id;
+  if (requestedVersion !== undefined && typeof requestedVersion !== 'number') {
+    fail('WORKSPACE_SCHEMA_VERSION_INVALID', 'workspace_schema_version must be the numeric value 1', 400);
+  }
+  if (requestedVersion !== undefined && requestedVersion !== WORKSPACE_SCHEMA_VERSION) {
+    fail('WORKSPACE_SCHEMA_VERSION_UNSUPPORTED', `workspace schema version ${requestedVersion} is unsupported`, 406);
+  }
+  if (requestedId !== undefined && typeof requestedId !== 'string') {
+    fail('WORKSPACE_SCHEMA_ID_INVALID', 'workspace_schema_id must be a string', 400);
+  }
+  if (requestedId !== undefined && requestedId !== WORKSPACE_SCHEMA_ID) {
+    fail('WORKSPACE_SCHEMA_ID_UNSUPPORTED', `workspace schema ${requestedId} is unsupported`, 406);
+  }
 }
 
 function contained(parent, candidate) {
@@ -115,6 +125,9 @@ function exactContext(root, request) {
   if (request.agent_id !== AGENT_ID) fail('WORKSPACE_AGENT_UNSUPPORTED', 'this workspace is restricted to Visual Planning Director', 403);
   if (!request.run_id || !request.task_id || !request.invocation_id) {
     fail('WORKSPACE_CONTEXT_INCOMPLETE', 'run_id, agent_id, task_id, and invocation_id are required', 400);
+  }
+  if ([request.run_id, request.agent_id, request.task_id, request.invocation_id].some((value) => typeof value !== 'string')) {
+    fail('WORKSPACE_CONTEXT_INVALID', 'workspace identity fields must be strings', 400);
   }
   let context;
   try { context = agentControls.locateInvocation(root, request); }
@@ -205,19 +218,46 @@ function artifactMatchesObligation(obligation, artifact) {
   return bindings.some((entry) => entry.artifact_id === ARTIFACT_ID && entry.sha256 === artifact.sha256);
 }
 
+function exactObligationContext(item, context, artifact) {
+  return item.run_id === context.runId && item.agent_id === context.agentId
+    && item.task_id === context.record.task_id && item.invocation_id === context.invocationId
+    && item.owning_gate === APPROVAL_SCOPE && item.approval_scope_required === APPROVAL_SCOPE
+    && artifactMatchesObligation(item, artifact);
+}
+
+function assertExactWorkspaceLink(item, context) {
+  if (typeof item.workspace !== 'string' || !item.workspace) {
+    fail('WORKSPACE_QUEUE_LINK_INVALID', 'queue obligation lacks an exact workspace link');
+  }
+  let link;
+  try { link = new URL(item.workspace, 'http://workspace.invalid'); }
+  catch (_) { fail('WORKSPACE_QUEUE_LINK_INVALID', 'queue obligation workspace link is malformed'); }
+  const expected = { run: context.runId, agent: context.agentId, task: context.record.task_id, invocation: context.invocationId };
+  for (const [key, value] of Object.entries(expected)) {
+    if (link.searchParams.get(key) !== value) fail('WORKSPACE_QUEUE_LINK_INVALID', `queue obligation workspace link has a mismatched ${key}`);
+  }
+}
+
 function decisionQueueProjection(root, registry, context, artifact, options = {}) {
   let queue;
   if (options.decisionQueueProjection) queue = options.decisionQueueProjection;
   else {
     queue = decisionQueue.buildDecisionQueue(root, registry, options.decisionQueueOptions || {});
   }
+  const queueAvailable = queue?.available !== false && queue?.status !== 'INVALID';
   const active = Array.isArray(queue?.human_decision_queue) ? queue.human_decision_queue : [];
-  const obligations = active.filter((item) => item.state === 'ACTIVE'
+  const history = Array.isArray(queue?.human_decision_history) ? queue.human_decision_history : [];
+  const obligations = queueAvailable ? active.filter((item) => item.state === 'ACTIVE'
     && ['REVIEW', 'DECISION'].includes(item.attention)
-    && item.run_id === context.runId && item.agent_id === context.agentId
-    && item.task_id === context.record.task_id && item.invocation_id === context.invocationId
-    && item.owning_gate === APPROVAL_SCOPE && item.approval_scope_required === APPROVAL_SCOPE
-    && artifactMatchesObligation(item, artifact));
+    && exactObligationContext(item, context, artifact)) : [];
+  if (obligations.length > 1) fail('WORKSPACE_QUEUE_BINDING_AMBIGUOUS', 'more than one active obligation claims the exact workspace context');
+  obligations.forEach((item) => assertExactWorkspaceLink(item, context));
+  const historical = history.filter((item) => ['RESOLVED', 'SUPERSEDED', 'STALE', 'INVALID'].includes(item.state)
+    && exactObligationContext(item, context, artifact));
+  const exact = obligations[0] || historical[historical.length - 1] || null;
+  const diagnostics = Array.isArray(queue?.diagnostics)
+    ? queue.diagnostics.filter((item) => !item?.run_id || item.run_id === context.runId)
+    : [];
   return {
     obligations: obligations.map((item) => {
       const rationale = operationalRationale.normalizeOperationalRationale(item.operational_rationale);
@@ -233,22 +273,35 @@ function decisionQueueProjection(root, registry, context, artifact, options = {}
         workspace: item.workspace || null,
       };
     }),
-    diagnostics: Array.isArray(queue?.diagnostics)
-      ? queue.diagnostics.filter((item) => !item?.run_id || item.run_id === context.runId)
-      : [],
+    binding: {
+      status: !queueAvailable ? 'UNAVAILABLE' : obligations.length ? 'VERIFIED' : historical.length ? 'HISTORICAL' : 'NOT_BOUND',
+      queue_available: queueAvailable,
+      obligation_id: exact?.queue_item_id || exact?.obligation_id || null,
+      obligation_state: exact?.state || null,
+      diagnostic_codes: diagnostics.map((item) => item.code).filter(Boolean),
+    },
+    diagnostics,
   };
+}
+
+function capabilityFromPreview(previewFn, input, options, defaultReason) {
+  try {
+    const preview = previewFn({ ...input, reason: 'Read-only workspace capability projection.' }, options);
+    return { allowed: preview.eligible === true, reason: preview.eligible === true ? null : preview.blocked_reason || preview.support || defaultReason };
+  } catch (error) {
+    return { allowed: false, reason: error.code || defaultReason };
+  }
 }
 
 function ownershipProjection(context, options = {}) {
   let state;
   try { state = executionOwnership.readOwnership(context.root, { run_id: context.runId, agent_id: context.agentId, task_id: context.record.task_id }); }
   catch (error) { fail(error.code || 'WORKSPACE_OWNERSHIP_INVALID', error.message); }
-  const manual = agentControls.manualControlEligibility({ run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId }, { root: context.root });
-  const retryEligible = state.current_owner === 'AUTOMATION' && context.runtime_status !== 'RUNNING';
-  let cancelEligible = false;
-  if (state.current_owner === 'AUTOMATION' && context.runtime_status === 'RUNNING' && options.cancelProvider?.supports) {
-    try { cancelEligible = options.cancelProvider.supports(context) === true; } catch (_) { cancelEligible = false; }
-  }
+  const controlInput = { run_id: context.runId, agent_id: context.agentId, invocation_id: context.invocationId };
+  const manual = agentControls.manualControlEligibility(controlInput, { root: context.root });
+  const retry = capabilityFromPreview(agentControls.previewRetry, controlInput, { root: context.root }, 'RETRY_NOT_ELIGIBLE');
+  const cancel = capabilityFromPreview(agentControls.previewCancel, controlInput, { root: context.root, cancelProvider: options.cancelProvider }, 'CANCELLATION_PROVIDER_NOT_SUPPORTED');
+  const successorPolicy = successorTaskContract.successorAdapterPolicy(context.agentId);
   const latestSuccessorTransition = Array.isArray(state.history)
     ? state.history.slice().reverse().find((entry) => entry.successor?.task_id)
     : null;
@@ -263,8 +316,8 @@ function ownershipProjection(context, options = {}) {
     capabilities: {
       take_manual_control: { allowed: manual.take_manual_control === true, reason: manual.take_manual_control ? null : manual.reason || 'NOT_ELIGIBLE' },
       return_to_automation: { allowed: manual.return_to_automation === true, reason: manual.return_to_automation ? null : manual.reason || 'NOT_ELIGIBLE' },
-      retry: { allowed: retryEligible, reason: retryEligible ? null : state.current_owner !== 'AUTOMATION' ? 'AUTOMATION_FENCED' : 'INVOCATION_RUNNING' },
-      cancel: { allowed: cancelEligible, reason: cancelEligible ? null : context.runtime_status !== 'RUNNING' ? 'AGENT_CONTROL_NOT_RUNNING' : 'CANCELLATION_PROVIDER_NOT_SUPPORTED' },
+      retry,
+      cancel,
     },
     manual_artifact: state.current_owner === 'HUMAN' && manual.manual_artifact ? {
       artifact_id: manual.manual_artifact.artifact_id, reference: manual.manual_artifact.path, sha256: manual.manual_artifact.sha256,
@@ -277,6 +330,12 @@ function ownershipProjection(context, options = {}) {
     successor_task_id: resumption ? context.record.task_id : latestSuccessorTransition?.successor?.task_id || null,
     stale_approvals: resumptionContract?.approvals_invalidated || [],
     stale_gates: resumptionContract?.gates_invalidated || [],
+    successor_capability: {
+      available: Boolean(successorPolicy), adapter_id: successorPolicy?.adapter_id || null,
+      artifact_id: successorPolicy?.artifact_id || null, required_next_gate: successorPolicy?.required_next_gate || null,
+      required_next_specialist: successorPolicy?.required_next_specialist || null,
+      continuation_action: successorPolicy?.continuation_action || null,
+    },
   };
 }
 
@@ -304,6 +363,7 @@ function resourceProjection(context, result, snapshot) {
 }
 
 async function buildVisualPlanningWorkspace(request, options = {}) {
+  assertRequestedVersion(request);
   const root = path.resolve(options.root || path.join(__dirname, '..'));
   const context = exactContext(root, request);
   const artifact = exactArtifact(context, request);
@@ -320,7 +380,7 @@ async function buildVisualPlanningWorkspace(request, options = {}) {
     resource_dependency: context.task?.resource_dependency || null,
   }]) : null;
   const artifactReference = path.relative(root, artifact.artifactPath);
-  return {
+  const payload = {
     workspace_schema_version: WORKSPACE_SCHEMA_VERSION,
     workspace_schema_id: WORKSPACE_SCHEMA_ID,
     schema_version: WORKSPACE_SCHEMA_VERSION,
@@ -334,13 +394,19 @@ async function buildVisualPlanningWorkspace(request, options = {}) {
     visual_plan: {
       artifact_id: ARTIFACT_ID, artifact_reference: artifactReference, sha256: artifact.sha256,
       plan_id: artifact.value.plan_id, plan_revision: artifact.value.plan_revision, plan_digest_sha256: artifact.value.plan_digest_sha256,
-      story_dependency: { project_id: artifact.value.story?.project_id || null, version_id: artifact.value.story?.version_id || null, content_hash: artifact.value.story?.content_hash || null },
+      story_dependency: {
+        project_id: artifact.value.story?.project_id || null, version_id: artifact.value.story?.version_id || null,
+        content_hash: artifact.value.story?.content_hash || null,
+        freshness_state: context.task?.story?.version_id === artifact.value.story?.version_id
+          && context.task?.story?.content_hash === artifact.value.story?.content_hash ? 'CURRENT' : 'UNKNOWN',
+      },
       approval_state: result.authority?.approval || { state: 'INVALID', valid: false, reason_codes: ['PLAN_APPROVAL_MISSING'] },
       gate_state: { gate: APPROVAL_SCOPE, state: result.authority?.state || artifact.value.lifecycle_state || UNKNOWN, authorization_ok: result.authority?.authorization_ok === true },
       coverage: buildCoverage(artifact.value, validation),
       shots: buildShots(artifact.value, result),
     },
     human_attention: queue.obligations,
+    queue_binding: queue.binding,
     decision_queue_diagnostics: queue.diagnostics,
     ownership,
     resource_tool: resourceProjection(context, result, snapshot),
@@ -353,11 +419,13 @@ async function buildVisualPlanningWorkspace(request, options = {}) {
       manual_artifact_read: ownership.manual_artifact ? '/api/agent-control-room/manual-artifact' : null,
     },
   };
+  try { return workspaceContract.assertWorkspaceV1(payload); }
+  catch (error) { fail(error.code || 'WORKSPACE_CONTRACT_INVALID', error.message, error.statusCode || 409); }
 }
 
 module.exports = {
   WORKSPACE_SCHEMA_VERSION, WORKSPACE_SCHEMA_ID, WORKSPACE_STABLE_FIELDS,
   AGENT_ID, ARTIFACT_ID, APPROVAL_SCOPE, UNKNOWN,
   VisualPlanningWorkspaceError, exactContext, exactArtifact, exactResult,
-  decisionQueueProjection, resourceProjection, buildVisualPlanningWorkspace,
+  assertRequestedVersion, decisionQueueProjection, resourceProjection, buildVisualPlanningWorkspace,
 };
