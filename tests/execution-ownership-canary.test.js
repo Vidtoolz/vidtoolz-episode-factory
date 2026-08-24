@@ -12,6 +12,7 @@ const ledger = require('../scripts/operator-action-ledger.js');
 const validator = require('../scripts/agent-contract-validator.js');
 const packageEngineServer = require('../package-engine-server.js');
 const visualPlanningWorkspace = require('../scripts/visual-planning-workspace.js');
+const visualPlanningManualEdit = require('../scripts/visual-planning-manual-edit.js');
 const { bootWorkspacePage } = require('./fixtures/visual-planning-workspace-browser.js');
 
 function write(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`); }
@@ -34,17 +35,26 @@ test('ownership canary: specialists without successor adapters cannot enter manu
 
 function maturePlan(revision = 1, previous = null) {
   const vp = require('../scripts/visual-plan.js');
+  const promptAdapter = require('../scripts/visual-plan-prompt-adapter.js');
   const storyHash = vp.sha256('successor canary story');
   const story = { project_id: 'p1', version_id: 'v1', content_hash: storyHash, approval: { state: 'approved', approved_by: 'Mikko', approved_at: '2026-08-24T09:00:00.000Z', version_id: 'v1', content_hash: storyHash }, section_ids: ['s1'] };
   const beat = { canonical_beat_id: 'visual-beat-01HF7YAT010000000000000001', section_id: 's1', aliases: [], source_provenance: null };
-  const plan = { schema_version: 1, artifact_type: 'visual-plan', plan_id: 'visual-plan-01HF7YAT000000000000000000', plan_revision: revision, supersedes: previous ? { plan_revision: previous.plan_revision, plan_digest_sha256: previous.plan_digest_sha256 } : null, created_at: `2026-08-24T10:0${revision}:00.000Z`, created_by: 'visual_planning_director', lifecycle_state: 'AWAITING_HUMAN_REVIEW', story, required_beats: [beat], coverage: [{ beat_ref: beat, decision: 'INTENTIONAL_NO_VISUAL', shot_ids: [], reason: revision === 1 ? 'Presenter only.' : 'Presenter remains intentionally uninterrupted.' }], shots: [], prompts: [], plan_digest_sha256: '' };
+  const shot = { shot_id: revision === 1 ? 'shot-01HF7YAT030000000000000003' : 'shot-01HF7YAT060000000000000006', section_ref: { section_id: 's1' }, beat_ref: beat,
+    narrative_function: 'establish the bounded production constraint', subject: 'editor workstation', media_type: 'GENERATED_STILL', generation_mode: 'STILL',
+    shot_brief: revision === 1 ? 'An editor waits beside a rendering workstation.' : 'An editor calmly reviews the completed render.', visual_assertion: null,
+    presenter_relation: 'BROLL_OVERLAY', research_sensitive: false, research_refs: [], camera_intent: null,
+    generation_requirements: { artifact_class: 'image', aspect_target: '16:9', duration_target_s: 4, input_artifact_refs: [], quality_constraints: [], candidate_count_request: 2, generation_mode: 'STILL' },
+    continuity_notes: [], edit_placement: 'opening support', priority: 'HIGH', status: 'PROMPT_READY', prompt_refs: ['prompt-01HF7YAT050000000000000005'] };
+  const prompt = { prompt_id: shot.prompt_refs[0], prompt_revision: revision, shot_id: shot.shot_id, shot_intent_digest_sha256: vp.shotIntentDigest(shot),
+    prompt_text: promptAdapter.promptTextFor(shot), prompt_type: promptAdapter.promptTypeFor(shot), created_by: 'visual_planning_director', origin: 'visual_planning_director', legacy_aliases: [] };
+  const plan = { schema_version: 1, artifact_type: 'visual-plan', plan_id: 'visual-plan-01HF7YAT000000000000000000', plan_revision: revision, supersedes: previous ? { plan_revision: previous.plan_revision, plan_digest_sha256: previous.plan_digest_sha256 } : null, created_at: `2026-08-24T10:0${revision}:00.000Z`, created_by: 'visual_planning_director', lifecycle_state: 'AWAITING_HUMAN_REVIEW', story, required_beats: [beat], coverage: [{ beat_ref: beat, decision: 'PLAN_SHOTS', shot_ids: [shot.shot_id], reason: null }], shots: [shot], prompts: [prompt], plan_digest_sha256: '' };
   plan.plan_digest_sha256 = vp.planDigest(plan); return plan;
 }
 
 test('extended ownership canary: changed Visual Plan resumes only through an immutable successor', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'successor-canary-'));
   const sourceScripts = path.join(__dirname, '..', 'scripts');
-  const dependencies = ['visual-planning-director.js', 'agent-executable-boundary.js', 'agent-dispatch-authority.js', 'execution-ownership.js', 'execution-ownership-authority-anchor.js', 'operator-action-ledger.js', 'successor-task-contract.js', 'visual-planning-successor.js', 'story-successor.js', 'story-assertion-continuity.js', 'story-revision-review.js', 'agent-task-visual-planning.js', 'human-approval-identity.js', 'agent-run.js', 'operational-rationale.js', 'visual-plan.js', 'visual-plan-prompt-adapter.js', 'research-result-validator.js', 'research-result-authority.js', 'agent-contract-validator.js', 'approval-scopes.js'];
+  const dependencies = ['visual-planning-director.js', 'agent-executable-boundary.js', 'agent-dispatch-authority.js', 'execution-ownership.js', 'execution-ownership-authority-anchor.js', 'operator-action-ledger.js', 'successor-task-contract.js', 'visual-planning-successor.js', 'visual-planning-manual-edit.js', 'story-successor.js', 'story-assertion-continuity.js', 'story-revision-review.js', 'agent-task-visual-planning.js', 'human-approval-identity.js', 'agent-run.js', 'agent-controls.js', 'operational-rationale.js', 'visual-plan.js', 'visual-plan-prompt-adapter.js', 'research-result-validator.js', 'research-result-authority.js', 'agent-contract-validator.js', 'approval-scopes.js'];
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
   dependencies.forEach((name) => fs.copyFileSync(path.join(sourceScripts, name), path.join(root, 'scripts', name)));
   write(path.join(root, 'config/agent-registry.json'), { schema_version: 1, agents: [
@@ -67,6 +77,8 @@ test('extended ownership canary: changed Visual Plan resumes only through an imm
   const actor = ledger.localActorContext({ username: 'mikko' });
   let preview;
   let taken;
+  let boundedEditPreview;
+  let boundedEditApplied;
   let browserReturnPreview;
   let browserReturned;
   const browser = await bootWorkspacePage(() => visualPlanningWorkspace.buildVisualPlanningWorkspace({
@@ -79,6 +91,19 @@ test('extended ownership canary: changed Visual Plan resumes only through an imm
     '/api/agent-control-room/take-manual-control/apply': (body) => {
       taken = controls.applyTakeManualControl(body, { root, actor, recordId: 'operator-action-successor-take' });
       return taken;
+    },
+    '/api/visual-planning-workspace/manual-edit/preview': async (body) => {
+      boundedEditPreview = await visualPlanningManualEdit.previewVisualPlanManualEdit(body, {
+        root, successorValidation: { currentStory: task.story }, now: '2026-08-24T10:58:00.000Z',
+      });
+      return boundedEditPreview;
+    },
+    '/api/visual-planning-workspace/manual-edit/apply': async (body) => {
+      boundedEditApplied = await visualPlanningManualEdit.applyVisualPlanManualEdit(body, {
+        root, actor, recordId: 'operator-action-successor-edit', successorValidation: { currentStory: task.story },
+        now: '2026-08-24T10:58:00.000Z', applyNow: '2026-08-24T10:58:30.000Z',
+      });
+      return boundedEditApplied;
     },
     '/api/agent-control-room/return-to-automation/preview': async (body) => {
       browserReturnPreview = await controls.previewReturnToAutomation(body, { root, successorValidation: { currentStory: task.story }, now: '2026-08-24T11:00:00.000Z' });
@@ -109,16 +134,27 @@ test('extended ownership canary: changed Visual Plan resumes only through an imm
   fs.rmSync(liveRun, { recursive: true }); fs.renameSync(movedRun, liveRun);
   const predecessorArtifact = path.join(root, 'package-runs', runId, 'agents', 'visual_planning_director', 'visual-task-1', 'artifacts', 'visual-plan.json');
   const predecessorBytes = fs.readFileSync(predecessorArtifact), oldBinding = { artifact_path: predecessorArtifact, artifact_sha256: validator.sha256(predecessorBytes), commit: 'canary', approved_by: 'Mikko', approved_at: '2026-08-24T10:00:00.000Z', scope: 'VISUAL_PLAN_APPROVAL' };
-  const nextPlan = maturePlan(2, firstPlan); write(path.join(root, taken.manual_artifact_path), nextPlan);
-  assert.equal(validator.verifyApprovalBindingForScope(oldBinding, fs.readFileSync(path.join(root, taken.manual_artifact_path)), 'VISUAL_PLAN_APPROVAL').verdict, 'STALE');
+  browser.node('opReason').value = 'Improve one bounded creative shot without editing machine metadata.';
+  browser.node('editShotBrief0').value = 'An editor calmly reviews the completed render without visible brand marks.';
+  await browser.click('btnEditPreview');
+  assert.equal(boundedEditPreview.eligible, true);
+  assert.equal(browser.node('btnEditApply').disabled, false);
+  const editPreviewRequest = browser.requests.find((request) => request.url === '/api/visual-planning-workspace/manual-edit/preview');
+  assert.deepEqual(Object.keys(editPreviewRequest.body.creative_patch.shot_edits[0].set), ['shot_brief']);
+  assert.equal(JSON.stringify(editPreviewRequest.body.creative_patch).includes('plan_digest_sha256'), false);
+  await browser.click('btnEditApply');
+  assert.equal(boundedEditApplied.execution_owner, 'HUMAN');
+  const editedBytes = fs.readFileSync(path.join(root, taken.manual_artifact_path));
+  const editedPlan = JSON.parse(editedBytes);
+  assert.equal(editedPlan.plan_revision, 2);
+  assert.notEqual(editedPlan.shots[0].shot_id, firstPlan.shots[0].shot_id);
+  assert.equal(editedPlan.plan_digest_sha256, require('../scripts/visual-plan.js').planDigest(editedPlan));
+  assert.equal(validator.verifyApprovalBindingForScope(oldBinding, editedBytes, 'VISUAL_PLAN_APPROVAL').verdict, 'STALE');
   const returnInput = { ...input, reason: 'Resume exact validated successor Visual Plan.' };
-  const stalePreview = await controls.previewReturnToAutomation(returnInput, { root, successorValidation: { currentStory: task.story }, now: '2026-08-24T10:59:00.000Z' });
-  nextPlan.coverage[0].reason = 'A later bounded manual correction.'; nextPlan.plan_digest_sha256 = require('../scripts/visual-plan.js').planDigest(nextPlan); write(path.join(root, taken.manual_artifact_path), nextPlan);
-  await assert.rejects(() => controls.applyReturnToAutomation({ ...returnInput, preview_token: stalePreview.preview_token, preview_created_at: stalePreview.preview_created_at }, { root, actor, successorValidation: { currentStory: task.story }, now: '2026-08-24T10:59:30.000Z' }), (e) => e.code === 'AGENT_CONTROL_PREVIEW_STALE');
   const beforePreview = fs.readFileSync(path.join(root, taken.manual_artifact_path));
   browser.node('opReason').value = returnInput.reason;
   await browser.click('btnReturnPreview');
-  assert.equal(browserReturnPreview.eligible, true); assert.equal(browserReturnPreview.successor_task.continuation_action, 'review_coverage'); assert.deepEqual(fs.readFileSync(path.join(root, taken.manual_artifact_path)), beforePreview);
+  assert.equal(browserReturnPreview.eligible, true, JSON.stringify(browserReturnPreview, null, 2)); assert.ok(browserReturnPreview.successor_task, JSON.stringify(browserReturnPreview, null, 2)); assert.equal(browserReturnPreview.successor_task.continuation_action, 'review_coverage'); assert.deepEqual(fs.readFileSync(path.join(root, taken.manual_artifact_path)), beforePreview);
   await browser.click('btnReturnApply');
   const returnApplyRequest = browser.requests.find((request) => request.url === '/api/agent-control-room/return-to-automation/apply');
   assert.equal(returnApplyRequest.body.preview_created_at, browserReturnPreview.preview_created_at);
@@ -136,8 +172,9 @@ test('extended ownership canary: changed Visual Plan resumes only through an imm
   assert.deepEqual(successorWorkspace.ownership.stale_approvals, ['VISUAL_PLAN_APPROVAL']);
   await assert.rejects(() => runner.runRegisteredAgent({ repoRoot: root, agentId: 'visual_planning_director', runId, taskPath, newAttempt: true }), (e) => e.code === 'AUTOMATION_FENCED');
   assert.equal(ownership.readOwnership(root, { run_id: runId, agent_id: 'visual_planning_director', task_id: returned.successor_task_id }).current_owner, 'AUTOMATION');
-  const actionLedger = ledger.readLedger(root, runId); assert.equal(actionLedger.records.length, 2); ledger.verifyLedger(actionLedger, runId);
-  const anchor = authorityAnchor.readAnchor(root); assert.equal(anchor.records.filter((record) => record.run_id === runId && record.event === 'OWNERSHIP_TRANSITION').length, 2);
+  const actionLedger = ledger.readLedger(root, runId); assert.equal(actionLedger.records.length, 3); ledger.verifyLedger(actionLedger, runId);
+  assert.deepEqual(actionLedger.records.map((record) => record.action), ['TAKE_MANUAL_CONTROL', 'EDIT_MANUAL_ARTIFACT', 'RETURN_TO_AUTOMATION']);
+  const anchor = authorityAnchor.readAnchor(root); assert.equal(anchor.records.filter((record) => record.run_id === runId && record.event === 'OWNERSHIP_TRANSITION').length, 3);
   ownership.readOwnership(root, { run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1' });
   require('../scripts/successor-task-contract.js').assertRunnableSuccessor(root, 'visual_planning_director', JSON.parse(fs.readFileSync(successorTaskPath)), fs.readFileSync(successorTaskPath));
   assert.throws(() => controls.previewTakeManualControl({ run_id: runId, agent_id: 'presenter_director', invocation_id: 'presenter_director:task-1:1', reason: 'No successor bypass.' }, { root }), (e) => e.code === 'BLOCKED_AGENT_NOT_ENABLED');
