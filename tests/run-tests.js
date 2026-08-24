@@ -119,6 +119,7 @@ require("./edit-plan.test.js");
 require("./editor-agent.test.js");
 require("./agent-control-room.test.js");
 require("./operator-action-ledger.test.js");
+require("./agent-controls.test.js");
 require("./agent-run.test.js");
 require("./agent-task-story-editor.test.js");
 require("./workflow-path.test.js");
