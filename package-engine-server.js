@@ -18288,6 +18288,7 @@ function createServer(options = {}) {
     }
 
     if (req.method === 'GET' && url.pathname === VISUAL_PLANNING_WORKSPACE_API) {
+      const requestedWorkspaceVersion = url.searchParams.get('workspace_schema_version');
       const request = {
         run_id: url.searchParams.get('run_id') || '',
         agent_id: url.searchParams.get('agent_id') || '',
@@ -18295,6 +18296,8 @@ function createServer(options = {}) {
         invocation_id: url.searchParams.get('invocation_id') || '',
         artifact_id: url.searchParams.get('artifact_id') || undefined,
         artifact_sha256: url.searchParams.get('artifact_sha256') || undefined,
+        workspace_schema_version: requestedWorkspaceVersion === null ? undefined : /^\d+$/.test(requestedWorkspaceVersion) ? Number(requestedWorkspaceVersion) : requestedWorkspaceVersion,
+        workspace_schema_id: url.searchParams.get('workspace_schema_id') || undefined,
       };
       visualPlanningWorkspace.buildVisualPlanningWorkspace(request, {
         root: serverOptions.root || ROOT,

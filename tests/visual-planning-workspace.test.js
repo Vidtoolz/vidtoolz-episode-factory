@@ -306,5 +306,13 @@ test('HTTP workspace route returns one complete bounded payload for the stable f
     assert.equal(response.body.data.context.run_id, SOURCE_RUN);
     assert.equal(response.body.data.workspace_schema_version, 1);
     assert.equal(response.body.data.visual_plan.shots.length, 2);
+    const v1 = await requestJson(server, `${packageEngineServer.VISUAL_PLANNING_WORKSPACE_API}?${query}&workspace_schema_version=1&workspace_schema_id=${encodeURIComponent('visual-planning-workspace/v1')}`);
+    assert.equal(v1.status, 200);
+    const v2 = await requestJson(server, `${packageEngineServer.VISUAL_PLANNING_WORKSPACE_API}?${query}&workspace_schema_version=2`);
+    assert.equal(v2.status, 406);
+    assert.equal(v2.body.code, 'WORKSPACE_SCHEMA_VERSION_UNSUPPORTED');
+    const malformed = await requestJson(server, `${packageEngineServer.VISUAL_PLANNING_WORKSPACE_API}?${query}&workspace_schema_version=one`);
+    assert.equal(malformed.status, 400);
+    assert.equal(malformed.body.code, 'WORKSPACE_SCHEMA_VERSION_INVALID');
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });
