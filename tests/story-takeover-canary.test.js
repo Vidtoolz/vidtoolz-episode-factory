@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { test, tests } = require('./_helpers.js');
 const runner = require('../scripts/agent-run.js');
 const storyEditor = require('../scripts/story-editor.js');
@@ -14,6 +15,7 @@ const ledger = require('../scripts/operator-action-ledger.js');
 const validator = require('../scripts/agent-contract-validator.js');
 const successor = require('../scripts/successor-task-contract.js');
 const packageEngineServer = require('../package-engine-server.js');
+const researchValidator = require('../scripts/research-result-validator.js');
 
 const SB_ROOT = '/home/vidtoolz/vidtoolz-script-builder';
 const versions = require(path.join(SB_ROOT, 'lib', 'versions.js'));
@@ -31,7 +33,7 @@ function semantic(task) {
     revision_proposal: {
       sections: task.script_sections.map((section) => section.id === 'hook' ? { id: section.id, order: section.order, beat: section.beat, dialogue: 'Remote workflows look simple until recovery depends on invisible infrastructure.' } : { id: section.id, order: section.order, beat: section.beat, dialogue: section.dialogue }),
       change_rationales: [{ change_id: 'change-hook', section_id: 'hook', rationale: 'Move directly to the operational tension.', intended_effect: 'Clarify the viewer promise.', finding_ref: 'tighten-opening', argument_impact: 'NO_ARGUMENT_CHANGE', research_impact: 'NONE' }],
-      factual_claim_changes: { unchanged: [], rewritten: [], new: [], removed: [] },
+      factual_claim_changes: { unchanged: (task.script_claim_bindings || []).map((binding) => binding.binding_id), rewritten: [], new: [], removed: [] },
     },
   };
 }
@@ -64,6 +66,24 @@ test('Story takeover canary: trusted manual Script Builder edit returns only thr
     script_claim_bindings: [], research_result_refs: [], data_root: dataRoot, script_builder_root: SB_ROOT,
     risk_level: 'LOCAL_AUTO', privacy: { local_only: true }, retry_budget: 1, cost_budget: { max_model_calls: 1 },
   };
+  const assertion = sections[1].dialogue, h = (value) => crypto.createHash('sha256').update(value).digest('hex');
+  const researchResult = {
+    result_id: `research-result-${crypto.randomUUID()}`, result_revision: 1,
+    claim_ref: { namespace: 'vidtoolz-episode-factory/package-run-claim', canonical_id: `claim-${crypto.randomUUID()}`, revision: 1, alias_ids: [] },
+    claim: { evaluated_text: assertion, evaluated_text_sha256: h(assertion), temporal: { temporal_class: 'EVERGREEN_FACT' } },
+    judgment: { support_status: 'SUPPORTED', freshness_status_at_review: 'NOT_APPLICABLE', evidence_quality: 'ADEQUATE', confidence: 'HIGH', independence_status: 'ADEQUATE', contradiction_status: 'NONE', disagreement_state: 'NONE', recommendation: 'ALLOW_USE', rationale: 'Canary evidence.', unresolved_questions: [] },
+    qualification: { qualification_required: false, wording_constraints: [] },
+    sources: [{ source_ref: 'source-canary', source_class: 'REPORTING', original_source: { source_id: 'original-canary', title: 'Canary source', url: 'https://example.test/canary', publisher: 'Example' }, container: { container_type: 'local_file', relationship_to_original: 'IS_ORIGINAL', source_id: 'source-canary', title: 'Canary source', retrieved_at: '2026-08-24T09:00:00Z', retrieved_content_sha256: h('source') }, independence_group: 'canary-independent', independence_basis: 'bounded canary' }],
+    evidence: [{ evidence_id: 'evidence-canary', source_ref: 'source-canary', stance: 'SUPPORTS', excerpt: { exact_text: 'supporting canary excerpt', exact_text_sha256: h('supporting canary excerpt') } }],
+    derived: { independent_support_count: 1 }, provenance: { provenance_inputs: [{ system: 'canary', type: 'fixture', record_id: 'story-canary', sha256: h('record') }] }, lifecycle: { created_at: '2026-08-24T09:00:00Z', reviewed_at: '2026-08-24T09:00:00Z' },
+  };
+  const researchRoot = { schema_version: 1, artifact_type: 'research-results', package_run_id: runId, results: [researchResult] };
+  researchResult.result_digest_sha256 = researchValidator.computeResultDigest(researchRoot, researchResult);
+  const binding = { binding_id: 'binding-story-canary', section_id: 'payoff', assertion_text: assertion, assertion_text_sha256: h(assertion), claim_ref: researchResult.claim_ref, research_result_ref: { package_run_id: runId, result_id: researchResult.result_id, result_revision: 1, result_digest_sha256: researchResult.result_digest_sha256 }, satisfied_constraint_ids: [] };
+  task.script_claim_bindings = [binding]; task.research_result_refs = [binding.research_result_ref];
+  const researchRunDir = path.join(root, 'package-runs', runId), resultsPath = path.join(researchRunDir, 'research-results.json'), bindingsPath = path.join(researchRunDir, 'script-claim-bindings.json');
+  write(resultsPath, researchRoot); write(bindingsPath, { schema_version: 1, project_id: project.id, script_version_id: source.id, script_content_hash: source.content_hash, bindings: [binding] });
+  task.research = { status: 'VERIFIED', run_dir: researchRunDir, research_results_sha256: validator.sha256(fs.readFileSync(resultsPath)), bindings_sha256: validator.sha256(fs.readFileSync(bindingsPath)), asOf: '2026-08-24T10:00:00Z' };
   const taskPath = path.join(root, 'task.json'); write(taskPath, task);
   const invokeStory = async (_modulePath, persistedTaskPath) => {
     const currentTask = JSON.parse(fs.readFileSync(persistedTaskPath));
@@ -110,6 +130,7 @@ test('Story takeover canary: trusted manual Script Builder edit returns only thr
     { central_claim: predecessor.central_claim, narrative_spine: predecessor.narrative_spine, source_provenance: { system: 'human-script-builder', predecessor_version_id: predecessor.id } });
   const manual = successor.readManualArtifact(controls.locateInvocation(root, input));
   assert.equal(manual.value.version_id, manualVersion.id);
+  assert.deepEqual(manual.value.research.bindings.map((item) => item.binding_id), ['binding-story-canary']);
   assert.equal(validator.verifyApprovalBindingForScope(oldApproval, manual.bytes, 'PLAN_SCRIPT_APPROVAL').verdict, 'STALE');
   const returnInput = { ...input, reason: 'Create validated immutable Story successor.' };
   const returnPreview = await controls.previewReturnToAutomation(returnInput, { root, now: '2026-08-24T13:00:00.000Z' });
