@@ -16,6 +16,14 @@ const successorTaskContract = require('./successor-task-contract.js');
 const visualPlan = require('./visual-plan.js');
 
 const WORKSPACE_SCHEMA_VERSION = 1;
+const WORKSPACE_SCHEMA_ID = 'visual-planning-workspace/v1';
+const WORKSPACE_STABLE_FIELDS = Object.freeze({
+  top_level: Object.freeze(['workspace_schema_version', 'workspace_schema_id', 'schema_version', 'workspace_type', 'read_only', 'context', 'visual_plan', 'human_attention', 'decision_queue_diagnostics', 'ownership', 'resource_tool', 'links']),
+  context: Object.freeze(['run_id', 'agent_id', 'task_id', 'invocation_id', 'runtime_state', 'semantic_state', 'lifecycle', 'implementation_state']),
+  visual_plan: Object.freeze(['artifact_id', 'artifact_reference', 'sha256', 'plan_id', 'plan_revision', 'plan_digest_sha256', 'story_dependency', 'approval_state', 'gate_state', 'coverage', 'shots']),
+  ownership: Object.freeze(['current_owner', 'revision', 'state_hash', 'capabilities', 'manual_artifact', 'predecessor_task_id', 'successor_task_id', 'stale_approvals', 'stale_gates']),
+  resource_tool: Object.freeze(['lane', 'model', 'host', 'worker', 'job_id', 'job_state', 'health', 'telemetry_source', 'probed_at']),
+});
 const AGENT_ID = 'visual_planning_director';
 const ARTIFACT_ID = 'visual_plan';
 const APPROVAL_SCOPE = 'VISUAL_PLAN_APPROVAL';
@@ -313,6 +321,8 @@ async function buildVisualPlanningWorkspace(request, options = {}) {
   }]) : null;
   const artifactReference = path.relative(root, artifact.artifactPath);
   return {
+    workspace_schema_version: WORKSPACE_SCHEMA_VERSION,
+    workspace_schema_id: WORKSPACE_SCHEMA_ID,
     schema_version: WORKSPACE_SCHEMA_VERSION,
     workspace_type: 'VISUAL_PLANNING_WORKSPACE_V1',
     read_only: true,
@@ -346,7 +356,8 @@ async function buildVisualPlanningWorkspace(request, options = {}) {
 }
 
 module.exports = {
-  WORKSPACE_SCHEMA_VERSION, AGENT_ID, ARTIFACT_ID, APPROVAL_SCOPE, UNKNOWN,
+  WORKSPACE_SCHEMA_VERSION, WORKSPACE_SCHEMA_ID, WORKSPACE_STABLE_FIELDS,
+  AGENT_ID, ARTIFACT_ID, APPROVAL_SCOPE, UNKNOWN,
   VisualPlanningWorkspaceError, exactContext, exactArtifact, exactResult,
   decisionQueueProjection, resourceProjection, buildVisualPlanningWorkspace,
 };

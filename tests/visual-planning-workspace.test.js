@@ -5,32 +5,16 @@ const http = require('node:http');
 const { assert, fs, os, path, test, packageEngineServer } = require('./_helpers.js');
 const workspace = require('../scripts/visual-planning-workspace.js');
 const controls = require('../scripts/agent-controls.js');
+const workspaceFixture = require('./fixtures/visual-planning-workspace-v1.js');
 
-const SOURCE_RUN = 'visual-planning-stage1-20260823';
-const TASK_ID = 'visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX-resume-rerun-1';
-const INVOCATION_ID = `visual_planning_director:${TASK_ID}:1`;
-const AGENT_ID = 'visual_planning_director';
-const REPO_ROOT = path.resolve(__dirname, '..');
-
-function copyFile(source, target) {
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.copyFileSync(source, target);
-}
+const SOURCE_RUN = workspaceFixture.RUN_ID;
+const TASK_ID = workspaceFixture.TASK_ID;
+const INVOCATION_ID = workspaceFixture.INVOCATION_ID;
+const AGENT_ID = workspaceFixture.AGENT_ID;
 
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-planning-workspace-'));
-  copyFile(path.join(REPO_ROOT, 'config', 'agent-registry.json'), path.join(root, 'config', 'agent-registry.json'));
-  copyFile(path.join(REPO_ROOT, 'scripts', 'visual-planning-director.js'), path.join(root, 'scripts', 'visual-planning-director.js'));
-  const sourceRun = path.join(REPO_ROOT, 'package-runs', SOURCE_RUN);
-  const targetRun = path.join(root, 'package-runs', SOURCE_RUN);
-  // Copy only immutable runner evidence. The live historical run may be under
-  // active HUMAN ownership; importing its run-local state without the
-  // repository authority anchor would correctly fail closed and would make
-  // this identity/path fixture depend on concurrent operator activity.
-  copyFile(path.join(sourceRun, 'agents', 'index.json'), path.join(targetRun, 'agents', 'index.json'));
-  fs.cpSync(path.join(sourceRun, 'agents', AGENT_ID, TASK_ID), path.join(targetRun, 'agents', AGENT_ID, TASK_ID), { recursive: true });
-  if (fs.existsSync(path.join(sourceRun, 'orchestration'))) fs.cpSync(path.join(sourceRun, 'orchestration'), path.join(targetRun, 'orchestration'), { recursive: true });
-  return { root, request: { run_id: SOURCE_RUN, agent_id: AGENT_ID, task_id: TASK_ID, invocation_id: INVOCATION_ID } };
+  return workspaceFixture.materialize(root);
 }
 
 function expectCode(fn, code) {
@@ -74,7 +58,7 @@ function requestJson(server, pathname) {
   });
 }
 
-test('Visual Planning workspace resolves exact historical canonical runner evidence', async () => {
+test('Visual Planning workspace resolves the deterministic canonical V1 fixture', async () => {
   const f = fixture();
   const out = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root, decisionQueueProjection: { human_decision_queue: [], diagnostics: [] } });
   assert.equal(out.read_only, true);
@@ -84,9 +68,10 @@ test('Visual Planning workspace resolves exact historical canonical runner evide
   assert.equal(out.context.runtime_state, 'COMPLETED');
   assert.equal(out.visual_plan.artifact_id, 'visual_plan');
   assert.equal(out.visual_plan.plan_revision, 1);
-  assert.equal(out.visual_plan.coverage.required_beats.length, 11);
+  assert.equal(out.workspace_schema_version, 1);
+  assert.equal(out.visual_plan.coverage.required_beats.length, 2);
   assert.equal(out.visual_plan.coverage.uncovered_beats.length, 0);
-  assert.equal(out.visual_plan.shots.length, 11);
+  assert.equal(out.visual_plan.shots.length, 2);
   assert.equal(out.ownership.current_owner, 'AUTOMATION');
   assert.equal(out.resource_tool.health, 'UNKNOWN');
   assert.equal(out.resource_tool.telemetry_source, 'INVOCATION_EVIDENCE_ONLY');
@@ -95,8 +80,22 @@ test('Visual Planning workspace resolves exact historical canonical runner evide
 test('workspace consumes the committed canonical Decision Queue V2 projection', async () => {
   const f = fixture();
   const out = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root });
-  assert.deepEqual(out.human_attention, []);
+  assert.equal(out.human_attention.length, 1);
+  assert.equal(out.human_attention[0].attention, 'REVIEW');
+  assert.equal(out.human_attention[0].owning_gate, 'VISUAL_PLAN_APPROVAL');
+  assert.match(out.human_attention[0].workspace, /invocation=visual_planning_director%3Avisual-planning-workspace-v1-task%3A1/);
   assert.ok(Array.isArray(out.decision_queue_diagnostics));
+});
+
+test('workspace V1 stable schema fields are frozen and complete', async () => {
+  const f = fixture();
+  const out = await workspace.buildVisualPlanningWorkspace(f.request, { root: f.root });
+  assert.equal(out.workspace_schema_id, 'visual-planning-workspace/v1');
+  assert.deepEqual(Object.keys(out).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.top_level].sort());
+  assert.deepEqual(Object.keys(out.context).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.context].sort());
+  assert.deepEqual(Object.keys(out.visual_plan).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.visual_plan].sort());
+  assert.deepEqual(Object.keys(out.ownership).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.ownership].sort());
+  assert.deepEqual(Object.keys(out.resource_tool).sort(), [...workspace.WORKSPACE_STABLE_FIELDS.resource_tool].sort());
 });
 
 test('workspace refuses wrong agent, task, invocation, traversal, and artifact substitution', async () => {
@@ -195,7 +194,7 @@ test('workspace resolver is byte-read-only', async () => {
   assert.equal(treeDigest(f.root), before);
 });
 
-test('HTTP workspace route returns one complete bounded payload for the historical run identity', async () => {
+test('HTTP workspace route returns one complete bounded payload for the stable fixture identity', async () => {
   const f = fixture();
   const server = packageEngineServer.createServer({
     root: f.root,
@@ -211,6 +210,7 @@ test('HTTP workspace route returns one complete bounded payload for the historic
     assert.equal(response.body.ok, true);
     assert.equal(response.body.data.workspace_type, 'VISUAL_PLANNING_WORKSPACE_V1');
     assert.equal(response.body.data.context.run_id, SOURCE_RUN);
-    assert.equal(response.body.data.visual_plan.shots.length, 11);
+    assert.equal(response.body.data.workspace_schema_version, 1);
+    assert.equal(response.body.data.visual_plan.shots.length, 2);
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });
