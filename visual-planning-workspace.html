@@ -71,6 +71,11 @@
     <dl id="resourcePanel"></dl>
   </section>
   <section class="wide">
+    <h2>Bounded Creative Edit</h2>
+    <div id="editPanel"></div>
+    <div class="note">Only the listed creative shot fields are submitted. IDs, lineage, revisions, prompt bindings, digests, timestamps and artifact hashes are maintained and validated by the server.</div>
+  </section>
+  <section class="wide">
     <h2>Shot Cards (read-only)</h2>
     <div class="shots" id="shotsPanel"></div>
   </section>
@@ -104,7 +109,7 @@
   function failClosed(message) {
     state = null;
     el('workspace').hidden = true;
-    ['btnTakePreview', 'btnTakeApply', 'btnReturnPreview', 'btnReturnApply', 'btnRetryPreview', 'btnCancelPreview', 'btnReveal'].forEach(function (id) {
+    ['btnTakePreview', 'btnTakeApply', 'btnReturnPreview', 'btnReturnApply', 'btnRetryPreview', 'btnCancelPreview', 'btnReveal', 'btnEditPreview', 'btnEditApply'].forEach(function (id) {
       var control = el(id);
       if (control) control.disabled = true;
     });
@@ -196,11 +201,15 @@
     var diagHtml = diags.length
       ? '<div class="error-banner"><strong>Decision queue diagnostics:</strong> ' + diags.map(function (d) { return esc(d.code) + (d.detail ? ' (' + esc(JSON.stringify(d.detail)) + ')' : ''); }).join('; ') + '</div>'
       : '';
+    var binding = ws.queue_binding || {};
+    var bindingHtml = '<div class="note">Queue binding: ' + badge(binding.obligation_state || binding.status || 'NOT_BOUND',
+      binding.status === 'VERIFIED' ? 'ok' : binding.status === 'HISTORICAL' ? 'warn' : 'bad') +
+      (binding.obligation_id ? ' · <code>' + esc(binding.obligation_id) + '</code>' : '') + '</div>';
     if (!items.length && !diags.length) {
-      el('attentionPanel').innerHTML = '<div class="note">No unresolved obligation is bound to this exact invocation. Obligations for other tasks by this agent remain in the global queue.</div>';
+      el('attentionPanel').innerHTML = bindingHtml + '<div class="note">No unresolved obligation is bound to this exact invocation. Obligations for other tasks by this agent remain in the global queue.</div>';
       return;
     }
-    el('attentionPanel').innerHTML = diagHtml + items.map(function (item) {
+    el('attentionPanel').innerHTML = bindingHtml + diagHtml + items.map(function (item) {
       var rationale = item.operational_rationale || {};
       var hermes = item.hermes_orchestration || {};
       var evidence = Array.isArray(rationale.evidence_refs) ? rationale.evidence_refs.map(formatReference).filter(Boolean) : [];
@@ -341,17 +350,25 @@
       ['Revision', esc(o.revision)],
       ['Take manual control', caps.take_manual_control && caps.take_manual_control.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.take_manual_control && caps.take_manual_control.reason || 'n/a'), 'bad')],
       ['Return to automation', caps.return_to_automation && caps.return_to_automation.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.return_to_automation && caps.return_to_automation.reason || 'n/a'), 'bad')],
+      ['Bounded creative edit', caps.bounded_creative_edit && caps.bounded_creative_edit.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.bounded_creative_edit && caps.bounded_creative_edit.reason || 'n/a'), 'bad')],
       ['Retry', caps.retry && caps.retry.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.retry && caps.retry.reason || 'n/a'), 'bad')],
       ['Cancel', caps.cancel && caps.cancel.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.cancel && caps.cancel.reason || 'n/a'), 'bad')],
       ['Manual artifact', manual.reference ? '<code>' + esc(manual.reference) + '</code>' : 'None'],
       ['Manual artifact hash', manual.sha256 ? '<code>' + esc(manual.sha256) + '</code>' : '—'],
       ['Trusted editing handoff', handoff.kind ? esc(handoff.kind) + ' · ' + esc(handoff.reference || manual.reference || '—') : 'External trusted path only; no cockpit write API'],
       ['Automation fence', o.current_owner === 'HUMAN' ? badge('ACTIVE FOR THIS EXACT TASK', 'warn') : badge('not human-owned', 'info')],
-      ['Edit boundary', 'Creative shot intent may be edited through the trusted artifact path. IDs, lineage, revisions, digests and hashes are system-maintained and revalidated on return.'],
+      ['Edit boundary', 'You edit bounded creative shot fields. IDs, lineage, revisions, prompt bindings, digests and hashes are maintained by the system.'],
       ['Stale on return', (o.stale_approvals || []).concat(o.stale_gates || []).map(esc).join(', ') || 'Computed by return preview after byte changes'],
       ['Successor path', successor.available ? esc(successor.adapter_id) + ' → ' + esc(successor.required_next_gate || 'UNKNOWN') : 'Unavailable'],
     ]);
     renderControls(ws, caps);
+    renderManualEditor(ws, caps);
+  }
+
+  function workspaceMutationAllowed(ws) {
+    var binding = ws.queue_binding || {};
+    return binding.status !== 'HISTORICAL' && binding.status !== 'UNAVAILABLE'
+      && !['RESOLVED', 'SUPERSEDED', 'STALE', 'INVALID'].includes(binding.obligation_state);
   }
 
   function renderControls(ws, caps) {
@@ -361,9 +378,10 @@
     html += '<label class="note" for="opReason">Operator reason (required for apply):</label>';
     html += '<textarea id="opReason" rows="2" placeholder="Why is a human taking or returning control of this exact task?"></textarea>';
     html += '<div>';
-    html += '<button id="btnTakePreview" ' + (caps.take_manual_control && caps.take_manual_control.allowed ? '' : 'disabled') + '>Preview Take Manual Control</button>';
+    var mutationsAllowed = workspaceMutationAllowed(ws);
+    html += '<button id="btnTakePreview" ' + (mutationsAllowed && caps.take_manual_control && caps.take_manual_control.allowed ? '' : 'disabled') + '>Preview Take Manual Control</button>';
     html += '<button id="btnTakeApply" class="apply" disabled>Apply Take Manual Control</button>';
-    html += '<button id="btnReturnPreview" ' + (caps.return_to_automation && caps.return_to_automation.allowed ? '' : 'disabled') + '>Preview Return to Automation</button>';
+    html += '<button id="btnReturnPreview" ' + (mutationsAllowed && caps.return_to_automation && caps.return_to_automation.allowed ? '' : 'disabled') + '>Preview Return to Automation</button>';
     html += '<button id="btnReturnApply" class="apply" disabled>Apply Return to Automation</button>';
     if (caps.retry && caps.retry.allowed) html += '<button id="btnRetryPreview">Preview RETRY</button>';
     if (caps.cancel && caps.cancel.allowed) html += '<button id="btnCancelPreview">Preview CANCEL</button>';
@@ -425,6 +443,74 @@
     el('btnRefresh').onclick = refresh;
   }
 
+  function collectCreativePatch(ws) {
+    var edits = [];
+    (ws.visual_plan.shots || []).forEach(function (shot, index) {
+      var set = {};
+      var brief = el('editShotBrief' + index);
+      var purpose = el('editShotPurpose' + index);
+      if (brief && brief.value.trim() !== String((shot.framing_composition || {}).shot_brief || '')) set.shot_brief = brief.value.trim();
+      if (purpose && purpose.value.trim() !== String(shot.purpose || '')) set.narrative_function = purpose.value.trim();
+      if (Object.keys(set).length) edits.push({ shot_ref: shot.shot_id, set: set });
+    });
+    return { shot_edits: edits };
+  }
+
+  function boundedEditBase(ws, reason) {
+    return {
+      run_id: ws.context.run_id, agent_id: ws.context.agent_id, task_id: ws.context.task_id, invocation_id: ws.context.invocation_id,
+      expected_ownership_revision: ws.ownership.revision, expected_artifact_sha256: ws.visual_plan.sha256,
+      reason: reason, creative_patch: collectCreativePatch(ws),
+    };
+  }
+
+  function serializeBoundedEditApply(base, preview) {
+    if (!preview || !preview.preview_token || !preview.preview_created_at) throw new Error('VISUAL_PLAN_EDIT_PREVIEW_STALE');
+    return Object.assign({}, base, { preview_token: preview.preview_token, preview_created_at: preview.preview_created_at });
+  }
+
+  function renderManualEditor(ws, caps) {
+    var panel = el('editPanel');
+    var allowed = workspaceMutationAllowed(ws) && caps.bounded_creative_edit && caps.bounded_creative_edit.allowed;
+    if (!allowed) {
+      panel.innerHTML = '<div class="note">Bounded editing is unavailable. Take HUMAN ownership of an active exact Visual Planning obligation first; historical obligations are read-only.</div>';
+      return;
+    }
+    var html = '<div class="note"><strong>HUMAN-owned exact task.</strong> Automation is fenced. Edit creative values only; Return to Automation remains a separate validated action.</div>';
+    (ws.visual_plan.shots || []).forEach(function (shot, index) {
+      html += '<div class="shot"><h3>' + esc(shot.shot_id) + '</h3>' +
+        '<label for="editShotBrief' + index + '">Shot brief</label><textarea id="editShotBrief' + index + '" rows="3"></textarea>' +
+        '<label for="editShotPurpose' + index + '">Purpose / narrative intent</label><textarea id="editShotPurpose' + index + '" rows="2"></textarea>' +
+        '<div class="note">System managed: shot identity when intent changes, prompt revision and intent digest, plan revision, supersedes, plan digest and artifact SHA-256.</div></div>';
+    });
+    html += '<button id="btnEditPreview">Preview Creative Edit</button><button id="btnEditApply" class="apply" disabled>Apply Creative Edit</button>';
+    panel.innerHTML = html;
+    (ws.visual_plan.shots || []).forEach(function (shot, index) {
+      el('editShotBrief' + index).value = String((shot.framing_composition || {}).shot_brief || '');
+      el('editShotPurpose' + index).value = String(shot.purpose || '');
+    });
+    var preview = null;
+    el('btnEditPreview').onclick = async function () {
+      try {
+        var reason = el('opReason').value.trim() || 'operator bounded creative edit preview';
+        var base = boundedEditBase(ws, reason);
+        if (!base.creative_patch.shot_edits.length) throw new Error('No creative changes to preview.');
+        preview = await postControl(ws.links.bounded_edit_preview, base);
+        el('btnEditApply').disabled = !preview.eligible;
+        el('actionOut').textContent = '— BOUNDED EDIT PREVIEW (read-only) —\n' + JSON.stringify(preview, null, 2);
+      } catch (e) { el('actionOut').textContent = '— BOUNDED EDIT PREVIEW FAILED —\n' + String(e.message || e); }
+    };
+    el('btnEditApply').onclick = async function () {
+      try {
+        var reason = el('opReason').value.trim();
+        if (!reason) throw new Error('An operator reason is required before applying.');
+        var data = await postControl(ws.links.bounded_edit_apply, serializeBoundedEditApply(boundedEditBase(ws, reason), preview));
+        el('actionOut').textContent = '— BOUNDED EDIT APPLIED —\n' + JSON.stringify(data, null, 2) + '\nReturn to Automation is still required.';
+        await refresh();
+      } catch (e) { el('actionOut').textContent = '— BOUNDED EDIT APPLY FAILED —\n' + String(e.message || e); }
+    };
+  }
+
   function serializeApplyBody(kind, target, operatorReason, preview) {
     if (!preview || !preview.preview_token) throw new Error('AGENT_CONTROL_PREVIEW_REQUIRED');
     var body = Object.assign({}, target, { reason: operatorReason, preview_token: preview.preview_token });
@@ -465,6 +551,8 @@
     schema_version: WORKSPACE_SCHEMA_VERSION,
     assertWorkspaceSchema: assertWorkspaceSchema,
     serializeApplyBody: serializeApplyBody,
+    collectCreativePatch: collectCreativePatch,
+    serializeBoundedEditApply: serializeBoundedEditApply,
     renderAttention: renderAttention,
     renderPlan: renderPlan,
     renderShots: renderShots,

@@ -17,6 +17,7 @@ const workspace = require('../scripts/visual-planning-workspace.js');
 const controls = require('../scripts/agent-controls.js');
 const ownership = require('../scripts/execution-ownership.js');
 const ledger = require('../scripts/operator-action-ledger.js');
+const manualEdit = require('../scripts/visual-planning-manual-edit.js');
 const workspaceFixture = require('./fixtures/visual-planning-workspace-v1.js');
 const { bootWorkspacePage } = require('./fixtures/visual-planning-workspace-browser.js');
 
@@ -223,7 +224,7 @@ test('WS9: actual return UI serializer round-trips preview_created_at to canonic
   } });
   assert.match(page.node('ownershipPanel').innerHTML, /Manual artifact/);
   assert.match(page.node('ownershipPanel').innerHTML, /ACTIVE FOR THIS EXACT TASK/);
-  assert.match(page.node('ownershipPanel').innerHTML, /system-maintained and revalidated on return/);
+  assert.match(page.node('ownershipPanel').innerHTML, /maintained by the system/);
   page.node('opReason').value = 'Return exact workspace task through browser serializer.';
   await page.click('btnReturnPreview');
   assert.equal(page.node('btnReturnApply').disabled, false);
@@ -243,4 +244,66 @@ test('WS9: actual return UI serializer round-trips preview_created_at to canonic
   assert.equal(applyRequest.body.task_id, fixture.request.task_id);
   assert.equal(applyRequest.body.invocation_id, fixture.request.invocation_id);
   assert.equal(ownership.readOwnership(root, fixture.request).current_owner, 'AUTOMATION');
+});
+
+test('WS10: actual DOM performs bounded creative preview/apply without client authority metadata', async () => {
+  const { root, fixture } = await canonicalWorkspaceFixture();
+  const actor = ledger.localActorContext({ username: 'mikko' });
+  const take = controls.previewTakeManualControl({ ...fixture.request, reason: 'Open bounded editor.' }, { root });
+  controls.applyTakeManualControl({ ...fixture.request, reason: 'Open bounded editor.', preview_token: take.preview_token }, {
+    root, actor, recordId: 'workspace-ui-edit-take', now: '2026-08-24T15:30:00.000Z',
+  });
+  let editPreview;
+  let editApplied;
+  const currentPayload = () => workspace.buildVisualPlanningWorkspace(fixture.request, { root });
+  const page = await bootWorkspacePage(currentPayload, { controls: {
+    '/api/visual-planning-workspace/manual-edit/preview': async (body) => {
+      editPreview = await manualEdit.previewVisualPlanManualEdit(body, {
+        root, successorValidation: { currentStory: fixture.plan.story }, now: '2026-08-24T15:31:00.000Z',
+        newShotId: () => 'shot-01HF7YAT060000000000000006',
+      });
+      return editPreview;
+    },
+    '/api/visual-planning-workspace/manual-edit/apply': async (body) => {
+      editApplied = await manualEdit.applyVisualPlanManualEdit(body, {
+        root, actor, recordId: 'workspace-ui-bounded-edit', successorValidation: { currentStory: fixture.plan.story },
+        now: '2026-08-24T15:31:00.000Z', applyNow: '2026-08-24T15:32:00.000Z',
+        newShotId: () => 'shot-01HF7YAT060000000000000006',
+      });
+      return editApplied;
+    },
+  } });
+  assert.match(page.node('editPanel').innerHTML, /Shot brief/);
+  assert.match(page.node('editPanel').innerHTML, /System managed: shot identity/);
+  page.node('opReason').value = 'Clarify the opening workstation shot.';
+  page.node('editShotBrief0').value = 'A calm editorial view of the editor reviewing a completed render.';
+  await page.click('btnEditPreview');
+  assert.equal(editPreview.eligible, true);
+  assert.equal(page.node('btnEditApply').disabled, false);
+  const previewRequest = page.requests.find((request) => request.url === '/api/visual-planning-workspace/manual-edit/preview');
+  assert.deepEqual(Object.keys(previewRequest.body.creative_patch.shot_edits[0].set), ['shot_brief']);
+  for (const forbidden of ['plan_id', 'plan_revision', 'supersedes', 'plan_digest_sha256', 'shot_id', 'artifact_sha256', 'approved_by']) {
+    assert.equal(JSON.stringify(previewRequest.body.creative_patch).includes(`\"${forbidden}\"`), false, forbidden);
+  }
+  await page.click('btnEditApply');
+  const applyRequest = page.requests.find((request) => request.url === '/api/visual-planning-workspace/manual-edit/apply');
+  assert.equal(applyRequest.body.preview_token, editPreview.preview_token);
+  assert.equal(applyRequest.body.preview_created_at, editPreview.preview_created_at);
+  assert.equal(editApplied.execution_owner, 'HUMAN');
+  assert.equal(editApplied.plan_revision, 2);
+  assert.match(page.node('planPanel').innerHTML, /Revision<\/dt><dd>2/);
+  assert.match(page.node('planPanel').innerHTML, /MANUAL_ARTIFACT_CHANGED/);
+  assert.match(page.node('shotsPanel').innerHTML, /calm editorial view/);
+  assert.equal(ownership.readOwnership(root, fixture.request).current_owner, 'HUMAN');
+});
+
+test('WS11: historical obligation state is explicit and mutation controls are disabled', async () => {
+  const { payload } = await canonicalWorkspaceFixture();
+  payload.queue_binding = { status: 'HISTORICAL', queue_available: true, obligation_id: 'historical-obligation-1', obligation_state: 'RESOLVED', diagnostic_codes: [] };
+  payload.human_attention = [];
+  const page = await bootWorkspacePage(payload);
+  assert.match(page.node('attentionPanel').innerHTML, /RESOLVED/);
+  assert.match(page.node('attentionPanel').innerHTML, /historical-obligation-1/);
+  assert.equal(page.node('btnTakePreview').disabled, true);
+  assert.match(page.node('editPanel').innerHTML, /historical obligations are read-only/);
 });
