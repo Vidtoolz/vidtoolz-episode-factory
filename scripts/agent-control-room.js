@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { deriveOperationalRationale } = require('./operational-rationale.js');
 
 const DEFAULT_ROOT = path.resolve(__dirname, '..');
 const ATTENTION_PRIORITY = Object.freeze({ DECISION: 0, REVIEW: 1 });
@@ -175,6 +176,10 @@ function runnerContextFromRecord(root, runId, agentsRoot, record, discovery) {
     // rather than dropping the only signal that specialists disagree.
     disagreement: oneLine(view.unresolved_disagreement || view.disagreement),
     resource_dependency: oneLine(view.resource_dependency),
+    operational_rationale: deriveOperationalRationale(
+      { ...view, operational_rationale: result.operational_rationale || view.operational_rationale },
+      oneLine(result.attention || view.attention_level || view.attention || handoff.attention) || 'INFORMATION',
+    ),
     latest_event: event,
     current_artifact: currentArtifact(view) || extractedArtifact,
     started_at: oneLine(invocation.started_at),
@@ -348,6 +353,7 @@ function normalizeProjection(agent, implementation, view) {
     blocker: oneLine(view.blocker),
     disagreement: oneLine(view.unresolved_disagreement || view.disagreement),
     resource_dependency: oneLine(view.resource_dependency),
+    operational_rationale: deriveOperationalRationale(view, normalizedAttention),
     current_artifact: currentArtifact(view),
     latest_event: view.latest_event || null,
     human_decision_required: normalizedAttention === 'DECISION' || /HUMAN_DECISION/.test(state),
@@ -363,6 +369,7 @@ function unavailableProjection(agent, implementation, state, blocker) {
     state, current_task: null, owner: agent.agent_id, next_owner: null,
     attention: 'INFORMATION', blocker, disagreement: null,
     resource_dependency: null, current_artifact: null, latest_event: null,
+    operational_rationale: null,
     human_decision_required: false, review_required: false,
   };
 }
@@ -395,6 +402,7 @@ function normalizeRunnerProjection(agent, implementation, context, implementatio
     blocker: context.blocker,
     disagreement: context.disagreement ?? null,
     resource_dependency: context.resource_dependency ?? null,
+    operational_rationale: context.operational_rationale,
     current_artifact: context.current_artifact,
     latest_event: context.latest_event,
     started_at: context.started_at,

@@ -232,7 +232,7 @@ function semanticOut(over = {}) {
         required_constraint_ids: ["q-abs"],
       },
     ],
-    package_findings: [],
+    package_findings: over.packageFindings || [],
     human_attention: over.humanAttention || [],
     recommendation: over.recommendation || "PACKAGE_READY_FOR_REVIEW",
   };
@@ -1372,6 +1372,13 @@ test("APH43: verifier summary bit is derived from item classifications", () => {
   const out = se.validateVerificationOutput(JSON.stringify(v), s);
   assert.equal(out.ok, true);
   assert.equal(out.value.ok, true);
+});
+test("APH44: package findings survive into bounded operational evidence", async () => {
+  const s = semanticOut({ packageFindings: ["Title pair needs human preference"] });
+  const out = await se.run(mkTask(), { modelAdapter: adapter(s), routeSelector: fakeRoute });
+  const view = se.controlRoomView(out);
+  assert.equal(view.package_findings[0].summary, "Title pair needs human preference");
+  assert.deepEqual(view.operational_rationale.evidence_refs, view.package_findings);
 });
 
 // ── standalone harness ───────────────────────────────────────────────────────

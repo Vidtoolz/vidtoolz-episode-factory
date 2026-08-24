@@ -153,6 +153,7 @@ test('VP100 direct Visual Plan MAP shot without Camera intent fails closed',asyn
 test('VP101 non-MAP Generation handoffs remain unchanged',async()=>{const out=await director.run(task(),opts());assert.equal(out.generation_handoffs.length,1);assert.equal(out.generation_handoffs[0].artifact_class,'generated_still');});
 test('VP102 INFOGRAPHIC/STILL is rejected during semantic validation',()=>{const s=semantic();Object.assign(s.beats[0].shots[0],{media_type:'INFOGRAPHIC',generation_mode:'STILL'});assert.equal(director.validateSemanticOutput(s,task()).ok,false);});
 test('VP103 TEXT_GRAPHIC/NOT_APPLICABLE remains valid',()=>{const s=semantic();Object.assign(s.beats[0].shots[0],{media_type:'TEXT_GRAPHIC',generation_mode:'NOT_APPLICABLE'});assert.equal(director.validateSemanticOutput(s,task()).ok,true);});
+test('VP104 story rationale survives into bounded operational evidence',async()=>{const out=await director.run(task(),opts());const view=director.controlRoomView(out);assert.equal(view.operational_rationale.evidence_refs[0].summary,'Makes the choice legible without changing the thesis.');assert.equal(view.operational_rationale.confidence,null);});
 
 if(require.main===module)(async()=>{let passed=0,failed=0;for(const item of tests){try{await item.fn();passed++;console.log(`ok ${passed} - ${item.name}`)}catch(error){failed++;console.error(`not ok - ${item.name}`);console.error(error.stack||error.message)}}console.log(`${passed}/${passed+failed} Visual Planning Director tests passed`);if(failed)process.exitCode=1})();
 module.exports={tests};

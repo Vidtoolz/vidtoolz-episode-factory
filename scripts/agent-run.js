@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { normalizeOperationalRationale } = require('./operational-rationale.js');
 
 const RUNNER_VERSION = 'agent-runner-v1';
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -124,6 +125,11 @@ function validateEnvelope(result, agentId, taskId) {
   if (!Array.isArray(result.events)) return 'events must be an array';
   if (!result.control_room || typeof result.control_room !== 'object' || Array.isArray(result.control_room)) {
     return 'control_room must be an object';
+  }
+  const attention = String(result.attention || result.control_room.attention_level || result.control_room.attention || 'INFORMATION').toUpperCase();
+  if (['REVIEW', 'DECISION'].includes(attention)
+      && !normalizeOperationalRationale(result.operational_rationale || result.control_room.operational_rationale)) {
+    return `${attention} result requires valid operational_rationale`;
   }
   return null;
 }

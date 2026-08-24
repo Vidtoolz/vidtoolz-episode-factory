@@ -471,6 +471,17 @@ test('runner evidence without those fields still projects null, not undefined', 
   assert.equal(row.resource_dependency, null);
 });
 
+test('operational rationale survives runner evidence into Control Room projection', async () => {
+  const f = fixture(['alpha']);
+  writeRunnerInvocation(f, {
+    state: 'AWAITING_HUMAN_DECISION', attention: 'DECISION',
+    result: { operational_rationale: { decision: 'choose candidate', reason: 'two valid options disagree', evidence_refs: ['artifact:a'], confidence: null, escalation_reason: 'human preference required' } },
+  });
+  const output = await controlRoom.buildAgentControlRoom({ root: f.root });
+  assert.deepEqual(output.agents[0].operational_rationale.evidence_refs, ['artifact:a']);
+  assert.equal(output.agents[0].operational_rationale.confidence, null);
+});
+
 test('doctrine-registered roles are never presented or executed as live specialists', async () => {
   const f = fixture(['alpha', 'planned_specialist']);
   f.registry.agents[1].lifecycle = {

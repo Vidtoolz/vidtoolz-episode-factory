@@ -820,6 +820,7 @@ async function run(t, o = {}) {
     route: null,
     audience_package: null,
     review_bundle: null,
+    package_findings: [],
     events: [],
   };
   if (t?.action === "status") return finish(out, "COMPLETE", null, "hermes");
@@ -924,6 +925,7 @@ async function run(t, o = {}) {
       `semantic retry exhausted: ${fail.join("; ").slice(0, 500)}`,
       "hermes",
     );
+  out.package_findings = sem.package_findings;
   if (sem.recommendation === "RETURN_TO_RESEARCH")
     return finish(
       out,
@@ -1091,6 +1093,14 @@ function controlRoomView(o) {
       /Research|constraint/.test(x),
     ),
     packaging_floor: p?.packaging_floor || b?.packaging_floor || null,
+    package_findings: (o.package_findings || []).map((finding, index) => ({ ref: `package-finding-${index + 1}`, summary: typeof finding === "string" ? finding : JSON.stringify(finding) })),
+    operational_rationale: {
+      decision: o.state,
+      reason: o.reason || (o.attention === "REVIEW" ? "Audience package is ready for human review" : `Audience packaging state is ${o.state}`),
+      evidence_refs: (o.package_findings || []).map((finding, index) => ({ ref: `package-finding-${index + 1}`, summary: typeof finding === "string" ? finding : JSON.stringify(finding) })),
+      confidence: null,
+      escalation_reason: ["REVIEW", "DECISION"].includes(o.attention) ? o.reason : null,
+    },
     promise_verified: a?.promise_verified ?? null,
     pair_verified: a?.pair_verified ?? null,
     vpd_handoff_ready: Boolean(a?.structurally_valid),

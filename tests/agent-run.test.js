@@ -15,7 +15,7 @@ function fixture(options = {}) {
   const agents = (options.agents || [{ agent_id: 'alpha_agent', name: 'Alpha' }, { agent_id: 'next_agent', name: 'Next' }])
     .map((agent) => ({ lifecycle: enabled, ...agent }));
   fs.writeFileSync(path.join(root, 'config', 'agent-registry.json'), JSON.stringify({ schema_version: 1, agents }));
-  const moduleSource = (id, body = '') => `'use strict';\nconst fs=require('fs');\nconst AGENT_ID=${JSON.stringify(id)};\nconst ACTIONS=['work','status'];\n${body}\nif(require.main===module){const p=process.argv[process.argv.indexOf('--task')+1];const t=JSON.parse(fs.readFileSync(p,'utf8'));if(t.execution_log)fs.appendFileSync(t.execution_log,AGENT_ID+'\\n');if(t.mode==='sleep')return setTimeout(()=>{},10000);if(t.mode==='overflow'){process.stdout.write('x'.repeat(20000));return;}if(t.mode==='malformed'){console.log('not-json');return;}const out={agent_id:AGENT_ID,task_id:t.task_id,state:t.state||'AWAITING_HUMAN_REVIEW',events:[{state:'DONE'}],control_room:{attention_level:t.attention||'REVIEW',blocker:t.blocker||null},handoff:{next_owner:t.next_owner||'next_agent',next_action:'REVIEW'}};if(t.artifact)out.edit_plan=t.artifact;console.log(JSON.stringify(out));if(t.mode==='nonzero')process.exitCode=7;}\nmodule.exports={AGENT_ID,ACTIONS};\n`;
+  const moduleSource = (id, body = '') => `'use strict';\nconst fs=require('fs');\nconst AGENT_ID=${JSON.stringify(id)};\nconst ACTIONS=['work','status'];\n${body}\nif(require.main===module){const p=process.argv[process.argv.indexOf('--task')+1];const t=JSON.parse(fs.readFileSync(p,'utf8'));if(t.execution_log)fs.appendFileSync(t.execution_log,AGENT_ID+'\\n');if(t.mode==='sleep')return setTimeout(()=>{},10000);if(t.mode==='overflow'){process.stdout.write('x'.repeat(20000));return;}if(t.mode==='malformed'){console.log('not-json');return;}const attention=t.attention||'REVIEW';const rationale={decision:t.state||'AWAITING_HUMAN_REVIEW',reason:t.blocker||'human review requested',evidence_refs:[],confidence:null,escalation_reason:t.blocker||null};const out={agent_id:AGENT_ID,task_id:t.task_id,state:t.state||'AWAITING_HUMAN_REVIEW',events:[{state:'DONE'}],operational_rationale:rationale,control_room:{attention_level:attention,blocker:t.blocker||null,operational_rationale:rationale},handoff:{next_owner:t.next_owner||'next_agent',next_action:'REVIEW'}};if(t.artifact)out.edit_plan=t.artifact;console.log(JSON.stringify(out));if(t.mode==='nonzero')process.exitCode=7;}\nmodule.exports={AGENT_ID,ACTIONS};\n`;
   fs.writeFileSync(path.join(root, 'scripts', 'alpha-agent.js'), moduleSource(options.moduleId || 'alpha_agent', options.moduleBody));
   if (options.nextModule !== false) fs.writeFileSync(path.join(root, 'scripts', 'next-agent.js'), moduleSource('next_agent'));
   function task(over = {}) {
@@ -179,6 +179,20 @@ test('AR27: the canonical registry enables exactly the proven roles', () => {
     assert.throws(() => runner.resolveAgent(root, id), (e) => e.code === 'BLOCKED_AGENT_NOT_ENABLED',
       `${id} has doctrine but must not be dispatchable`);
   }
+});
+
+test('AR28: REVIEW and DECISION envelopes without operational rationale fail closed', () => {
+  const base = { agent_id: 'alpha_agent', task_id: 'task-1', state: 'AWAITING_HUMAN_REVIEW', events: [], control_room: { attention_level: 'REVIEW' } };
+  assert.match(runner.validateEnvelope(base, 'alpha_agent', 'task-1'), /requires valid operational_rationale/);
+  base.control_room.attention_level = 'DECISION';
+  assert.match(runner.validateEnvelope(base, 'alpha_agent', 'task-1'), /requires valid operational_rationale/);
+});
+
+test('AR29: bounded rationale with null confidence is accepted and preserved', async () => {
+  const f = fixture(), t = f.task({ blocker: 'inspect bound artifact' });
+  const out = await run(f, t);
+  assert.equal(out.result.operational_rationale.confidence, null);
+  assert.equal(out.result.control_room.operational_rationale.reason, 'inspect bound artifact');
 });
 
 if (require.main === module) {

@@ -230,6 +230,13 @@ function controlRoomView(result) {
     qc_handoff_ready: Boolean(authority.qc_handoff_ready),
     human_accepted: result.human_acceptance?.state === 'HUMAN_ACCEPTED',
     blocker: authority.reasons || result.errors || [],
+    operational_rationale: {
+      decision: result.state,
+      reason: (authority.reasons || result.errors || [])[0] || (attention === 'REVIEW' ? 'Edit plan requires human review' : `Editor state is ${result.state}`),
+      evidence_refs: plan ? [{ ref: 'edit-plan', summary: plan.edit_plan_id }] : [],
+      confidence: null,
+      escalation_reason: ['REVIEW', 'DECISION'].includes(attention) ? ((authority.reasons || result.errors || [])[0] || null) : null,
+    },
     owner: AGENT_ID,
     next_owner: result.handoff?.next_owner || null,
     latest_event: result.events?.at(-1) || null,
