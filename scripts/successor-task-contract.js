@@ -6,12 +6,21 @@ const path = require('node:path');
 const ledger = require('./operator-action-ledger.js');
 const ownership = require('./execution-ownership.js');
 const visualPlanning = require('./visual-planning-successor.js');
+const storyEditor = require('./story-successor.js');
 
 const SCHEMA_VERSION = 1;
 const HASH_RE = /^[a-f0-9]{64}$/;
-const ADAPTERS = Object.freeze({ visual_planning_director: visualPlanning });
+const ADAPTERS = Object.freeze({ visual_planning_director: visualPlanning, story_editor: storyEditor });
 function hasSuccessorAdapter(agentId) { return Object.prototype.hasOwnProperty.call(ADAPTERS, agentId); }
 function successorAdapterIdentity(agentId) { return ADAPTERS[agentId]?.VALIDATOR_ID || null; }
+function successorAdapterPolicy(agentId) {
+  const adapter = ADAPTERS[agentId];
+  return adapter ? {
+    agent_id: adapter.AGENT_ID, adapter_id: adapter.VALIDATOR_ID, artifact_id: adapter.ARTIFACT_ID,
+    required_next_gate: adapter.REQUIRED_NEXT_GATE, required_next_specialist: adapter.REQUIRED_NEXT_SPECIALIST,
+    continuation_action: adapter.CONTINUATION_ACTION, policy_id: adapter.POLICY_ID,
+  } : null;
+}
 
 class SuccessorTaskError extends Error {
   constructor(code, message) { super(message); this.name = 'SuccessorTaskError'; this.code = code; this.statusCode = 409; }
@@ -66,7 +75,16 @@ function readManualArtifact(context) {
   for (const file of [paths.artifactPath, paths.metadataPath]) { const stat = fs.lstatSync(file); if (!stat.isFile() || stat.isSymbolicLink()) throw new SuccessorTaskError('MANUAL_ARTIFACT_CORRUPT', 'manual artifact storage is unsafe'); }
   const bytes = fs.readFileSync(paths.artifactPath);
   let value; try { value = JSON.parse(bytes); } catch (_) { throw new SuccessorTaskError('SUCCESSOR_ARTIFACT_MALFORMED', 'manual artifact is not valid JSON'); }
-  return { paths, metadata, bytes, value, sha256: sha256(bytes), relative_path: path.relative(context.root, paths.artifactPath) };
+  const base = { paths, metadata, bytes, value, sha256: sha256(bytes), relative_path: path.relative(context.root, paths.artifactPath) };
+  const adapter = ADAPTERS[context.agentId];
+  if (adapter?.currentManualArtifact) {
+    try { return { ...base, ...adapter.currentManualArtifact(context, metadata, base), paths, metadata }; }
+    catch (error) {
+      if (error instanceof SuccessorTaskError) throw error;
+      throw new SuccessorTaskError(error.code || 'SUCCESSOR_UPSTREAM_DEPENDENCY_UNAVAILABLE', error.message);
+    }
+  }
+  return base;
 }
 
 function resumptionPaths(root, target, successorTaskId) {
@@ -79,14 +97,9 @@ function buildProposal(context, owner, artifact, options = {}) {
   const adapter = ADAPTERS[context.agentId];
   if (!adapter) return { eligible: false, validation: { valid: false, validator_id: null, reason: `No canonical successor validator exists for ${context.agentId}.`, reason_codes: ['SUCCESSOR_SPECIALIST_NOT_SUPPORTED'], approvals_invalidated: [], gates_invalidated: [] }, artifact };
   if (!context.invocation || !artifact || !artifact.value) throw new SuccessorTaskError('SUCCESSOR_PREDECESSOR_INVALID', 'completed predecessor and manual artifact are required');
-  if (context.agentId === 'visual_planning_director') {
-    const value = artifact.value;
-    if (!value || typeof value !== 'object' || Array.isArray(value) || value.schema_version !== 1 || value.artifact_type !== 'visual-plan'
-        || !value.story || typeof value.story !== 'object' || Array.isArray(value.story)
-        || typeof value.story.project_id !== 'string' || !value.story.project_id
-        || !Array.isArray(value.required_beats) || !Array.isArray(value.coverage) || !Array.isArray(value.shots) || !Array.isArray(value.prompts)) {
-      throw new SuccessorTaskError('SUCCESSOR_ARTIFACT_SCHEMA_INVALID', 'manual Visual Plan does not satisfy the canonical artifact shape');
-    }
+  const shape = adapter.validateShape ? adapter.validateShape(artifact.value) : { ok: true, reason_codes: [] };
+  if (!shape.ok) {
+    throw new SuccessorTaskError('SUCCESSOR_ARTIFACT_SCHEMA_INVALID', `manual ${context.agentId} artifact does not satisfy its canonical shape: ${(shape.reason_codes || []).join(', ')}`);
   }
   const predecessorArtifact = context.invocation.artifacts?.find((item) => item.field === artifact.metadata.artifact_id);
   if (!predecessorArtifact) throw new SuccessorTaskError('SUCCESSOR_PREDECESSOR_INVALID', 'predecessor artifact binding is missing');
@@ -104,7 +117,7 @@ function buildProposal(context, owner, artifact, options = {}) {
     if (error?.code === 'SUCCESSOR_UPSTREAM_DEPENDENCY_UNAVAILABLE') {
       throw new SuccessorTaskError(error.code, error.message);
     }
-    throw new SuccessorTaskError('SUCCESSOR_ARTIFACT_SCHEMA_INVALID', `manual Visual Plan validation failed safely: ${error.message}`);
+    throw new SuccessorTaskError('SUCCESSOR_ARTIFACT_SCHEMA_INVALID', `manual ${context.agentId} validation failed safely: ${error.message}`);
   }
   if (!validation.valid) return { eligible: false, validation, artifact };
   const seed = canonicalize({ run_id: context.runId, agent_id: context.agentId, predecessor_task_id: context.record.task_id, predecessor_task_sha256: context.invocation.task_sha256, artifact_sha256: artifact.sha256, ownership_revision: owner.revision });
@@ -134,11 +147,14 @@ function buildProposal(context, owner, artifact, options = {}) {
 }
 
 function verifyContract(contract) {
+  const adapter = ADAPTERS[contract?.agent_id];
   if (!contract || contract.schema_version !== SCHEMA_VERSION || contract.contract_type !== 'successor-task-resumption'
       || !HASH_RE.test(contract.predecessor_task_sha256 || '') || !HASH_RE.test(contract.predecessor_artifact_sha256 || '')
       || !HASH_RE.test(contract.new_artifact_sha256 || '') || !HASH_RE.test(contract.successor_task_sha256 || '')
-      || contract.contract_sha256 !== contractHash(contract) || contract.validation_results?.valid !== true
-      || contract.required_next_specialist !== contract.agent_id || contract.continuation_action !== 'review_coverage'
+      || contract.contract_sha256 !== contractHash(contract) || contract.validation_results?.valid !== true || !adapter
+      || contract.validation_results?.validator_id !== adapter.VALIDATOR_ID
+      || contract.required_next_specialist !== adapter.REQUIRED_NEXT_SPECIALIST || contract.required_next_gate !== adapter.REQUIRED_NEXT_GATE
+      || contract.continuation_action !== adapter.CONTINUATION_ACTION
       || !contract.takeover_ledger_record_id || !contract.return_resumption_ledger_record_id
       || !Array.isArray(contract.approvals_invalidated) || !Array.isArray(contract.gates_invalidated) || !Array.isArray(contract.approvals_still_valid)
       || typeof contract.reason !== 'string' || !contract.reason || contract.reason.length > 600
@@ -172,4 +188,4 @@ function assertRunnableSuccessor(rootInput, agentId, task, taskBytes) {
   return contract;
 }
 
-module.exports = { SCHEMA_VERSION, ADAPTERS, SuccessorTaskError, sha256, contractHash, manualPaths, prepareManualArtifact, readManualArtifact, resumptionPaths, buildProposal, verifyContract, assertRunnableSuccessor, hasSuccessorAdapter, successorAdapterIdentity, atomicWrite };
+module.exports = { SCHEMA_VERSION, ADAPTERS, SuccessorTaskError, sha256, contractHash, manualPaths, prepareManualArtifact, readManualArtifact, resumptionPaths, buildProposal, verifyContract, assertRunnableSuccessor, hasSuccessorAdapter, successorAdapterIdentity, successorAdapterPolicy, atomicWrite };

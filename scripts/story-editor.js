@@ -31,6 +31,7 @@ const { execFileSync } = require('node:child_process');
 const researchValidator = require('./research-result-validator.js');
 const researchAuthority = require('./research-result-authority.js');
 const srr = require('./story-revision-review.js');
+const storySuccessor = require('./story-successor.js');
 const scriptEvaluator = require('../script-evaluator.js');
 const contract = require('../config/agent-contract.json');
 const registry = require('../config/agent-registry.json');
@@ -43,7 +44,7 @@ const nowIso = () => new Date().toISOString();
 const MAX_ATTEMPTS_HARD_CAP = 3;
 const DEFAULT_MAX_ATTEMPTS = 2;
 
-const ACTIONS = Object.freeze(['review_script', 'revise_script', 'status']);
+const ACTIONS = Object.freeze(['review_script', 'revise_script', 'review_successor', 'status']);
 const RECOMMENDATIONS = Object.freeze(['NO_CHANGE', 'REVISION_RECOMMENDED', 'RETURN_TO_RESEARCH', 'NEEDS_HUMAN_DECISION', 'ESCALATE']);
 const ARG_CLASSES = Object.freeze(['NO_ARGUMENT_CHANGE', 'POTENTIAL_ARGUMENT_CHANGE', 'ARGUMENT_CHANGE']);
 const FINDING_CATEGORIES = Object.freeze(['THESIS_CLARITY', 'OPENING_TENSION', 'VIEWER_PROMISE', 'PROGRESSION', 'CAUSAL_LOGIC', 'SEMANTIC_REPETITION', 'SECTION_FUNCTION', 'COUNTERARGUMENT_PLACEMENT', 'EVIDENCE_INTEGRATION', 'QUALIFICATION_NATURALNESS', 'NARRATIVE_SPINE', 'PAYOFF', 'SPEAKABILITY']);
@@ -377,6 +378,7 @@ async function run(task, options = {}) {
     requested_by: task.requested_by || 'hermes', state: null, attention: 'AUTONOMOUS',
     attempts: 0, max_attempts: Math.min(task.retry_budget || DEFAULT_MAX_ATTEMPTS, MAX_ATTEMPTS_HARD_CAP),
     source_version_id: task.script_version_id, candidate_version_id: null,
+    story_candidate: null,
     central_claim: task.central_claim || null, narrative_spine: task.narrative_spine || null,
     structural_findings: [], argument_change: null, research_impact: null,
     recommendation: null, review_bundle: null, disagreement_state: 'NONE',
@@ -406,6 +408,18 @@ async function run(task, options = {}) {
   }
   ev('PREFLIGHT_PASS');
   if (task.assignment.action === 'status') { out.state = 'COMPLETE'; return finish(null); }
+  if (task.assignment.action === 'review_successor') {
+    out.candidate_version_id = pre.version.id;
+    out.story_candidate = storySuccessor.versionArtifact(pre.version, task, task.script_claim_bindings || []);
+    if (task.resumption_review?.research_bindings_invalidated?.length) {
+      out.state = 'RETURN_TO_RESEARCH'; out.attention = 'REVIEW';
+      out.reason = `human-edited Story successor invalidated ${task.resumption_review.research_bindings_invalidated.length} Research binding(s)`;
+      return finish('research_director');
+    }
+    out.state = 'AWAITING_HUMAN_REVIEW'; out.attention = 'REVIEW';
+    out.reason = 'human-edited immutable Story successor requires fresh PLAN_SCRIPT_APPROVAL';
+    return finish('mikko');
+  }
 
   const cap = routeCapability(task);
   if (!cap.ok) { out.state = 'BLOCKED'; out.reason = cap.reason; return finish('production_operations'); }
@@ -551,6 +565,7 @@ async function run(task, options = {}) {
   // candidate bindings: preserve unchanged assertions; drop removed/rewritten ones
   const removedClaims = new Set([...(proposal.factual_claim_changes?.removed || []), ...(proposal.factual_claim_changes?.rewritten || [])]);
   const candidateBindings = (task.script_claim_bindings || []).filter((b) => !removedClaims.has(b.binding_id));
+  out.story_candidate = storySuccessor.versionArtifact(candidate, task, candidateBindings);
 
   // candidate bindings doc carries candidate version identity (SRR passes
   // currentScriptRef through to verifyStoryBindings for exact version/hash check)

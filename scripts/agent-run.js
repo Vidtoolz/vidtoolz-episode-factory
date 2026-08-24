@@ -18,7 +18,7 @@ const TIMEOUTS_MS = Object.freeze({
   generation_supervisor: 15 * 60 * 1000,
 });
 const ARTIFACT_FIELDS = Object.freeze([
-  'visual_plan', 'audience_package', 'edit_plan', 'resolve_handoff', 'qc_handoff',
+  'visual_plan', 'story_candidate', 'audience_package', 'edit_plan', 'resolve_handoff', 'qc_handoff',
 ]);
 
 class RunnerError extends Error {

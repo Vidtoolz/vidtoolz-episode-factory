@@ -5,6 +5,11 @@ const taskAssembler = require('./agent-task-visual-planning.js');
 
 const AGENT_ID = 'visual_planning_director';
 const VALIDATOR_ID = 'VISUAL_PLAN_SUCCESSOR_V1';
+const ARTIFACT_ID = 'visual_plan';
+const REQUIRED_NEXT_GATE = 'VISUAL_PLAN_APPROVAL';
+const REQUIRED_NEXT_SPECIALIST = AGENT_ID;
+const CONTINUATION_ACTION = 'review_coverage';
+const POLICY_ID = 'PROVEN_SPECIALIST_SUCCESSOR_ADAPTERS_V2';
 
 function storyProjection(story) {
   return {
@@ -92,4 +97,17 @@ function buildTask(context, nextPlan, successorTaskId, contractPath, artifactSha
   return task;
 }
 
-module.exports = { AGENT_ID, VALIDATOR_ID, storyProjection, currentStory, validate, buildTask };
+function validateShape(value) {
+  const ok = value && typeof value === 'object' && !Array.isArray(value) && value.schema_version === 1 && value.artifact_type === 'visual-plan'
+    && value.story && typeof value.story === 'object' && !Array.isArray(value.story) && typeof value.story.project_id === 'string' && value.story.project_id
+    && Array.isArray(value.required_beats) && Array.isArray(value.coverage) && Array.isArray(value.shots) && Array.isArray(value.prompts);
+  return { ok: Boolean(ok), reason_codes: ok ? [] : ['VISUAL_PLAN_ARTIFACT_SCHEMA_INVALID'] };
+}
+
+function manualControlDetails(_context, artifact) {
+  return { artifact_path: artifact.relative_path, artifact_sha256: artifact.sha256, editing_method: 'TRUSTED_OS_FILE_REVEAL', workspace: null,
+    warning: 'Automation is fenced for this exact Visual Planning task. The cockpit does not edit artifact bytes.' };
+}
+
+module.exports = { AGENT_ID, VALIDATOR_ID, ARTIFACT_ID, REQUIRED_NEXT_GATE, REQUIRED_NEXT_SPECIALIST, CONTINUATION_ACTION, POLICY_ID,
+  storyProjection, currentStory, validateShape, validate, buildTask, manualControlDetails };
