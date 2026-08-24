@@ -34,6 +34,7 @@ test('SW3 Story workspace UI is exact-identity driven and keeps authority identi
   assert.match(html, /restore_revision_id:rv\.restored_artifact\.revision_id/);
   assert.match(html, /preview_created_at:rv\.preview_created_at/);
   assert.match(html, /preview_created_at:ret\.preview_created_at/);
+  for (const label of ['Before:', 'After:', 'System-managed:', 'Becomes stale:', 'Changed sections:', 'Research-bound assertions affected:', 'Unsupported factual assertions:', 'Next gate:']) assert.match(html, new RegExp(label));
 });
 
 (async () => { let passed = 0; for (const item of tests) { try { await item.fn(); passed++; console.log(`ok - ${item.name}`); } catch (error) { console.error(`not ok - ${item.name}\n${error.stack}`); process.exitCode = 1; } } console.log(`${passed}/${tests.length} Story Workspace tests passed`); })();
