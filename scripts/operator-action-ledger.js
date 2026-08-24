@@ -8,8 +8,8 @@ const path = require('node:path');
 const SCHEMA_VERSION = 1;
 const LEDGER_FILE = 'operator-action-ledger.json';
 const LOCK_FILE = '.operator-action-ledger.lock';
-const ACTIONS = Object.freeze(['RETRY', 'CANCEL']);
-const ACTION_SCOPES = Object.freeze(['INVOCATION_RETRY', 'INVOCATION_CANCEL']);
+const ACTIONS = Object.freeze(['RETRY', 'CANCEL', 'TAKE_MANUAL_CONTROL', 'RETURN_TO_AUTOMATION']);
+const ACTION_SCOPES = Object.freeze(['INVOCATION_RETRY', 'INVOCATION_CANCEL', 'TASK_WORK_UNIT_OWNERSHIP']);
 const RESULT_STATUSES = Object.freeze(['COMPLETED', 'FAILED', 'NOT_SUPPORTED']);
 const EXECUTION_OWNERS = Object.freeze(['AUTOMATION', 'HUMAN', 'SUSPENDED']);
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,191}$/;
@@ -161,7 +161,10 @@ function appendOperatorAction(repoRoot, runId, input, options = {}) {
     if (!plain(input) || forbiddenApprovalMetadata(input)) throw new OperatorLedgerError('OPERATOR_LEDGER_RECORD_INVALID', 'operator action must not contain approval metadata');
     const actor = validateActor(options.actor);
     const action = input.action, scope = input.action_scope;
-    if (!ACTIONS.includes(action) || scope !== (action === 'RETRY' ? 'INVOCATION_RETRY' : 'INVOCATION_CANCEL')) throw new OperatorLedgerError('OPERATOR_LEDGER_ACTION_INVALID', 'action or action scope is invalid');
+    const expectedScope = action === 'RETRY' ? 'INVOCATION_RETRY'
+      : action === 'CANCEL' ? 'INVOCATION_CANCEL'
+        : 'TASK_WORK_UNIT_OWNERSHIP';
+    if (!ACTIONS.includes(action) || scope !== expectedScope) throw new OperatorLedgerError('OPERATOR_LEDGER_ACTION_INVALID', 'action or action scope is invalid');
     const targetArtifact = input.target_artifact == null ? null : { artifact_id: safeText(input.target_artifact.artifact_id, 'artifact_id', true), sha256: input.target_artifact.sha256 == null ? null : input.target_artifact.sha256 };
     if (targetArtifact?.sha256 != null && !HASH_RE.test(targetArtifact.sha256)) throw new OperatorLedgerError('OPERATOR_LEDGER_TARGET_INVALID', 'artifact hash is invalid');
     if (!plain(input.requested_parameters || {})) throw new OperatorLedgerError('OPERATOR_LEDGER_RECORD_INVALID', 'requested_parameters must be an object');
