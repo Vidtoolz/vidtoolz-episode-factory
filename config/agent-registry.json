@@ -76,7 +76,7 @@
         "DECISION": "a required human gate is unreachable through any specialist",
         "AUTONOMOUS": "remediation routing is mechanical (e.g. source durability fix)"
       },
-      "implementation_state": "CANDIDATE",
+      "implementation_state": "IMPLEMENTATION_PROVEN",
       "implementation_state_note": "Implementation candidate exists/is pending; direct dispatch refuses until Mikko promotes implementation_state to IMPLEMENTATION_PROVEN after proof. Distinct from doctrine lifecycle, which remains PROVEN/ENABLED per contract BUILT status."
     },
     {
