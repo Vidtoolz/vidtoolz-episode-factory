@@ -114,7 +114,7 @@ test('Story takeover canary: trusted manual Script Builder edit returns only thr
   const returnInput = { ...input, reason: 'Create validated immutable Story successor.' };
   const returnPreview = await controls.previewReturnToAutomation(returnInput, { root, now: '2026-08-24T13:00:00.000Z' });
   assert.equal(returnPreview.eligible, true); assert.equal(returnPreview.successor_task.required_next_gate, 'PLAN_SCRIPT_APPROVAL');
-  assert.deepEqual(returnPreview.invalidations.prior_scope_bindings, ['PLAN_SCRIPT_APPROVAL', 'VISUAL_PLAN_APPROVAL']);
+  assert.deepEqual(returnPreview.invalidations.prior_scope_bindings, ['PLAN_SCRIPT_APPROVAL']);
   const returned = await controls.applyReturnToAutomation({ ...returnInput, preview_token: returnPreview.preview_token, preview_created_at: returnPreview.preview_created_at }, { root, actor, recordId: 'operator-action-story-canary-return', now: '2026-08-24T13:01:00.000Z' });
   assert.equal(returned.predecessor_execution_owner, 'SUSPENDED'); assert.equal(returned.required_next_gate, 'PLAN_SCRIPT_APPROVAL');
   assert.deepEqual(fs.readFileSync(predecessorPath), predecessorBytes);

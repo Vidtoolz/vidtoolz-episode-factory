@@ -14,6 +14,7 @@ node --check scripts/agent-control-room.js
 node --check scripts/agent-dispatch-authority.js
 node --check scripts/agent-run.js
 node --check scripts/agent-task-story-editor.js
+node --check scripts/human-approval-identity.js
 node --check storage-adapter.js
 node --check app.js
 node --check agent-control-room-ui.js
@@ -156,6 +157,7 @@ node --check scripts/production-operations.js
 node --check scripts/production-operations-proof.js
 node --check scripts/story-revision-review.js
 node --check scripts/story-editor.js
+node --check scripts/story-assertion-continuity.js
 node --check scripts/story-successor.js
 node --check scripts/visual-plan.js
 node --check scripts/visual-plan-prompt-adapter.js
