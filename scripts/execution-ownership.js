@@ -63,7 +63,7 @@ function verifyState(doc, target, actionLedger) {
         || action.target_task_id !== target.task_id || action.target_invocation_id !== record.originating_invocation_id
         || action.result_status !== 'COMPLETED' || action.resulting_execution_owner !== record.current_owner
         || action.prior_execution_owner !== record.prior_owner
-        || !['TAKE_MANUAL_CONTROL', 'RETURN_TO_AUTOMATION'].includes(action.action)) {
+        || !['TAKE_MANUAL_CONTROL', 'RETURN_TO_AUTOMATION', 'SUSPEND_AUTOMATION'].includes(action.action)) {
       throw new OwnershipError('OWNERSHIP_LEDGER_REFERENCE_INVALID', `ownership revision ${index + 1} is not backed by its operator action`);
     }
     previous = record.state_hash;
@@ -114,7 +114,9 @@ function transition(root, input, options = {}) {
     if (input.expected_revision !== current.revision || input.expected_state_hash !== current.current_state_hash) throw new OwnershipError('OWNERSHIP_STALE', 'ownership revision changed since preview');
     const nextOwner = input.next_owner;
     if (!OWNERS.includes(nextOwner) || nextOwner === current.current_owner) throw new OwnershipError('OWNERSHIP_TRANSITION_INVALID', 'ownership transition is invalid');
-    const actionName = nextOwner === 'HUMAN' ? 'TAKE_MANUAL_CONTROL' : nextOwner === 'AUTOMATION' ? 'RETURN_TO_AUTOMATION' : null;
+    const actionName = nextOwner === 'HUMAN' ? 'TAKE_MANUAL_CONTROL'
+      : nextOwner === 'AUTOMATION' ? 'RETURN_TO_AUTOMATION'
+        : nextOwner === 'SUSPENDED' ? 'SUSPEND_AUTOMATION' : null;
     if (!actionName || input.action !== actionName) throw new OwnershipError('OWNERSHIP_TRANSITION_INVALID', 'ownership action does not match the requested owner');
     const normalizedReason = String(input.reason || '').replace(/\s+/g, ' ').trim();
     if (!normalizedReason || normalizedReason.length > 600 || !HASH_RE.test(String(input.task_sha256 || ''))
