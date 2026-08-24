@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { atomicWrite, safeId } = require('./agent-run.js');
 const visualPlan = require('./visual-plan.js');
+const humanIdentity = require('./human-approval-identity.js');
 
 const DEFAULT_SCRIPT_BUILDER_ROOT = '/home/vidtoolz/vidtoolz-script-builder';
 
@@ -15,7 +16,8 @@ function canonicalApproval(project, version) {
   }
   const approvedBy = version.approval.approved_by || project.approved_version?.approved_by || null;
   const approvedAt = version.approval.approved_at || version.approval.at || project.approved_version?.approved_at || null;
-  if (!approvedBy || Number.isNaN(Date.parse(approvedAt || ''))) throw new Error('canonical approved Story is missing exact human approval evidence');
+  if (!humanIdentity.verifyLocalHumanApprover(approvedBy)) { const error = new Error('canonical PLAN_SCRIPT_APPROVAL approver is not an explicit local human identity'); error.code = 'PLAN_SCRIPT_APPROVER_NOT_HUMAN'; throw error; }
+  if (Number.isNaN(Date.parse(approvedAt || ''))) throw new Error('canonical approved Story is missing exact human approval evidence');
   return { state: 'approved', approved_by: approvedBy, approved_at: approvedAt, version_id: version.id, content_hash: version.content_hash };
 }
 
