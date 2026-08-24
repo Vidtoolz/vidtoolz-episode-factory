@@ -6,6 +6,7 @@ const runner = require('./agent-run.js');
 const ledger = require('./operator-action-ledger.js');
 const ownership = require('./execution-ownership.js');
 const successor = require('./successor-task-contract.js');
+const dispatchAuthority = require('./agent-dispatch-authority.js');
 
 class AgentControlError extends Error {
   constructor(code, message, statusCode = 409) { super(message); this.name = 'AgentControlError'; this.code = code; this.statusCode = statusCode; }
@@ -26,9 +27,8 @@ function lifecycleFor(root, agentId) {
   const registry = readJson(path.join(root, 'config', 'agent-registry.json'), 'agent registry');
   const registration = registry.agents?.find((agent) => agent.agent_id === agentId);
   if (!registration) throw new AgentControlError('AGENT_CONTROL_AGENT_UNKNOWN', 'target agent is not registered', 404);
-  if (registration.lifecycle?.proven !== 'PROVEN' || registration.lifecycle?.autonomous_dispatch !== 'ENABLED') {
-    throw new AgentControlError('BLOCKED_AGENT_NOT_ENABLED', `autonomous dispatch is not enabled for ${agentId}`);
-  }
+  const readiness = dispatchAuthority.implementationReadiness(root, registration);
+  if (!readiness.authorized) throw new AgentControlError(readiness.code, readiness.reason);
   return registration.lifecycle;
 }
 

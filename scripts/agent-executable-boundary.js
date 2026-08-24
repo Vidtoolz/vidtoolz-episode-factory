@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const executionOwnership = require('./execution-ownership.js');
+const dispatchAuthority = require('./agent-dispatch-authority.js');
 
 const REFUSAL = 'BLOCKED_AGENT_NOT_ENABLED';
 
@@ -14,18 +15,21 @@ function executableLifecycle(agentId, options = {}) {
     : null;
   if (!registration) return { allowed: false, code: 'RUNNER_AGENT_UNKNOWN', agent_id: agentId, reason: 'agent is not registered' };
   const lifecycle = registration.lifecycle || {};
-  if (lifecycle.proven !== 'PROVEN' || lifecycle.autonomous_dispatch !== 'ENABLED') {
+  const readiness = dispatchAuthority.implementationReadiness(repoRoot, registration);
+  if (!readiness.authorized) {
     return {
-      allowed: false, code: REFUSAL, agent_id: agentId,
-      reason: `registered doctrine exists but autonomous dispatch is not enabled: ${agentId}`,
+      allowed: false, code: readiness.code, agent_id: agentId,
+      reason: readiness.reason,
       lifecycle: {
         proven: lifecycle.proven ?? null,
         autonomous_dispatch: lifecycle.autonomous_dispatch ?? null,
         dispatch_blocked_reason: lifecycle.dispatch_blocked_reason ?? null,
+        implementation_state: readiness.implementation_state,
+        module_exists: readiness.module_exists,
       },
     };
   }
-  return { allowed: true, code: null, agent_id: agentId, lifecycle: { proven: lifecycle.proven, autonomous_dispatch: lifecycle.autonomous_dispatch } };
+  return { allowed: true, code: null, agent_id: agentId, lifecycle: { proven: lifecycle.proven, autonomous_dispatch: lifecycle.autonomous_dispatch, implementation_state: readiness.implementation_state } };
 }
 
 function guardExecutableLifecycle(agentId, options = {}) {

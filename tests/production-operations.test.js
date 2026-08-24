@@ -10,6 +10,8 @@ const path = require('node:path');
 
 const po = require('../scripts/production-operations.js');
 const bridge = require('../scripts/hermes-escalation.js');
+const runner = require('../scripts/agent-run.js');
+const controls = require('../scripts/agent-controls.js');
 
 function registryAgents() {
   return JSON.parse(fs.readFileSync(path.resolve(__dirname, '../config/agent-registry.json'), 'utf8')).agents;
@@ -46,6 +48,19 @@ test('PO2: direct execution refuses while implementation_state is CANDIDATE', ()
   } catch (error) { code = error.status; stdout = error.stdout || ''; }
   assert.notEqual(code, 0);
   assert.match(stdout, /BLOCKED_IMPLEMENTATION_NOT_PROVEN/);
+});
+
+test('PO2b: canonical runner, retry, and Hermes refuse candidate before substantive execution', () => {
+  let loaded = 0;
+  assert.throws(() => runner.resolveAgent(path.resolve(__dirname, '..'), 'production_operations', {
+    loadModule: () => { loaded += 1; return po; },
+  }), (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
+  assert.equal(loaded, 0);
+  assert.throws(() => controls.previewRetry({ run_id: 'proof-run', agent_id: 'production_operations', invocation_id: 'proof:1', reason: 'Candidate must not retry.' }, { root: path.resolve(__dirname, '..') }),
+    (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
+  assert.throws(() => bridge.assertRouteTargetAuthorized(registryAgents(), 'production_operations'),
+    (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
+  assert.equal(typeof po.run, 'function', 'bounded proof harness may import internal functions');
 });
 
 test('PO3: status action is deterministic and INFORMATION', async () => {
@@ -144,7 +159,8 @@ test('PO12: readiness gate is generic — missing-module roles also unauthorized
   const readinessCamera = bridge.implementationReadiness(path.resolve(__dirname, '..'), 'camera_director');
   assert.equal(readinessCamera.module_exists, false);
   assert.equal(readinessCamera.ready_for_route, false);
-  assert.match(readinessCamera.reason, /no runnable implementation/);
+  assert.equal(readinessCamera.implementation_state, 'CANDIDATE');
+  assert.match(readinessCamera.reason, /proof candidate/);
   const readinessStory = bridge.implementationReadiness(path.resolve(__dirname, '..'), 'story_editor');
   assert.equal(readinessStory.ready_for_route, true);
 });

@@ -15,7 +15,7 @@ function fixture(options = {}) {
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
   const enabled = { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' };
   const agents = (options.agents || [{ agent_id: 'alpha_agent', name: 'Alpha' }, { agent_id: 'next_agent', name: 'Next' }])
-    .map((agent) => ({ lifecycle: enabled, ...agent }));
+    .map((agent) => ({ lifecycle: enabled, implementation_state: 'IMPLEMENTATION_PROVEN', ...agent }));
   fs.writeFileSync(path.join(root, 'config', 'agent-registry.json'), JSON.stringify({ schema_version: 1, agents }));
   const moduleSource = (id, body = '') => `'use strict';\nconst fs=require('fs');\nconst AGENT_ID=${JSON.stringify(id)};\nconst ACTIONS=['work','status'];\n${body}\nif(require.main===module){const p=process.argv[process.argv.indexOf('--task')+1];const t=JSON.parse(fs.readFileSync(p,'utf8'));if(t.execution_log)fs.appendFileSync(t.execution_log,AGENT_ID+'\\n');if(t.mode==='sleep')return setTimeout(()=>{},10000);if(t.mode==='overflow'){process.stdout.write('x'.repeat(20000));return;}if(t.mode==='malformed'){console.log('not-json');return;}const attention=t.attention||'REVIEW';const rationale={decision:t.state||'AWAITING_HUMAN_REVIEW',reason:t.blocker||'human review requested',evidence_refs:[],confidence:null,escalation_reason:t.blocker||null};const out={agent_id:AGENT_ID,task_id:t.task_id,state:t.state||'AWAITING_HUMAN_REVIEW',events:[{state:'DONE'}],operational_rationale:rationale,control_room:{attention_level:attention,blocker:t.blocker||null,operational_rationale:rationale},handoff:{next_owner:t.next_owner||'next_agent',next_action:'REVIEW'}};if(t.artifact)out.edit_plan=t.artifact;console.log(JSON.stringify(out));if(t.mode==='nonzero')process.exitCode=7;}\nmodule.exports={AGENT_ID,ACTIONS};\n`;
   fs.writeFileSync(path.join(root, 'scripts', 'alpha-agent.js'), moduleSource(options.moduleId || 'alpha_agent', options.moduleBody));
@@ -41,6 +41,16 @@ test('AR2: rejects an unknown agent', () => { const f = fixture(); assert.throws
 test('AR3: reports registered missing implementation', () => {
   const f = fixture({ agents: [{ agent_id: 'missing_agent' }] });
   assert.throws(() => runner.resolveAgent(f.root, 'missing_agent'), (e) => e.code === 'BLOCKED_IMPLEMENTATION_MISSING');
+});
+test('AR3b: candidate implementation is refused before module load', () => {
+  const f = fixture({ agents: [{ agent_id: 'alpha_agent', implementation_state: 'CANDIDATE' }] });
+  let loaded = 0;
+  assert.throws(() => runner.resolveAgent(f.root, 'alpha_agent', { loadModule: () => { loaded += 1; return {}; } }),
+    (e) => e.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
+  assert.equal(loaded, 0);
+  const direct = executableBoundary.executableLifecycle('alpha_agent', { repoRoot: f.root });
+  assert.equal(direct.allowed, false);
+  assert.equal(direct.code, 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
 });
 test('AR4: rejects module AGENT_ID mismatch', () => {
   const f = fixture({ moduleId: 'wrong' }); assert.throws(() => runner.resolveAgent(f.root, 'alpha_agent'), (e) => e.code === 'RUNNER_AGENT_ID_MISMATCH');

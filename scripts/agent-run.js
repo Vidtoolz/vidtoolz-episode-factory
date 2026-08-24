@@ -8,6 +8,7 @@ const os = require('os');
 const path = require('path');
 const { normalizeOperationalRationale } = require('./operational-rationale.js');
 const executionOwnership = require('./execution-ownership.js');
+const dispatchAuthority = require('./agent-dispatch-authority.js');
 
 const RUNNER_VERSION = 'agent-runner-v1';
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -77,27 +78,21 @@ function resolveAgent(repoRoot, agentId, options = {}) {
   const registration = registry.agents.find((agent) => agent.agent_id === agentId);
   if (!registration) throw new RunnerError('RUNNER_AGENT_UNKNOWN', `agent is not registered: ${agentId}`);
 
-  // A registry entry proves doctrine, never executability. Dispatch requires an
-  // explicit human-authorized lifecycle; anything else is refused fail-closed
-  // before any module is resolved or loaded.
-  const lifecycle = registration.lifecycle;
-  if (!lifecycle || lifecycle.proven !== 'PROVEN' || lifecycle.autonomous_dispatch !== 'ENABLED') {
-    throw new RunnerError(
-      'BLOCKED_AGENT_NOT_ENABLED',
-      `registered doctrine exists but autonomous dispatch is not enabled: ${agentId}`,
-      {
-        proven: lifecycle?.proven ?? null,
-        autonomous_dispatch: lifecycle?.autonomous_dispatch ?? null,
-        reason: lifecycle?.dispatch_blocked_reason ?? 'agent registration carries no lifecycle block',
-      },
-    );
-  }
+  // Registry doctrine, lifecycle authority, implementation readiness, and
+  // module presence are independent facts. The shared authority gate refuses
+  // before reading or loading implementation source.
+  const readiness = dispatchAuthority.implementationReadiness(repoRoot, registration);
+  if (!readiness.authorized) throw new RunnerError(readiness.code, readiness.reason, {
+    proven: registration.lifecycle?.proven ?? null,
+    autonomous_dispatch: registration.lifecycle?.autonomous_dispatch ?? null,
+    implementation_state: readiness.implementation_state,
+    module_exists: readiness.module_exists,
+    reason: registration.lifecycle?.dispatch_blocked_reason
+      ?? (registration.lifecycle ? readiness.reason : 'agent registration carries no lifecycle block'),
+  });
 
   const scriptsRoot = fs.realpathSync(path.join(repoRoot, 'scripts'));
-  const conventional = path.join(scriptsRoot, `${agentId.replaceAll('_', '-')}.js`);
-  if (!fs.existsSync(conventional)) {
-    throw new RunnerError('BLOCKED_IMPLEMENTATION_MISSING', `registered agent implementation is missing: ${agentId}`);
-  }
+  const conventional = readiness.module_path;
   const modulePath = fs.realpathSync(conventional);
   if (!containedWithin(scriptsRoot, modulePath)) {
     throw new RunnerError('RUNNER_MODULE_OUTSIDE_SCRIPTS', 'resolved module escapes repository scripts directory');
@@ -139,9 +134,13 @@ function nextImplementation(repoRoot, nextOwner) {
   if (!nextOwner) return 'NONE';
   let registry;
   try { ({ registry } = loadRegistry(repoRoot)); } catch (_) { return 'UNKNOWN'; }
-  if (!registry.agents.some((agent) => agent.agent_id === nextOwner)) return 'NOT_REGISTERED';
-  const file = path.join(repoRoot, 'scripts', `${nextOwner.replaceAll('_', '-')}.js`);
-  return fs.existsSync(file) ? 'REGISTERED_IMPLEMENTATION_PRESENT' : 'REGISTERED_IMPLEMENTATION_MISSING';
+  const registration = registry.agents.find((agent) => agent.agent_id === nextOwner);
+  if (!registration) return 'NOT_REGISTERED';
+  const readiness = dispatchAuthority.implementationReadiness(repoRoot, registration);
+  if (readiness.code === 'BLOCKED_AGENT_NOT_ENABLED') return 'REGISTERED_DISPATCH_NOT_ENABLED';
+  if (readiness.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN') return 'REGISTERED_IMPLEMENTATION_CANDIDATE';
+  if (readiness.code === 'BLOCKED_IMPLEMENTATION_MISSING') return 'REGISTERED_IMPLEMENTATION_MISSING';
+  return 'REGISTERED_IMPLEMENTATION_PROVEN';
 }
 
 function normalizeHandoff(result, repoRoot) {

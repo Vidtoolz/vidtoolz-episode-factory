@@ -14,7 +14,7 @@ function write(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true
 test('ownership canary: takeover fences automation and changed bytes cannot silently return', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ownership-canary-'));
   write(path.join(root, 'config/agent-registry.json'), { schema_version: 1, agents: [
-    { agent_id: 'alpha', name: 'Alpha', lifecycle: { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' } },
+    { agent_id: 'alpha', name: 'Alpha', lifecycle: { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' }, implementation_state: 'IMPLEMENTATION_PROVEN' },
     { agent_id: 'presenter_director', name: 'Presenter', lifecycle: { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED' } },
   ] });
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
@@ -55,11 +55,11 @@ function maturePlan(revision = 1, previous = null) {
 test('extended ownership canary: changed Visual Plan resumes only through an immutable successor', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'successor-canary-'));
   const sourceScripts = path.join(__dirname, '..', 'scripts');
-  const dependencies = ['visual-planning-director.js', 'agent-executable-boundary.js', 'execution-ownership.js', 'operator-action-ledger.js', 'successor-task-contract.js', 'visual-planning-successor.js', 'agent-task-visual-planning.js', 'agent-run.js', 'operational-rationale.js', 'visual-plan.js', 'visual-plan-prompt-adapter.js', 'research-result-validator.js', 'agent-contract-validator.js', 'approval-scopes.js'];
+  const dependencies = ['visual-planning-director.js', 'agent-executable-boundary.js', 'agent-dispatch-authority.js', 'execution-ownership.js', 'operator-action-ledger.js', 'successor-task-contract.js', 'visual-planning-successor.js', 'agent-task-visual-planning.js', 'agent-run.js', 'operational-rationale.js', 'visual-plan.js', 'visual-plan-prompt-adapter.js', 'research-result-validator.js', 'agent-contract-validator.js', 'approval-scopes.js'];
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
   dependencies.forEach((name) => fs.copyFileSync(path.join(sourceScripts, name), path.join(root, 'scripts', name)));
   write(path.join(root, 'config/agent-registry.json'), { schema_version: 1, agents: [
-    { agent_id: 'visual_planning_director', name: 'Visual Planning Director', lifecycle: { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' } },
+    { agent_id: 'visual_planning_director', name: 'Visual Planning Director', lifecycle: { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' }, implementation_state: 'IMPLEMENTATION_PROVEN' },
     { agent_id: 'presenter_director', name: 'Presenter', lifecycle: { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED' } },
   ] });
   const runId = 'run-successor', firstPlan = maturePlan();

@@ -273,3 +273,12 @@ test('HB18: creating a receipt does not invoke any specialist (pure evidence wri
     assert.ok(before.length <= after.length && !after.includes('agents'));
   } finally { fs.rmSync(repo, { recursive: true, force: true }); }
 });
+
+test('HB19: implementation readiness comes from registry authority without module source scraping', () => {
+  const source = fs.readFileSync(path.resolve(__dirname, '../scripts/hermes-escalation.js'), 'utf8');
+  assert.equal(/implementation_state\\s\*\[:=\]/.test(source), false);
+  const readiness = bridge.implementationReadiness(path.resolve(__dirname, '..'), 'production_operations');
+  assert.equal(readiness.implementation_state, 'CANDIDATE');
+  assert.equal(readiness.ready_for_route, false);
+  assert.equal(readiness.code, 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
+});

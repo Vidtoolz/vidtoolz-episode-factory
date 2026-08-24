@@ -19,6 +19,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const dispatchAuthority = require('./agent-dispatch-authority.js');
 
 const SCHEMA_VERSION = 1;
 const RECEIPTS_FILE = 'hermes-receipts.json';
@@ -242,31 +243,19 @@ function releaseLock(paths, token) {
 // ---------------------------------------------------------------------------
 
 function implementationReadiness(root, targetAgentId) {
-  // Generic implementation-readiness distinction. Registry lifecycle
-  // (proven/dispatch) is doctrine authority; a role with no runnable module,
-  // or whose registration marks implementation_state CANDIDATE, is not yet a
-  // safe route target even when lifecycle says ENABLED.
-  let moduleExists = false;
-  try { moduleExists = fs.existsSync(path.join(root, 'scripts', `${String(targetAgentId).replaceAll('_', '-')}.js`)); }
-  catch (_) { moduleExists = false; }
-  let implementationState = null;
-  if (moduleExists) {
-    try {
-      const source = fs.readFileSync(path.join(root, 'scripts', `${String(targetAgentId).replaceAll('_', '-')}.js`), 'utf8');
-      const match = /implementation_state\s*[:=]\s*['"]([A-Z_]+)['"]/.exec(source);
-      implementationState = match ? match[1] : 'IMPLEMENTED';
-    } catch (_) { implementationState = null; }
-  }
-  const candidate = !moduleExists || implementationState === 'CANDIDATE';
+  let registration = null;
+  try {
+    const registry = JSON.parse(fs.readFileSync(path.join(root, 'config', 'agent-registry.json'), 'utf8'));
+    registration = registry.agents?.find((agent) => agent.agent_id === targetAgentId) || null;
+  } catch (_) { registration = null; }
+  if (!registration) return { module_exists: false, implementation_state: null, ready_for_route: false, code: 'HERMES_ROUTE_TARGET_UNKNOWN', reason: `route target ${targetAgentId} is not registered` };
+  const readiness = dispatchAuthority.implementationReadiness(root, registration);
   return {
-    module_exists: moduleExists,
-    implementation_state: moduleExists ? (implementationState || 'IMPLEMENTED') : 'MODULE_MISSING',
-    ready_for_route: !candidate,
-    reason: !moduleExists
-      ? `no runnable implementation exists yet for ${targetAgentId}`
-      : implementationState === 'CANDIDATE'
-        ? `implementation is a proof candidate; direct dispatch refuses until implementation proof completes`
-        : null,
+    module_exists: readiness.module_exists,
+    implementation_state: readiness.implementation_state,
+    ready_for_route: readiness.authorized,
+    code: readiness.code,
+    reason: readiness.reason,
   };
 }
 
@@ -309,7 +298,7 @@ function classifyRouting(queueItem, registryAgents, options = {}) {
     }];
   } else if (category === 'HUMAN_REVIEW' && /preflight|missing|remediat/.test(blocker)) {
     recommendedAction = 'REQUEST_SPECIALIST';
-    routeOptions = remediationTargets(queueItem, registryAgents);
+    routeOptions = remediationTargets(queueItem, registryAgents, options);
   }
 
   return {
@@ -322,7 +311,7 @@ function classifyRouting(queueItem, registryAgents, options = {}) {
   };
 }
 
-function remediationTargets(queueItem, registryAgents) {
+function remediationTargets(queueItem, registryAgents, options = {}) {
   // Deterministic remediation map: which lifecycle-enabled specialist owns the
   // class of preflight failure described in the escalation reason.
   const blocker = String(queueItem.reason || '').toLowerCase();
@@ -335,18 +324,23 @@ function remediationTargets(queueItem, registryAgents) {
   }
   return map.filter((option) => {
     const registration = (registryAgents || []).find((agent) => agent.agent_id === option.target);
-    const lc = registration?.lifecycle || {};
-    option.authorized = lc.proven === 'PROVEN' && lc.autonomous_dispatch === 'ENABLED';
+    const readiness = registration
+      ? dispatchAuthority.implementationReadiness(options.root || path.resolve(__dirname, '..'), registration)
+      : { authorized: false, code: 'HERMES_ROUTE_TARGET_UNKNOWN' };
+    option.authorized = readiness.authorized;
+    option.implementation_state = readiness.implementation_state ?? null;
+    option.reason = readiness.reason || null;
     return option.authorized;
   });
 }
 
-function assertRouteTargetAuthorized(registryAgents, targetAgentId) {
+function assertRouteTargetAuthorized(registryAgents, targetAgentId, options = {}) {
   const registration = (registryAgents || []).find((agent) => agent.agent_id === targetAgentId);
   if (!registration) throw new HermesEscalationError('HERMES_ROUTE_TARGET_UNKNOWN', `route target ${targetAgentId} is not registered`);
-  const lc = registration.lifecycle || {};
-  if (lc.proven !== 'PROVEN' || lc.autonomous_dispatch !== 'ENABLED') {
-    throw new HermesEscalationError('HERMES_ROUTE_TARGET_DISABLED', `route target ${targetAgentId} is not lifecycle-enabled — dispatch refused`);
+  const readiness = dispatchAuthority.implementationReadiness(options.root || path.resolve(__dirname, '..'), registration);
+  if (!readiness.authorized) {
+    const code = readiness.code === 'BLOCKED_AGENT_NOT_ENABLED' ? 'HERMES_ROUTE_TARGET_DISABLED' : readiness.code;
+    throw new HermesEscalationError(code, `${readiness.reason} — dispatch refused`);
   }
   return registration;
 }
@@ -377,7 +371,7 @@ function createReceipt(repoRoot, runId, input, options = {}) {
       throw new HermesEscalationError('HERMES_RECEIPT_INVALID', 'escalation attention must be REVIEW or DECISION');
     }
     if (input.routing_category === 'INFRASTRUCTURE_RESOURCE' || input.action === 'ROUTE') {
-      assertRouteTargetAuthorized(options.registryAgents || [], input.route_target_agent_id || input.source_agent_id);
+      assertRouteTargetAuthorized(options.registryAgents || [], input.route_target_agent_id || input.source_agent_id, { root: repoRoot });
     }
     if (input.approval_scope_required != null) {
       // Canonical scope names legitimately contain "APPROVAL" — validate the

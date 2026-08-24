@@ -13,7 +13,7 @@ const cancellationAdapters = require('../scripts/agent-cancellation-adapters.js'
 function write(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`); }
 function fixture(lifecycle = { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' }) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-controls-'));
-  write(path.join(root, 'config/agent-registry.json'), { schema_version: 1, agents: [{ agent_id: 'alpha', name: 'Alpha', lifecycle }] });
+  write(path.join(root, 'config/agent-registry.json'), { schema_version: 1, agents: [{ agent_id: 'alpha', name: 'Alpha', lifecycle, implementation_state: lifecycle.autonomous_dispatch === 'ENABLED' ? 'IMPLEMENTATION_PROVEN' : undefined }] });
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
   fs.writeFileSync(path.join(root, 'scripts/alpha.js'), `'use strict';\nconst fs=require('fs');const AGENT_ID='alpha';const ACTIONS=['work'];if(require.main===module){const p=process.argv[process.argv.indexOf('--task')+1];const t=JSON.parse(fs.readFileSync(p));if(t.hold)setTimeout(()=>{},30000);else console.log(JSON.stringify({agent_id:AGENT_ID,task_id:t.task_id,state:'COMPLETE',attention:'INFORMATION',events:[],visual_plan:{version:t.version||1},control_room:{state:'COMPLETE',attention_level:'INFORMATION'}}));}module.exports={AGENT_ID,ACTIONS};\n`);
   const taskPath = path.join(root, 'task.json');

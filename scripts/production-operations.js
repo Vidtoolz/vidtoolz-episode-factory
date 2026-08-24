@@ -286,33 +286,35 @@ module.exports = { AGENT_ID, LANE, ACTIONS, ATTENTION_LEVELS, PROHIBITED_ACTIONS
   ProductionOperationsError, classifyBlocker, recommendRemediation,
   preflight, run, controlRoomView, implementationState, registration };
 
-// Direct execution gate: even though the registry currently says ENABLED,
-// this module is an implementation CANDIDATE and refuses direct dispatch
-// until implementation_state is promoted by Mikko. Fail closed.
+// The shared executable authority gate is primary. The local state check stays
+// as defense in depth for proof harnesses that intentionally import this module.
 if (require.main === module) {
-  const state = implementationState(registration());
-  if (state !== IMPLEMENTATION_STATE_PROVEN) {
-    process.stdout.write(`${JSON.stringify({
-      schema_version: 1, agent_id: AGENT_ID,
-      infrastructure_state: 'BLOCKED_IMPLEMENTATION_NOT_PROVEN',
-      implementation_state: state,
-      reason: 'implementation is a candidate; direct dispatch requires Mikko to promote implementation_state to IMPLEMENTATION_PROVEN after proof',
-    }, null, 2)}\n`);
-    process.exitCode = 1;
-  } else {
-    let args = {};
-    for (let i = 2; i < process.argv.length; i += 1) {
-      if (process.argv[i] === '--task') args.task = process.argv[++i];
-    }
-    if (!args.task) { console.error('usage: production-operations.js --task <task.json>'); process.exitCode = 2; }
-    else {
-      run(JSON.parse(fs.readFileSync(path.resolve(args.task), 'utf8'))).then((result) => {
-        process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-        process.exitCode = ['COMPLETE'].includes(result.state) ? 0 : 1;
-      }).catch((error) => {
-        process.stdout.write(`${JSON.stringify({ schema_version: 1, agent_id: AGENT_ID, infrastructure_state: 'PRODUCTION_OPERATIONS_FAILED', reason: error.message }, null, 2)}\n`);
-        process.exitCode = 1;
-      });
+  const boundaryAllowed = require('./agent-executable-boundary.js').guardExecutableLifecycle(AGENT_ID);
+  if (boundaryAllowed) {
+    const state = implementationState(registration());
+    if (state !== IMPLEMENTATION_STATE_PROVEN) {
+      process.stdout.write(`${JSON.stringify({
+        schema_version: 1, agent_id: AGENT_ID,
+        infrastructure_state: 'BLOCKED_IMPLEMENTATION_NOT_PROVEN',
+        implementation_state: state,
+        reason: 'implementation is a candidate; direct dispatch requires Mikko to promote implementation_state to IMPLEMENTATION_PROVEN after proof',
+      }, null, 2)}\n`);
+      process.exitCode = 1;
+    } else {
+      let args = {};
+      for (let i = 2; i < process.argv.length; i += 1) {
+        if (process.argv[i] === '--task') args.task = process.argv[++i];
+      }
+      if (!args.task) { console.error('usage: production-operations.js --task <task.json>'); process.exitCode = 2; }
+      else {
+        run(JSON.parse(fs.readFileSync(path.resolve(args.task), 'utf8'))).then((result) => {
+          process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+          process.exitCode = ['COMPLETE'].includes(result.state) ? 0 : 1;
+        }).catch((error) => {
+          process.stdout.write(`${JSON.stringify({ schema_version: 1, agent_id: AGENT_ID, infrastructure_state: 'PRODUCTION_OPERATIONS_FAILED', reason: error.message }, null, 2)}\n`);
+          process.exitCode = 1;
+        });
+      }
     }
   }
 }

@@ -12,7 +12,8 @@
     "fields": {
       "doctrine": "DEFINED once this entry is the complete operating doctrine for the role. Doctrine completeness is a documentation fact, never an execution permission.",
       "proven": "PROVEN mirrors the contract role_roster status BUILT. NOT_PROVEN mirrors PLANNED / PLANNED_LAST. The contract remains the source of lifecycle classification; this field is its registry-side projection.",
-      "autonomous_dispatch": "ENABLED | DISABLED. DISABLED roles are refused by the agent runner before any module is resolved, regardless of how complete their doctrine is."
+      "autonomous_dispatch": "ENABLED | DISABLED. DISABLED roles are refused by the agent runner before any module is resolved, regardless of how complete their doctrine is.",
+      "implementation_state": "CANDIDATE | IMPLEMENTATION_PROVEN. This is independent of doctrine lifecycle and gates the actual canonical module before it may be loaded for production dispatch."
     },
     "doctrine_values": [
       "DEFINED"
@@ -25,11 +26,16 @@
       "ENABLED",
       "DISABLED"
     ],
+    "implementation_state_values": [
+      "CANDIDATE",
+      "IMPLEMENTATION_PROVEN"
+    ],
     "invariants": [
       "NOT_PROVEN implies autonomous_dispatch DISABLED. Doctrine alone never enables execution.",
       "autonomous_dispatch ENABLED requires proven PROVEN and a matching BUILT status in the contract role_roster.",
       "proven and autonomous_dispatch are human-authorized fields. No agent, and not Hermes, may promote its own lifecycle.",
-      "Implementation presence is a separate runtime fact reported by the runner and control room; it is never an authority claim."
+      "Implementation presence is a separate runtime fact reported by the runner and control room; it is never an authority claim.",
+      "A lifecycle-enabled role is production-dispatchable only when implementation_state is IMPLEMENTATION_PROVEN and its canonical module exists."
     ],
     "enablement_authority": "Mikko"
   },
@@ -123,6 +129,7 @@
         "proven": "PROVEN",
         "autonomous_dispatch": "ENABLED"
       },
+      "implementation_state": "IMPLEMENTATION_PROVEN",
       "role": "execution_specialist",
       "mission": "Convert approved production briefs into bounded generation jobs, select an eligible engine/resource through existing routing abstractions, supervise execution, preserve provenance, reject incomplete generation, and hand completed artifacts to QC.",
       "reports_to": "hermes",
@@ -226,6 +233,7 @@
         "proven": "PROVEN",
         "autonomous_dispatch": "ENABLED"
       },
+      "implementation_state": "IMPLEMENTATION_PROVEN",
       "role": "editorial_specialist",
       "mission": "Construct and revise canonical Edit Plan V1 artifacts from exact authorized Story, Visual Plan, Presenter, AIGEN, Sound, and media evidence; own bounded editorial arrangement while preserving provenance and handing deterministic Resolve/QC projections downstream without creating approval authority.",
       "reports_to": "hermes",
@@ -296,6 +304,7 @@
         "proven": "PROVEN",
         "autonomous_dispatch": "ENABLED"
       },
+      "implementation_state": "IMPLEMENTATION_PROVEN",
       "role": "creative_specialist",
       "mission": "Turn an approved musical direction (Scorecraft approved cue sheet / MusicRenderBrief) into technically valid, provenance-bound music candidates through the authorized music_generation lane; judge musical craft within bounded authority; present evidence for Mikko final decision. Scorecraft remains the engine — this role is the judgment and orchestration layer over it.",
       "reports_to": "hermes",
@@ -399,6 +408,7 @@
         "proven": "PROVEN",
         "autonomous_dispatch": "ENABLED"
       },
+      "implementation_state": "IMPLEMENTATION_PROVEN",
       "role": "semantic_specialist",
       "mission": "Assess what the supplied evidence actually supports, its quality, independence, contradictions, and qualifications, and emit canonical hardened Research Result V1 semantic judgments. Deterministic validation/QC remains outside.",
       "reports_to": "hermes",
@@ -442,6 +452,7 @@
         "proven": "PROVEN",
         "autonomous_dispatch": "ENABLED"
       },
+      "implementation_state": "IMPLEMENTATION_PROVEN",
       "role": "semantic_specialist",
       "mission": "Assess and propose narrative structure against an exact Script Builder version, create at most one immutable candidate version, and route every candidate through Story Revision Review and canonical Research constraints without approval authority.",
       "reports_to": "hermes",
@@ -487,6 +498,7 @@
         "proven": "PROVEN",
         "autonomous_dispatch": "ENABLED"
       },
+      "implementation_state": "IMPLEMENTATION_PROVEN",
       "role": "semantic_specialist",
       "mission": "Translate exact canonical Story beats into rationale-bound shot coverage, prompt specifications, and intent-only Camera and neutral Generation Supervisor handoffs without creative, execution, approval, or asset-selection authority.",
       "reports_to": "hermes",
@@ -534,6 +546,7 @@
         "proven": "PROVEN",
         "autonomous_dispatch": "ENABLED"
       },
+      "implementation_state": "IMPLEMENTATION_PROVEN",
       "role": "semantic_specialist",
       "mission": "Propose and rank accurate viewer-facing packaging (viewer promise, title candidates, thumbnail concepts, title-thumbnail pairs, description draft) bound to the exact Story version, without ever selecting, approving, or publishing.",
       "reports_to": "hermes",

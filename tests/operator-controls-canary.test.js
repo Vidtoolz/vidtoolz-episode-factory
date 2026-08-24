@@ -16,7 +16,7 @@ test('operator controls canary: REVIEW queue → read-only preview → chained r
   const enabled = { doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED' };
   const disabled = { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED' };
   const registry = { schema_version: 1, agents: [
-    { agent_id: 'story_editor', name: 'Story Editor', role: 'semantic_specialist', human_gate_type: 'PLAN_SCRIPT_APPROVAL', lifecycle: enabled },
+    { agent_id: 'story_editor', name: 'Story Editor', role: 'semantic_specialist', human_gate_type: 'PLAN_SCRIPT_APPROVAL', lifecycle: enabled, implementation_state: 'IMPLEMENTATION_PROVEN' },
     { agent_id: 'presenter_director', name: 'Presenter Director', role: 'specialist', human_gate_type: 'PRESENTER_PERFORMANCE_APPROVAL', lifecycle: disabled },
   ] };
   const contract = { schema_version: 1, role_roster: registry.agents.map((a) => ({ role_id: a.agent_id, role_name: a.name, status: a.agent_id === 'story_editor' ? 'BUILT' : 'PLANNED' })), hermes: { role_id: 'hermes', role_name: 'Hermes', is_agent: false, is_specialist: false } };

@@ -264,6 +264,8 @@ test('AC22: complete doctrine never implies autonomous enablement', () => {
   const s = validator.validateContract(contract, registry).summary;
   assert.deepEqual(s.doctrine_only, ['presenter_director', 'creative_director']);
   assert.equal(s.enabled_for_dispatch.length, 10);
+  assert.equal(s.implementation_dispatchable.length, 7);
+  assert.deepEqual(s.implementation_candidates, ['production_operations', 'camera_director', 'qc_director']);
   for (const id of ['presenter_director', 'creative_director']) {
     assert.ok(!s.enabled_for_dispatch.includes(id), `${id} must not be dispatch-enabled`);
   }
@@ -442,4 +444,20 @@ test('AC29: no registered agent may claim any human-only decision', () => {
   const r = validator.validateContract(shrunk, registry);
   assert.equal(r.ok, false);
   assert.ok(r.errors.some((e) => /canonical_role_count/.test(e)));
+});
+
+test('AC30: implementation readiness is closed and independent from lifecycle authority', () => {
+  assert.deepEqual(validator.IMPLEMENTATION_STATE_VALUES, ['CANDIDATE', 'IMPLEMENTATION_PROVEN']);
+  for (const agent of registry.agents.filter((item) => item.lifecycle.autonomous_dispatch === 'ENABLED')) {
+    assert.ok(validator.IMPLEMENTATION_STATE_VALUES.includes(agent.implementation_state), `${agent.agent_id} needs readiness`);
+  }
+  const missing = baseRegistry();
+  delete registered(missing, 'editor').implementation_state;
+  assert.ok(validator.validateContract(contract, missing).errors.some((e) => /editor.*without an implementation_state/.test(e)));
+  const misspelled = baseRegistry();
+  registered(misspelled, 'editor').implementation_state = 'PROVEN_IMPLEMENTATION';
+  assert.ok(validator.validateContract(contract, misspelled).errors.some((e) => /implementation_state must be/.test(e)));
+  const disabled = baseRegistry();
+  registered(disabled, 'presenter_director').implementation_state = 'IMPLEMENTATION_PROVEN';
+  assert.equal(validator.validateContract(contract, disabled).ok, true, 'readiness must not override disabled lifecycle');
 });

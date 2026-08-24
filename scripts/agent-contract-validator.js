@@ -29,6 +29,7 @@ const DEFAULT_STATUS_MAP = {
 };
 const PROVEN_VALUES = ["PROVEN", "NOT_PROVEN"];
 const DISPATCH_VALUES = ["ENABLED", "DISABLED"];
+const IMPLEMENTATION_STATE_VALUES = ["CANDIDATE", "IMPLEMENTATION_PROVEN"];
 
 // An allowed_action may never claim a human-only decision, whatever the role.
 const FORBIDDEN_ALLOWED_ACTIONS = [
@@ -261,6 +262,10 @@ function validateContract(contract, registry) {
   const registryById = new Map((registry.agents || []).map((a) => [a.agent_id, a]));
   const nonAgentRoles = new Set(["hermes", "knowledge_steward"]);
 
+  if (JSON.stringify(registry.lifecycle_model?.implementation_state_values || []) !== JSON.stringify(IMPLEMENTATION_STATE_VALUES)) {
+    add(`registry implementation_state_values must be exactly: ${IMPLEMENTATION_STATE_VALUES.join(" | ")}`);
+  }
+
   if (!lc.doctrine_completeness_invariant) add("contract missing lifecycle_classification.doctrine_completeness_invariant");
   if (typeof lc.canonical_role_count === "number" && roster.length !== lc.canonical_role_count) {
     add(`role_roster holds ${roster.length} roles but canonical_role_count is ${lc.canonical_role_count}`);
@@ -304,6 +309,13 @@ function validateContract(contract, registry) {
     }
     if (lifecycle.autonomous_dispatch === "DISABLED" && !lifecycle.dispatch_blocked_reason) {
       add(`registry role "${role.role_id}" is dispatch-DISABLED without a dispatch_blocked_reason`);
+    }
+    const implementationState = registered.implementation_state;
+    if (implementationState !== undefined && !IMPLEMENTATION_STATE_VALUES.includes(implementationState)) {
+      add(`registry role "${role.role_id}" implementation_state must be one of ${IMPLEMENTATION_STATE_VALUES.join(" | ")}`);
+    }
+    if (lifecycle.proven === "PROVEN" && lifecycle.autonomous_dispatch === "ENABLED" && implementationState === undefined) {
+      add(`registry role "${role.role_id}" is lifecycle-enabled without an implementation_state readiness gate`);
     }
   }
 
@@ -386,11 +398,14 @@ function validateContract(contract, registry) {
   }
 
   const enabled = (registry.agents || []).filter(isEnabled).map((a) => a.agent_id);
+  const implementationDispatchable = (registry.agents || []).filter((a) => isEnabled(a) && a.implementation_state === 'IMPLEMENTATION_PROVEN').map((a) => a.agent_id);
   const summary = {
     canonical_roles: roster.length,
     registered_doctrine: (registry.agents || []).length,
     doctrine_complete: roster.every((r) => registryById.has(r.role_id)),
     enabled_for_dispatch: enabled,
+    implementation_dispatchable: implementationDispatchable,
+    implementation_candidates: (registry.agents || []).filter((a) => a.implementation_state === 'CANDIDATE').map((a) => a.agent_id),
     doctrine_only: (registry.agents || []).filter((a) => !isEnabled(a)).map((a) => a.agent_id),
     hermes_registered: agentIds.has("hermes"),
   };
@@ -411,7 +426,7 @@ function main(argv) {
 }
 
 module.exports = {
-  DISAGREEMENT_STATES, ATTENTION_LEVELS, APPROVAL_SCOPES, PROVEN_VALUES, DISPATCH_VALUES, DEFAULT_STATUS_MAP,
+  DISAGREEMENT_STATES, ATTENTION_LEVELS, APPROVAL_SCOPES, PROVEN_VALUES, DISPATCH_VALUES, IMPLEMENTATION_STATE_VALUES, DEFAULT_STATUS_MAP,
   lifecycleOf, isEnabled, sha256, verifyApprovalBinding, verifyApprovalBindingForScope, validateContract, main,
 };
 
@@ -422,7 +437,9 @@ if (require.main === module) {
     const s = result.summary;
     console.log(`agent contract: VALID — ${s.canonical_roles}-role architecture structurally complete`);
     console.log(`  doctrine entries: ${s.registered_doctrine}/${s.canonical_roles} (complete: ${s.doctrine_complete})`);
-    console.log(`  enabled for dispatch: ${s.enabled_for_dispatch.length} — ${s.enabled_for_dispatch.join(", ")}`);
+    console.log(`  lifecycle enabled: ${s.enabled_for_dispatch.length} — ${s.enabled_for_dispatch.join(", ")}`);
+    console.log(`  implementation proven for dispatch: ${s.implementation_dispatchable.length} — ${s.implementation_dispatchable.join(", ")}`);
+    console.log(`  implementation candidates, dispatch refused: ${s.implementation_candidates.length} — ${s.implementation_candidates.join(", ") || "none"}`);
     console.log(`  doctrine only, dispatch refused: ${s.doctrine_only.length} — ${s.doctrine_only.join(", ") || "none"}`);
   } else {
     result.errors.forEach((e) => console.error(`error: ${e}`));
