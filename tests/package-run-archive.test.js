@@ -23,6 +23,9 @@ const {
   relocateRunMedia,
   PACKAGE_RUNS_ARCHIVE_API,
 } = packageEngineServer;
+const crypto = require('node:crypto');
+const ownership = require('../scripts/execution-ownership.js');
+const operatorLedger = require('../scripts/operator-action-ledger.js');
 
 // ── Helper: temp root with a run folder + a linked script-image-assets folder ──
 // The asset folder is linked to the run via generation-manifest.json's
@@ -84,6 +87,17 @@ function createRunRoot(runId = "2026-06-30-sample-run") {
   return { tempRoot, runId };
 }
 
+function setOwnership(tempRoot, runId, nextOwner) {
+  const target = { run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1' };
+  const current = ownership.readOwnership(tempRoot, target);
+  const action = nextOwner === 'HUMAN' ? 'TAKE_MANUAL_CONTROL' : 'SUSPEND_AUTOMATION';
+  return ownership.transition(tempRoot, {
+    ...target, action, next_owner: nextOwner, originating_invocation_id: 'visual_planning_director:visual-task-1:1',
+    reason: 'Archive authority regression fixture.', task_sha256: crypto.createHash('sha256').update('task').digest('hex'),
+    expected_revision: current.revision, expected_state_hash: current.current_state_hash,
+  }, { actor: operatorLedger.localActorContext({ username: 'mikko' }), recordId: `operator-action-${nextOwner.toLowerCase()}-archive` });
+}
+
 test("archivePackageRun route constant is exported", () => {
   assert.equal(PACKAGE_RUNS_ARCHIVE_API, "/api/package-runs/archive");
 });
@@ -134,6 +148,37 @@ test("archivePackageRun archives under a timestamped name when a stale-runs entr
   // The live run was moved out of package-runs/ into the timestamped archive.
   assert.equal(fs.existsSync(path.join(tempRoot, "package-runs", runId)), false);
   assert.equal(fs.existsSync(path.join(tempRoot, "package-runs", "stale-runs", `${runId}-20260630123456`, "selected-package.json")), true);
+});
+
+test("archivePackageRun refuses HUMAN ownership and run-id recreation cannot erase the fence", () => {
+  const { tempRoot, runId } = createRunRoot();
+  setOwnership(tempRoot, runId, 'HUMAN');
+  assert.throws(() => archivePackageRun({ runId }, { root: tempRoot }),
+    (error) => error.code === 'PACKAGE_RUN_ARCHIVE_AUTHORITY_ACTIVE');
+  assert.equal(fs.existsSync(path.join(tempRoot, 'package-runs', runId)), true);
+  assert.throws(() => ownership.assertAutomationAllowed(tempRoot, { run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1' }),
+    (error) => error.code === 'AUTOMATION_FENCED');
+});
+
+test("archivePackageRun refuses SUSPENDED ownership and authority remains canonically addressable", () => {
+  const { tempRoot, runId } = createRunRoot();
+  setOwnership(tempRoot, runId, 'SUSPENDED');
+  assert.throws(() => archivePackageRun({ runId }, { root: tempRoot }),
+    (error) => error.code === 'PACKAGE_RUN_ARCHIVE_AUTHORITY_ACTIVE');
+  assert.equal(ownership.readOwnership(tempRoot, { run_id: runId, agent_id: 'visual_planning_director', task_id: 'visual-task-1' }).current_owner, 'SUSPENDED');
+});
+
+test("archivePackageRun refuses active locks and successor authority but still permits an unowned run", () => {
+  const locked = createRunRoot('2026-06-30-locked-run');
+  writeTestFile(locked.tempRoot, `package-runs/${locked.runId}/agents/.lock`, '{}');
+  assert.throws(() => archivePackageRun({ runId: locked.runId }, { root: locked.tempRoot }),
+    (error) => error.code === 'PACKAGE_RUN_ARCHIVE_AUTHORITY_ACTIVE');
+  const successor = createRunRoot('2026-06-30-successor-run');
+  writeTestFile(successor.tempRoot, `package-runs/${successor.runId}/agents/resumptions/visual/task/successor/successor-contract.json`, '{}');
+  assert.throws(() => archivePackageRun({ runId: successor.runId }, { root: successor.tempRoot }),
+    (error) => error.code === 'PACKAGE_RUN_ARCHIVE_AUTHORITY_ACTIVE');
+  const clean = createRunRoot('2026-06-30-clean-run');
+  assert.equal(archivePackageRun({ runId: clean.runId }, { root: clean.tempRoot }).ok, true);
 });
 
 test("archivePackageRun rejects a path-traversal runId", () => {

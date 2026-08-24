@@ -24,6 +24,7 @@ const agentControls = require('./scripts/agent-controls.js');
 const operatorActionLedger = require('./scripts/operator-action-ledger.js');
 const cancellationAdapters = require('./scripts/agent-cancellation-adapters.js');
 const executionOwnership = require('./scripts/execution-ownership.js');
+const packageRunArchiveAuthority = require('./scripts/package-run-archive-authority.js');
 const dailyIdeaScout = require('./scripts/daily-idea-scout.js');
 const visualBeatMapParser = require('./scripts/visual-beat-map-parser.js');
 const submittedTopics = require('./scripts/submitted-topics.js');
@@ -1400,6 +1401,10 @@ function relocateRunMedia(runId, options = {}) {
 // write nonce by the route handler.
 function archivePackageRun(payload = {}, options = {}) {
   const resolved = resolvePackageRunDir(payload.runId, options);
+  // The ownership and operator-ledger namespace is keyed by the live run ID.
+  // Moving it would make recreated IDs appear unowned, so any durable control
+  // history or in-flight authority blocks archival before media is relocated.
+  packageRunArchiveAuthority.assertArchiveAuthoritySafe(options.root || ROOT, resolved.runId);
   const staleRoot = path.join(resolved.runsRoot, 'stale-runs');
   // Collision-proof destination. A previous archive of the same run id used to
   // make this throw a 409 ("already exists in stale-runs"), which blocked the
@@ -19898,6 +19903,7 @@ module.exports = {
   PACKAGE_RUNS_LIST_API,
   PACKAGE_RUNS_ARCHIVE_API,
   archivePackageRun,
+  inspectPackageRunArchiveAuthority: packageRunArchiveAuthority.inspectArchiveAuthority,
   findRunAssetFolders,
   relocateRunMedia,
   PACKAGE_RUNS_CANDIDATES_API,
