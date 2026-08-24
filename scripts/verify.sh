@@ -135,6 +135,9 @@ node --check scripts/earth-studio-job-plan.js
 node --check scripts/docs-authority-check.js
 node --check scripts/manual-upload-provenance-audit.js
 node --check scripts/agent-contract-validator.js
+node --check scripts/agent-executable-boundary.js
+node --check scripts/operational-rationale.js
+node --check scripts/operator-action-ledger.js
 node --check scripts/approval-scopes.js
 node --check scripts/sound-music-director.js
 node --check scripts/research-result-validator.js
