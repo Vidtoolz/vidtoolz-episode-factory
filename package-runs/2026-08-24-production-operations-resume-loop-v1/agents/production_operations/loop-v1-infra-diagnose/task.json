@@ -1,0 +1,12 @@
+{
+  "task_id": "loop-v1-infra-diagnose",
+  "project_id": "01M0QR9DGP5RRFTPVDA7WQP2XM",
+  "package_run_id": "2026-08-24-production-operations-resume-loop-v1",
+  "requested_by": "hermes",
+  "assignment": { "action": "recommend_remediation" },
+  "blocker_evidence": {
+    "reason": "semantic retry exhausted: MODEL_FAILED: fetch failed",
+    "source_agent_id": "visual_planning_director",
+    "source_invocation_id": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX:2"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "runner_version": "agent-runner-v1",
+  "invocations": [
+    {
+      "invocation_id": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX:1",
+      "agent_id": "visual_planning_director",
+      "task_id": "visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX",
+      "attempt_number": 1,
+      "state": "BLOCKED",
+      "attention": "DECISION",
+      "next_owner": "visual_planning_director",
+      "task_directory": "visual_planning_director/visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX",
+      "completed_at": "2026-08-23T18:13:10.323Z"
+    },
+    {
+      "invocation_id": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX:2",
+      "agent_id": "visual_planning_director",
+      "task_id": "visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX",
+      "attempt_number": 2,
+      "state": "ESCALATED",
+      "attention": "DECISION",
+      "next_owner": "hermes",
+      "task_directory": "visual_planning_director/visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX/attempts/0002",
+      "completed_at": "2026-08-23T18:15:45.688Z"
+    },
+    {
+      "invocation_id": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX-resume-rerun-1:1",
+      "agent_id": "visual_planning_director",
+      "task_id": "visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX-resume-rerun-1",
+      "attempt_number": 1,
+      "state": "PREVIEW_ONLY",
+      "attention": "INFORMATION",
+      "next_owner": "mikko",
+      "task_directory": "visual_planning_director/visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX-resume-rerun-1",
+      "completed_at": "2026-08-24T08:59:50.847Z"
+    }
+  ]
+}

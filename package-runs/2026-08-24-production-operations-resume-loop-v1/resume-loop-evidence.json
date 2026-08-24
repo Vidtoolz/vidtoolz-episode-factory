@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "package": "production-operations-resume-loop-v1",
+  "kind": "OPERATIONAL_EVIDENCE \u2014 not approval evidence",
+  "generated_head": "d700f535c2459ea01bdda4548cfdcefa3ab52e81",
+  "promotion_commit": "b23c9bb",
+  "source_escalation": {
+    "run": "visual-planning-stage1-20260823",
+    "invocation_id": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX:2",
+    "blocker": "semantic retry exhausted: MODEL_FAILED: fetch failed",
+    "attention": "DECISION",
+    "task_sha256": "7d8c602c078108096cd42f9f0ed0302d4fd90b75c09ead3f8b73458bde087a97",
+    "result_sha256": "fce144a20dfd8560d30c11bc36e85f77897a6ef4b6d522c234b4fe63eb8f283b"
+  },
+  "production_operations_diagnosis": {
+    "invocation_id": "production_operations:loop-v1-infra-diagnose:1",
+    "automatic_chain_count": 0,
+    "diagnosis": {
+      "kind": "NETWORK_ENDPOINT_UNAVAILABLE",
+      "in_mandate": true,
+      "source_reason": "semantic retry exhausted: MODEL_FAILED: fetch failed"
+    },
+    "recommendation": "VERIFY_ENDPOINT_THEN_RERUN_SPECIALIST",
+    "resume_condition": "BLOCKER_RESOLVED",
+    "executes_retry": false,
+    "approval_requested": false,
+    "task_sha256": "883ed816b4f857d3cee8cf1497accd1aa865f860c42d9982908ac591937e9f52",
+    "result_sha256": "8c986b48d5352c6e5685a1d4cb1f2cc47be5f573de135d82016777ca9ef6fb6c"
+  },
+  "pre_resolution_state": {
+    "original_escalation_attention": "DECISION",
+    "queued_as": "visual_planning_director DECISION (pre-rerun)",
+    "system_must_not_rerun": "respected \u2014 no rerun happened before explicit orchestration action"
+  },
+  "remediation_authority": {
+    "kind": "external resource recovery, observed \u2014 no service was started/stopped by this agent",
+    "probe": {
+      "route_selector_decision": "ROUTE",
+      "selected_host": "presto",
+      "endpoint": "http://192.168.61.185:11434",
+      "ollama_reachable_check": "pass",
+      "required_model_present_check": "pass",
+      "endpoint_http": 200,
+      "models_count": 9,
+      "probed_at": "2026-08-24T08:55:04.666315+00:00",
+      "blocker_resolved": true
+    },
+    "operator_action_ledger": "none authored by any agent; none on disk",
+    "production_operations_role": "recommendation only",
+    "hermes_role": "routing/observation only"
+  },
+  "resume_condition_transition": {
+    "receipt_id": "hermes-receipt-d1fcc52e-1fcf-43eb-bc5e-fdb6ff0a89b9",
+    "receipt_hash_binding": "381fda5d7e9235ffd7c10cf0a7415556ab54bec60d4ecc37ec16a3c962618002",
+    "pre": {
+      "met": false,
+      "detail": "blocker still present",
+      "evidence": "no resolved condition presented"
+    },
+    "post": {
+      "met": true,
+      "detail": "blocker reported resolved by observing layer",
+      "evidence": "canonical large_text selector ROUTE + real endpoint HTTP 200"
+    },
+    "fabricated": false
+  },
+  "explicit_reroute": {
+    "hermes_receipts": [
+      {
+        "action": "ROUTE",
+        "route_target": "production_operations",
+        "receipt_hash": "8dd6c694bd5f8f23502a09df63f4676edd5ae7a59e8ac346cf194f8937025e94"
+      },
+      {
+        "action": "RESUME_ORCHESTRATION",
+        "route_target": "visual_planning_director",
+        "receipt_hash": "381fda5d7e9235ffd7c10cf0a7415556ab54bec60d4ecc37ec16a3c962618002"
+      }
+    ],
+    "automatic_chain_count_at_rerun": 0,
+    "rerun_required_explicit_action": true
+  },
+  "specialist_rerun": {
+    "invocation_id": "visual_planning_director:visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX-resume-rerun-1:1",
+    "new_attempt_identity": "new task_id (visual-plan-01M0QR9DGRPW4MK8BMD1RGAYDX-resume-rerun-1), new task_sha256 8883cc75271c03e2\u2026",
+    "old_evidence_preserved": true,
+    "semantic_state": "PREVIEW_ONLY",
+    "state": "PREVIEW_ONLY",
+    "attention": "INFORMATION",
+    "original_blocker_repeated": false,
+    "handoff_next_owner": "mikko",
+    "task_sha256": "8883cc75271c03e29add15a94af143af51e0d8250ebca667a329fd6c035b37fa",
+    "result_sha256": "91f1b7dcc849ad7785018b506e05e4d195da3230cb49cbd6adc203f77c8fd74c",
+    "module_sha256": "17db4af035ca4a50780fecabf73d19b541ddf93b53b07152fd8a31afd41f11dc"
+  },
+  "human_operator_separation": {
+    "production_operations_wrote_operator_action": false,
+    "hermes_wrote_human_approval": false,
+    "rerun_treated_as_approval": false,
+    "human_sensitive_gates_preserved": true,
+    "automatic_chain_count_everywhere": 0
+  },
+  "decision_queue_behavior": {
+    "stale_vpd_decision": "superseded \u2014 Control Room now shows latest COMPLETED as PREVIEW_ONLY/INFORMATION, blocker null; old DECISION no longer queued",
+    "remaining_items": [
+      {
+        "agent": "story_editor",
+        "attention": "REVIEW",
+        "note": "legitimately still required: narrative_spine genuinely absent in canonical Script Builder data; needs real human story remediation"
+      },
+      {
+        "agent": "production_operations",
+        "attention": "REVIEW",
+        "note": "loop diagnosis itself; recommendation already executed \u2014 queue staleness finding recorded below"
+      }
+    ],
+    "finding": "cross-run queue dedupe: the storage DECISION (live-routing-v3 run) dropped off the queue once production_operations ran again in the loop run \u2014 a still-valid human decision can be pushed off-screen by a newer same-agent run. Flagged for Hermes/Codex lane."
+  },
+  "verdict": "HERMES LIVE RESUME LOOP PROVEN"
+}

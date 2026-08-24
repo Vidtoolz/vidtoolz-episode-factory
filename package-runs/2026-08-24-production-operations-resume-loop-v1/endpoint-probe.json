@@ -1,0 +1,11 @@
+{
+  "route_selector_decision": "ROUTE",
+  "selected_host": "presto",
+  "endpoint": "http://192.168.61.185:11434",
+  "ollama_reachable_check": "pass",
+  "required_model_present_check": "pass",
+  "endpoint_http": 200,
+  "models_count": 9,
+  "probed_at": "2026-08-24T08:55:04.666315+00:00",
+  "blocker_resolved": true
+}
