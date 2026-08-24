@@ -83,6 +83,8 @@
 (function () {
   'use strict';
   var WORKSPACE_API = '/api/visual-planning-workspace';
+  var WORKSPACE_SCHEMA_ID = 'visual-planning-workspace/v1';
+  var WORKSPACE_SCHEMA_VERSION = 1;
   var NONCE_STATUS_API = '/api/package-engine/status';
   var nonceHeader = 'x-vidtoolz-local-write-nonce';
   var localWriteNonce = '';
@@ -100,8 +102,30 @@
     return pairs.map(function (p) { return '<dt>' + esc(p[0]) + '</dt><dd>' + p[1] + '</dd>'; }).join('');
   }
   function failClosed(message) {
+    state = null;
+    el('workspace').hidden = true;
+    ['btnTakePreview', 'btnTakeApply', 'btnReturnPreview', 'btnReturnApply', 'btnRetryPreview', 'btnCancelPreview', 'btnReveal'].forEach(function (id) {
+      var control = el(id);
+      if (control) control.disabled = true;
+    });
     el('errorBanner').innerHTML = '<div class="error-banner"><strong>Workspace refused to load.</strong> ' + esc(message) +
       ' The workspace requires an exact run, agent, task and invocation from a Decision Queue link. <a href="/index.html#agentDecisionQueue">Return to the queue</a>.</div>';
+  }
+
+  function assertWorkspaceSchema(ws) {
+    if (!ws || typeof ws !== 'object' || Array.isArray(ws)) throw new Error('WORKSPACE_CONTRACT_MISMATCH: payload is not an object');
+    if (ws.workspace_schema_id !== WORKSPACE_SCHEMA_ID || ws.workspace_schema_version !== WORKSPACE_SCHEMA_VERSION) {
+      throw new Error('WORKSPACE_CONTRACT_MISMATCH: expected ' + WORKSPACE_SCHEMA_ID + ' version ' + WORKSPACE_SCHEMA_VERSION);
+    }
+    if (!ws.context || !ws.visual_plan || !ws.ownership || !ws.resource_tool || !Array.isArray(ws.human_attention)) {
+      throw new Error('WORKSPACE_CONTRACT_MISMATCH: required V1 sections are missing');
+    }
+    var coverage = ws.visual_plan.coverage;
+    if (!coverage || !Array.isArray(coverage.required_beats) || !Array.isArray(coverage.covered_beats)
+        || !Array.isArray(coverage.uncovered_beats) || !Array.isArray(ws.visual_plan.shots)) {
+      throw new Error('WORKSPACE_CONTRACT_MISMATCH: Visual Plan coverage is unavailable');
+    }
+    return ws;
   }
 
   function contextFromUrl() {
@@ -118,6 +142,7 @@
   async function loadWorkspace(ctx) {
     var params = new URLSearchParams({
       run_id: ctx.run_id, agent_id: ctx.agent_id, task_id: ctx.task_id, invocation_id: ctx.invocation_id,
+      workspace_schema_id: WORKSPACE_SCHEMA_ID, workspace_schema_version: String(WORKSPACE_SCHEMA_VERSION),
     });
     var res = await fetch(WORKSPACE_API + '?' + params.toString(), { cache: 'no-store' });
     var payload = await res.json();
@@ -176,19 +201,49 @@
       return;
     }
     el('attentionPanel').innerHTML = diagHtml + items.map(function (item) {
-      var handoff = item.handoff || {};
-      return '<div class="shot"><h3>' + badge(item.attention, item.attention === 'DECISION' ? 'bad' : 'warn') + ' ' + esc(item.invocation_id) + '</h3>' +
+      var rationale = item.operational_rationale || {};
+      var hermes = item.hermes_orchestration || {};
+      var evidence = Array.isArray(rationale.evidence_refs) ? rationale.evidence_refs.map(formatReference).filter(Boolean) : [];
+      var heading = item.attention + ' — ' + gateLabel(item.owning_gate);
+      return '<div class="shot"><h3>' + esc(heading) + '</h3>' +
         dl([
+          ['Attention', badge(item.attention, item.attention === 'DECISION' ? 'bad' : 'warn')],
           ['Queue item', '<code>' + esc(item.queue_item_id || '—') + '</code>'],
+          ['Run', '<code>' + esc(ws.context.run_id) + '</code>'],
+          ['Task', '<code>' + esc(ws.context.task_id) + '</code>'],
+          ['Invocation', '<code>' + esc(ws.context.invocation_id) + '</code>'],
           ['Reason', esc(item.reason)],
-          ['Rationale', esc(item.operational_rationale || '—')],
+          ['Why', esc(rationale.reason || rationale.decision || '—')],
+          ['Rationale source', esc(rationale.source || 'UNKNOWN')],
+          ['Confidence', rationale.confidence == null ? 'UNKNOWN' : esc(rationale.confidence)],
+          ['Escalation reason', esc(rationale.escalation_reason || '—')],
+          ['Evidence', evidence.length ? evidence.map(esc).join('; ') : 'None'],
           ['Blocker', esc(item.blocker || '—')],
           ['Gate', esc(item.owning_gate || '—')],
           ['Scope', esc(item.approval_scope_required || '—')],
-          ['Next owner', esc(handoff.next_owner || '—') + ' / ' + esc(handoff.next_action || '—')],
-          ['Hermes', badge(handoff.next_owner === 'hermes' ? 'ROUTED' : 'NOT_ROUTED', handoff.next_owner === 'hermes' ? 'ok' : 'info') + ' auto_executed: ' + esc(String(handoff.auto_executed === true))],
+          ['Hermes state', badge(hermes.state || 'NOT_REQUIRED', hermes.state === 'AWAITING_HERMES' ? 'warn' : 'info')],
+          ['Hermes route', esc(hermes.route_target || '—')],
+          ['Hermes action', esc(hermes.recommended_action || '—')],
+          ['Waiting for', esc(hermes.waiting_for || '—')],
+          ['Resume condition', esc(hermes.resume_condition || '—')],
+          ['Route authorization', esc(hermes.route_authorization || 'UNKNOWN')],
+          ['Auto executed', esc(String(hermes.auto_executed === true))],
         ]) + '</div>';
     }).join('');
+  }
+
+  function gateLabel(value) {
+    if (!value) return 'Human Attention';
+    return String(value).toLowerCase().split('_').map(function (word) { return word.charAt(0).toUpperCase() + word.slice(1); }).join(' ');
+  }
+
+  function formatReference(value) {
+    if (value == null) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value !== 'object' || Array.isArray(value)) return String(value);
+    var identity = value.ref || value.artifact_id || value.reference_id || value.id || value.sha256 || '';
+    var summary = value.summary || value.state || '';
+    return [identity, summary].filter(Boolean).join(': ');
   }
 
   function renderPlan(ws) {
@@ -196,16 +251,27 @@
     var approval = p.approval_state || {};
     var coverage = p.coverage || {};
     var warnings = (coverage.validation_warnings || []).concat(coverage.warnings || []);
+    var required = coverage.required_beats || [];
+    var covered = coverage.covered_beats || [];
+    var uncovered = coverage.uncovered_beats || [];
+    var shots = p.shots || [];
+    var mapping = covered.map(function (entry) {
+      return esc(entry.beat_id || 'UNKNOWN_BEAT') + ' → ' + esc((entry.shot_ids || []).join(', ') || 'no shots');
+    }).concat(uncovered.map(function (entry) {
+      return '<span class="warnline">' + esc(entry.beat_id || 'UNKNOWN_BEAT') + ' → uncovered</span>';
+    }));
     el('planPanel').innerHTML = dl([
       ['Plan ID', esc(p.plan_id)],
       ['Revision', esc(p.plan_revision)],
       ['Artifact', esc(p.artifact_reference)],
       ['SHA-256', '<code>' + esc(p.sha256) + '</code>'],
       ['Plan digest', '<code>' + esc(p.plan_digest_sha256 || '—') + '</code>'],
-      ['Story dependency', esc((p.story_dependency && p.story_dependency.version_id) || 'none') + ' @ ' + esc((p.story_dependency && p.story_dependency.content_hash || '—').slice(0, 16))],
+      ['Story dependency', esc((p.story_dependency && p.story_dependency.project_id) || 'none') + ' / ' + esc((p.story_dependency && p.story_dependency.version_id) || 'none') + ' @ ' + esc((p.story_dependency && p.story_dependency.content_hash || '—').slice(0, 16)) + ' ' + badge((p.story_dependency && p.story_dependency.freshness_state) || 'UNKNOWN', p.story_dependency && p.story_dependency.freshness_state === 'CURRENT' ? 'ok' : 'warn')],
       ['Approval', badge(approval.state || 'UNKNOWN', approval.valid ? 'ok' : 'bad') + ' ' + esc((approval.reason_codes || []).join(', '))],
       ['Gate', esc(p.gate_state.gate) + ' ' + badge(p.gate_state.state, p.gate_state.authorization_ok ? 'ok' : 'warn')],
-      ['Coverage', esc((coverage.sections || []).length) + ' sections / ' + esc((coverage.shots || p.shots || []).length) + ' shots'],
+      ['Coverage', esc(covered.length) + '/' + esc(required.length) + ' beats covered · ' + esc(shots.length) + ' shots · ' + badge(coverage.complete === true ? 'COMPLETE' : 'INCOMPLETE', coverage.complete === true ? 'ok' : 'warn')],
+      ['Uncovered beats', uncovered.length ? '<span class="warnline">' + uncovered.map(function (entry) { return esc(entry.beat_id || 'UNKNOWN_BEAT'); }).join(', ') + '</span>' : 'None'],
+      ['Beat → shot map', mapping.length ? mapping.join('<br>') : '<span class="warnline">Unavailable</span>'],
       ['Warnings', warnings.length ? '<span class="warnline">' + warnings.map(esc).join('; ') + '</span>' : 'none'],
     ]);
   }
@@ -224,13 +290,31 @@
           ['Framing', esc(framing.shot_brief || '—')],
           ['Prompt', badge(s.prompt_state, s.prompt_state === 'READY' ? 'ok' : 'warn')],
           ['Generation', badge(s.generation_state, 'info')],
-          ['Story linkage', esc(s.story_linkage || '—')],
-          ['Research', esc(s.research_linkage || '—')],
+          ['Story linkage', renderStoryLinkage(s.story_linkage)],
+          ['Research linkage', renderResearchLinkage(s.research_linkage)],
           ['Why it serves story', esc(s.why_it_serves_story || '—')],
         ]) +
         (warnings.length ? '<div class="warnline">⚠ ' + warnings.map(esc).join('; ') + '</div>' : '') +
         '</div>';
     }).join('') || '<div class="note">No shots.</div>';
+  }
+
+  function renderStoryLinkage(linkage) {
+    if (!linkage || typeof linkage !== 'object' || Array.isArray(linkage)) return 'None';
+    var fields = [
+      linkage.project_id ? 'Project: ' + linkage.project_id : null,
+      linkage.version_id ? 'Story: ' + linkage.version_id : null,
+      linkage.section_id ? 'Section: ' + linkage.section_id : null,
+    ].filter(Boolean);
+    return fields.length ? fields.map(esc).join(' · ') : 'None';
+  }
+
+  function renderResearchLinkage(linkage) {
+    if (!linkage || typeof linkage !== 'object' || Array.isArray(linkage)) return 'None';
+    var refs = Array.isArray(linkage.refs) ? linkage.refs.map(formatReference).filter(Boolean) : [];
+    if (!linkage.sensitive && !refs.length) return 'None';
+    return badge(linkage.sensitive ? 'SENSITIVE' : 'NOT_SENSITIVE', linkage.sensitive ? 'warn' : 'info') +
+      (refs.length ? ' · ' + refs.map(esc).join(', ') : ' · no evidence refs');
   }
 
   function renderResource(ws) {
@@ -249,6 +333,9 @@
   function renderOwnership(ws) {
     var o = ws.ownership || {};
     var caps = o.capabilities || {};
+    var manual = o.manual_artifact || {};
+    var handoff = manual.trusted_handoff || {};
+    var successor = o.successor_capability || {};
     el('ownershipPanel').innerHTML = dl([
       ['Current owner', badge(o.current_owner, o.current_owner === 'HUMAN' ? 'warn' : 'ok')],
       ['Revision', esc(o.revision)],
@@ -256,6 +343,13 @@
       ['Return to automation', caps.return_to_automation && caps.return_to_automation.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.return_to_automation && caps.return_to_automation.reason || 'n/a'), 'bad')],
       ['Retry', caps.retry && caps.retry.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.retry && caps.retry.reason || 'n/a'), 'bad')],
       ['Cancel', caps.cancel && caps.cancel.allowed ? badge('eligible', 'ok') : badge('blocked: ' + (caps.cancel && caps.cancel.reason || 'n/a'), 'bad')],
+      ['Manual artifact', manual.reference ? '<code>' + esc(manual.reference) + '</code>' : 'None'],
+      ['Manual artifact hash', manual.sha256 ? '<code>' + esc(manual.sha256) + '</code>' : '—'],
+      ['Trusted editing handoff', handoff.kind ? esc(handoff.kind) + ' · ' + esc(handoff.reference || manual.reference || '—') : 'External trusted path only; no cockpit write API'],
+      ['Automation fence', o.current_owner === 'HUMAN' ? badge('ACTIVE FOR THIS EXACT TASK', 'warn') : badge('not human-owned', 'info')],
+      ['Edit boundary', 'Creative shot intent may be edited through the trusted artifact path. IDs, lineage, revisions, digests and hashes are system-maintained and revalidated on return.'],
+      ['Stale on return', (o.stale_approvals || []).concat(o.stale_gates || []).map(esc).join(', ') || 'Computed by return preview after byte changes'],
+      ['Successor path', successor.available ? esc(successor.adapter_id) + ' → ' + esc(successor.required_next_gate || 'UNKNOWN') : 'Unavailable'],
     ]);
     renderControls(ws, caps);
   }
@@ -267,18 +361,18 @@
     html += '<label class="note" for="opReason">Operator reason (required for apply):</label>';
     html += '<textarea id="opReason" rows="2" placeholder="Why is a human taking or returning control of this exact task?"></textarea>';
     html += '<div>';
-    html += '<button id="btnTakePreview">Preview Take Manual Control</button>';
+    html += '<button id="btnTakePreview" ' + (caps.take_manual_control && caps.take_manual_control.allowed ? '' : 'disabled') + '>Preview Take Manual Control</button>';
     html += '<button id="btnTakeApply" class="apply" disabled>Apply Take Manual Control</button>';
-    html += '<button id="btnReturnPreview">Preview Return to Automation</button>';
+    html += '<button id="btnReturnPreview" ' + (caps.return_to_automation && caps.return_to_automation.allowed ? '' : 'disabled') + '>Preview Return to Automation</button>';
     html += '<button id="btnReturnApply" class="apply" disabled>Apply Return to Automation</button>';
     if (caps.retry && caps.retry.allowed) html += '<button id="btnRetryPreview">Preview RETRY</button>';
     if (caps.cancel && caps.cancel.allowed) html += '<button id="btnCancelPreview">Preview CANCEL</button>';
-    html += '<button id="btnReveal" ' + (o_manualArtifactAvailable(ws) ? '' : 'disabled') + '>Reveal Manual Artifact</button>';
+    html += '<button id="btnReveal" ' + (o_manualArtifactAvailable(ws) ? '' : 'disabled') + '>Open Read-only Artifact Preview</button>';
     html += '<button id="btnRefresh">Refresh Server Truth</button>';
     html += '</div>';
     el('controls').innerHTML = html;
 
-    var previewTokens = { takeover: null, returnTo: null };
+    var previews = { takeover: null, returnTo: null };
 
     function out(data, label) { el('actionOut').textContent = '— ' + label + ' —\n' + JSON.stringify(data, null, 2); }
     function reasonText() { return el('opReason').value.trim(); }
@@ -286,7 +380,7 @@
     el('btnTakePreview').onclick = async function () {
       try {
         var data = await postControl(ws.links.takeover_preview, Object.assign({}, target, { reason: reasonText() || 'operator preview' }));
-        previewTokens.takeover = data.preview_token;
+        previews.takeover = data;
         el('btnTakeApply').disabled = !data.eligible;
         out(data, 'TAKEOVER PREVIEW (read-only)');
       } catch (e) { out(String(e.message || e), 'TAKEOVER PREVIEW FAILED'); }
@@ -294,7 +388,7 @@
     el('btnTakeApply').onclick = async function () {
       if (!reasonText()) { out('An operator reason is required before applying.', 'VALIDATION'); return; }
       try {
-        var data = await postControl(ws.links.takeover_apply, Object.assign({}, target, { reason: reasonText(), preview_token: previewTokens.takeover }));
+        var data = await postControl(ws.links.takeover_apply, serializeApplyBody('takeover', target, reasonText(), previews.takeover));
         out(data, 'TAKEOVER APPLIED — refreshing server truth');
         await refresh();
       } catch (e) { out(String(e.message || e), 'TAKEOVER APPLY FAILED'); }
@@ -302,7 +396,7 @@
     el('btnReturnPreview').onclick = async function () {
       try {
         var data = await postControl(ws.links.return_preview, Object.assign({}, target, { reason: reasonText() || 'operator preview' }));
-        previewTokens.returnTo = data.preview_token;
+        previews.returnTo = data;
         el('btnReturnApply').disabled = !data.eligible;
         out(data, 'RETURN PREVIEW (read-only) — distinct from Apply');
       } catch (e) { out(String(e.message || e), 'RETURN PREVIEW FAILED'); }
@@ -310,7 +404,7 @@
     el('btnReturnApply').onclick = async function () {
       if (!reasonText()) { out('An operator reason is required before applying.', 'VALIDATION'); return; }
       try {
-        var data = await postControl(ws.links.return_apply, Object.assign({}, target, { reason: reasonText(), preview_token: previewTokens.returnTo }));
+        var data = await postControl(ws.links.return_apply, serializeApplyBody('return', target, reasonText(), previews.returnTo));
         out(data, 'RETURN APPLIED — successor created; refreshing server truth');
         await refresh();
       } catch (e) { out(String(e.message || e), 'RETURN APPLY FAILED'); }
@@ -331,6 +425,16 @@
     el('btnRefresh').onclick = refresh;
   }
 
+  function serializeApplyBody(kind, target, operatorReason, preview) {
+    if (!preview || !preview.preview_token) throw new Error('AGENT_CONTROL_PREVIEW_REQUIRED');
+    var body = Object.assign({}, target, { reason: operatorReason, preview_token: preview.preview_token });
+    if (kind === 'return') {
+      if (!preview.preview_created_at) throw new Error('AGENT_CONTROL_PREVIEW_STALE: return preview timestamp is missing');
+      body.preview_created_at = preview.preview_created_at;
+    }
+    return body;
+  }
+
   function o_manualArtifactAvailable(ws) {
     // Reveal only when ownership says a manual artifact exists for this task.
     var o = ws.ownership || {};
@@ -341,8 +445,9 @@
     var ctx = contextFromUrl();
     if (!ctx) return;
     try {
-      var ws = await loadWorkspace(ctx);
+      var ws = assertWorkspaceSchema(await loadWorkspace(ctx));
       state = ws;
+      el('errorBanner').innerHTML = '';
       el('workspace').hidden = false;
       renderContext(ws);
       renderAttention(ws);
@@ -355,6 +460,17 @@
     }
   }
 
+  window.VisualPlanningWorkspaceV1 = {
+    schema_id: WORKSPACE_SCHEMA_ID,
+    schema_version: WORKSPACE_SCHEMA_VERSION,
+    assertWorkspaceSchema: assertWorkspaceSchema,
+    serializeApplyBody: serializeApplyBody,
+    renderAttention: renderAttention,
+    renderPlan: renderPlan,
+    renderShots: renderShots,
+    renderOwnership: renderOwnership,
+    refresh: refresh,
+  };
   refresh();
 })();
 </script>

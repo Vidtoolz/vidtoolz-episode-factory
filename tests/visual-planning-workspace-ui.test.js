@@ -14,6 +14,11 @@ const path = require('node:path');
 
 const decisionQueue = require('../scripts/decision-queue.js');
 const workspace = require('../scripts/visual-planning-workspace.js');
+const controls = require('../scripts/agent-controls.js');
+const ownership = require('../scripts/execution-ownership.js');
+const ledger = require('../scripts/operator-action-ledger.js');
+const workspaceFixture = require('./fixtures/visual-planning-workspace-v1.js');
+const { bootWorkspacePage } = require('./fixtures/visual-planning-workspace-browser.js');
 
 // Registry fixture: Visual Planning dispatch-enabled so its obligation is
 // live; Presenter disabled to prove the scanner never fabricates queue items
@@ -110,4 +115,132 @@ test('WS5: workspace page routes all rendered strings through esc()', () => {
   assert.ok(/function esc\(/.test(html), 'esc() must exist');
   // No raw template interpolation of workspace fields into HTML.
   assert.ok(!/\$\{[a-z_.]+\}/i.test(html), 'no unescaped template interpolation in workspace page');
+});
+
+async function canonicalWorkspaceFixture() {
+  const root = tempRoot();
+  const fixture = workspaceFixture.materialize(root);
+  const payload = await workspace.buildVisualPlanningWorkspace(fixture.request, { root });
+  return { root, fixture, payload };
+}
+
+test('WS6: actual DOM maps the frozen V1 contract without object coercion or legacy fields', async () => {
+  const { payload } = await canonicalWorkspaceFixture();
+  payload.human_attention[0].hermes_orchestration = {
+    state: 'AWAITING_HERMES', blocker: 'Await Visual Plan review', resume_condition: 'Scoped approval is recorded',
+    route_target: 'visual_planning_director', recommended_action: 'resume_after_approval', waiting_for: 'Mikko',
+    route_authorization: 'AUTHORIZED_AFTER_GATE', auto_executed: false,
+  };
+  payload.visual_plan.shots[0].research_linkage = {
+    sensitive: true,
+    refs: [{ reference_id: 'research-result-fixture-1', state: 'BOUND' }],
+  };
+  const page = await bootWorkspacePage(payload);
+  assert.equal(page.node('errorBanner').innerHTML, '');
+  assert.equal(page.node('workspace').hidden, false);
+  assert.match(page.node('planPanel').innerHTML, /2\/2 beats covered/);
+  assert.match(page.node('planPanel').innerHTML, /2 shots/);
+  assert.match(page.node('planPanel').innerHTML, /COMPLETE/);
+  assert.match(page.node('planPanel').innerHTML, /visual-beat-01HF7YAT010000000000000001.*shot-01HF7YAT030000000000000003/);
+  assert.match(page.node('attentionPanel').innerHTML, /REVIEW — Visual Plan Approval/);
+  assert.match(page.node('attentionPanel').innerHTML, /Review complete beat coverage and the exact planned shots/);
+  assert.match(page.node('attentionPanel').innerHTML, /Rationale source<\/dt><dd>AGENT/);
+  assert.match(page.node('attentionPanel').innerHTML, /AWAITING_HERMES/);
+  assert.match(page.node('attentionPanel').innerHTML, /resume_after_approval/);
+  assert.match(page.node('attentionPanel').innerHTML, /VISUAL_PLAN_APPROVAL/);
+  assert.match(page.node('shotsPanel').innerHTML, /Project: workspace-fixture-project/);
+  assert.match(page.node('shotsPanel').innerHTML, /Story: script-version-01JWORKSPACE000000000000/);
+  assert.match(page.node('shotsPanel').innerHTML, /Research linkage<\/dt><dd>.*SENSITIVE.*research-result-fixture-1: BOUND/);
+  assert.doesNotMatch(page.node('attentionPanel').innerHTML + page.node('shotsPanel').innerHTML, /\[object Object\]/);
+  assert.match(page.node('resourcePanel').innerHTML, /UNKNOWN/);
+  assert.match(page.node('ownershipPanel').innerHTML, /AUTOMATION/);
+  const workspaceRequest = page.requests.find((request) => request.url.startsWith('/api/visual-planning-workspace'));
+  assert.match(workspaceRequest.url, /workspace_schema_id=visual-planning-workspace%2Fv1/);
+  assert.match(workspaceRequest.url, /workspace_schema_version=1/);
+});
+
+test('WS7: coverage DOM distinguishes complete, incomplete, zero-shot, and malformed payloads', async () => {
+  const { payload } = await canonicalWorkspaceFixture();
+  const incomplete = structuredClone(payload);
+  incomplete.visual_plan.coverage.covered_beats = incomplete.visual_plan.coverage.covered_beats.slice(0, 1);
+  incomplete.visual_plan.coverage.uncovered_beats = [{ beat_id: incomplete.visual_plan.coverage.required_beats[1].beat_id, section_id: 'sec-proof' }];
+  incomplete.visual_plan.coverage.complete = false;
+  incomplete.visual_plan.shots = incomplete.visual_plan.shots.slice(0, 1);
+  const incompletePage = await bootWorkspacePage(incomplete);
+  assert.match(incompletePage.node('planPanel').innerHTML, /1\/2 beats covered/);
+  assert.match(incompletePage.node('planPanel').innerHTML, /INCOMPLETE/);
+  assert.match(incompletePage.node('planPanel').innerHTML, /visual-beat-01HF7YAT020000000000000002/);
+
+  const zero = structuredClone(payload);
+  zero.visual_plan.coverage.covered_beats = [];
+  zero.visual_plan.coverage.uncovered_beats = zero.visual_plan.coverage.required_beats.map((beat) => ({ beat_id: beat.beat_id, section_id: beat.section_id }));
+  zero.visual_plan.coverage.complete = false;
+  zero.visual_plan.shots = [];
+  const zeroPage = await bootWorkspacePage(zero);
+  assert.match(zeroPage.node('planPanel').innerHTML, /0\/2 beats covered · 0 shots/);
+  assert.match(zeroPage.node('shotsPanel').innerHTML, /No shots/);
+
+  const malformed = structuredClone(payload);
+  delete malformed.visual_plan.coverage.covered_beats;
+  const malformedPage = await bootWorkspacePage(malformed);
+  assert.equal(malformedPage.node('workspace').hidden, true);
+  assert.match(malformedPage.node('errorBanner').innerHTML, /Visual Plan coverage is unavailable/);
+  assert.doesNotMatch(malformedPage.node('errorBanner').innerHTML, /0\/2|COMPLETE/);
+});
+
+test('WS8: browser rejects schema drift visibly and leaves mutation controls unavailable', async () => {
+  const { payload } = await canonicalWorkspaceFixture();
+  for (const mutation of [
+    (value) => { value.workspace_schema_id = 'visual-planning-workspace/v2'; },
+    (value) => { value.workspace_schema_version = 2; },
+  ]) {
+    const invalid = structuredClone(payload);
+    mutation(invalid);
+    const page = await bootWorkspacePage(invalid);
+    assert.equal(page.node('workspace').hidden, true);
+    assert.match(page.node('errorBanner').innerHTML, /WORKSPACE_CONTRACT_MISMATCH/);
+    assert.match(page.node('errorBanner').innerHTML, /Return to the queue/);
+    assert.equal(page.node('btnTakeApply'), null);
+    assert.equal(page.node('btnReturnApply'), null);
+  }
+});
+
+test('WS9: actual return UI serializer round-trips preview_created_at to canonical apply', async () => {
+  const { root, fixture } = await canonicalWorkspaceFixture();
+  const actor = ledger.localActorContext({ username: 'mikko' });
+  const target = { ...fixture.request, reason: 'Take exact workspace task for serializer proof.' };
+  const takePreview = controls.previewTakeManualControl(target, { root });
+  controls.applyTakeManualControl({ ...target, preview_token: takePreview.preview_token }, { root, actor, recordId: 'workspace-ui-take' });
+  const workspaceOptions = { root };
+  const currentPayload = () => workspace.buildVisualPlanningWorkspace(fixture.request, workspaceOptions);
+  let returnPreview;
+  const page = await bootWorkspacePage(currentPayload, { controls: {
+    '/api/agent-control-room/return-to-automation/preview': async (body) => {
+      returnPreview = await controls.previewReturnToAutomation(body, { root, now: '2026-08-24T14:00:00.000Z' });
+      return returnPreview;
+    },
+    '/api/agent-control-room/return-to-automation/apply': (body) => controls.applyReturnToAutomation(body, { root, actor, recordId: 'workspace-ui-return', now: '2026-08-24T14:01:00.000Z' }),
+  } });
+  assert.match(page.node('ownershipPanel').innerHTML, /Manual artifact/);
+  assert.match(page.node('ownershipPanel').innerHTML, /ACTIVE FOR THIS EXACT TASK/);
+  assert.match(page.node('ownershipPanel').innerHTML, /system-maintained and revalidated on return/);
+  page.node('opReason').value = 'Return exact workspace task through browser serializer.';
+  await page.click('btnReturnPreview');
+  assert.equal(page.node('btnReturnApply').disabled, false);
+  const exactClientBody = page.api.serializeApplyBody('return', fixture.request, page.node('opReason').value, returnPreview);
+  const missingTimestampBody = { ...exactClientBody };
+  delete missingTimestampBody.preview_created_at;
+  await assert.rejects(
+    () => controls.applyReturnToAutomation(missingTimestampBody, { root, actor }),
+    (error) => error.code === 'AGENT_CONTROL_PREVIEW_STALE',
+  );
+  await page.click('btnReturnApply');
+  const applyRequest = page.requests.find((request) => request.url === '/api/agent-control-room/return-to-automation/apply');
+  assert.equal(applyRequest.body.preview_token, returnPreview.preview_token);
+  assert.equal(applyRequest.body.preview_created_at, returnPreview.preview_created_at);
+  assert.equal(applyRequest.body.run_id, fixture.request.run_id);
+  assert.equal(applyRequest.body.agent_id, fixture.request.agent_id);
+  assert.equal(applyRequest.body.task_id, fixture.request.task_id);
+  assert.equal(applyRequest.body.invocation_id, fixture.request.invocation_id);
+  assert.equal(ownership.readOwnership(root, fixture.request).current_owner, 'AUTOMATION');
 });
