@@ -26,7 +26,9 @@ test('operator controls canary: REVIEW queue → read-only preview → chained r
   const taskPath = path.join(root, 'task.json'); write(taskPath, { task_id: 'story-task-1', package_run_id: 'run-canary', assignment: { action: 'review' } });
   const first = await runner.runRegisteredAgent({ repoRoot: root, agentId: 'story_editor', runId: 'run-canary', taskPath });
   let room = await controlRoom.buildAgentControlRoom({ root });
-  assert.equal(room.human_decision_queue.length, 1); assert.equal(room.human_decision_queue[0].agent_id, 'story_editor'); assert.equal(room.human_decision_queue[0].attention, 'REVIEW');
+  assert.equal(room.human_decision_queue.human_decision_queue.length, 1);
+  assert.equal(room.human_decision_queue.human_decision_queue[0].agent_id, 'story_editor');
+  assert.equal(room.human_decision_queue.human_decision_queue[0].attention, 'REVIEW');
   const approvalPath = path.join(root, 'package-runs/run-canary/human-approval-binding.json'); write(approvalPath, { scope: 'PLAN_SCRIPT_APPROVAL', artifact_sha256: 'unchanged' }); const approvalBytes = fs.readFileSync(approvalPath);
   const input = { run_id: 'run-canary', agent_id: 'story_editor', invocation_id: first.invocation.invocation_id, reason: 'Retry the same candidate review.' };
   const beforePreview = fs.readFileSync(path.join(root, 'package-runs/run-canary/agents/story_editor/story-task-1/invocation.json'));

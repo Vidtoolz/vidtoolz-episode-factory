@@ -610,20 +610,39 @@ test('operational rationale survives runner evidence into Control Room projectio
   assert.equal(output.agents[0].operational_rationale.confidence, null);
 });
 
-test('human decision queue includes every REVIEW or DECISION agent exactly once', async () => {
+test('canonical human decision queue uses obligation evidence and preserves every exact REVIEW/DECISION', async () => {
   const f = fixture(['review', 'decision', 'info']);
-  const views = {
-    review: { state: 'AWAITING_HUMAN_REVIEW', current_task: 'review-task', attention: 'REVIEW', blocker: 'inspect plan' },
-    decision: { state: 'NEEDS_HUMAN_DECISION', current_task: 'decision-task', attention: 'DECISION', blocker: 'choose direction' },
-    info: { state: 'COMPLETE', current_task: 'info-task', attention: 'INFORMATION' },
-  };
-  const output = await controlRoom.buildAgentControlRoom({ root: f.root, implementationLoader: implementation(views, []), statusTaskProvider: () => ({ action: 'status' }) });
-  assert.deepEqual(output.human_decision_queue.map((item) => item.agent_id).sort(), ['decision', 'review']);
-  assert.equal(new Set(output.human_decision_queue.map((item) => item.queue_item_id)).size, 2);
-  for (const item of output.human_decision_queue) {
-    assert.ok(item.artifact.value); assert.ok(item.role); assert.ok(item.owning_gate); assert.ok(item.approval_scope_required);
-    assert.ok(item.operational_rationale.reason); assert.match(item.workspace, /^\//);
+  writeRunnerInvocation(f, { agent_id: 'review', task_id: 'review-task', state: 'AWAITING_HUMAN_REVIEW', attention: 'REVIEW', blocker: 'inspect plan' });
+  writeRunnerInvocation(f, { agent_id: 'decision', task_id: 'decision-task', state: 'AWAITING_HUMAN_DECISION', attention: 'DECISION', blocker: 'choose direction' });
+  writeRunnerInvocation(f, { agent_id: 'info', task_id: 'info-task', state: 'COMPLETE', attention: 'INFORMATION' });
+  const output = await controlRoom.buildAgentControlRoom({ root: f.root });
+  assert.equal(output.human_decision_queue.schema_version, 2);
+  assert.equal(output.human_decision_queue.available, true);
+  assert.equal(output.human_decision_queue_v2, undefined, 'split V2 projection must be removed');
+  const active = output.human_decision_queue.human_decision_queue;
+  assert.deepEqual(active.map((item) => item.agent_id).sort(), ['decision', 'review']);
+  assert.equal(new Set(active.map((item) => item.queue_item_id)).size, 2);
+  for (const item of active) {
+    assert.ok(item.owning_gate); assert.ok(item.approval_scope_required);
+    assert.match(item.workspace, /^\//);
   }
+});
+
+test('canonical queue construction failure is typed and never falls back to latest-per-agent semantics', async () => {
+  const f = fixture(['review']);
+  const output = await controlRoom.buildAgentControlRoom({
+    root: f.root,
+    implementationLoader: implementation({ review: { state: 'AWAITING_HUMAN_REVIEW', current_task: 'hidden-if-legacy', attention: 'REVIEW', blocker: 'inspect' } }, []),
+    statusTaskProvider: () => ({ action: 'status' }),
+    decisionQueueBuilder: () => { const error = new Error('injected result hash verification failure'); error.code = 'QUEUE_RESULT_HASH_INVALID'; throw error; },
+  });
+  assert.equal(output.human_decision_queue.available, false);
+  assert.equal(output.human_decision_queue.status, 'HUMAN_DECISION_QUEUE_INVALID');
+  assert.equal(output.human_decision_queue.human_decision_queue, null);
+  assert.equal(output.human_decision_queue.diagnostics[0].cause_code, 'QUEUE_RESULT_HASH_INVALID');
+  assert.equal(output.agents.length, 1, 'agent rows remain visible during queue failure');
+  assert.equal(output.agents[0].attention, 'REVIEW');
+  assert.equal(output.human_decision_queue_v2, undefined);
 });
 
 test('active agent joins live resource state without treating missing telemetry as healthy', async () => {
@@ -921,6 +940,9 @@ test('cockpit UI renders a registry-driven panel with manual refresh', () => {
   assert.match(ui, /\/api\/agent-control-room/);
   assert.match(ui, /payload\.agents/);
   assert.match(ui, /human_decision_queue/);
+  assert.doesNotMatch(ui, /human_decision_queue_v2/);
+  assert.match(ui, /Human Decision Queue unavailable/);
+  assert.match(ui, /obligations are not being replaced by legacy queue semantics/);
   assert.match(ui, /Open relevant workspace/);
   assert.match(ui, /DISPATCH /);
   assert.match(ui, /Resource live/);

@@ -9,7 +9,6 @@ const os = require('node:os');
 const { deriveOperationalRationale } = require('./operational-rationale.js');
 const hermesEscalation = require('./hermes-escalation.js');
 const decisionQueueModule = require('./decision-queue.js');
-const { scopeForAgent, scopeForHumanGate } = require('./approval-scopes.js');
 
 const DEFAULT_ROOT = path.resolve(__dirname, '..');
 const ATTENTION_PRIORITY = Object.freeze({ DECISION: 0, REVIEW: 1 });
@@ -596,33 +595,23 @@ function plannedRoles(contract, registeredIds) {
     }));
 }
 
-function decisionArtifact(agent) {
-  if (agent.current_artifact) return { kind: 'artifact', value: agent.current_artifact };
-  return { kind: 'task', value: agent.task_id || agent.current_task || `${agent.agent_id}:unbound-task` };
-}
-
-function buildHumanDecisionQueue(agents, registrations) {
-  const registrationById = new Map(registrations.map((agent) => [agent.agent_id, agent]));
-  return agents.filter((agent) => ['REVIEW', 'DECISION'].includes(agent.attention)).map((agent) => {
-    const registration = registrationById.get(agent.agent_id) || {};
-    const artifact = decisionArtifact(agent);
-    const gate = scopeForHumanGate(registration.human_gate_type) || scopeForAgent(agent.agent_id);
-    if (!gate) throw new Error(`no canonical approval scope for decision queue role ${agent.agent_id}`);
-    const invocationId = agent.invocation?.invocation_id || null;
-    const workspace = agent.run_id
-      ? `/package-runs-dashboard.html?run=${encodeURIComponent(agent.run_id)}&agent=${encodeURIComponent(agent.agent_id)}&task=${encodeURIComponent(agent.task_id || '')}`
-      : `/#agentControlRoom?agent=${encodeURIComponent(agent.agent_id)}`;
-    return {
-      queue_item_id: `${agent.attention}:${agent.agent_id}:${invocationId || agent.task_id || agent.current_task || 'current'}`,
-      agent_id: agent.agent_id, role: agent.role, invocation_id: invocationId,
-      task_id: agent.task_id || agent.current_task || null, artifact, attention: agent.attention,
-      reason: agent.operational_rationale?.reason || agent.blocker,
-      operational_rationale: agent.operational_rationale,
-      owning_gate: gate, approval_scope_required: gate,
-      lifecycle_state: agent.runtime_status || agent.state,
-      dispatch_enabled: dispatchEnabled(registration), workspace,
-    };
-  });
+function invalidDecisionQueue(error) {
+  return {
+    schema_version: 2,
+    available: false,
+    status: 'HUMAN_DECISION_QUEUE_INVALID',
+    queue_identity: 'unavailable: canonical obligation queue construction failed',
+    states: [...decisionQueueModule.QUEUE_ITEM_STATES],
+    human_decision_queue: null,
+    human_decision_history: null,
+    counts: null,
+    diagnostics: [{
+      code: 'HUMAN_DECISION_QUEUE_INVALID',
+      cause_code: error?.code || 'QUEUE_CONSTRUCTION_FAILED',
+      severity: 'ERROR',
+      message: String(error?.message || 'canonical human decision queue construction failed').slice(0, 600),
+    }],
+  };
 }
 
 function resourceKind(agent) {
@@ -700,15 +689,23 @@ async function buildAgentControlRoom(options = {}) {
     acc[agent.state] = (acc[agent.state] || 0) + 1;
     return acc;
   }, {});
-  const decisionQueue = buildHumanDecisionQueue(agents, registered);
-  // Human Decision Queue V2 — obligation semantics. Every unresolved human
+  // Canonical Human Decision Queue — obligation semantics. Every unresolved human
   // obligation is an item; a newer same-agent completion never removes an
   // unrelated still-required decision. Resolved/superseded/stale obligations
   // are preserved in history. Read-only; never fabricates approval.
-  const obligationQueue = (() => {
-    try { return decisionQueueModule.buildDecisionQueue(root, registry, options.decisionQueueOptions || {}); }
-    catch (_) { return null; }
-  })();
+  let decisionQueue;
+  try {
+    const builder = options.decisionQueueBuilder || decisionQueueModule.buildDecisionQueue;
+    decisionQueue = builder(root, registry, options.decisionQueueOptions || {});
+    if (!decisionQueue || decisionQueue.schema_version !== 2
+        || !Array.isArray(decisionQueue.diagnostics)
+        || (decisionQueue.available !== false && (!Array.isArray(decisionQueue.human_decision_queue)
+          || !Array.isArray(decisionQueue.human_decision_history)))) {
+      throw new decisionQueueModule.DecisionQueueError('QUEUE_PROJECTION_INVALID', 'canonical queue builder returned an invalid projection');
+    }
+  } catch (error) {
+    decisionQueue = invalidDecisionQueue(error);
+  }
   // Hermes Escalation Bridge V1 — derived, read-only orchestration projection
   // over the decision queue. Never mutates attention, gates, or approvals.
   const hermes_orchestration = (() => {
@@ -716,7 +713,8 @@ async function buildAgentControlRoom(options = {}) {
       // The projection is per-run; derive the run from the queue item's own
       // workspace link (each item belongs to exactly one canonical run).
       const runs = new Map();
-      for (const item of decisionQueue) {
+      if (decisionQueue.available === false) return null;
+      for (const item of decisionQueue.human_decision_queue) {
         const match = /run=([^&]+)/.exec(item.workspace || '');
         if (!match) continue;
         const runId = decodeURIComponent(match[1]);
@@ -739,7 +737,6 @@ async function buildAgentControlRoom(options = {}) {
     live_resources: liveResources,
     agents,
     human_decision_queue: decisionQueue,
-    human_decision_queue_v2: obligationQueue,
     hermes_orchestration,
     planned_roles: plannedRoles(contract, ids),
     non_agent_roles: {
@@ -775,6 +772,6 @@ async function buildAgentControlRoom(options = {}) {
 
 module.exports = {
   modulePathFor, inspectImplementation, normalizeProjection, sortAgents,
-  discoverRunnerContexts, normalizeRunnerProjection, plannedRoles, buildHumanDecisionQueue,
+  discoverRunnerContexts, normalizeRunnerProjection, plannedRoles, invalidDecisionQueue,
   resourceKind, joinResourceStatus, buildAgentControlRoom,
 };

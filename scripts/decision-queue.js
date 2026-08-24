@@ -28,6 +28,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { scopeForAgent, scopeForHumanGate } = require('./approval-scopes.js');
 
 const ATTENTION_RANK = Object.freeze({ AUTONOMOUS: 0, INFORMATION: 1, REVIEW: 2, DECISION: 3 });
@@ -43,6 +44,27 @@ function readJsonSafe(filePath) {
   try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); } catch (_) { return null; }
 }
 
+function diagnostic(code, detail = {}) {
+  return { code, severity: 'ERROR', ...detail };
+}
+
+function queueIdentity(obligation) {
+  const identity = {
+    run_id: obligation.run_id,
+    agent_id: obligation.agent_id,
+    invocation_id: obligation.invocation_id,
+    task_id: obligation.task_id,
+    gate: obligation.owning_gate,
+    scope: obligation.approval_scope_required,
+    artifacts: (obligation.artifacts || []).map((artifact) => ({
+      artifact_id: artifact.artifact_id, path: artifact.path, sha256: artifact.sha256,
+    })),
+    task_sha256: obligation.task_sha256,
+    result_sha256: obligation.result_sha256,
+  };
+  return crypto.createHash('sha256').update(JSON.stringify(identity)).digest('hex');
+}
+
 function canonicalGate(registration, agentId) {
   return scopeForHumanGate(registration?.human_gate_type) || scopeForAgent(agentId);
 }
@@ -50,10 +72,28 @@ function canonicalGate(registration, agentId) {
 // Hermes orchestration receipts live under the run's orchestration/ dir
 // (Hermes Escalation Bridge V1). A RESUME_ORCHESTRATION receipt bound to this
 // obligation's source invocation proves a sanctioned rerun lineage.
-function findResumeReceipt(root, obligation) {
+function findResumeReceipt(root, obligation, diagnostics = []) {
   const receiptsPath = path.join(root, 'package-runs', obligation.run_id, 'orchestration', 'hermes-receipts.json');
+  if (!fs.existsSync(receiptsPath)) return null;
   const ledger = readJsonSafe(receiptsPath);
-  if (!ledger || !Array.isArray(ledger.receipts)) return null;
+  if (!ledger || !Array.isArray(ledger.receipts)) {
+    diagnostics.push(diagnostic('QUEUE_HERMES_RECEIPT_INVALID', {
+      run_id: obligation.run_id,
+      invocation_id: obligation.invocation_id,
+      message: 'Hermes receipt evidence is malformed; the obligation remains unresolved',
+    }));
+    return null;
+  }
+  if (ledger.receipts.some((receipt) => !receipt || typeof receipt !== 'object'
+      || typeof receipt.receipt_id !== 'string' || !receipt.receipt_id
+      || typeof receipt.hermes_action !== 'string')) {
+    diagnostics.push(diagnostic('QUEUE_HERMES_RECEIPT_INVALID', {
+      run_id: obligation.run_id,
+      invocation_id: obligation.invocation_id,
+      message: 'Hermes receipt entries are malformed; the obligation remains unresolved',
+    }));
+    return null;
+  }
   return [...ledger.receipts].reverse().find((receipt) => receipt.hermes_action === 'RESUME_ORCHESTRATION'
     && receipt.source_agent_id === obligation.agent_id
     && (receipt.source_invocation_id === obligation.invocation_id || receipt.source_task_id === obligation.task_id)) || null;
@@ -61,24 +101,66 @@ function findResumeReceipt(root, obligation) {
 
 function artifactBinding(invocation, attemptDir) {
   const artifacts = Array.isArray(invocation.artifacts) ? invocation.artifacts : [];
-  return artifacts.map((artifact) => ({
-    artifact_id: artifact.field || artifact.artifact_id || null,
-    path: artifact.path || null,
-    sha256: artifact.sha256 || null,
-    exists: artifact.path ? fs.existsSync(path.join(attemptDir, artifact.path)) : false,
-  }));
+  return artifacts.map((artifact) => {
+    const artifactPath = typeof artifact.path === 'string' ? path.resolve(attemptDir, artifact.path) : null;
+    const relative = artifactPath ? path.relative(attemptDir, artifactPath) : null;
+    const safePath = Boolean(relative && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+    let exists = false;
+    let observedSha256 = null;
+    if (safePath) {
+      try {
+        const stat = fs.lstatSync(artifactPath);
+        exists = stat.isFile() && !stat.isSymbolicLink();
+        if (exists) observedSha256 = crypto.createHash('sha256').update(fs.readFileSync(artifactPath)).digest('hex');
+      } catch (_) { exists = false; }
+    }
+    return {
+      artifact_id: artifact.field || artifact.artifact_id || null,
+      path: artifact.path || null,
+      sha256: artifact.sha256 || null,
+      safe_path: safePath,
+      exists,
+      verified: exists && observedSha256 === artifact.sha256,
+    };
+  });
 }
 
 function obligationFromInvocation(root, runId, registration, record, attemptDir) {
   const invocation = readJsonSafe(path.join(attemptDir, 'invocation.json'));
-  if (!invocation || invocation.infrastructure_state !== 'COMPLETE') return null;
+  if (!invocation) throw new DecisionQueueError('QUEUE_INVOCATION_EVIDENCE_INVALID', 'invocation evidence is malformed');
+  if (invocation.infrastructure_state !== 'COMPLETE') return null;
   const handoff = invocation.handoff_summary || {};
   const attention = String(handoff.attention || '').toUpperCase();
   if (!OBLIGATION_ATTENTION.includes(attention)) return null;
   const result = readJsonSafe(path.join(attemptDir, 'result.json'));
+  if (!result || typeof result !== 'object' || Array.isArray(result)) {
+    throw new DecisionQueueError('QUEUE_RESULT_EVIDENCE_INVALID', 'result evidence is malformed');
+  }
+  if ((result.agent_id !== undefined && result.agent_id !== record.agent_id)
+      || (result.task_id !== undefined && result.task_id !== invocation.task_id)) {
+    throw new DecisionQueueError('QUEUE_RESULT_IDENTITY_INVALID', 'result evidence is detached from the exact agent or task');
+  }
   const gate = canonicalGate(registration, record.agent_id) || null;
-  return {
-    queue_item_id: `${attention}:${runId}:${record.agent_id}:${invocation.invocation_id}`,
+  const artifacts = artifactBinding(invocation, attemptDir);
+  if (!gate || !SCOPE_RE.test(gate)) {
+    throw new DecisionQueueError('QUEUE_APPROVAL_SCOPE_INVALID', `no canonical approval scope exists for ${record.agent_id}`);
+  }
+  if (typeof invocation.invocation_id !== 'string' || !invocation.invocation_id
+      || typeof invocation.task_id !== 'string' || !invocation.task_id
+      || invocation.agent_id !== record.agent_id || invocation.task_id !== record.task_id
+      || !/^[a-f0-9]{64}$/.test(invocation.task_sha256 || '')
+      || !/^[a-f0-9]{64}$/.test(invocation.result_sha256 || '')) {
+    throw new DecisionQueueError('QUEUE_OBLIGATION_IDENTITY_INVALID', 'obligation evidence lacks exact agent/task/invocation identity');
+  }
+  if (artifacts.some((artifact) => !artifact.artifact_id
+      || typeof artifact.path !== 'string' || !artifact.path
+      || artifact.safe_path !== true
+      || !/^[a-f0-9]{64}$/.test(artifact.sha256 || '')
+      || artifact.verified !== true)) {
+    throw new DecisionQueueError('QUEUE_ARTIFACT_BINDING_INVALID', 'obligation artifact evidence is incomplete');
+  }
+  const obligation = {
+    queue_item_id: null,
     state: 'ACTIVE',
     run_id: runId,
     agent_id: record.agent_id,
@@ -96,15 +178,17 @@ function obligationFromInvocation(root, runId, registration, record, attemptDir)
     dispatch_enabled: dispatchEnabledFor(registration),
     task_sha256: invocation.task_sha256 || null,
     result_sha256: invocation.result_sha256 || null,
-    artifacts: artifactBinding(invocation, attemptDir),
+    artifacts,
     operational_rationale: result?.operational_rationale || result?.control_room?.operational_rationale || null,
     handoff,
     completed_at: invocation.ended_at || record.completed_at || null,
     completed_epoch: Date.parse(invocation.ended_at || record.completed_at || '') || 0,
     attempt_dir: path.relative(root, attemptDir),
-    workspace: workspaceLink(runId, record.agent_id, invocation.task_id),
+    workspace: workspaceLink(runId, record.agent_id, invocation.task_id, invocation.invocation_id),
     resolution: null,
   };
+  obligation.queue_item_id = `obligation:${queueIdentity(obligation)}`;
+  return obligation;
 }
 
 // Only dispatch-enabled roles produce live obligations. Evidence from a
@@ -116,13 +200,14 @@ function dispatchEnabledFor(registration) {
   return lifecycle.proven === 'PROVEN' && lifecycle.autonomous_dispatch === 'ENABLED';
 }
 
-// Queue→workspace navigation must carry the exact run/agent/task context so a
-// click lands on the precise workspace state, never a generic page.
-function workspaceLink(runId, agentId, taskId) {
+// Queue→workspace navigation must carry the exact run/agent/task/invocation
+// context so a click lands on the precise workspace state, never a generic
+// page. The workspace backend rejects any request missing one of them.
+function workspaceLink(runId, agentId, taskId, invocationId) {
   const base = agentId === 'visual_planning_director'
     ? '/visual-planning-workspace.html'
     : '/package-runs-dashboard.html';
-  return `${base}?run=${encodeURIComponent(runId)}&agent=${encodeURIComponent(agentId)}&task=${encodeURIComponent(taskId || '')}`;
+  return `${base}?run=${encodeURIComponent(runId)}&agent=${encodeURIComponent(agentId)}&task=${encodeURIComponent(taskId || '')}&invocation=${encodeURIComponent(invocationId || '')}`;
 }
 
 function scanObligations(root, registeredIds, registrations) {
@@ -139,11 +224,20 @@ function scanObligations(root, registeredIds, registrations) {
     const indexPath = path.join(packageRunsRoot, runId, 'agents', 'index.json');
     if (!fs.existsSync(indexPath)) continue;
     const index = readJsonSafe(indexPath);
-    if (!index || !Array.isArray(index.invocations)) { diagnostics.push({ run_id: runId, code: 'QUEUE_INDEX_INVALID' }); continue; }
+    if (!index || !Array.isArray(index.invocations)) {
+      diagnostics.push(diagnostic('QUEUE_INDEX_INVALID', { run_id: runId, message: 'runner index is malformed' }));
+      continue;
+    }
     for (const record of index.invocations) {
       if (!record || !registeredIds.has(record.agent_id)) continue;
       const taskDir = path.join(packageRunsRoot, runId, 'agents', record.agent_id, String(record.task_id || ''));
-      if (!fs.existsSync(taskDir)) continue;
+      if (!fs.existsSync(taskDir)) {
+        diagnostics.push(diagnostic('QUEUE_TASK_EVIDENCE_MISSING', {
+          run_id: runId, agent_id: record.agent_id, task_id: record.task_id || null,
+          message: 'registered queue task evidence is missing',
+        }));
+        continue;
+      }
       const attempts = [];
       const baseInvocation = path.join(taskDir, 'invocation.json');
       if (fs.existsSync(baseInvocation)) attempts.push({ dir: taskDir, number: 1 });
@@ -160,7 +254,16 @@ function scanObligations(root, registeredIds, registrations) {
         // Dedupe by invocation_id: the runner index can list the same attempt
         // once per attempt record, and the base dir mirrors attempt 1.
         if (seenInvocations.has(`${runId}\u0000${record.agent_id}\u0000${attempt.dir}`)) continue;
-        const obligation = obligationFromInvocation(root, runId, byId.get(record.agent_id), record, attempt.dir);
+        let obligation;
+        try {
+          obligation = obligationFromInvocation(root, runId, byId.get(record.agent_id), record, attempt.dir);
+        } catch (error) {
+          diagnostics.push(diagnostic(error.code || 'QUEUE_OBLIGATION_EVIDENCE_INVALID', {
+            run_id: runId, agent_id: record.agent_id, task_id: record.task_id,
+            message: error.message,
+          }));
+          continue;
+        }
         if (!obligation) continue;
         if (seenInvocations.has(obligation.invocation_id)) continue;
         seenInvocations.add(obligation.invocation_id);
@@ -220,7 +323,7 @@ function supersessionEvidence(obligationsByAgentRun, obligation) {
   return null;
 }
 
-function approvalResolution(evidenceProviders, obligation) {
+function approvalResolution(evidenceProviders, obligation, diagnostics = []) {
   // Approval resolution is supplied exclusively by canonical approval
   // bindings verified against exact artifact bytes. Nothing in this module
   // records or manufactures approval.
@@ -228,6 +331,15 @@ function approvalResolution(evidenceProviders, obligation) {
     .map((providerEntry) => typeof providerEntry === 'function' ? providerEntry(obligation) : null)
     .find(Boolean);
   if (!provider || provider.verdict !== 'VALID') return null;
+  if (provider.scope !== obligation.approval_scope_required) {
+    diagnostics.push(diagnostic('QUEUE_APPROVAL_SCOPE_MISMATCH', {
+      run_id: obligation.run_id, agent_id: obligation.agent_id,
+      invocation_id: obligation.invocation_id, task_id: obligation.task_id,
+      expected_scope: obligation.approval_scope_required, observed_scope: provider.scope || null,
+      message: 'approval resolution evidence does not match the exact obligation scope',
+    }));
+    return null;
+  }
   return {
     resolved_by: 'APPROVAL_VALID',
     scope: provider.scope || obligation.approval_scope_required,
@@ -238,6 +350,7 @@ function approvalResolution(evidenceProviders, obligation) {
 }
 
 function resolveObligations(root, obligations, options = {}) {
+  const diagnostics = Array.isArray(options.diagnostics) ? options.diagnostics : [];
   const byAgentRun = new Map();
   for (const obligation of obligations) {
     const key = `${obligation.run_id}\u0000${obligation.agent_id}`;
@@ -248,21 +361,31 @@ function resolveObligations(root, obligations, options = {}) {
     if (!obligation.dispatch_enabled) {
       obligation.state = 'INVALID';
       obligation.resolution = { resolved_by: 'DISPATCH_NOT_ENABLED', reason: 'evidence from a role whose autonomous dispatch is disabled cannot become a live human obligation', resolved_at: null };
+      diagnostics.push(diagnostic('QUEUE_DISABLED_ROLE_EVIDENCE', {
+        run_id: obligation.run_id, agent_id: obligation.agent_id,
+        invocation_id: obligation.invocation_id, task_id: obligation.task_id,
+        message: 'disabled-role evidence cannot become a live human obligation',
+      }));
       continue;
     }
     if (!resultEvidenceVerifies(root, obligation)) {
       obligation.state = 'INVALID';
       obligation.resolution = { resolved_by: 'EVIDENCE_TAMPERED', reason: 'recorded result bytes no longer verify', resolved_at: null };
+      diagnostics.push(diagnostic('QUEUE_RESULT_HASH_INVALID', {
+        run_id: obligation.run_id, agent_id: obligation.agent_id,
+        invocation_id: obligation.invocation_id, task_id: obligation.task_id,
+        message: 'recorded result bytes no longer verify',
+      }));
       continue;
     }
-    const approval = approvalResolution(options.approvalEvidenceProviders, obligation);
+    const approval = approvalResolution(options.approvalEvidenceProviders, obligation, diagnostics);
     if (approval) {
       obligation.state = 'RESOLVED';
       obligation.resolution = approval;
       continue;
     }
     const superseded = supersessionEvidence(byAgentRun, obligation)
-      || supersessionEvidenceFromCompletions(root, obligation);
+      || supersessionEvidenceFromCompletions(root, obligation, diagnostics);
     if (superseded) {
       obligation.state = 'SUPERSEDED';
       obligation.resolution = superseded;
@@ -281,10 +404,10 @@ function resolveObligations(root, obligations, options = {}) {
 // directly so an explicit resume rerun can close the original obligation.
 // Lineage is established either through predecessor_task_id or through a
 // Hermes RESUME_ORCHESTRATION receipt bound to the obligation's invocation.
-function supersessionEvidenceFromCompletions(root, obligation) {
+function supersessionEvidenceFromCompletions(root, obligation, diagnostics = []) {
   const agentsDir = path.join(root, 'package-runs', obligation.run_id, 'agents', obligation.agent_id);
   if (!fs.existsSync(agentsDir)) return null;
-  const resumeReceipt = findResumeReceipt(root, obligation);
+  const resumeReceipt = findResumeReceipt(root, obligation, diagnostics);
   let best = null;
   for (const taskId of fs.readdirSync(agentsDir)) {
     const taskDir = path.join(agentsDir, taskId);
@@ -337,7 +460,7 @@ function supersessionEvidenceFromCompletions(root, obligation) {
 function buildDecisionQueue(root, registry, options = {}) {
   const registeredIds = new Set((registry.agents || []).map((agent) => agent.agent_id));
   const { obligations, diagnostics } = scanObligations(root, registeredIds, registry.agents || []);
-  resolveObligations(root, obligations, options);
+  resolveObligations(root, obligations, { ...options, diagnostics });
   const providers = Array.isArray(options.resolutionEvidenceProviders) ? options.resolutionEvidenceProviders : [];
   for (const obligation of obligations) {
     if (obligation.state !== 'ACTIVE') continue;
@@ -357,10 +480,27 @@ function buildDecisionQueue(root, registry, options = {}) {
       queue_item_id: obligation.queue_item_id, state: obligation.state,
       run_id: obligation.run_id, agent_id: obligation.agent_id,
       invocation_id: obligation.invocation_id, task_id: obligation.task_id,
-      attention: obligation.attention, resolution: obligation.resolution,
+      predecessor_task_id: obligation.predecessor_task_id,
+      artifacts: obligation.artifacts,
+      owning_gate: obligation.owning_gate,
+      approval_scope_required: obligation.approval_scope_required,
+      attention: obligation.attention,
+      evidence_reference: {
+        attempt_dir: obligation.attempt_dir,
+        task_sha256: obligation.task_sha256,
+        result_sha256: obligation.result_sha256,
+      },
+      opened_at: obligation.completed_at,
+      transitioned_at: obligation.resolution?.resolved_at || obligation.completed_at,
+      resolved_by: obligation.resolution?.resolved_by || null,
+      superseded_by: obligation.resolution?.resolving_invocation_id || null,
+      resolution: obligation.resolution,
     }));
+  const available = diagnostics.every((entry) => entry.severity !== 'ERROR');
   return {
     schema_version: 2,
+    available,
+    status: available ? 'AVAILABLE' : 'HUMAN_DECISION_QUEUE_INVALID',
     queue_identity: 'obligation: run + agent + invocation + task + gate + scope + artifact + result hash',
     states: [...QUEUE_ITEM_STATES],
     human_decision_queue: active,
@@ -379,5 +519,5 @@ function buildDecisionQueue(root, registry, options = {}) {
 module.exports = {
   QUEUE_ITEM_STATES, OBLIGATION_ATTENTION, DecisionQueueError,
   scanObligations, resolveObligations, buildDecisionQueue,
-  obligationFromInvocation, supersessionEvidence, approvalResolution,
+  obligationFromInvocation, supersessionEvidence, approvalResolution, workspaceLink,
 };
