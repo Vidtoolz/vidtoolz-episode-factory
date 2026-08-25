@@ -1108,6 +1108,20 @@ function writeConcreteStage4Planning(runDir, options = {}) {
     "# Production Blockers\n\n| blocker | why it matters | required fix | status |\n| --- | --- | --- | --- |\n| None. | Required gates are satisfied. | Keep evidence attached to the run. | closed |\n",
     "utf8"
   );
+
+  // A legitimate hand-authored approval: declare HUMAN_AUTHORED provenance and
+  // bind Mikko's verdict to a snapshot of exactly these artifacts. The old
+  // bare-marker path is deliberately not restored — options.approval still
+  // produces an unbound marker, which must fail closed.
+  if (options.humanAuthoredApproval) {
+    const humanApproval = require("../scripts/package-run-human-planning-approval.js");
+    const prepared = humanApproval.prepareHumanPlanningReview(runDir, { preparedBy: "TEST_ONLY" });
+    fs.appendFileSync(
+      path.join(runDir, "production-plan.md"),
+      `\nShot/edit plan approval: PASS\n- Approved planning snapshot: ${prepared.snapshotDigest}\n`,
+      "utf8"
+    );
+  }
 }
 
 function writeManualVerticalStage4Run(runDir, options = {}) {
@@ -1319,6 +1333,15 @@ test("shot/edit plan review requires an approval bound to a visual plan, not a b
   assert.match(stage4ReviewText(passDir), /Review status: READY FOR HUMAN APPROVAL/);
   assert.match(stage4ReviewText(passDir), /Stage accepted: no/);
   assert.match(stage4ReviewText(passDir), /APPROVED_PLAN_DIGEST_UNKNOWN/);
+
+  // The capability itself is intact: the same hand-authored set, with the
+  // approval bound to a snapshot of exactly those artifacts, is accepted.
+  const boundDir = path.join(tempRoot, "package-runs", "2026-05-10-bound");
+  writeProductionPlannerBaseRun(boundDir);
+  writeConcreteStage4Planning(boundDir, { humanAuthoredApproval: true });
+  assert.equal(packageShotEditPlanReviewScript.main([boundDir]), 0);
+  assert.match(stage4ReviewText(boundDir), /Review status: PASS/);
+  assert.match(stage4ReviewText(boundDir), /Stage accepted: yes/);
 });
 
 test("shot/edit plan review accepts approved research sufficiency review without research pack", () => {
@@ -1377,6 +1400,15 @@ test("shot/edit plan review still requires a bound approval after the research s
   assert.match(stage4ReviewText(passDir), /Stage accepted: no/);
   assert.match(stage4ReviewText(passDir), /Manual approval marker detected: yes/);
   assert.match(stage4ReviewText(passDir), /APPROVED_PLAN_DIGEST_UNKNOWN/);
+
+  // Bound to a human planning snapshot, the manual path is accepted here too.
+  const boundDir = path.join(tempRoot, "package-runs", "2026-05-10-review-research-bound");
+  writeProductionPlannerBaseRun(boundDir, { research: false });
+  writeProductionPlannerResearchEvidence(boundDir, { status: "PASS", approval: true });
+  writeConcreteStage4Planning(boundDir, { humanAuthoredApproval: true });
+  assert.equal(packageShotEditPlanReviewScript.main([boundDir]), 0);
+  assert.match(stage4ReviewText(boundDir), /Review status: PASS/);
+  assert.match(stage4ReviewText(boundDir), /Stage accepted: yes/);
 });
 
 test("shot/edit plan review ignores upstream manual approval markers for stage acceptance", () => {

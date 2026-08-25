@@ -773,6 +773,368 @@ test('bridge AB11: gate-6 approval stays narrow and does not leak across gates',
   assert.ok(gatesAfter.every((gate) => gate.status !== 'complete'), 'no later gate may be completed by a gate-6 approval');
 });
 
+/* ==================== HUMAN_AUTHORED PLANNING PROVENANCE (gate 6) ========== */
+
+/*
+ * Hardening gate 6 against stale approval removed a legitimate capability: a
+ * planning package Mikko wrote himself had no plan digest to bind to, so it
+ * could not be approved at all. The old bare-marker fallback is NOT restored.
+ * Instead the same rule is applied to a different artifact: approval binds to a
+ * deterministic snapshot of the five reviewed planning files.
+ */
+
+const humanApproval = require('../scripts/package-run-human-planning-approval.js');
+
+const HUMAN_UPSTREAM = [
+  'final-script.md', 'script-review.md', 'script-structure.md',
+  'research-pack.md', 'research-evidence.md', 'research-sufficiency-review.md',
+  'source-support-map.md', 'proof-capture-plan.md', 'research-objections.md',
+  'selected-package.json', 'notes.md',
+  'production-plan.md', 'audio-notes.md', 'production-blockers.md',
+];
+
+const NOTES_REGION = `${materializer.HUMAN_REGION_START}\n${materializer.HUMAN_REGION_END}\n`;
+
+function handAuthoredArtifacts() {
+  return {
+    'shot-list.md': '# Shot List\n\n| shot | reason | priority | status |\n| --- | --- | --- | --- |\n| Hook A-roll: Mikko to camera stating the one-authority claim | Opens the approved script and frames the viewer problem. | high | PLANNED |\n| Close A-roll: Mikko delivering the closing line | Lands the thesis on camera. | high | PLANNED |\n',
+    'screen-capture-list.md': '# Screen Capture List\n\n| capture | proof purpose | source/app | status |\n| --- | --- | --- | --- |\n| The gate engine reporting one canonical position for a real run | Shows the single authority answering the question. | local cockpit at 127.0.0.1:8010 | PLANNED |\n',
+    'demo-list.md': '# Demo List\n\n## No demonstration Required\n\n- Decision: NO_DEMO_REQUIRED\n- Decided by: Mikko, authoring this planning set by hand\n- Basis: the episode argues about authority rather than walking the viewer through a workflow, so no start-state/action/result demonstration is needed.\n\nA later revision that introduces a demonstration replaces this artifact and its snapshot.\n',
+    'b-roll-list.md': '# B-Roll List\n\n| b-roll item | reason | source | status |\n| --- | --- | --- | --- |\n| Slow pan across three disagreeing status surfaces on one screen | Gives the edit concrete visual proof of the contradiction. | Capture locally from the cockpit. | PLANNED |\n',
+    'graphics-list.md': '# Graphics List\n\n| graphic | clarity purpose | source/input | status |\n| --- | --- | --- | --- |\n| One bright Authority node with dim derived View nodes | Makes the thesis scannable in a single image. | Built from the approved script. | PLANNED |\n',
+  };
+}
+
+/*
+ * A run whose upstream gates are real (borrowed from the canary) but whose five
+ * planning artifacts were written by hand: no visual plan, no materialization.
+ */
+function humanAuthoredRun(label, options = {}) {
+  const root = tmpDir(`human-${label}`);
+  const dir = path.join(root, 'package-runs', '2026-08-25-human-authored-fixture');
+  fs.mkdirSync(dir, { recursive: true });
+  for (const name of HUMAN_UPSTREAM) {
+    const src = path.join(CANARY_DIR, name);
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dir, name));
+  }
+  // Strip the canary's own agent-path approval: this fixture must start unapproved.
+  const planFile = path.join(dir, 'production-plan.md');
+  fs.writeFileSync(planFile, fs.readFileSync(planFile, 'utf8')
+    .split(/\r?\n/)
+    .filter((line) => !/Shot\/edit plan approval|Approved plan digest|Approved planning snapshot/i.test(line))
+    .join('\n'));
+
+  const artifacts = handAuthoredArtifacts();
+  for (const [name, body] of Object.entries(artifacts)) {
+    fs.writeFileSync(path.join(dir, name), options.withoutNotes ? body : body + NOTES_REGION);
+  }
+  return { root, dir };
+}
+
+function approveHuman(dir, digest) {
+  fs.appendFileSync(path.join(dir, 'production-plan.md'),
+    `\nShot/edit plan approval: PASS\n- Approved planning snapshot: ${digest}\n`);
+}
+
+function verdictOfRun(dir) {
+  const outputs = shotEditReview.buildOutputs(dir);
+  return {
+    status: outputs.verdict.status,
+    code: outputs.verdict.approvalBindingCode || null,
+    source: outputs.verdict.approvalPlanningSource || null,
+  };
+}
+
+test('bridge HA1: planning provenance is declared, never inferred from a missing plan', () => {
+  const { dir } = humanAuthoredRun('undeclared');
+  // No visual plan and no human record: nothing declares authority, so a marker
+  // cannot be bound to anything.
+  fs.appendFileSync(path.join(dir, 'production-plan.md'), '\nShot/edit plan approval: PASS\n');
+  const verdict = verdictOfRun(dir);
+  assert.notEqual(verdict.status, 'PASS');
+  assert.equal(verdict.code, 'APPROVED_PLAN_DIGEST_UNKNOWN');
+  assert.equal(verdict.source, null, 'no source may be inferred');
+});
+
+test('bridge HA2: a concrete hand-authored set reaches READY FOR HUMAN APPROVAL', () => {
+  const { dir } = humanAuthoredRun('ready');
+  humanApproval.prepareHumanPlanningReview(dir, { preparedBy: 'TEST_ONLY' });
+  const verdict = verdictOfRun(dir);
+  assert.equal(verdict.status, 'READY FOR HUMAN APPROVAL');
+});
+
+test('bridge HA3: the snapshot digest is deterministic and content-addressed', () => {
+  const { dir } = humanAuthoredRun('deterministic');
+  const a = humanApproval.buildHumanPlanningApprovalSnapshot(dir);
+  const b = humanApproval.buildHumanPlanningApprovalSnapshot(dir);
+  assert.equal(a.digest, b.digest);
+  assert.match(a.digest, /^[0-9a-f]{64}$/);
+  assert.deepEqual(a.artifacts.map((entry) => entry.filename), humanApproval.GOVERNED_ARTIFACTS);
+  assert.equal(a.schema, humanApproval.SNAPSHOT_SCHEMA);
+
+  // Same content in a second run directory keeps per-file hashes but changes the
+  // digest, because the run id is bound in.
+  const other = humanAuthoredRun('deterministic-2');
+  const c = humanApproval.buildHumanPlanningApprovalSnapshot(other.dir);
+  assert.deepEqual(c.artifacts, a.artifacts);
+  assert.equal(c.digest, a.digest, 'same run id and content produce the same digest');
+});
+
+test('bridge HA4: a bound human approval passes', () => {
+  const { dir } = humanAuthoredRun('bound');
+  const prep = humanApproval.prepareHumanPlanningReview(dir, { preparedBy: 'TEST_ONLY' });
+  approveHuman(dir, prep.snapshotDigest);
+  const verdict = verdictOfRun(dir);
+  assert.equal(verdict.status, 'PASS');
+  assert.equal(verdict.source, 'HUMAN_AUTHORED');
+  assert.equal(verdict.code, null);
+});
+
+test('bridge HA5: a bare marker fails closed even with a declared human source', () => {
+  const { dir } = humanAuthoredRun('bare');
+  humanApproval.prepareHumanPlanningReview(dir, { preparedBy: 'TEST_ONLY' });
+  fs.appendFileSync(path.join(dir, 'production-plan.md'), '\nShot/edit plan approval: PASS\n');
+  const verdict = verdictOfRun(dir);
+  assert.notEqual(verdict.status, 'PASS');
+  assert.equal(verdict.code, 'HUMAN_PLAN_APPROVAL_DIGEST_UNKNOWN');
+});
+
+test('bridge HA6: editing any governed artifact makes the approval stale', () => {
+  for (const filename of humanApproval.GOVERNED_ARTIFACTS) {
+    const { dir } = humanAuthoredRun(`drift-${filename.replace(/\W/g, '')}`);
+    const prep = humanApproval.prepareHumanPlanningReview(dir, { preparedBy: 'TEST_ONLY' });
+    approveHuman(dir, prep.snapshotDigest);
+    assert.equal(verdictOfRun(dir).status, 'PASS', `${filename} baseline`);
+
+    const file = path.join(dir, filename);
+    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('PLANNED |', 'PLANNED |').replace(/^# (.+)$/m, '# $1\n\n- Added after approval, never reviewed.'));
+    const verdict = verdictOfRun(dir);
+    assert.notEqual(verdict.status, 'PASS', `${filename} edit must invalidate approval`);
+    assert.equal(verdict.code, 'HUMAN_PLAN_ARTIFACT_DRIFT', filename);
+  }
+});
+
+test('bridge HA7: editing a deliberate-none rationale makes the approval stale', () => {
+  const { dir } = humanAuthoredRun('nonedrift');
+  const prep = humanApproval.prepareHumanPlanningReview(dir, { preparedBy: 'TEST_ONLY' });
+  approveHuman(dir, prep.snapshotDigest);
+  assert.equal(verdictOfRun(dir).status, 'PASS');
+
+  const file = path.join(dir, 'demo-list.md');
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('NO_DEMO_REQUIRED', 'NO_DEMO_REQUIRED_TAMPERED'));
+  const verdict = verdictOfRun(dir);
+  assert.notEqual(verdict.status, 'PASS');
+  assert.equal(verdict.code, 'HUMAN_PLAN_ARTIFACT_DRIFT');
+});
+
+test('bridge HA8: a notes-only edit leaves the approval valid', () => {
+  const { dir } = humanAuthoredRun('notes');
+  const prep = humanApproval.prepareHumanPlanningReview(dir, { preparedBy: 'TEST_ONLY' });
+  approveHuman(dir, prep.snapshotDigest);
+  assert.equal(verdictOfRun(dir).status, 'PASS');
+
+  const file = path.join(dir, 'shot-list.md');
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+    .replace(materializer.HUMAN_REGION_START, `${materializer.HUMAN_REGION_START}\nMikko: keep the hook tight.`));
+  const verdict = verdictOfRun(dir);
+  assert.equal(verdict.status, 'PASS', 'the human-notes region is sanctioned to vary after approval');
+  assert.equal(verdict.code, null);
+
+  // And notes must not become a smuggling channel: the digest ignores them, so
+  // content placed there cannot alter governed planning.
+  const before = humanApproval.buildHumanPlanningApprovalSnapshot(dir).digest;
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+    .replace(materializer.HUMAN_REGION_START, `${materializer.HUMAN_REGION_START}\n| smuggled row | none | high | PLANNED |`));
+  assert.equal(humanApproval.buildHumanPlanningApprovalSnapshot(dir).digest, before);
+});
+
+test('bridge HA9: a governed artifact disappearing fails closed', () => {
+  const { dir } = humanAuthoredRun('missing');
+  const prep = humanApproval.prepareHumanPlanningReview(dir, { preparedBy: 'TEST_ONLY' });
+  approveHuman(dir, prep.snapshotDigest);
+  assert.equal(verdictOfRun(dir).status, 'PASS');
+
+  fs.rmSync(path.join(dir, 'b-roll-list.md'));
+  assert.notEqual(verdictOfRun(dir).status, 'PASS');
+  // The binding itself refuses too, not only the upstream quality check.
+  const binding = humanApproval.verifyHumanApprovalBinding(dir);
+  assert.equal(binding.ok, false);
+  assert.equal(binding.code, 'HUMAN_PLAN_ARTIFACT_DRIFT');
+});
+
+test('bridge HA10: an unrelated file does not affect the governed digest', () => {
+  const { dir } = humanAuthoredRun('extrafile');
+  const prep = humanApproval.prepareHumanPlanningReview(dir, { preparedBy: 'TEST_ONLY' });
+  approveHuman(dir, prep.snapshotDigest);
+  const before = humanApproval.buildHumanPlanningApprovalSnapshot(dir).digest;
+
+  fs.writeFileSync(path.join(dir, 'unrelated-notes.md'), 'not part of the governed set');
+  fs.writeFileSync(path.join(dir, 'takes-log.md'), '# Takes Log\n\nnot a gate-6 artifact\n');
+  assert.equal(humanApproval.buildHumanPlanningApprovalSnapshot(dir).digest, before);
+  assert.equal(verdictOfRun(dir).status, 'PASS');
+});
+
+test('bridge HA11: an agent approval does not transfer when a human takes over', () => {
+  const { dir } = boundRun('a2h');
+  assert.equal(verdictOfRun(dir).status, 'PASS');
+  assert.equal(verdictOfRun(dir).source, 'AGENT_GENERATED');
+
+  const prep = humanApproval.prepareHumanPlanningReview(dir, { supersedeAgent: true, preparedBy: 'TEST_ONLY' });
+  const afterSwitch = verdictOfRun(dir);
+  assert.notEqual(afterSwitch.status, 'PASS', 'the agent approval must not cover a human-owned set');
+  assert.equal(afterSwitch.source, 'HUMAN_AUTHORED');
+  assert.equal(afterSwitch.code, 'HUMAN_PLAN_APPROVAL_DIGEST_UNKNOWN');
+
+  approveHuman(dir, prep.snapshotDigest);
+  assert.equal(verdictOfRun(dir).status, 'PASS');
+});
+
+test('bridge HA12: a human approval does not transfer when the agent path resumes', () => {
+  const { dir, planPath } = boundRun('h2a');
+  // Remove the canary's agent digest so the agent path has no standing approval.
+  const planFile = path.join(dir, 'production-plan.md');
+  fs.writeFileSync(planFile, fs.readFileSync(planFile, 'utf8')
+    .split(/\r?\n/).filter((line) => !/Approved plan digest/i.test(line)).join('\n'));
+
+  const prep = humanApproval.prepareHumanPlanningReview(dir, { supersedeAgent: true, preparedBy: 'TEST_ONLY' });
+  approveHuman(dir, prep.snapshotDigest);
+  assert.equal(verdictOfRun(dir).status, 'PASS');
+  assert.equal(verdictOfRun(dir).source, 'HUMAN_AUTHORED');
+
+  // The agent path cannot seize authority, even with replaceApproved.
+  assert.throws(
+    () => materializer.materialize(dir, planPath, { replaceApproved: true }),
+    (error) => error.code === 'PLANNING_AUTHORITY_AMBIGUOUS'
+  );
+
+  humanApproval.retireHumanPlanningDeclaration(dir, { retiredBy: 'TEST_ONLY' });
+  const afterRetire = verdictOfRun(dir);
+  assert.notEqual(afterRetire.status, 'PASS', 'the human approval must not cover an agent plan');
+  assert.equal(afterRetire.source, 'AGENT_GENERATED');
+  assert.equal(afterRetire.code, 'APPROVED_PLAN_DIGEST_UNKNOWN');
+});
+
+test('bridge HA13: two declared authorities without explicit supersession fail closed', () => {
+  const { dir } = boundRun('ambiguous');
+  assert.equal(verdictOfRun(dir).status, 'PASS');
+
+  // Write a human record that does NOT record taking over.
+  const snapshot = humanApproval.buildHumanPlanningApprovalSnapshot(dir);
+  fs.writeFileSync(path.join(dir, humanApproval.RECORD_FILE), JSON.stringify({
+    schema: humanApproval.RECORD_SCHEMA,
+    gate: humanApproval.GATE_ID,
+    run_id: path.basename(dir),
+    planning_source: 'HUMAN_AUTHORED',
+    governed_artifacts: humanApproval.GOVERNED_ARTIFACTS,
+    snapshot,
+    supersedes: null,
+    prepared_by: 'TEST_ONLY',
+    approval: null,
+  }, null, 2));
+
+  const verdict = verdictOfRun(dir);
+  assert.notEqual(verdict.status, 'PASS');
+  assert.equal(verdict.code, 'PLANNING_AUTHORITY_AMBIGUOUS');
+
+  // The helper refuses to create that state in the first place.
+  assert.throws(
+    () => humanApproval.prepareHumanPlanningReview(dir, {}),
+    (error) => error.code === 'PLANNING_AUTHORITY_AMBIGUOUS'
+  );
+});
+
+test('bridge HA14: changed approved manual content regresses the canonical gate', () => {
+  const { root, dir } = humanAuthoredRun('regression');
+  const runId = path.basename(dir);
+  const opts = { repoRoot: root, runId, runDir: dir };
+  const refresh = () => shotEditReview.writeOutputs(dir, shotEditReview.buildOutputs(dir), true);
+  const position = () => {
+    const map = workflowMap.buildWorkflowMap(dir, { repoRoot: root });
+    const current = map.gates.find((gate) => String(gate.status).startsWith('current'));
+    return { gate: current.id, complete: map.gates.filter((gate) => gate.status === 'complete').length };
+  };
+
+  const prep = humanApproval.prepareHumanPlanningReview(dir, { preparedBy: 'TEST_ONLY' });
+  approveHuman(dir, prep.snapshotDigest);
+  refresh();
+  assert.deepEqual(position(), { gate: 'capture-checklist', complete: 6 });
+
+  const file = path.join(dir, 'shot-list.md');
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+    .replace('| Hook A-roll: Mikko to camera stating the one-authority claim', '| Hook A-roll: something never reviewed'));
+  refresh();
+
+  assert.deepEqual(position(), { gate: 'shot-edit-plan-review', complete: 5 }, 'gate 6 must reopen');
+  const projection = stateProjection.buildProjection(opts);
+  assert.equal(projection.current_gate, 'shot-edit-plan-review');
+  assert.equal(stateProjection.trackerDivergence(opts).code, 'TRACKER_CONSISTENT');
+  assert.deepEqual(stateProjection.consistencyReport(opts).defects, []);
+});
+
+test('bridge HA15: the retained agent-generated canary is untouched and still at gate 7', () => {
+  assert.equal(humanApproval.hasRecord(CANARY_DIR), false, 'the real canary must stay agent-generated');
+  const verdict = verdictOfRun(CANARY_DIR);
+  assert.equal(verdict.status, 'PASS');
+  assert.equal(verdict.source, 'AGENT_GENERATED');
+  const map = workflowMap.buildWorkflowMap(path.relative(ROOT, CANARY_DIR));
+  const current = map.gates.find((gate) => String(gate.status).startsWith('current'));
+  assert.equal(current.id, 'capture-checklist');
+  assert.equal(map.gates.filter((gate) => gate.status === 'complete').length, 6);
+});
+
+test('bridge HA16: a digest from one mode cannot satisfy the other', () => {
+  // Plan digest written under the human field name.
+  {
+    const { dir, planPath } = boundRun('cross-a');
+    const planFile = path.join(dir, 'production-plan.md');
+    fs.writeFileSync(planFile, fs.readFileSync(planFile, 'utf8')
+      .split(/\r?\n/).filter((line) => !/Approved plan digest/i.test(line)).join('\n'));
+    const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+    humanApproval.prepareHumanPlanningReview(dir, { supersedeAgent: true, preparedBy: 'TEST_ONLY' });
+    approveHuman(dir, plan.plan_digest_sha256);
+    const verdict = verdictOfRun(dir);
+    assert.notEqual(verdict.status, 'PASS');
+    assert.equal(verdict.code, 'HUMAN_PLAN_APPROVAL_SUPERSEDED');
+  }
+  // Snapshot digest written under the agent field name.
+  {
+    const { dir } = boundRun('cross-b');
+    const planFile = path.join(dir, 'production-plan.md');
+    fs.writeFileSync(planFile, fs.readFileSync(planFile, 'utf8')
+      .split(/\r?\n/).filter((line) => !/Approved plan digest/i.test(line)).join('\n'));
+    const snapshot = humanApproval.buildHumanPlanningApprovalSnapshot(dir);
+    fs.appendFileSync(planFile, `\n- Approved plan digest: ${snapshot.digest}\n`);
+    const verdict = verdictOfRun(dir);
+    assert.notEqual(verdict.status, 'PASS');
+    assert.equal(verdict.code, 'APPROVED_PLAN_SUPERSEDED');
+  }
+});
+
+test('bridge HA17: every gate-6 PASS carries a real binding, in either mode', () => {
+  // The structural invariant: there is no marker-only PASS branch anywhere.
+  const source = fs.readFileSync(path.join(ROOT, 'scripts', 'package-run-shot-edit-plan-review.js'), 'utf8');
+  assert.ok(/resolvePlanningApproval/.test(source), 'the evaluator must dispatch on declared provenance');
+  assert.ok(/binding && !binding\.ok/.test(source), 'a failed binding must block PASS');
+
+  // Both accepted modes, and nothing else.
+  assert.equal(humanApproval.PLANNING_SOURCE, 'HUMAN_AUTHORED');
+  assert.equal(materializer.MACHINE_OWNER, 'visual_planning_director');
+  // The two modules must agree on the governed set and the record filename.
+  assert.deepEqual(humanApproval.GOVERNED_ARTIFACTS, materializer.OUTPUT_FILES);
+  assert.equal(materializer.HUMAN_PLANNING_RECORD, humanApproval.RECORD_FILE);
+});
+
+test('bridge HA18: preparing a snapshot is not an approval', () => {
+  const { dir } = humanAuthoredRun('notapproval');
+  const prep = humanApproval.prepareHumanPlanningReview(dir, { preparedBy: 'TEST_ONLY' });
+  assert.equal(prep.record.approval, null, 'the record carries no verdict');
+  assert.equal(verdictOfRun(dir).status, 'READY FOR HUMAN APPROVAL');
+  // Re-preparing is idempotent and still not an approval.
+  const again = humanApproval.prepareHumanPlanningReview(dir, { preparedBy: 'TEST_ONLY' });
+  assert.equal(again.unchanged, true);
+  assert.equal(verdictOfRun(dir).status, 'READY FOR HUMAN APPROVAL');
+});
+
 /* ======================================== GATE OWNER REACHABILITY (§20) ==== */
 
 /*
