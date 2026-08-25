@@ -111,15 +111,27 @@ function producerAuthorizedForClass(producer, renderClass) {
 const KNOWN_CLASS_GAPS = Object.freeze({
   // PRODUCTION_MIX producer path CLOSED (mission 2026-08-25): semantic producer
   // = editor, attester = scripts/production-mix-evidence.js. What remains is an
-  // UPSTREAM material gap, declared machine-readably: no canonical assembled
-  // PRODUCTION timeline with real presenter audio has been rendered yet
-  // (automatic edit/assembly upstream is incomplete; real presenter performance
-  // belongs to the capture lane). Until those bytes exist, the class
-  // requirement stays unsatisfiable — by absence of material, not by design.
+  // UPSTREAM material gap, now decomposed into typed blocks in dependency order
+  // (scripts/production-mix-upstream-readiness.js). Live audit of the canonical
+  // run surface: no presenter take materialized, no Edit Plan V1 materialized,
+  // no run-level music selection binding, no program render — and the DEEPEST
+  // root blocker is the first one in the chain: real presenter performance has
+  // never been captured for any PRODUCTION-mode run. The capture lane exists
+  // (supervised-capture.js + presenter-take-manifest.js contracts) but no real
+  // audio has passed through it; nothing downstream (edit plan, selection
+  // binding, Resolve render) can legitimately exist before it.
   PRODUCTION_MIX: Object.freeze({
     class: 'PRODUCTION_MIX',
     status: 'UPSTREAM_MATERIAL_MISSING',
-    note: 'Producer path closed (editor + production-mix-evidence.js attester). No canonical PRODUCTION-mode assembled timeline with real presenter audio has been rendered yet; automatic edit/assembly upstream is incomplete. PRODUCTION program audio cannot be satisfied by a music candidate or synthetic narration.',
+    root_blocker: 'REAL_PRESENTER_AUDIO_MISSING',
+    upstream_blocks: Object.freeze([
+      'REAL_PRESENTER_AUDIO_MISSING',
+      'EDIT_PLAN_MISSING',
+      'MUSIC_RUN_BINDING_MISSING',
+      'PROGRAM_RENDER_MISSING',
+    ]),
+    auditor: 'scripts/production-mix-upstream-readiness.js',
+    note: 'Producer path closed (editor + production-mix-evidence.js attester). Upstream material decomposed into typed blocks; deepest root = REAL_PRESENTER_AUDIO_MISSING (capture lane exists, no real Mikko performance captured yet). Draft synthetic narration and proxy presenter are forbidden substitutes. Nothing downstream can legitimately exist before real presenter audio.',
   }),
 });
 

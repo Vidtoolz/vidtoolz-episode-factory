@@ -270,16 +270,37 @@ function verifyProductionMix(runDir, options = {}) {
   if (recorded.render_class !== RENDER_CLASS) {
     fail('PROGRAM_MIX_CLASS_MISMATCH', `recorded render_class is ${JSON.stringify(recorded.render_class)}`);
   }
-  // Source drift: every bound source must still match its hash.
-  for (const src of recorded.program_mix?.sources || []) {
-    const declared = recorded.program_mix.sources.find((s) => s.source_id === src.source_id);
-    void declared;
-  }
+  // Source drift: every bound source must still match the hash recorded at
+  // attestation time. A changed presenter/music/effect source, or a changed
+  // manifest/timeline identity, stales the mix — never re-attested silently.
   if (options.manifestPath) {
     const manifest = loadManifest(options.manifestPath);
     const baseDir = path.dirname(path.resolve(options.manifestPath));
-    try { validateSources(manifest, baseDir); }
+    let liveSources;
+    try { liveSources = validateSources(manifest, baseDir); }
     catch (e) { return { ok: false, stale: true, reason: e.code, message: e.message }; }
+    // Timeline identity drift: the manifest must still be the same edit plan.
+    const recordedPlan = recorded.program_mix || {};
+    if (recordedPlan.edit_plan_id && manifest.edit_plan?.edit_plan_id !== recordedPlan.edit_plan_id) {
+      return { ok: false, stale: true, reason: 'PROGRAM_MIX_TIMELINE_DRIFT', message: 'manifest edit_plan_id differs from attested timeline identity' };
+    }
+    if (recordedPlan.edit_plan_digest_sha256 && manifest.edit_plan?.edit_plan_digest_sha256 && manifest.edit_plan.edit_plan_digest_sha256 !== recordedPlan.edit_plan_digest_sha256) {
+      return { ok: false, stale: true, reason: 'PROGRAM_MIX_TIMELINE_DRIFT', message: 'manifest edit_plan digest differs from attested timeline digest' };
+    }
+    // Source-hash drift: compare each live source hash against the recorded one.
+    const recordedBySourceId = new Map((recorded.program_mix?.sources || []).map((s) => [s.source_id, s.sha256]));
+    for (const live of liveSources) {
+      const recordedHash = recordedBySourceId.get(live.source_id);
+      if (recordedHash === undefined) {
+        return { ok: false, stale: true, reason: 'PROGRAM_MIX_SOURCE_DRIFT', message: `source ${live.source_id} not present in attested mix` };
+      }
+      if (recordedHash !== live.sha256) {
+        return { ok: false, stale: true, reason: 'PROGRAM_MIX_SOURCE_DRIFT', message: `source ${live.source_id} (${live.source_class}) bytes changed since attestation` };
+      }
+    }
+    if (liveSources.length !== (recorded.program_mix?.sources || []).length) {
+      return { ok: false, stale: true, reason: 'PROGRAM_MIX_SOURCE_DRIFT', message: 'attested source set size differs from manifest' };
+    }
   }
   // Byte binding: audio must still match.
   const audioPath = recorded.provenance?.audio_path;
