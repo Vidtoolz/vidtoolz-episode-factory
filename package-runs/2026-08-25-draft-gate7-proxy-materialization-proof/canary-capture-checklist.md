@@ -24,7 +24,7 @@ proxy media exists and verifies. It does NOT mean anyone recorded anything.
 | DRAFT_SYNTHETIC narration rendered for every spoken beat | DRAFT_SYNTHETIC_NARRATION | high | closed |
 | PROXY_GENERATED proxy presenter rendered for every spoken beat | PROXY_PRESENTER | high | closed |
 | Proxy beat coverage complete (7/7) | proxy presenter manifest | high | closed |
-| Proxy presenter aligned to narration (delta 0.081479s within 0.15s) | proxy presenter manifest | high | closed |
+| Proxy presenter aligned to narration (delta 0.081479s within 0.2833s) | proxy presenter manifest | high | closed |
 | Media bytes verified by hash and probe | technical validation in both evidence records | high | closed |
 | Human presenter capture NOT required in DRAFT | production mode policy | high | closed |
 

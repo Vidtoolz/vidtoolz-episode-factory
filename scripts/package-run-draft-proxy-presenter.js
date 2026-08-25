@@ -45,6 +45,25 @@ const ASSEMBLED_NAME = 'proxy-presenter.mp4';
 // to hide a real drift.
 const DURATION_TOLERANCE_SECONDS = 0.15;
 
+/*
+ * Whole-track alignment needs a different tolerance than a single beat, because
+ * video is quantized to whole frames and narration is not: each beat rounds up
+ * to a frame boundary, so the assembled track can legitimately run one frame per
+ * beat longer than the audio. A flat per-beat tolerance therefore fails on any
+ * run with enough beats — 7 beats at 30fps drifts 0.233s against an 0.15s
+ * allowance — while telling us nothing about whether anything is actually wrong.
+ *
+ * The accumulated quantization is beatCount/fps. An assembly fault worth
+ * catching (a dropped or duplicated segment) is whole seconds, so this stays
+ * discriminating while no longer punishing correct arithmetic.
+ */
+function assembledToleranceSeconds(beatCount, fps) {
+  const quantization = fps > 0 ? beatCount / fps : 0;
+  return quantization + ASSEMBLY_EPSILON_SECONDS;
+}
+
+const ASSEMBLY_EPSILON_SECONDS = 0.05;
+
 class DraftProxyPresenterError extends Error {
   constructor(code, message) {
     super(message);
@@ -149,9 +168,11 @@ function buildDraftProxyPresenter(runDirInput, options = {}) {
 
   const narrationDuration = context.narrationManifest.assembled.duration_seconds;
   const alignmentDelta = assembledProbe.duration_seconds - narrationDuration;
-  if (Math.abs(alignmentDelta) > DURATION_TOLERANCE_SECONDS) {
+  const assembledTolerance = assembledToleranceSeconds(rendered.length, renderer.FPS);
+  if (Math.abs(alignmentDelta) > assembledTolerance) {
     fail('PROXY_DURATION_MISALIGNED',
-      `presenter track is ${assembledProbe.duration_seconds.toFixed(3)}s against ${narrationDuration.toFixed(3)}s of narration`);
+      `presenter track is ${assembledProbe.duration_seconds.toFixed(3)}s against ${narrationDuration.toFixed(3)}s of narration `
+      + `(delta ${alignmentDelta.toFixed(3)}s exceeds ${assembledTolerance.toFixed(3)}s for ${rendered.length} beats at ${renderer.FPS}fps)`);
   }
 
   let cursor = 0;
@@ -227,8 +248,10 @@ function buildDraftProxyPresenter(runDirInput, options = {}) {
       narration_duration_seconds: narrationDuration,
       presenter_duration_seconds: assembledProbe.duration_seconds,
       delta_seconds: Number(alignmentDelta.toFixed(6)),
-      tolerance_seconds: DURATION_TOLERANCE_SECONDS,
-      aligned: Math.abs(alignmentDelta) <= DURATION_TOLERANCE_SECONDS,
+      tolerance_seconds: Number(assembledTolerance.toFixed(4)),
+      per_beat_tolerance_seconds: DURATION_TOLERANCE_SECONDS,
+      tolerance_basis: `${rendered.length} beats quantized at ${renderer.FPS}fps plus ${ASSEMBLY_EPSILON_SECONDS}s`,
+      aligned: Math.abs(alignmentDelta) <= assembledTolerance,
       narration_time_stretched: false,
     },
     coverage: {
@@ -387,6 +410,8 @@ module.exports = {
   MEDIA_DIR,
   ASSEMBLED_NAME,
   DURATION_TOLERANCE_SECONDS,
+  ASSEMBLY_EPSILON_SECONDS,
+  assembledToleranceSeconds,
   DraftProxyPresenterError,
   resolveProxyContext,
   buildDraftProxyPresenter,

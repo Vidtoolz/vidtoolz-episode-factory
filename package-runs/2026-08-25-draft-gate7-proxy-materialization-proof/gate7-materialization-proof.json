@@ -211,5 +211,22 @@
       "ffmpeg already proven for concat and mux in this lane"
     ],
     "note": "PROXY_PRESENTER is not among edit-plan TRACK_ROLES (VIDEO_PRIMARY, PRESENTER_PIP, AUDIO_DIALOGUE, ...), so the assembler will need to decide how a proxy track maps onto those roles."
-  }
+  },
+  "alignment_tolerance_correction": {
+    "defect": "the whole-track alignment tolerance was a flat 0.15s, the same constant used per beat. Video quantizes each beat up to a frame boundary and narration does not, so the assembled track accumulates one frame of drift per beat: 7 beats at 30fps drifts up to 0.233s and the check failed on correct arithmetic.",
+    "surfaced_by": "full-suite ordering — the suite regenerated narration at a slightly different length and the flat tolerance broke, while the isolated run happened to sit under it",
+    "fix": "tolerance is now derived as beatCount/fps + 0.05s epsilon, recorded in the manifest with its basis; the per-beat 0.15s check is unchanged",
+    "still_discriminating": "an assembly fault (dropped or duplicated segment) is whole seconds, far outside the derived allowance",
+    "observed": {
+      "narration_duration_seconds": 74.385188,
+      "presenter_duration_seconds": 74.466667,
+      "delta_seconds": 0.081479,
+      "tolerance_seconds": 0.2833,
+      "per_beat_tolerance_seconds": 0.15,
+      "tolerance_basis": "7 beats quantized at 30fps plus 0.05s",
+      "aligned": true,
+      "narration_time_stretched": false
+    }
+  },
+  "canary_sidecar_refreshed": true
 }

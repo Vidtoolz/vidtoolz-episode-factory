@@ -193,7 +193,16 @@ test('proxy PV5/PV6/PV7/PV8: a real run aligns to narration and binds every sour
   // PV5: duration aligned, no cumulative drift, narration never stretched.
   assert.equal(manifest.alignment.aligned, true);
   assert.equal(manifest.alignment.narration_time_stretched, false);
-  assert.ok(Math.abs(manifest.alignment.delta_seconds) <= presenter.DURATION_TOLERANCE_SECONDS);
+  // The whole-track allowance is derived from frame quantization, not a flat
+  // constant: video rounds each beat up to a frame boundary and narration does
+  // not, so the assembled track may legitimately run one frame per beat longer.
+  const trackTolerance = presenter.assembledToleranceSeconds(manifest.segments.length, manifest.video_standard.fps);
+  assert.equal(manifest.alignment.tolerance_seconds, Number(trackTolerance.toFixed(4)));
+  assert.ok(Math.abs(manifest.alignment.delta_seconds) <= trackTolerance);
+  // It scales with beat count — a flat per-beat tolerance failed on real runs.
+  assert.ok(trackTolerance > presenter.assembledToleranceSeconds(1, manifest.video_standard.fps));
+  // ...and still catches an assembly fault, which is whole seconds, not frames.
+  assert.ok(trackTolerance < 1);
   // PV9 coverage: every spoken beat is covered.
   assert.equal(manifest.coverage.complete, true);
   assert.equal(manifest.coverage.covered_beats, manifest.coverage.spoken_beats);
