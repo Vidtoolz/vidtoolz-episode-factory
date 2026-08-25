@@ -131,6 +131,7 @@ require("./editor-agent.test.js");
 require("./agent-control-room.test.js");
 require("./operator-action-ledger.test.js");
 require("./hermes-escalation.test.js");
+require("./knowledge-steward.test.js");
 require("./production-operations.test.js");
 require("./production-operations-production-path.test.js");
 require("./decision-queue.test.js");
