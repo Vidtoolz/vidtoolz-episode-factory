@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "artifact": "PACKAGE_RUNS_INDEX_AGGREGATE_VERIFICATION",
+  "date": "2026-08-25",
+  "start_head": "52aaca906666c2eb431d7e049c64f091cd1d3274",
+  "end_head": "52aaca906666c2eb431d7e049c64f091cd1d3274",
+  "stable_head": true,
+  "start_time": "2026-08-25T11:53:06+03:00",
+  "end_time": "2026-08-25T11:59:01+03:00",
+  "run_tests_js_hash_before": "69a766df096a132de0efbd8716e25f692e9e318b",
+  "run_tests_js_hash_after": "69a766df096a132de0efbd8716e25f692e9e318b",
+  "ix_test_file_hash_before": "f9e1412efafe7479b8c9bfda71229aa9f826172a",
+  "ix_test_file_hash_after": "f9e1412efafe7479b8c9bfda71229aa9f826172a",
+  "IX_registered": true,
+  "IX_registration": "tests/run-tests.js line 38: require(\"./package-runs-index-authority.test.js\") — committed at HEAD",
+  "IX_standalone_before_aggregate": "15/15 passed",
+  "IX_aggregate_result": { "ok": 15, "failed": 0, "first": "IX1: proof/canary-only tree indexes ZERO runs with exact exclusion reporting", "last": "IX15: the index declares derived non-authority and the mission proof package stays excluded" },
+  "aggregate": { "command": "RUN_ALL=1 node tests/run-tests.js", "total": 5012, "passed": 5010, "failed": 2, "skipped": 0, "exit_code": 1 },
+  "classified_failures": [
+    { "name": "settle-then-launch: serialized handles match the human-approved candidate", "classification": "PRE_EXISTING_EARTH_STUDIO", "evidence": "earth-studio-orbit-travel-handoff.test.js:104; identical failure in the previous aggregate under a different HEAD; module under test is Codex's in-flight dirty camera-journey work" },
+    { "name": "coherence: known-good directed canaries have zero interior ground-path reversals", "classification": "PRE_EXISTING_EARTH_STUDIO", "evidence": "earth-studio-directorial-plan.test.js:266; identical failure in the previous aggregate under a different HEAD; named as known Codex camera work in the mission brief; earth-studio-* worktree files remain dirty and untouched" }
+  ],
+  "index_related_failures": [],
+  "index_check": {
+    "pre_run": { "result": "ok after documented rebuild", "note": "a concurrent lifecycle-integration canary cycle had re-planted ghost entry 2099-02-02-integration-test-run before the run; canonical rebuild repaired it (never manually edited)" },
+    "during_run_note": "the same sibling canary cycle re-dirtied the durable index mid-run (ghost reappeared, scanned 73)",
+    "post_run": { "result": "ok after documented rebuild", "directories_scanned": 73, "genuine_runs": 1, "indexed": 1, "excluded": { "proof": 12, "canary": 3, "acceptance": 5, "legacy_unknown": 52 } }
+  },
+  "doc_verify_checks": { "docs_authority_check": "PASS", "index_syntax_checks": "PASS (node --check package-runs-index.js, package-runs-index-canary.js, package-engine-new-run.js)" },
+  "code_changes": "none — verification-only mission",
+  "sibling_work_modified": false,
+  "pushed": false,
+  "verdict": "PACKAGE-RUN INDEX VERIFIED — AGGREGATE HAS UNRELATED FAILURES"
+}
