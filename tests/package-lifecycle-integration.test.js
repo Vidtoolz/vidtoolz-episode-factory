@@ -70,6 +70,7 @@ test('LI1: a run created by the real creation path is consistent across every su
   fs.rmSync(runDir, { recursive: true, force: true });
   const creation = require('../scripts/package-engine-new-run.js');
   const exitCode = creation.main(['integration test run', '--date', '2099-02-02']);
+  let primaryError = null;
   try {
     assert.equal(exitCode, 0, 'the real creation path must succeed');
     assert.ok(fs.existsSync(runDir), 'creation must produce the run directory');
@@ -84,8 +85,50 @@ test('LI1: a run created by the real creation path is consistent across every su
     assert.equal(s.consistent, true, `projection defects: ${s.defects.join(', ')}`);
     assert.equal(s.drift, null, 'a fresh run must have no projection drift');
     assert.notEqual(s.stateValue, 'UNKNOWN_LEGACY', 'a new run is never UNKNOWN');
-  } finally { fs.rmSync(runDir, { recursive: true, force: true }); }
+  } catch (error) {
+    primaryError = error;
+  } finally {
+    const cleanupErrors = teardownRealRepoTempRun(runId);
+    if (primaryError) throw primaryError; // the canary's own failure wins; cleanup is logged below
+    if (cleanupErrors.length) {
+      throw new Error(`lifecycle integration teardown failed: ${cleanupErrors.join('; ')}`);
+    }
+  }
 });
+
+/**
+ * Teardown for temporary runs created in the REAL repository (LI1 only — every
+ * other LI test works in a scratch root). The production creation path
+ * refreshes package-runs-index.json when the run appears; deletion must also
+ * leave the derived discovery index consistent, or a ghost entry survives
+ * until a manual rebuild. Ownership stays with the canary: remove the run
+ * FIRST, rebuild the index AFTER (rebuilding before removal would re-record
+ * the ghost).
+ *
+ * The index is non-authoritative, so a rebuild failure is a cleanup problem,
+ * never a lifecycle one. This helper returns cleanup errors instead of
+ * throwing so the caller can preserve a primary assertion failure: cleanup
+ * errors are always logged, but they only become a test failure when the
+ * canary itself succeeded.
+ */
+function teardownRealRepoTempRun(runId) {
+  const cleanupErrors = [];
+  const runDir = path.join(ROOT, 'package-runs', runId);
+  try {
+    fs.rmSync(runDir, { recursive: true, force: true });
+  } catch (error) {
+    cleanupErrors.push(`remove temporary run ${runId}: ${error.message}`);
+  }
+  try {
+    packageRunsIndex.rebuildPackageRunsIndex({ repoRoot: ROOT });
+  } catch (error) {
+    cleanupErrors.push(`rebuild package-runs-index after removing ${runId}: ${error.message}`);
+  }
+  if (cleanupErrors.length) {
+    console.error(`lifecycle integration teardown: ${cleanupErrors.join('; ')}`);
+  }
+  return cleanupErrors;
+}
 
 test('LI2: earning real evidence advances every surface together', () => {
   const root = scratchRepo();
@@ -264,4 +307,110 @@ test('LI6: a recorded approval is evaluated against the current artifact, not th
     assert.equal(revised.approval, true, 'the marker is still literally present');
     assert.notEqual(revised.status, 'PASS', 'but it no longer carries the gate — approval binds the reviewed evidence');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// ── teardown hygiene (§10–§16): the canary must leave the derived discovery
+// index exactly as consistent as the filesystem, every time, even when it
+// fails. These tests operate on the real repository root (the creation path
+// hard-roots to it), so they assert SEMANTIC truth — my temporary runs are
+// gone, the filesystem and index agree — never hardcoded counts, because
+// concurrent lifecycle canaries may legitimately own other genuine runs.
+
+function runIdSet() {
+  return new Set(packageRunsIndex.buildPackageRunsIndex({ repoRoot: ROOT }).runs.map((run) => run.runId));
+}
+
+test('LI7: teardown leaves the index consistent — create, index, delete, rebuild, no ghost', () => {
+  const runId = '2099-02-07-teardown-normal';
+  const creation = require('../scripts/package-engine-new-run.js');
+  assert.equal(creation.main(['teardown normal', '--date', '2099-02-07']), 0);
+  try {
+    // The production creation hook indexed the run immediately.
+    assert.ok(runIdSet().has(runId), 'the production creation path must index the new run');
+    const teardownErrors = teardownRealRepoTempRun(runId);
+    assert.deepEqual(teardownErrors, [], 'teardown must complete without cleanup errors');
+    assert.ok(!fs.existsSync(path.join(ROOT, 'package-runs', runId)), 'the temporary run directory must be gone');
+    const check = packageRunsIndex.checkPackageRunsIndex({ repoRoot: ROOT });
+    assert.equal(check.ok, true, `index check after teardown: ${check.defects.map((d) => d.code).join(', ')}`);
+    assert.ok(!runIdSet().has(runId), 'no ghost entry may survive teardown');
+  } finally {
+    teardownRealRepoTempRun(runId); // idempotent safety net — see LI10
+  }
+});
+
+test('LI8: a failing canary still tears down — delete and rebuild happen, primary error wins', () => {
+  const runId = '2099-02-08-teardown-failure';
+  const creation = require('../scripts/package-engine-new-run.js');
+  assert.equal(creation.main(['teardown failure', '--date', '2099-02-08']), 0);
+  let primaryError = null;
+  try {
+    assert.ok(runIdSet().has(runId), 'the temporary run is indexed before the failure');
+    assert.equal(true, false, 'primary canary failure (forced)');
+  } catch (error) {
+    primaryError = error;
+  } finally {
+    const cleanupErrors = teardownRealRepoTempRun(runId);
+    assert.deepEqual(cleanupErrors, [], 'cleanup must still succeed after a primary failure');
+  }
+  assert.ok(primaryError, 'the primary failure must remain visible');
+  assert.match(primaryError.message, /primary canary failure/);
+  assert.ok(!fs.existsSync(path.join(ROOT, 'package-runs', runId)), 'teardown deleted the run despite the failure');
+  assert.ok(!runIdSet().has(runId), 'teardown rebuilt the index despite the failure');
+  assert.equal(packageRunsIndex.checkPackageRunsIndex({ repoRoot: ROOT }).ok, true);
+});
+
+test('LI9: multiple temporary runs — every deleted entry disappears, retained runs survive', () => {
+  const runA = '2099-02-09-teardown-multi-a';
+  const runB = '2099-02-09-teardown-multi-b';
+  const retained = '2026-08-25-lifecycle-integration-canary-canary-not-for-publication';
+  const retainedOnDisk = fs.existsSync(path.join(ROOT, 'package-runs', retained));
+  const creation = require('../scripts/package-engine-new-run.js');
+  assert.equal(creation.main(['teardown multi a', '--date', '2099-02-09']), 0);
+  try {
+    // A second temporary run the same day (creation appends a suffix on id collision).
+    assert.equal(creation.main(['teardown multi b', '--date', '2099-02-09']), 0);
+    const indexed = runIdSet();
+    assert.ok(indexed.has(runA), 'first temporary run indexed');
+    assert.ok([...indexed].some((id) => id.startsWith('2099-02-09-teardown-multi')), 'second temporary run indexed');
+    if (retainedOnDisk) assert.ok(indexed.has(retained), 'the retained real canary must remain indexed while it exists');
+    teardownRealRepoTempRun(runA);
+    teardownRealRepoTempRun(runB);
+    teardownRealRepoTempRun('2099-02-09-teardown-multi-b'); // any suffixed sibling of the same day
+    const after = runIdSet();
+    assert.ok(![...after].some((id) => id.startsWith('2099-02-09-teardown-multi')), 'every temporary run of this test must be gone');
+    if (retainedOnDisk) assert.ok(after.has(retained), 'teardown must never remove or exclude the retained real canary');
+    assert.equal(packageRunsIndex.checkPackageRunsIndex({ repoRoot: ROOT }).ok, true);
+    // Proof packages stay excluded regardless of the rebuild.
+    const built = packageRunsIndex.buildPackageRunsIndex({ repoRoot: ROOT });
+    assert.ok(built.scope.excluded.proof > 0, 'proof packages remain excluded after teardown rebuild');
+  } finally {
+    teardownRealRepoTempRun(runA);
+    teardownRealRepoTempRun(runB);
+  }
+});
+
+test('LI10: teardown is idempotent — a second pass after removal is harmless', () => {
+  const runId = '2099-02-10-teardown-idempotent';
+  const creation = require('../scripts/package-engine-new-run.js');
+  assert.equal(creation.main(['teardown idempotent', '--date', '2099-02-10']), 0);
+  const first = teardownRealRepoTempRun(runId);
+  assert.deepEqual(first, [], 'first teardown clean');
+  // Second pass: the directory is already gone (rmSync force tolerates it) and
+  // the rebuild over an unchanged tree must agree with the first.
+  const digestBefore = packageRunsIndex.buildPackageRunsIndex({ repoRoot: ROOT }).sourceDigest;
+  const second = teardownRealRepoTempRun(runId);
+  assert.deepEqual(second, [], 'second teardown clean — no ENOENT cascade');
+  const digestAfter = packageRunsIndex.buildPackageRunsIndex({ repoRoot: ROOT }).sourceDigest;
+  assert.equal(digestBefore, digestAfter, 'unchanged filesystem, unchanged substantive digest');
+  assert.ok(!runIdSet().has(runId), 'no ghost, no duplicate entries');
+  assert.equal(packageRunsIndex.checkPackageRunsIndex({ repoRoot: ROOT }).ok, true);
+});
+
+test('LI11: teardown with an already-missing temp directory — rebuild still succeeds', () => {
+  const runId = '2099-02-11-teardown-missing';
+  // Never created: teardown against a directory that does not exist.
+  const teardownErrors = teardownRealRepoTempRun(runId);
+  assert.deepEqual(teardownErrors, [], 'missing temp directory must not cascade');
+  assert.ok(!runIdSet().has(runId), 'nothing to ghost, nothing ghosted');
+  assert.equal(packageRunsIndex.checkPackageRunsIndex({ repoRoot: ROOT }).ok, true);
 });

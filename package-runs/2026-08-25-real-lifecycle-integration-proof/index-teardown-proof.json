@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "artifact": "LIFECYCLE_CANARY_INDEX_TEARDOWN_PROOF",
+  "date": "2026-08-25",
+  "before_create": {
+    "ok": false,
+    "indexed": 1,
+    "genuine": 1,
+    "defects": [
+      "INDEX_STALE"
+    ]
+  },
+  "retained_run_present": true,
+  "after_create": {
+    "ok": true,
+    "indexed": 2,
+    "genuine": 2,
+    "defects": []
+  },
+  "temp_run_indexed": true,
+  "teardown_errors": [],
+  "after_teardown": {
+    "ok": true,
+    "indexed": 1,
+    "genuine": 1,
+    "defects": []
+  },
+  "temp_run_gone": true,
+  "ghost_after_teardown": false,
+  "repeated_runs": [
+    {
+      "run": 1,
+      "suite_result": "11/11 passed, 0 failed",
+      "check_ok": true,
+      "ghost_entries": 0
+    },
+    {
+      "run": 2,
+      "suite_result": "11/11 passed, 0 failed",
+      "check_ok": true,
+      "ghost_entries": 0
+    },
+    {
+      "run": 3,
+      "suite_result": "11/11 passed, 0 failed",
+      "check_ok": true,
+      "ghost_entries": 0
+    }
+  ],
+  "final_check": {
+    "ok": true,
+    "indexed": 1,
+    "genuine": 1,
+    "defects": []
+  },
+  "retained_run_still_present": true,
+  "verdict": "LIFECYCLE_CANARY_INDEX_TEARDOWN_PROVEN"
+}
