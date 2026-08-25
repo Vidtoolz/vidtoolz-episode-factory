@@ -1,0 +1,249 @@
+{
+  "schema_version": 1,
+  "record_type": "agent_backfill_proof_correction",
+  "correction": "RETROACTIVE_PRODUCTION_PATH_VERIFICATION_OF_A_BACKFILLED_CLASS",
+  "registry_values_changed": false,
+  "human_authorization_required": false,
+  "human_authorization_note": "No lifecycle, readiness or authority VALUE changes in this correction. Every audited agent already carried IMPLEMENTATION_PROVEN; what changed is that the claim is now backed by verified production-path dispatch. Promoting or demoting any role remains Mikko's decision alone.",
+  "defect_class": {
+    "summary": "IMPLEMENTATION_PROVEN was backfilled from incomplete evidence rather than earned through the canonical production runner.",
+    "backfill_commit": {
+      "commit": "5ca7334d49fc5209612f3b889a4170df86c3025a",
+      "subject": "fix(agents): enforce canonical implementation readiness",
+      "finding": "The implementation_state field was introduced one commit earlier by f87c26c, which deliberately gated three agents at CANDIDATE. The very next commit, 5ca7334, extended the field to the remaining seven agents and set every one of them straight to IMPLEMENTATION_PROVEN - the opposite default - while leaving the original three at CANDIDATE. None of the seven demonstrated anything to earn it.",
+      "field_existed_before": true,
+      "population": [
+        {
+          "agent_id": "generation_supervisor",
+          "before": "FIELD_ABSENT",
+          "after": "IMPLEMENTATION_PROVEN"
+        },
+        {
+          "agent_id": "editor",
+          "before": "FIELD_ABSENT",
+          "after": "IMPLEMENTATION_PROVEN"
+        },
+        {
+          "agent_id": "sound_music_director",
+          "before": "FIELD_ABSENT",
+          "after": "IMPLEMENTATION_PROVEN"
+        },
+        {
+          "agent_id": "research_director",
+          "before": "FIELD_ABSENT",
+          "after": "IMPLEMENTATION_PROVEN"
+        },
+        {
+          "agent_id": "story_editor",
+          "before": "FIELD_ABSENT",
+          "after": "IMPLEMENTATION_PROVEN"
+        },
+        {
+          "agent_id": "visual_planning_director",
+          "before": "FIELD_ABSENT",
+          "after": "IMPLEMENTATION_PROVEN"
+        },
+        {
+          "agent_id": "audience_packaging_director",
+          "before": "FIELD_ABSENT",
+          "after": "IMPLEMENTATION_PROVEN"
+        }
+      ],
+      "held_back_at_candidate": [
+        "production_operations",
+        "camera_director",
+        "qc_director"
+      ],
+      "field_introduced_by": {
+        "commit": "f87c26c0314b97ebd5d057b0d932e227fe1741a8",
+        "subject": "Add Production Operations V1 candidate with implementation-readiness gate",
+        "gated_at_candidate": {
+          "production_operations": "CANDIDATE",
+          "camera_director": "CANDIDATE",
+          "qc_director": "CANDIDATE"
+        }
+      },
+      "pre_existing_states": {
+        "production_operations": "CANDIDATE",
+        "camera_director": "CANDIDATE",
+        "qc_director": "CANDIDATE"
+      }
+    },
+    "known_failures_in_this_class": [
+      "generation_supervisor — canonical runner refused it with RUNNER_AGENT_ID_MISMATCH; the module exported no identity at all. Repaired and re-proven separately (governance/generation-supervisor-implementation-proof-correction.json).",
+      "sound_music_director — exported no ACTIONS, so the runner-level action gate was inert for this one agent. Repaired in this mission."
+    ]
+  },
+  "historical_promotion_quality": {
+    "verdict": "ORIGINAL_PROMOTION_EVIDENCE_ABSENT",
+    "statement": "It is not possible to retroactively prove what was demonstrated when 5ca7334 was written, and this record does not attempt to. No proof package, governance record or state note accompanied any agent in this class. The original promotions are therefore recorded as unevidenced, not as valid.",
+    "distinction": "Historical promotion evidence and current production-path proof are separate facts. This record supplies only the second.",
+    "correction_note": "An earlier draft of this record stated that 5ca7334 introduced the implementation_state field. That was wrong and the governance test caught it against git. The field already existed; 5ca7334 extended it and chose PROVEN as the default for seven agents one commit after the same field had been used to gate three others at CANDIDATE."
+  },
+  "current_verification": {
+    "verified_on": "2026-08-25",
+    "method": "canonical production dispatch through scripts/agent-run.js — resolve, implementation readiness, module identity, declared-action validation, child-process invocation, canonical envelope validation, result persistence, and an unsupported-action negative case",
+    "explicitly_insufficient_evidence": [
+      "module exists",
+      "unit tests pass",
+      "direct CLI works",
+      "registry says proven"
+    ],
+    "audit_package": "package-runs/2026-08-25-agent-backfill-dispatch-audit-v2",
+    "audit_summary_sha256": "43f188f7ef3b601db522662dd0b73f1289cb4ab829d56f549e2aa9fd1e8440ab",
+    "pre_repair_snapshot": "package-runs/2026-08-25-agent-backfill-dispatch-audit-v2/pre-repair-truth-snapshot.json",
+    "pre_repair_snapshot_sha256": "c956c57c70e2411997d8500cb68f710f0b6a99b9c1605a2a15d73523fe00d748",
+    "audit_script": "scripts/agent-backfill-dispatch-audit.js",
+    "audit_script_sha256": "c976ee87a51f7d130510b98d2aaedc17bbff81327e7b4f58de53a7d853aeac0d",
+    "verdict": "BACKFILL_CLASS_DISPATCH_VERIFIED",
+    "results": {
+      "generation_supervisor": {
+        "classification": "BACKFILL_SUPERSEDED_BY_REAL_PROOF",
+        "canonical_dispatch": "COMPLETE",
+        "envelope_valid": true,
+        "result_persisted": true,
+        "unsupported_action_refused_at_gate": true,
+        "failed_closed": true,
+        "module_sha256": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15",
+        "actions": [
+          "supervise_generation",
+          "status"
+        ]
+      },
+      "editor": {
+        "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+        "canonical_dispatch": "COMPLETE",
+        "envelope_valid": true,
+        "result_persisted": true,
+        "unsupported_action_refused_at_gate": true,
+        "failed_closed": true,
+        "module_sha256": "3bf49c174b9ae95d2ea717655c58786fb7afff5ef552abc672739030addea957",
+        "actions": [
+          "plan_edit",
+          "revise_edit",
+          "status"
+        ]
+      },
+      "sound_music_director": {
+        "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+        "canonical_dispatch": "COMPLETE",
+        "envelope_valid": true,
+        "result_persisted": true,
+        "unsupported_action_refused_at_gate": true,
+        "failed_closed": true,
+        "module_sha256": "5532d11c981e61b34bf26fe967f8700ac4d39b108d6ad379d2ef64c284b927ba",
+        "actions": [
+          "generate",
+          "evaluate",
+          "status"
+        ]
+      },
+      "research_director": {
+        "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+        "canonical_dispatch": "COMPLETE",
+        "envelope_valid": true,
+        "result_persisted": true,
+        "unsupported_action_refused_at_gate": true,
+        "failed_closed": true,
+        "module_sha256": "eac7145e8f5047f8a95be96bbc7966a15bb6a28c7ae4bb05e7e5785de563bfea",
+        "actions": [
+          "evaluate_claim",
+          "evaluate_existing_result",
+          "evaluate_known_evidence",
+          "research_from_known_sources",
+          "status"
+        ]
+      },
+      "story_editor": {
+        "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+        "canonical_dispatch": "COMPLETE",
+        "envelope_valid": true,
+        "result_persisted": true,
+        "unsupported_action_refused_at_gate": true,
+        "failed_closed": true,
+        "module_sha256": "5ad38c7d8b9a27a57206c075ae0ca37debcecf3fba4498aacc6babd06bf61aa8",
+        "actions": [
+          "review_script",
+          "revise_script",
+          "review_successor",
+          "status"
+        ]
+      },
+      "visual_planning_director": {
+        "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+        "canonical_dispatch": "COMPLETE",
+        "envelope_valid": true,
+        "result_persisted": true,
+        "unsupported_action_refused_at_gate": true,
+        "failed_closed": true,
+        "module_sha256": "17db4af035ca4a50780fecabf73d19b541ddf93b53b07152fd8a31afd41f11dc",
+        "actions": [
+          "plan_visuals",
+          "review_coverage",
+          "status"
+        ]
+      },
+      "audience_packaging_director": {
+        "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+        "canonical_dispatch": "COMPLETE",
+        "envelope_valid": true,
+        "result_persisted": true,
+        "unsupported_action_refused_at_gate": true,
+        "failed_closed": true,
+        "module_sha256": "95c1a389c389b6bd383c49a152752ca703709a1a190c4811e098b9b6515ed422",
+        "actions": [
+          "plan_packaging",
+          "review_packaging",
+          "status"
+        ]
+      }
+    },
+    "repair_commit": "0c6dc1e40c6c8f4299bcf0d8a30309b4538ba98c",
+    "audit_commit": "31e481625e95beb38eb9b2471b173fcb1c772e4b"
+  },
+  "re_earned_agents": {
+    "agents": [
+      "editor",
+      "sound_music_director",
+      "research_director",
+      "story_editor",
+      "visual_planning_director",
+      "audience_packaging_director"
+    ],
+    "statement": "These agents were backfilled without evidence and are now verified by current production-path dispatch. Their IMPLEMENTATION_PROVEN state is therefore re-earned as of the verification date above, NOT validated retroactively by 5ca7334."
+  },
+  "already_superseded": {
+    "agents": [
+      "generation_supervisor"
+    ],
+    "statement": "These carried a real production-path proof before this audit and were not reworked."
+  },
+  "repairs": {
+    "sound_music_director": {
+      "defect": "no ACTIONS export, so scripts/agent-run.js could not refuse an unsupported action before invoking the module",
+      "never_had_it": "ACTIONS was absent in every commit of this module — this is an original gap, not a regression",
+      "repair": "exported the module's OWN existing action vocabulary (generate|evaluate|status, already validated internally by validateInputs) and made validateInputs read that single source of truth",
+      "behaviour_changed": false,
+      "behaviour_note": "Declarative only. No synthesis, render, routing, Scorecraft, music-generation or candidate-selection logic was touched. All 17 pre-existing sound-music-director tests pass unmodified.",
+      "before": "unsupported action reached the module and was refused internally as INPUT_MISSING",
+      "after": "unsupported action is refused at the runner gate with RUNNER_ACTION_UNSUPPORTED, before invocation"
+    }
+  },
+  "prevention": {
+    "invariant": "tests/agent-implementation-invariant.test.js",
+    "statement": "The invariant SCANS THE REGISTRY rather than hardcoding an agent list, so any future agent promoted without a working runner contract fails immediately. It was verified to genuinely catch this class: AI4 fails against pre-repair HEAD with the exact sound_music_director defect.",
+    "proof_debt_tracking": "AI9 records the agents still lacking durable per-agent proof metadata as an explicit, shrinking migration debt list rather than breaking every legacy agent at once."
+  },
+  "authority_effect": {
+    "implementation_dispatch_eligibility_changed": false,
+    "doctrine_changed": false,
+    "lifecycle_proven_changed": false,
+    "autonomous_dispatch_changed": false,
+    "allowed_actions_changed": false,
+    "prohibited_actions_changed": false,
+    "approval_created": false,
+    "specialist_behaviour_changed": false,
+    "canonical_production_agents": 12
+  },
+  "statement": "THE ORIGINAL BACKFILL WAS NOT PROOF. One commit after the implementation-readiness field was introduced to gate three agents at CANDIDATE, commit 5ca7334 extended that field to seven more agents and defaulted every one of them to IMPLEMENTATION_PROVEN with no evidence. Two later proved untrue in different ways. This record does not rewrite that history. Every member of the class has now been verified through the real production path, the one remaining contract gap has been repaired, and a registry-scanning invariant prevents the class from recurring."
+}

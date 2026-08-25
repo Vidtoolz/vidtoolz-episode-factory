@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "record": "PRE_REPAIR_TRUTH_SNAPSHOT",
+  "captured_before": "the sound_music_director ACTIONS export repair in this mission",
+  "why": "Repairs must not erase evidence of the historical contradiction. This is the observed state of the 5ca7334 backfill class BEFORE any change in this mission.",
+  "finding": "All seven agents dispatched through the canonical runner. Six refused an unsupported action at the runner gate with RUNNER_ACTION_UNSUPPORTED. sound_music_director alone did not: it exported no ACTIONS, so the runner's action gate was inert and the bad action reached the module, which then refused it internally. Fail-closed held, but the runner-level contract was not enforced for that agent.",
+  "agents": {
+    "generation_supervisor": {
+      "registry_state": "IMPLEMENTATION_PROVEN",
+      "readiness": {
+        "authorized": true,
+        "code": null,
+        "module_exists": true
+      },
+      "positive": {
+        "infra": "COMPLETE",
+        "envelope_error": null,
+        "semantic_state": "COMPLETE",
+        "exit_code": 0,
+        "result_agent_id": "generation_supervisor",
+        "has_control_room": true,
+        "result_persisted": true
+      },
+      "negative": {
+        "refused_at_runner": true,
+        "error_code": "RUNNER_ACTION_UNSUPPORTED",
+        "error": "agent does not support action: obliterate_everything"
+      }
+    },
+    "editor": {
+      "registry_state": "IMPLEMENTATION_PROVEN",
+      "readiness": {
+        "authorized": true,
+        "code": null,
+        "module_exists": true
+      },
+      "positive": {
+        "infra": "COMPLETE",
+        "envelope_error": null,
+        "semantic_state": "BLOCKED",
+        "exit_code": 1,
+        "result_agent_id": "editor",
+        "has_control_room": true,
+        "result_persisted": true
+      },
+      "negative": {
+        "refused_at_runner": true,
+        "error_code": "RUNNER_ACTION_UNSUPPORTED",
+        "error": "agent does not support action: obliterate_everything"
+      }
+    },
+    "sound_music_director": {
+      "registry_state": "IMPLEMENTATION_PROVEN",
+      "readiness": {
+        "authorized": true,
+        "code": null,
+        "module_exists": true
+      },
+      "positive": {
+        "infra": "COMPLETE",
+        "envelope_error": null,
+        "semantic_state": "INPUT_MISSING",
+        "exit_code": 1,
+        "result_agent_id": "sound_music_director",
+        "has_control_room": true,
+        "result_persisted": true
+      },
+      "negative": {
+        "refused_at_runner": false,
+        "infra": "COMPLETE",
+        "semantic_state": "INPUT_MISSING",
+        "exit_code": 1,
+        "reason": "task_id and project_id are required"
+      }
+    },
+    "research_director": {
+      "registry_state": "IMPLEMENTATION_PROVEN",
+      "readiness": {
+        "authorized": true,
+        "code": null,
+        "module_exists": true
+      },
+      "positive": {
+        "infra": "COMPLETE",
+        "envelope_error": null,
+        "semantic_state": "COMPLETE",
+        "exit_code": 0,
+        "result_agent_id": "research_director",
+        "has_control_room": true,
+        "result_persisted": true
+      },
+      "negative": {
+        "refused_at_runner": true,
+        "error_code": "RUNNER_ACTION_UNSUPPORTED",
+        "error": "agent does not support action: obliterate_everything"
+      }
+    },
+    "story_editor": {
+      "registry_state": "IMPLEMENTATION_PROVEN",
+      "readiness": {
+        "authorized": true,
+        "code": null,
+        "module_exists": true
+      },
+      "positive": {
+        "infra": "COMPLETE",
+        "envelope_error": null,
+        "semantic_state": "BLOCKED",
+        "exit_code": 1,
+        "result_agent_id": "story_editor",
+        "has_control_room": true,
+        "result_persisted": true
+      },
+      "negative": {
+        "refused_at_runner": true,
+        "error_code": "RUNNER_ACTION_UNSUPPORTED",
+        "error": "agent does not support action: obliterate_everything"
+      }
+    },
+    "visual_planning_director": {
+      "registry_state": "IMPLEMENTATION_PROVEN",
+      "readiness": {
+        "authorized": true,
+        "code": null,
+        "module_exists": true
+      },
+      "positive": {
+        "infra": "COMPLETE",
+        "envelope_error": null,
+        "semantic_state": "BLOCKED",
+        "exit_code": 1,
+        "result_agent_id": "visual_planning_director",
+        "has_control_room": true,
+        "result_persisted": true
+      },
+      "negative": {
+        "refused_at_runner": true,
+        "error_code": "RUNNER_ACTION_UNSUPPORTED",
+        "error": "agent does not support action: obliterate_everything"
+      }
+    },
+    "audience_packaging_director": {
+      "registry_state": "IMPLEMENTATION_PROVEN",
+      "readiness": {
+        "authorized": true,
+        "code": null,
+        "module_exists": true
+      },
+      "positive": {
+        "infra": "COMPLETE",
+        "envelope_error": null,
+        "semantic_state": "BLOCKED",
+        "exit_code": 1,
+        "result_agent_id": "audience_packaging_director",
+        "has_control_room": true,
+        "result_persisted": true
+      },
+      "negative": {
+        "refused_at_runner": true,
+        "error_code": "RUNNER_ACTION_UNSUPPORTED",
+        "error": "agent does not support action: obliterate_everything"
+      }
+    }
+  }
+}

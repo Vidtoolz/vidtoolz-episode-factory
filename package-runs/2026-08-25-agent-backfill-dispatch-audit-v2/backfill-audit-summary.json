@@ -1,0 +1,526 @@
+{
+  "schema_version": 1,
+  "audit": "AGENT_BACKFILL_PRODUCTION_PATH_DISPATCH_AUDIT_V2",
+  "generated_at": "2026-08-25T04:47:30.578Z",
+  "backfill_commit": {
+    "commit": "5ca7334d49fc5209612f3b889a4170df86c3025a",
+    "subject": "fix(agents): enforce canonical implementation readiness",
+    "field_existed_before": true,
+    "pre_existing_states": {
+      "production_operations": "CANDIDATE",
+      "camera_director": "CANDIDATE",
+      "qc_director": "CANDIDATE"
+    },
+    "population": [
+      {
+        "agent_id": "generation_supervisor",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      {
+        "agent_id": "editor",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      {
+        "agent_id": "sound_music_director",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      {
+        "agent_id": "research_director",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      {
+        "agent_id": "story_editor",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      {
+        "agent_id": "visual_planning_director",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      {
+        "agent_id": "audience_packaging_director",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      }
+    ]
+  },
+  "standard": "production-path dispatch through scripts/agent-run.js — module existence, unit tests, direct CLI and registry claims are explicitly NOT accepted as sufficient evidence",
+  "execution_levels_tested": [
+    "A direct module surface",
+    "B canonical runner",
+    "C dispatch authority"
+  ],
+  "bounded_workload": {
+    "action_used": "status (cheapest bounded action for every audited agent)",
+    "external_jobs_triggered": false,
+    "earth_studio_touched": false
+  },
+  "registry_unchanged_by_audit": true,
+  "agents": [
+    {
+      "agent_id": "generation_supervisor",
+      "backfill": {
+        "agent_id": "generation_supervisor",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      "current_registry_state": "IMPLEMENTATION_PROVEN",
+      "lifecycle": {
+        "doctrine": "DEFINED",
+        "proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED"
+      },
+      "historical_promotion_evidence": "ORIGINAL_PROMOTION_EVIDENCE_ABSENT",
+      "contract": {
+        "module_path": "scripts/generation-supervisor.js",
+        "module_exists": true,
+        "module_sha256": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15",
+        "declares_agent_id": "generation_supervisor",
+        "identity_matches": true,
+        "exports_actions": true,
+        "actions": [
+          "supervise_generation",
+          "status"
+        ],
+        "exports_run": true,
+        "exports_control_room_view": true,
+        "safe_for_identity_inspection": true
+      },
+      "dispatch": {
+        "authority": {
+          "authorized": true,
+          "code": null,
+          "module_exists": true
+        },
+        "positive": {
+          "dispatched": true,
+          "infrastructure_state": "COMPLETE",
+          "envelope_error": null,
+          "envelope_valid": true,
+          "semantic_state": "COMPLETE",
+          "exit_code": 0,
+          "result_agent_id": "generation_supervisor",
+          "has_control_room": true,
+          "result_persisted": true,
+          "result_sha256": "4e2ea5328d0e276f915fd49fa319c6b945fef729949f7924bd2f99353da17051",
+          "module_sha256": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15"
+        },
+        "negative": {
+          "refused_at_runner_gate": true,
+          "error_code": "RUNNER_ACTION_UNSUPPORTED",
+          "error": "agent does not support action: obliterate_everything",
+          "failed_closed": true
+        }
+      },
+      "evidence": {
+        "governance_records": [
+          "generation-supervisor-implementation-proof-correction.json"
+        ],
+        "proof_packages": [
+          "2026-08-25-generation-supervisor-proof-v2"
+        ],
+        "has_durable_evidence": true
+      },
+      "classification": "BACKFILL_SUPERSEDED_BY_REAL_PROOF",
+      "reason": "a later production-path proof and/or governance record re-earned this state"
+    },
+    {
+      "agent_id": "editor",
+      "backfill": {
+        "agent_id": "editor",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      "current_registry_state": "IMPLEMENTATION_PROVEN",
+      "lifecycle": {
+        "doctrine": "DEFINED",
+        "proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED"
+      },
+      "historical_promotion_evidence": "ORIGINAL_PROMOTION_EVIDENCE_ABSENT",
+      "contract": {
+        "module_path": "scripts/editor.js",
+        "module_exists": true,
+        "module_sha256": "3bf49c174b9ae95d2ea717655c58786fb7afff5ef552abc672739030addea957",
+        "declares_agent_id": "editor",
+        "identity_matches": true,
+        "exports_actions": true,
+        "actions": [
+          "plan_edit",
+          "revise_edit",
+          "status"
+        ],
+        "exports_run": true,
+        "exports_control_room_view": true,
+        "safe_for_identity_inspection": true
+      },
+      "dispatch": {
+        "authority": {
+          "authorized": true,
+          "code": null,
+          "module_exists": true
+        },
+        "positive": {
+          "dispatched": true,
+          "infrastructure_state": "COMPLETE",
+          "envelope_error": null,
+          "envelope_valid": true,
+          "semantic_state": "BLOCKED",
+          "exit_code": 1,
+          "result_agent_id": "editor",
+          "has_control_room": true,
+          "result_persisted": true,
+          "result_sha256": "c01ad869ac308b84d128277ef842aa77ee748de4501f5aa2fc4f2547133afbb3",
+          "module_sha256": "3bf49c174b9ae95d2ea717655c58786fb7afff5ef552abc672739030addea957"
+        },
+        "negative": {
+          "refused_at_runner_gate": true,
+          "error_code": "RUNNER_ACTION_UNSUPPORTED",
+          "error": "agent does not support action: obliterate_everything",
+          "failed_closed": true
+        }
+      },
+      "evidence": {
+        "governance_records": [],
+        "proof_packages": [],
+        "has_durable_evidence": false
+      },
+      "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+      "reason": "canonical dispatch is verified today, but the original 5ca7334 promotion carried no evidence"
+    },
+    {
+      "agent_id": "sound_music_director",
+      "backfill": {
+        "agent_id": "sound_music_director",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      "current_registry_state": "IMPLEMENTATION_PROVEN",
+      "lifecycle": {
+        "doctrine": "DEFINED",
+        "proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED"
+      },
+      "historical_promotion_evidence": "ORIGINAL_PROMOTION_EVIDENCE_ABSENT",
+      "contract": {
+        "module_path": "scripts/sound-music-director.js",
+        "module_exists": true,
+        "module_sha256": "5532d11c981e61b34bf26fe967f8700ac4d39b108d6ad379d2ef64c284b927ba",
+        "declares_agent_id": "sound_music_director",
+        "identity_matches": true,
+        "exports_actions": true,
+        "actions": [
+          "generate",
+          "evaluate",
+          "status"
+        ],
+        "exports_run": true,
+        "exports_control_room_view": true,
+        "safe_for_identity_inspection": true
+      },
+      "dispatch": {
+        "authority": {
+          "authorized": true,
+          "code": null,
+          "module_exists": true
+        },
+        "positive": {
+          "dispatched": true,
+          "infrastructure_state": "COMPLETE",
+          "envelope_error": null,
+          "envelope_valid": true,
+          "semantic_state": "INPUT_MISSING",
+          "exit_code": 1,
+          "result_agent_id": "sound_music_director",
+          "has_control_room": true,
+          "result_persisted": true,
+          "result_sha256": "2f18b5fef73133097270b3aa1b3ab917a0b63c014b9512e1659d645dfabf186c",
+          "module_sha256": "5532d11c981e61b34bf26fe967f8700ac4d39b108d6ad379d2ef64c284b927ba"
+        },
+        "negative": {
+          "refused_at_runner_gate": true,
+          "error_code": "RUNNER_ACTION_UNSUPPORTED",
+          "error": "agent does not support action: obliterate_everything",
+          "failed_closed": true
+        }
+      },
+      "evidence": {
+        "governance_records": [],
+        "proof_packages": [],
+        "has_durable_evidence": false
+      },
+      "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+      "reason": "canonical dispatch is verified today, but the original 5ca7334 promotion carried no evidence"
+    },
+    {
+      "agent_id": "research_director",
+      "backfill": {
+        "agent_id": "research_director",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      "current_registry_state": "IMPLEMENTATION_PROVEN",
+      "lifecycle": {
+        "doctrine": "DEFINED",
+        "proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED"
+      },
+      "historical_promotion_evidence": "ORIGINAL_PROMOTION_EVIDENCE_ABSENT",
+      "contract": {
+        "module_path": "scripts/research-director.js",
+        "module_exists": true,
+        "module_sha256": "eac7145e8f5047f8a95be96bbc7966a15bb6a28c7ae4bb05e7e5785de563bfea",
+        "declares_agent_id": "research_director",
+        "identity_matches": true,
+        "exports_actions": true,
+        "actions": [
+          "evaluate_claim",
+          "evaluate_existing_result",
+          "evaluate_known_evidence",
+          "research_from_known_sources",
+          "status"
+        ],
+        "exports_run": true,
+        "exports_control_room_view": true,
+        "safe_for_identity_inspection": true
+      },
+      "dispatch": {
+        "authority": {
+          "authorized": true,
+          "code": null,
+          "module_exists": true
+        },
+        "positive": {
+          "dispatched": true,
+          "infrastructure_state": "COMPLETE",
+          "envelope_error": null,
+          "envelope_valid": true,
+          "semantic_state": "COMPLETE",
+          "exit_code": 0,
+          "result_agent_id": "research_director",
+          "has_control_room": true,
+          "result_persisted": true,
+          "result_sha256": "6da990de7189669b0475f212d019fff188c5aed2a1a330d7e8c6c862e049ac10",
+          "module_sha256": "eac7145e8f5047f8a95be96bbc7966a15bb6a28c7ae4bb05e7e5785de563bfea"
+        },
+        "negative": {
+          "refused_at_runner_gate": true,
+          "error_code": "RUNNER_ACTION_UNSUPPORTED",
+          "error": "agent does not support action: obliterate_everything",
+          "failed_closed": true
+        }
+      },
+      "evidence": {
+        "governance_records": [],
+        "proof_packages": [],
+        "has_durable_evidence": false
+      },
+      "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+      "reason": "canonical dispatch is verified today, but the original 5ca7334 promotion carried no evidence"
+    },
+    {
+      "agent_id": "story_editor",
+      "backfill": {
+        "agent_id": "story_editor",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      "current_registry_state": "IMPLEMENTATION_PROVEN",
+      "lifecycle": {
+        "doctrine": "DEFINED",
+        "proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED"
+      },
+      "historical_promotion_evidence": "ORIGINAL_PROMOTION_EVIDENCE_ABSENT",
+      "contract": {
+        "module_path": "scripts/story-editor.js",
+        "module_exists": true,
+        "module_sha256": "5ad38c7d8b9a27a57206c075ae0ca37debcecf3fba4498aacc6babd06bf61aa8",
+        "declares_agent_id": "story_editor",
+        "identity_matches": true,
+        "exports_actions": true,
+        "actions": [
+          "review_script",
+          "revise_script",
+          "review_successor",
+          "status"
+        ],
+        "exports_run": true,
+        "exports_control_room_view": true,
+        "safe_for_identity_inspection": true
+      },
+      "dispatch": {
+        "authority": {
+          "authorized": true,
+          "code": null,
+          "module_exists": true
+        },
+        "positive": {
+          "dispatched": true,
+          "infrastructure_state": "COMPLETE",
+          "envelope_error": null,
+          "envelope_valid": true,
+          "semantic_state": "COMPLETE",
+          "exit_code": 0,
+          "result_agent_id": "story_editor",
+          "has_control_room": true,
+          "result_persisted": true,
+          "result_sha256": "59a76cf8037d1e1dc5b5e35ab56e1fad20a4a57229b63b013370c5fd41325511",
+          "module_sha256": "5ad38c7d8b9a27a57206c075ae0ca37debcecf3fba4498aacc6babd06bf61aa8"
+        },
+        "negative": {
+          "refused_at_runner_gate": true,
+          "error_code": "RUNNER_ACTION_UNSUPPORTED",
+          "error": "agent does not support action: obliterate_everything",
+          "failed_closed": true
+        }
+      },
+      "evidence": {
+        "governance_records": [],
+        "proof_packages": [],
+        "has_durable_evidence": false
+      },
+      "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+      "reason": "canonical dispatch is verified today, but the original 5ca7334 promotion carried no evidence"
+    },
+    {
+      "agent_id": "visual_planning_director",
+      "backfill": {
+        "agent_id": "visual_planning_director",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      "current_registry_state": "IMPLEMENTATION_PROVEN",
+      "lifecycle": {
+        "doctrine": "DEFINED",
+        "proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED"
+      },
+      "historical_promotion_evidence": "ORIGINAL_PROMOTION_EVIDENCE_ABSENT",
+      "contract": {
+        "module_path": "scripts/visual-planning-director.js",
+        "module_exists": true,
+        "module_sha256": "17db4af035ca4a50780fecabf73d19b541ddf93b53b07152fd8a31afd41f11dc",
+        "declares_agent_id": "visual_planning_director",
+        "identity_matches": true,
+        "exports_actions": true,
+        "actions": [
+          "plan_visuals",
+          "review_coverage",
+          "status"
+        ],
+        "exports_run": true,
+        "exports_control_room_view": true,
+        "safe_for_identity_inspection": true
+      },
+      "dispatch": {
+        "authority": {
+          "authorized": true,
+          "code": null,
+          "module_exists": true
+        },
+        "positive": {
+          "dispatched": true,
+          "infrastructure_state": "COMPLETE",
+          "envelope_error": null,
+          "envelope_valid": true,
+          "semantic_state": "BLOCKED",
+          "exit_code": 1,
+          "result_agent_id": "visual_planning_director",
+          "has_control_room": true,
+          "result_persisted": true,
+          "result_sha256": "c8b41f585f631b391a8a75cb83bd16d9c004ba9769e39f36ad7a1f3d4740f3bd",
+          "module_sha256": "17db4af035ca4a50780fecabf73d19b541ddf93b53b07152fd8a31afd41f11dc"
+        },
+        "negative": {
+          "refused_at_runner_gate": true,
+          "error_code": "RUNNER_ACTION_UNSUPPORTED",
+          "error": "agent does not support action: obliterate_everything",
+          "failed_closed": true
+        }
+      },
+      "evidence": {
+        "governance_records": [],
+        "proof_packages": [],
+        "has_durable_evidence": false
+      },
+      "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+      "reason": "canonical dispatch is verified today, but the original 5ca7334 promotion carried no evidence"
+    },
+    {
+      "agent_id": "audience_packaging_director",
+      "backfill": {
+        "agent_id": "audience_packaging_director",
+        "before": "FIELD_ABSENT",
+        "after": "IMPLEMENTATION_PROVEN"
+      },
+      "current_registry_state": "IMPLEMENTATION_PROVEN",
+      "lifecycle": {
+        "doctrine": "DEFINED",
+        "proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED"
+      },
+      "historical_promotion_evidence": "ORIGINAL_PROMOTION_EVIDENCE_ABSENT",
+      "contract": {
+        "module_path": "scripts/audience-packaging-director.js",
+        "module_exists": true,
+        "module_sha256": "95c1a389c389b6bd383c49a152752ca703709a1a190c4811e098b9b6515ed422",
+        "declares_agent_id": "audience_packaging_director",
+        "identity_matches": true,
+        "exports_actions": true,
+        "actions": [
+          "plan_packaging",
+          "review_packaging",
+          "status"
+        ],
+        "exports_run": true,
+        "exports_control_room_view": true,
+        "safe_for_identity_inspection": true
+      },
+      "dispatch": {
+        "authority": {
+          "authorized": true,
+          "code": null,
+          "module_exists": true
+        },
+        "positive": {
+          "dispatched": true,
+          "infrastructure_state": "COMPLETE",
+          "envelope_error": null,
+          "envelope_valid": true,
+          "semantic_state": "BLOCKED",
+          "exit_code": 1,
+          "result_agent_id": "audience_packaging_director",
+          "has_control_room": true,
+          "result_persisted": true,
+          "result_sha256": "ad836645339ce83a492aabda2671ce2b8bce6d2371d121f7f3613bfd6473725f",
+          "module_sha256": "95c1a389c389b6bd383c49a152752ca703709a1a190c4811e098b9b6515ed422"
+        },
+        "negative": {
+          "refused_at_runner_gate": true,
+          "error_code": "RUNNER_ACTION_UNSUPPORTED",
+          "error": "agent does not support action: obliterate_everything",
+          "failed_closed": true
+        }
+      },
+      "evidence": {
+        "governance_records": [],
+        "proof_packages": [],
+        "has_durable_evidence": false
+      },
+      "classification": "PROOF_MISSING_BUT_RUNTIME_VALID",
+      "reason": "canonical dispatch is verified today, but the original 5ca7334 promotion carried no evidence"
+    }
+  ],
+  "classification_counts": {
+    "BACKFILL_SUPERSEDED_BY_REAL_PROOF": 1,
+    "PROOF_MISSING_BUT_RUNTIME_VALID": 6
+  },
+  "verdict": "BACKFILL_CLASS_DISPATCH_VERIFIED",
+  "unresolved_defects": []
+}
