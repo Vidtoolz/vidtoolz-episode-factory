@@ -412,6 +412,54 @@
         "residual": "the gate evaluator itself still detects a marker without digest-checking it, so artifacts changed by other means could carry a stale approval; making the evaluator digest-bound changes shared gate semantics and was not done unasked"
       },
       "note": "Found while recording Mikko's approval. Closed in the module that created the risk."
+    },
+    {
+      "step": 23,
+      "timestamp": "2026-08-25",
+      "event": "GATE6_APPROVAL_BOUND_AT_CANONICAL_EVALUATOR",
+      "gate_before": "capture-checklist",
+      "gate_after": "capture-checklist",
+      "actor": "claude",
+      "human_authority": null,
+      "approval_recorded": false,
+      "fix": {
+        "where": "scripts/package-run-shot-edit-plan-review.js + scripts/visual-plan-package-materializer.js",
+        "contract": "three digests must agree (marker text, provenance sidecar, plan recomputed) and projections are RE-DERIVED from the plan, never trusted from the sidecar",
+        "codes": {
+          "APPROVED_PLAN_SUPERSEDED": "READY FOR HUMAN APPROVAL",
+          "APPROVED_PLAN_DIGEST_UNKNOWN": "READY FOR HUMAN APPROVAL",
+          "APPROVED_PLAN_ARTIFACT_DRIFT": "NEEDS WORK",
+          "APPROVED_PLAN_MATERIALIZATION_DRIFT": "NEEDS WORK"
+        },
+        "human_notes_exempt": true,
+        "contract_change": "an approval naming no plan is no longer trusted; a hand-authored planning set can no longer reach PASS on a bare marker",
+        "legacy_inventory": "only one real gate-6 approval exists repo-wide (the canary), already digest-bound"
+      },
+      "regression_proof": "on an isolated copy, superseding the plan un-completed gate 6: 6/14 -> 5/14, capture-checklist -> shot-edit-plan-review, HUMAN_REVIEW_REQUIRED, tracker consistent, zero drift",
+      "note": "Mikko's approval preserved and still PASS, bound to visual-plan-01M0W34QTVW6SG24TKPEKAJERW r1."
+    },
+    {
+      "step": 24,
+      "timestamp": "2026-08-25",
+      "event": "GATE7_OWNERSHIP_AUDIT",
+      "gate_before": "capture-checklist",
+      "gate_after": "capture-checklist",
+      "actor": "claude (read-only audit)",
+      "human_authority": null,
+      "approval_recorded": false,
+      "classification": "E — MIXED MACHINE/HUMAN GATE; machine half in state B (owner correct, implementation missing)",
+      "owner": "presenter_director (contract PLANNED, build_order 7, NOT_PROVEN, DISABLED, BLOCKED_AGENT_NOT_ENABLED)",
+      "owner_correct": true,
+      "same_shape_as_gate6": "yes — presenter-take-manifest lane vs five markdown artifacts, zero adapter, 0 references to any gate-7 artifact in presenter-director.js",
+      "but_materially_different": [
+        "owner declares NOT_PROVEN/DISABLED with named prerequisites rather than claiming PROVEN",
+        "projection is self-consistent (owner disabled + codex draft-only)",
+        "generator TODO rows are conditional, not hardcoded"
+      ],
+      "mode_gap": "Draft/Review/Production modes do not exist anywhere in the codebase; gate 7 therefore has exactly one capture semantics (real capture)",
+      "artifact": "package-runs/2026-08-25-real-lifecycle-integration-proof/GATE-7-OWNERSHIP-AUDIT.md",
+      "nothing_built": true,
+      "note": "Audit only. No gate-7 artifact fabricated; canary left at gate 7 with zero gate-7 artifacts."
     }
   ],
   "final_state": {
@@ -545,9 +593,9 @@
     "cockpit_took_canonical_branch": true
   },
   "deepest_gate_earned": "shot-edit-plan-review complete by human approval (6/14); run at gate 7 capture-checklist",
-  "stop_reason": "STOP — Mikko approved gate 6 and the run advanced to gate 7. Gate 7 work was not started; it was not authorized.",
+  "stop_reason": "STOP — Part A hardened and proven at the canonical evaluator; Part B classified without implementation.",
   "failures": [],
-  "verdict": "GATE_6_APPROVED_BY_MIKKO_RUN_AT_GATE_7",
+  "verdict": "GATE6_APPROVAL_BINDING_HARDENED_GATE7_AUDIT_COMPLETE",
   "defect_found": {
     "title": "Parking a run made two projection consumers invent a canonical position",
     "discovered_by": "this canary — the first genuine package run",
@@ -736,5 +784,27 @@
     "recorded_in": "production-plan.md",
     "digest_bound_to": "9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7",
     "inheritance_guarded": true
+  },
+  "gate6_approval_binding": {
+    "enforced_at": "canonical evaluator (scripts/package-run-shot-edit-plan-review.js)",
+    "verifier": "scripts/visual-plan-package-materializer.js#verifyApprovalBinding",
+    "canary_still_passes": true,
+    "gate_regression_works": true,
+    "negative_cases_closed": [
+      "stale plan",
+      "projection hand-edit",
+      "deliberate-none edit",
+      "artifact+sidecar co-forgery",
+      "sidecar digest forgery",
+      "sidecar deletion",
+      "marker digest forgery"
+    ],
+    "false_positive_avoided": "sanctioned human-notes edit stays PASS"
+  },
+  "gate7_audit": {
+    "artifact": "GATE-7-OWNERSHIP-AUDIT.md",
+    "classification": "E (machine half B)",
+    "implemented": false,
+    "recommended_first_step": "decide the run-level capture mode before building any gate-7 bridge"
   }
 }
