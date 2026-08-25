@@ -460,6 +460,27 @@
       "artifact": "package-runs/2026-08-25-real-lifecycle-integration-proof/GATE-7-OWNERSHIP-AUDIT.md",
       "nothing_built": true,
       "note": "Audit only. No gate-7 artifact fabricated; canary left at gate 7 with zero gate-7 artifacts."
+    },
+    {
+      "step": 25,
+      "timestamp": "2026-08-25",
+      "event": "HUMAN_AUTHORED_APPROVAL_PATH_RESTORED",
+      "gate_before": "capture-checklist",
+      "gate_after": "capture-checklist",
+      "actor": "claude",
+      "human_authority": "Mikko decision: restore the manual path using the same binding principle",
+      "approval_recorded": false,
+      "modes": {
+        "AGENT_GENERATED": "visual-plan digest",
+        "HUMAN_AUTHORED": "deterministic snapshot digest over the five governed artifacts"
+      },
+      "defect_found_and_fixed": "releasing human authority via replaceApproved left the human approval covering agent-generated content; authority is now released only by explicit retirement, and a retired record stops governing",
+      "canary_unchanged": true,
+      "artifacts": [
+        "GATE-6-HUMAN-AUTHORED-APPROVAL.md",
+        "human-authored-approval-proof.json"
+      ],
+      "note": "Bare-marker trust was NOT restored. Both modes are digest-bound; cross-mode digest reuse is impossible."
     }
   ],
   "final_state": {
@@ -593,9 +614,9 @@
     "cockpit_took_canonical_branch": true
   },
   "deepest_gate_earned": "shot-edit-plan-review complete by human approval (6/14); run at gate 7 capture-checklist",
-  "stop_reason": "STOP — Part A hardened and proven at the canonical evaluator; Part B classified without implementation.",
+  "stop_reason": "STOP — both gate-6 planning provenance modes are digest-bound and secure. Gate 7 untouched.",
   "failures": [],
-  "verdict": "GATE6_APPROVAL_BINDING_HARDENED_GATE7_AUDIT_COMPLETE",
+  "verdict": "HUMAN_AUTHORED_APPROVAL_PATH_PROVEN",
   "defect_found": {
     "title": "Parking a run made two projection consumers invent a canonical position",
     "discovered_by": "this canary — the first genuine package run",
@@ -806,5 +827,22 @@
     "classification": "E (machine half B)",
     "implemented": false,
     "recommended_first_step": "decide the run-level capture mode before building any gate-7 bridge"
+  },
+  "gate6_planning_provenance": {
+    "modes": [
+      "AGENT_GENERATED",
+      "HUMAN_AUTHORED"
+    ],
+    "declared_not_inferred": true,
+    "marker_fields": {
+      "AGENT_GENERATED": "Approved plan digest",
+      "HUMAN_AUTHORED": "Approved planning snapshot"
+    },
+    "cross_mode_reuse_possible": false,
+    "bare_marker_accepted": false,
+    "quality_bar_identical": true,
+    "regression_works_in_both_modes": true,
+    "invariant": "every gate-6 PASS carries a valid plan-digest or human-snapshot binding",
+    "docs": "package-runs/2026-08-25-real-lifecycle-integration-proof/GATE-6-HUMAN-AUTHORED-APPROVAL.md"
   }
 }

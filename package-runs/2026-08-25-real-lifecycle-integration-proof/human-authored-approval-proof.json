@@ -1,0 +1,121 @@
+{
+  "schema": "vidtoolz.humanAuthoredApprovalProof.v1",
+  "authority_note": "TEST_ONLY fixture. No real Mikko verdict was fabricated; the only genuine human approval in this repository remains the canary's agent-path approval.",
+  "problem": {
+    "before_hardening": "a bare \"Shot/edit plan approval: PASS\" line anywhere in a planning artifact completed gate 6",
+    "after_hardening": "every approval had to name a visual-plan digest, so a hand-authored planning set could not be approved at all",
+    "capability_lost": "human-authored gate-6 planning approval"
+  },
+  "source_modes": {
+    "AGENT_GENERATED": {
+      "declared_by": "visual-plan-materialization.json",
+      "approval_binds_to": "visual-plan digest",
+      "marker_field": "Approved plan digest"
+    },
+    "HUMAN_AUTHORED": {
+      "declared_by": "human-planning-approval.json",
+      "approval_binds_to": "deterministic snapshot digest over the five governed artifacts",
+      "marker_field": "Approved planning snapshot"
+    },
+    "ambiguity": "both declared without recorded supersession -> PLANNING_AUTHORITY_AMBIGUOUS",
+    "neither": "no declared provenance -> APPROVED_PLAN_DIGEST_UNKNOWN",
+    "cross_mode_reuse": "impossible — each mode reads only its own marker field"
+  },
+  "snapshot_contract": {
+    "schema": "vidtoolz.humanPlanningSnapshot.v1",
+    "record_schema": "vidtoolz.humanPlanningApproval.v1",
+    "governed_artifacts": [
+      "shot-list.md",
+      "screen-capture-list.md",
+      "demo-list.md",
+      "b-roll-list.md",
+      "graphics-list.md"
+    ],
+    "digests": "machine-owned body only; the sanctioned human-notes region is excluded so notes stay editable after approval",
+    "canonical_serialization": "snapshot schema + gate id + run id + ordered filename:machine_sha256 pairs",
+    "excluded": [
+      "mtimes",
+      "generation timestamps",
+      "human-notes region",
+      "any file outside the governed set"
+    ],
+    "ordering": "fixed by GOVERNED_ARTIFACTS, not by directory listing"
+  },
+  "fixture": {
+    "run_id": "2026-08-25-human-authored-fixture",
+    "snapshot_digest": "2e0b95fbb36db5e0276c0baadb429c84179f6546a0c3f3fc0e646b36135188a1",
+    "artifacts": [
+      {
+        "filename": "shot-list.md",
+        "machine_sha256": "54ac582972c50648e9a657c10aaa7a389cbbd16c473ab7e393a56acd1d2059f7"
+      },
+      {
+        "filename": "screen-capture-list.md",
+        "machine_sha256": "51395f3dc48bd9ca504e22dad4fbae404beec30bb17f870b7de77570059c11a2"
+      },
+      {
+        "filename": "demo-list.md",
+        "machine_sha256": "2270fa54bfe515db02706c48ed2bec6db610d9ec8508cbb2024f8d0c2a757003"
+      },
+      {
+        "filename": "b-roll-list.md",
+        "machine_sha256": "27cb5265a563a02d199e8fa29fbab2cdd71098d7f549b1edf51584cae6c1c52f"
+      },
+      {
+        "filename": "graphics-list.md",
+        "machine_sha256": "c0f3e6824b36e9b56bc3c97308496c120242352315f3e72afcb75678ee5a61e5"
+      }
+    ],
+    "record_approval_field": null,
+    "snapshot_is_not_approval": true
+  },
+  "sequence": {
+    "1_no_provenance_declared": "READY FOR HUMAN APPROVAL",
+    "2_provenance_declared_no_marker": "READY FOR HUMAN APPROVAL",
+    "3_bare_marker": {
+      "status": "READY FOR HUMAN APPROVAL",
+      "code": "HUMAN_PLAN_APPROVAL_DIGEST_UNKNOWN",
+      "source": "HUMAN_AUTHORED"
+    },
+    "4_bound_marker": {
+      "status": "PASS",
+      "accepted": true,
+      "source": "HUMAN_AUTHORED"
+    }
+  },
+  "negative_cases": {
+    "governed_artifact_edit": "HUMAN_PLAN_ARTIFACT_DRIFT (NEEDS WORK)",
+    "deliberate_none_edit": "HUMAN_PLAN_ARTIFACT_DRIFT (NEEDS WORK)",
+    "governed_artifact_deleted": "fails closed; binding returns HUMAN_PLAN_ARTIFACT_DRIFT",
+    "bare_marker": "HUMAN_PLAN_APPROVAL_DIGEST_UNKNOWN (READY FOR HUMAN APPROVAL)",
+    "wrong_digest": "HUMAN_PLAN_APPROVAL_SUPERSEDED (READY FOR HUMAN APPROVAL)",
+    "notes_only_edit": "still PASS — sanctioned, and notes cannot smuggle governed content because the digest ignores them",
+    "unrelated_file": "no digest change"
+  },
+  "provenance_switches": {
+    "agent_to_human": "requires supersedeAgent; the agent approval does not transfer (HUMAN_PLAN_APPROVAL_DIGEST_UNKNOWN until Mikko re-approves)",
+    "human_to_agent": "materializing is refused (PLANNING_AUTHORITY_AMBIGUOUS) even with replaceApproved; authority is released only by explicit retirement, after which the agent path needs its own approval",
+    "no_auto_switch": "the presence of a visual plan never flips a declared human package, and the absence of one never declares human authority"
+  },
+  "canonical_regression": "changing approved manual content reopens gate 6: 6/14 -> 5/14, capture-checklist -> shot-edit-plan-review, tracker consistent, zero projection defects",
+  "retained_canary": {
+    "run": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+    "planning_source": "AGENT_GENERATED",
+    "human_record_present": false,
+    "gate6": "PASS",
+    "gate": "capture-checklist (7/14)",
+    "unchanged": true
+  },
+  "reason_codes": [
+    "APPROVED_PLAN_SUPERSEDED",
+    "APPROVED_PLAN_DIGEST_UNKNOWN",
+    "APPROVED_PLAN_ARTIFACT_DRIFT",
+    "APPROVED_PLAN_MATERIALIZATION_DRIFT",
+    "HUMAN_PLAN_APPROVAL_SUPERSEDED",
+    "HUMAN_PLAN_APPROVAL_DIGEST_UNKNOWN",
+    "HUMAN_PLAN_ARTIFACT_DRIFT",
+    "PLANNING_AUTHORITY_AMBIGUOUS"
+  ],
+  "invariant": "every gate-6 PASS carries either a valid plan-digest binding or a valid human-snapshot binding; there is no marker-only branch",
+  "tests": "HA1-HA18 plus the existing AB1-AB11 plan-binding matrix, all green"
+}
