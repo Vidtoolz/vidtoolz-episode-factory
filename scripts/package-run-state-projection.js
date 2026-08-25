@@ -27,6 +27,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const workflowMapModule = require("./package-run-workflow-map.js");
+const productionModeModule = require("./package-run-production-mode.js");
 const stageProjection = require("./workflow-stage-projection.js");
 const packageRunsIndex = require("./package-runs-index.js");
 
@@ -317,6 +318,11 @@ function buildProjection(options = {}) {
   const runDir = options.runDir ? path.resolve(repoRoot, options.runDir) : path.join(repoRoot, "package-runs", runId);
   const relativeRunDir = path.relative(repoRoot, runDir);
   const map = workflowMapModule.buildWorkflowMap(relativeRunDir, { repoRoot });
+  // Production mode is an orthogonal run dimension. This projection READS it from
+  // canonical run metadata and never owns it, exactly as it does for the gate.
+  let productionMode = productionModeModule.MODE_UNSPECIFIED;
+  try { productionMode = productionModeModule.readProductionMode(runDir).mode; }
+  catch (_) { productionMode = productionModeModule.MODE_UNSPECIFIED; }
   const isPackageRun = packageRunsIndex.isPackageRunDir(runDir);
   const existingText = typeof options.existingText === "string" ? options.existingText : "";
   const markerState = readMarkerState(existingText);
@@ -340,6 +346,7 @@ function buildProjection(options = {}) {
     is_package_run: isPackageRun,
     marker_state: markerState || "",
     workflow_path: markerWorkflowPath || "horizontal",
+    production_mode: productionMode,
     current_gate: currentGateId,
     current_gate_label: currentGate ? currentGate.label : "",
     current_gate_status: currentGate ? currentGate.status : "none",
