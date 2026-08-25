@@ -173,13 +173,21 @@ test('AF4: a producer may not claim a class it does not semantically own', () =>
     () => are.materializeAudioRenderEvidence(runDir, rec.dir, { renderClass: 'MUSIC_CANDIDATE', producer: 'generation_supervisor' }),
     (e) => e.code === 'AUDIO_RENDER_CLASS_UNAUTHORIZED',
   );
-  // ...and nobody may claim PRODUCTION_MIX: it has no authorized producer.
-  for (const producer of ['sound_music_director', 'generation_supervisor', 'editor']) {
+  // ...and only editor may claim PRODUCTION_MIX: sound and narration lanes
+  // must never impersonate the assembled program mix.
+  for (const producer of ['sound_music_director', 'generation_supervisor']) {
     assert.throws(
       () => are.resolveRenderClass('PRODUCTION_MIX', producer),
       (e) => e.code === 'AUDIO_RENDER_CLASS_UNAUTHORIZED',
     );
   }
+  // editor IS authorized for PRODUCTION_MIX, but only through the program-mix
+  // attester — never via the music attester's render-class resolver.
+  assert.equal(policy.producerAuthorizedForClass('editor', 'PRODUCTION_MIX'), true);
+  assert.throws(
+    () => are.resolveRenderClass('PRODUCTION_MIX', 'editor'),
+    (e) => e.code === 'AUDIO_RENDER_CLASS_UNAUTHORIZED',
+  );
 });
 
 /* ── AF5: DRAFT_TEMPORARY valid for a DRAFT-context attestation ──────────── */
@@ -236,9 +244,10 @@ test('AF7: no hand-authored PRODUCTION_MIX evidence can satisfy QC', () => {
   assert.equal(result.disposition, 'BLOCKED');
   const codes = (result.blockers || []).map((b) => b.code);
   assert.ok(codes.includes('AUDIO_RENDER_CLASS_UNAUTHORIZED') || codes.includes('AUDIO_RENDER_CLASS_INSUFFICIENT'));
-  // And the attester path itself proves no producer can mint it today.
+  // And the producer path is closed but upstream material is still absent:
+  // the gap is declared machine-readably and remains unsatisfiable.
   const gap = policy.KNOWN_CLASS_GAPS.PRODUCTION_MIX;
-  assert.equal(gap.status, 'PRODUCER_MISSING');
+  assert.equal(gap.status, 'UPSTREAM_MATERIAL_MISSING');
 });
 
 /* ── AF8: mode change never mutates render_class ─────────────────────────── */

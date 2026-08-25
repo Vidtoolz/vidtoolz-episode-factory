@@ -199,7 +199,7 @@ test('QAP11: AUDIO_RENDER Draft semantics are mechanically enforced, not silentl
   assert.equal(row.required_render_class, 'PRODUCTION_MIX');
   assert.ok(row.fidelity_contract && /PRODUCTION_MIX/.test(row.fidelity_contract));
   const gap = policy.KNOWN_CLASS_GAPS.PRODUCTION_MIX;
-  assert.equal(gap.status, 'PRODUCER_MISSING', 'the final-mix producer gap must stay declared');
+  assert.equal(gap.status, 'UPSTREAM_MATERIAL_MISSING', 'producer path is closed; remaining gap is upstream material, not a missing producer');
   // Fidelity invariant green with the declared gap; without it, red.
   assert.equal(policy.checkAudioFidelityConsistency().ok, true);
   // A weaker class can never satisfy the requirement by relaxation:

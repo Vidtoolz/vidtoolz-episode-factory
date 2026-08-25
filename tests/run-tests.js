@@ -41,6 +41,7 @@ require("./story-validation-bridge.test.js");
 require("./audio-render-evidence.test.js");
 require("./qc-evidence-applicability.test.js");
 require("./audio-fidelity-contract.test.js");
+require("./production-mix-evidence.test.js");
 require("./lifecycle-authority-invariant.test.js");
 require("./package-lifecycle-integration.test.js");
 require("./video-prompts.test.js");
