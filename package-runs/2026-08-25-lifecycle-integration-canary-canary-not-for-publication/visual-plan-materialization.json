@@ -1,0 +1,58 @@
+{
+  "schema": "vidtoolz.visualPlanMaterialization.v1",
+  "adapter_version": "visual-plan-package-materializer-v1",
+  "machine_owner": "visual_planning_director",
+  "run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "source_visual_plan": {
+    "path": "agents/visual_planning_director/vpd-canary-bridge-1/artifacts/visual-plan.json",
+    "plan_id": "visual-plan-01M0W34QTVW6SG24TKPEKAJERW",
+    "plan_revision": 1,
+    "plan_digest_sha256": "9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7",
+    "lifecycle_state": "PREVIEW_ONLY",
+    "created_at": "2026-08-25T09:13:40.443Z",
+    "created_by": "visual_planning_director",
+    "task_id": "vpd-canary-bridge-1"
+  },
+  "story": {
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+    "approval_state": "none"
+  },
+  "coverage": {
+    "required_beats": 7,
+    "planned_shots": 6,
+    "intentional_no_visual": 1,
+    "screen_captures": 0,
+    "demonstrations": 0,
+    "broll": 0,
+    "graphics": 6
+  },
+  "artifacts": [
+    {
+      "filename": "shot-list.md",
+      "sha256": "a9f2bab784236faa8f5f7e9097c10bad195beca0aca4f16d50974e009ae77613",
+      "bytes": 5700
+    },
+    {
+      "filename": "screen-capture-list.md",
+      "sha256": "829d328a515b578158d611608c0300be497904d6b0b859cfd16591c12acccc76",
+      "bytes": 991
+    },
+    {
+      "filename": "demo-list.md",
+      "sha256": "ee86280c4b77b1a6b33cacf303a314bef315a4fd119f9c03ec1e1ff143673582",
+      "bytes": 985
+    },
+    {
+      "filename": "b-roll-list.md",
+      "sha256": "5ab7b42dd5fd86f71d2ee509785fe7060cebc72cae3ab5ddefd634b536a1df0f",
+      "bytes": 929
+    },
+    {
+      "filename": "graphics-list.md",
+      "sha256": "2e31799139d83e92a8b19b862291f9daf21f9f9ac4a7272d439e64bfed935a29",
+      "bytes": 6392
+    }
+  ]
+}

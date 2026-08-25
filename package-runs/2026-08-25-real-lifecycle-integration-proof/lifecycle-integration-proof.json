@@ -217,6 +217,104 @@
       "approval_recorded": false,
       "defect": "GATE_OWNER_WITHOUT_IMPLEMENTATION_PATH",
       "note": "Gate 6 is attributed to visual_planning_director by package-run-state-projection.js:61, but that agent reads canonical Story from vidtoolz-script-builder and writes visual-plan.json into the agent lane, while the gate evaluates five package-run markdown files written only by deterministic package-run tools. No adapter exists in either direction."
+    },
+    {
+      "step": 16,
+      "timestamp": "2026-08-25",
+      "event": "PACKAGE_RUN_BOUND_TO_CANONICAL_STORY",
+      "gate_before": "shot-edit-plan-review",
+      "gate_after": "shot-edit-plan-review",
+      "actor": "claude (bridge implementation)",
+      "human_authority": "Mikko decision B — build the missing bridge",
+      "approval_recorded": false,
+      "story": {
+        "source_system": "vidtoolz-script-builder",
+        "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+        "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+        "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+        "sections": 7,
+        "story_approval_state": "none"
+      },
+      "note": "Story registered from the run's own approved final-script.md through Script Builder's canonical API; approval deliberately left at none. Run stores a reference (story-binding.json), never a copy."
+    },
+    {
+      "step": 17,
+      "timestamp": "2026-08-25",
+      "event": "VISUAL_PLANNING_DIRECTOR_DISPATCHED",
+      "gate_before": "shot-edit-plan-review",
+      "gate_after": "shot-edit-plan-review",
+      "actor": "claude via scripts/agent-run.js",
+      "human_authority": null,
+      "approval_recorded": false,
+      "dispatch": {
+        "agent_id": "visual_planning_director",
+        "action": "plan_visuals",
+        "task_id": "vpd-canary-bridge-1",
+        "infrastructure_state": "COMPLETE",
+        "semantic_state": "PREVIEW_ONLY",
+        "route": {
+          "lane": "large_text",
+          "host": "presto",
+          "model": "vidtoolz-presto:latest",
+          "latency_ms": 64877
+        },
+        "plan_id": "visual-plan-01M0W34QTVW6SG24TKPEKAJERW",
+        "plan_revision": 1,
+        "plan_digest_sha256": "9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7"
+      },
+      "note": "Same agent that returned BLOCKED at step 14 now completes: the only thing that changed is that the run can name its Story."
+    },
+    {
+      "step": 18,
+      "timestamp": "2026-08-25",
+      "event": "PLANNING_ARTIFACTS_MATERIALIZED",
+      "gate_before": "shot-edit-plan-review",
+      "gate_after": "shot-edit-plan-review",
+      "actor": "visual-plan-package-materializer-v1",
+      "human_authority": null,
+      "approval_recorded": false,
+      "coverage": {
+        "required_beats": 7,
+        "planned_shots": 6,
+        "intentional_no_visual": 1,
+        "screen_captures": 0,
+        "demonstrations": 0,
+        "broll": 0,
+        "graphics": 6
+      },
+      "artifacts": {
+        "shot-list.md": "a9f2bab784236faa",
+        "screen-capture-list.md": "829d328a515b5781",
+        "demo-list.md": "ee86280c4b77b1a6",
+        "b-roll-list.md": "5ab7b42dd5fd86f7",
+        "graphics-list.md": "2e31799139d83e92"
+      },
+      "note": "Five artifacts are now projections of the visual plan. Zero TODO rows. Deterministic and idempotent. No hand editing."
+    },
+    {
+      "step": 19,
+      "timestamp": "2026-08-25",
+      "event": "SHOT_EDIT_PLAN_READY_FOR_HUMAN_APPROVAL",
+      "gate_before": "shot-edit-plan-review",
+      "gate_after": "shot-edit-plan-review",
+      "actor": "scripts/package-run-shot-edit-plan-review.js",
+      "human_authority": null,
+      "approval_recorded": false,
+      "evaluator": {
+        "status": "READY FOR HUMAN APPROVAL",
+        "accepted": false,
+        "approval_marker": false,
+        "all_planning_artifacts_concrete": true
+      },
+      "projection": {
+        "state": "HUMAN_REVIEW_REQUIRED",
+        "expected_owner": "visual_planning_director",
+        "next_safe_actor": "mikko",
+        "mode": "approval-required",
+        "tracker": "TRACKER_CONSISTENT",
+        "drift": null
+      },
+      "note": "Earned by the machine path alone. Gate did NOT advance: Mikko's marker is still required and PASS remains unreachable without it."
     }
   ],
   "final_state": {
@@ -349,10 +447,10 @@
     },
     "cockpit_took_canonical_branch": true
   },
-  "deepest_gate_earned": "production-plan complete (5/14); shot-edit-plan-review held at NEEDS WORK — declared machine owner cannot write the gate artifacts",
-  "stop_reason": "STOP — architecture defect (stop condition 3). Specialist dispatched through the real runner and refused; no path exists from any agent to this gate.",
+  "deepest_gate_earned": "shot-edit-plan-review READY FOR HUMAN APPROVAL by the machine path (5/14 complete, gate 6 held for Mikko)",
+  "stop_reason": "STOP — READY FOR HUMAN APPROVAL truthfully reached. No marker written, gate 7 not entered.",
   "failures": [],
-  "verdict": "ARCHITECTURE_DEFECT_FOUND",
+  "verdict": "READY_FOR_MIKKO_SHOT_EDIT_REVIEW",
   "defect_found": {
     "title": "Parking a run made two projection consumers invent a canonical position",
     "discovered_by": "this canary — the first genuine package run",
@@ -428,7 +526,7 @@
     "recommendation": "that fixture should pin by run id rather than assume \"latest\", but changing it belongs to its owner"
   },
   "human_review_readiness": {
-    "verdict": "ARCHITECTURE_DEFECT_FOUND",
+    "verdict": "READY_FOR_HUMAN_APPROVAL",
     "gate": "shot-edit-plan-review (6/14)",
     "gate_status": "NEEDS WORK",
     "gate_status_vocabulary": [
@@ -437,26 +535,8 @@
       "READY FOR HUMAN APPROVAL",
       "PASS"
     ],
-    "why_not_ready": "The gate's declared machine owner has no implementation path to the gate's artifacts, and the scaffold generator that does write them always emits TODO rows.",
-    "machine_requirement_remaining": {
-      "owner": "visual_planning_director",
-      "owner_readiness": "IMPLEMENTATION_PROVEN / AUTHORIZED",
-      "dispatched_for_this_run": false,
-      "owner_latest_invocation_run": "2026-08-24-workspace-canary (a different run)",
-      "artifacts": [
-        "shot-list.md",
-        "screen-capture-list.md",
-        "demo-list.md",
-        "b-roll-list.md",
-        "graphics-list.md"
-      ],
-      "concrete_already": [
-        "production-plan.md",
-        "audio-notes.md",
-        "production-blockers.md"
-      ],
-      "evaluator_next_action": "Edit the planning artifacts manually, then run this review again."
-    },
+    "why_not_ready": null,
+    "machine_requirement_remaining": null,
     "approval_markers_accepted": [
       "Manual approval: PASS",
       "Production planning approval: PASS",
@@ -473,7 +553,7 @@
     "previous_approval_scope": "RESEARCH_ONLY",
     "previous_approval_leaked": false,
     "review_packet": "package-runs/2026-08-25-real-lifecycle-integration-proof/NEXT-HUMAN-REVIEW.md",
-    "packet_sha256": "f530e621d0cf7c972d63cab13911e55d9fc6c937973562120771a556a7a03222"
+    "packet_sha256": "cf02e61841b11358eedaa6e9a5884b7b52012abdbf45ce31a8d25100ab1af2f7"
   },
   "architecture_defect": {
     "code": "GATE_OWNER_WITHOUT_IMPLEMENTATION_PATH",
@@ -506,14 +586,50 @@
     "code": "QC_REQUIRED_EVIDENCE_MISSING",
     "affected_gate": "research",
     "next_gate_allowed": false,
-    "note": "Live, outside this mission scope, reported for visibility."
+    "note": "Still live and still out of scope. The new Story binding makes the STORY_VALIDATION path reachable for the first time, but emitting it is a story_editor dispatch on gate 2."
   },
   "projection_consistency_after": {
     "canonical_gate": "shot-edit-plan-review",
     "gates_complete": 5,
+    "state": "HUMAN_REVIEW_REQUIRED",
+    "expected_owner": "visual_planning_director",
+    "next_safe_actor": "mikko",
     "tracker": "TRACKER_CONSISTENT",
     "drift": null,
     "consistency_ok": true,
     "defects": 0
+  },
+  "gate6_bridge": {
+    "decision": "Mikko chose B — build the missing bridge",
+    "architecture": "canonical Story -> visual_planning_director -> visual-plan.json -> deterministic adapter -> five package-run planning artifacts -> evaluator -> Mikko",
+    "new_modules": [
+      "scripts/package-run-story-binding.js",
+      "scripts/package-run-story-registration.js",
+      "scripts/visual-plan-package-materializer.js"
+    ],
+    "extended_modules": [
+      "scripts/agent-task-visual-planning.js (--run resolves the binding)",
+      "scripts/visual-plan.js (optional typed demonstration)",
+      "scripts/visual-planning-director.js (demonstration in prompt + passthrough)",
+      "config/visual-plan-contract.json"
+    ],
+    "story_authority_unchanged": "vidtoolz-script-builder remains the only Story owner; the run holds a hash-bound reference",
+    "fail_closed_codes": [
+      "STORY_BINDING_MISSING",
+      "STORY_PROJECT_NOT_FOUND",
+      "STORY_VERSION_NOT_FOUND",
+      "STORY_VERSION_SUPERSEDED",
+      "STORY_CONTENT_HASH_DRIFT",
+      "STORY_CONTENT_HASH_INVALID",
+      "STORY_BINDING_ID_INVALID",
+      "STORY_BINDING_SCHEMA_UNSUPPORTED",
+      "STORY_BINDING_CONFLICT"
+    ],
+    "evaluator_not_weakened": "todos===0 and the placeholder/open-blocked rules are untouched; the adapter satisfies them with real content",
+    "scaffold_generator_retained": "package-run-production-plan.js still emits TODO scaffolds and is still useful as a template initializer, but is no longer the terminal machine path",
+    "deliberate_none": "a category with no legitimate entries states NO_<CATEGORY>_REQUIRED with its basis, substantive enough to be concrete rather than a bare none",
+    "human_region": "<!-- human-notes:start --> survives regeneration; edits elsewhere are overwritten, never silently merged",
+    "gate_owner_invariant": "tests/visual-planning-package-bridge.test.js INV1 locks that gate 6's declared owner has a reachable production path to the gate artifacts",
+    "tests": "34 new tests (SB1-SB10 binding, AD1-AD15 adapter, E2E1-E2E2, HG1-HG3, RV1-RV2, INV1-INV2)"
   }
 }

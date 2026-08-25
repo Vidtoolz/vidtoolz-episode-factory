@@ -1,12 +1,21 @@
 # Screen Capture List
 
-| capture | proof purpose | source/app | status |
-| --- | --- | --- | --- |
-| surfaces are views rather than authorities, and a recorded proof artifact showing | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| The video can show proof without inventing results or overstating certainty. | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| Viewer-visible proof needed: - Screen captures, test clips, timelines, screenshots, logs, or notes needed to demonstrate the claim. | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| One strong example that can be screen-recorded, recreated, or inspected. | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| Missing proof to resolve: | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| Production proof that can be captured locally or explained honestly. | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| Preview the proof object or test: - Screen captures, test clips, timelines, screenshots, logs, or notes needed to demonstrate the claim. | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
-| State the thesis without overstating proof: None. This package exists to prove lifecycle integration, not to serve viewers. | Proves or documents the on-screen claim. | local app / browser / Resolve | TODO |
+- Run: 2026-08-25-lifecycle-integration-canary-canary-not-for-publication
+- Machine owner: visual_planning_director
+- Visual plan: visual-plan-01M0W34QTVW6SG24TKPEKAJERW r1
+- Plan digest: 9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7
+- Story: 01M0W30GA5ZAXXQPX9SS0R2N29 @ 01M0W30GAA8DFZCTPRXN4Y4DXV
+- Adapter: visual-plan-package-materializer-v1
+
+## No screen capture Required
+
+- Decision: NO_SCREEN_CAPTURE_REQUIRED
+- Decided by: visual_planning_director in visual plan visual-plan-01M0W34QTVW6SG24TKPEKAJERW r1
+- Basis: the plan assigns every covered beat to generated, graphic, or presenter coverage rather than recordings of an application, so no screen capture is needed for this episode.
+- Coverage checked: 6 planned shot(s) across 7 canonical beat(s).
+
+If a later revision introduces a SCREEN_CAPTURE shot, this artifact is regenerated from that plan revision; it is not edited by hand.
+
+<!-- human-notes:start -->
+
+<!-- human-notes:end -->

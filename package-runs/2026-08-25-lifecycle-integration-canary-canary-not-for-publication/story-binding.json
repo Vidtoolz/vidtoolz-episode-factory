@@ -1,0 +1,21 @@
+{
+  "schema": "vidtoolz.packageRunStoryBinding.v1",
+  "artifact_type": "package-run-story-binding",
+  "contract_id": "vidtoolz-script-builder/story-version-authority/v1",
+  "run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "story": {
+    "source_system": "vidtoolz-script-builder",
+    "source_root": "/home/vidtoolz/vidtoolz-script-builder",
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+  },
+  "bound_at": "2026-08-25T09:11:21.674Z",
+  "bound_by": "claude (lifecycle bridge)",
+  "provenance": {
+    "source_artifact": "final-script.md",
+    "source_artifact_sha256": "201697e4818cde5e38bf61e7c1c20390b7a2a145f8a97d4372a18340d72450df",
+    "section_count": 7,
+    "registration": "package-run-story-registration.js"
+  }
+}

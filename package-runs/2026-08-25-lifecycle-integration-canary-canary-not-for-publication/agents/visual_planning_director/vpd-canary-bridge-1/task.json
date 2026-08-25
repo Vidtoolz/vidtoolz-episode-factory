@@ -1,0 +1,222 @@
+{
+  "task_id": "vpd-canary-bridge-1",
+  "action": "plan_visuals",
+  "requested_by": "mikko",
+  "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+  "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "risk_level": "LOCAL_AUTO",
+  "privacy": {
+    "local_only": true
+  },
+  "retry_budget": 2,
+  "cost_budget": {
+    "max_model_calls": 2
+  },
+  "story": {
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+    "approval": {
+      "state": "none",
+      "approved_by": null,
+      "approved_at": null,
+      "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+      "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+    },
+    "central_claim": null,
+    "narrative_spine": null,
+    "sections": [
+      {
+        "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+        "order": 1,
+        "beat": "Hook",
+        "type": "composited",
+        "background": "plate",
+        "framing_preset": "right-third",
+        "dialogue": "Your production system can describe where a run is. The question is whether every\npart of it describes the same place.",
+        "visual_notes": "",
+        "media_refs": []
+      },
+      {
+        "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+        "order": 2,
+        "beat": "Viewer Problem",
+        "type": "composited",
+        "background": "plate",
+        "framing_preset": "right-third",
+        "dialogue": "A production pipeline usually grows several ways to answer one question: what\nstage is this in? A gate engine says one thing, a UI tracker says another, a\ndurable status file says a third. Each looks reasonable alone. Together they let\nwork appear further along than the evidence supports.",
+        "visual_notes": "",
+        "media_refs": []
+      },
+      {
+        "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+        "order": 3,
+        "beat": "The Point",
+        "type": "composited",
+        "background": "plate",
+        "framing_preset": "right-third",
+        "dialogue": "One authority answers that question. Everything else is a view of that answer.",
+        "visual_notes": "",
+        "media_refs": []
+      },
+      {
+        "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+        "order": 4,
+        "beat": "Evidence",
+        "type": "composited",
+        "background": "plate",
+        "framing_preset": "right-third",
+        "dialogue": "The research for this run cites three in-repository sources: the gate engine that\ndefines the fourteen canonical gates, the authority document that records which\nsurfaces are views rather than authorities, and a recorded proof artifact showing\na contradiction between a gate and a display being detected and closed. Those\ncitations are listed in source-support-map.md.",
+        "visual_notes": "",
+        "media_refs": []
+      },
+      {
+        "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+        "order": 5,
+        "beat": "What This Run Demonstrates",
+        "type": "composited",
+        "background": "plate",
+        "framing_preset": "right-third",
+        "dialogue": "This package run moved through real gates using real evidence. Where evidence was\nmissing, the gate held. Where a human decision was required, the run stopped and\nwaited for it. That behaviour is the subject of this script.",
+        "visual_notes": "",
+        "media_refs": []
+      },
+      {
+        "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+        "order": 6,
+        "beat": "Close",
+        "type": "composited",
+        "background": "plate",
+        "framing_preset": "right-third",
+        "dialogue": "A detailed view is useful. A second authority is not.",
+        "visual_notes": "",
+        "media_refs": []
+      },
+      {
+        "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+        "order": 7,
+        "beat": "Final Packaging Check",
+        "type": "composited",
+        "background": "plate",
+        "framing_preset": "right-third",
+        "dialogue": "- Title and thumbnail assumptions verified: not applicable, this run does not ship.\n- Claims in the script map to entries in source-support-map.md.",
+        "visual_notes": "",
+        "media_refs": []
+      }
+    ]
+  },
+  "required_beats": [
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA6XPJWK39QKARCR2CC"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA6XPJWK39QKARCR2CC"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA7EZYRZCDQKFH5JBK8"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7EZYRZCDQKFH5JBK8"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA7H83X932A0NBZR4HZ"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7H83X932A0NBZR4HZ"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA7F6Y1MN4MBTT2TS7X"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7F6Y1MN4MBTT2TS7X"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA7AFTN0GSB5394G7MH"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7AFTN0GSB5394G7MH"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA703JCAW3MAB7TNGZC"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA703JCAW3MAB7TNGZC"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGA3K71R7X35VJ8AKTT",
+      "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA7PQMYYBSK5B050N41"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7PQMYYBSK5B050N41"
+      }
+    }
+  ],
+  "research": {
+    "bindings_doc": {
+      "bindings": []
+    },
+    "current_result_refs": [],
+    "required_constraint_ids": [],
+    "authority_by_binding": {}
+  },
+  "output_target": {
+    "aspect_ratio": "16:9",
+    "orientation": "horizontal",
+    "length_class": "long",
+    "max_duration_minutes": 30
+  }
+}

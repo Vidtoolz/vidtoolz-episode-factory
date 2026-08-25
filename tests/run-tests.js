@@ -127,6 +127,7 @@ require("./agent-task-visual-planning.test.js");
 require("./visual-planning-workspace.test.js");
 require("./visual-planning-workspace-ui.test.js");
 require("./visual-planning-manual-edit.test.js");
+require("./visual-planning-package-bridge.test.js");
 require("./manual-edit-recovery.test.js");
 require("./audience-packaging-director.test.js");
 require("./presenter-take-manifest.test.js");

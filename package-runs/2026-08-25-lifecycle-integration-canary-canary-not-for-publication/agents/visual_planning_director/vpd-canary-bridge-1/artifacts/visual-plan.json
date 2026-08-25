@@ -1,0 +1,662 @@
+{
+  "schema_version": 1,
+  "artifact_type": "visual-plan",
+  "plan_id": "visual-plan-01M0W34QTVW6SG24TKPEKAJERW",
+  "plan_revision": 1,
+  "supersedes": null,
+  "created_at": "2026-08-25T09:13:40.443Z",
+  "created_by": "visual_planning_director",
+  "lifecycle_state": "PREVIEW_ONLY",
+  "story": {
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+    "approval": {
+      "state": "none",
+      "approved_by": null,
+      "approved_at": null,
+      "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+      "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+    },
+    "section_ids": [
+      "01M0W30GA6XPJWK39QKARCR2CC",
+      "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "01M0W30GA7H83X932A0NBZR4HZ",
+      "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "01M0W30GA7AFTN0GSB5394G7MH",
+      "01M0W30GA703JCAW3MAB7TNGZC",
+      "01M0W30GA7PQMYYBSK5B050N41"
+    ]
+  },
+  "required_beats": [
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA6XPJWK39QKARCR2CC"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA6XPJWK39QKARCR2CC"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA7EZYRZCDQKFH5JBK8"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7EZYRZCDQKFH5JBK8"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA7H83X932A0NBZR4HZ"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7H83X932A0NBZR4HZ"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA7F6Y1MN4MBTT2TS7X"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7F6Y1MN4MBTT2TS7X"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA7AFTN0GSB5394G7MH"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7AFTN0GSB5394G7MH"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA703JCAW3MAB7TNGZC"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA703JCAW3MAB7TNGZC"
+      }
+    },
+    {
+      "canonical_beat_id": "visual-beat-01M0W32HGA3K71R7X35VJ8AKTT",
+      "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+      "aliases": [
+        {
+          "namespace": "vidtoolz-script-builder/section",
+          "id": "01M0W30GA7PQMYYBSK5B050N41"
+        }
+      ],
+      "source_provenance": {
+        "source_system": "vidtoolz-script-builder",
+        "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7PQMYYBSK5B050N41"
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+        "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA6XPJWK39QKARCR2CC"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA6XPJWK39QKARCR2CC"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0W34QTVFMKQGF95011NZQC0"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+        "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7EZYRZCDQKFH5JBK8"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7EZYRZCDQKFH5JBK8"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0W34QTVZKEB0P5PEHFSWYPA"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+        "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7H83X932A0NBZR4HZ"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7H83X932A0NBZR4HZ"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0W34QTVAA9AHATZ2XKJXG9Q"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+        "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7F6Y1MN4MBTT2TS7X"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7F6Y1MN4MBTT2TS7X"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0W34QTV88K1VVAM7CFKADEQ"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+        "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7AFTN0GSB5394G7MH"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7AFTN0GSB5394G7MH"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0W34QTVX26Z9K00FQPB9CV8"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+        "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA703JCAW3MAB7TNGZC"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA703JCAW3MAB7TNGZC"
+        }
+      },
+      "decision": "PLAN_SHOTS",
+      "shot_ids": [
+        "shot-01M0W34QTVEDRYWMG3NWSBJF41"
+      ],
+      "reason": null
+    },
+    {
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGA3K71R7X35VJ8AKTT",
+        "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7PQMYYBSK5B050N41"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7PQMYYBSK5B050N41"
+        }
+      },
+      "decision": "INTENTIONAL_NO_VISUAL",
+      "shot_ids": [],
+      "reason": "This beat is a meta-check on the packaging process (title/thumbnail verification and claim mapping) which is administrative and does not require visual representation in the narrative flow of the video."
+    }
+  ],
+  "shots": [
+    {
+      "shot_id": "shot-01M0W34QTVFMKQGF95011NZQC0",
+      "section_ref": {
+        "section_id": "01M0W30GA6XPJWK39QKARCR2CC"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+        "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA6XPJWK39QKARCR2CC"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA6XPJWK39QKARCR2CC"
+        }
+      },
+      "narrative_function": "Hook",
+      "subject": "Abstract network diagram with three disconnected nodes labeled 'Gate', 'UI', and 'File' showing conflicting status indicators",
+      "media_type": "INFOGRAPHIC",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "A clean, minimalist infographic on a dark background. Three distinct icons represent different system components. Arrows point to a central question mark that is flickering or unstable, symbolizing the lack of a single source of truth.",
+      "visual_assertion": null,
+      "presenter_relation": "BROLL_OVERLAY",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "infographic",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "High contrast text",
+          "Minimalist design"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "16:9",
+        "duration_target_s": 5
+      },
+      "continuity_notes": [
+        "Maintain consistent color palette for system components across all beats"
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "HIGH",
+      "status": "PROMPT_READY",
+      "prompt_refs": [
+        "prompt-01M0W34QTVC4SKFKHDE620KRK2"
+      ]
+    },
+    {
+      "shot_id": "shot-01M0W34QTVZKEB0P5PEHFSWYPA",
+      "section_ref": {
+        "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+        "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7EZYRZCDQKFH5JBK8"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7EZYRZCDQKFH5JBK8"
+        }
+      },
+      "narrative_function": "Viewer Problem",
+      "subject": "Split-screen view showing three different progress bars or status logs for the same task, each at a different percentage or state",
+      "media_type": "INFOGRAPHIC",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "Three vertical panels side-by-side. Left panel shows 'Gate Engine' at 50%. Middle panel shows 'UI Tracker' at 80%. Right panel shows 'Status File' at 100%. A red warning icon pulses over the discrepancy.",
+      "visual_assertion": null,
+      "presenter_relation": "BROLL_OVERLAY",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "infographic",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "Clear differentiation between states"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "16:9",
+        "duration_target_s": 6
+      },
+      "continuity_notes": [
+        "Use the same component icons as in Beat 1"
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "HIGH",
+      "status": "PROMPT_READY",
+      "prompt_refs": [
+        "prompt-01M0W34QTWT395SJ8A63H67EM0"
+      ]
+    },
+    {
+      "shot_id": "shot-01M0W34QTVAA9AHATZ2XKJXG9Q",
+      "section_ref": {
+        "section_id": "01M0W30GA7H83X932A0NBZR4HZ"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+        "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7H83X932A0NBZR4HZ"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7H83X932A0NBZR4HZ"
+        }
+      },
+      "narrative_function": "The Point",
+      "subject": "A central, glowing node labeled 'Authority' with multiple thin lines radiating out to smaller, dimmer nodes labeled 'Views'",
+      "media_type": "INFOGRAPHIC",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "The central node is bright and stable. The surrounding nodes are connected by unidirectional arrows pointing away from the center, indicating they are derived from the source rather than independent authorities.",
+      "visual_assertion": null,
+      "presenter_relation": "BROLL_OVERLAY",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "infographic",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "Emphasize hierarchy through brightness and size"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "16:9",
+        "duration_target_s": 4
+      },
+      "continuity_notes": [
+        "Central node color should match the 'Gate Engine' icon from previous beats"
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "HIGH",
+      "status": "PROMPT_READY",
+      "prompt_refs": [
+        "prompt-01M0W34QTWAFTTSC8RTGDQFWRF"
+      ]
+    },
+    {
+      "shot_id": "shot-01M0W34QTV88K1VVAM7CFKADEQ",
+      "section_ref": {
+        "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+        "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7F6Y1MN4MBTT2TS7X"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7F6Y1MN4MBTT2TS7X"
+        }
+      },
+      "narrative_function": "Evidence",
+      "subject": "A list of three document icons with titles: 'Gate Engine Definition', 'Authority Document', and 'Proof Artifact'",
+      "media_type": "TEXT_GRAPHIC",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "Clean text overlay listing the three sources. Each item has a small icon representing a code file, a legal/authority document, and a checkmark/shield for proof. The text is static and readable.",
+      "visual_assertion": null,
+      "presenter_relation": "REPLACE",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "text_graphic",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "High legibility"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "16:9",
+        "duration_target_s": 5
+      },
+      "continuity_notes": [
+        "Ensure font matches the overall typography style"
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "NORMAL",
+      "status": "PROMPT_READY",
+      "prompt_refs": [
+        "prompt-01M0W34QTWW8MKN00J4QJ8J2KE"
+      ]
+    },
+    {
+      "shot_id": "shot-01M0W34QTVX26Z9K00FQPB9CV8",
+      "section_ref": {
+        "section_id": "01M0W30GA7AFTN0GSB5394G7MH"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+        "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7AFTN0GSB5394G7MH"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7AFTN0GSB5394G7MH"
+        }
+      },
+      "narrative_function": "What This Run Demonstrates",
+      "subject": "A flowchart where a path is blocked by a red 'HOLD' sign at a gate, with an empty evidence slot next to it",
+      "media_type": "INFOGRAPHIC",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "An animated sequence showing a process token moving along a line. It reaches a gate labeled 'Evidence Check'. The check fails (red X), and the token stops. A pause icon appears.",
+      "visual_assertion": null,
+      "presenter_relation": "BROLL_OVERLAY",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "infographic",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "Clear indication of stop/wait state"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "16:9",
+        "duration_target_s": 6
+      },
+      "continuity_notes": [
+        "Use the same flowchart style as Beat 3"
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "HIGH",
+      "status": "PROMPT_READY",
+      "prompt_refs": [
+        "prompt-01M0W34QTWRDHTHAZZQAHJKFP0"
+      ]
+    },
+    {
+      "shot_id": "shot-01M0W34QTVEDRYWMG3NWSBJF41",
+      "section_ref": {
+        "section_id": "01M0W30GA703JCAW3MAB7TNGZC"
+      },
+      "beat_ref": {
+        "canonical_beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+        "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA703JCAW3MAB7TNGZC"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA703JCAW3MAB7TNGZC"
+        }
+      },
+      "narrative_function": "Close",
+      "subject": "Large, bold text: 'One Authority. Many Views.' with a subtle fade-in effect",
+      "media_type": "TEXT_GRAPHIC",
+      "generation_mode": "NOT_APPLICABLE",
+      "shot_brief": "Minimalist text on a dark background. The words appear sequentially. A single line connects the two concepts visually.",
+      "visual_assertion": null,
+      "presenter_relation": "REPLACE",
+      "research_sensitive": false,
+      "research_refs": [],
+      "camera_intent": null,
+      "generation_requirements": {
+        "artifact_class": "text_graphic",
+        "input_artifact_refs": [],
+        "quality_constraints": [
+          "High impact typography"
+        ],
+        "candidate_count_request": 1,
+        "generation_mode": "NOT_APPLICABLE",
+        "aspect_target": "16:9",
+        "duration_target_s": 4
+      },
+      "continuity_notes": [
+        "Match typography to Beat 4"
+      ],
+      "edit_placement": "beat coverage",
+      "priority": "HIGH",
+      "status": "PROMPT_READY",
+      "prompt_refs": [
+        "prompt-01M0W34QTWRE49JEG570Z1WRE4"
+      ]
+    }
+  ],
+  "prompts": [
+    {
+      "prompt_id": "prompt-01M0W34QTVC4SKFKHDE620KRK2",
+      "prompt_revision": 1,
+      "shot_id": "shot-01M0W34QTVFMKQGF95011NZQC0",
+      "shot_intent_digest_sha256": "5ca99a0c89fb51faad202694320f999f1144c80bbb8eef43f504410ae36c8f55",
+      "prompt_text": "Canonical subject: Abstract network diagram with three disconnected nodes labeled 'Gate', 'UI', and 'File' showing conflicting status indicators\nCanonical shot brief: A clean, minimalist infographic on a dark background. Three distinct icons represent different system components. Arrows point to a central question mark that is flickering or unstable, symbolizing the lack of a single source of truth.\nStory purpose: Hook\nExecution mode: INFOGRAPHIC. Produce a structured graphic specification with clear hierarchy; do not substitute photorealistic creator-workspace imagery or rely on generated mission-critical readable text.\nPresenter-composite requirement: preserve the canonical subject and framing, reserve clear negative space in the presenter-safe region, keep important subjects and details outside that region, and place no critical generated text beneath the presenter.\nQuality constraints: High contrast text; Minimalist design.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+      "prompt_type": "INFOGRAPHIC",
+      "created_by": "visual_planning_director",
+      "origin": "visual-plan-fidelity-adapter",
+      "legacy_aliases": [
+        "block-001-prompt-01"
+      ]
+    },
+    {
+      "prompt_id": "prompt-01M0W34QTWT395SJ8A63H67EM0",
+      "prompt_revision": 1,
+      "shot_id": "shot-01M0W34QTVZKEB0P5PEHFSWYPA",
+      "shot_intent_digest_sha256": "393722f47cfc61a9da7e07ee8da341fa8aba5db7bcec1aaeff8412e4775ede06",
+      "prompt_text": "Canonical subject: Split-screen view showing three different progress bars or status logs for the same task, each at a different percentage or state\nCanonical shot brief: Three vertical panels side-by-side. Left panel shows 'Gate Engine' at 50%. Middle panel shows 'UI Tracker' at 80%. Right panel shows 'Status File' at 100%. A red warning icon pulses over the discrepancy.\nStory purpose: Viewer Problem\nExecution mode: INFOGRAPHIC. Produce a structured graphic specification with clear hierarchy; do not substitute photorealistic creator-workspace imagery or rely on generated mission-critical readable text.\nPresenter-composite requirement: preserve the canonical subject and framing, reserve clear negative space in the presenter-safe region, keep important subjects and details outside that region, and place no critical generated text beneath the presenter.\nQuality constraints: Clear differentiation between states.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+      "prompt_type": "INFOGRAPHIC",
+      "created_by": "visual_planning_director",
+      "origin": "visual-plan-fidelity-adapter",
+      "legacy_aliases": [
+        "block-002-prompt-01"
+      ]
+    },
+    {
+      "prompt_id": "prompt-01M0W34QTWAFTTSC8RTGDQFWRF",
+      "prompt_revision": 1,
+      "shot_id": "shot-01M0W34QTVAA9AHATZ2XKJXG9Q",
+      "shot_intent_digest_sha256": "0085d3fc61847a76df561dfe239f18be8b6d66e900d5049b480e75f92fea9e3b",
+      "prompt_text": "Canonical subject: A central, glowing node labeled 'Authority' with multiple thin lines radiating out to smaller, dimmer nodes labeled 'Views'\nCanonical shot brief: The central node is bright and stable. The surrounding nodes are connected by unidirectional arrows pointing away from the center, indicating they are derived from the source rather than independent authorities.\nStory purpose: The Point\nExecution mode: INFOGRAPHIC. Produce a structured graphic specification with clear hierarchy; do not substitute photorealistic creator-workspace imagery or rely on generated mission-critical readable text.\nPresenter-composite requirement: preserve the canonical subject and framing, reserve clear negative space in the presenter-safe region, keep important subjects and details outside that region, and place no critical generated text beneath the presenter.\nQuality constraints: Emphasize hierarchy through brightness and size.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+      "prompt_type": "INFOGRAPHIC",
+      "created_by": "visual_planning_director",
+      "origin": "visual-plan-fidelity-adapter",
+      "legacy_aliases": [
+        "block-003-prompt-01"
+      ]
+    },
+    {
+      "prompt_id": "prompt-01M0W34QTWW8MKN00J4QJ8J2KE",
+      "prompt_revision": 1,
+      "shot_id": "shot-01M0W34QTV88K1VVAM7CFKADEQ",
+      "shot_intent_digest_sha256": "c39670df114a04d975c6d81fb99fa0b8b87980b0b1d60aaced7f0b209c33df3d",
+      "prompt_text": "Canonical subject: A list of three document icons with titles: 'Gate Engine Definition', 'Authority Document', and 'Proof Artifact'\nCanonical shot brief: Clean text overlay listing the three sources. Each item has a small icon representing a code file, a legal/authority document, and a checkmark/shield for proof. The text is static and readable.\nStory purpose: Evidence\nExecution mode: TEXT_GRAPHIC. Produce a deterministic text-graphic specification with explicit hierarchy and safe placement; do not substitute a photorealistic scene.\nQuality constraints: High legibility.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+      "prompt_type": "TEXT_GRAPHIC",
+      "created_by": "visual_planning_director",
+      "origin": "visual-plan-fidelity-adapter",
+      "legacy_aliases": [
+        "block-004-prompt-01"
+      ]
+    },
+    {
+      "prompt_id": "prompt-01M0W34QTWRDHTHAZZQAHJKFP0",
+      "prompt_revision": 1,
+      "shot_id": "shot-01M0W34QTVX26Z9K00FQPB9CV8",
+      "shot_intent_digest_sha256": "ebfd86b8062bc9d313dd79755f50f94340e389910480f8a697b04d8d3a706e00",
+      "prompt_text": "Canonical subject: A flowchart where a path is blocked by a red 'HOLD' sign at a gate, with an empty evidence slot next to it\nCanonical shot brief: An animated sequence showing a process token moving along a line. It reaches a gate labeled 'Evidence Check'. The check fails (red X), and the token stops. A pause icon appears.\nStory purpose: What This Run Demonstrates\nExecution mode: INFOGRAPHIC. Produce a structured graphic specification with clear hierarchy; do not substitute photorealistic creator-workspace imagery or rely on generated mission-critical readable text.\nPresenter-composite requirement: preserve the canonical subject and framing, reserve clear negative space in the presenter-safe region, keep important subjects and details outside that region, and place no critical generated text beneath the presenter.\nQuality constraints: Clear indication of stop/wait state.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+      "prompt_type": "INFOGRAPHIC",
+      "created_by": "visual_planning_director",
+      "origin": "visual-plan-fidelity-adapter",
+      "legacy_aliases": [
+        "block-005-prompt-01"
+      ]
+    },
+    {
+      "prompt_id": "prompt-01M0W34QTWRE49JEG570Z1WRE4",
+      "prompt_revision": 1,
+      "shot_id": "shot-01M0W34QTVEDRYWMG3NWSBJF41",
+      "shot_intent_digest_sha256": "624a6501c6e47b240874186a1a5cfd10e453f78d3b3f6352bf0a486efec4b9a0",
+      "prompt_text": "Canonical subject: Large, bold text: 'One Authority. Many Views.' with a subtle fade-in effect\nCanonical shot brief: Minimalist text on a dark background. The words appear sequentially. A single line connects the two concepts visually.\nStory purpose: Close\nExecution mode: TEXT_GRAPHIC. Produce a deterministic text-graphic specification with explicit hierarchy and safe placement; do not substitute a photorealistic scene.\nQuality constraints: High impact typography.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+      "prompt_type": "TEXT_GRAPHIC",
+      "created_by": "visual_planning_director",
+      "origin": "visual-plan-fidelity-adapter",
+      "legacy_aliases": [
+        "block-006-prompt-01"
+      ]
+    }
+  ],
+  "plan_digest_sha256": "9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7"
+}

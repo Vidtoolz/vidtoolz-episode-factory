@@ -1,0 +1,1683 @@
+{
+  "agent_id": "visual_planning_director",
+  "task_id": "vpd-canary-bridge-1",
+  "action": "plan_visuals",
+  "state": "PREVIEW_ONLY",
+  "attempts": 1,
+  "max_attempts": 2,
+  "route": {
+    "lane": "large_text",
+    "host": "presto",
+    "model": "vidtoolz-presto:latest",
+    "latency_ms": 64877
+  },
+  "visual_plan": {
+    "schema_version": 1,
+    "artifact_type": "visual-plan",
+    "plan_id": "visual-plan-01M0W34QTVW6SG24TKPEKAJERW",
+    "plan_revision": 1,
+    "supersedes": null,
+    "created_at": "2026-08-25T09:13:40.443Z",
+    "created_by": "visual_planning_director",
+    "lifecycle_state": "PREVIEW_ONLY",
+    "story": {
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+      "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+      "approval": {
+        "state": "none",
+        "approved_by": null,
+        "approved_at": null,
+        "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+        "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+      },
+      "section_ids": [
+        "01M0W30GA6XPJWK39QKARCR2CC",
+        "01M0W30GA7EZYRZCDQKFH5JBK8",
+        "01M0W30GA7H83X932A0NBZR4HZ",
+        "01M0W30GA7F6Y1MN4MBTT2TS7X",
+        "01M0W30GA7AFTN0GSB5394G7MH",
+        "01M0W30GA703JCAW3MAB7TNGZC",
+        "01M0W30GA7PQMYYBSK5B050N41"
+      ]
+    },
+    "required_beats": [
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+        "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA6XPJWK39QKARCR2CC"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA6XPJWK39QKARCR2CC"
+        }
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+        "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7EZYRZCDQKFH5JBK8"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7EZYRZCDQKFH5JBK8"
+        }
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+        "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7H83X932A0NBZR4HZ"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7H83X932A0NBZR4HZ"
+        }
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+        "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7F6Y1MN4MBTT2TS7X"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7F6Y1MN4MBTT2TS7X"
+        }
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+        "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7AFTN0GSB5394G7MH"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7AFTN0GSB5394G7MH"
+        }
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+        "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA703JCAW3MAB7TNGZC"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA703JCAW3MAB7TNGZC"
+        }
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA3K71R7X35VJ8AKTT",
+        "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+        "aliases": [
+          {
+            "namespace": "vidtoolz-script-builder/section",
+            "id": "01M0W30GA7PQMYYBSK5B050N41"
+          }
+        ],
+        "source_provenance": {
+          "source_system": "vidtoolz-script-builder",
+          "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7PQMYYBSK5B050N41"
+        }
+      }
+    ],
+    "coverage": [
+      {
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+          "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA6XPJWK39QKARCR2CC"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA6XPJWK39QKARCR2CC"
+          }
+        },
+        "decision": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVFMKQGF95011NZQC0"
+        ],
+        "reason": null
+      },
+      {
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+          "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA7EZYRZCDQKFH5JBK8"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7EZYRZCDQKFH5JBK8"
+          }
+        },
+        "decision": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVZKEB0P5PEHFSWYPA"
+        ],
+        "reason": null
+      },
+      {
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+          "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA7H83X932A0NBZR4HZ"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7H83X932A0NBZR4HZ"
+          }
+        },
+        "decision": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVAA9AHATZ2XKJXG9Q"
+        ],
+        "reason": null
+      },
+      {
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+          "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA7F6Y1MN4MBTT2TS7X"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7F6Y1MN4MBTT2TS7X"
+          }
+        },
+        "decision": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTV88K1VVAM7CFKADEQ"
+        ],
+        "reason": null
+      },
+      {
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+          "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA7AFTN0GSB5394G7MH"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7AFTN0GSB5394G7MH"
+          }
+        },
+        "decision": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVX26Z9K00FQPB9CV8"
+        ],
+        "reason": null
+      },
+      {
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+          "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA703JCAW3MAB7TNGZC"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA703JCAW3MAB7TNGZC"
+          }
+        },
+        "decision": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVEDRYWMG3NWSBJF41"
+        ],
+        "reason": null
+      },
+      {
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGA3K71R7X35VJ8AKTT",
+          "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA7PQMYYBSK5B050N41"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7PQMYYBSK5B050N41"
+          }
+        },
+        "decision": "INTENTIONAL_NO_VISUAL",
+        "shot_ids": [],
+        "reason": "This beat is a meta-check on the packaging process (title/thumbnail verification and claim mapping) which is administrative and does not require visual representation in the narrative flow of the video."
+      }
+    ],
+    "shots": [
+      {
+        "shot_id": "shot-01M0W34QTVFMKQGF95011NZQC0",
+        "section_ref": {
+          "section_id": "01M0W30GA6XPJWK39QKARCR2CC"
+        },
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+          "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA6XPJWK39QKARCR2CC"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA6XPJWK39QKARCR2CC"
+          }
+        },
+        "narrative_function": "Hook",
+        "subject": "Abstract network diagram with three disconnected nodes labeled 'Gate', 'UI', and 'File' showing conflicting status indicators",
+        "media_type": "INFOGRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "A clean, minimalist infographic on a dark background. Three distinct icons represent different system components. Arrows point to a central question mark that is flickering or unstable, symbolizing the lack of a single source of truth.",
+        "visual_assertion": null,
+        "presenter_relation": "BROLL_OVERLAY",
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_intent": null,
+        "generation_requirements": {
+          "artifact_class": "infographic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "High contrast text",
+            "Minimalist design"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 5
+        },
+        "continuity_notes": [
+          "Maintain consistent color palette for system components across all beats"
+        ],
+        "edit_placement": "beat coverage",
+        "priority": "HIGH",
+        "status": "PROMPT_READY",
+        "prompt_refs": [
+          "prompt-01M0W34QTVC4SKFKHDE620KRK2"
+        ]
+      },
+      {
+        "shot_id": "shot-01M0W34QTVZKEB0P5PEHFSWYPA",
+        "section_ref": {
+          "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8"
+        },
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+          "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA7EZYRZCDQKFH5JBK8"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7EZYRZCDQKFH5JBK8"
+          }
+        },
+        "narrative_function": "Viewer Problem",
+        "subject": "Split-screen view showing three different progress bars or status logs for the same task, each at a different percentage or state",
+        "media_type": "INFOGRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "Three vertical panels side-by-side. Left panel shows 'Gate Engine' at 50%. Middle panel shows 'UI Tracker' at 80%. Right panel shows 'Status File' at 100%. A red warning icon pulses over the discrepancy.",
+        "visual_assertion": null,
+        "presenter_relation": "BROLL_OVERLAY",
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_intent": null,
+        "generation_requirements": {
+          "artifact_class": "infographic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "Clear differentiation between states"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 6
+        },
+        "continuity_notes": [
+          "Use the same component icons as in Beat 1"
+        ],
+        "edit_placement": "beat coverage",
+        "priority": "HIGH",
+        "status": "PROMPT_READY",
+        "prompt_refs": [
+          "prompt-01M0W34QTWT395SJ8A63H67EM0"
+        ]
+      },
+      {
+        "shot_id": "shot-01M0W34QTVAA9AHATZ2XKJXG9Q",
+        "section_ref": {
+          "section_id": "01M0W30GA7H83X932A0NBZR4HZ"
+        },
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+          "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA7H83X932A0NBZR4HZ"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7H83X932A0NBZR4HZ"
+          }
+        },
+        "narrative_function": "The Point",
+        "subject": "A central, glowing node labeled 'Authority' with multiple thin lines radiating out to smaller, dimmer nodes labeled 'Views'",
+        "media_type": "INFOGRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "The central node is bright and stable. The surrounding nodes are connected by unidirectional arrows pointing away from the center, indicating they are derived from the source rather than independent authorities.",
+        "visual_assertion": null,
+        "presenter_relation": "BROLL_OVERLAY",
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_intent": null,
+        "generation_requirements": {
+          "artifact_class": "infographic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "Emphasize hierarchy through brightness and size"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 4
+        },
+        "continuity_notes": [
+          "Central node color should match the 'Gate Engine' icon from previous beats"
+        ],
+        "edit_placement": "beat coverage",
+        "priority": "HIGH",
+        "status": "PROMPT_READY",
+        "prompt_refs": [
+          "prompt-01M0W34QTWAFTTSC8RTGDQFWRF"
+        ]
+      },
+      {
+        "shot_id": "shot-01M0W34QTV88K1VVAM7CFKADEQ",
+        "section_ref": {
+          "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X"
+        },
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+          "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA7F6Y1MN4MBTT2TS7X"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7F6Y1MN4MBTT2TS7X"
+          }
+        },
+        "narrative_function": "Evidence",
+        "subject": "A list of three document icons with titles: 'Gate Engine Definition', 'Authority Document', and 'Proof Artifact'",
+        "media_type": "TEXT_GRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "Clean text overlay listing the three sources. Each item has a small icon representing a code file, a legal/authority document, and a checkmark/shield for proof. The text is static and readable.",
+        "visual_assertion": null,
+        "presenter_relation": "REPLACE",
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_intent": null,
+        "generation_requirements": {
+          "artifact_class": "text_graphic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "High legibility"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 5
+        },
+        "continuity_notes": [
+          "Ensure font matches the overall typography style"
+        ],
+        "edit_placement": "beat coverage",
+        "priority": "NORMAL",
+        "status": "PROMPT_READY",
+        "prompt_refs": [
+          "prompt-01M0W34QTWW8MKN00J4QJ8J2KE"
+        ]
+      },
+      {
+        "shot_id": "shot-01M0W34QTVX26Z9K00FQPB9CV8",
+        "section_ref": {
+          "section_id": "01M0W30GA7AFTN0GSB5394G7MH"
+        },
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+          "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA7AFTN0GSB5394G7MH"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA7AFTN0GSB5394G7MH"
+          }
+        },
+        "narrative_function": "What This Run Demonstrates",
+        "subject": "A flowchart where a path is blocked by a red 'HOLD' sign at a gate, with an empty evidence slot next to it",
+        "media_type": "INFOGRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "An animated sequence showing a process token moving along a line. It reaches a gate labeled 'Evidence Check'. The check fails (red X), and the token stops. A pause icon appears.",
+        "visual_assertion": null,
+        "presenter_relation": "BROLL_OVERLAY",
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_intent": null,
+        "generation_requirements": {
+          "artifact_class": "infographic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "Clear indication of stop/wait state"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 6
+        },
+        "continuity_notes": [
+          "Use the same flowchart style as Beat 3"
+        ],
+        "edit_placement": "beat coverage",
+        "priority": "HIGH",
+        "status": "PROMPT_READY",
+        "prompt_refs": [
+          "prompt-01M0W34QTWRDHTHAZZQAHJKFP0"
+        ]
+      },
+      {
+        "shot_id": "shot-01M0W34QTVEDRYWMG3NWSBJF41",
+        "section_ref": {
+          "section_id": "01M0W30GA703JCAW3MAB7TNGZC"
+        },
+        "beat_ref": {
+          "canonical_beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+          "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+          "aliases": [
+            {
+              "namespace": "vidtoolz-script-builder/section",
+              "id": "01M0W30GA703JCAW3MAB7TNGZC"
+            }
+          ],
+          "source_provenance": {
+            "source_system": "vidtoolz-script-builder",
+            "source_id": "01M0W30GA5ZAXXQPX9SS0R2N29/01M0W30GAA8DFZCTPRXN4Y4DXV/01M0W30GA703JCAW3MAB7TNGZC"
+          }
+        },
+        "narrative_function": "Close",
+        "subject": "Large, bold text: 'One Authority. Many Views.' with a subtle fade-in effect",
+        "media_type": "TEXT_GRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "Minimalist text on a dark background. The words appear sequentially. A single line connects the two concepts visually.",
+        "visual_assertion": null,
+        "presenter_relation": "REPLACE",
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_intent": null,
+        "generation_requirements": {
+          "artifact_class": "text_graphic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "High impact typography"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 4
+        },
+        "continuity_notes": [
+          "Match typography to Beat 4"
+        ],
+        "edit_placement": "beat coverage",
+        "priority": "HIGH",
+        "status": "PROMPT_READY",
+        "prompt_refs": [
+          "prompt-01M0W34QTWRE49JEG570Z1WRE4"
+        ]
+      }
+    ],
+    "prompts": [
+      {
+        "prompt_id": "prompt-01M0W34QTVC4SKFKHDE620KRK2",
+        "prompt_revision": 1,
+        "shot_id": "shot-01M0W34QTVFMKQGF95011NZQC0",
+        "shot_intent_digest_sha256": "5ca99a0c89fb51faad202694320f999f1144c80bbb8eef43f504410ae36c8f55",
+        "prompt_text": "Canonical subject: Abstract network diagram with three disconnected nodes labeled 'Gate', 'UI', and 'File' showing conflicting status indicators\nCanonical shot brief: A clean, minimalist infographic on a dark background. Three distinct icons represent different system components. Arrows point to a central question mark that is flickering or unstable, symbolizing the lack of a single source of truth.\nStory purpose: Hook\nExecution mode: INFOGRAPHIC. Produce a structured graphic specification with clear hierarchy; do not substitute photorealistic creator-workspace imagery or rely on generated mission-critical readable text.\nPresenter-composite requirement: preserve the canonical subject and framing, reserve clear negative space in the presenter-safe region, keep important subjects and details outside that region, and place no critical generated text beneath the presenter.\nQuality constraints: High contrast text; Minimalist design.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+        "prompt_type": "INFOGRAPHIC",
+        "created_by": "visual_planning_director",
+        "origin": "visual-plan-fidelity-adapter",
+        "legacy_aliases": [
+          "block-001-prompt-01"
+        ]
+      },
+      {
+        "prompt_id": "prompt-01M0W34QTWT395SJ8A63H67EM0",
+        "prompt_revision": 1,
+        "shot_id": "shot-01M0W34QTVZKEB0P5PEHFSWYPA",
+        "shot_intent_digest_sha256": "393722f47cfc61a9da7e07ee8da341fa8aba5db7bcec1aaeff8412e4775ede06",
+        "prompt_text": "Canonical subject: Split-screen view showing three different progress bars or status logs for the same task, each at a different percentage or state\nCanonical shot brief: Three vertical panels side-by-side. Left panel shows 'Gate Engine' at 50%. Middle panel shows 'UI Tracker' at 80%. Right panel shows 'Status File' at 100%. A red warning icon pulses over the discrepancy.\nStory purpose: Viewer Problem\nExecution mode: INFOGRAPHIC. Produce a structured graphic specification with clear hierarchy; do not substitute photorealistic creator-workspace imagery or rely on generated mission-critical readable text.\nPresenter-composite requirement: preserve the canonical subject and framing, reserve clear negative space in the presenter-safe region, keep important subjects and details outside that region, and place no critical generated text beneath the presenter.\nQuality constraints: Clear differentiation between states.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+        "prompt_type": "INFOGRAPHIC",
+        "created_by": "visual_planning_director",
+        "origin": "visual-plan-fidelity-adapter",
+        "legacy_aliases": [
+          "block-002-prompt-01"
+        ]
+      },
+      {
+        "prompt_id": "prompt-01M0W34QTWAFTTSC8RTGDQFWRF",
+        "prompt_revision": 1,
+        "shot_id": "shot-01M0W34QTVAA9AHATZ2XKJXG9Q",
+        "shot_intent_digest_sha256": "0085d3fc61847a76df561dfe239f18be8b6d66e900d5049b480e75f92fea9e3b",
+        "prompt_text": "Canonical subject: A central, glowing node labeled 'Authority' with multiple thin lines radiating out to smaller, dimmer nodes labeled 'Views'\nCanonical shot brief: The central node is bright and stable. The surrounding nodes are connected by unidirectional arrows pointing away from the center, indicating they are derived from the source rather than independent authorities.\nStory purpose: The Point\nExecution mode: INFOGRAPHIC. Produce a structured graphic specification with clear hierarchy; do not substitute photorealistic creator-workspace imagery or rely on generated mission-critical readable text.\nPresenter-composite requirement: preserve the canonical subject and framing, reserve clear negative space in the presenter-safe region, keep important subjects and details outside that region, and place no critical generated text beneath the presenter.\nQuality constraints: Emphasize hierarchy through brightness and size.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+        "prompt_type": "INFOGRAPHIC",
+        "created_by": "visual_planning_director",
+        "origin": "visual-plan-fidelity-adapter",
+        "legacy_aliases": [
+          "block-003-prompt-01"
+        ]
+      },
+      {
+        "prompt_id": "prompt-01M0W34QTWW8MKN00J4QJ8J2KE",
+        "prompt_revision": 1,
+        "shot_id": "shot-01M0W34QTV88K1VVAM7CFKADEQ",
+        "shot_intent_digest_sha256": "c39670df114a04d975c6d81fb99fa0b8b87980b0b1d60aaced7f0b209c33df3d",
+        "prompt_text": "Canonical subject: A list of three document icons with titles: 'Gate Engine Definition', 'Authority Document', and 'Proof Artifact'\nCanonical shot brief: Clean text overlay listing the three sources. Each item has a small icon representing a code file, a legal/authority document, and a checkmark/shield for proof. The text is static and readable.\nStory purpose: Evidence\nExecution mode: TEXT_GRAPHIC. Produce a deterministic text-graphic specification with explicit hierarchy and safe placement; do not substitute a photorealistic scene.\nQuality constraints: High legibility.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+        "prompt_type": "TEXT_GRAPHIC",
+        "created_by": "visual_planning_director",
+        "origin": "visual-plan-fidelity-adapter",
+        "legacy_aliases": [
+          "block-004-prompt-01"
+        ]
+      },
+      {
+        "prompt_id": "prompt-01M0W34QTWRDHTHAZZQAHJKFP0",
+        "prompt_revision": 1,
+        "shot_id": "shot-01M0W34QTVX26Z9K00FQPB9CV8",
+        "shot_intent_digest_sha256": "ebfd86b8062bc9d313dd79755f50f94340e389910480f8a697b04d8d3a706e00",
+        "prompt_text": "Canonical subject: A flowchart where a path is blocked by a red 'HOLD' sign at a gate, with an empty evidence slot next to it\nCanonical shot brief: An animated sequence showing a process token moving along a line. It reaches a gate labeled 'Evidence Check'. The check fails (red X), and the token stops. A pause icon appears.\nStory purpose: What This Run Demonstrates\nExecution mode: INFOGRAPHIC. Produce a structured graphic specification with clear hierarchy; do not substitute photorealistic creator-workspace imagery or rely on generated mission-critical readable text.\nPresenter-composite requirement: preserve the canonical subject and framing, reserve clear negative space in the presenter-safe region, keep important subjects and details outside that region, and place no critical generated text beneath the presenter.\nQuality constraints: Clear indication of stop/wait state.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+        "prompt_type": "INFOGRAPHIC",
+        "created_by": "visual_planning_director",
+        "origin": "visual-plan-fidelity-adapter",
+        "legacy_aliases": [
+          "block-005-prompt-01"
+        ]
+      },
+      {
+        "prompt_id": "prompt-01M0W34QTWRE49JEG570Z1WRE4",
+        "prompt_revision": 1,
+        "shot_id": "shot-01M0W34QTVEDRYWMG3NWSBJF41",
+        "shot_intent_digest_sha256": "624a6501c6e47b240874186a1a5cfd10e453f78d3b3f6352bf0a486efec4b9a0",
+        "prompt_text": "Canonical subject: Large, bold text: 'One Authority. Many Views.' with a subtle fade-in effect\nCanonical shot brief: Minimalist text on a dark background. The words appear sequentially. A single line connects the two concepts visually.\nStory purpose: Close\nExecution mode: TEXT_GRAPHIC. Produce a deterministic text-graphic specification with explicit hierarchy and safe placement; do not substitute a photorealistic scene.\nQuality constraints: High impact typography.\nFidelity rule: do not add unrelated props, people, settings, metaphors, or global style; do not replace or generalize the canonical subject or shot brief.",
+        "prompt_type": "TEXT_GRAPHIC",
+        "created_by": "visual_planning_director",
+        "origin": "visual-plan-fidelity-adapter",
+        "legacy_aliases": [
+          "block-006-prompt-01"
+        ]
+      }
+    ],
+    "plan_digest_sha256": "9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7"
+  },
+  "review_bundle": {
+    "schema_version": 1,
+    "artifact_type": "visual-plan-review",
+    "plan": {
+      "plan_id": "visual-plan-01M0W34QTVW6SG24TKPEKAJERW",
+      "plan_revision": 1,
+      "plan_digest_sha256": "9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7",
+      "lifecycle_state": "PREVIEW_ONLY"
+    },
+    "story": {
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+      "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+      "approval_state": "none"
+    },
+    "authority": {
+      "state": "PREVIEW_ONLY",
+      "preview_only": true,
+      "coverage_complete": true,
+      "prompts_current": true,
+      "research_authorized": true,
+      "approval_valid": false,
+      "authorization_ok": false,
+      "blockers": [
+        "STORY_PREVIEW_ONLY",
+        "PLAN_APPROVAL_MISSING"
+      ]
+    },
+    "coverage": [
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+        "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVFMKQGF95011NZQC0"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+        "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVZKEB0P5PEHFSWYPA"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+        "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVAA9AHATZ2XKJXG9Q"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+        "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTV88K1VVAM7CFKADEQ"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+        "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVX26Z9K00FQPB9CV8"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+        "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVEDRYWMG3NWSBJF41"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA3K71R7X35VJ8AKTT",
+        "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+        "state": "INTENTIONAL_NO_VISUAL",
+        "shot_ids": [],
+        "reason": "This beat is a meta-check on the packaging process (title/thumbnail verification and claim mapping) which is administrative and does not require visual representation in the narrative flow of the video."
+      }
+    ],
+    "totals": {
+      "shots": 6,
+      "media_types": [
+        "INFOGRAPHIC",
+        "TEXT_GRAPHIC"
+      ],
+      "intentional_none": 1,
+      "missing_beats": 0,
+      "research_sensitive": 0
+    },
+    "shots": [
+      {
+        "shot_id": "shot-01M0W34QTVFMKQGF95011NZQC0",
+        "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+        "beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+        "media_type": "INFOGRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "A clean, minimalist infographic on a dark background. Three distinct icons represent different system components. Arrows point to a central question mark that is flickering or unstable, symbolizing the lack of a single source of truth.",
+        "visual_assertion": null,
+        "prompt_refs": [
+          "prompt-01M0W34QTVC4SKFKHDE620KRK2"
+        ],
+        "prompt_revisions": [
+          {
+            "prompt_id": "prompt-01M0W34QTVC4SKFKHDE620KRK2",
+            "prompt_revision": 1,
+            "current": true
+          }
+        ],
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_required": false,
+        "generation_requirements": {
+          "artifact_class": "infographic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "High contrast text",
+            "Minimalist design"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 5
+        },
+        "presenter_relation": "BROLL_OVERLAY",
+        "priority": "HIGH"
+      },
+      {
+        "shot_id": "shot-01M0W34QTVZKEB0P5PEHFSWYPA",
+        "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+        "beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+        "media_type": "INFOGRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "Three vertical panels side-by-side. Left panel shows 'Gate Engine' at 50%. Middle panel shows 'UI Tracker' at 80%. Right panel shows 'Status File' at 100%. A red warning icon pulses over the discrepancy.",
+        "visual_assertion": null,
+        "prompt_refs": [
+          "prompt-01M0W34QTWT395SJ8A63H67EM0"
+        ],
+        "prompt_revisions": [
+          {
+            "prompt_id": "prompt-01M0W34QTWT395SJ8A63H67EM0",
+            "prompt_revision": 1,
+            "current": true
+          }
+        ],
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_required": false,
+        "generation_requirements": {
+          "artifact_class": "infographic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "Clear differentiation between states"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 6
+        },
+        "presenter_relation": "BROLL_OVERLAY",
+        "priority": "HIGH"
+      },
+      {
+        "shot_id": "shot-01M0W34QTVAA9AHATZ2XKJXG9Q",
+        "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+        "beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+        "media_type": "INFOGRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "The central node is bright and stable. The surrounding nodes are connected by unidirectional arrows pointing away from the center, indicating they are derived from the source rather than independent authorities.",
+        "visual_assertion": null,
+        "prompt_refs": [
+          "prompt-01M0W34QTWAFTTSC8RTGDQFWRF"
+        ],
+        "prompt_revisions": [
+          {
+            "prompt_id": "prompt-01M0W34QTWAFTTSC8RTGDQFWRF",
+            "prompt_revision": 1,
+            "current": true
+          }
+        ],
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_required": false,
+        "generation_requirements": {
+          "artifact_class": "infographic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "Emphasize hierarchy through brightness and size"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 4
+        },
+        "presenter_relation": "BROLL_OVERLAY",
+        "priority": "HIGH"
+      },
+      {
+        "shot_id": "shot-01M0W34QTV88K1VVAM7CFKADEQ",
+        "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+        "beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+        "media_type": "TEXT_GRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "Clean text overlay listing the three sources. Each item has a small icon representing a code file, a legal/authority document, and a checkmark/shield for proof. The text is static and readable.",
+        "visual_assertion": null,
+        "prompt_refs": [
+          "prompt-01M0W34QTWW8MKN00J4QJ8J2KE"
+        ],
+        "prompt_revisions": [
+          {
+            "prompt_id": "prompt-01M0W34QTWW8MKN00J4QJ8J2KE",
+            "prompt_revision": 1,
+            "current": true
+          }
+        ],
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_required": false,
+        "generation_requirements": {
+          "artifact_class": "text_graphic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "High legibility"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 5
+        },
+        "presenter_relation": "REPLACE",
+        "priority": "NORMAL"
+      },
+      {
+        "shot_id": "shot-01M0W34QTVX26Z9K00FQPB9CV8",
+        "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+        "beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+        "media_type": "INFOGRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "An animated sequence showing a process token moving along a line. It reaches a gate labeled 'Evidence Check'. The check fails (red X), and the token stops. A pause icon appears.",
+        "visual_assertion": null,
+        "prompt_refs": [
+          "prompt-01M0W34QTWRDHTHAZZQAHJKFP0"
+        ],
+        "prompt_revisions": [
+          {
+            "prompt_id": "prompt-01M0W34QTWRDHTHAZZQAHJKFP0",
+            "prompt_revision": 1,
+            "current": true
+          }
+        ],
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_required": false,
+        "generation_requirements": {
+          "artifact_class": "infographic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "Clear indication of stop/wait state"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 6
+        },
+        "presenter_relation": "BROLL_OVERLAY",
+        "priority": "HIGH"
+      },
+      {
+        "shot_id": "shot-01M0W34QTVEDRYWMG3NWSBJF41",
+        "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+        "beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+        "media_type": "TEXT_GRAPHIC",
+        "generation_mode": "NOT_APPLICABLE",
+        "shot_brief": "Minimalist text on a dark background. The words appear sequentially. A single line connects the two concepts visually.",
+        "visual_assertion": null,
+        "prompt_refs": [
+          "prompt-01M0W34QTWRE49JEG570Z1WRE4"
+        ],
+        "prompt_revisions": [
+          {
+            "prompt_id": "prompt-01M0W34QTWRE49JEG570Z1WRE4",
+            "prompt_revision": 1,
+            "current": true
+          }
+        ],
+        "research_sensitive": false,
+        "research_refs": [],
+        "camera_required": false,
+        "generation_requirements": {
+          "artifact_class": "text_graphic",
+          "input_artifact_refs": [],
+          "quality_constraints": [
+            "High impact typography"
+          ],
+          "candidate_count_request": 1,
+          "generation_mode": "NOT_APPLICABLE",
+          "aspect_target": "16:9",
+          "duration_target_s": 4
+        },
+        "presenter_relation": "REPLACE",
+        "priority": "HIGH"
+      }
+    ],
+    "human_attention": {
+      "research_sensitive_shots": [],
+      "camera_required_shots": [],
+      "missing_beats": [],
+      "approval_state": "INVALID",
+      "blockers": [
+        "STORY_PREVIEW_ONLY",
+        "PLAN_APPROVAL_MISSING"
+      ]
+    }
+  },
+  "semantic": {
+    "beats": [
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+        "coverage_decision": "PLAN_SHOTS",
+        "no_visual_reason": null,
+        "shots": [
+          {
+            "visual_purpose": "Establish the ambiguity of distributed status signals",
+            "narrative_function": "Hook",
+            "media_type": "INFOGRAPHIC",
+            "generation_mode": "NOT_APPLICABLE",
+            "subject": "Abstract network diagram with three disconnected nodes labeled 'Gate', 'UI', and 'File' showing conflicting status indicators",
+            "shot_brief": "A clean, minimalist infographic on a dark background. Three distinct icons represent different system components. Arrows point to a central question mark that is flickering or unstable, symbolizing the lack of a single source of truth.",
+            "why_it_serves_story": "Visually represents the core problem: multiple systems describing different states for the same run.",
+            "presenter_relation": "BROLL_OVERLAY",
+            "duration_target_s": 5,
+            "research_sensitive": false,
+            "research_binding_ids": [],
+            "required_constraint_ids": [],
+            "visual_assertion": null,
+            "camera_required": false,
+            "camera_intent": null,
+            "continuity_notes": [
+              "Maintain consistent color palette for system components across all beats"
+            ],
+            "alternatives": [],
+            "priority": "HIGH",
+            "input_artifact_refs": [],
+            "quality_constraints": [
+              "High contrast text",
+              "Minimalist design"
+            ],
+            "candidate_count_request": 1
+          }
+        ]
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+        "coverage_decision": "PLAN_SHOTS",
+        "no_visual_reason": null,
+        "shots": [
+          {
+            "visual_purpose": "Illustrate the divergence of status reports",
+            "narrative_function": "Viewer Problem",
+            "media_type": "INFOGRAPHIC",
+            "generation_mode": "NOT_APPLICABLE",
+            "subject": "Split-screen view showing three different progress bars or status logs for the same task, each at a different percentage or state",
+            "shot_brief": "Three vertical panels side-by-side. Left panel shows 'Gate Engine' at 50%. Middle panel shows 'UI Tracker' at 80%. Right panel shows 'Status File' at 100%. A red warning icon pulses over the discrepancy.",
+            "why_it_serves_story": "Demonstrates how individual components look reasonable in isolation but create a false sense of progress when combined.",
+            "presenter_relation": "BROLL_OVERLAY",
+            "duration_target_s": 6,
+            "research_sensitive": false,
+            "research_binding_ids": [],
+            "required_constraint_ids": [],
+            "visual_assertion": null,
+            "camera_required": false,
+            "camera_intent": null,
+            "continuity_notes": [
+              "Use the same component icons as in Beat 1"
+            ],
+            "alternatives": [],
+            "priority": "HIGH",
+            "input_artifact_refs": [],
+            "quality_constraints": [
+              "Clear differentiation between states"
+            ],
+            "candidate_count_request": 1
+          }
+        ]
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+        "coverage_decision": "PLAN_SHOTS",
+        "no_visual_reason": null,
+        "shots": [
+          {
+            "visual_purpose": "Visualize the concept of a single source of truth",
+            "narrative_function": "The Point",
+            "media_type": "INFOGRAPHIC",
+            "generation_mode": "NOT_APPLICABLE",
+            "subject": "A central, glowing node labeled 'Authority' with multiple thin lines radiating out to smaller, dimmer nodes labeled 'Views'",
+            "shot_brief": "The central node is bright and stable. The surrounding nodes are connected by unidirectional arrows pointing away from the center, indicating they are derived from the source rather than independent authorities.",
+            "why_it_serves_story": "Clearly distinguishes between the authoritative state and its various representations.",
+            "presenter_relation": "BROLL_OVERLAY",
+            "duration_target_s": 4,
+            "research_sensitive": false,
+            "research_binding_ids": [],
+            "required_constraint_ids": [],
+            "visual_assertion": null,
+            "camera_required": false,
+            "camera_intent": null,
+            "continuity_notes": [
+              "Central node color should match the 'Gate Engine' icon from previous beats"
+            ],
+            "alternatives": [],
+            "priority": "HIGH",
+            "input_artifact_refs": [],
+            "quality_constraints": [
+              "Emphasize hierarchy through brightness and size"
+            ],
+            "candidate_count_request": 1
+          }
+        ]
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+        "coverage_decision": "PLAN_SHOTS",
+        "no_visual_reason": null,
+        "shots": [
+          {
+            "visual_purpose": "Display the specific evidence sources cited",
+            "narrative_function": "Evidence",
+            "media_type": "TEXT_GRAPHIC",
+            "generation_mode": "NOT_APPLICABLE",
+            "subject": "A list of three document icons with titles: 'Gate Engine Definition', 'Authority Document', and 'Proof Artifact'",
+            "shot_brief": "Clean text overlay listing the three sources. Each item has a small icon representing a code file, a legal/authority document, and a checkmark/shield for proof. The text is static and readable.",
+            "why_it_serves_story": "Provides concrete backing for the claims made in the script without requiring complex animation.",
+            "presenter_relation": "REPLACE",
+            "duration_target_s": 5,
+            "research_sensitive": false,
+            "research_binding_ids": [],
+            "required_constraint_ids": [],
+            "visual_assertion": null,
+            "camera_required": false,
+            "camera_intent": null,
+            "continuity_notes": [
+              "Ensure font matches the overall typography style"
+            ],
+            "alternatives": [],
+            "priority": "NORMAL",
+            "input_artifact_refs": [],
+            "quality_constraints": [
+              "High legibility"
+            ],
+            "candidate_count_request": 1
+          }
+        ]
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+        "coverage_decision": "PLAN_SHOTS",
+        "no_visual_reason": null,
+        "shots": [
+          {
+            "visual_purpose": "Show the gate holding behavior when evidence is missing",
+            "narrative_function": "What This Run Demonstrates",
+            "media_type": "INFOGRAPHIC",
+            "generation_mode": "NOT_APPLICABLE",
+            "subject": "A flowchart where a path is blocked by a red 'HOLD' sign at a gate, with an empty evidence slot next to it",
+            "shot_brief": "An animated sequence showing a process token moving along a line. It reaches a gate labeled 'Evidence Check'. The check fails (red X), and the token stops. A pause icon appears.",
+            "why_it_serves_story": "Demonstrates the system's integrity by showing it refuses to proceed without required proof.",
+            "presenter_relation": "BROLL_OVERLAY",
+            "duration_target_s": 6,
+            "research_sensitive": false,
+            "research_binding_ids": [],
+            "required_constraint_ids": [],
+            "visual_assertion": null,
+            "camera_required": false,
+            "camera_intent": null,
+            "continuity_notes": [
+              "Use the same flowchart style as Beat 3"
+            ],
+            "alternatives": [],
+            "priority": "HIGH",
+            "input_artifact_refs": [],
+            "quality_constraints": [
+              "Clear indication of stop/wait state"
+            ],
+            "candidate_count_request": 1
+          }
+        ]
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+        "coverage_decision": "PLAN_SHOTS",
+        "no_visual_reason": null,
+        "shots": [
+          {
+            "visual_purpose": "Reinforce the final message about single authority",
+            "narrative_function": "Close",
+            "media_type": "TEXT_GRAPHIC",
+            "generation_mode": "NOT_APPLICABLE",
+            "subject": "Large, bold text: 'One Authority. Many Views.' with a subtle fade-in effect",
+            "shot_brief": "Minimalist text on a dark background. The words appear sequentially. A single line connects the two concepts visually.",
+            "why_it_serves_story": "Summarizes the core argument in a memorable, concise visual statement.",
+            "presenter_relation": "REPLACE",
+            "duration_target_s": 4,
+            "research_sensitive": false,
+            "research_binding_ids": [],
+            "required_constraint_ids": [],
+            "visual_assertion": null,
+            "camera_required": false,
+            "camera_intent": null,
+            "continuity_notes": [
+              "Match typography to Beat 4"
+            ],
+            "alternatives": [],
+            "priority": "HIGH",
+            "input_artifact_refs": [],
+            "quality_constraints": [
+              "High impact typography"
+            ],
+            "candidate_count_request": 1
+          }
+        ]
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA3K71R7X35VJ8AKTT",
+        "coverage_decision": "INTENTIONAL_NO_VISUAL",
+        "no_visual_reason": "This beat is a meta-check on the packaging process (title/thumbnail verification and claim mapping) which is administrative and does not require visual representation in the narrative flow of the video.",
+        "shots": []
+      }
+    ],
+    "coverage_findings": [
+      "All narrative beats are covered with appropriate infographic or text graphics to support the technical explanation."
+    ],
+    "continuity_findings": [
+      "Consistent use of iconography for system components across Beats 1, 2, and 3 ensures visual coherence."
+    ],
+    "redundancy_findings": [],
+    "human_attention": [],
+    "recommendation": "PLAN_READY"
+  },
+  "generation_handoffs": [
+    {
+      "task_id": "vpd-canary-bridge-1:shot-01M0W34QTVFMKQGF95011NZQC0",
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "artifact_class": "infographic",
+      "requested_by": "visual_planning_director",
+      "brief": {
+        "purpose": "Hook",
+        "shot_ref": "shot-01M0W34QTVFMKQGF95011NZQC0",
+        "prompt_ref": "prompt-01M0W34QTVC4SKFKHDE620KRK2",
+        "story_beat_ref": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+        "aspect_target": "16:9",
+        "duration_target_s": 5,
+        "quality_constraints": [
+          "High contrast text",
+          "Minimalist design"
+        ],
+        "input_artifacts": [],
+        "candidate_count": 1
+      },
+      "package_context": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+      "max_attempts": 2
+    },
+    {
+      "task_id": "vpd-canary-bridge-1:shot-01M0W34QTVZKEB0P5PEHFSWYPA",
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "artifact_class": "infographic",
+      "requested_by": "visual_planning_director",
+      "brief": {
+        "purpose": "Viewer Problem",
+        "shot_ref": "shot-01M0W34QTVZKEB0P5PEHFSWYPA",
+        "prompt_ref": "prompt-01M0W34QTWT395SJ8A63H67EM0",
+        "story_beat_ref": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+        "aspect_target": "16:9",
+        "duration_target_s": 6,
+        "quality_constraints": [
+          "Clear differentiation between states"
+        ],
+        "input_artifacts": [],
+        "candidate_count": 1
+      },
+      "package_context": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+      "max_attempts": 2
+    },
+    {
+      "task_id": "vpd-canary-bridge-1:shot-01M0W34QTVAA9AHATZ2XKJXG9Q",
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "artifact_class": "infographic",
+      "requested_by": "visual_planning_director",
+      "brief": {
+        "purpose": "The Point",
+        "shot_ref": "shot-01M0W34QTVAA9AHATZ2XKJXG9Q",
+        "prompt_ref": "prompt-01M0W34QTWAFTTSC8RTGDQFWRF",
+        "story_beat_ref": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+        "aspect_target": "16:9",
+        "duration_target_s": 4,
+        "quality_constraints": [
+          "Emphasize hierarchy through brightness and size"
+        ],
+        "input_artifacts": [],
+        "candidate_count": 1
+      },
+      "package_context": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+      "max_attempts": 2
+    },
+    {
+      "task_id": "vpd-canary-bridge-1:shot-01M0W34QTV88K1VVAM7CFKADEQ",
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "artifact_class": "text_graphic",
+      "requested_by": "visual_planning_director",
+      "brief": {
+        "purpose": "Evidence",
+        "shot_ref": "shot-01M0W34QTV88K1VVAM7CFKADEQ",
+        "prompt_ref": "prompt-01M0W34QTWW8MKN00J4QJ8J2KE",
+        "story_beat_ref": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+        "aspect_target": "16:9",
+        "duration_target_s": 5,
+        "quality_constraints": [
+          "High legibility"
+        ],
+        "input_artifacts": [],
+        "candidate_count": 1
+      },
+      "package_context": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+      "max_attempts": 2
+    },
+    {
+      "task_id": "vpd-canary-bridge-1:shot-01M0W34QTVX26Z9K00FQPB9CV8",
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "artifact_class": "infographic",
+      "requested_by": "visual_planning_director",
+      "brief": {
+        "purpose": "What This Run Demonstrates",
+        "shot_ref": "shot-01M0W34QTVX26Z9K00FQPB9CV8",
+        "prompt_ref": "prompt-01M0W34QTWRDHTHAZZQAHJKFP0",
+        "story_beat_ref": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+        "aspect_target": "16:9",
+        "duration_target_s": 6,
+        "quality_constraints": [
+          "Clear indication of stop/wait state"
+        ],
+        "input_artifacts": [],
+        "candidate_count": 1
+      },
+      "package_context": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+      "max_attempts": 2
+    },
+    {
+      "task_id": "vpd-canary-bridge-1:shot-01M0W34QTVEDRYWMG3NWSBJF41",
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "artifact_class": "text_graphic",
+      "requested_by": "visual_planning_director",
+      "brief": {
+        "purpose": "Close",
+        "shot_ref": "shot-01M0W34QTVEDRYWMG3NWSBJF41",
+        "prompt_ref": "prompt-01M0W34QTWRE49JEG570Z1WRE4",
+        "story_beat_ref": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+        "aspect_target": "16:9",
+        "duration_target_s": 4,
+        "quality_constraints": [
+          "High impact typography"
+        ],
+        "input_artifacts": [],
+        "candidate_count": 1
+      },
+      "package_context": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+      "max_attempts": 2
+    }
+  ],
+  "camera_handoffs": [],
+  "events": [
+    {
+      "at": "2026-08-25T09:13:40.447Z",
+      "state": "PREVIEW_ONLY",
+      "reason": null
+    }
+  ],
+  "raw_response_sha256": "4aebc8395f28166fb751255fc9f178525349629a31b7168247576011f99f7c47",
+  "story_rationale": [
+    {
+      "ref": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS:shot-1",
+      "summary": "Visually represents the core problem: multiple systems describing different states for the same run."
+    },
+    {
+      "ref": "visual-beat-01M0W32HGARC8FQPXKX41V020G:shot-1",
+      "summary": "Demonstrates how individual components look reasonable in isolation but create a false sense of progress when combined."
+    },
+    {
+      "ref": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R:shot-1",
+      "summary": "Clearly distinguishes between the authoritative state and its various representations."
+    },
+    {
+      "ref": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4:shot-1",
+      "summary": "Provides concrete backing for the claims made in the script without requiring complex animation."
+    },
+    {
+      "ref": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF:shot-1",
+      "summary": "Demonstrates the system's integrity by showing it refuses to proceed without required proof."
+    },
+    {
+      "ref": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D:shot-1",
+      "summary": "Summarizes the core argument in a memorable, concise visual statement."
+    }
+  ],
+  "validation": {
+    "ok": true,
+    "valid": true,
+    "structurally_valid": true,
+    "current": true,
+    "coverage_complete": true,
+    "prompts_current": true,
+    "result_state": "VALID",
+    "reason_codes": [],
+    "errors": [],
+    "findings": [],
+    "coverage": [
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+        "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVFMKQGF95011NZQC0"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+        "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVZKEB0P5PEHFSWYPA"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+        "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVAA9AHATZ2XKJXG9Q"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+        "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTV88K1VVAM7CFKADEQ"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+        "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVX26Z9K00FQPB9CV8"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+        "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+        "state": "PLAN_SHOTS",
+        "shot_ids": [
+          "shot-01M0W34QTVEDRYWMG3NWSBJF41"
+        ],
+        "reason": null
+      },
+      {
+        "canonical_beat_id": "visual-beat-01M0W32HGA3K71R7X35VJ8AKTT",
+        "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+        "state": "INTENTIONAL_NO_VISUAL",
+        "shot_ids": [],
+        "reason": "This beat is a meta-check on the packaging process (title/thumbnail verification and claim mapping) which is administrative and does not require visual representation in the narrative flow of the video."
+      }
+    ]
+  },
+  "authority": {
+    "structurally_valid": true,
+    "validation_ok": true,
+    "current": true,
+    "preview_only": true,
+    "coverage_complete": true,
+    "research_authorized": true,
+    "prompts_current": true,
+    "approval_valid": false,
+    "authorization_ok": false,
+    "state": "PREVIEW_ONLY",
+    "reason_codes": [
+      "STORY_PREVIEW_ONLY",
+      "PLAN_APPROVAL_MISSING"
+    ],
+    "validation": {
+      "ok": true,
+      "valid": true,
+      "structurally_valid": true,
+      "current": true,
+      "coverage_complete": true,
+      "prompts_current": true,
+      "result_state": "VALID",
+      "reason_codes": [],
+      "errors": [],
+      "findings": [],
+      "coverage": [
+        {
+          "canonical_beat_id": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS",
+          "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+          "state": "PLAN_SHOTS",
+          "shot_ids": [
+            "shot-01M0W34QTVFMKQGF95011NZQC0"
+          ],
+          "reason": null
+        },
+        {
+          "canonical_beat_id": "visual-beat-01M0W32HGARC8FQPXKX41V020G",
+          "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+          "state": "PLAN_SHOTS",
+          "shot_ids": [
+            "shot-01M0W34QTVZKEB0P5PEHFSWYPA"
+          ],
+          "reason": null
+        },
+        {
+          "canonical_beat_id": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R",
+          "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+          "state": "PLAN_SHOTS",
+          "shot_ids": [
+            "shot-01M0W34QTVAA9AHATZ2XKJXG9Q"
+          ],
+          "reason": null
+        },
+        {
+          "canonical_beat_id": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4",
+          "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+          "state": "PLAN_SHOTS",
+          "shot_ids": [
+            "shot-01M0W34QTV88K1VVAM7CFKADEQ"
+          ],
+          "reason": null
+        },
+        {
+          "canonical_beat_id": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF",
+          "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+          "state": "PLAN_SHOTS",
+          "shot_ids": [
+            "shot-01M0W34QTVX26Z9K00FQPB9CV8"
+          ],
+          "reason": null
+        },
+        {
+          "canonical_beat_id": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D",
+          "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+          "state": "PLAN_SHOTS",
+          "shot_ids": [
+            "shot-01M0W34QTVEDRYWMG3NWSBJF41"
+          ],
+          "reason": null
+        },
+        {
+          "canonical_beat_id": "visual-beat-01M0W32HGA3K71R7X35VJ8AKTT",
+          "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+          "state": "INTENTIONAL_NO_VISUAL",
+          "shot_ids": [],
+          "reason": "This beat is a meta-check on the packaging process (title/thumbnail verification and claim mapping) which is administrative and does not require visual representation in the narrative flow of the video."
+        }
+      ]
+    },
+    "research": {
+      "authorized": true,
+      "reason_codes": [],
+      "details": []
+    },
+    "approval": {
+      "state": "INVALID",
+      "valid": false,
+      "reason_codes": [
+        "PLAN_APPROVAL_MISSING"
+      ]
+    }
+  },
+  "reason": null,
+  "owner": "visual_planning_director",
+  "next_owner": "mikko",
+  "attention": "INFORMATION",
+  "control_room": {
+    "role": "Visual Planning Director",
+    "action": "plan_visuals",
+    "state": "PREVIEW_ONLY",
+    "story": {
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+      "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+      "approval": {
+        "state": "none",
+        "approved_by": null,
+        "approved_at": null,
+        "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+        "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+      },
+      "section_ids": [
+        "01M0W30GA6XPJWK39QKARCR2CC",
+        "01M0W30GA7EZYRZCDQKFH5JBK8",
+        "01M0W30GA7H83X932A0NBZR4HZ",
+        "01M0W30GA7F6Y1MN4MBTT2TS7X",
+        "01M0W30GA7AFTN0GSB5394G7MH",
+        "01M0W30GA703JCAW3MAB7TNGZC",
+        "01M0W30GA7PQMYYBSK5B050N41"
+      ]
+    },
+    "plan_id": "visual-plan-01M0W34QTVW6SG24TKPEKAJERW",
+    "plan_revision": 1,
+    "plan_digest": "9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7",
+    "required_beats": 7,
+    "covered_beats": 6,
+    "intentional_none": 1,
+    "shot_count": 6,
+    "media_types": {
+      "INFOGRAPHIC": 4,
+      "TEXT_GRAPHIC": 2
+    },
+    "prompt_ready": 6,
+    "research_sensitive": 0,
+    "camera_required": 0,
+    "redundancy_findings": [],
+    "story_rationale": [
+      {
+        "ref": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS:shot-1",
+        "summary": "Visually represents the core problem: multiple systems describing different states for the same run."
+      },
+      {
+        "ref": "visual-beat-01M0W32HGARC8FQPXKX41V020G:shot-1",
+        "summary": "Demonstrates how individual components look reasonable in isolation but create a false sense of progress when combined."
+      },
+      {
+        "ref": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R:shot-1",
+        "summary": "Clearly distinguishes between the authoritative state and its various representations."
+      },
+      {
+        "ref": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4:shot-1",
+        "summary": "Provides concrete backing for the claims made in the script without requiring complex animation."
+      },
+      {
+        "ref": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF:shot-1",
+        "summary": "Demonstrates the system's integrity by showing it refuses to proceed without required proof."
+      },
+      {
+        "ref": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D:shot-1",
+        "summary": "Summarizes the core argument in a memorable, concise visual statement."
+      }
+    ],
+    "operational_rationale": {
+      "decision": "PREVIEW_ONLY",
+      "reason": "Visual planning state is PREVIEW_ONLY",
+      "evidence_refs": [
+        {
+          "ref": "visual-beat-01M0W32HGAE45CCPYXCZ2AXYDS:shot-1",
+          "summary": "Visually represents the core problem: multiple systems describing different states for the same run."
+        },
+        {
+          "ref": "visual-beat-01M0W32HGARC8FQPXKX41V020G:shot-1",
+          "summary": "Demonstrates how individual components look reasonable in isolation but create a false sense of progress when combined."
+        },
+        {
+          "ref": "visual-beat-01M0W32HGA2TDYZR8FRW5SJY4R:shot-1",
+          "summary": "Clearly distinguishes between the authoritative state and its various representations."
+        },
+        {
+          "ref": "visual-beat-01M0W32HGANC1E9NF1B8YVHWA4:shot-1",
+          "summary": "Provides concrete backing for the claims made in the script without requiring complex animation."
+        },
+        {
+          "ref": "visual-beat-01M0W32HGA5SAKE6A8TQHS3PPF:shot-1",
+          "summary": "Demonstrates the system's integrity by showing it refuses to proceed without required proof."
+        },
+        {
+          "ref": "visual-beat-01M0W32HGAKJSPZTMZAAXE7J2D:shot-1",
+          "summary": "Summarizes the core argument in a memorable, concise visual statement."
+        }
+      ],
+      "confidence": null,
+      "escalation_reason": null
+    },
+    "authorization": {
+      "state": "PREVIEW_ONLY",
+      "authorization_ok": false
+    },
+    "owner": "visual_planning_director",
+    "next_owner": "mikko",
+    "attention": "INFORMATION",
+    "blocker": null,
+    "latest_event": {
+      "at": "2026-08-25T09:13:40.447Z",
+      "state": "PREVIEW_ONLY",
+      "reason": null
+    }
+  }
+}
