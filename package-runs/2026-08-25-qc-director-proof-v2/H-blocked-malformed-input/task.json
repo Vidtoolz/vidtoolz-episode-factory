@@ -1,0 +1,17 @@
+{
+  "task_id": "qc-v2-H-malformed",
+  "package_run_id": "qc-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "inspect_artifact"
+  },
+  "gate": "production-plan",
+  "subject": {
+    "artifact_id": "canary-unsafe",
+    "artifact_type": "EDIT_EXPORT",
+    "producing_agent": "editor",
+    "artifact_path": "../../../etc/passwd"
+  },
+  "evidence": [],
+  "required_evidence": []
+}

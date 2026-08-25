@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "qc-v2-E-stale-evidence",
+  "action": "inspect_artifact",
+  "package_run_id": "qc-production-path-canary",
+  "project_id": null,
+  "gate": "rough-cut-review",
+  "state": "BLOCKED",
+  "disposition": "BLOCKED",
+  "reason": "evidence edit-qc-handoff was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+  "subject": {
+    "artifact_id": "canary-rough-cut",
+    "artifact_type": "EDIT_EXPORT",
+    "producing_agent": "editor",
+    "artifact_path": "package-runs/qc-production-path-canary/canary/rough-cut.mp4",
+    "artifact_sha256": "097a06feca6c40864493bada926dad4e70ce634e541c3451509196e5935512db",
+    "version_id": "edit-v2"
+  },
+  "observed": {
+    "artifact_readable": true,
+    "artifact_sha256": "097a06feca6c40864493bada926dad4e70ce634e541c3451509196e5935512db",
+    "byte_size": 26
+  },
+  "evidence": [
+    {
+      "evidence_id": "edit-qc-handoff",
+      "kind": "EDIT_QC_HANDOFF",
+      "evidence_class": "SPECIALIST",
+      "produced_by": "editor",
+      "path": null,
+      "declared_sha256": null,
+      "observed_sha256": null,
+      "binding": "STALE",
+      "used": false,
+      "summary": null
+    }
+  ],
+  "evidence_coverage": {
+    "required": [
+      "EDIT_QC_HANDOFF"
+    ],
+    "satisfied": [],
+    "missing": [
+      "EDIT_QC_HANDOFF"
+    ]
+  },
+  "checks": [],
+  "blockers": [
+    {
+      "code": "QC_EVIDENCE_STALE",
+      "severity": "BLOCKER",
+      "source": "qc_director",
+      "artifact_id": "canary-rough-cut",
+      "explanation": "evidence edit-qc-handoff was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+      "evidence_ref": "edit-qc-handoff",
+      "affected_gate": "rough-cut-review",
+      "auto_repairable": false,
+      "human_judgment_required": false
+    },
+    {
+      "code": "QC_REQUIRED_EVIDENCE_MISSING",
+      "severity": "BLOCKER",
+      "source": "qc_director",
+      "artifact_id": "canary-rough-cut",
+      "explanation": "required evidence EDIT_QC_HANDOFF was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+      "evidence_ref": null,
+      "affected_gate": "rough-cut-review",
+      "auto_repairable": false,
+      "human_judgment_required": false
+    }
+  ],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": "FINAL_CUT_APPROVAL",
+    "present": false,
+    "verdict": "ABSENT",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [],
+  "next_gate_allowed": false,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T02:51:39.530Z",
+  "events": [
+    {
+      "at": "2026-08-25T02:51:39.530Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "canary-rough-cut"
+    },
+    {
+      "at": "2026-08-25T02:51:39.530Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "evidence edit-qc-handoff was produced against a different artifact revision (bound hash does not match the inspected artifact)"
+    }
+  ],
+  "attention": "REVIEW",
+  "attention_level": "REVIEW",
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "RESTORE_QC_EVIDENCE_INTEGRITY"
+  },
+  "qc_result_digest_sha256": "efcddaa8caeb56f461b33de140bd587646628f6e26234ffbd7b85e2846724782",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "BLOCKED",
+    "attention": "REVIEW",
+    "attention_level": "REVIEW",
+    "disposition": "BLOCKED",
+    "current_artifact": {
+      "artifact_id": "canary-rough-cut",
+      "artifact_type": "EDIT_EXPORT",
+      "producing_agent": "editor"
+    },
+    "package_run_id": "qc-production-path-canary",
+    "gate": "rough-cut-review",
+    "next_gate_allowed": false,
+    "blockers": [
+      "evidence edit-qc-handoff was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+      "required evidence EDIT_QC_HANDOFF was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    ],
+    "blocker": "evidence edit-qc-handoff was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": false,
+    "human_authority": {
+      "required_scope": "FINAL_CUT_APPROVAL",
+      "verdict": "ABSENT"
+    },
+    "evidence_used": 0,
+    "evidence_total": 1,
+    "missing_evidence": [
+      "EDIT_QC_HANDOFF"
+    ],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "BLOCKED",
+      "reason": "evidence edit-qc-handoff was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+      "evidence_refs": [
+        {
+          "ref": "edit-qc-handoff",
+          "summary": "EDIT_QC_HANDOFF/STALE"
+        }
+      ],
+      "confidence": null,
+      "escalation_reason": "evidence edit-qc-handoff was produced against a different artifact revision (bound hash does not match the inspected artifact)"
+    },
+    "owner": "qc_director",
+    "next_owner": "production_operations",
+    "latest_event": {
+      "at": "2026-08-25T02:51:39.530Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "evidence edit-qc-handoff was produced against a different artifact revision (bound hash does not match the inspected artifact)"
+    }
+  },
+  "operational_rationale": {
+    "decision": "BLOCKED",
+    "reason": "evidence edit-qc-handoff was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+    "evidence_refs": [
+      {
+        "ref": "edit-qc-handoff",
+        "summary": "EDIT_QC_HANDOFF/STALE"
+      }
+    ],
+    "confidence": null,
+    "escalation_reason": "evidence edit-qc-handoff was produced against a different artifact revision (bound hash does not match the inspected artifact)"
+  }
+}

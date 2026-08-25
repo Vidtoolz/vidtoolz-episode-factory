@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "qc-v2-G-camera-pass",
+  "action": "inspect_artifact",
+  "package_run_id": "qc-production-path-canary",
+  "project_id": null,
+  "gate": "production-plan",
+  "state": "HUMAN_REVIEW_REQUIRED",
+  "disposition": "HUMAN_REVIEW_REQUIRED",
+  "reason": "camera-quality is a machine continuity check and explicitly not an aesthetic approval",
+  "subject": {
+    "artifact_id": "canary-camera-artifact",
+    "artifact_type": "EARTH_STUDIO_PROJECT",
+    "producing_agent": "camera_director",
+    "version_id": "cam-v1"
+  },
+  "observed": {
+    "artifact_readable": null,
+    "artifact_sha256": null,
+    "byte_size": null
+  },
+  "evidence": [
+    {
+      "evidence_id": "camera-quality",
+      "kind": "CAMERA_QUALITY",
+      "evidence_class": "DETERMINISTIC",
+      "produced_by": "earth-studio-camera-quality",
+      "path": "package-runs/qc-production-path-canary/canary/camera-quality.json",
+      "declared_sha256": "6520a5bdb6eaefeafa00022eb690dfa7040f8dd0c01e4c9b3fcbad1fd655e64b",
+      "observed_sha256": "6520a5bdb6eaefeafa00022eb690dfa7040f8dd0c01e4c9b3fcbad1fd655e64b",
+      "binding": "BOUND",
+      "used": true,
+      "summary": {
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "errors": 0,
+        "warnings": 0
+      }
+    }
+  ],
+  "evidence_coverage": {
+    "required": [
+      "CAMERA_QUALITY"
+    ],
+    "satisfied": [
+      "CAMERA_QUALITY"
+    ],
+    "missing": []
+  },
+  "checks": [
+    {
+      "evidence_id": "camera-quality",
+      "kind": "CAMERA_QUALITY",
+      "applied": true,
+      "schema_supported": true,
+      "defects": 0,
+      "warnings": 0
+    }
+  ],
+  "blockers": [],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": null,
+    "present": false,
+    "verdict": "NOT_REQUIRED",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [
+    {
+      "evidence_id": "camera-quality",
+      "reason": "camera-quality is a machine continuity check and explicitly not an aesthetic approval"
+    }
+  ],
+  "next_gate_allowed": false,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T02:51:39.587Z",
+  "events": [
+    {
+      "at": "2026-08-25T02:51:39.587Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "canary-camera-artifact"
+    },
+    {
+      "at": "2026-08-25T02:51:39.587Z",
+      "actor": "qc_director",
+      "state": "QC_HUMAN_REVIEW_REQUIRED",
+      "detail": "camera-quality is a machine continuity check and explicitly not an aesthetic approval"
+    }
+  ],
+  "attention": "REVIEW",
+  "attention_level": "REVIEW",
+  "handoff": {
+    "next_owner": "mikko",
+    "next_action": "REVIEW_QC_HUMAN_AUTHORITY_GAP"
+  },
+  "qc_result_digest_sha256": "93921305f4baab4d96e069a7b691bbbfe88feee2fb5684da22cda7f4d48ecc97",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "HUMAN_REVIEW_REQUIRED",
+    "attention": "REVIEW",
+    "attention_level": "REVIEW",
+    "disposition": "HUMAN_REVIEW_REQUIRED",
+    "current_artifact": {
+      "artifact_id": "canary-camera-artifact",
+      "artifact_type": "EARTH_STUDIO_PROJECT",
+      "producing_agent": "camera_director"
+    },
+    "package_run_id": "qc-production-path-canary",
+    "gate": "production-plan",
+    "next_gate_allowed": false,
+    "blockers": [],
+    "blocker": "camera-quality is a machine continuity check and explicitly not an aesthetic approval",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": true,
+    "human_authority": {
+      "required_scope": null,
+      "verdict": "NOT_REQUIRED"
+    },
+    "evidence_used": 1,
+    "evidence_total": 1,
+    "missing_evidence": [],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "HUMAN_REVIEW_REQUIRED",
+      "reason": "camera-quality is a machine continuity check and explicitly not an aesthetic approval",
+      "evidence_refs": [
+        {
+          "ref": "camera-quality",
+          "summary": "CAMERA_QUALITY/BOUND"
+        }
+      ],
+      "confidence": null,
+      "escalation_reason": "camera-quality is a machine continuity check and explicitly not an aesthetic approval"
+    },
+    "owner": "qc_director",
+    "next_owner": "mikko",
+    "latest_event": {
+      "at": "2026-08-25T02:51:39.587Z",
+      "actor": "qc_director",
+      "state": "QC_HUMAN_REVIEW_REQUIRED",
+      "detail": "camera-quality is a machine continuity check and explicitly not an aesthetic approval"
+    }
+  },
+  "operational_rationale": {
+    "decision": "HUMAN_REVIEW_REQUIRED",
+    "reason": "camera-quality is a machine continuity check and explicitly not an aesthetic approval",
+    "evidence_refs": [
+      {
+        "ref": "camera-quality",
+        "summary": "CAMERA_QUALITY/BOUND"
+      }
+    ],
+    "confidence": null,
+    "escalation_reason": "camera-quality is a machine continuity check and explicitly not an aesthetic approval"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "capture": "PRE_PROMOTION_DISPATCH_REFUSAL",
+  "registry_implementation_state": "CANDIDATE",
+  "module_exists": true,
+  "paths": {
+    "canonical_runner": {
+      "runner_version": "agent-runner-v1",
+      "infrastructure_state": "BLOCKED_IMPLEMENTATION_NOT_PROVEN",
+      "reason": "implementation is a proof candidate and is not authorized for production dispatch",
+      "details": {
+        "proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED",
+        "implementation_state": "CANDIDATE",
+        "module_exists": true,
+        "reason": "implementation is a proof candidate and is not authorized for production dispatch"
+      }
+    },
+    "direct_cli": {
+      "runner_version": "agent-runner-v1",
+      "infrastructure_state": "BLOCKED_IMPLEMENTATION_NOT_PROVEN",
+      "agent_id": "qc_director",
+      "reason": "implementation is a proof candidate and is not authorized for production dispatch",
+      "details": {
+        "proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED",
+        "dispatch_blocked_reason": null,
+        "implementation_state": "CANDIDATE",
+        "module_exists": true
+      }
+    },
+    "operator_retry_preview": {
+      "refused": true,
+      "code": "BLOCKED_IMPLEMENTATION_NOT_PROVEN",
+      "reason": "implementation is a proof candidate and is not authorized for production dispatch"
+    }
+  },
+  "all_paths_refused": true,
+  "statement": "The canonical module exists on disk, yet every production path refuses. The fail-closed registry, not module absence, is what withholds dispatch."
+}

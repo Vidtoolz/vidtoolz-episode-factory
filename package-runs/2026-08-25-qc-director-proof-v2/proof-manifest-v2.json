@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "package": "qc-director-production-path-proof-v2",
+  "agent": "qc_director",
+  "bound_commit": "2f03099c9001a136dc5b39a622c9b3a65044f637",
+  "implementation": {
+    "module_path": "scripts/qc-director.js",
+    "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1",
+    "proof_script": "scripts/qc-director-proof-v2.js",
+    "proof_script_sha256": "b24e84928732c0faded00edfdc33d22124e55faa09c6fb3025b2f49e9b523f2e",
+    "version": "qc-director-v1"
+  },
+  "contract_state": {
+    "role_status": "BUILT",
+    "note": "contract status BUILT is the target-architecture classification; the registry lifecycle block is the only thing that grants dispatch"
+  },
+  "registry_snapshot_at_proof": {
+    "implementation_state": "CANDIDATE",
+    "lifecycle": {
+      "doctrine": "DEFINED",
+      "proven": "PROVEN",
+      "autonomous_dispatch": "ENABLED"
+    }
+  },
+  "live_registry_candidate_throughout": true,
+  "promotion_criteria_version": "v1 (docs/implementation-promotion-criteria.md)",
+  "promotion_criteria_sha256": "005ae7d914f8e7a52333c02b02527c1cc4b77bffc8fe1c5b1be1ac9d0ca4997d",
+  "criteria_matrix": [
+    {
+      "id": 1,
+      "criterion": "module import side-effect-free",
+      "evidence": "tests/qc-director.test.js \"import is side-effect free under a pristine root\" — child process require() under a fresh tmpdir, directory listing byte-compared",
+      "status": "PASS"
+    },
+    {
+      "id": 2,
+      "criterion": "canonical envelope valid incl. control_room",
+      "evidence": "runner.validateEnvelope over every disposition (PASS/PASS_WITH_WARNINGS/FAIL/BLOCKED/HUMAN_REVIEW_REQUIRED/status/invalid-action); all 9 production-path cases envelope_valid:true; mutation probes QV7-QV9 prove the validator actually rejects stripped projections",
+      "status": "PASS"
+    },
+    {
+      "id": 3,
+      "criterion": "CANDIDATE refusal on all production paths",
+      "evidence": "pre-promotion-dispatch-refusal.json — canonical runner, direct CLI and operator retry preview all return BLOCKED_IMPLEMENTATION_NOT_PROVEN while module_exists:true",
+      "status": "PASS"
+    },
+    {
+      "id": 4,
+      "criterion": "production-path canary via isolated PROVEN fixture",
+      "evidence": "9/9 cases through scripts/agent-run.js runRegisteredAgent against an isolated root; live registry sha256 byte-identical before/after",
+      "status": "PASS"
+    },
+    {
+      "id": 5,
+      "criterion": "authority-negative adversarial tests",
+      "evidence": "path traversal + absolute escape, wrong artifact identity, cross-version mismatch, stale hash lineage, artifact hash mismatch, unsupported evidence kind, unsupported schema version, malformed JSON, unknown task field, self-inspection (independence violation), detached approval, wrong approval scope, stale approval; plus QV7-QV9 envelope mutation probes",
+      "status": "PASS"
+    },
+    {
+      "id": 6,
+      "criterion": "real/reachable task cases incl. nominal status",
+      "evidence": "Case A INFORMATION status; Case B PASS with next gate allowed; Case C FAIL routed explicitly to camera_director; Cases D/E/H/I BLOCKED; Cases F/G HUMAN_REVIEW_REQUIRED asserting next_owner === \"mikko\" explicitly, never inferred from attention",
+      "status": "PASS"
+    },
+    {
+      "id": 7,
+      "criterion": "deterministic evidence package",
+      "evidence": "this package: per-case task/result/invocation from the canonical runner + sha256 manifest + reproduction command",
+      "status": "PASS"
+    },
+    {
+      "id": 8,
+      "criterion": "canonical test registration + full suite",
+      "evidence": "tests/run-tests.js registers qc-director.test.js and qc-director-production-path.test.js; full suite 4801/4804 with the only 3 failures proven to be Codex's uncommitted Earth Studio camera work (all 3 PASS against pristine HEAD content)",
+      "status": "PASS"
+    },
+    {
+      "id": 9,
+      "criterion": "no unresolved HIGH/MEDIUM implementation defects",
+      "evidence": "one MEDIUM design defect found and closed during development: QC required the whole package-run workflow engine merely to read 14 gate identities, which coupled a read-only validator to production-state indexing. Replaced with a frozen gate list guarded by an equality test against the authoritative GATE_DEFINITIONS. No open defects.",
+      "status": "PASS"
+    },
+    {
+      "id": 10,
+      "criterion": "human promotion decision required and external",
+      "evidence": "no approval record is authored by the agent; registry remained CANDIDATE for the entire proof (sha256 unchanged). The promotion itself is recorded separately in governance/ under Mikko's explicit orchestration authorization.",
+      "status": "PASS"
+    }
+  ],
+  "independence_and_fences": {
+    "creator_not_validator": "QC refuses to inspect an artifact whose producing_agent is qc_director (QC_INDEPENDENCE_VIOLATION); it consumes producing departments' durable results and never imports or re-runs a producer module.",
+    "aesthetic_fence": "aesthetic_authority.claimed is false in every disposition; fenced dimensions are declared explicitly and owned by mikko. A camera-quality PASS_FOR_HUMAN_REVIEW is consumed as a continuity check and yields HUMAN_REVIEW_REQUIRED, never a gate promotion.",
+    "no_hidden_pass": "required evidence that was never produced or does not validly bind yields BLOCKED with QC_REQUIRED_EVIDENCE_MISSING.",
+    "staleness": "binding is decided by artifact hash and version lineage; file mtime is never accepted as proof.",
+    "mutation_safety": {
+      "inspected_artifact": "package-runs/qc-production-path-canary/canary/rough-cut.mp4",
+      "sha256_before": "097a06feca6c40864493bada926dad4e70ce634e541c3451509196e5935512db",
+      "sha256_after": "097a06feca6c40864493bada926dad4e70ce634e541c3451509196e5935512db",
+      "unchanged": true
+    },
+    "earth_studio_isolation": {
+      "statement": "no Earth Studio module is imported or executed by this proof; camera evidence is consumed as durable camera-quality.json result data only",
+      "camera_module_loaded": false
+    }
+  },
+  "cross_department_coverage": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "gate_model": {
+    "authoritative": "scripts/package-run-workflow-map.js GATE_DEFINITIONS (14 gates)",
+    "legacy_21_stage_tracker_used": false,
+    "next_gate_allowed_dispositions": [
+      "PASS",
+      "PASS_WITH_WARNINGS"
+    ]
+  },
+  "production_path_verdict": "PRODUCTION_PATH_PROOF_PASS",
+  "pre_promotion_refusal_verdict": "ALL_PRODUCTION_PATHS_REFUSED",
+  "reproduce": [
+    "node scripts/qc-director-proof-v2.js --emit <dir>",
+    "node tests/run-tests.js  # includes qc-director suites"
+  ],
+  "artifacts": {
+    "A-information-status/invocation.json": "a340b436bed1590a94b2108178064447fda1700054da9da9b6ef4aa9103610e2",
+    "A-information-status/result.json": "12cded9d5baca2ed4173411f740ee62aeb379c2382a136bb53607216b855f6f6",
+    "A-information-status/task.json": "c4b117278180f8ad672c3e24d857cb210e5c202cf8a1deef457cab859d281692",
+    "B-pass-generation/invocation.json": "809632d3a2d3975822b629a1253d3252065b7fa67c8a13b2c9df06041d86054b",
+    "B-pass-generation/result.json": "00992011e55d00b7cce1bf8b7883feb81a23c17e8332715cdb4103ca1ed33f1d",
+    "B-pass-generation/task.json": "7b28d8578d00c7335ec2397725d482141f03d9c76af171ceb5c5259175f56b0a",
+    "C-fail-camera-defect/invocation.json": "bfd6633bf7d4d0490bc1780b992ded0676f8b208c9579e63d209ea636d0b3f84",
+    "C-fail-camera-defect/result.json": "ec84bb8e92a4290d544e9a8806e8d3ee036f87fad7eae5c327cf3a70f169b332",
+    "C-fail-camera-defect/task.json": "0688cde0cc2fcff40d0d5af71a69c34baab5e5c8d88a19901f1a0826bb21ab75",
+    "D-blocked-missing-evidence/invocation.json": "836bc1335d9faa57f8073b9d55aeb59879c09b823fe703914ff92ccc59475f71",
+    "D-blocked-missing-evidence/result.json": "8ab95de9a03b465b9cf2db668c3878f91f851590f389c3e312c4d66f31086497",
+    "D-blocked-missing-evidence/task.json": "955c02da019ea310d5c11c2f0946ec33f5e4aac36d7a7e236bc4b748cd72afde",
+    "E-blocked-stale-evidence/invocation.json": "779be086de3959e3c3b87ebbfdb15bc36a4d412298bc8c25b5c88679a5cd9e52",
+    "E-blocked-stale-evidence/result.json": "dd25eefcfdd55e86288b055309fbc70c725b8bc47a1c654495f2b785374fb08d",
+    "E-blocked-stale-evidence/task.json": "8f14239684a8227153955d01b7009be0ac1bf5df550b8b2997e5bf06d0df0802",
+    "F-human-review-required/invocation.json": "6b039cc07207fcaabc25e7903b31300aa568cf86bd8924af87394dccf97356c8",
+    "F-human-review-required/result.json": "7e0dcfcc259570efc1385031b174ee2bda9f37bf0e949913c6792f76839e9948",
+    "F-human-review-required/task.json": "cc0872e63ba3deab163621a85690f15c823d0e59da9bd5af3ca0697a2c85dab2",
+    "G-camera-machine-pass-is-not-aesthetic-pass/invocation.json": "cfa51d1cfd2666be95b3952012c2a5100e56f7ec7026c01d25f64446dcebb8ac",
+    "G-camera-machine-pass-is-not-aesthetic-pass/result.json": "bdc667aa30fa6669175c5f13c97f8b35e6b8ed13145fdf7f64583d6ddf84ada0",
+    "G-camera-machine-pass-is-not-aesthetic-pass/task.json": "1358aa6f518355c126e5d734b67b4088736969b57d6b350aa99938819daedd8e",
+    "H-blocked-malformed-input/invocation.json": "2722c0b8da5e480d754416258f1bc53d0a0645a6b692c05ea78c934b779524f7",
+    "H-blocked-malformed-input/result.json": "83905310ea12e834b0c2a7a445f74c55aaf637f08d4cecb354b3930f683a2d0b",
+    "H-blocked-malformed-input/task.json": "053a4addfb5b8ffd6c4d682095ebcb7b126e2cd3559d118effe1f09e0d9c3f5d",
+    "I-blocked-wrong-artifact-identity/invocation.json": "623db233fe9ae9c0e18a9505ffe0176a71275942603223df9c4f310e3b43676d",
+    "I-blocked-wrong-artifact-identity/result.json": "c274ed9e9b4e13c4b87bcdd286a211cc457d0ebb93439fad5590385b400e1e0d",
+    "I-blocked-wrong-artifact-identity/task.json": "50193920919abeacddc5c227f01cb22ecf3fdb226afa77a53d8f7cebaa4c75c9",
+    "pre-promotion-dispatch-refusal.json": "4b5e95aa07430c02621ca5f9b9f6c7af56cd7af4ea4089a8bc56868e223455dd",
+    "production-path-summary.json": "81920555975f957f5489a605529ca316cdf29268f93a0c8693a3312f92f83664"
+  },
+  "technical_recommendation": "10/10 criteria PASS; READY FOR MIKKO PROMOTION DECISION",
+  "promotion": "NOT_PERFORMED IN THIS PACKAGE — recorded separately as a human decision",
+  "verdict": "QC_DIRECTOR_PRODUCTION_PATH_PROOF_PASS"
+}

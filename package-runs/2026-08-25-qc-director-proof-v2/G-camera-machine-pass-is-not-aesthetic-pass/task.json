@@ -1,0 +1,32 @@
+{
+  "task_id": "qc-v2-G-camera-pass",
+  "package_run_id": "qc-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "inspect_artifact"
+  },
+  "gate": "production-plan",
+  "subject": {
+    "artifact_id": "canary-camera-artifact",
+    "artifact_type": "EARTH_STUDIO_PROJECT",
+    "producing_agent": "camera_director",
+    "version_id": "cam-v1"
+  },
+  "evidence": [
+    {
+      "evidence_id": "camera-quality",
+      "kind": "CAMERA_QUALITY",
+      "evidence_class": "DETERMINISTIC",
+      "produced_by": "earth-studio-camera-quality",
+      "path": "package-runs/qc-production-path-canary/canary/camera-quality.json",
+      "sha256": "6520a5bdb6eaefeafa00022eb690dfa7040f8dd0c01e4c9b3fcbad1fd655e64b",
+      "binds_to": {
+        "artifact_id": "canary-camera-artifact",
+        "version_id": "cam-v1"
+      }
+    }
+  ],
+  "required_evidence": [
+    "CAMERA_QUALITY"
+  ]
+}

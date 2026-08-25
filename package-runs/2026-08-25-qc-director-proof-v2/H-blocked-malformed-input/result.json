@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "qc-v2-H-malformed",
+  "action": "inspect_artifact",
+  "package_run_id": "qc-production-path-canary",
+  "project_id": null,
+  "gate": "production-plan",
+  "state": "BLOCKED",
+  "disposition": "BLOCKED",
+  "reason": "subject artifact_path resolves outside the repository root",
+  "subject": {
+    "artifact_id": "canary-unsafe",
+    "artifact_type": "EDIT_EXPORT",
+    "producing_agent": "editor",
+    "artifact_path": "../../../etc/passwd"
+  },
+  "observed": {
+    "artifact_readable": null,
+    "artifact_sha256": null,
+    "byte_size": null
+  },
+  "evidence": [],
+  "evidence_coverage": {
+    "required": [],
+    "satisfied": [],
+    "missing": []
+  },
+  "checks": [],
+  "blockers": [
+    {
+      "code": "QC_ARTIFACT_PATH_UNSAFE",
+      "severity": "BLOCKER",
+      "source": "qc_director",
+      "artifact_id": "canary-unsafe",
+      "explanation": "subject artifact_path resolves outside the repository root",
+      "evidence_ref": null,
+      "affected_gate": null,
+      "auto_repairable": false,
+      "human_judgment_required": false
+    }
+  ],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": null,
+    "present": false,
+    "verdict": "NOT_REQUIRED",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [],
+  "next_gate_allowed": false,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T02:51:39.616Z",
+  "events": [
+    {
+      "at": "2026-08-25T02:51:39.616Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "canary-unsafe"
+    },
+    {
+      "at": "2026-08-25T02:51:39.616Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "subject artifact_path resolves outside the repository root"
+    }
+  ],
+  "attention": "REVIEW",
+  "attention_level": "REVIEW",
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "RESTORE_QC_EVIDENCE_INTEGRITY"
+  },
+  "qc_result_digest_sha256": "94012dff47d2917c0b9c6ae34627e9595da5f94cf2bdbc87c963a35bb112ab22",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "BLOCKED",
+    "attention": "REVIEW",
+    "attention_level": "REVIEW",
+    "disposition": "BLOCKED",
+    "current_artifact": {
+      "artifact_id": "canary-unsafe",
+      "artifact_type": "EDIT_EXPORT",
+      "producing_agent": "editor"
+    },
+    "package_run_id": "qc-production-path-canary",
+    "gate": "production-plan",
+    "next_gate_allowed": false,
+    "blockers": [
+      "subject artifact_path resolves outside the repository root"
+    ],
+    "blocker": "subject artifact_path resolves outside the repository root",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": false,
+    "human_authority": {
+      "required_scope": null,
+      "verdict": "NOT_REQUIRED"
+    },
+    "evidence_used": 0,
+    "evidence_total": 0,
+    "missing_evidence": [],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "BLOCKED",
+      "reason": "subject artifact_path resolves outside the repository root",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": "subject artifact_path resolves outside the repository root"
+    },
+    "owner": "qc_director",
+    "next_owner": "production_operations",
+    "latest_event": {
+      "at": "2026-08-25T02:51:39.616Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "subject artifact_path resolves outside the repository root"
+    }
+  },
+  "operational_rationale": {
+    "decision": "BLOCKED",
+    "reason": "subject artifact_path resolves outside the repository root",
+    "evidence_refs": [],
+    "confidence": null,
+    "escalation_reason": "subject artifact_path resolves outside the repository root"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "task_id": "qc-v2-B-generation",
+  "package_run_id": "qc-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "inspect_artifact"
+  },
+  "gate": "production-plan",
+  "subject": {
+    "artifact_id": "canary-generated-asset",
+    "artifact_type": "GENERATED_IMAGE",
+    "producing_agent": "generation_supervisor",
+    "version_id": "gen-v1"
+  },
+  "evidence": [
+    {
+      "evidence_id": "generation-result",
+      "kind": "GENERATION_RESULT",
+      "evidence_class": "SPECIALIST",
+      "produced_by": "generation_supervisor",
+      "path": "package-runs/qc-production-path-canary/canary/generation-result.json",
+      "sha256": "6773c0628e983f43b0fb73a5fd27120e9cfe04c3f79d38a4d16015c7cf073af7",
+      "binds_to": {
+        "artifact_id": "canary-generated-asset",
+        "version_id": "gen-v1"
+      }
+    }
+  ],
+  "required_evidence": [
+    "GENERATION_RESULT"
+  ]
+}

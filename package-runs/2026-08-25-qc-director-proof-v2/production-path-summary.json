@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "proof": "QC_DIRECTOR_PRODUCTION_PATH_PROOF_V2",
+  "generated_at": "2026-08-25T02:51:39.655Z",
+  "promotion_criteria_version": "v1 (docs/implementation-promotion-criteria.md)",
+  "live_registry": {
+    "sha256_before": "c7086c00531c005cef8b98ca5c5bee474324d394b05a5663b14064443ba09eff",
+    "sha256_after": "c7086c00531c005cef8b98ca5c5bee474324d394b05a5663b14064443ba09eff",
+    "unchanged": true,
+    "implementation_state": "CANDIDATE",
+    "lifecycle": {
+      "doctrine": "DEFINED",
+      "proven": "PROVEN",
+      "autonomous_dispatch": "ENABLED"
+    }
+  },
+  "isolated_fixture": {
+    "registry_flipped_from": "CANDIDATE",
+    "to": "IMPLEMENTATION_PROVEN",
+    "root": "temporary (os.tmpdir)"
+  },
+  "dispatch_chain_proven": [
+    "canonical resolve",
+    "implementation readiness (fixture PROVEN)",
+    "module load + AGENT_ID identity",
+    "action validation",
+    "child-process invocation",
+    "canonical envelope validation",
+    "result writing",
+    "invocation completion"
+  ],
+  "mutation_safety": {
+    "inspected_artifact": "package-runs/qc-production-path-canary/canary/rough-cut.mp4",
+    "sha256_before": "097a06feca6c40864493bada926dad4e70ce634e541c3451509196e5935512db",
+    "sha256_after": "097a06feca6c40864493bada926dad4e70ce634e541c3451509196e5935512db",
+    "unchanged": true
+  },
+  "earth_studio_isolation": {
+    "statement": "no Earth Studio module is imported or executed by this proof; camera evidence is consumed as durable camera-quality.json result data only",
+    "camera_module_loaded": false
+  },
+  "cases": {
+    "A-information-status": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "COMPLETE",
+      "disposition": "PASS",
+      "reason": "QC Director is available; no artifact was submitted for inspection",
+      "attention": "INFORMATION",
+      "next_owner": "hermes",
+      "next_gate_allowed": false,
+      "blocker_codes": [],
+      "defect_codes": [],
+      "warning_codes": [],
+      "aesthetic_authority_claimed": false,
+      "envelope_valid": true,
+      "task_sha256": "c4b117278180f8ad672c3e24d857cb210e5c202cf8a1deef457cab859d281692",
+      "result_sha256": "12cded9d5baca2ed4173411f740ee62aeb379c2382a136bb53607216b855f6f6",
+      "qc_result_digest_sha256": "93d03ee6758dcc788cd48fc51d95af7e13dcd5eead3359105b9c06b1efc4ad2c",
+      "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1"
+    },
+    "B-pass-generation": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "COMPLETE",
+      "disposition": "PASS",
+      "reason": "all applicable technical evidence is present, bound and clean",
+      "attention": "INFORMATION",
+      "next_owner": "production_operations",
+      "next_gate_allowed": true,
+      "blocker_codes": [],
+      "defect_codes": [],
+      "warning_codes": [],
+      "aesthetic_authority_claimed": false,
+      "envelope_valid": true,
+      "task_sha256": "7b28d8578d00c7335ec2397725d482141f03d9c76af171ceb5c5259175f56b0a",
+      "result_sha256": "00992011e55d00b7cce1bf8b7883feb81a23c17e8332715cdb4103ca1ed33f1d",
+      "qc_result_digest_sha256": "9483df63390bc790d173e73365b1ed73596badd1835c6e664b9b050331f4e731",
+      "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1"
+    },
+    "C-fail-camera-defect": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "FAIL",
+      "disposition": "FAIL",
+      "reason": "segment 3 (orbit) radius breathes 7.4% — exceeds the 2% tolerance",
+      "attention": "REVIEW",
+      "next_owner": "camera_director",
+      "next_gate_allowed": false,
+      "blocker_codes": [],
+      "defect_codes": [
+        "CAMERA_QUALITY_DEFECT"
+      ],
+      "warning_codes": [
+        "CAMERA_QUALITY_WARNING"
+      ],
+      "aesthetic_authority_claimed": false,
+      "envelope_valid": true,
+      "task_sha256": "0688cde0cc2fcff40d0d5af71a69c34baab5e5c8d88a19901f1a0826bb21ab75",
+      "result_sha256": "ec84bb8e92a4290d544e9a8806e8d3ee036f87fad7eae5c327cf3a70f169b332",
+      "qc_result_digest_sha256": "57f26cd1d56737d9b598e6da5049a0bf72ff8a33b8ebe30aed1089a978da4fd4",
+      "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1"
+    },
+    "D-blocked-missing-evidence": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "BLOCKED",
+      "disposition": "BLOCKED",
+      "reason": "required evidence CAMERA_QUALITY was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+      "attention": "REVIEW",
+      "next_owner": "production_operations",
+      "next_gate_allowed": false,
+      "blocker_codes": [
+        "QC_REQUIRED_EVIDENCE_MISSING"
+      ],
+      "defect_codes": [],
+      "warning_codes": [],
+      "aesthetic_authority_claimed": false,
+      "envelope_valid": true,
+      "task_sha256": "955c02da019ea310d5c11c2f0946ec33f5e4aac36d7a7e236bc4b748cd72afde",
+      "result_sha256": "8ab95de9a03b465b9cf2db668c3878f91f851590f389c3e312c4d66f31086497",
+      "qc_result_digest_sha256": "ac6840d718d8697829823538ccb7af5d9066fe225ae721a5718f4e7a71228160",
+      "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1"
+    },
+    "E-blocked-stale-evidence": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "BLOCKED",
+      "disposition": "BLOCKED",
+      "reason": "evidence edit-qc-handoff was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+      "attention": "REVIEW",
+      "next_owner": "production_operations",
+      "next_gate_allowed": false,
+      "blocker_codes": [
+        "QC_EVIDENCE_STALE",
+        "QC_REQUIRED_EVIDENCE_MISSING"
+      ],
+      "defect_codes": [],
+      "warning_codes": [],
+      "aesthetic_authority_claimed": false,
+      "envelope_valid": true,
+      "task_sha256": "8f14239684a8227153955d01b7009be0ac1bf5df550b8b2997e5bf06d0df0802",
+      "result_sha256": "dd25eefcfdd55e86288b055309fbc70c725b8bc47a1c654495f2b785374fb08d",
+      "qc_result_digest_sha256": "efcddaa8caeb56f461b33de140bd587646628f6e26234ffbd7b85e2846724782",
+      "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1"
+    },
+    "F-human-review-required": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "HUMAN_REVIEW_REQUIRED",
+      "disposition": "HUMAN_REVIEW_REQUIRED",
+      "reason": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded",
+      "attention": "REVIEW",
+      "next_owner": "mikko",
+      "next_gate_allowed": false,
+      "blocker_codes": [],
+      "defect_codes": [],
+      "warning_codes": [],
+      "aesthetic_authority_claimed": false,
+      "envelope_valid": true,
+      "task_sha256": "cc0872e63ba3deab163621a85690f15c823d0e59da9bd5af3ca0697a2c85dab2",
+      "result_sha256": "7e0dcfcc259570efc1385031b174ee2bda9f37bf0e949913c6792f76839e9948",
+      "qc_result_digest_sha256": "fc13134b0743e3652e9e8616077f5283a2b60a0cb222d702c171954bf6b35b8d",
+      "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1"
+    },
+    "G-camera-machine-pass-is-not-aesthetic-pass": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "HUMAN_REVIEW_REQUIRED",
+      "disposition": "HUMAN_REVIEW_REQUIRED",
+      "reason": "camera-quality is a machine continuity check and explicitly not an aesthetic approval",
+      "attention": "REVIEW",
+      "next_owner": "mikko",
+      "next_gate_allowed": false,
+      "blocker_codes": [],
+      "defect_codes": [],
+      "warning_codes": [],
+      "aesthetic_authority_claimed": false,
+      "envelope_valid": true,
+      "task_sha256": "1358aa6f518355c126e5d734b67b4088736969b57d6b350aa99938819daedd8e",
+      "result_sha256": "bdc667aa30fa6669175c5f13c97f8b35e6b8ed13145fdf7f64583d6ddf84ada0",
+      "qc_result_digest_sha256": "93921305f4baab4d96e069a7b691bbbfe88feee2fb5684da22cda7f4d48ecc97",
+      "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1"
+    },
+    "H-blocked-malformed-input": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "BLOCKED",
+      "disposition": "BLOCKED",
+      "reason": "subject artifact_path resolves outside the repository root",
+      "attention": "REVIEW",
+      "next_owner": "production_operations",
+      "next_gate_allowed": false,
+      "blocker_codes": [
+        "QC_ARTIFACT_PATH_UNSAFE"
+      ],
+      "defect_codes": [],
+      "warning_codes": [],
+      "aesthetic_authority_claimed": false,
+      "envelope_valid": true,
+      "task_sha256": "053a4addfb5b8ffd6c4d682095ebcb7b126e2cd3559d118effe1f09e0d9c3f5d",
+      "result_sha256": "83905310ea12e834b0c2a7a445f74c55aaf637f08d4cecb354b3930f683a2d0b",
+      "qc_result_digest_sha256": "94012dff47d2917c0b9c6ae34627e9595da5f94cf2bdbc87c963a35bb112ab22",
+      "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1"
+    },
+    "I-blocked-wrong-artifact-identity": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "BLOCKED",
+      "disposition": "BLOCKED",
+      "reason": "evidence camera-quality binds to artifact a-completely-different-artifact, not canary-camera-artifact",
+      "attention": "REVIEW",
+      "next_owner": "production_operations",
+      "next_gate_allowed": false,
+      "blocker_codes": [
+        "QC_EVIDENCE_ARTIFACT_MISMATCH",
+        "QC_REQUIRED_EVIDENCE_MISSING"
+      ],
+      "defect_codes": [],
+      "warning_codes": [],
+      "aesthetic_authority_claimed": false,
+      "envelope_valid": true,
+      "task_sha256": "50193920919abeacddc5c227f01cb22ecf3fdb226afa77a53d8f7cebaa4c75c9",
+      "result_sha256": "c274ed9e9b4e13c4b87bcdd286a211cc457d0ebb93439fad5590385b400e1e0d",
+      "qc_result_digest_sha256": "1fe6b8debd2ea7f5d5b0f939f37d20aa065aa0f62f89556c21cefe1524f9f4cb",
+      "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1"
+    }
+  },
+  "verdict": "PRODUCTION_PATH_PROOF_PASS"
+}

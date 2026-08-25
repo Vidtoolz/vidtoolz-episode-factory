@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "qc-v2-I-wrong-identity",
+  "action": "inspect_artifact",
+  "package_run_id": "qc-production-path-canary",
+  "project_id": null,
+  "gate": "production-plan",
+  "state": "BLOCKED",
+  "disposition": "BLOCKED",
+  "reason": "evidence camera-quality binds to artifact a-completely-different-artifact, not canary-camera-artifact",
+  "subject": {
+    "artifact_id": "canary-camera-artifact",
+    "artifact_type": "EARTH_STUDIO_PROJECT",
+    "producing_agent": "camera_director",
+    "version_id": "cam-v1"
+  },
+  "observed": {
+    "artifact_readable": null,
+    "artifact_sha256": null,
+    "byte_size": null
+  },
+  "evidence": [
+    {
+      "evidence_id": "camera-quality",
+      "kind": "CAMERA_QUALITY",
+      "evidence_class": "DETERMINISTIC",
+      "produced_by": "earth-studio-camera-quality",
+      "path": "package-runs/qc-production-path-canary/canary/camera-quality.json",
+      "declared_sha256": "6520a5bdb6eaefeafa00022eb690dfa7040f8dd0c01e4c9b3fcbad1fd655e64b",
+      "observed_sha256": "6520a5bdb6eaefeafa00022eb690dfa7040f8dd0c01e4c9b3fcbad1fd655e64b",
+      "binding": "WRONG_ARTIFACT",
+      "used": false,
+      "summary": null
+    }
+  ],
+  "evidence_coverage": {
+    "required": [
+      "CAMERA_QUALITY"
+    ],
+    "satisfied": [],
+    "missing": [
+      "CAMERA_QUALITY"
+    ]
+  },
+  "checks": [],
+  "blockers": [
+    {
+      "code": "QC_EVIDENCE_ARTIFACT_MISMATCH",
+      "severity": "BLOCKER",
+      "source": "qc_director",
+      "artifact_id": "canary-camera-artifact",
+      "explanation": "evidence camera-quality binds to artifact a-completely-different-artifact, not canary-camera-artifact",
+      "evidence_ref": "camera-quality",
+      "affected_gate": "production-plan",
+      "auto_repairable": false,
+      "human_judgment_required": false
+    },
+    {
+      "code": "QC_REQUIRED_EVIDENCE_MISSING",
+      "severity": "BLOCKER",
+      "source": "qc_director",
+      "artifact_id": "canary-camera-artifact",
+      "explanation": "required evidence CAMERA_QUALITY was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+      "evidence_ref": null,
+      "affected_gate": "production-plan",
+      "auto_repairable": false,
+      "human_judgment_required": false
+    }
+  ],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": null,
+    "present": false,
+    "verdict": "NOT_REQUIRED",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [],
+  "next_gate_allowed": false,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T02:51:39.644Z",
+  "events": [
+    {
+      "at": "2026-08-25T02:51:39.644Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "canary-camera-artifact"
+    },
+    {
+      "at": "2026-08-25T02:51:39.644Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "evidence camera-quality binds to artifact a-completely-different-artifact, not canary-camera-artifact"
+    }
+  ],
+  "attention": "REVIEW",
+  "attention_level": "REVIEW",
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "RESTORE_QC_EVIDENCE_INTEGRITY"
+  },
+  "qc_result_digest_sha256": "1fe6b8debd2ea7f5d5b0f939f37d20aa065aa0f62f89556c21cefe1524f9f4cb",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "BLOCKED",
+    "attention": "REVIEW",
+    "attention_level": "REVIEW",
+    "disposition": "BLOCKED",
+    "current_artifact": {
+      "artifact_id": "canary-camera-artifact",
+      "artifact_type": "EARTH_STUDIO_PROJECT",
+      "producing_agent": "camera_director"
+    },
+    "package_run_id": "qc-production-path-canary",
+    "gate": "production-plan",
+    "next_gate_allowed": false,
+    "blockers": [
+      "evidence camera-quality binds to artifact a-completely-different-artifact, not canary-camera-artifact",
+      "required evidence CAMERA_QUALITY was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    ],
+    "blocker": "evidence camera-quality binds to artifact a-completely-different-artifact, not canary-camera-artifact",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": false,
+    "human_authority": {
+      "required_scope": null,
+      "verdict": "NOT_REQUIRED"
+    },
+    "evidence_used": 0,
+    "evidence_total": 1,
+    "missing_evidence": [
+      "CAMERA_QUALITY"
+    ],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "BLOCKED",
+      "reason": "evidence camera-quality binds to artifact a-completely-different-artifact, not canary-camera-artifact",
+      "evidence_refs": [
+        {
+          "ref": "camera-quality",
+          "summary": "CAMERA_QUALITY/WRONG_ARTIFACT"
+        }
+      ],
+      "confidence": null,
+      "escalation_reason": "evidence camera-quality binds to artifact a-completely-different-artifact, not canary-camera-artifact"
+    },
+    "owner": "qc_director",
+    "next_owner": "production_operations",
+    "latest_event": {
+      "at": "2026-08-25T02:51:39.644Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "evidence camera-quality binds to artifact a-completely-different-artifact, not canary-camera-artifact"
+    }
+  },
+  "operational_rationale": {
+    "decision": "BLOCKED",
+    "reason": "evidence camera-quality binds to artifact a-completely-different-artifact, not canary-camera-artifact",
+    "evidence_refs": [
+      {
+        "ref": "camera-quality",
+        "summary": "CAMERA_QUALITY/WRONG_ARTIFACT"
+      }
+    ],
+    "confidence": null,
+    "escalation_reason": "evidence camera-quality binds to artifact a-completely-different-artifact, not canary-camera-artifact"
+  }
+}

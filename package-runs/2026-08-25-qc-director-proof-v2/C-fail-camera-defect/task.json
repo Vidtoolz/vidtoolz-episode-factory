@@ -1,0 +1,40 @@
+{
+  "task_id": "qc-v2-C-camera-fail",
+  "package_run_id": "qc-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "inspect_artifact"
+  },
+  "gate": "production-plan",
+  "subject": {
+    "artifact_id": "canary-camera-artifact",
+    "artifact_type": "EARTH_STUDIO_PROJECT",
+    "producing_agent": "camera_director",
+    "version_id": "cam-v1"
+  },
+  "evidence": [
+    {
+      "evidence_id": "camera-quality",
+      "kind": "CAMERA_QUALITY",
+      "evidence_class": "DETERMINISTIC",
+      "produced_by": "earth-studio-camera-quality",
+      "binds_to": {
+        "artifact_id": "canary-camera-artifact",
+        "version_id": "cam-v1"
+      },
+      "payload": {
+        "schema_version": 1,
+        "verdict": "FAIL",
+        "errors": [
+          "segment 3 (orbit) radius breathes 7.4% — exceeds the 2% tolerance"
+        ],
+        "warnings": [
+          "segment 1 moves only 3.1% closer"
+        ]
+      }
+    }
+  ],
+  "required_evidence": [
+    "CAMERA_QUALITY"
+  ]
+}

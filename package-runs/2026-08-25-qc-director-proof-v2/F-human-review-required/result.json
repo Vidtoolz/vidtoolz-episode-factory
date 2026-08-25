@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "qc-v2-F-human-review",
+  "action": "inspect_artifact",
+  "package_run_id": "qc-production-path-canary",
+  "project_id": null,
+  "gate": "rough-cut-review",
+  "state": "HUMAN_REVIEW_REQUIRED",
+  "disposition": "HUMAN_REVIEW_REQUIRED",
+  "reason": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded",
+  "subject": {
+    "artifact_id": "canary-rough-cut",
+    "artifact_type": "EDIT_EXPORT",
+    "producing_agent": "editor",
+    "artifact_path": "package-runs/qc-production-path-canary/canary/rough-cut.mp4",
+    "artifact_sha256": "097a06feca6c40864493bada926dad4e70ce634e541c3451509196e5935512db",
+    "version_id": "edit-v2"
+  },
+  "observed": {
+    "artifact_readable": true,
+    "artifact_sha256": "097a06feca6c40864493bada926dad4e70ce634e541c3451509196e5935512db",
+    "byte_size": 26
+  },
+  "evidence": [
+    {
+      "evidence_id": "edit-qc-handoff",
+      "kind": "EDIT_QC_HANDOFF",
+      "evidence_class": "SPECIALIST",
+      "produced_by": "editor",
+      "path": null,
+      "declared_sha256": null,
+      "observed_sha256": null,
+      "binding": "BOUND",
+      "used": true,
+      "summary": {
+        "edit_plan_id": "canary-edit-1",
+        "revision": 2,
+        "findings": 0,
+        "has_export": true
+      }
+    }
+  ],
+  "evidence_coverage": {
+    "required": [
+      "EDIT_QC_HANDOFF"
+    ],
+    "satisfied": [
+      "EDIT_QC_HANDOFF"
+    ],
+    "missing": []
+  },
+  "checks": [
+    {
+      "evidence_id": "edit-qc-handoff",
+      "kind": "EDIT_QC_HANDOFF",
+      "applied": true,
+      "schema_supported": true,
+      "defects": 0,
+      "warnings": 0
+    }
+  ],
+  "blockers": [],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": "FINAL_CUT_APPROVAL",
+    "present": false,
+    "verdict": "ABSENT",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [],
+  "next_gate_allowed": false,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T02:51:39.559Z",
+  "events": [
+    {
+      "at": "2026-08-25T02:51:39.559Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "canary-rough-cut"
+    },
+    {
+      "at": "2026-08-25T02:51:39.559Z",
+      "actor": "qc_director",
+      "state": "QC_HUMAN_REVIEW_REQUIRED",
+      "detail": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded"
+    }
+  ],
+  "attention": "REVIEW",
+  "attention_level": "REVIEW",
+  "handoff": {
+    "next_owner": "mikko",
+    "next_action": "REVIEW_QC_HUMAN_AUTHORITY_GAP"
+  },
+  "qc_result_digest_sha256": "fc13134b0743e3652e9e8616077f5283a2b60a0cb222d702c171954bf6b35b8d",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "HUMAN_REVIEW_REQUIRED",
+    "attention": "REVIEW",
+    "attention_level": "REVIEW",
+    "disposition": "HUMAN_REVIEW_REQUIRED",
+    "current_artifact": {
+      "artifact_id": "canary-rough-cut",
+      "artifact_type": "EDIT_EXPORT",
+      "producing_agent": "editor"
+    },
+    "package_run_id": "qc-production-path-canary",
+    "gate": "rough-cut-review",
+    "next_gate_allowed": false,
+    "blockers": [],
+    "blocker": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": true,
+    "human_authority": {
+      "required_scope": "FINAL_CUT_APPROVAL",
+      "verdict": "ABSENT"
+    },
+    "evidence_used": 1,
+    "evidence_total": 1,
+    "missing_evidence": [],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "HUMAN_REVIEW_REQUIRED",
+      "reason": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded",
+      "evidence_refs": [
+        {
+          "ref": "edit-qc-handoff",
+          "summary": "EDIT_QC_HANDOFF/BOUND"
+        }
+      ],
+      "confidence": null,
+      "escalation_reason": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded"
+    },
+    "owner": "qc_director",
+    "next_owner": "mikko",
+    "latest_event": {
+      "at": "2026-08-25T02:51:39.559Z",
+      "actor": "qc_director",
+      "state": "QC_HUMAN_REVIEW_REQUIRED",
+      "detail": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded"
+    }
+  },
+  "operational_rationale": {
+    "decision": "HUMAN_REVIEW_REQUIRED",
+    "reason": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded",
+    "evidence_refs": [
+      {
+        "ref": "edit-qc-handoff",
+        "summary": "EDIT_QC_HANDOFF/BOUND"
+      }
+    ],
+    "confidence": null,
+    "escalation_reason": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded"
+  }
+}

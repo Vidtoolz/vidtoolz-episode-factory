@@ -1,0 +1,19 @@
+{
+  "task_id": "qc-v2-D-missing-evidence",
+  "package_run_id": "qc-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "inspect_artifact"
+  },
+  "gate": "production-plan",
+  "subject": {
+    "artifact_id": "canary-camera-artifact",
+    "artifact_type": "EARTH_STUDIO_PROJECT",
+    "producing_agent": "camera_director",
+    "version_id": "cam-v1"
+  },
+  "evidence": [],
+  "required_evidence": [
+    "CAMERA_QUALITY"
+  ]
+}

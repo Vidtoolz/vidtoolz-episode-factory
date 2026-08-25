@@ -1,0 +1,44 @@
+{
+  "task_id": "qc-v2-E-stale-evidence",
+  "package_run_id": "qc-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "inspect_artifact"
+  },
+  "gate": "rough-cut-review",
+  "subject": {
+    "artifact_id": "canary-rough-cut",
+    "artifact_type": "EDIT_EXPORT",
+    "producing_agent": "editor",
+    "artifact_path": "package-runs/qc-production-path-canary/canary/rough-cut.mp4",
+    "artifact_sha256": "097a06feca6c40864493bada926dad4e70ce634e541c3451509196e5935512db",
+    "version_id": "edit-v2"
+  },
+  "evidence": [
+    {
+      "evidence_id": "edit-qc-handoff",
+      "kind": "EDIT_QC_HANDOFF",
+      "evidence_class": "SPECIALIST",
+      "produced_by": "editor",
+      "binds_to": {
+        "artifact_id": "canary-rough-cut",
+        "artifact_sha256": "8fe61cf792748c6e04624be962611624de359b67018289aab955fd1639394c69"
+      },
+      "payload": {
+        "artifact_type": "edit-plan-qc-handoff",
+        "edit_plan_id": "canary-edit-1",
+        "edit_plan_revision": 2,
+        "edit_plan_digest_sha256": "d5f9e4d7977fd30123e6d1d120a3dba31b4dd073d864171c4a966f5bf9c9c6a4",
+        "findings": [],
+        "rendered_media_ref": {
+          "path_or_artifact_ref": "package-runs/qc-production-path-canary/canary/rough-cut.mp4",
+          "sha256": "097a06feca6c40864493bada926dad4e70ce634e541c3451509196e5935512db",
+          "byte_size": 26
+        }
+      }
+    }
+  ],
+  "required_evidence": [
+    "EDIT_QC_HANDOFF"
+  ]
+}
