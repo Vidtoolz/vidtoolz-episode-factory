@@ -183,6 +183,7 @@ node --check scripts/presenter-take-manifest.js
 node --check scripts/presenter-director.js
 node --check scripts/edit-plan.js
 node --check scripts/editor.js
+node --check scripts/package-run-story-validation.js
 node --check publish-gate-decision.js
 node --check idea-engine.js
 node --check idea-engine-prompts.js

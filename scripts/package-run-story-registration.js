@@ -23,6 +23,7 @@ const path = require('node:path');
 
 const compat = require('./script-builder-compat.js');
 const storyBinding = require('./package-run-story-binding.js');
+const storyValidationModule = require('./package-run-story-validation.js');
 const packageRunsIndex = require('./package-runs-index.js');
 
 const SCRIPT_CANDIDATES = Object.freeze(['final-script.md', 'script-draft.md']);
@@ -154,6 +155,9 @@ function registerStoryForRun(runDirInput, options = {}) {
   const existingBinding = storyBinding.readBinding(plan.runDir);
   if (existingBinding && !options.replace) {
     const resolved = storyBinding.resolveBoundStory(plan.runDir, { scriptBuilderRoot: root });
+    // Backfill/refresh STORY_VALIDATION idempotently: same Story state leaves
+    // the existing evidence bytes untouched; drift rewrites it.
+    const storyValidation = storyValidationModule.materializeStoryValidation(plan.runDir, { scriptBuilderRoot: root });
     return {
       created: false,
       reused: true,
@@ -162,6 +166,7 @@ function registerStoryForRun(runDirInput, options = {}) {
       versionId: resolved.versionId,
       contentHash: resolved.contentHash,
       binding: resolved.binding,
+      storyValidation,
     };
   }
 
@@ -218,6 +223,18 @@ function registerStoryForRun(runDirInput, options = {}) {
   });
   const written = storyBinding.writeBinding(plan.runDir, binding, { replace: Boolean(options.replace) });
 
+  // STORY_VALIDATION evidence: materialized at binding time so a future run
+  // never reaches QC without a production path having produced it.
+  // Deterministic schema/lineage evidence — not narrative judgment, not approval.
+  let storyValidation = null;
+  try {
+    storyValidation = storyValidationModule.materializeStoryValidation(plan.runDir, {
+      scriptBuilderRoot: root, force: Boolean(options.replace),
+    });
+  } catch (error) {
+    fail(error.code || 'STORY_VALIDATION_FAILED', `Story binding succeeded but STORY_VALIDATION evidence failed: ${error.message}`);
+  }
+
   return {
     created: true,
     reused: false,
@@ -229,6 +246,7 @@ function registerStoryForRun(runDirInput, options = {}) {
     approvalState: version.approval.state,
     binding: written.binding,
     bindingPath: written.path,
+    storyValidation,
   };
 }
 
