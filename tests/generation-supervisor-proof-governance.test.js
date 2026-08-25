@@ -64,11 +64,22 @@ test('GSG2: the recorded history is verifiable against git, not asserted', () =>
 
 test('GSG3: the correction binds the exact repaired module and proof package', () => {
   const r = record();
+  // History is preserved: the original repair binding still names the module as
+  // it was proven. Legitimate later growth is recorded in subsequent_extensions,
+  // each binding the hash at that point, so drift is still detectable without
+  // erasing what was originally proven.
+  const extensions = r.subsequent_extensions || [];
+  const currentBinding = extensions.length ? extensions[extensions.length - 1] : r.repair;
   assert.equal(
-    r.repair.module_sha256,
-    sha256(fs.readFileSync(path.join(ROOT, r.repair.module_path))),
+    currentBinding.module_sha256,
+    sha256(fs.readFileSync(path.join(ROOT, currentBinding.module_path))),
     'the bound module must still be the module that was proven'
   );
+  assert.match(r.repair.module_sha256, /^[0-9a-f]{64}$/, 'the original repair binding is retained as history');
+  for (const extension of extensions) {
+    assert.equal(extension.supersedes_binding !== undefined, true, 'each extension names the binding it supersedes');
+    assert.equal(extension.generation_behaviour_changed, false, 'extensions must not silently change generation behaviour');
+  }
   assert.equal(
     r.proof_binding.proof_summary_sha256,
     sha256(fs.readFileSync(path.join(ROOT, r.proof_binding.proof_summary))),

@@ -60,7 +60,7 @@ function probeHttp(url, timeoutMs = 5000) {
 // The canonical runner reads ACTIONS to validate a requested action before it
 // invokes the module. A task with no action keeps the historical direct-CLI
 // behaviour and is treated as a supervision request.
-const ACTIONS = Object.freeze(['supervise_generation', 'status']);
+const ACTIONS = Object.freeze(['supervise_generation', 'generate_draft_narration', 'status']);
 const DEFAULT_ACTION = 'supervise_generation';
 
 function requestedAction(task) {
@@ -162,8 +162,97 @@ async function run(task, options = {}) {
     status.qc = { required: false, state: 'NOT_APPLICABLE', verdict: null };
     status.supported_actions = [...ACTIONS];
     status.policy_source = 'config/media-routing.json';
+    // Whether DRAFT narration is actionable is an environment fact, reported
+    // here rather than discovered by attempting a render.
+    try {
+      const readiness = require('./synthetic-narration-provider.js').providerReadiness();
+      status.draft_narration = {
+        actionable: readiness.actionable,
+        provider: readiness.provider,
+        version: readiness.version,
+        voice: readiness.voice,
+        blockers: readiness.blockers,
+      };
+    } catch (error) {
+      status.draft_narration = { actionable: false, blockers: [String(error.message).slice(0, 160)] };
+    }
     status.handoff = { next_owner: 'hermes', next_action: 'DISPATCH_GENERATION_BRIEF' };
     ev('STATUS_REPORTED', status.reason);
+    return finish();
+  }
+
+  // ── generate_draft_narration: DRAFT proxy voice ──────────────────────────
+  // Real work with real bytes. This is the Draft presenter's VOICE, never the
+  // presenter: the evidence it produces declares DRAFT synthetic fidelity and
+  // can never satisfy a real-capture requirement.
+  if (action === 'generate_draft_narration') {
+    const runDir = task.run_dir || task.package_run_dir
+      || (task.package_run_id ? path.join(path.resolve(options.repoRoot || path.join(__dirname, '..')), 'package-runs', task.package_run_id) : null);
+    if (!runDir) {
+      status.state = 'INPUT_MISSING';
+      status.reason = 'generate_draft_narration requires package_run_id or run_dir';
+      ev('INPUT_MISSING', status.reason);
+      return finish();
+    }
+    const narration = require('./package-run-draft-narration.js');
+    const providerModule = require('./synthetic-narration-provider.js');
+
+    const readiness = providerModule.providerReadiness({ voice: task.voice });
+    status.route = { lane: 'local_synthetic_narration', provider: readiness.provider, version: readiness.version, voice: readiness.voice };
+    if (!readiness.actionable) {
+      // A missing provider is an environment problem, not a generation failure.
+      status.state = 'RESOURCE_UNAVAILABLE';
+      status.reason = `synthetic narration provider unavailable: ${readiness.blockers.join('; ')}`;
+      ev('RESOURCE_UNAVAILABLE', status.reason);
+      return finish();
+    }
+
+    let built;
+    try {
+      built = narration.buildDraftNarration(runDir, { taskId: task.task_id, voice: task.voice });
+    } catch (error) {
+      // Fail closed: no manifest, no evidence, no partial asset presented as ready.
+      status.state = ['NARRATION_MODE_NOT_DRAFT', 'NARRATION_NO_SPOKEN_TEXT', 'NARRATION_STORY_EMPTY'].includes(error.code)
+        ? 'INPUT_MISSING' : 'GENERATION_FAILED';
+      status.reason = `${error.code || 'NARRATION_FAILED'}: ${error.message}`;
+      ev(status.state, status.reason);
+      return finish();
+    }
+    ev('GENERATED', `${built.manifest.coverage.spoken_segments} narration segment(s)`);
+
+    const evidence = narration.attestDraftNarration(runDir, { taskId: task.task_id });
+    if (evidence.state !== 'VERIFIED') {
+      status.state = 'OUTPUT_INVALID';
+      status.reason = `narration evidence did not verify: ${[...evidence.script_binding.drift, ...evidence.technical_validation.failures].join('; ')}`;
+      ev('OUTPUT_INVALID', status.reason);
+      return finish();
+    }
+
+    status.artifact_class = 'draft_synthetic_narration';
+    status.outputs = [{
+      path: built.manifest.assembled.audio_path,
+      sha256: built.manifest.assembled.audio_sha256,
+      bytes: built.manifest.assembled.bytes,
+      duration_seconds: built.manifest.assembled.duration_seconds,
+    }];
+    status.provenance = {
+      provider: readiness.provider,
+      provider_version: readiness.version,
+      voice: readiness.voice,
+      voice_identity: readiness.voice_identity,
+      voice_model_sha256: readiness.voice_model_sha256,
+      story: built.manifest.story,
+      fidelity: narration.FIDELITY,
+      is_presenter_voice: false,
+    };
+    // QC is applicable but this is not a production mix: the evidence kind says
+    // so, and a mode-aware QC policy consumes it as DRAFT_SYNTHETIC_NARRATION.
+    status.qc = { required: true, state: 'QC_PENDING', verdict: null, evidence_kind: narration.EVIDENCE_KIND };
+    status.evidence = { kind: narration.EVIDENCE_KIND, file: narration.EVIDENCE_FILE, state: evidence.state, satisfies_real_capture: false };
+    status.state = 'COMPLETE';
+    status.reason = `draft synthetic narration ready: ${built.manifest.assembled.duration_seconds.toFixed(2)}s across ${built.manifest.coverage.spoken_segments} beat(s)`;
+    status.handoff = { next_owner: 'qc_director', next_action: 'INSPECT_DRAFT_SYNTHETIC_NARRATION' };
+    ev('COMPLETE', status.reason);
     return finish();
   }
 

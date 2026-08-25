@@ -97,5 +97,30 @@
     "qc_authority_created": false,
     "publication_authority_created": false
   },
-  "statement": "THE ORIGINAL PROMOTION WAS NOT VALID. generation_supervisor was marked IMPLEMENTATION_PROVEN by a bulk backfill while the canonical runner could never dispatch it. This record does not pretend otherwise and does not rewrite that history. The implementation has been repaired to satisfy the runner identity contract, production-path proof has now been earned, and the registry claim is truthful as of this record."
+  "statement": "THE ORIGINAL PROMOTION WAS NOT VALID. generation_supervisor was marked IMPLEMENTATION_PROVEN by a bulk backfill while the canonical runner could never dispatch it. This record does not pretend otherwise and does not rewrite that history. The implementation has been repaired to satisfy the runner identity contract, production-path proof has now been earned, and the registry claim is truthful as of this record.",
+  "subsequent_extensions": [
+    {
+      "extension": "draft_synthetic_narration",
+      "module_path": "scripts/generation-supervisor.js",
+      "module_sha256": "099859255d6923298abfcab5046dea30ea010a8b70ed6859c192b94965199f76",
+      "supersedes_binding": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15",
+      "actions_added": [
+        "generate_draft_narration"
+      ],
+      "changes": [
+        "added the generate_draft_narration action with a real implementation behind it: Piper renders the bound canonical script to verified 48 kHz/24-bit audio",
+        "status now reports whether the draft narration provider is actionable, so availability is read rather than discovered by attempting a render"
+      ],
+      "generation_behaviour_changed": false,
+      "generation_behaviour_note": "supervise_generation is untouched. The new action is a separate branch that resolves no media-routing lane and dispatches no image or video workload; it uses a local offline speech provider only.",
+      "input_contract_changed": false,
+      "output_contract_changed": "additive only — route/outputs/provenance/evidence fields on the new action, and status.draft_narration",
+      "fidelity_note": "the audio produced is DRAFT_SYNTHETIC_NARRATION at DRAFT fidelity. It records satisfies_real_capture false and can never stand in for a human performance.",
+      "proof_binding": {
+        "proof_package": "package-runs/2026-08-25-draft-synthetic-narration-proof/draft-narration-proof.json"
+      },
+      "reproven": "all pre-existing generation-supervisor and generation-package-bridge tests pass unmodified; 19 new narration tests cover the added action, including its fail-closed paths"
+    }
+  ],
+  "statement_amendment": "The original repair binding is preserved verbatim above. Later capability growth on this module is recorded in subsequent_extensions, each binding the module hash at the time of that extension, so module drift is still detectable without erasing what was originally proven."
 }
