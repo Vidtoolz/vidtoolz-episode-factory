@@ -135,6 +135,7 @@ node --check scripts/daily-idea-scout-providers.js
 node --check scripts/daily-idea-scout-launch.js
 node --check scripts/daily-idea-scout-request.js
 node --check scripts/package-runs-index.js
+node --check scripts/package-runs-index-canary.js
 node --check scripts/system-registry.js
 node --check scripts/generate-production-spec.js
 node --check scripts/package-runs-dashboard-launch.js

@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "proof": "PACKAGE_RUNS_INDEX_AUTHORITY_CANARY",
+  "empty_root": {
+    "count": 0,
+    "scanned": 0
+  },
+  "proof_only": {
+    "count": 0,
+    "excluded": {
+      "proof": 1,
+      "canary": 0,
+      "acceptance": 0,
+      "legacyUnknown": 0
+    }
+  },
+  "genuine_run": {
+    "count": 1,
+    "runId": "2026-08-25-index-canary-run"
+  },
+  "second_proof": {
+    "count": 1,
+    "excluded": {
+      "proof": 2,
+      "canary": 0,
+      "acceptance": 0,
+      "legacyUnknown": 0
+    }
+  },
+  "ghost_forged": {
+    "ok": false,
+    "defects": [
+      "INDEX_GHOST_ENTRY"
+    ]
+  },
+  "ghost_repair": {
+    "count": 1,
+    "ok": true
+  },
+  "deleted_index": {
+    "run_still_usable": true,
+    "check_defects": [
+      "INDEX_MISSING"
+    ]
+  },
+  "restored": {
+    "count": 1,
+    "ok": true
+  },
+  "canonical_unchanged": {
+    "before": "750d9715b5285456",
+    "after": "750d9715b5285456",
+    "equal": true
+  },
+  "deterministic": {
+    "digest": "6c834d2ce6aa7138",
+    "stable": true
+  },
+  "real_repository": {
+    "directoriesScanned": 71,
+    "genuineRuns": 1,
+    "indexedCount": 1,
+    "excluded": {
+      "proof": 12,
+      "canary": 3,
+      "acceptance": 5,
+      "legacyUnknown": 50
+    },
+    "check_ok": true,
+    "defects": [],
+    "statement": "Directory count under package-runs/ is not the run count: proof/canary/acceptance/legacy directories carry no package-run identity and are excluded by design."
+  },
+  "index_authority": [
+    "filesystem package-run evidence",
+    "package-run scanner (scripts/package-runs-index.js buildPackageRunsIndex)",
+    "package-runs-index.json — rebuildable, disposable, non-authoritative"
+  ],
+  "failures": [],
+  "verdict": "PACKAGE_RUNS_INDEX_CANARY_PROVEN",
+  "generated_at": "2026-08-25T08:02:42.526Z",
+  "module_sha256": "f969959247d6b78ffe0b22663cb73599e42bc87243cdaf321738982f85ea03bc"
+}
