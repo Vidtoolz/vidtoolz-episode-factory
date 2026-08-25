@@ -1,0 +1,113 @@
+{
+  "candidate_id": "music-candidate-004",
+  "project_id": "2026-08-22-music3-live-canary-001",
+  "backend": "minimax",
+  "candidate_kind": "production_audio",
+  "plan_revision_id": "1083eb17af50ebf5029ac2493a19daedf94ae4db08e49f142fee5b121866347a",
+  "generation_job_id": "music-job-3d00a14b-34cb-4e8b-99f5-02ecc9500995",
+  "brief_id": "2026-08-22-music3-live-canary-001-brief-v1",
+  "brief_hash": "88d437ab6828380513420b2cbba410100587fdbee28eee1adfe4998786a3767c",
+  "brief_file": "/home/vidtoolz/vidtoolz-score-projects/projects/2026-08-22-music3-live-canary-001/music-render-brief.json",
+  "interpretation": {
+    "interpretation_id": "calm-minimal-pulse",
+    "label": "Minimal pulse bed",
+    "axes": {
+      "rhythm": "sparse_pulse",
+      "melody": "none",
+      "harmonic": "static",
+      "density": "restrained",
+      "texture": "clean",
+      "development": "steady",
+      "opening": "immediate",
+      "climax": "density",
+      "ending": "fade",
+      "timbre": "restrained_electronic",
+      "tempo_feel": "as_planned",
+      "pulse_style": "sparse",
+      "melody_bias": "minimal"
+    }
+  },
+  "candidate_brief_hash": "b7ac5ffeebde61fa439fd1b63d62c704134e4912148bb84a8f6b9a0e8c197ed6",
+  "caption": "[Global Metadata]\nInstrumental cue, 96 BPM, D minor, 12 seconds. Curious, clinical, curious, warm. Energy: two peak, underlay character. Must stay behind continuous narration.\n\n[Vocal Details]\nInstrumental. No vocals of any kind.\n\n[Arrangement]\nContinuity rule: evolve one continuous composition; do not replace it. Keep the core instrumental palette, tonal and harmonic world, motif family, groove family, production aesthetic, and spatial character recognizably consistent from beginning to end. Develop through intensity, density, layers, register, fills, rhythmic or harmonic development, melodic variation, breakdown, rebuild, and ending resolution. Unless the brief explicitly requests a transformation, do not start an unrelated second composition, switch genre, replace the palette, reset the harmony, introduce a disconnected groove, or hard-restart the music. 0:00-0:02 peak intensity: restrained analog pulse and low synth bass; Keep percussion sparse and harmony restrained under narration. Fullest arrangement of the piece; commit to the peak. Source cues: C001; functions: hook. quiet, steady and unobtrusive. 0:02-0:09 post-peak release: Continue the established motif, palette, harmony, and groove; vary and develop the arrangement instead of starting new music; Keep percussion sparse and harmony restrained under narration. Thin the arrangement and let the energy settle. Source cues: C002; functions: explanation. quiet, steady and unobtrusive. 0:09-0:11 peak intensity: Continue the established motif, palette, harmony, and groove; vary and develop the arrangement instead of starting new music; Keep percussion sparse and harmony restrained under narration. Fullest arrangement of the piece; commit to the peak. Source cues: C003; functions: reveal. quiet, steady and unobtrusive. 0:11-0:12 closing resolution: Continue the established motif, palette, harmony, and groove; vary and develop the arrangement instead of starting new music; Keep percussion sparse and harmony restrained under narration. Resolve harmonically and end decisively. Source cues: C004; functions: button. quiet, steady and unobtrusive. Allowed colors: analog 8th-note pulse, filtered, soft attack, low round synth bass, root-heavy, dark evolving pad, slow attack, muted arp fragments, very sparse, subtle noise bed, vinyl-like air, low boom, soft sub hit. End with a gentle fade. Avoid: acoustic drums, big orchestra, prominent melody.\n",
+  "caption_hash": "59e2391babed37f9f587b4bb3ad408e19a894023fd51a7b0a1e91e1c74d5ea7a",
+  "seed": 1,
+  "generator": "MiniMax Music 3",
+  "adapter": "minimax-caption-reference (EXPERIMENTAL)",
+  "workflow_id": "minimax-music3-t2m-v1",
+  "workflow_hash": "2a651a1e9e2be52da82eff13d2ab6d887affe7a9319599b8c2165a02f792b9dc",
+  "models": {
+    "dit": "minimax_music3_dit_fp16.safetensors",
+    "text_encoder": "minimax_music3_text_encoder_pruned_int8_convrot.safetensors",
+    "vae": "minimax_music3_dav.safetensors"
+  },
+  "sampler": {
+    "steps": 30,
+    "cfg": 1.7,
+    "sampler_name": "euler",
+    "scheduler": "simple",
+    "denoise": 1
+  },
+  "text_encode": {
+    "cfg_scale": 1.7,
+    "top_k": 50
+  },
+  "tiled_decode": false,
+  "requested_duration_s": 12,
+  "audio_contract": {
+    "native_output": "44.1 kHz stereo lossless FLAC (ComfyUI save node — not WAV)",
+    "production_deliverable": "16-bit PCM WAV via separate lossless ffmpeg conversion on the worker",
+    "resampling": "never (native 44.1 kHz is preserved)"
+  },
+  "lane": "music_generation",
+  "selected_host": "vidlap2",
+  "admission": {
+    "ok": true,
+    "decision": "ROUTE",
+    "lane": "music_generation",
+    "selected_host": "vidlap2",
+    "endpoint": null,
+    "reason": "Lane 'music_generation' is available on vidlap2.",
+    "fallback_used": false,
+    "checks": {
+      "music_worker_admission": "pass"
+    },
+    "manual_action_required": null,
+    "timestamp": "2026-08-22T08:57:34.068878+00:00",
+    "registry_version": 1
+  },
+  "prompt_id": "62698a38-704e-4136-ba0b-3462917b89f6",
+  "native_output_path": "C:\\VidtoolzMusic\\ComfyUI\\output\\scorecraft\\2026-08-22-music3-live-canary-001-brief-v1\\music-candidate-004_00001.flac",
+  "converted_output_path": "C:\\VidtoolzMusic\\output\\scorecraft\\music-candidate-004.wav",
+  "output_sha256": "83dbd1d2872040e96f0b43af0d5e2a3d164a9793df7a246ee8e6f9bebc48eeaf",
+  "status": "completed",
+  "failure": null,
+  "human_verdict": "use",
+  "approval_status": "approved",
+  "candidate_input_hash": "efe761f52dc6a239123c50ac3845845ec5458f3e8281b5e25a85ef484a278bae",
+  "candidate_content_hash": "c3bd527ac2cdf32918fa0aa9c7218a01df53da0418b543ce78fc9606773ba308",
+  "provenance_schema_version": 2,
+  "generation_started_at": "2026-08-22T08:57:34.076Z",
+  "generation_completed_at": "2026-08-22T09:00:05.103Z",
+  "created_at": "2026-08-22T08:57:32.719Z",
+  "updated_at": "2026-08-22T09:15:40.553Z",
+  "local_deliverable_path": "/home/vidtoolz/vidtoolz-score-projects/projects/2026-08-22-music3-live-canary-001/music-candidates/music-candidate-004/production.wav",
+  "resource_release": {
+    "status": "released",
+    "requested_at": "2026-08-22T09:00:05.104Z",
+    "completed_at": "2026-08-22T09:00:06.384Z",
+    "attempted": true,
+    "reason": "idle_model_cache_released",
+    "vram_before_mib": 6039,
+    "vram_after_mib": 15005,
+    "runtime_healthy": true,
+    "queue_running": 0,
+    "queue_pending": 0
+  },
+  "review_note": "Operational live-canary acceptance authorized by this gate; transport and audio-contract validation only, not aesthetic quality acceptance.",
+  "reviewed_at": "2026-08-22T09:15:40.517Z",
+  "approved_at": "2026-08-22T09:15:40.553Z",
+  "measured_duration_seconds": 11.993107,
+  "measured_sample_rate": 44100,
+  "measured_channels": 2,
+  "measured_bit_depth": 16
+}

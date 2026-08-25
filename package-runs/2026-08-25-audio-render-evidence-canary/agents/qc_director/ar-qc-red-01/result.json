@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "ar-qc-red-01",
+  "action": "inspect_artifact",
+  "package_run_id": "2026-08-25-audio-render-evidence-canary",
+  "project_id": null,
+  "gate": "export-check",
+  "state": "BLOCKED",
+  "disposition": "BLOCKED",
+  "reason": "required evidence AUDIO_RENDER was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+  "subject": {
+    "artifact_id": "ar-canary-production-wav",
+    "artifact_type": "AUDIO_RENDER",
+    "producing_agent": "sound_music_director",
+    "artifact_path": "package-runs/2026-08-25-audio-render-evidence-canary/audio/production.wav",
+    "artifact_sha256": "83dbd1d2872040e96f0b43af0d5e2a3d164a9793df7a246ee8e6f9bebc48eeaf",
+    "version_id": "music-candidate-004"
+  },
+  "observed": {
+    "artifact_readable": true,
+    "artifact_sha256": "83dbd1d2872040e96f0b43af0d5e2a3d164a9793df7a246ee8e6f9bebc48eeaf",
+    "byte_size": 2115662
+  },
+  "evidence": [],
+  "evidence_coverage": {
+    "required": [
+      "AUDIO_RENDER"
+    ],
+    "satisfied": [],
+    "missing": [
+      "AUDIO_RENDER"
+    ]
+  },
+  "checks": [],
+  "blockers": [
+    {
+      "code": "QC_REQUIRED_EVIDENCE_MISSING",
+      "severity": "BLOCKER",
+      "source": "qc_director",
+      "artifact_id": "ar-canary-production-wav",
+      "explanation": "required evidence AUDIO_RENDER was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+      "evidence_ref": null,
+      "affected_gate": "export-check",
+      "auto_repairable": false,
+      "human_judgment_required": false
+    }
+  ],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": null,
+    "present": false,
+    "verdict": "NOT_REQUIRED",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [],
+  "next_gate_allowed": false,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T11:48:32.640Z",
+  "events": [
+    {
+      "at": "2026-08-25T11:48:32.640Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "ar-canary-production-wav"
+    },
+    {
+      "at": "2026-08-25T11:48:32.640Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "required evidence AUDIO_RENDER was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    }
+  ],
+  "attention": "REVIEW",
+  "attention_level": "REVIEW",
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "RESTORE_QC_EVIDENCE_INTEGRITY"
+  },
+  "qc_result_digest_sha256": "9632183a50087e76577521c27ebe5131e6ffd602adb557f73a6fc7251b1e8b0b",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "BLOCKED",
+    "attention": "REVIEW",
+    "attention_level": "REVIEW",
+    "disposition": "BLOCKED",
+    "current_artifact": {
+      "artifact_id": "ar-canary-production-wav",
+      "artifact_type": "AUDIO_RENDER",
+      "producing_agent": "sound_music_director"
+    },
+    "package_run_id": "2026-08-25-audio-render-evidence-canary",
+    "gate": "export-check",
+    "next_gate_allowed": false,
+    "blockers": [
+      "required evidence AUDIO_RENDER was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    ],
+    "blocker": "required evidence AUDIO_RENDER was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": false,
+    "human_authority": {
+      "required_scope": null,
+      "verdict": "NOT_REQUIRED"
+    },
+    "evidence_used": 0,
+    "evidence_total": 0,
+    "missing_evidence": [
+      "AUDIO_RENDER"
+    ],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "BLOCKED",
+      "reason": "required evidence AUDIO_RENDER was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": "required evidence AUDIO_RENDER was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    },
+    "owner": "qc_director",
+    "next_owner": "production_operations",
+    "latest_event": {
+      "at": "2026-08-25T11:48:32.640Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "required evidence AUDIO_RENDER was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    }
+  },
+  "operational_rationale": {
+    "decision": "BLOCKED",
+    "reason": "required evidence AUDIO_RENDER was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+    "evidence_refs": [],
+    "confidence": null,
+    "escalation_reason": "required evidence AUDIO_RENDER was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "task_id": "ar-qc-green-01",
+  "package_run_id": "2026-08-25-audio-render-evidence-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "inspect_artifact"
+  },
+  "gate": "export-check",
+  "subject": {
+    "artifact_id": "ar-canary-production-wav",
+    "artifact_type": "AUDIO_RENDER",
+    "producing_agent": "sound_music_director",
+    "artifact_path": "package-runs/2026-08-25-audio-render-evidence-canary/audio/production.wav",
+    "artifact_sha256": "83dbd1d2872040e96f0b43af0d5e2a3d164a9793df7a246ee8e6f9bebc48eeaf",
+    "version_id": "music-candidate-004"
+  },
+  "evidence": [
+    {
+      "evidence_id": "audio-render",
+      "kind": "AUDIO_RENDER",
+      "evidence_class": "DETERMINISTIC",
+      "produced_by": "sound_music_director",
+      "path": "package-runs/2026-08-25-audio-render-evidence-canary/audio-render-evidence.json",
+      "sha256": "2031a5e7fff583f8b4d0d69f4fa7dfa736667c8ab6e695286f94bd6c00ac055d",
+      "binds_to": {
+        "artifact_id": "ar-canary-production-wav",
+        "artifact_sha256": "83dbd1d2872040e96f0b43af0d5e2a3d164a9793df7a246ee8e6f9bebc48eeaf",
+        "version_id": "music-candidate-004"
+      }
+    }
+  ],
+  "required_evidence": [
+    "AUDIO_RENDER"
+  ],
+  "privacy": {
+    "local_only": true
+  }
+}

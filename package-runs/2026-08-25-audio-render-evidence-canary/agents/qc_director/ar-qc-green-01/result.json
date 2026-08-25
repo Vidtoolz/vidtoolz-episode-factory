@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "ar-qc-green-01",
+  "action": "inspect_artifact",
+  "package_run_id": "2026-08-25-audio-render-evidence-canary",
+  "project_id": null,
+  "gate": "export-check",
+  "state": "COMPLETE",
+  "disposition": "PASS",
+  "reason": "all applicable technical evidence is present, bound and clean",
+  "subject": {
+    "artifact_id": "ar-canary-production-wav",
+    "artifact_type": "AUDIO_RENDER",
+    "producing_agent": "sound_music_director",
+    "artifact_path": "package-runs/2026-08-25-audio-render-evidence-canary/audio/production.wav",
+    "artifact_sha256": "83dbd1d2872040e96f0b43af0d5e2a3d164a9793df7a246ee8e6f9bebc48eeaf",
+    "version_id": "music-candidate-004"
+  },
+  "observed": {
+    "artifact_readable": true,
+    "artifact_sha256": "83dbd1d2872040e96f0b43af0d5e2a3d164a9793df7a246ee8e6f9bebc48eeaf",
+    "byte_size": 2115662
+  },
+  "evidence": [
+    {
+      "evidence_id": "audio-render",
+      "kind": "AUDIO_RENDER",
+      "evidence_class": "DETERMINISTIC",
+      "produced_by": "sound_music_director",
+      "path": "package-runs/2026-08-25-audio-render-evidence-canary/audio-render-evidence.json",
+      "declared_sha256": "2031a5e7fff583f8b4d0d69f4fa7dfa736667c8ab6e695286f94bd6c00ac055d",
+      "observed_sha256": "2031a5e7fff583f8b4d0d69f4fa7dfa736667c8ab6e695286f94bd6c00ac055d",
+      "binding": "BOUND",
+      "used": true,
+      "summary": {
+        "state": "PRODUCTION_READY",
+        "duration_seconds": 11.993107
+      }
+    }
+  ],
+  "evidence_coverage": {
+    "required": [
+      "AUDIO_RENDER"
+    ],
+    "satisfied": [
+      "AUDIO_RENDER"
+    ],
+    "missing": []
+  },
+  "checks": [
+    {
+      "evidence_id": "audio-render",
+      "kind": "AUDIO_RENDER",
+      "applied": true,
+      "schema_supported": true,
+      "defects": 0,
+      "warnings": 0
+    }
+  ],
+  "blockers": [],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": null,
+    "present": false,
+    "verdict": "NOT_REQUIRED",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [],
+  "next_gate_allowed": true,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T11:48:43.163Z",
+  "events": [
+    {
+      "at": "2026-08-25T11:48:43.163Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "ar-canary-production-wav"
+    },
+    {
+      "at": "2026-08-25T11:48:43.163Z",
+      "actor": "qc_director",
+      "state": "QC_PASS",
+      "detail": "all applicable technical evidence is present, bound and clean"
+    }
+  ],
+  "attention": "INFORMATION",
+  "attention_level": "INFORMATION",
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "ADVANCE_GATE_export-check"
+  },
+  "qc_result_digest_sha256": "cde18eea1814eee3033655e3b5d8d140a936c835ce1f13c7e8d6d74b5f0335b6",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "COMPLETE",
+    "attention": "INFORMATION",
+    "attention_level": "INFORMATION",
+    "disposition": "PASS",
+    "current_artifact": {
+      "artifact_id": "ar-canary-production-wav",
+      "artifact_type": "AUDIO_RENDER",
+      "producing_agent": "sound_music_director"
+    },
+    "package_run_id": "2026-08-25-audio-render-evidence-canary",
+    "gate": "export-check",
+    "next_gate_allowed": true,
+    "blockers": [],
+    "blocker": "all applicable technical evidence is present, bound and clean",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": false,
+    "human_authority": {
+      "required_scope": null,
+      "verdict": "NOT_REQUIRED"
+    },
+    "evidence_used": 1,
+    "evidence_total": 1,
+    "missing_evidence": [],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "PASS",
+      "reason": "all applicable technical evidence is present, bound and clean",
+      "evidence_refs": [
+        {
+          "ref": "audio-render",
+          "summary": "AUDIO_RENDER/BOUND"
+        }
+      ],
+      "confidence": null,
+      "escalation_reason": null
+    },
+    "owner": "qc_director",
+    "next_owner": "production_operations",
+    "latest_event": {
+      "at": "2026-08-25T11:48:43.163Z",
+      "actor": "qc_director",
+      "state": "QC_PASS",
+      "detail": "all applicable technical evidence is present, bound and clean"
+    }
+  },
+  "operational_rationale": {
+    "decision": "PASS",
+    "reason": "all applicable technical evidence is present, bound and clean",
+    "evidence_refs": [
+      {
+        "ref": "audio-render",
+        "summary": "AUDIO_RENDER/BOUND"
+      }
+    ],
+    "confidence": null,
+    "escalation_reason": null
+  }
+}

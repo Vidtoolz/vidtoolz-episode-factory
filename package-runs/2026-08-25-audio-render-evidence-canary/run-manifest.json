@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "artifact_type": "audio-render-evidence-canary-manifest",
+  "run_id": "2026-08-25-audio-render-evidence-canary",
+  "not_for_publication": true,
+  "source": {
+    "score_project_id": "2026-08-22-music3-live-canary-001",
+    "candidate_id": "music-candidate-004",
+    "copied_at": "2026-08-25T11:48:07Z",
+    "copied_by": "hermes (audio-render-evidence mission)"
+  }
+}

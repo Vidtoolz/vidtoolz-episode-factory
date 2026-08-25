@@ -1,0 +1,24 @@
+{
+  "task_id": "ar-qc-red-01",
+  "package_run_id": "2026-08-25-audio-render-evidence-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "inspect_artifact"
+  },
+  "gate": "export-check",
+  "subject": {
+    "artifact_id": "ar-canary-production-wav",
+    "artifact_type": "AUDIO_RENDER",
+    "producing_agent": "sound_music_director",
+    "artifact_path": "package-runs/2026-08-25-audio-render-evidence-canary/audio/production.wav",
+    "artifact_sha256": "83dbd1d2872040e96f0b43af0d5e2a3d164a9793df7a246ee8e6f9bebc48eeaf",
+    "version_id": "music-candidate-004"
+  },
+  "evidence": [],
+  "required_evidence": [
+    "AUDIO_RENDER"
+  ],
+  "privacy": {
+    "local_only": true
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "runner_version": "agent-runner-v1",
+  "invocations": [
+    {
+      "invocation_id": "qc_director:ar-qc-red-01:1",
+      "agent_id": "qc_director",
+      "task_id": "ar-qc-red-01",
+      "attempt_number": 1,
+      "state": "BLOCKED",
+      "attention": "REVIEW",
+      "next_owner": "production_operations",
+      "task_directory": "qc_director/ar-qc-red-01",
+      "completed_at": "2026-08-25T11:48:32.645Z"
+    },
+    {
+      "invocation_id": "qc_director:ar-qc-green-01:1",
+      "agent_id": "qc_director",
+      "task_id": "ar-qc-green-01",
+      "attempt_number": 1,
+      "state": "COMPLETE",
+      "attention": "INFORMATION",
+      "next_owner": "production_operations",
+      "task_directory": "qc_director/ar-qc-green-01",
+      "completed_at": "2026-08-25T11:48:43.168Z"
+    },
+    {
+      "invocation_id": "qc_director:ar-qc-wronghash-01:1",
+      "agent_id": "qc_director",
+      "task_id": "ar-qc-wronghash-01",
+      "attempt_number": 1,
+      "state": "BLOCKED",
+      "attention": "REVIEW",
+      "next_owner": "production_operations",
+      "task_directory": "qc_director/ar-qc-wronghash-01",
+      "completed_at": "2026-08-25T11:48:43.234Z"
+    }
+  ]
+}

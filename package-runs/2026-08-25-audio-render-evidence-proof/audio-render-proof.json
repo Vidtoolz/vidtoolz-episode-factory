@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "proof": "audio-render-evidence",
+  "generated_at": "2026-08-25",
+  "verdict": "AUDIO_RENDER PATH PROVEN",
+  "not_a_package_run": true,
+  "bounded_canary": "package-runs/2026-08-25-audio-render-evidence-canary",
+  "semantics": {
+    "evidence_kind": "AUDIO_RENDER",
+    "meaning": "a real rendered audio asset from the authorized music lane exists, is technically valid, and is bound to exact bytes with complete render provenance",
+    "checks": [
+      "Scorecraft music-candidate.json: status completed",
+      "production.wav present, non-empty, ffprobe-decodable",
+      "bytes hash to record output_sha256",
+      "provenance complete: generation_job_id, workflow_hash, brief_hash",
+      "duration matches recorded ffprobe measurement within 0.5s"
+    ],
+    "not": [
+      "not the final program mix (no program-mix render path exists yet)",
+      "not aesthetic judgment",
+      "not human music approval (Scorecraft two-step gate remains the only approval authority)",
+      "not Scorecraft planning output (cue sheets / MIDI never satisfy render evidence)"
+    ],
+    "documentation": "docs/audio-render-evidence.md"
+  },
+  "canonical_producer": {
+    "id": "sound_music_director",
+    "producer_type": "deterministic_attestation",
+    "attester_module": "scripts/audio-render-evidence.js",
+    "why_not_new_agent": "mission §6 — the department already owns the records; infrastructure rendered the audio; attester is deterministic",
+    "why_not_generation_supervisor": "generation lane renders the candidate; the department's candidate record is what QC's adapter contract names",
+    "qc_remediation_route": "REMEDIATION_OWNER.sound_music_director"
+  },
+  "real_render": {
+    "score_project_id": "2026-08-22-music3-live-canary-001",
+    "candidate_id": "music-candidate-004",
+    "human_verdict": "use",
+    "generation_job": true,
+    "copied_into_canary": "package-runs/2026-08-25-audio-render-evidence-canary/audio/production.wav",
+    "technical": { "codec": "pcm_s16le", "sample_rate": 44100, "channels": 2, "duration_seconds": 11.993107 },
+    "sha256": "83dbd1d2872040e96f0b43af0d5e2a3d164a9793df7a246ee8e6f9bebc48eeaf"
+  },
+  "qc_red_baseline": {
+    "task_id": "ar-qc-red-01",
+    "runner": "scripts/agent-run.js --agent qc_director",
+    "gate": "export-check",
+    "disposition": "BLOCKED",
+    "blockers": ["QC_REQUIRED_EVIDENCE_MISSING"],
+    "evidence_coverage": { "required": ["AUDIO_RENDER"], "satisfied": [], "missing": ["AUDIO_RENDER"] },
+    "next_gate_allowed": false,
+    "persisted": "package-runs/2026-08-25-audio-render-evidence-canary/agents/qc_director/ar-qc-red-01/result.json"
+  },
+  "qc_green": {
+    "task_id": "ar-qc-green-01",
+    "runner": "scripts/agent-run.js --agent qc_director",
+    "disposition": "PASS",
+    "evidence_coverage": { "required": ["AUDIO_RENDER"], "satisfied": ["AUDIO_RENDER"], "missing": [] },
+    "next_gate_allowed": true,
+    "persisted": "package-runs/2026-08-25-audio-render-evidence-canary/agents/qc_director/ar-qc-green-01/result.json"
+  },
+  "qc_wrong_hash": {
+    "task_id": "ar-qc-wronghash-01",
+    "disposition": "BLOCKED",
+    "blockers": ["QC_EVIDENCE_STALE", "QC_REQUIRED_EVIDENCE_MISSING"],
+    "meaning": "hash binding enforced by QC itself: a bind hash that does not match the inspected artifact is STALE, never trusted"
+  },
+  "drift_tests": {
+    "suite": "tests/audio-render-evidence.test.js",
+    "result": "15/15",
+    "cases": [
+      "AR1 RED negative control",
+      "AR2 real decodable audio satisfies QC (hermetic)",
+      "AR3 zero-byte rejected",
+      "AR4 undecodable rejected",
+      "AR5 wrong hash rejected (attester level)",
+      "AR6 audio changed after evidence -> AUDIO_RENDER_STALE",
+      "AR7 evidence bound to another artifact -> QC_EVIDENCE_ARTIFACT_MISMATCH",
+      "AR8 incomplete provenance rejected",
+      "AR9 materially wrong duration rejected",
+      "AR10 sample rate / channels measured, not invented (48k mono)",
+      "AR11 idempotency: zero churn",
+      "AR12 supersession: v1 evidence does not satisfy v2 render",
+      "AR13 human approval recorded truthfully, never invented",
+      "AR14 bounded canary production bytes accepted by QC",
+      "AR15 invariant: zero mandatory producer-less evidence kinds"
+    ]
+  },
+  "required_evidence_inventory_after": {
+    "STORY_VALIDATION": "REACHABLE — scripts/package-run-story-validation.js",
+    "AUDIO_RENDER": "REACHABLE — scripts/audio-render-evidence.js (this mission)",
+    "CAMERA_QUALITY": "REACHABLE — earth-studio-camera-quality.js (Codex-owned lane)",
+    "GENERATION_RESULT": "REACHABLE — scripts/generation-supervisor.js",
+    "EDIT_QC_HANDOFF": "REACHABLE — scripts/edit-plan.js qc handoff emission",
+    "producer_less_mandatory_kinds": 0
+  },
+  "retained_canary_applicability": {
+    "retained_lifecycle_canary": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+    "gate": "capture-checklist (6/14 complete)",
+    "applicable": false,
+    "reason": "gate 7 is the capture phase; that run's program audio comes from real presenter capture, not the music lane. Fabricating audio there would be dishonest. Bounded dedicated canary used instead (mission §39).",
+    "control_room": "no agent invocation fabricated; attester is deterministic infrastructure"
+  },
+  "mode_dependency_flag": "If DRAFT/REVIEW/PRODUCTION run modes land (sibling mission b329cc9/81dccf8/9492d84), AUDIO_RENDER expectations may differ per mode. Not consumed here — read-only observation; contract assumes the music lane's production render.",
+  "lifecycle_trigger": {
+    "status": "documented, not wired",
+    "rationale": "music rendering is project-scoped in Scorecraft (not every package run gets music); materialization belongs where a run's soundtrack is chosen, which the current lifecycle has not reached for any genuine run. Wiring a speculative trigger would invent lifecycle ordering without evidence (mission §21)."
+  },
+  "scorecraft_state": {
+    "modified": false,
+    "reads": "score-projects candidate records read-only"
+  },
+  "stop_reason": "AUDIO_RENDER PATH PROVEN: semantics explicit, canonical producer exists, real render validated against actual bytes, QC accepts it through the real runner, stale/wrong/undecodable audio fails closed, required-evidence inventory has zero unexplained mandatory producer-less kinds."
+}
