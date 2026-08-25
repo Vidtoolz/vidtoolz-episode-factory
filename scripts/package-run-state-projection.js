@@ -239,6 +239,11 @@ function gateById(map = {}, id = "") {
 
 function currentGateIdFromMap(map = {}) {
   const gates = map.gates || [];
+  // Inactive runs have no canonical gate — see currentCanonicalGate() in
+  // scripts/workflow-stage-projection.js. Without this the trailing fallback
+  // below reported the LAST gate (repurposing) for a parked run that never got
+  // past gate two, which reads as "nearly finished".
+  if (gates.length && gates.every((gate) => gate.status === "inactive")) return "";
   const blocked = gates.find((gate) => gate.status === "current-blocked");
   if (blocked) return blocked.id;
   const pending = gates.find((gate) => gate.status === "pending" || gate.status === "present-unproven");

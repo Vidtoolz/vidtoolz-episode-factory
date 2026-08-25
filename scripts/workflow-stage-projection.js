@@ -159,6 +159,12 @@ function validateMapping() {
 
 /** The canonical gate a run currently sits at, derived from the gate map. */
 function currentCanonicalGate(gates = []) {
+  // An inactive (parked/superseded) run has no canonical position at all: the
+  // gate engine marks every gate `inactive` because readiness markers become
+  // diagnostics only. Falling through to a gate here would invent a position —
+  // the first gate reads as "just started" and the last as "nearly finished",
+  // and a parked run is neither.
+  if (gates.length && gates.every((gate) => gate.status === 'inactive')) return null;
   const current = gates.find((gate) => gate.status === 'current');
   if (current) return current;
   const incomplete = gates.find((gate) => gate.status !== 'complete');
