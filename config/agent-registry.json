@@ -222,7 +222,7 @@
         "DECISION": "never; QC fails closed instead",
         "AUTONOMOUS": "failures route to remediation owners without human input unless policy requires it"
       },
-      "implementation_state": "CANDIDATE",
+      "implementation_state": "IMPLEMENTATION_PROVEN",
       "implementation_state_note": "Implementation candidate exists/is pending; direct dispatch refuses until Mikko promotes implementation_state to IMPLEMENTATION_PROVEN after proof. Distinct from doctrine lifecycle, which remains PROVEN/ENABLED per contract BUILT status."
     },
     {
