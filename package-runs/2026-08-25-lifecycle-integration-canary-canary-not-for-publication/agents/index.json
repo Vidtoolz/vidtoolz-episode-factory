@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "runner_version": "agent-runner-v1",
+  "invocations": [
+    {
+      "invocation_id": "research_director:canary-rd-status-01:1",
+      "agent_id": "research_director",
+      "task_id": "canary-rd-status-01",
+      "attempt_number": 1,
+      "state": "COMPLETE",
+      "attention": "AUTONOMOUS",
+      "next_owner": null,
+      "task_directory": "research_director/canary-rd-status-01",
+      "completed_at": "2026-08-25T07:18:57.144Z"
+    },
+    {
+      "invocation_id": "research_director:canary-rd-eval-01:1",
+      "agent_id": "research_director",
+      "task_id": "canary-rd-eval-01",
+      "attempt_number": 1,
+      "state": "BLOCKED",
+      "attention": "REVIEW",
+      "next_owner": "hermes",
+      "task_directory": "research_director/canary-rd-eval-01",
+      "completed_at": "2026-08-25T07:21:07.288Z"
+    },
+    {
+      "invocation_id": "qc_director:canary-qc-01:1",
+      "agent_id": "qc_director",
+      "task_id": "canary-qc-01",
+      "attempt_number": 1,
+      "state": "BLOCKED",
+      "attention": "REVIEW",
+      "next_owner": "production_operations",
+      "task_directory": "qc_director/canary-qc-01",
+      "completed_at": "2026-08-25T07:21:23.278Z"
+    }
+  ]
+}

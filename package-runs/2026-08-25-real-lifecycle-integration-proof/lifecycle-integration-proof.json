@@ -1,0 +1,259 @@
+{
+  "schema_version": 1,
+  "proof": "REAL_LIFECYCLE_INTEGRATION_PROOF",
+  "generated_at": "2026-08-25T07:22:25.078Z",
+  "not_a_package_run": "This directory is evidence. It carries no package-run identity file, so isPackageRunDir() is false and it is excluded from the genuine-run population it describes.",
+  "canary_run": {
+    "run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+    "marking": [
+      "CANARY",
+      "NOT_FOR_PUBLICATION",
+      "RETAIN_FOR_ARCHITECTURE_EVIDENCE"
+    ],
+    "created_by": "node scripts/package-engine-new-run.js (real creation path)",
+    "is_genuine_package_run": true,
+    "genuine_runs_in_repo_before": 0,
+    "genuine_runs_in_repo_after": 1
+  },
+  "timeline": [
+    {
+      "step": 1,
+      "gate_before": null,
+      "evidence_added": "run created via scripts/package-engine-new-run.js",
+      "actor": "operator (real CLI)",
+      "gate_after": "package-selection",
+      "tracker_stage": "idea",
+      "package_state": "ACTIVE",
+      "control_room_gate": "Idea run",
+      "projection_drift": null,
+      "note": "The creation hook wrote package-run-state.md immediately — a new run is never UNKNOWN."
+    },
+    {
+      "step": 2,
+      "gate_before": "package-selection",
+      "evidence_added": "selected-package.json (operator selection contract)",
+      "actor": "operator",
+      "gate_after": "research",
+      "tracker_stage": "research",
+      "package_state": "ACTIVE",
+      "control_room_gate": "Research pack ready",
+      "projection_drift": null,
+      "note": "FIRST REAL GATE TRANSITION. All surfaces advanced together; owner became research_director."
+    },
+    {
+      "step": 3,
+      "gate_before": "research",
+      "evidence_added": "research-pack.md via scripts/package-run-research-pack.js",
+      "actor": "production script",
+      "gate_after": "research",
+      "tracker_stage": "research",
+      "package_state": "ACTIVE",
+      "control_room_gate": "Research pack ready",
+      "projection_drift": null,
+      "note": "REFUSAL RECORDED: generated pack carried Status: PARTIAL, so the gate did NOT advance. Artifact presence alone is not completion."
+    },
+    {
+      "step": 4,
+      "gate_before": "research",
+      "evidence_added": "source-support-map / proof-capture-plan / research-objections (operator evidence)",
+      "actor": "operator",
+      "gate_after": "research",
+      "tracker_stage": "research",
+      "package_state": "ACTIVE",
+      "control_room_gate": "Research pack ready",
+      "projection_drift": null,
+      "note": "Evidence counts registered (3 sources, 3 proof items, 2 objections) but status stayed NEEDS EVIDENCE."
+    },
+    {
+      "step": 5,
+      "gate_before": "research",
+      "evidence_added": "research-sufficiency-review.md regenerated with evidence present",
+      "actor": "production script",
+      "gate_after": "research",
+      "tracker_stage": "research",
+      "package_state": "HUMAN_REVIEW_REQUIRED",
+      "control_room_gate": "Research pack ready",
+      "projection_drift": null,
+      "note": "HUMAN GATE REACHED. Status READY FOR RESEARCH REVIEW; the only remaining blocker is Mikko’s approval marker, which was deliberately NOT written."
+    },
+    {
+      "step": 6,
+      "gate_before": "research",
+      "evidence_added": "operator parked the run via the human-owned marker block",
+      "actor": "operator",
+      "gate_after": null,
+      "tracker_stage": null,
+      "package_state": "PARKED",
+      "control_room_gate": "(no active run)",
+      "projection_drift": null,
+      "note": "Parked after proof. An inactive run has no canonical gate — see the defect below, which this step exposed."
+    }
+  ],
+  "final_state": {
+    "canonical": {
+      "gate": "research",
+      "label": "Research sufficiency",
+      "complete": [
+        "package-selection"
+      ],
+      "complete_count": 1,
+      "total": 14,
+      "blocker": "Research evidence is READY FOR RESEARCH REVIEW, but Research Sufficiency Gate is not PASS and exact research approval is missing."
+    },
+    "package_run_state": {
+      "state": "HUMAN_REVIEW_REQUIRED",
+      "current_gate": "research",
+      "expected_owner": "research_director",
+      "human_authority_required": true,
+      "pending_human_decision": "Review research evidence and decide whether to approve, request changes, or keep blocked before script structure or production planning.",
+      "owner_readiness": {
+        "owner_id": "research_director",
+        "kind": "agent",
+        "dispatch_enabled": true,
+        "implementation_state": "IMPLEMENTATION_PROVEN"
+      },
+      "canonical_digest": "893af8a82eda7dbca70b580337650bb85f2a6dfbcaa766dfe61c2aa452908f1f",
+      "consistent": true,
+      "defects": []
+    },
+    "tracker": {
+      "stage_key": "research",
+      "stage_index": 1,
+      "label": "Research",
+      "advanced_beyond_canonical": false
+    },
+    "drift": null,
+    "all_surfaces_agree": true,
+    "parked": {
+      "state": "PARKED",
+      "current_gate": "",
+      "consistent": true,
+      "gates_all_inactive": true,
+      "history_preserved": "13 artifacts retained"
+    }
+  },
+  "agent_dispatches": [
+    {
+      "agent": "research_director",
+      "action": "status",
+      "readiness": "IMPLEMENTATION_PROVEN",
+      "infrastructure_state": "COMPLETE",
+      "envelope_valid": true,
+      "semantic_state": "COMPLETE",
+      "lifecycle_effect": "none — status is read-only"
+    },
+    {
+      "agent": "research_director",
+      "action": "evaluate_known_evidence",
+      "readiness": "IMPLEMENTATION_PROVEN",
+      "infrastructure_state": "COMPLETE",
+      "envelope_valid": true,
+      "semantic_state": "BLOCKED",
+      "lifecycle_effect": "none — a specialist verdict does not satisfy a human gate"
+    },
+    {
+      "agent": "qc_director",
+      "action": "inspect_artifact",
+      "readiness": "IMPLEMENTATION_PROVEN",
+      "infrastructure_state": "COMPLETE",
+      "envelope_valid": true,
+      "disposition": "BLOCKED",
+      "next_gate_allowed": false,
+      "blockers": [
+        "QC_REQUIRED_EVIDENCE_MISSING"
+      ],
+      "lifecycle_effect": "none — canonical gate unchanged"
+    },
+    {
+      "agent": "camera_director",
+      "action": "status",
+      "readiness": "CANDIDATE",
+      "infrastructure_state": "BLOCKED_IMPLEMENTATION_NOT_PROVEN",
+      "lifecycle_effect": "refused before invocation"
+    }
+  ],
+  "negative_canaries": {
+    "projection_forgery": {
+      "forged": "package-run-state.md current gate -> final-review, digest zeroed",
+      "detected": "RUN_STATE_PROJECTION_DRIFT (projection_stale=true)",
+      "canonical_gate_after_forgery": "research",
+      "repaired_by": "--rebuild",
+      "canonical_evidence_mutated": false,
+      "result": "PASS"
+    },
+    "downstream_artifact_early": {
+      "planted": [
+        "final-review.md (status PASS)",
+        "export-checklist.md (status PASS)"
+      ],
+      "canonical_gate_after": "research",
+      "complete_gates_after": 1,
+      "tracker_stage_after": "research",
+      "drift": null,
+      "removed_after_capture": true,
+      "result": "PASS — file presence cannot self-promote"
+    },
+    "candidate_agent_dispatch": {
+      "agent": "camera_director",
+      "result": "BLOCKED_IMPLEMENTATION_NOT_PROVEN",
+      "registry_modified": false,
+      "lifecycle_effect": "none",
+      "result_summary": "PASS"
+    },
+    "human_gate_bypass": {
+      "attempted": "specialist dispatch + complete evidence artifacts",
+      "approval_marker_written": false,
+      "gate_advanced": false,
+      "result": "PASS — only Mikko can supply Research approval: PASS"
+    }
+  },
+  "aigen_media_state": {
+    "applicable": false,
+    "reason": "The canary is a package run under package-runs/, not an AIGEN package under script-packages/. AIGEN state does not describe it.",
+    "subordination_confirmed": {
+      "lifecycle_authority": false,
+      "authority_scope": "media_lane"
+    },
+    "cockpit_took_canonical_branch": true
+  },
+  "deepest_gate_earned": "package-selection (complete); research reached and held at HUMAN_REVIEW_REQUIRED",
+  "stop_reason": "STOP_CONDITION_A — HUMAN_REVIEW_REQUIRED. Returned to Mikko rather than forging an approval marker.",
+  "failures": [],
+  "verdict": "REAL_PACKAGE_RUN_REACHED_HUMAN_GATE",
+  "defect_found": {
+    "title": "Parking a run made two projection consumers invent a canonical position",
+    "discovered_by": "this canary — the first genuine package run",
+    "symptom": "After parking, package-run-state reported current_gate \"repurposing\" (the LAST of 14 gates) with zero complete gates, for a run that never passed gate two. It read as \"nearly finished\".",
+    "root_cause": "Parking correctly marks every gate `inactive` (readiness markers become diagnostics only for an inactive run). But both current-gate resolvers fell through to gates[gates.length-1] when no gate matched their expected statuses. workflow-stage-projection.currentCanonicalGate returned the FIRST incomplete gate; package-run-state-projection.currentGateIdFromMap returned the LAST gate. Two consumers, two different invented answers.",
+    "why_it_mattered": "A parked early run displaying the final gate is exactly the class of misleading lifecycle claim this architecture work has been removing. It also re-opened a disagreement between two projection consumers.",
+    "fix": "Both resolvers now detect the all-inactive case explicitly and report no gate (null / \"\") rather than falling back to a position.",
+    "files_changed": [
+      "scripts/workflow-stage-projection.js",
+      "scripts/package-run-state-projection.js"
+    ],
+    "regression_test": "tests/package-lifecycle-integration.test.js LI4",
+    "active_runs_unaffected": "verified — an active run still reports `research` from both resolvers",
+    "verified_after_fix": {
+      "state": "PARKED",
+      "current_gate": "",
+      "currentCanonicalGate": null,
+      "currentGateIdFromMap": "",
+      "consistent": true,
+      "defects": [],
+      "note": "Sampled with the file context, as production does — buildProjection needs existingText to read the human marker block."
+    },
+    "note": "This is the value of the canary: five missions of isolated proofs did not surface it, and one real run did."
+  },
+  "integration_test": "tests/package-lifecycle-integration.test.js (LI1-LI4)",
+  "retention": {
+    "marked": [
+      "CANARY",
+      "NOT_FOR_PUBLICATION",
+      "RETAIN_FOR_ARCHITECTURE_EVIDENCE"
+    ],
+    "readme": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/CANARY-README.md",
+    "parked": true,
+    "completed": false,
+    "statement": "Parked, never completed. It did not earn completion and is not marked as having done so."
+  }
+}

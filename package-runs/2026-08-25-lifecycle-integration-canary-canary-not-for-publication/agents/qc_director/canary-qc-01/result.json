@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "canary-qc-01",
+  "action": "inspect_artifact",
+  "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "project_id": null,
+  "gate": "research",
+  "state": "BLOCKED",
+  "disposition": "BLOCKED",
+  "reason": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+  "subject": {
+    "artifact_id": "canary-research-evidence",
+    "artifact_type": "RESEARCH_EVIDENCE",
+    "producing_agent": "research_director",
+    "version_id": "v1"
+  },
+  "observed": {
+    "artifact_readable": null,
+    "artifact_sha256": null,
+    "byte_size": null
+  },
+  "evidence": [],
+  "evidence_coverage": {
+    "required": [
+      "STORY_VALIDATION"
+    ],
+    "satisfied": [],
+    "missing": [
+      "STORY_VALIDATION"
+    ]
+  },
+  "checks": [],
+  "blockers": [
+    {
+      "code": "QC_REQUIRED_EVIDENCE_MISSING",
+      "severity": "BLOCKER",
+      "source": "qc_director",
+      "artifact_id": "canary-research-evidence",
+      "explanation": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+      "evidence_ref": null,
+      "affected_gate": "research",
+      "auto_repairable": false,
+      "human_judgment_required": false
+    }
+  ],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": null,
+    "present": false,
+    "verdict": "NOT_REQUIRED",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [],
+  "next_gate_allowed": false,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T07:21:23.275Z",
+  "events": [
+    {
+      "at": "2026-08-25T07:21:23.275Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "canary-research-evidence"
+    },
+    {
+      "at": "2026-08-25T07:21:23.275Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    }
+  ],
+  "attention": "REVIEW",
+  "attention_level": "REVIEW",
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "RESTORE_QC_EVIDENCE_INTEGRITY"
+  },
+  "qc_result_digest_sha256": "21d661250588ed5139406ce915b06528696f831fc10dbf4c865b514f8c32951e",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "BLOCKED",
+    "attention": "REVIEW",
+    "attention_level": "REVIEW",
+    "disposition": "BLOCKED",
+    "current_artifact": {
+      "artifact_id": "canary-research-evidence",
+      "artifact_type": "RESEARCH_EVIDENCE",
+      "producing_agent": "research_director"
+    },
+    "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+    "gate": "research",
+    "next_gate_allowed": false,
+    "blockers": [
+      "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    ],
+    "blocker": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": false,
+    "human_authority": {
+      "required_scope": null,
+      "verdict": "NOT_REQUIRED"
+    },
+    "evidence_used": 0,
+    "evidence_total": 0,
+    "missing_evidence": [
+      "STORY_VALIDATION"
+    ],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "BLOCKED",
+      "reason": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    },
+    "owner": "qc_director",
+    "next_owner": "production_operations",
+    "latest_event": {
+      "at": "2026-08-25T07:21:23.275Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    }
+  },
+  "operational_rationale": {
+    "decision": "BLOCKED",
+    "reason": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+    "evidence_refs": [],
+    "confidence": null,
+    "escalation_reason": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+  }
+}

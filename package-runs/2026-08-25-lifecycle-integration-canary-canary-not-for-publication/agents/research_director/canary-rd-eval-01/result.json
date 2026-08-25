@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "agent_id": "research_director",
+  "role_id": "research_director",
+  "task_id": "canary-rd-eval-01",
+  "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "project_id": null,
+  "requested_by": "hermes",
+  "state": "BLOCKED",
+  "attempts": 0,
+  "max_attempts": 0,
+  "route": null,
+  "research_result": null,
+  "candidate_aggregate": null,
+  "semantic_assessment": null,
+  "candidates": [],
+  "events": [
+    {
+      "at": "2026-08-25T07:21:07.286Z",
+      "actor": "research_director",
+      "state": "ASSIGNMENT_RECEIVED",
+      "detail": "evaluate_known_evidence"
+    },
+    {
+      "at": "2026-08-25T07:21:07.286Z",
+      "actor": "research_director",
+      "state": "BLOCKED",
+      "detail": "deterministic preflight failed [TASK_INVALID]: canonical claim, sources, evidence, and provenance required"
+    }
+  ],
+  "handoff": {
+    "next_owner": "hermes",
+    "next_action": "ROUTE_WITH_EVIDENCE"
+  },
+  "reason": "deterministic preflight failed [TASK_INVALID]: canonical claim, sources, evidence, and provenance required",
+  "attention": "REVIEW",
+  "control_room": {
+    "role": "Research Director",
+    "state": "BLOCKED",
+    "current_task": "canary-rd-eval-01",
+    "current_claim": null,
+    "current_result_id": null,
+    "owner": "research_director",
+    "next_owner": "hermes",
+    "attention_level": "REVIEW",
+    "blocker": "deterministic preflight failed [TASK_INVALID]: canonical claim, sources, evidence, and provenance required",
+    "disagreement": null,
+    "route": null,
+    "latest_event": {
+      "at": "2026-08-25T07:21:07.286Z",
+      "actor": "research_director",
+      "state": "BLOCKED",
+      "detail": "deterministic preflight failed [TASK_INVALID]: canonical claim, sources, evidence, and provenance required"
+    },
+    "operational_rationale": {
+      "decision": "BLOCKED",
+      "reason": "deterministic preflight failed [TASK_INVALID]: canonical claim, sources, evidence, and provenance required",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": "deterministic preflight failed [TASK_INVALID]: canonical claim, sources, evidence, and provenance required"
+    },
+    "research_summary": null
+  }
+}

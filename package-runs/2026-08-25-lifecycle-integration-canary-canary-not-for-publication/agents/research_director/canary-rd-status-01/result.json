@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "agent_id": "research_director",
+  "role_id": "research_director",
+  "task_id": "canary-rd-status-01",
+  "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "project_id": null,
+  "requested_by": "hermes",
+  "state": "COMPLETE",
+  "attempts": 0,
+  "max_attempts": 0,
+  "route": null,
+  "research_result": null,
+  "candidate_aggregate": null,
+  "semantic_assessment": null,
+  "candidates": [],
+  "events": [
+    {
+      "at": "2026-08-25T07:18:57.142Z",
+      "actor": "research_director",
+      "state": "ASSIGNMENT_RECEIVED",
+      "detail": "status"
+    },
+    {
+      "at": "2026-08-25T07:18:57.142Z",
+      "actor": "research_director",
+      "state": "COMPLETE",
+      "detail": null
+    }
+  ],
+  "handoff": {
+    "next_owner": null,
+    "next_action": null
+  },
+  "reason": null,
+  "attention": "AUTONOMOUS",
+  "control_room": {
+    "role": "Research Director",
+    "state": "COMPLETE",
+    "current_task": "canary-rd-status-01",
+    "current_claim": null,
+    "current_result_id": null,
+    "owner": "research_director",
+    "next_owner": null,
+    "attention_level": "AUTONOMOUS",
+    "blocker": null,
+    "disagreement": null,
+    "route": null,
+    "latest_event": {
+      "at": "2026-08-25T07:18:57.142Z",
+      "actor": "research_director",
+      "state": "COMPLETE",
+      "detail": null
+    },
+    "operational_rationale": {
+      "decision": "COMPLETE",
+      "reason": "Research state is COMPLETE",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": null
+    },
+    "research_summary": null
+  }
+}

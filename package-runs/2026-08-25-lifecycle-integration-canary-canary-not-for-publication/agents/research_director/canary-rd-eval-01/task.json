@@ -1,0 +1,4 @@
+{"task_id":"canary-rd-eval-01","package_run_id":"2026-08-25-lifecycle-integration-canary-canary-not-for-publication","requested_by":"hermes",
+ "assignment":{"action":"evaluate_known_evidence"},
+ "claim":"The canonical lifecycle is exactly 14 gates.",
+ "evidence":[{"source":"scripts/package-run-workflow-map.js","excerpt":"GATE_DEFINITIONS has 14 entries","kind":"primary"}]}

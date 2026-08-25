@@ -1,0 +1,4 @@
+{"task_id":"canary-qc-01","package_run_id":"2026-08-25-lifecycle-integration-canary-canary-not-for-publication","requested_by":"hermes","assignment":{"action":"inspect_artifact"},
+ "gate":"research",
+ "subject":{"artifact_id":"canary-research-evidence","artifact_type":"RESEARCH_EVIDENCE","producing_agent":"research_director","version_id":"v1"},
+ "evidence":[],"required_evidence":["STORY_VALIDATION"]}
