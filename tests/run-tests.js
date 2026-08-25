@@ -178,6 +178,8 @@ require("./image-prompt-full-screen.test.js");
 require("./super-focus-visual-required.test.js");
 require("./super-focus-visual-plan-authority.test.js");
 require("./agent-contract.test.js");
+require("./agent-implementation-invariant.test.js");
+require("./agent-backfill-audit.test.js");
 require("./script-evaluator.test.js");
 require("./motion-graphics-studio.test.js");
 require("./operator-control-fixes.test.js");
