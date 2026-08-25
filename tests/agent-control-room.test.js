@@ -906,7 +906,16 @@ test('canonical cockpit exposes all registered agents and truthful implementatio
   assert.equal(production.implementation.state, 'AVAILABLE');
   assert.equal(production.implementation.implementation_state, 'IMPLEMENTATION_PROVEN');
   assert.equal(output.summary.implementation_candidate, 1);
-  assert.equal(output.agents.find((item) => item.agent_id === 'generation_supervisor').implementation.state, 'STATUS_UNSUPPORTED');
+  // Generation Supervisor previously projected STATUS_UNSUPPORTED: it declared
+  // no module identity to the runner, so the cockpit could not load it even
+  // though the registry called it proven. That contradiction is repaired, so
+  // the cockpit must now project a loadable implementation like its peers.
+  const generation = output.agents.find((item) => item.agent_id === 'generation_supervisor');
+  assert.equal(generation.implementation.state, 'AVAILABLE');
+  assert.equal(generation.implementation.implementation_state, 'IMPLEMENTATION_PROVEN');
+  assert.equal(generation.implementation.module_path, 'scripts/generation-supervisor.js');
+  assert.equal(generation.implementation.status_action_supported, true);
+  assert.equal(generation.implementation.control_room_view_supported, true);
 });
 
 test('candidate implementation is visible but never loaded by Control Room', async () => {
