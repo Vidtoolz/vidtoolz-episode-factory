@@ -7,10 +7,30 @@
  * This script writes package-runs-index.json as a runtime/generated mirror.
  * It must not mutate package-run source artifacts, package-run-state.md,
  * approval markers, media files, or human-authored production state.
+ *
+ * INDEX AUTHORITY CONTRACT (2026-08-25):
+ *   filesystem package-run evidence
+ *           ↓
+ *   package-run scanner (this module: buildPackageRunsIndex)
+ *           ↓
+ *   package-runs-index.json
+ *
+ * The index is a REBUILDABLE, DISPOSABLE, NON-AUTHORITATIVE discovery
+ * projection over filesystem package-run data. It never establishes canonical
+ * gate, completion, approval, QC disposition, package-run state, or agent
+ * readiness. When index and canonical run evidence disagree, canonical
+ * package evidence wins and the index is rebuilt. Deleting the index must
+ * never destroy production state.
+ *
+ * DIRECTORY COUNT ≠ GENUINE RUN COUNT: a directory enters the index only if
+ * it carries canonical package-run identity (isPackageRunDir: at least one
+ * DETECTED_FILE). Proof, canary, acceptance and evidence packages are
+ * excluded and reported as such — never indexed as production runs.
  */
 
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const captureEvidenceReviewTool = require("./package-run-capture-evidence-review.js");
 const researchEvidenceTool = require("./package-run-research-evidence.js");
 const WorkflowPath = require("../workflow-path.js");
@@ -191,6 +211,8 @@ function parseArgs(argv) {
     outFile: DEFAULT_OUT_FILE,
     json: false,
     freshness: false,
+    check: false,
+    rebuild: false,
   };
   while (args.length) {
     const item = args.shift();
@@ -202,6 +224,10 @@ function parseArgs(argv) {
       result.json = true;
     } else if (item === "--freshness") {
       result.freshness = true;
+    } else if (item === "--check") {
+      result.check = true;
+    } else if (item === "--rebuild") {
+      result.rebuild = true;
     }
   }
   return result;
@@ -1602,6 +1628,27 @@ function isPackageRunDir(runDir) {
   return DETECTED_FILES.some((filename) => fs.existsSync(path.join(runDir, filename)));
 }
 
+// Index scope classes (§3 of the index-authority contract). A directory enters
+// the production-run index ONLY via canonical run identity (isPackageRunDir);
+// everything else is classified and excluded — never indexed as a production
+// run, never guessed at.
+const INDEX_SCOPE = Object.freeze({
+  GENUINE_PACKAGE_RUN: "GENUINE_PACKAGE_RUN",
+  PROOF_PACKAGE: "PROOF_PACKAGE",
+  CANARY_PACKAGE: "CANARY_PACKAGE",
+  ACCEPTANCE_PACKAGE: "ACCEPTANCE_PACKAGE",
+  LEGACY_UNKNOWN: "LEGACY_UNKNOWN",
+});
+
+function classifyPackageRunDirectory(name, runDir) {
+  if (isPackageRunDir(runDir)) return INDEX_SCOPE.GENUINE_PACKAGE_RUN;
+  const lowered = String(name || "").toLowerCase();
+  if (/(^|[-_])proof([-_]|$)/.test(lowered)) return INDEX_SCOPE.PROOF_PACKAGE;
+  if (lowered.includes("canary")) return INDEX_SCOPE.CANARY_PACKAGE;
+  if (lowered.includes("acceptance")) return INDEX_SCOPE.ACCEPTANCE_PACKAGE;
+  return INDEX_SCOPE.LEGACY_UNKNOWN;
+}
+
 function buildPackageRunsIndex(options = {}) {
   const repoRoot = path.resolve(options.repoRoot || process.cwd());
   const runsDir = path.resolve(repoRoot, options.runsDir || DEFAULT_RUNS_DIR);
@@ -1609,14 +1656,37 @@ function buildPackageRunsIndex(options = {}) {
     throw new Error(`Package runs directory not found: ${runsDir}`);
   }
 
-  const runs = fs
+  const allDirs = fs
     .readdirSync(runsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .filter((entry) => isPackageRunDir(path.join(runsDir, entry.name)))
-    .map((entry) => scanRun(path.join(runsDir, entry.name), repoRoot))
-    .sort((a, b) => b.runId.localeCompare(a.runId));
+    .map((entry) => entry.name)
+    .sort((a, b) => a.localeCompare(b));
 
-  return {
+  const scope = {
+    directoriesScanned: allDirs.length,
+    genuineRuns: 0,
+    excluded: { proof: 0, canary: 0, acceptance: 0, legacyUnknown: 0 },
+    excludedDirectories: [],
+  };
+  for (const name of allDirs) {
+    const classification = classifyPackageRunDirectory(name, path.join(runsDir, name));
+    if (classification === INDEX_SCOPE.GENUINE_PACKAGE_RUN) continue;
+    scope.excludedDirectories.push({ name, classification });
+    if (classification === INDEX_SCOPE.PROOF_PACKAGE) scope.excluded.proof += 1;
+    else if (classification === INDEX_SCOPE.CANARY_PACKAGE) scope.excluded.canary += 1;
+    else if (classification === INDEX_SCOPE.ACCEPTANCE_PACKAGE) scope.excluded.acceptance += 1;
+    else scope.excluded.legacyUnknown += 1;
+  }
+
+  const runs = allDirs
+    .filter((name) => isPackageRunDir(path.join(runsDir, name)))
+    .map((name) => scanRun(path.join(runsDir, name), repoRoot))
+    .sort((a, b) => b.runId.localeCompare(a.runId));
+  scope.genuineRuns = runs.length;
+
+  const index = {
+    schema: "vidtoolz.packageRunsIndex.v1",
+    authority: "DERIVED_DISCOVERY_INDEX",
     project: "VIDTOOLZ Package Runs",
     generatedAt: new Date().toISOString(),
     runsDir: path.relative(repoRoot, runsDir).replace(/\\/g, "/") || ".",
@@ -1638,6 +1708,112 @@ function buildPackageRunsIndex(options = {}) {
         activeWorkflowBucket: item.activeWorkflowBucket,
       })),
     runs,
+    scope,
+  };
+  index.sourceDigest = indexSourceDigest(index);
+  return index;
+}
+
+// Deterministic digest over the substantive index content. Volatile timestamps
+// (generatedAt, per-run updatedAt mtimes) are excluded, so the same filesystem
+// source always yields the same digest regardless of when the rebuild ran.
+function indexSourceDigest(index = {}) {
+  const stable = {
+    schema: index.schema,
+    runsDir: index.runsDir,
+    count: index.count,
+    statuses: index.statuses,
+    activeCount: index.activeCount,
+    inactiveCount: index.inactiveCount,
+    inactiveRuns: index.inactiveRuns,
+    scope: index.scope,
+    runs: (index.runs || []).map((run) => {
+      const copy = { ...run };
+      delete copy.updatedAt;
+      return copy;
+    }),
+  };
+  return crypto.createHash("sha256").update(JSON.stringify(stable)).digest("hex");
+}
+
+// The single canonical rebuild: scan package-runs → classify genuine runs →
+// build the index → atomic write. Full rebuild always repairs truth; nothing
+// here is incremental, so stale and ghost entries cannot survive it. The
+// atomic writer is the repository helper (temp + fsync + rename) — no partial
+// JSON may ever land. Deleting the index never destroys production state: the
+// filesystem package-run evidence remains the only source.
+function rebuildPackageRunsIndex(options = {}) {
+  const repoRoot = path.resolve(options.repoRoot || process.cwd());
+  const runsDir = path.resolve(repoRoot, options.runsDir || DEFAULT_RUNS_DIR);
+  if (!runsDir.startsWith(repoRoot + path.sep)) {
+    throw new Error(`Refusing to scan outside the repository root: ${runsDir}`);
+  }
+  const outPath = path.resolve(repoRoot, options.outFile || DEFAULT_OUT_FILE);
+  if (!outPath.startsWith(repoRoot + path.sep)) {
+    throw new Error(`Refusing to write the index outside the repository root: ${outPath}`);
+  }
+  const index = buildPackageRunsIndex({ repoRoot, runsDir: options.runsDir });
+  const writer = options.atomicWriter || defaultAtomicWriter();
+  writer(outPath, `${JSON.stringify(index, null, 2)}\n`);
+  return index;
+}
+
+function defaultAtomicWriter() {
+  // Lazy: agent-run.js carries the dispatch chain; the index module is widely
+  // required and must not force it at load time.
+  const { atomicWrite } = require("./agent-run.js");
+  return atomicWrite;
+}
+
+// Read-only consistency check: durable index vs canonical filesystem identity.
+// Never mutates. Structural defects (missing/corrupt index, ghost entries,
+// genuine runs absent from the index) and staleness are reported so an
+// operator can run the rebuild with confidence about what it will change.
+function checkPackageRunsIndex(options = {}) {
+  const repoRoot = path.resolve(options.repoRoot || process.cwd());
+  const runsDir = path.resolve(repoRoot, options.runsDir || DEFAULT_RUNS_DIR);
+  if (!runsDir.startsWith(repoRoot + path.sep)) {
+    throw new Error(`Refusing to scan outside the repository root: ${runsDir}`);
+  }
+  const indexPath = path.resolve(repoRoot, options.outFile || DEFAULT_OUT_FILE);
+  const canonical = buildPackageRunsIndex({ repoRoot, runsDir: options.runsDir });
+  const genuineIds = new Set(canonical.runs.map((run) => run.runId));
+  const defects = [];
+
+  let durable = null;
+  if (!fs.existsSync(indexPath)) {
+    defects.push({ code: "INDEX_MISSING", severity: "BLOCKER", detail: "package-runs-index.json does not exist; rebuild it." });
+  } else {
+    try {
+      durable = JSON.parse(fs.readFileSync(indexPath, "utf8"));
+    } catch (error) {
+      defects.push({ code: "INDEX_CORRUPT", severity: "BLOCKER", detail: `package-runs-index.json is unparseable: ${error.message}` });
+    }
+  }
+
+  if (durable && !defects.length) {
+    const durableRuns = Array.isArray(durable.runs) ? durable.runs : [];
+    const ghosts = durableRuns.filter((run) => !genuineIds.has(run.runId));
+    const missing = [...genuineIds].filter((runId) => !durableRuns.some((run) => run.runId === runId));
+    ghosts.forEach((run) => defects.push({ code: "INDEX_GHOST_ENTRY", severity: "BLOCKER", run_id: run.runId, detail: `Index entry "${run.runId}" has no canonical package-run identity on disk.` }));
+    missing.forEach((runId) => defects.push({ code: "INDEX_RUN_ABSENT", severity: "BLOCKER", run_id: runId, detail: `Genuine package run "${runId}" is missing from the index.` }));
+    const freshness = indexFreshness({ repoRoot, runsDir: options.runsDir, outFile: options.outFile });
+    if (freshness.stale) {
+      defects.push({ code: "INDEX_STALE", severity: "WARNING", detail: freshness.message });
+    }
+  }
+
+  return {
+    ok: defects.length === 0,
+    authority: "DERIVED_DISCOVERY_INDEX",
+    indexPath: path.relative(repoRoot, indexPath).replace(/\\/g, "/") || ".",
+    directoriesScanned: canonical.scope.directoriesScanned,
+    genuineRuns: canonical.scope.genuineRuns,
+    indexedCount: durable && Array.isArray(durable.runs) ? durable.runs.length : 0,
+    excluded: canonical.scope.excluded,
+    canonicalSourceDigest: canonical.sourceDigest,
+    durableSourceDigest: durable && typeof durable.sourceDigest === "string" ? durable.sourceDigest : "",
+    defects,
   };
 }
 
@@ -1657,15 +1833,45 @@ function main(argv = process.argv.slice(2)) {
     return freshness.stale ? 1 : 0;
   }
 
-  const index = buildPackageRunsIndex({ repoRoot, runsDir: options.runsDir });
-  const outPath = path.resolve(repoRoot, options.outFile || DEFAULT_OUT_FILE);
-  fs.writeFileSync(outPath, `${JSON.stringify(index, null, 2)}\n`, "utf8");
+  // Read-only consistency check: durable index vs canonical filesystem
+  // identity. Reports scope so "0 indexed runs" is never confused with the
+  // raw directory count. Never mutates anything.
+  if (options.check) {
+    const report = checkPackageRunsIndex({ repoRoot, runsDir: options.runsDir, outFile: options.outFile });
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      console.log(`Package-runs index check: ${report.ok ? "ok" : "defects found"}`);
+      console.log(`Directories scanned: ${report.directoriesScanned}`);
+      console.log(`Genuine package runs: ${report.genuineRuns}`);
+      console.log(
+        `Excluded: ${report.excluded.proof} proof, ${report.excluded.canary} canary, ` +
+        `${report.excluded.acceptance} acceptance, ${report.excluded.legacyUnknown} legacy/unknown`
+      );
+      report.defects.forEach((defect) => console.log(`- [${defect.severity}] ${defect.code}: ${defect.detail}`));
+      if (report.ok) {
+        console.log("The index matches canonical package-run identity. Note: directory count under package-runs/ is NOT the run count — proof/canary/acceptance/legacy directories are excluded by design.");
+      }
+    }
+    return report.ok ? 0 : 1;
+  }
+
+  // Canonical rebuild (default and --rebuild): scan → classify → build →
+  // atomic write. Full rebuild always repairs truth.
+  const index = rebuildPackageRunsIndex({ repoRoot, runsDir: options.runsDir, outFile: options.outFile });
 
   if (options.json) {
     console.log(JSON.stringify(index, null, 2));
   } else {
+    const outPath = path.resolve(repoRoot, options.outFile || DEFAULT_OUT_FILE);
     console.log(`Wrote ${path.relative(repoRoot, outPath)}`);
-    console.log(`Indexed ${index.count} package runs.`);
+    console.log(`Directories scanned: ${index.scope.directoriesScanned}`);
+    console.log(`Indexed ${index.count} genuine package runs.`);
+    console.log(
+      `Excluded ${index.scope.excluded.proof + index.scope.excluded.canary + index.scope.excluded.acceptance + index.scope.excluded.legacyUnknown} non-run directories: ` +
+      `${index.scope.excluded.proof} proof, ${index.scope.excluded.canary} canary, ` +
+      `${index.scope.excluded.acceptance} acceptance, ${index.scope.excluded.legacyUnknown} legacy/unknown`
+    );
   }
   return 0;
 }
@@ -1715,6 +1921,11 @@ module.exports = {
   readNarrowShootingApproval,
   readEvidenceGate,
   isPackageRunDir,
+  INDEX_SCOPE,
+  classifyPackageRunDirectory,
+  indexSourceDigest,
+  rebuildPackageRunsIndex,
+  checkPackageRunsIndex,
   indexFreshness,
   scanRun,
   buildPackageRunsIndex,

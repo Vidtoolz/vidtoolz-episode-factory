@@ -81,6 +81,18 @@ function main(argv = process.argv.slice(2)) {
     console.warn(`Package run state projection deferred: ${error.message}`);
   }
 
+  // Index refresh: package-runs-index.json is a rebuildable discovery
+  // projection, so the new run is registered immediately when possible — but
+  // index failure never blocks or rolls back canonical run creation. A failed
+  // refresh is repaired by the next full rebuild (node scripts/package-runs-index.js).
+  let indexRefreshed = false;
+  try {
+    require("./package-runs-index.js").rebuildPackageRunsIndex({ repoRoot });
+    indexRefreshed = true;
+  } catch (error) {
+    console.warn(`Package-runs index refresh deferred: ${error.message}`);
+  }
+
   const relativeRunDir = path.relative(repoRoot, runDir);
   console.log(`Created package run: ${relativeRunDir}`);
   if (stateProjection) {
@@ -88,6 +100,7 @@ function main(argv = process.argv.slice(2)) {
   }
   console.log(`Prompt: ${relativeRunDir}/generation-prompt.md`);
   console.log(`Candidates: ${relativeRunDir}/package-candidates.json`);
+  console.log(`Index: ${indexRefreshed ? "package-runs-index.json refreshed" : "index refresh deferred (rebuild with node scripts/package-runs-index.js)"}`);
   console.log(`Review URL: http://localhost:8010/package-engine.html?run=${runId}`);
   return 0;
 }

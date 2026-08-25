@@ -15,6 +15,7 @@ beat hand-maintained prose.
 | Active run / package-run state | `package-runs/<run>/package-run-state.md` (durable PROJECTION, written only by Production Operations via `scripts/package-run-state-operations.js`) + `scripts/package-run-active-state-audit.js` | `node scripts/package-run-active-state-audit.js`; refresh/rebuild: `node scripts/package-run-state-operations.js --run <run-id> --refresh` |
 | Per-run diagnostics / blocker / next action | `scripts/package-run-doctor.js`, `scripts/package-run-next-safe-action.js` | `node scripts/package-run-doctor.js <run>` |
 | Components / services / ports | `config/system-registry.json` | `node scripts/system-registry.js` |
+| Package-runs discovery index | `package-runs-index.json` — DERIVED, REBUILDABLE, NON-AUTHORITATIVE projection over canonical run identity (`scripts/package-runs-index.js`). Directory count under `package-runs/` ≠ genuine run count: proof/canary/acceptance/legacy directories carry no run identity and are excluded by design. | `node scripts/package-runs-index.js --check` (read-only); `node scripts/package-runs-index.js` rebuilds atomically |
 | Index freshness | `scripts/package-runs-index.js --freshness` | rebuild with `node scripts/package-runs-index.js` |
 | Test count | none — it is not hardcoded | run `scripts/verify.sh` |
 
