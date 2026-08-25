@@ -72,7 +72,35 @@ function loadCanonicalStory({ scriptBuilderRoot = DEFAULT_SCRIPT_BUILDER_ROOT, p
   };
 }
 
-function assembleVisualPlanningTask(options) {
+/*
+ * A package run names its canonical Story through story-binding.json. Resolving
+ * it here is what lets visual_planning_director be dispatched for a real run at
+ * all: without it, a caller had to know the Script Builder project/version by
+ * hand, which no package-run surface recorded.
+ *
+ * The binding is a reference, never a fallback: an unbound run fails closed
+ * rather than guessing a Story.
+ */
+function resolveStoryOptionsForRun(options) {
+  if (!options.runDir) return options;
+  if (options.projectId || options.versionId) {
+    throw new Error('pass either --run or explicit --project/--version, not both');
+  }
+  const storyBinding = require('./package-run-story-binding.js');
+  const resolved = storyBinding.resolveBoundStory(options.runDir, {
+    scriptBuilderRoot: options.scriptBuilderRoot,
+  });
+  return {
+    ...options,
+    projectId: resolved.projectId,
+    versionId: resolved.versionId,
+    scriptBuilderRoot: options.scriptBuilderRoot || resolved.scriptBuilderRoot,
+    runId: options.runId || resolved.binding.run_id,
+  };
+}
+
+function assembleVisualPlanningTask(inputOptions) {
+  const options = resolveStoryOptionsForRun(inputOptions);
   const loaded = loadCanonicalStory(options);
   const taskId = safeId(options.taskId, 'task_id');
   const runId = safeId(options.runId, 'run_id');
@@ -112,7 +140,8 @@ function parseArgs(argv) {
   const out = {};
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === '--project') out.projectId = argv[++i];
+    if (arg === '--run') out.runDir = argv[++i];
+    else if (arg === '--project') out.projectId = argv[++i];
     else if (arg === '--version') out.versionId = argv[++i];
     else if (arg === '--run-id') out.runId = argv[++i];
     else if (arg === '--task-id') out.taskId = argv[++i];
@@ -138,6 +167,6 @@ function main() {
   }
 }
 
-module.exports = { DEFAULT_SCRIPT_BUILDER_ROOT, canonicalApproval, loadCanonicalStory, assembleVisualPlanningTask, writeTask, parseArgs };
+module.exports = { DEFAULT_SCRIPT_BUILDER_ROOT, canonicalApproval, loadCanonicalStory, resolveStoryOptionsForRun, assembleVisualPlanningTask, writeTask, parseArgs };
 
 if (require.main === module) main();
