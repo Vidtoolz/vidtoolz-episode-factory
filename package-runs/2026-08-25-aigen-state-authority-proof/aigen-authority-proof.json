@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "proof": "AIGEN_STATE_AUTHORITY_PROOF",
+  "generated_at": "2026-08-25T06:46:50.144Z",
+  "not_a_production_run": "This directory is proof evidence. It carries no package-run identity file and is classified UNKNOWN_LEGACY by the canonical engine.",
+  "decision": "OUTCOME_B_NON_LIFECYCLE_MEDIA_STATE",
+  "decision_basis": [
+    "different subject: AIGEN packages live under <AIGEN_VIDNAS_ROOT>/script-packages/, canonical runs under package-runs/",
+    "different derivation: asset counts and file existence vs review status markers and human approval",
+    "different consumers: next-task-engine maps stage to media actions only (write_script, generate_image_prompts, select_images, submit_video_generation, prepare_resolve_handoff)",
+    "no gating: authorizes no agent, gate, publication or approval",
+    "pure: zero filesystem writes"
+  ],
+  "vocabulary": {
+    "states": [
+      "idea",
+      "approved_topic",
+      "script",
+      "image_prompts",
+      "image_generation",
+      "image_review",
+      "i2v_prompts",
+      "video_generation",
+      "video_review",
+      "resolve_handoff",
+      "editing",
+      "publish_prep",
+      "published"
+    ],
+    "terminal": [
+      "parked",
+      "blocked",
+      "archived"
+    ],
+    "unreachable": [
+      "editing",
+      "publish_prep",
+      "published"
+    ],
+    "unreachable_reason": "stage never advances past resolve_handoff; the trailing labels describe post-lane media handling this resolver has no evidence for"
+  },
+  "declared_scope": {
+    "authority_scope": "media_lane",
+    "lifecycle_authority": false,
+    "canonical_lifecycle_source": "scripts/package-run-workflow-map.js",
+    "emitted_on_every_result": [
+      "authority_scope",
+      "lifecycle_authority",
+      "canonical_lifecycle_source"
+    ]
+  },
+  "consumers": {
+    "production": [
+      "project-discovery.js",
+      "package-engine-server.js (AIGEN routes + cockpit orientation)",
+      "next-task-engine.js"
+    ],
+    "classification": "media asset readiness + local tool workflow; never lifecycle progress or authorization",
+    "separate_subjects": [
+      "super-focus.js declares itself separate from both the aigen resolver and package-runs"
+    ]
+  },
+  "gating_isolation": {
+    "canonical_gate_engine_imports_resolver": false,
+    "canonical_evidence_scanner_imports_resolver": false,
+    "durable_lifecycle_projection_imports_resolver": false,
+    "shared_projection_authority_imports_resolver": false,
+    "resolver_writes": 0
+  },
+  "ambiguity_found_and_closed": {
+    "finding": "/api/cockpit-orientation — the canonical \"where am I\" endpoint — filled its currentGate field from the AIGEN stage when no package run was active, with no machine-readable scope.",
+    "before": "currentGate: \"image_prompts (4/13)\"",
+    "after": "currentGate: \"Media lane: image_prompts (4/13)\" plus currentGateScope MEDIA_LANE, currentGateIsCanonical false, canonicalGate null",
+    "compatibility": "additive — the legacy field is retained"
+  },
+  "positive_canary": {
+    "media_stage_before": "image_prompts",
+    "media_stage_after": "image_prompts",
+    "canonical_gate_before": "research",
+    "canonical_gate_after": "script-structure",
+    "canonical_advanced_by_review_evidence": true,
+    "media_unchanged_by_canonical_advance": true,
+    "statement": "Media progress and lifecycle progress moved independently, each from its own evidence. Neither influenced the other."
+  },
+  "negative_authority_canary": {
+    "media_declares_no_gate": true,
+    "media_makes_no_approval_claim": true,
+    "media_status_not_published": true,
+    "no_false_mapping_exported": true,
+    "statement": "There is deliberately no 14-to-AIGEN mapping. Asserting its absence prevents one being added by habit."
+  },
+  "drift_policy": "RUN_STATE_PROJECTION_DRIFT applies to lifecycle projections only. Differing AIGEN and canonical values are not drift; they measure different dimensions.",
+  "module_sha256": {
+    "resolver": "0c622dda0765713ffbf680c6763f703236119065a00873268e47025693012886"
+  },
+  "failures": [],
+  "verdict": "AIGEN_STATE_SCOPED_AS_NON_LIFECYCLE"
+}

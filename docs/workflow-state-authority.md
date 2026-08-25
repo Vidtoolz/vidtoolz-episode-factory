@@ -106,3 +106,67 @@ authority, and the 14 gates remain canonical regardless of what they say.
 
 Production Operations remains the lifecycle/state steward. This mission created
 no Pipeline Manager, no Stage Sync agent, and no new state authority.
+
+## State vocabulary registry
+
+The system legitimately carries several state vocabularies. It carries exactly
+**one lifecycle authority**. Every vocabulary must declare which it is — an
+unclassified stage vocabulary is how a second authority gets created by
+accident.
+
+| Vocabulary | Scope | Authority | Declares scope via |
+| --- | --- | --- | --- |
+| 14-gate workflow (`package-run-workflow-map.js`) | production lifecycle | **canonical** | `GATE_DEFINITIONS` |
+| shared projection (`workflow-stage-projection.js`) | lifecycle projection | projection | names its canonical source |
+| pipeline tracker (`pipeline-tracker.js`) | lifecycle display | projection | clamped by the shared authority |
+| `package-run-state.md` | lifecycle durable display | projection | `AUTHORITY_SOURCE` |
+| control room | lifecycle/operations display | projection | reads `buildWorkflowMap` |
+| AIGEN project state (`project-state-resolver.js`) | **media lane — not lifecycle** | none | `authority_scope: "media_lane"`, `lifecycle_authority: false` |
+| Super Focus (`super-focus.js`) | standalone local project model | none | separate subject; owns `super-focus.json` |
+
+Enforced by `tests/lifecycle-authority-invariant.test.js`.
+
+## AIGEN Project State
+
+**What it measures.** Work-product progress of an AIGEN media package under
+`<AIGEN_VIDNAS_ROOT>/script-packages/` — prompts written, images generated,
+selections made, clips rendered, Resolve handoff prepared. Derived from asset
+counts and file existence.
+
+**It is not lifecycle state.** It was audited and formally scoped as
+non-lifecycle rather than mapped onto the 14 gates, because it measures a
+*different subject*:
+
+- a canonical package run lives in `package-runs/`; an AIGEN project is a media
+  package on VIDNAS. They are not two answers about one run.
+- canonical gates derive from review status markers and human approval; this
+  derives from asset presence. Assets existing is not a review passing.
+- its consumers ask "what should the operator generate next", never "may this
+  run advance". `next-task-engine.js` maps its stage to media actions only.
+- it authorizes nothing: no agent, no gate, no publication, no approval.
+
+Forcing a 14→AIGEN mapping would have been a false mapping. The architecture may
+hold many state vocabularies; it may hold only one lifecycle authority.
+
+**Relationship to canonical gates.** Descriptive only. The two dimensions may
+differ — a project can have every image generated while its run sits at
+`research` because no review has passed. That is not drift and is never reported
+as `RUN_STATE_PROJECTION_DRIFT`; drift applies to lifecycle *projections*, and
+this is not one.
+
+**What it may not do.** Satisfy a gate, advance canonical state, bypass Mikko's
+approval, override QC, or present itself as production progress. The canonical
+gate engine, the canonical evidence scanner and the durable lifecycle projection
+all refuse to import it, and that refusal is asserted by test.
+
+**Reserved vocabulary.** `stage` never advances past `resolve_handoff`. The
+trailing `editing`, `publish_prep` and `published` labels describe what happens
+to media after it leaves this lane; this resolver has no evidence for them. They
+are retained for index stability and declared unreachable in
+`UNREACHABLE_STAGES`.
+
+**Cockpit.** When no package run is active, `/api/cockpit-orientation` reports
+the media-lane position in `currentGate` for operator continuity. It is labelled
+`Media lane: <stage>` and carries `currentGateScope: "MEDIA_LANE"`,
+`currentGateIsCanonical: false` and `canonicalGate: null`, so no consumer has to
+read prose to know it is not a canonical gate.

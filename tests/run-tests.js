@@ -35,6 +35,7 @@ require("./outline-prompt-nonce.test.js");
 require("./pipeline-status.test.js");
 require("./workflow-stage-authority.test.js");
 require("./package-run-state-authority.test.js");
+require("./lifecycle-authority-invariant.test.js");
 require("./video-prompts.test.js");
 require("./package-run-candidate-discovery.test.js");
 require("./package-run-archive.test.js");
