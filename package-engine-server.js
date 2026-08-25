@@ -13051,7 +13051,17 @@ function buildCockpitOrientation(options = {}) {
         activeRunPath: '',
         activeProject: project.id,
         activeProjectTitle: project.title,
-        currentGate: `${project.stage} (${(project.stage_index || 0) + 1}/${project.stage_total || '?'})`,
+        // The projects lane has no canonical package run, so there is no
+        // canonical gate to report. This value is the AIGEN MEDIA-LANE
+        // work-product stage, not production lifecycle position — the scope
+        // fields below make that machine-readable rather than a matter of
+        // reading the label. Canonical lifecycle lives only in the 14-gate
+        // engine, and no package run is active here.
+        currentGate: `Media lane: ${project.stage} (${(project.stage_index || 0) + 1}/${project.stage_total || '?'})`,
+        currentGateScope: 'MEDIA_LANE',
+        currentGateIsCanonical: false,
+        canonicalGate: null,
+        canonicalLifecycleSource: 'scripts/package-run-workflow-map.js',
         blocker: task.blocked ? String(task.why || 'Next task is blocked.') : '',
         nextValidAction: task.label ? `${task.label} — ${task.why || ''}`.trim() : 'Open the project workspace for the next task.',
         needsMikko: task.label || 'Review the active project in the projects board.',

@@ -6,9 +6,25 @@
  * warnings). The cockpit infers what to do from this — the operator never has to
  * remember the next step. Read-only; no network calls, no mutation.
  *
- * NOTE: this is the aigen media pipeline's stage model. It is intentionally
- * separate from pipeline-tracker.js (the package-runs 13-stage gate model), so
- * editing this never touches the canonical-spec guard.
+ * AUTHORITY SCOPE: MEDIA LANE — NOT PRODUCTION LIFECYCLE.
+ *
+ * This resolves the state of an AIGEN media package under
+ * <AIGEN_VIDNAS_ROOT>/script-packages/, which is a different subject from a
+ * canonical package run under package-runs/. Its `stage` measures WORK-PRODUCT
+ * PROGRESS (prompts written, images generated, selections made, clips rendered,
+ * handoff prepared) derived from asset counts and file existence.
+ *
+ * It is NOT lifecycle state and must never be read as one:
+ *   - production lifecycle belongs solely to the 14-gate workflow engine
+ *     (scripts/package-run-workflow-map.js), derived from review status markers
+ *     and human approval, not from asset presence
+ *   - this resolver cannot satisfy, advance or authorize any canonical gate
+ *   - it is pure and read-only: it writes nothing, ever
+ *
+ * The two answers may legitimately differ because they measure different
+ * dimensions. Consumers must not compare them as competing lifecycle claims;
+ * every result carries authority_scope / lifecycle_authority so that scope is
+ * machine-readable rather than a matter of interpretation.
  */
 
 const fs = require('fs');
@@ -41,6 +57,17 @@ const PATHWAYS = {
   },
 };
 
+// Declared scope, emitted on every result so no consumer has to infer it.
+const AUTHORITY_SCOPE = 'media_lane';
+const LIFECYCLE_AUTHORITY = false;
+const CANONICAL_LIFECYCLE_SOURCE = 'scripts/package-run-workflow-map.js';
+
+// Work-product milestones, in order. `stage` never advances past
+// 'resolve_handoff': the trailing three are reserved vocabulary describing what
+// happens to the media AFTER it leaves this lane (in Resolve and at publish),
+// and this resolver has no evidence for them. They are retained for index
+// stability and are explicitly unreachable here.
+const UNREACHABLE_STAGES = Object.freeze(['editing', 'publish_prep', 'published']);
 const STAGES = [
   'idea',
   'approved_topic',
@@ -322,6 +349,11 @@ function resolveProjectState(packageDir, options = {}) {
     stage,
     stage_index: STAGES.indexOf(stage),
     stage_total: STAGES.length,
+    // Scope declaration — see the module header. `stage` is media-lane
+    // work-product progress, never a canonical production gate.
+    authority_scope: AUTHORITY_SCOPE,
+    lifecycle_authority: LIFECYCLE_AUTHORITY,
+    canonical_lifecycle_source: CANONICAL_LIFECYCLE_SOURCE,
     has_metadata: hasMetadata,
     has_script: hasScript,
     has_resolve_handoff: hasHandoff,
@@ -336,6 +368,10 @@ function resolveProjectState(packageDir, options = {}) {
 module.exports = {
   STAGES,
   TERMINAL,
+  UNREACHABLE_STAGES,
+  AUTHORITY_SCOPE,
+  LIFECYCLE_AUTHORITY,
+  CANONICAL_LIFECYCLE_SOURCE,
   PATHWAYS,
   resolveProjectState,
   readPathway,
