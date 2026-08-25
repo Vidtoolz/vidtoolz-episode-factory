@@ -36,7 +36,8 @@ const BEAT_FIELDS = ['canonical_beat_id', 'section_id', 'aliases', 'source_prove
 const BEAT_ALIAS_FIELDS = ['namespace', 'id'];
 const BEAT_PROVENANCE_FIELDS = ['source_system', 'source_id'];
 const COVERAGE_FIELDS = ['beat_ref', 'decision', 'shot_ids', 'reason'];
-const SHOT_FIELDS = ['shot_id', 'section_ref', 'beat_ref', 'narrative_function', 'subject', 'media_type', 'generation_mode', 'shot_brief', 'visual_assertion', 'presenter_relation', 'research_sensitive', 'research_refs', 'camera_intent', 'generation_requirements', 'continuity_notes', 'edit_placement', 'priority', 'status', 'prompt_refs'];
+const SHOT_FIELDS = ['shot_id', 'section_ref', 'beat_ref', 'narrative_function', 'subject', 'media_type', 'generation_mode', 'shot_brief', 'visual_assertion', 'presenter_relation', 'research_sensitive', 'research_refs', 'camera_intent', 'generation_requirements', 'continuity_notes', 'edit_placement', 'priority', 'status', 'prompt_refs', 'demonstration'];
+const DEMONSTRATION_FIELDS = ['start_state', 'action', 'expected_result'];
 const SECTION_REF_FIELDS = ['section_id'];
 const CAMERA_INTENT_FIELDS = ['subject', 'purpose', 'desired_reveal', 'scale_transition_intent', 'movement_need', 'temporal_context', 'geographic_context', 'negative_constraints'];
 const GENERATION_REQUIREMENT_FIELDS = ['artifact_class', 'aspect_target', 'duration_target_s', 'input_artifact_refs', 'quality_constraints', 'candidate_count_request', 'generation_mode'];
@@ -249,7 +250,7 @@ function validateGenerationRequirements(requirements, issues, path, shot) {
 
 function validateShot(shot, issues, index, beatById, storySections, shotIds) {
   const path = `$.shots[${index}]`;
-  if (!strictObject(issues, shot, SHOT_FIELDS, path, SHOT_FIELDS.filter((field) => !['visual_assertion', 'camera_intent'].includes(field)))) return;
+  if (!strictObject(issues, shot, SHOT_FIELDS, path, SHOT_FIELDS.filter((field) => !['visual_assertion', 'camera_intent', 'demonstration'].includes(field)))) return;
   for (const field of ['visual_assertion', 'camera_intent']) if (!Object.prototype.hasOwnProperty.call(shot, field)) issues.push(issue('REQUIRED_FIELD_MISSING', `${path}.${field}`, `${field} must be explicit`));
   if (!SHOT_ID_RE.test(shot.shot_id || '')) issues.push(issue('SHOT_ID_MALFORMED', `${path}.shot_id`, 'shot ID malformed'));
   if (shotIds.has(shot.shot_id)) issues.push(issue('SHOT_ID_DUPLICATE', `${path}.shot_id`, 'duplicate shot ID'));
@@ -283,6 +284,19 @@ function validateShot(shot, issues, index, beatById, storySections, shotIds) {
   if (!Array.isArray(shot.research_refs)) issues.push(issue('RESEARCH_REFS_INVALID', `${path}.research_refs`, 'research refs must be an array'));
   else shot.research_refs.forEach((ref, refIndex) => validateResearchRef(ref, issues, `${path}.research_refs[${refIndex}]`));
   if (shot.research_sensitive && (!shot.visual_assertion || !shot.research_refs?.length)) issues.push(issue('RESEARCH_AUTHORITY_REQUIRED', path, 'research-sensitive shot requires visual assertion and Research authority'));
+  // Optional: a shot that IS a demonstration carries the three facts a demo list
+  // needs and a shot brief cannot express — where it starts, what is done, and
+  // what the viewer should end up seeing. Absent on non-demo shots, which keeps
+  // every existing plan digest unchanged.
+  if (shot.demonstration !== undefined && shot.demonstration !== null) {
+    if (strictObject(issues, shot.demonstration, DEMONSTRATION_FIELDS, `${path}.demonstration`, DEMONSTRATION_FIELDS)) {
+      for (const field of DEMONSTRATION_FIELDS) {
+        if (typeof shot.demonstration[field] !== 'string' || !shot.demonstration[field].trim()) {
+          issues.push(issue('DEMONSTRATION_TEXT_INVALID', `${path}.demonstration.${field}`, `demonstration ${field} must be nonempty text`));
+        }
+      }
+    }
+  }
   if (shot.visual_assertion !== null && (typeof shot.visual_assertion !== 'string' || !shot.visual_assertion.trim())) issues.push(issue('VISUAL_ASSERTION_INVALID', `${path}.visual_assertion`, 'visual assertion must be null or nonempty text'));
   if (!shot.research_sensitive && shot.research_refs?.length) issues.push(issue('RESEARCH_SENSITIVITY_MISMATCH', `${path}.research_refs`, 'Research refs require research_sensitive true'));
   validateCameraIntent(shot.camera_intent, issues, `${path}.camera_intent`);
@@ -626,6 +640,7 @@ module.exports = {
   SCHEMA_VERSION,
   ARTIFACT_TYPE,
   MEDIA_TYPES,
+  DEMONSTRATION_FIELDS,
   GENERATION_MODES,
   PRESENTER_RELATIONS,
   COVERAGE_DECISIONS,

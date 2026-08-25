@@ -40,6 +40,7 @@
   "generation_modes": ["NOT_APPLICABLE", "STILL", "DIRECT_VIDEO", "IMAGE_TO_VIDEO"],
   "presenter_relations": ["PRESENT", "BROLL_OVERLAY", "REPLACE", "PICTURE_IN_PICTURE", "NONE"],
   "planner_shot_states": ["PLANNED", "PROMPT_READY"],
+  "demonstration_fields": ["start_state", "action", "expected_result"],
   "camera_intent_fields": ["subject", "purpose", "desired_reveal", "scale_transition_intent", "movement_need", "temporal_context", "geographic_context", "negative_constraints"],
   "generation_requirement_fields": ["artifact_class", "aspect_target", "duration_target_s", "input_artifact_refs", "quality_constraints", "candidate_count_request", "generation_mode"],
   "research_binding_fields": ["binding_id", "claim_ref", "result_id", "result_revision", "result_digest_sha256", "assertion_sha256", "required_constraint_ids", "applied_constraint_ids", "human_exception_ref"],
@@ -56,6 +57,7 @@
     "research-sensitive shots carry visual assertion and exact Research authority references",
     "stored plan digest matches canonical serialization",
     "plan revisions are immutable and strictly monotonic",
-    "READY_FOR_GENERATION is derived from exact Story approval, validation, coverage, Research, prompt integrity, and exact human plan approval"
+    "READY_FOR_GENERATION is derived from exact Story approval, validation, coverage, Research, prompt integrity, and exact human plan approval",
+    "demonstration is optional; when present it carries start_state, action, and expected_result"
   ]
 }
