@@ -23,6 +23,13 @@
  *
  *     canonical gate  ->  projection  ->  displayed stage
  *
+ * The gate->stage mapping below was reconciled against a second, independently
+ * written mapping in the package-run-state projection. They disagreed on 5 of
+ * 14 gates; that review corrected three genuine errors here (the capture gates
+ * display A-Roll rather than an AIGEN media stage, and final-review belongs to
+ * the tracker's Publish Gate evidence set). This is now the single mapping both
+ * consumers read.
+ *
  * A tracker stage can never advance, prove, or imply lifecycle progress. The
  * canonical gate sets a CEILING; richer file evidence may still be surfaced
  * below it, but anything beyond the ceiling is labelled evidence-only and is
@@ -62,21 +69,27 @@ const GATE_PROJECTION = Object.freeze({
                               vertical:   { default: 'idea',          compatible: [] } },
   'script-structure':       { horizontal: { default: 'script',        compatible: ['script'] },
                               vertical:   { default: 'script',        compatible: ['script'] } },
+  // script-review.md is part of the tracker's own "Claims Check" evidence set.
   'script-review':          { horizontal: { default: 'claims',        compatible: ['claims'] },
                               vertical:   { default: 'script',        compatible: [] } },
   'production-plan':        { horizontal: { default: 'packaging',     compatible: ['packaging'] },
                               vertical:   { default: 'image-prompts', compatible: [] } },
-  'shot-edit-plan-review':  { horizontal: { default: 'image-prompts', compatible: ['image-prompts'] },
-                              vertical:   { default: 'image-prompts', compatible: ['image-prompts'] } },
-  'capture-checklist':      { horizontal: { default: 'image-gen',     compatible: ['image-gen', 'image-select'] },
-                              vertical:   { default: 'image-gen',     compatible: ['image-gen', 'image-select'] } },
-  'capture-evidence':       { horizontal: { default: 'video-gen',     compatible: ['video-gen', 'a-roll'] },
+  // The AIGEN media stages have no gate of their own: prompting, generation and
+  // selection all happen under the shot/edit plan, so that gate owns them.
+  'shot-edit-plan-review':  { horizontal: { default: 'image-prompts', compatible: ['image-prompts', 'image-gen', 'image-select', 'video-gen'] },
+                              vertical:   { default: 'image-prompts', compatible: ['image-prompts', 'image-gen', 'image-select'] } },
+  // Capture gates are about shooting, so they display A-Roll rather than an
+  // AIGEN media stage.
+  'capture-checklist':      { horizontal: { default: 'a-roll',        compatible: [] },
+                              vertical:   { default: 'image-gen',     compatible: [] } },
+  'capture-evidence':       { horizontal: { default: 'a-roll',        compatible: ['a-roll'] },
                               vertical:   { default: 'i2v-prompts',   compatible: ['i2v-prompts', 'video-gen'] } },
   'rough-cut-review':       { horizontal: { default: 'assembly',      compatible: ['assembly'] },
                               vertical:   { default: 'video-gen',     compatible: [] } },
-  'final-review':           { horizontal: { default: 'assembly',      compatible: [] },
+  // final-review.md is in the tracker's Publish Gate evidence set.
+  'final-review':           { horizontal: { default: 'publish-gate',  compatible: ['publish-gate'] },
                               vertical:   { default: 'view',          compatible: ['view'] } },
-  'export-check':           { horizontal: { default: 'publish-gate',  compatible: ['publish-gate'] },
+  'export-check':           { horizontal: { default: 'publish-gate',  compatible: [] },
                               vertical:   { default: 'view',          compatible: [] } },
   'publication-metadata':   { horizontal: { default: 'publish-gate',  compatible: [] },
                               vertical:   { default: 'view',          compatible: [] } },
@@ -241,7 +254,7 @@ function detectDrift({ runId, gateId, workflowPath, evidenceCurrentStage }) {
     observed_stage_index: observed,
     expected_stages: [projection.stageKey, ...projection.compatibleStages],
     direction: ahead ? 'PROJECTION_AHEAD_OF_CANONICAL' : 'PROJECTION_BEHIND_CANONICAL',
-    resolution: 'canonical 14-gate state wins; reproject the display from it',
+    resolution: 'Canonical 14-gate state wins; reproject the display from it.',
     mapping_version: MAPPING_VERSION,
   };
 }
