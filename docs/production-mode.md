@@ -151,6 +151,56 @@ approval.
 - **`editor`** consumes coverage gaps downstream and is barred from take
   selection.
 
+## Synthetic narration (DRAFT proxy audio)
+
+Status: **BLOCKED — provider missing.** No audio has been produced and no
+placeholder exists.
+
+What it would be, when it exists: machine-generated speech representing the
+canonical script, adequate for a temporary draft VO, for Scorecraft's ducking and
+timing, and as the audio component of DRAFT proxy capture. What it would never be:
+Mikko's performance, production capture, or final mix. That distinction has to
+live in provenance, not in a filename.
+
+Two independent blockers, both verified rather than assumed:
+
+**1. No TTS producer.** Nothing in the repository synthesizes speech. On this
+machine `libespeak-ng1`, `espeak-ng-data` and the `sd_espeak-ng` module are
+installed as *libraries*, but neither package ships a CLI and no `espeak-ng`,
+`piper`, `flite` or `festival` executable exists under `/usr/bin`,
+`/usr/local/bin` or `/opt`. `spd-say` is present but is a speech-dispatcher
+client: it speaks to an audio device and has no file output. No Python TTS package
+is importable. The ComfyUI registry contains no audio node, and the compute
+registry provisions a `music_generation` lane but **no speech lane at all**.
+MiniMax is music-caption only and unapproved. Scorecraft consumes narration
+timing; it never produces speech. `ffmpeg`/`ffprobe` are present, so validation is
+not the blocker.
+
+The smallest unblock is `espeak-ng` (~4 MB; its library and voice data are already
+installed, only the binary is missing) — robotic but fully intelligible, which is
+all a draft VO needs. `piper` is the better-quality option at ~60–120 MB. Both are
+local and free. Installing either is a dependency change, which is approval-gated
+in this workspace.
+
+**2. `AUDIO_RENDER` cannot express draft fidelity.** Even with real speech bytes,
+the existing attestation path has nowhere truthful to record what they are. The
+adapter raises `AUDIO_NOT_PRODUCTION_READY` for any state other than
+`PRODUCTION_READY`, so draft narration would have to claim production readiness or
+omit state and attest nothing. It has no `fidelity`, `source_class` or `mix_kind`
+field, and it attributes defects to `sound_music_director` rather than the
+`generation_supervisor` that would render a draft. `EVIDENCE_CLASSES`
+(`DETERMINISTIC | SPECIALIST | HUMAN | UNVERIFIED`) is a verification-provenance
+axis and cannot express proxy versus real.
+
+The fix is a distinct typed evidence kind, `DRAFT_SYNTHETIC_NARRATION`, with its
+own QC adapter — the way `CAMERA_QUALITY` and `AUDIO_RENDER` are already separate.
+Overloading `AUDIO_RENDER` is how proxy audio would eventually be mistaken for a
+production mix.
+
+Once narration exists, the honest DRAFT state is `PROXY_AUDIO_READY` plus
+`PROXY_VISUAL_MISSING`, and gate 8 stays blocked. Narration alone is not a
+presenter.
+
 ## Implementation status
 
 - **IMPLEMENTED** — the run-mode contract, its transitions and authority rules;
