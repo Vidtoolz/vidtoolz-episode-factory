@@ -481,6 +481,78 @@
         "human-authored-approval-proof.json"
       ],
       "note": "Bare-marker trust was NOT restored. Both modes are digest-bound; cross-mode digest reuse is impossible."
+    },
+    {
+      "step": 26,
+      "timestamp": "2026-08-25",
+      "event": "STORY_VALIDATION_EVIDENCE_PRODUCED",
+      "gate_before": "capture-checklist",
+      "gate_after": "capture-checklist",
+      "actor": "story_validator (deterministic, package-run-story-validation.js)",
+      "human_authority": null,
+      "approval_recorded": false,
+      "story": {
+        "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+        "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+        "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+      },
+      "evidence": {
+        "file": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/story-validation.json",
+        "verdict": "PASS",
+        "producer": "story_validator",
+        "semantics": "schema/lineage integrity evidence only; not narrative judgment; not approval"
+      },
+      "note": "QC required STORY_VALIDATION but no production path created it. Closure: deterministic validator bound to the run story-binding, materialized at Story registration time so future runs obtain it naturally."
+    },
+    {
+      "step": 27,
+      "timestamp": "2026-08-25",
+      "event": "QC_STORY_VALIDATION_BLOCKER_CLOSED",
+      "gate_before": "capture-checklist",
+      "gate_after": "capture-checklist",
+      "actor": "qc_director via scripts/agent-run.js (tasks canary-qc-storyval-red-01, canary-qc-storyval-green-01)",
+      "human_authority": null,
+      "approval_recorded": false,
+      "qc_before": {
+        "disposition": "BLOCKED",
+        "blockers": [
+          "QC_REQUIRED_EVIDENCE_MISSING"
+        ],
+        "missing": [
+          "STORY_VALIDATION"
+        ]
+      },
+      "qc_after": {
+        "disposition": "PASS",
+        "blockers": [],
+        "missing": []
+      },
+      "note": "RED then GREEN through the real runner on the retained canary. Gate unchanged: no capture-checklist completion, no human approval added, no capture artifacts fabricated."
+    },
+    {
+      "step": 27,
+      "timestamp": "2026-08-25",
+      "event": "QC_STORY_VALIDATION_BLOCKER_CLOSED",
+      "gate_before": "capture-checklist",
+      "gate_after": "capture-checklist",
+      "actor": "qc_director via scripts/agent-run.js (tasks canary-qc-storyval-red-01, canary-qc-storyval-green-01)",
+      "human_authority": null,
+      "approval_recorded": false,
+      "qc_before": {
+        "disposition": "BLOCKED",
+        "blockers": [
+          "QC_REQUIRED_EVIDENCE_MISSING"
+        ],
+        "missing": [
+          "STORY_VALIDATION"
+        ]
+      },
+      "qc_after": {
+        "disposition": "PASS",
+        "blockers": [],
+        "missing": []
+      },
+      "note": "RED then GREEN through the real runner on the retained canary. Gate unchanged: no capture-checklist completion, no human approval added, no capture artifacts fabricated."
     }
   ],
   "final_state": {
@@ -747,12 +819,20 @@
     ]
   },
   "open_qc_blocker": {
-    "agent": "qc_director",
-    "task": "canary-qc-01",
     "code": "QC_REQUIRED_EVIDENCE_MISSING",
-    "affected_gate": "research",
-    "next_gate_allowed": false,
-    "note": "Still live and still out of scope. The new Story binding makes the STORY_VALIDATION path reachable for the first time, but emitting it is a story_editor dispatch on gate 2."
+    "evidence_kind": "STORY_VALIDATION",
+    "status": "CLOSED",
+    "closed_by": "deterministic story validator + Story registration lifecycle trigger",
+    "closed_at": "2026-08-25T11:11:08.848Z",
+    "proof": "package-runs/2026-08-25-real-lifecycle-integration-proof/story-validation-proof.json",
+    "original_finding": {
+      "agent": "qc_director",
+      "task": "canary-qc-01",
+      "code": "QC_REQUIRED_EVIDENCE_MISSING",
+      "affected_gate": "research",
+      "next_gate_allowed": false,
+      "note": "Still live and still out of scope. The new Story binding makes the STORY_VALIDATION path reachable for the first time, but emitting it is a story_editor dispatch on gate 2."
+    }
   },
   "projection_consistency_after": {
     "canonical_gate": "capture-checklist",

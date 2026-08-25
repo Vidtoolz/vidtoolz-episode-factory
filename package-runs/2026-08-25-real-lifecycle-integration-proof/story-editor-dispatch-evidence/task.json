@@ -1,0 +1,120 @@
+{
+  "task_id": "canary-story-review-01",
+  "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+  "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "requested_by": "production_operations",
+  "assignment": {
+    "action": "review_script",
+    "editorial_goal": "Review the exact current canonical Story without revising or approving it.",
+    "controversial_change": false
+  },
+  "script_version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+  "script_content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+  "script_sections": [
+    {
+      "id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "order": 1,
+      "beat": "Hook",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "Your production system can describe where a run is. The question is whether every\npart of it describes the same place.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 21
+    },
+    {
+      "id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "order": 2,
+      "beat": "Viewer Problem",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "A production pipeline usually grows several ways to answer one question: what\nstage is this in? A gate engine says one thing, a UI tracker says another, a\ndurable status file says a third. Each looks reasonable alone. Together they let\nwork appear further along than the evidence supports.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 49
+    },
+    {
+      "id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "order": 3,
+      "beat": "The Point",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "One authority answers that question. Everything else is a view of that answer.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 13
+    },
+    {
+      "id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "order": 4,
+      "beat": "Evidence",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "The research for this run cites three in-repository sources: the gate engine that\ndefines the fourteen canonical gates, the authority document that records which\nsurfaces are views rather than authorities, and a recorded proof artifact showing\na contradiction between a gate and a display being detected and closed. Those\ncitations are listed in source-support-map.md.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 54
+    },
+    {
+      "id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "order": 5,
+      "beat": "What This Run Demonstrates",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "This package run moved through real gates using real evidence. Where evidence was\nmissing, the gate held. Where a human decision was required, the run stopped and\nwaited for it. That behaviour is the subject of this script.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 38
+    },
+    {
+      "id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "order": 6,
+      "beat": "Close",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "A detailed view is useful. A second authority is not.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 10
+    },
+    {
+      "id": "01M0W30GA7PQMYYBSK5B050N41",
+      "order": 7,
+      "beat": "Final Packaging Check",
+      "type": "composited",
+      "background": "plate",
+      "framing_preset": "right-third",
+      "dialogue": "- Title and thumbnail assumptions verified: not applicable, this run does not ship.\n- Claims in the script map to entries in source-support-map.md.",
+      "visual_notes": "",
+      "media_refs": [],
+      "words": 23
+    }
+  ],
+  "central_claim": null,
+  "narrative_spine": null,
+  "script_claim_bindings": [],
+  "research_result_refs": [],
+  "research": {
+    "status": "NO_RESEARCH_REQUIRED",
+    "run_dir": null,
+    "research_results_sha256": null,
+    "bindings_sha256": null,
+    "asOf": null
+  },
+  "data_root": "/home/vidtoolz/vidtoolz-script-builder/data",
+  "script_builder_root": "/home/vidtoolz/vidtoolz-script-builder",
+  "risk_level": "LOCAL_AUTO",
+  "retry_budget": 2,
+  "cost_budget": {
+    "max_model_calls": 2
+  },
+  "privacy": {
+    "local_only": true
+  }
+}

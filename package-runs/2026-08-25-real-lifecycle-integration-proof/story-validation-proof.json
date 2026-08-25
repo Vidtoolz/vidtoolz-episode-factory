@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "proof": "story-validation-bridge",
+  "generated_at": "2026-08-25",
+  "verdict": "STORY_VALIDATION PATH PROVEN",
+  "not_a_package_run": true,
+  "canary_run": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "semantic_contract": {
+    "evidence_kind": "STORY_VALIDATION",
+    "meaning": "schema/lineage integrity of the run's bound canonical Story: exact version resolution, append-only head lineage, content-hash integrity, section identity. NOT narrative judgment, NOT approval of any kind.",
+    "qc_adapter": "scripts/qc-director.js storyAdapter (schema_version 1, verdict PASS|VALID|APPROVED)",
+    "consumer_gate": "research (QC inspection of RESEARCH_EVIDENCE subject)"
+  },
+  "canonical_producer": {
+    "id": "story_validator",
+    "module": "scripts/package-run-story-validation.js",
+    "kind": "deterministic validator",
+    "why_not_story_editor": "story_editor review_script is narrative/argument judgment via the local large_text lane and its preflight requires central_claim + narrative_spine; the retained canary's registered Story legitimately lacks both. QC's adapter consumes a schema verdict, not narrative findings — schema/lineage integrity is deterministic Script Builder territory. The specialist semantic review remains a separate artifact for gates that need it.",
+    "why_not_script_builder": "Script Builder is canonical Story authority (cross-repo); Episode Factory owns package-run lifecycle evidence. The validator reads Script Builder only through the sanctioned compat contract (script-builder-compat.js) and never writes to it."
+  },
+  "story_binding": {
+    "file": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/story-binding.json",
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+    "verified_against_live_script_builder": true
+  },
+  "red_baseline": {
+    "task_id": "canary-qc-storyval-red-01",
+    "runner": "scripts/agent-run.js --agent qc_director",
+    "result": "BLOCKED",
+    "blockers": ["QC_REQUIRED_EVIDENCE_MISSING"],
+    "evidence_coverage": { "required": ["STORY_VALIDATION"], "satisfied": [], "missing": ["STORY_VALIDATION"] },
+    "persisted": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/agents/qc_director/canary-qc-storyval-red-01/result.json"
+  },
+  "green": {
+    "task_id": "canary-qc-storyval-green-01",
+    "runner": "scripts/agent-run.js --agent qc_director",
+    "result": "PASS",
+    "evidence_coverage": { "required": ["STORY_VALIDATION"], "satisfied": ["STORY_VALIDATION"], "missing": [] },
+    "persisted": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/agents/qc_director/canary-qc-storyval-green-01/result.json"
+  },
+  "story_validation_artifact": {
+    "file": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/story-validation.json",
+    "verdict": "PASS",
+    "warnings": [],
+    "producer": "story_validator",
+    "validator": "package-run-story-validator-v1",
+    "payload_digest_sha256": "a6f7b31dd20fd53e2defe89dc4fa4604cd517d8a219df7ead9dddf54cb360354",
+    "created_by": "node scripts/package-run-story-validation.js --run package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication"
+  },
+  "story_editor_dispatch_attempt": {
+    "task_id": "canary-story-review-01",
+    "runner": "scripts/agent-run.js --agent story_editor",
+    "state": "BLOCKED",
+    "reason": "deterministic preflight failed: central_claim missing; narrative_spine missing",
+    "interpretation": "documented blocker for the semantic path; the registered package-run Story legitimately carries no claim/spine, and story_editor preflight requires them. Does not affect STORY_VALIDATION closure, which is deterministic. Flagged as remaining lifecycle gap for native Story Builder projects that DO carry claim/spine.",
+    "persisted": "package-runs/2026-08-25-real-lifecycle-integration-proof/story-editor-dispatch-evidence/ (relocated from the canary's agents/ history so the control room's pinned latest story_editor runtime truth is undisturbed; evidence preserved, not destroyed)",
+    "control_room_side_effect_avoided": "agent-control-room.test.js pins the latest canonical story_editor canary; the exploratory dispatch was removed from the canary invocation index after its evidence was archived here"
+  },
+  "drift_tests": {
+    "suite": "tests/story-validation-bridge.test.js",
+    "result": "13/13",
+    "cases": [
+      "SV1 RED negative control: missing evidence keeps QC_REQUIRED_EVIDENCE_MISSING",
+      "SV2 valid fixture evidence satisfies QC requirement",
+      "SV3 retained-canary production bytes accepted by QC (hermetic copy)",
+      "SV4 wrong Story project: verifyExistingEvidence reports stale",
+      "SV5 superseded version: STORY_VERSION_SUPERSEDED fail-closed",
+      "SV6 bound hash drift: STORY_CONTENT_HASH_DRIFT fail-closed",
+      "SV7 post-evidence content drift: evidence stale",
+      "SV8 malformed evidence: validator + QC both fail closed",
+      "SV9 hand-authored verdict-less evidence: QC fails closed",
+      "SV10 idempotency: same Story state, zero churn",
+      "SV11 retained-canary evidence contract (not approval)",
+      "SV12 architecture invariant: every QC evidence kind has a reachable producer",
+      "SV13 registration lifecycle wires materialization at binding time"
+    ]
+  },
+  "lifecycle_trigger": {
+    "location": "scripts/package-run-story-registration.js registerStoryForRun",
+    "behavior": "Story binding write is immediately followed by deterministic STORY_VALIDATION materialization; reuse path backfills idempotently. A future genuine run gets the evidence at binding time without operator memory.",
+    "new_run_path": "creation -> Story registration -> binding + STORY_VALIDATION -> QC finds the evidence it requires"
+  },
+  "qc_required_evidence_inventory": {
+    "STORY_VALIDATION": { "producer": "story_validator (scripts/package-run-story-validation.js)", "reachability": "REACHABLE (this mission)" },
+    "CAMERA_QUALITY": { "producer": "earth-studio camera-quality lane", "reachability": "REACHABLE (Codex-owned Earth Studio)" },
+    "GENERATION_RESULT": { "producer": "generation_supervisor status envelope", "reachability": "REACHABLE (generation lane)" },
+    "EDIT_QC_HANDOFF": { "producer": "scripts/edit-plan.js qc handoff emission", "reachability": "REACHABLE" },
+    "AUDIO_RENDER": { "producer": "sound_music_director", "reachability": "CONDITIONAL: director module exists and emits schema_version-1 envelopes with duration/measured metadata, but no durable AUDIO_RENDER record (production_mix_sha256 + state PRODUCTION_READY) emission path was found in scripts/. Flagged for next work; not implemented here per mission scope." }
+  },
+  "architecture_invariant": {
+    "id": "SV12",
+    "statement": "every evidence kind QC can require must name a canonical production producer with an existing producer module and a documented reachability path",
+    "scope": "static validation (producer identity + module presence + reachability note); no live external execution required",
+    "prevents": "QC requiring evidence no production path creates (the exact class of defect closed here)"
+  },
+  "retained_canary_status": {
+    "canonical_gate": "capture-checklist",
+    "gates_complete": "6/14",
+    "advanced_by_this_mission": false,
+    "human_approval_added": false,
+    "capture_artifacts_fabricated": false,
+    "note": "Adding upstream machine evidence improved QC truthfulness only; gate 7 ownership remains the separate Claude mission."
+  },
+  "human_authority_separation": {
+    "statement": "STORY_VALIDATION is machine evidence. It is not Mikko Story approval, not script approval, not publication approval, not QC approval. The evidence note field records this explicitly.",
+    "approval_state_of_bound_story": "none (Script Builder version approval untouched)"
+  },
+  "script_builder_state": {
+    "modified": false,
+    "reads": "data/projects/01M0W30GA5ZAXXQPX9SS0R2N29 via sanctioned lib/versions.js + lib/store.js only"
+  },
+  "stop_reason": "STORY_VALIDATION PATH PROVEN: canonical producer exists, future production path wired, retained canary carries real evidence, QC no longer reports the missing-evidence blocker, gate unchanged."
+}

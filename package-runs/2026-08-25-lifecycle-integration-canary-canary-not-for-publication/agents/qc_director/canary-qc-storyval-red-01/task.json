@@ -1,0 +1,21 @@
+{
+  "task_id": "canary-qc-storyval-red-01",
+  "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "inspect_artifact"
+  },
+  "gate": "research",
+  "subject": {
+    "artifact_id": "canary-research-evidence",
+    "artifact_type": "RESEARCH_EVIDENCE",
+    "producing_agent": "research_director",
+    "artifact_path": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/research-evidence.md",
+    "artifact_sha256": "5ef85dda8c7c7920c9782af7a18b3c9f5934375408c61e275a4eed53c8356255",
+    "version_id": "v1"
+  },
+  "evidence": [],
+  "required_evidence": [
+    "STORY_VALIDATION"
+  ]
+}

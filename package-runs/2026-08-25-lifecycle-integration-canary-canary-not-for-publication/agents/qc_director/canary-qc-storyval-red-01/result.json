@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "canary-qc-storyval-red-01",
+  "action": "inspect_artifact",
+  "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "project_id": null,
+  "gate": "research",
+  "state": "BLOCKED",
+  "disposition": "BLOCKED",
+  "reason": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+  "subject": {
+    "artifact_id": "canary-research-evidence",
+    "artifact_type": "RESEARCH_EVIDENCE",
+    "producing_agent": "research_director",
+    "artifact_path": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/research-evidence.md",
+    "artifact_sha256": "5ef85dda8c7c7920c9782af7a18b3c9f5934375408c61e275a4eed53c8356255",
+    "version_id": "v1"
+  },
+  "observed": {
+    "artifact_readable": true,
+    "artifact_sha256": "5ef85dda8c7c7920c9782af7a18b3c9f5934375408c61e275a4eed53c8356255",
+    "byte_size": 1417
+  },
+  "evidence": [],
+  "evidence_coverage": {
+    "required": [
+      "STORY_VALIDATION"
+    ],
+    "satisfied": [],
+    "missing": [
+      "STORY_VALIDATION"
+    ]
+  },
+  "checks": [],
+  "blockers": [
+    {
+      "code": "QC_REQUIRED_EVIDENCE_MISSING",
+      "severity": "BLOCKER",
+      "source": "qc_director",
+      "artifact_id": "canary-research-evidence",
+      "explanation": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+      "evidence_ref": null,
+      "affected_gate": "research",
+      "auto_repairable": false,
+      "human_judgment_required": false
+    }
+  ],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": null,
+    "present": false,
+    "verdict": "NOT_REQUIRED",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [],
+  "next_gate_allowed": false,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T10:31:53.301Z",
+  "events": [
+    {
+      "at": "2026-08-25T10:31:53.301Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "canary-research-evidence"
+    },
+    {
+      "at": "2026-08-25T10:31:53.301Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    }
+  ],
+  "attention": "REVIEW",
+  "attention_level": "REVIEW",
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "RESTORE_QC_EVIDENCE_INTEGRITY"
+  },
+  "qc_result_digest_sha256": "394e4a41567c6dfe965e7d0aac55ec84739c14df9fa6d60eb63786a28e12572f",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "BLOCKED",
+    "attention": "REVIEW",
+    "attention_level": "REVIEW",
+    "disposition": "BLOCKED",
+    "current_artifact": {
+      "artifact_id": "canary-research-evidence",
+      "artifact_type": "RESEARCH_EVIDENCE",
+      "producing_agent": "research_director"
+    },
+    "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+    "gate": "research",
+    "next_gate_allowed": false,
+    "blockers": [
+      "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    ],
+    "blocker": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": false,
+    "human_authority": {
+      "required_scope": null,
+      "verdict": "NOT_REQUIRED"
+    },
+    "evidence_used": 0,
+    "evidence_total": 0,
+    "missing_evidence": [
+      "STORY_VALIDATION"
+    ],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "BLOCKED",
+      "reason": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    },
+    "owner": "qc_director",
+    "next_owner": "production_operations",
+    "latest_event": {
+      "at": "2026-08-25T10:31:53.301Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    }
+  },
+  "operational_rationale": {
+    "decision": "BLOCKED",
+    "reason": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+    "evidence_refs": [],
+    "confidence": null,
+    "escalation_reason": "required evidence STORY_VALIDATION was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+  }
+}

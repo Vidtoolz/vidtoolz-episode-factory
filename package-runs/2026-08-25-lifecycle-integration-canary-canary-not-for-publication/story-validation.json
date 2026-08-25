@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "evidence_kind": "STORY_VALIDATION",
+  "producer": "story_validator",
+  "validator": "package-run-story-validator-v1",
+  "verdict": "PASS",
+  "warnings": [],
+  "story": {
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+  },
+  "integrity": {
+    "contract_id": "vidtoolz-script-builder/story-version-authority/v1",
+    "section_count": 7,
+    "section_identity_ok": true,
+    "lineage_head_current": true,
+    "lineage_parent": null,
+    "content_hash_recomputed_ok": true
+  },
+  "note": "Schema/lineage integrity evidence only. Not narrative judgment; not approval of any kind.",
+  "payload_digest_sha256": "a6f7b31dd20fd53e2defe89dc4fa4604cd517d8a219df7ead9dddf54cb360354",
+  "produced_by": "story_validator",
+  "created_at": "2026-08-25T10:51:56.358Z",
+  "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "provenance": {
+    "produced_by": "story_validator",
+    "validator": "package-run-story-validator-v1",
+    "story_binding_file": "story-binding.json",
+    "script_builder_root": "/home/vidtoolz/vidtoolz-script-builder",
+    "binding_sha256": "af39d98808f5ccf4a37a2be883ade789407e88f61020d0001701c6e234444bfc"
+  }
+}

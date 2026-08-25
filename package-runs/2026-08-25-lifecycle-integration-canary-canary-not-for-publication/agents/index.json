@@ -56,6 +56,28 @@
       "next_owner": "mikko",
       "task_directory": "visual_planning_director/vpd-canary-bridge-1",
       "completed_at": "2026-08-25T09:13:40.452Z"
+    },
+    {
+      "invocation_id": "qc_director:canary-qc-storyval-red-01:1",
+      "agent_id": "qc_director",
+      "task_id": "canary-qc-storyval-red-01",
+      "attempt_number": 1,
+      "state": "BLOCKED",
+      "attention": "REVIEW",
+      "next_owner": "production_operations",
+      "task_directory": "qc_director/canary-qc-storyval-red-01",
+      "completed_at": "2026-08-25T10:31:53.305Z"
+    },
+    {
+      "invocation_id": "qc_director:canary-qc-storyval-green-01:1",
+      "agent_id": "qc_director",
+      "task_id": "canary-qc-storyval-green-01",
+      "attempt_number": 1,
+      "state": "COMPLETE",
+      "attention": "INFORMATION",
+      "next_owner": "production_operations",
+      "task_directory": "qc_director/canary-qc-storyval-green-01",
+      "completed_at": "2026-08-25T10:52:06.553Z"
     }
   ]
 }

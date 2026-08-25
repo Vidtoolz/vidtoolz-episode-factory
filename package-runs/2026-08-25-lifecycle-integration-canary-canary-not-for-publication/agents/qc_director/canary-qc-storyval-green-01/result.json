@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "canary-qc-storyval-green-01",
+  "action": "inspect_artifact",
+  "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "project_id": null,
+  "gate": "research",
+  "state": "COMPLETE",
+  "disposition": "PASS",
+  "reason": "all applicable technical evidence is present, bound and clean",
+  "subject": {
+    "artifact_id": "canary-research-evidence",
+    "artifact_type": "RESEARCH_EVIDENCE",
+    "producing_agent": "research_director",
+    "artifact_path": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/research-evidence.md",
+    "artifact_sha256": "5ef85dda8c7c7920c9782af7a18b3c9f5934375408c61e275a4eed53c8356255",
+    "version_id": "v1"
+  },
+  "observed": {
+    "artifact_readable": true,
+    "artifact_sha256": "5ef85dda8c7c7920c9782af7a18b3c9f5934375408c61e275a4eed53c8356255",
+    "byte_size": 1417
+  },
+  "evidence": [
+    {
+      "evidence_id": "story-validation",
+      "kind": "STORY_VALIDATION",
+      "evidence_class": "SPECIALIST",
+      "produced_by": "story_validator",
+      "path": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/story-validation.json",
+      "declared_sha256": "1bfee413a3394b79d5048335fedd007aec533097996291c36b044f388ea38543",
+      "observed_sha256": "1bfee413a3394b79d5048335fedd007aec533097996291c36b044f388ea38543",
+      "binding": "BOUND",
+      "used": true,
+      "summary": {
+        "verdict": "PASS",
+        "warnings": 0
+      }
+    }
+  ],
+  "evidence_coverage": {
+    "required": [
+      "STORY_VALIDATION"
+    ],
+    "satisfied": [
+      "STORY_VALIDATION"
+    ],
+    "missing": []
+  },
+  "checks": [
+    {
+      "evidence_id": "story-validation",
+      "kind": "STORY_VALIDATION",
+      "applied": true,
+      "schema_supported": true,
+      "defects": 0,
+      "warnings": 0
+    }
+  ],
+  "blockers": [],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": null,
+    "present": false,
+    "verdict": "NOT_REQUIRED",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [],
+  "next_gate_allowed": true,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T10:52:06.550Z",
+  "events": [
+    {
+      "at": "2026-08-25T10:52:06.550Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "canary-research-evidence"
+    },
+    {
+      "at": "2026-08-25T10:52:06.550Z",
+      "actor": "qc_director",
+      "state": "QC_PASS",
+      "detail": "all applicable technical evidence is present, bound and clean"
+    }
+  ],
+  "attention": "INFORMATION",
+  "attention_level": "INFORMATION",
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "ADVANCE_GATE_research"
+  },
+  "qc_result_digest_sha256": "a387b6b228db579c35f581a372c3604ba64888d7f855639baa96ad9ed5b55522",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "COMPLETE",
+    "attention": "INFORMATION",
+    "attention_level": "INFORMATION",
+    "disposition": "PASS",
+    "current_artifact": {
+      "artifact_id": "canary-research-evidence",
+      "artifact_type": "RESEARCH_EVIDENCE",
+      "producing_agent": "research_director"
+    },
+    "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+    "gate": "research",
+    "next_gate_allowed": true,
+    "blockers": [],
+    "blocker": "all applicable technical evidence is present, bound and clean",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": false,
+    "human_authority": {
+      "required_scope": null,
+      "verdict": "NOT_REQUIRED"
+    },
+    "evidence_used": 1,
+    "evidence_total": 1,
+    "missing_evidence": [],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "PASS",
+      "reason": "all applicable technical evidence is present, bound and clean",
+      "evidence_refs": [
+        {
+          "ref": "story-validation",
+          "summary": "STORY_VALIDATION/BOUND"
+        }
+      ],
+      "confidence": null,
+      "escalation_reason": null
+    },
+    "owner": "qc_director",
+    "next_owner": "production_operations",
+    "latest_event": {
+      "at": "2026-08-25T10:52:06.550Z",
+      "actor": "qc_director",
+      "state": "QC_PASS",
+      "detail": "all applicable technical evidence is present, bound and clean"
+    }
+  },
+  "operational_rationale": {
+    "decision": "PASS",
+    "reason": "all applicable technical evidence is present, bound and clean",
+    "evidence_refs": [
+      {
+        "ref": "story-validation",
+        "summary": "STORY_VALIDATION/BOUND"
+      }
+    ],
+    "confidence": null,
+    "escalation_reason": null
+  }
+}

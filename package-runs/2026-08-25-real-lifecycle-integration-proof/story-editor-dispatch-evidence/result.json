@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "agent_id": "story_editor",
+  "role_id": "story_editor",
+  "task_id": "canary-story-review-01",
+  "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+  "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "requested_by": "production_operations",
+  "state": "BLOCKED",
+  "attention": "REVIEW",
+  "attempts": 0,
+  "max_attempts": 2,
+  "source_version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+  "candidate_version_id": null,
+  "story_candidate": null,
+  "central_claim": null,
+  "narrative_spine": null,
+  "structural_findings": [],
+  "argument_change": null,
+  "research_impact": null,
+  "recommendation": null,
+  "review_bundle": null,
+  "disagreement_state": "NONE",
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "REMEDIATE"
+  },
+  "provenance": {
+    "acting_agent": "story_editor",
+    "lane": "large_text",
+    "source_commit": "1b3d68ba2711095fc9f835dd24c1ac39b827ff32",
+    "recorded_at": "2026-08-25T10:37:39.803Z"
+  },
+  "events": [
+    {
+      "at": "2026-08-25T10:37:39.800Z",
+      "actor": "story_editor",
+      "state": "ASSIGNMENT_RECEIVED",
+      "detail": "review_script from production_operations"
+    },
+    {
+      "at": "2026-08-25T10:37:39.803Z",
+      "actor": "story_editor",
+      "state": "BLOCKED",
+      "detail": "deterministic preflight failed: central_claim missing; narrative_spine missing"
+    }
+  ],
+  "reason": "deterministic preflight failed: central_claim missing; narrative_spine missing",
+  "control_room": {
+    "role": "Story Editor",
+    "state": "BLOCKED",
+    "current_task": "canary-story-review-01",
+    "source_version": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "candidate_version": null,
+    "central_claim": null,
+    "narrative_spine": null,
+    "owner": "story_editor",
+    "next_owner": "production_operations",
+    "attention_level": "REVIEW",
+    "blocker": "deterministic preflight failed: central_claim missing; narrative_spine missing",
+    "unresolved_disagreement": "NONE",
+    "operational_rationale": {
+      "decision": "BLOCKED",
+      "reason": "deterministic preflight failed: central_claim missing; narrative_spine missing",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": "deterministic preflight failed: central_claim missing; narrative_spine missing"
+    },
+    "latest_event": {
+      "at": "2026-08-25T10:37:39.803Z",
+      "actor": "story_editor",
+      "state": "BLOCKED",
+      "detail": "deterministic preflight failed: central_claim missing; narrative_spine missing"
+    },
+    "story_summary": {
+      "structural_findings": 0,
+      "changed_sections": [],
+      "argument_change": null,
+      "research_invalidated": 0,
+      "new_unbound_claims": 0,
+      "constraint_failures": 0,
+      "diff": null,
+      "recommendation": null
+    }
+  }
+}
