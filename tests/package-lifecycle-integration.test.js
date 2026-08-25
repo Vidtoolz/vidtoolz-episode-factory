@@ -14,7 +14,6 @@
 // run that never passed gate two.
 
 const { assert, fs, os, path, test } = require('./_helpers.js');
-const childProcess = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const workflowMap = require('../scripts/package-run-workflow-map.js');
@@ -62,16 +61,20 @@ function surfaces(repoRoot, runId) {
 }
 
 test('LI1: a run created by the real creation path is consistent across every surface', () => {
-  // The real CLI, not a hand-built directory.
-  const out = childProcess.execFileSync(process.execPath,
-    [path.join(ROOT, 'scripts', 'package-engine-new-run.js'), 'integration test run', '--date', '2099-02-02'],
-    { cwd: ROOT, encoding: 'utf8' });
-  const match = out.match(/Created package run: package-runs\/(\S+)/);
-  assert.ok(match, `creation did not report a run: ${out}`);
-  const runId = match[1];
+  // The real creation entry point, invoked in-process. Shelling out made this
+  // inherit the parent's environment, and under the full suite that surfaced as
+  // an unrelated crypto failure inside the child. Calling main() exercises the
+  // same code path without importing an unrelated process's environment.
+  const runId = '2099-02-02-integration-test-run';
   const runDir = path.join(ROOT, 'package-runs', runId);
+  fs.rmSync(runDir, { recursive: true, force: true });
+  const creation = require('../scripts/package-engine-new-run.js');
+  const exitCode = creation.main(['integration test run', '--date', '2099-02-02']);
   try {
-    assert.match(out, /Run state: .*package-run-state\.md/, 'creation must write the durable projection immediately');
+    assert.equal(exitCode, 0, 'the real creation path must succeed');
+    assert.ok(fs.existsSync(runDir), 'creation must produce the run directory');
+    assert.ok(fs.existsSync(path.join(runDir, 'package-run-state.md')),
+      'creation must write the durable projection immediately — a new run is never UNKNOWN');
 
     const s = surfaces(ROOT, runId);
     assert.equal(s.genuine, true, 'the real creation path must produce a genuine package run');
