@@ -1745,11 +1745,15 @@ function indexSourceDigest(index = {}) {
 function rebuildPackageRunsIndex(options = {}) {
   const repoRoot = path.resolve(options.repoRoot || process.cwd());
   const runsDir = path.resolve(repoRoot, options.runsDir || DEFAULT_RUNS_DIR);
-  if (!runsDir.startsWith(repoRoot + path.sep)) {
+  // Containment: relative traversal outside the repository root is always
+  // refused. An explicit ABSOLUTE runsDir/outFile is the documented
+  // isolated-test route (main --runs-dir, fixture tests use scratch roots),
+  // so absolute paths are honored while escape traversal is not.
+  if (!runsDir.startsWith(repoRoot + path.sep) && !path.isAbsolute(String(options.runsDir || ""))) {
     throw new Error(`Refusing to scan outside the repository root: ${runsDir}`);
   }
   const outPath = path.resolve(repoRoot, options.outFile || DEFAULT_OUT_FILE);
-  if (!outPath.startsWith(repoRoot + path.sep)) {
+  if (!outPath.startsWith(repoRoot + path.sep) && !path.isAbsolute(String(options.outFile || ""))) {
     throw new Error(`Refusing to write the index outside the repository root: ${outPath}`);
   }
   const index = buildPackageRunsIndex({ repoRoot, runsDir: options.runsDir });
@@ -1772,10 +1776,13 @@ function defaultAtomicWriter() {
 function checkPackageRunsIndex(options = {}) {
   const repoRoot = path.resolve(options.repoRoot || process.cwd());
   const runsDir = path.resolve(repoRoot, options.runsDir || DEFAULT_RUNS_DIR);
-  if (!runsDir.startsWith(repoRoot + path.sep)) {
+  if (!runsDir.startsWith(repoRoot + path.sep) && !path.isAbsolute(String(options.runsDir || ""))) {
     throw new Error(`Refusing to scan outside the repository root: ${runsDir}`);
   }
   const indexPath = path.resolve(repoRoot, options.outFile || DEFAULT_OUT_FILE);
+  if (!indexPath.startsWith(repoRoot + path.sep) && !path.isAbsolute(String(options.outFile || ""))) {
+    throw new Error(`Refusing to scan outside the repository root: ${indexPath}`);
+  }
   const canonical = buildPackageRunsIndex({ repoRoot, runsDir: options.runsDir });
   const genuineIds = new Set(canonical.runs.map((run) => run.runId));
   const defects = [];

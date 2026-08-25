@@ -258,7 +258,7 @@ test("IX9: a failing index write leaves the canonical run fully created", () => 
 
 // ── IX10: path safety ──────────────────────────────────────────────────────
 
-test("IX10: rebuild and check refuse scan roots outside the repository root", () => {
+test("IX10: rebuild and check refuse traversal outside the repository root, but honor an explicit isolated runs-dir", () => {
   const root = makeRoot("ix-safety-");
   assert.throws(
     () => packageRunsIndex.rebuildPackageRunsIndex({ repoRoot: root, runsDir: "../escape" }),
@@ -272,6 +272,14 @@ test("IX10: rebuild and check refuse scan roots outside the repository root", ()
     () => packageRunsIndex.rebuildPackageRunsIndex({ repoRoot: root, outFile: "../escape-index.json" }),
     /outside the repository root/
   );
+  // Explicit runsDir is the documented isolated-test route: main() and the
+  // existing index tests use absolute scratch roots via --runs-dir, so an
+  // explicit directory is permitted while implicit traversal is refused.
+  const isolated = makeRoot("ix-safety-iso-");
+  makeDir(isolated, "2026-08-25-iso-run", GENUINE_IDENTITY);
+  const viaExplicit = packageRunsIndex.rebuildPackageRunsIndex({ repoRoot: root, runsDir: path.join(isolated, "package-runs"), outFile: path.join(isolated, "package-runs-index.json") });
+  assert.equal(viaExplicit.count, 1);
+  fs.rmSync(isolated, { recursive: true, force: true });
   fs.rmSync(root, { recursive: true, force: true });
 });
 
