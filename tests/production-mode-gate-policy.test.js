@@ -556,3 +556,64 @@ test('mode M15: a root without the policy config degrades instead of failing', (
   assert.equal(resolved.defer_to_static, true);
   assert.equal(isolated.humanRequiredFor('capture-checklist', 'DRAFT'), null);
 });
+
+/* ============ DRAFT NARRATION CAPABILITY (SN0) ============================= */
+
+/*
+ * These lock two absence findings so they cannot rot into stale documentation.
+ * If either starts failing, that is GOOD NEWS — the capability landed — and the
+ * failure message says which document to revisit.
+ */
+
+test('narration SN0a: no synthetic narration producer exists in the repository', () => {
+  // Asserted structurally rather than by grep-count so it stays readable: the
+  // QC evidence kinds are the registry of what the system can attest, and none
+  // of them is narration.
+  const qc = require('../scripts/qc-director.js');
+  assert.ok(!qc.SUPPORTED_EVIDENCE_KINDS.some((kind) => /NARRATION|SPEECH|PROXY/i.test(kind)),
+    'a narration/proxy evidence kind appeared — revisit docs/production-mode.md and the narration audit');
+
+  // And the generation lane still cannot be asked for presenter delivery.
+  const promptAdapter = require('../scripts/visual-plan-prompt-adapter.js');
+  assert.ok(!promptAdapter.PROMPT_MEDIA.has('PRESENTER_A_ROLL'));
+});
+
+test('narration SN0b: AUDIO_RENDER cannot express draft synthetic fidelity', () => {
+  // The blocker that is independent of the missing provider: even with real
+  // speech bytes, this adapter has nowhere truthful to record what they are.
+  const source = fs.readFileSync(path.join(ROOT, 'scripts', 'qc-director.js'), 'utf8');
+  assert.match(source, /AUDIO_NOT_PRODUCTION_READY/,
+    'the adapter still rejects any state other than PRODUCTION_READY');
+  assert.ok(!/fidelity|mix_kind|source_class/i.test(source.slice(source.indexOf("unsupportedSchema('AUDIO_RENDER'"), source.indexOf("function storyAdapter"))),
+    'an audio fidelity field appeared — the DRAFT_SYNTHETIC_NARRATION recommendation may be obsolete');
+
+  const qc = require('../scripts/qc-director.js');
+  // The class axis is about how evidence was verified, not how real it is.
+  assert.deepEqual(qc.EVIDENCE_CLASSES, ['DETERMINISTIC', 'SPECIALIST', 'HUMAN', 'UNVERIFIED']);
+  assert.ok(!qc.EVIDENCE_CLASSES.some((cls) => /PROXY|SYNTHETIC|DRAFT|REAL/i.test(cls)),
+    'evidence classes gained a fidelity notion — revisit the narration attestation plan');
+});
+
+test('narration SN0c: gate 8 DRAFT blocks on a machine capability, never on Mikko', () => {
+  const owner = gateModePolicy.resolveGateOwner('capture-evidence', 'DRAFT');
+  assert.equal(owner.human_required, false);
+  assert.equal(owner.human_marker_forbidden, true);
+  assert.equal(gateModePolicy.implementationStatusFor('capture-evidence', 'DRAFT'), 'BLOCKED');
+  // The recorded blockers must name a producer, not an approval.
+  const blockers = gateModePolicy.policyFor('capture-evidence', 'DRAFT').blocked_by.join(' ');
+  assert.match(blockers, /producer/i);
+  assert.ok(!/mikko|approval marker/i.test(blockers),
+    'a zero-human draft must never be blocked on a human');
+});
+
+test('narration SN0d: no placeholder narration artifact was introduced anywhere', () => {
+  // Guards the specific temptation this mission had: writing a silent or
+  // zero-byte WAV so a hash check passes and the gate appears to move.
+  const proofDir = path.join(ROOT, 'package-runs', '2026-08-25-draft-synthetic-narration-proof');
+  assert.ok(fs.existsSync(proofDir), 'the audit proof package exists');
+  const stray = fs.readdirSync(proofDir).filter((name) => /\.(wav|mp3|m4a|aac|flac|mp4|mov)$/i.test(name));
+  assert.deepEqual(stray, [], 'the narration audit must contain no media files');
+  const audit = JSON.parse(fs.readFileSync(path.join(proofDir, 'narration-capability-audit.json'), 'utf8'));
+  assert.equal(audit.no_audio_generated, true);
+  assert.equal(audit.verdict, 'SYNTHETIC_NARRATION_PROVIDER_MISSING');
+});

@@ -1,0 +1,149 @@
+{
+  "schema": "vidtoolz.draftSyntheticNarrationAudit.v1",
+  "not_a_production_run": true,
+  "verdict": "SYNTHETIC_NARRATION_PROVIDER_MISSING",
+  "second_independent_finding": "AUDIO_RENDER_FIDELITY_CONTRACT_INSUFFICIENT",
+  "no_audio_generated": true,
+  "no_placeholder_written": "deliberately — a silent or zero-byte WAV that satisfies a hash check is the exact fake evidence the proxy contract forbids",
+  "tts_capability_audit": {
+    "in_repo": {
+      "result": "NONE",
+      "detail": "searched *.js, *.json, *.py, *.sh, *.yaml for text_to_speech, speech synthesis, voice_id, voice_clone, t2a and tts_. The only hits are the two policy/contract files written by the previous mission, which describe the gap rather than implement it."
+    },
+    "local_binaries": {
+      "piper": false,
+      "espeak": false,
+      "espeak-ng": false,
+      "festival": false,
+      "flite": false,
+      "spd-say": true,
+      "pico2wave": false,
+      "tts": false,
+      "note": "spd-say exists but is a speech-dispatcher CLIENT: it speaks to an audio device and has no file-output option, so it cannot render narration to disk. libespeak-ng1, espeak-ng-data and the sd_espeak-ng module are installed as LIBRARIES only; dpkg -L shows neither package ships a bin/ entry, and no espeak-ng, piper or flite executable exists anywhere under /usr/bin, /usr/local/bin or /opt."
+    },
+    "python_packages": {
+      "result": "NONE",
+      "checked": [
+        "TTS",
+        "piper",
+        "pyttsx3",
+        "gtts",
+        "espeakng",
+        "kokoro",
+        "torchaudio",
+        "transformers",
+        "bark",
+        "edge_tts"
+      ]
+    },
+    "comfyui": {
+      "result": "NONE",
+      "detail": "config/comfyui/registry.json contains no tts, speech, voice or narration node; the only workflow family is flux-gguf-1080x1920.v1"
+    },
+    "compute_registry": {
+      "result": "NO SPEECH LANE",
+      "lanes": [
+        "wan_i2v",
+        "large_text",
+        "draft_text",
+        "draft_image",
+        "optional_overflow",
+        "music_generation"
+      ],
+      "detail": "the infrastructure provisions a music_generation lane but no narration or speech lane, so speech has not been provisioned as a compute capability at all"
+    },
+    "minimax": {
+      "result": "MUSIC ONLY",
+      "detail": "score-engine/adapters/minimax-caption-reference.js consumes MusicRenderBrief v1 and carries zero voice tokens. It is additionally recorded as not production-approved. No MiniMax credential is present."
+    },
+    "scorecraft": {
+      "result": "CONSUMER NOT PRODUCER",
+      "detail": "Scorecraft narration references estimate duration and duck music UNDER speech. It assumes narration exists; it never synthesizes it."
+    },
+    "ffmpeg": {
+      "ffmpeg": true,
+      "ffprobe": true,
+      "note": "present, so byte and duration validation is available the moment a producer exists. Validation is not the blocker."
+    }
+  },
+  "audio_render_fidelity_finding": {
+    "question": "can AUDIO_RENDER attest DRAFT synthetic narration without claiming it is production audio?",
+    "answer": "NO",
+    "evidence": [
+      "the adapter raises AUDIO_NOT_PRODUCTION_READY for any state other than PRODUCTION_READY, so draft narration would have to either claim PRODUCTION_READY (a lie) or omit state (attesting nothing)",
+      "the payload has no fidelity, source_class or mix_kind field: nothing distinguishes synthetic speech from a final mix",
+      "defects are attributed to sound_music_director, while a draft narration render would be produced by generation_supervisor",
+      "SUPPORTED_EVIDENCE_KINDS is CAMERA_QUALITY, GENERATION_RESULT, EDIT_QC_HANDOFF, AUDIO_RENDER, STORY_VALIDATION — there is no narration or proxy kind",
+      "EVIDENCE_CLASSES is DETERMINISTIC | SPECIALIST | HUMAN | UNVERIFIED, which is a verification-provenance axis and cannot express proxy versus real fidelity"
+    ],
+    "recommendation": "add a distinct typed evidence kind, DRAFT_SYNTHETIC_NARRATION, with its own QC adapter — the same way CAMERA_QUALITY and AUDIO_RENDER are separate kinds. Do NOT overload AUDIO_RENDER; overloading it is how proxy audio would eventually be mistaken for a production mix.",
+    "consequence": "this blocks the narration attestation path independently of the missing provider. Both must be closed for gate 8 DRAFT to move."
+  },
+  "exact_provider_requirements": {
+    "functional": [
+      "render a text segment to a real decodable audio file",
+      "accept a neutral synthetic voice identity that does not imply Mikko",
+      "run locally, offline, with no per-use cost, matching the local-first doctrine",
+      "expose duration and allow a fixed sample rate/format so output matches the production audio contract"
+    ],
+    "smallest_options": [
+      {
+        "option": "espeak-ng CLI",
+        "install": "apt install espeak-ng",
+        "size": "~4 MB, and the library plus voice data are ALREADY installed",
+        "quality": "robotic but fully intelligible",
+        "verdict": "smallest possible unblock; adequate for a temp draft VO and for Scorecraft ducking/timing"
+      },
+      {
+        "option": "piper",
+        "install": "pip install piper-tts plus one voice model (~60-120 MB)",
+        "quality": "natural neural voice",
+        "verdict": "better draft quality, larger footprint, still local and free"
+      }
+    ],
+    "decision_required_from_mikko": "installing a package is a dependency change, which this workspace treats as approval-gated. espeak-ng is the minimal choice and its library and voice data are already present — only the CLI binary is absent.",
+    "not_chosen": [
+      "any paid or cloud TTS: introduces a per-use cost and an external dependency for throwaway draft audio",
+      "voice cloning of Mikko: would require separate explicit authorization and is unnecessary for a proxy"
+    ]
+  },
+  "gate8_draft_state": {
+    "before_this_mission": {
+      "gate_id": "capture-evidence",
+      "gate_number": 8,
+      "mode": "DRAFT",
+      "mode_sensitive": true,
+      "ok": true,
+      "code": null,
+      "defer_to_static": false,
+      "expected_owner": "qc_director",
+      "next_specialist": "generation_supervisor",
+      "human_performer": null,
+      "human_required": false,
+      "human_marker_forbidden": true,
+      "disposition": "PROXY_CAPTURE_READY",
+      "owner_actionable": false,
+      "owner_actionable_reason": null,
+      "implementation_status": "BLOCKED",
+      "static_owner": "qc_director",
+      "static_owner_is_correct": true
+    },
+    "after_this_mission": "unchanged — the evaluator was deliberately not rewired, because there is still no evidence for it to recognise",
+    "correct_next_state_once_narration_exists": "PROXY_AUDIO_READY + PROXY_VISUAL_MISSING, gate still blocked",
+    "human_required": false,
+    "note": "gate 8 DRAFT already asks for no human. The blocker is a missing machine capability, not a missing approval."
+  },
+  "what_was_deliberately_not_done": [
+    "no TTS package installed (dependency changes are approval-gated here)",
+    "no audio bytes written, real or placeholder",
+    "no AUDIO_RENDER record emitted for narration that does not exist",
+    "no new generation_supervisor ACTION declared without an implementation behind it",
+    "no gate-8 evaluator rewiring",
+    "no avatar or proxy visual work"
+  ],
+  "remaining_draft_capability_gaps": [
+    "synthetic narration producer (this mission, blocked on a dependency decision)",
+    "DRAFT_SYNTHETIC_NARRATION evidence kind (blocked on the AUDIO_RENDER fidelity finding)",
+    "proxy presenter visual producer (larger, follows narration)"
+  ]
+}
