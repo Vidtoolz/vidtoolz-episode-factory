@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "proof": "qc-evidence-applicability",
+  "generated_at": "2026-08-25",
+  "verdict": "QC EVIDENCE APPLICABILITY POLICY PROVEN",
+  "not_a_package_run": true,
+  "doctrine": "a missing evidence artifact blocks QC only when (1) it has a legitimate producer, (2) the run has reached the point where it should exist, and (3) the run's production mode actually requires that semantic evidence",
+  "policy_module": "scripts/qc-evidence-policy.js",
+  "documentation": "docs/qc-evidence-applicability.md",
+  "evidence_matrix": {
+    "STORY_VALIDATION": { "class": "MODE_AND_GATE_REQUIRED", "modes": ["DRAFT", "REVIEW", "PRODUCTION"], "earliest_gate": "research", "producer": "story_validator" },
+    "AUDIO_RENDER": { "class": "MODE_REQUIRED", "modes": ["PRODUCTION"], "earliest_gate": "rough-cut-review", "producer": "sound_music_director", "fidelity_gap": "no render_class/fidelity field yet; Draft audio advisory-only, documented not resolved" },
+    "CAMERA_QUALITY": { "class": "GATE_REQUIRED", "earliest_gate": "capture-evidence", "producer": "camera_director" },
+    "GENERATION_RESULT": { "class": "GATE_REQUIRED", "earliest_gate": "production-plan", "producer": "generation_supervisor" },
+    "EDIT_QC_HANDOFF": { "class": "GATE_REQUIRED", "earliest_gate": "rough-cut-review", "producer": "editor" },
+    "FINAL_CUT_APPROVAL": { "class": "HUMAN_EXTERNAL", "earliest_gate": "rough-cut-review", "producer": null },
+    "TITLE_THUMBNAIL_APPROVAL": { "class": "HUMAN_EXTERNAL", "earliest_gate": "publication-metadata", "producer": null }
+  },
+  "promotion_invalidation_matrix": {
+    "STORY_VALIDATION": { "DRAFT_to_REVIEW": "survives (exact Story version unchanged)", "REVIEW_to_PRODUCTION": "survives (exact Story version unchanged); stale on Story version change — verified by SV7 drift test" },
+    "AUDIO_RENDER": { "DRAFT_to_REVIEW": "not required in DRAFT; PRODUCTION-only requirement unchanged", "REVIEW_to_PRODUCTION": "required at/after rough-cut-review; draft audio never satisfies via policy relaxation" },
+    "visual_plan": { "note": "not a QC evidence kind; approval-binding staleness already proven by the gate-6 missions" },
+    "capture_evidence": { "note": "gate 7/8 capture policy owned by the sibling mode mission; audited read-only here" }
+  },
+  "fail_closed_rules": [
+    "required kind with no policy row -> QC_EVIDENCE_POLICY_VIOLATION",
+    "mode-sensitive kind without declared mode -> QC_PRODUCTION_MODE_REQUIRED",
+    "required kind before earliest legitimate gate -> NOT_APPLICABLE_YET (never a missing blocker)",
+    "unknown run_mode value -> QC_TASK_INVALID",
+    "tasks without run_mode keep exact legacy semantics"
+  ],
+  "test_matrix": {
+    "suite": "tests/qc-evidence-applicability.test.js",
+    "result": "17/17",
+    "cases": [
+      "QAP1 all evidence kinds classified (incl. human/external)",
+      "QAP2 producer reachability invariant holds",
+      "QAP3 MODE_UNSPECIFIED fails closed, never guessed",
+      "QAP4 early evidence NOT_APPLICABLE_YET",
+      "QAP5 evidence required at correct gate blocks when absent",
+      "QAP6 DRAFT requires no human capture evidence",
+      "QAP7 REVIEW reuses valid DRAFT-era Story evidence",
+      "QAP8 PRODUCTION rejects insufficient proxy fidelity",
+      "QAP9 STORY_VALIDATION survives mode promotion",
+      "QAP10 STORY_VALIDATION stale on Story change",
+      "QAP11 AUDIO_RENDER Draft fidelity gap documented",
+      "QAP12 PRODUCTION audio absence blocks truthfully",
+      "QAP13 mode change never rewrites evidence files",
+      "QAP14 QC performs no mode/lifecycle writes",
+      "QAP15 every REQUIRED-class row has an existing producer",
+      "QAP16 applicability consistency invariant",
+      "QAP17 legacy semantics preserved for undeclared-mode tasks"
+    ]
+  },
+  "policy_bug_found_and_fixed": "HUMAN_EXTERNAL kinds initially fell through to REQUIRED in resolveApplicability; fixed with an explicit HUMAN_BOUNDARY resolution before mode checks — human boundary evidence is never a machine evidence requirement",
+  "invariants": {
+    "producer_reachability": "every policy row that can be REQUIRED names an existing producer module (extended from the STORY_VALIDATION mission)",
+    "applicability_consistency": "no kind resolves REQUIRED before its earliest gate, in an unlisted mode, or under MODE_UNSPECIFIED"
+  },
+  "regressions_preserved": {
+    "qc-director": "46/46",
+    "story-validation-bridge": "13/13",
+    "audio-render-evidence": "15/15",
+    "production-mode-gate-policy": "42/42"
+  },
+  "retained_canary": {
+    "run": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+    "mode": "MODE_UNSPECIFIED (untouched by design)",
+    "gate": "capture-checklist, 6/14 (unchanged)"
+  },
+  "scope_boundaries": {
+    "gate7_capture_policy": "read-only; sibling mission owns config/gate-mode-policy.json gates 7-8",
+    "earth_studio": "zero changes",
+    "scorecraft": "zero changes",
+    "story_validation_producer": "untouched (reference only)",
+    "audio_render_producer": "untouched (reference only)"
+  }
+}
