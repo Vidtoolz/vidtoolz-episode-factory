@@ -18,6 +18,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 
 const ptm = require('./presenter-take-manifest.js');
+const { deriveOperationalRationale } = require('./operational-rationale.js');
 
 const AGENT_ID = 'presenter_director';
 const LANE = 'large_text';
@@ -253,6 +254,17 @@ function finish(base, state, reason, nextOwner) {
   base.state = state; base.reason = reason || null; base.owner = AGENT_ID; base.next_owner = nextOwner;
   base.attention = ['BLOCKED', 'ESCALATED', 'NEEDS_HUMAN_DECISION', 'RETURN_TO_STORY', 'RETURN_TO_RESEARCH', 'STALE'].includes(state) ? 'DECISION' : state === 'AWAITING_HUMAN_REVIEW' ? 'REVIEW' : 'INFORMATION';
   base.events.push({ at: nowIso(), state, reason: reason || null });
+  /*
+   * REVIEW and DECISION outcomes must carry an operational rationale or the
+   * canonical runner rejects the envelope as RUNNER_ENVELOPE_INVALID. PD was the
+   * only specialist that never emitted one, so every refusal it produced — an
+   * unapproved script, a stale Story, a Research return — was semantically
+   * correct and undispatchable. Derived from the same shared helper the peers
+   * use, so a refusal always says why it refused.
+   */
+  if (base.attention === 'REVIEW' || base.attention === 'DECISION') {
+    base.operational_rationale = deriveOperationalRationale(controlRoomView(base), base.attention);
+  }
   return base;
 }
 
