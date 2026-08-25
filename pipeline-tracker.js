@@ -3,8 +3,14 @@
  * Shows the 13-stage canonical production pipeline with progress per video.
  * Any page can include this and call PipelineTracker.mount(container, data).
  *
- * This file's STAGES / VERTICAL_STAGES arrays are the RUNTIME SOURCE OF TRUTH
- * for the production stage model. config/production-stages.json and
+ * AUTHORITY (config/agent-contract.json lifecycle_authority, locked 2026-08-22):
+ * Production lifecycle state is owned by the 14-gate workflow engine
+ * (scripts/package-run-workflow-map.js). This tracker is a DISPLAY PROJECTION
+ * of the stage model: it renders progress, it never advances or redefines
+ * canonical run state. Projection loss must degrade display, never authority.
+ *
+ * This file's STAGES / VERTICAL_STAGES arrays are the display source of the
+ * stage VOCABULARY. config/production-stages.json and
  * VIDTOOLZ-CANONICAL-PRODUCTION-SPEC.md are generated FROM here via
  * `node scripts/generate-production-spec.js` (a drift check runs in the tests).
  * Edit stages here, then regenerate — do not edit the generated artifacts.

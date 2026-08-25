@@ -9,6 +9,12 @@ This is the one operator-facing production stage model. The cockpit pipeline
 tracker renders exactly these stages, so what you see in the cockpit and what
 this spec says are the same thing.
 
+Lifecycle authority: production run state is owned by the 14-gate workflow
+engine (`scripts/package-run-workflow-map.js`). This spec and the tracker are
+display projections of the stage vocabulary; they never advance canonical state.
+Per-run durable state is projected into `package-run-state.md` by Production
+Operations (`scripts/package-run-state-operations.js`).
+
 ## Horizontal pipeline (default, 13 stages)
 
 | # | key | label | short |

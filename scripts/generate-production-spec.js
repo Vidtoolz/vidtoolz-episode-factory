@@ -2,9 +2,14 @@
 "use strict";
 
 // Generates the canonical, source-derived production-stage artifacts from the
-// ONE runtime source of truth: pipeline-tracker.js (STAGES / VERTICAL_STAGES).
+// ONE display source of the stage vocabulary: pipeline-tracker.js
+// (STAGES / VERTICAL_STAGES).
+// AUTHORITY: production lifecycle state belongs to the 14-gate workflow engine
+// (scripts/package-run-workflow-map.js). The tracker and these generated
+// artifacts are display projections of the stage vocabulary — they never
+// advance canonical run state (config/agent-contract.json lifecycle_authority).
 // pipeline-tracker.js is a browser module loaded by the cockpit pages and the
-// repo has no build step, so the tracker stays the runtime source and these
+// repo has no build step, so the tracker stays the display source and these
 // artifacts are generated from it (Option 2). Run with no args to (re)write the
 // artifacts; run with --check to fail if they have drifted from the tracker.
 //
@@ -50,6 +55,12 @@ function buildSpecMarkdown() {
     "This is the one operator-facing production stage model. The cockpit pipeline",
     "tracker renders exactly these stages, so what you see in the cockpit and what",
     "this spec says are the same thing.",
+    "",
+    "Lifecycle authority: production run state is owned by the 14-gate workflow",
+    "engine (`scripts/package-run-workflow-map.js`). This spec and the tracker are",
+    "display projections of the stage vocabulary; they never advance canonical state.",
+    "Per-run durable state is projected into `package-run-state.md` by Production",
+    "Operations (`scripts/package-run-state-operations.js`).",
     "",
     "## Horizontal pipeline (default, 13 stages)",
     "",
