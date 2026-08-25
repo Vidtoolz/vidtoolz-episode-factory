@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "proof": "production-supervised-capture-readiness",
+  "generated_at": "2026-08-25",
+  "verdict": "PRODUCTION SUPERVISED CAPTURE READY AT MACHINE BOUNDARY — PRESENTER DIRECTOR ENABLEMENT REQUIRED FOR DIRECTION LANE — HUMAN PERFORMANCE REQUIRED",
+  "not_a_package_run": true,
+
+  "scope": "Audit and close the supervised production-capture lane up to the human performance boundary. No real presenter media was fabricated; no Draft substitute was accepted; Presenter Director was not enabled.",
+
+  "live_baseline": {
+    "start_head": "61ba4ef37036d326271f0f3afe072119720c9aa4",
+    "prior_stable_aggregate": "5212/5214 at 61ba4ef, two Codex Earth Studio failures",
+    "concurrent_siblings": ["Codex --yolo active", "Claude building supervised-presenter-take-adapter.js (uncommitted, complementary lane, left untouched)"]
+  },
+
+  "promotion_path": {
+    "authority": "human identity only (scripts/package-run-production-mode.js)",
+    "proven": true,
+    "evidence": "PC1: agent ids (generation_supervisor, hermes) refused with PRODUCTION_MODE_HUMAN_AUTHORITY_REQUIRED; human authority succeeds",
+    "proxy_carry_over": "impossible — PC2: gate-8 PRODUCTION requires REAL_CAPTURE_CONFIRMED with proxy_evidence_sufficient=false; gate-7 PRODUCTION disposition REAL_CAPTURE_REQUIRED with human_performance_required=true; production_promotion.proxy_does_not_carry documented in gate-mode-policy.json"
+  },
+
+  "machine_human_boundary": {
+    "machine_preparation_owner": "production_operations (registry: PROVEN, autonomous_dispatch ENABLED; owns preparation orchestration)",
+    "human_performer": "mikko (the physical performance — no agent may synthesize it)",
+    "machine_post_capture": "presenter-take-manifest ingestion (byte-exact sha256 + ffprobe validation), fidelity records, human-only selection, buildEditorHandoff into Editor/upstream audit",
+    "readiness_state": "vidtoolz.productionCaptureReadiness.v1 READY_FOR_HUMAN_PERFORMANCE — all machine prerequisites green, recording still absent; NOT capture complete"
+  },
+
+  "presenter_director_status": {
+    "doctrine": "DEFINED (config/agent-registry.json)",
+    "proven": "NOT_PROVEN",
+    "autonomous_dispatch": "DISABLED",
+    "executable_boundary": "BLOCKED_AGENT_NOT_ENABLED (live check, not documentation)",
+    "enablement_prerequisites": [
+      "canonical presenter take/delivery artifact contract proven end to end",
+      "Editor take-selection boundary demonstrated against real evidence",
+      "explicit human enablement decision by Mikko"
+    ],
+    "enablement_record_in_governance": null,
+    "decision_this_mission": "NOT ENABLED — explicit Mikko authorization absent; enablement is genuinely outstanding"
+  },
+
+  "pre_capture_prerequisites": {
+    "machine_owned": [
+      "PRODUCTION_MODE_DECLARED (human authority)",
+      "STORY_BINDING_PRESENT",
+      "STORY_VALIDATION_PASS",
+      "STORY_IDENTITY_CONSISTENT",
+      "DELIVERY_SCRIPT_BOUND (sha256-bound to story-binding provenance — exact text Mikko performs, never rewritten)",
+      "PRESENTER_TAKE_MANIFEST_INITIALIZED (recording units exist; zero takes)",
+      "CAPTURE_ARTIFACTS_GENERATED (five gate-7 files, deterministic generator exists: package-run-capture-checklist.js)"
+    ],
+    "invariant": "human performance requested only after all machine-owned prerequisites green (PC3); readiness never implies capture complete (PC6, PC15)"
+  },
+
+  "recording_contract": {
+    "take_ingestion": "presenter-take-manifest.registerTake — media sha256 + byte_size + ffprobe has_video/has_audio verification against real bytes",
+    "audio_authority": "embedded audio stream in the presenter take media (requires_audio=true on the take); no separate standalone recording required — embedded vs standalone resolved by the take media contract, not duplicated",
+    "take_semantics": "real human take only; proxy/synthetic origin rejected loudly at the upstream audit boundary (PC4/PC5/PC12)",
+    "best_take_authority": "Presenter Director proposes (once enabled); human selection is canonical — createHumanSelection requires verified human selector; Editor consumes the selection via buildEditorHandoff"
+  },
+
+  "editor_handoff": {
+    "proven": "PC13: buildEditorHandoff emits exact per-unit selected_take.media.sha256 + path, deterministic; PC9: binding is byte-exact, never latest-file discovery; PC14: upstream audit clears REAL_PRESENTER_AUDIO_MISSING once a valid take is bound — closing the loop with the PRODUCTION_MIX upstream-material mission"
+  },
+
+  "negative_canaries": {
+    "live_retained_canary": "2026-08-25-lifecycle-integration-canary: evaluateReadiness returns MODE_BLOCKED (MODE_UNSPECIFIED) — honest, never false-ready",
+    "proxy_negatives": ["PC4 PROXY_PRESENTER rejected", "PC5 DRAFT_SYNTHETIC_NARRATION rejected", "PC12 proxy origin rejected at ingestion boundary"],
+    "mutation_negative": "PC10 media mutation after capture invalidates authority",
+    "run_mismatch_negative": "PC11 wrong story identity rejected",
+    "agent_count": "PC16: exactly 12 agents; no 13th agent introduced"
+  },
+
+  "gate_semantics": {
+    "gate_7_production": "machine preparation (production_operations) + delivery direction (presenter_director, disabled pending enablement) + Mikko performance; terminal machine-prepared state = READY_FOR_HUMAN_PERFORMANCE",
+    "gate_8_production": "Mikko confirms the real captured material — REAL_CAPTURE_CONFIRMED; proxy evidence never sufficient; the human confirmation is that the captured material is what was intended"
+  },
+
+  "remaining_blocker": {
+    "machine_preparation": "COMPLETE in architecture — deterministic readiness auditor + capture artifact generator + ingestion + handoff all proven",
+    "direction_lane": "PRESENTER DIRECTOR ENABLEMENT REQUIRED — explicit Mikko authorization is the only missing authority for delivery direction; without it, preparation proceeds, direction cannot be dispatched",
+    "human_performance": "REQUIRED — Mikko must physically record; no software closes this"
+  },
+
+  "test_results": {
+    "production-capture-readiness": "PC1-PC16: 16/16",
+    "sibling_lane_observed": "supervised-presenter-take-adapter.test.js 13/13 (Claude, uncommitted, not owned/staged by this mission)"
+  }
+}
