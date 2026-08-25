@@ -60,7 +60,7 @@ function probeHttp(url, timeoutMs = 5000) {
 // The canonical runner reads ACTIONS to validate a requested action before it
 // invokes the module. A task with no action keeps the historical direct-CLI
 // behaviour and is treated as a supervision request.
-const ACTIONS = Object.freeze(['supervise_generation', 'generate_draft_narration', 'status']);
+const ACTIONS = Object.freeze(['supervise_generation', 'generate_draft_narration', 'generate_draft_proxy_presenter', 'status']);
 const DEFAULT_ACTION = 'supervise_generation';
 
 function requestedAction(task) {
@@ -166,6 +166,12 @@ async function run(task, options = {}) {
     // here rather than discovered by attempting a render.
     try {
       const readiness = require('./synthetic-narration-provider.js').providerReadiness();
+      status.draft_proxy_presenter = (() => {
+        try {
+          const r = require('./draft-proxy-presenter-provider.js').rendererReadiness();
+          return { actionable: r.actionable, renderer: r.renderer, style: r.style, blockers: r.blockers };
+        } catch (error) { return { actionable: false, blockers: [String(error.message).slice(0, 160)] }; }
+      })();
       status.draft_narration = {
         actionable: readiness.actionable,
         provider: readiness.provider,
@@ -174,6 +180,12 @@ async function run(task, options = {}) {
         blockers: readiness.blockers,
       };
     } catch (error) {
+      status.draft_proxy_presenter = (() => {
+        try {
+          const r = require('./draft-proxy-presenter-provider.js').rendererReadiness();
+          return { actionable: r.actionable, renderer: r.renderer, style: r.style, blockers: r.blockers };
+        } catch (error) { return { actionable: false, blockers: [String(error.message).slice(0, 160)] }; }
+      })();
       status.draft_narration = { actionable: false, blockers: [String(error.message).slice(0, 160)] };
     }
     status.handoff = { next_owner: 'hermes', next_action: 'DISPATCH_GENERATION_BRIEF' };
@@ -252,6 +264,79 @@ async function run(task, options = {}) {
     status.state = 'COMPLETE';
     status.reason = `draft synthetic narration ready: ${built.manifest.assembled.duration_seconds.toFixed(2)}s across ${built.manifest.coverage.spoken_segments} beat(s)`;
     status.handoff = { next_owner: 'qc_director', next_action: 'INSPECT_DRAFT_SYNTHETIC_NARRATION' };
+    ev('COMPLETE', status.reason);
+    return finish();
+  }
+
+  // ── generate_draft_proxy_presenter: the DRAFT visible speaker ────────────
+  // Requires valid narration first, because narration supplies the timing. The
+  // output is a PROXY_PRESENTER track, never presenter A-roll.
+  if (action === 'generate_draft_proxy_presenter') {
+    const runDir = task.run_dir || task.package_run_dir
+      || (task.package_run_id ? path.join(path.resolve(options.repoRoot || path.join(__dirname, '..')), 'package-runs', task.package_run_id) : null);
+    if (!runDir) {
+      status.state = 'INPUT_MISSING';
+      status.reason = 'generate_draft_proxy_presenter requires package_run_id or run_dir';
+      ev('INPUT_MISSING', status.reason);
+      return finish();
+    }
+    const presenter = require('./package-run-draft-proxy-presenter.js');
+    const rendererModule = require('./draft-proxy-presenter-provider.js');
+
+    const readiness = rendererModule.rendererReadiness();
+    status.route = { lane: 'local_proxy_presenter', renderer: readiness.renderer, version: readiness.version, style: readiness.style };
+    if (!readiness.actionable) {
+      status.state = 'RESOURCE_UNAVAILABLE';
+      status.reason = `proxy presenter renderer unavailable: ${readiness.blockers.join('; ')}`;
+      ev('RESOURCE_UNAVAILABLE', status.reason);
+      return finish();
+    }
+
+    let built;
+    try {
+      built = presenter.buildDraftProxyPresenter(runDir, { taskId: task.task_id });
+    } catch (error) {
+      status.state = ['PROXY_MODE_NOT_DRAFT', 'PROXY_NARRATION_MISSING', 'PROXY_NARRATION_INVALID', 'PROXY_NARRATION_EMPTY'].includes(error.code)
+        ? 'INPUT_MISSING' : 'GENERATION_FAILED';
+      status.reason = `${error.code || 'PROXY_PRESENTER_FAILED'}: ${error.message}`;
+      ev(status.state, status.reason);
+      return finish();
+    }
+    ev('GENERATED', `${built.manifest.coverage.covered_beats} presenter segment(s)`);
+
+    const evidence = presenter.attestProxyPresenter(runDir, { taskId: task.task_id });
+    if (evidence.state !== 'VERIFIED') {
+      status.state = 'OUTPUT_INVALID';
+      status.reason = `proxy presenter evidence did not verify: ${[...evidence.source_binding.drift, ...evidence.technical_validation.failures].join('; ')}`;
+      ev('OUTPUT_INVALID', status.reason);
+      return finish();
+    }
+
+    status.artifact_class = 'draft_proxy_presenter';
+    status.outputs = [{
+      path: built.manifest.assembled.video_path,
+      sha256: built.manifest.assembled.video_sha256,
+      bytes: built.manifest.assembled.bytes,
+      duration_seconds: built.manifest.assembled.duration_seconds,
+    }];
+    status.provenance = {
+      renderer: readiness.renderer,
+      renderer_version: readiness.version,
+      style: readiness.style,
+      motion_model: readiness.motion_model,
+      lip_sync: readiness.lip_sync,
+      track_role: presenter.TRACK_ROLE,
+      story: built.manifest.story,
+      narration_audio_sha256: built.manifest.audio.narration_audio_sha256,
+      fidelity: presenter.FIDELITY,
+      is_real_presenter: false,
+      is_mikko_likeness: false,
+    };
+    status.qc = { required: true, state: 'QC_PENDING', verdict: null, evidence_kind: presenter.EVIDENCE_KIND };
+    status.evidence = { kind: presenter.EVIDENCE_KIND, file: presenter.EVIDENCE_FILE, state: evidence.state, satisfies_real_capture: false };
+    status.state = 'COMPLETE';
+    status.reason = `draft proxy presenter ready: ${built.manifest.assembled.duration_seconds.toFixed(2)}s over ${built.manifest.coverage.covered_beats} beat(s)`;
+    status.handoff = { next_owner: 'qc_director', next_action: 'INSPECT_PROXY_PRESENTER' };
     ev('COMPLETE', status.reason);
     return finish();
   }

@@ -120,6 +120,28 @@
         "proof_package": "package-runs/2026-08-25-draft-synthetic-narration-proof/draft-narration-proof.json"
       },
       "reproven": "all pre-existing generation-supervisor and generation-package-bridge tests pass unmodified; 19 new narration tests cover the added action, including its fail-closed paths"
+    },
+    {
+      "extension": "draft_proxy_presenter",
+      "module_path": "scripts/generation-supervisor.js",
+      "module_sha256": "532d6879885d09911ceb2a447fd4a206eaeca7c88a3e43120bfa72035f19f498",
+      "supersedes_binding": "099859255d6923298abfcab5046dea30ea010a8b70ed6859c192b94965199f76",
+      "actions_added": [
+        "generate_draft_proxy_presenter"
+      ],
+      "changes": [
+        "added the generate_draft_proxy_presenter action with a real implementation: ffmpeg renders a stick-figure presenter track beat-aligned to the draft narration",
+        "status now also reports whether the proxy presenter renderer is actionable"
+      ],
+      "generation_behaviour_changed": false,
+      "generation_behaviour_note": "supervise_generation is untouched. The new action resolves no media-routing lane and dispatches no image or video model workload; it composites locally with ffmpeg.",
+      "input_contract_changed": false,
+      "output_contract_changed": "additive only — route/outputs/provenance/evidence on the new action, and status.draft_proxy_presenter",
+      "fidelity_note": "the video produced is PROXY_PRESENTER at DRAFT fidelity, records satisfies_real_capture false and is_mikko_likeness false, and can never stand in for presenter A-roll.",
+      "proof_binding": {
+        "proof_package": "package-runs/2026-08-25-draft-proxy-presenter-proof/draft-proxy-presenter-proof.json"
+      },
+      "reproven": "all pre-existing generation-supervisor tests pass unmodified; 17 new proxy presenter tests cover the added action including its fail-closed paths"
     }
   ],
   "statement_amendment": "The original repair binding is preserved verbatim above. Later capability growth on this module is recorded in subsequent_extensions, each binding the module hash at the time of that extension, so module drift is still detectable without erasing what was originally proven."
