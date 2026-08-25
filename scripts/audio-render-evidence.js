@@ -44,11 +44,23 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
+const evidencePolicy = require('./qc-evidence-policy.js');
 
-const ATTESTER_ID = 'audio-render-attester-v1';
+const ATTESTER_ID = 'audio-render-attester-v2';
 const PRODUCER = 'sound_music_director';
 const EVIDENCE_KIND = 'AUDIO_RENDER';
-const SCHEMA_VERSION = 1;
+/*
+ * Schema history:
+ *   v1 — proven render attestation without a fidelity class (legacy). Legacy
+ *        evidence stays v1 on disk; verify classifies it as CLASS_UNKNOWN and
+ *        class-sensitive QC cannot consume it. Re-attest to upgrade.
+ *   v2 — adds `render_class` from the canonical fidelity vocabulary
+ *        (qc-evidence-policy.js RENDER_CLASSES), validated + producer-
+ *        authorized at attestation time. Adding a semantic dimension to the
+ *        evidence contract is a schema change: v2, not silent v1 mutation.
+ */
+const SCHEMA_VERSION = 2;
+const DEFAULT_RENDER_CLASS = 'MUSIC_CANDIDATE';
 const EVIDENCE_FILE = 'audio-render-evidence.json';
 const STATES = Object.freeze(['PRODUCTION_READY', 'NOT_PRODUCTION_READY']);
 const DURATION_TOLERANCE_S = 0.5;
@@ -143,10 +155,30 @@ function validateProvenance(meta) {
   return { ok: problems.length === 0, problems };
 }
 
+/*
+ * Resolve and authorize the render class. Fail closed:
+ *   - the class must exist in the canonical vocabulary
+ *   - the attesting producer must be authorized for that class
+ * No free-text classes, no inference from filename or bytes.
+ */
+function resolveRenderClass(renderClass, producer) {
+  const cls = renderClass || DEFAULT_RENDER_CLASS;
+  if (!evidencePolicy.RENDER_CLASSES[cls]) {
+    fail('AUDIO_RENDER_CLASS_UNKNOWN',
+      `render_class ${JSON.stringify(cls)} is not in the canonical vocabulary (allowed: ${Object.keys(evidencePolicy.RENDER_CLASSES).join(', ')})`);
+  }
+  if (!evidencePolicy.producerAuthorizedForClass(producer, cls)) {
+    fail('AUDIO_RENDER_CLASS_UNAUTHORIZED',
+      `producer ${producer} is not authorized to attest render class ${cls}`);
+  }
+  return cls;
+}
+
 /* ------------------------------------------------------------- attest ------ */
 
 function attestAudioRender(recordDir, options = {}) {
   const { dir, meta, wavPath } = loadCandidateRecord(recordDir);
+  const renderClass = resolveRenderClass(options.renderClass, options.producer || PRODUCER);
   const provenance = validateProvenance(meta);
 
   const bytes = fs.readFileSync(wavPath);
@@ -178,6 +210,7 @@ function attestAudioRender(recordDir, options = {}) {
     schema_version: SCHEMA_VERSION,
     artifact_type: 'audio-render',
     evidence_kind: EVIDENCE_KIND,
+    render_class: renderClass,
     state,
     production_mix_sha256: observedSha,
     duration_seconds: probe.duration_seconds,
@@ -211,7 +244,8 @@ function attestAudioRender(recordDir, options = {}) {
   return {
     schema_version: SCHEMA_VERSION,
     evidence_kind: EVIDENCE_KIND,
-    producer: PRODUCER,
+    render_class: renderClass,
+    producer: options.producer || PRODUCER,
     attester: ATTESTER_ID,
     state,
     production_mix_sha256: observedSha,
@@ -263,8 +297,15 @@ function verifyExistingEvidence(runDir, options = {}) {
   let recorded;
   try { recorded = JSON.parse(fs.readFileSync(target, 'utf8')); }
   catch (_) { fail('AUDIO_RENDER_EVIDENCE_MALFORMED', `${EVIDENCE_FILE} is not valid JSON`); }
-  if (recorded?.schema_version !== SCHEMA_VERSION) {
+  if (recorded?.schema_version !== SCHEMA_VERSION && recorded?.schema_version !== 1) {
     fail('AUDIO_RENDER_SCHEMA_UNSUPPORTED', `evidence schema_version is ${recorded?.schema_version}`);
+  }
+  // Legacy v1 evidence carries no fidelity class. It remains historical and
+  // technically valid, but class-sensitive QC cannot consume it — it must be
+  // re-attested, never silently promoted.
+  const legacy = recorded?.schema_version === 1;
+  if (!legacy && !evidencePolicy.RENDER_CLASSES[recorded?.render_class]) {
+    fail('AUDIO_RENDER_CLASS_UNKNOWN', `evidence render_class ${JSON.stringify(recorded?.render_class ?? null)} is not canonical`);
   }
   if (!recorded.provenance?.candidate_record_path) {
     return { ok: false, stale: true, reason: 'AUDIO_RENDER_RECORD_UNRESOLVABLE', message: 'evidence carries no candidate record path' };
@@ -277,7 +318,11 @@ function verifyExistingEvidence(runDir, options = {}) {
   if (liveSha !== recorded.production_mix_sha256) {
     return { ok: false, stale: true, reason: 'AUDIO_RENDER_STALE', message: 'audio bytes changed after evidence was recorded' };
   }
-  return { ok: true, stale: false, production_mix_sha256: liveSha, recorded_state: recorded.state };
+  return {
+    ok: true, stale: false, legacy,
+    render_class: legacy ? 'AUDIO_RENDER_CLASS_UNKNOWN' : recorded.render_class,
+    production_mix_sha256: liveSha, recorded_state: recorded.state,
+  };
 }
 
 /* ----------------------------------------------------------------- CLI ----- */
@@ -289,6 +334,7 @@ function parseArgs(argv) {
     if (arg === '--run') out.runDir = argv[++i];
     else if (arg === '--record') out.recordDir = argv[++i];
     else if (arg === '--project') out.projectId = argv[++i];
+    else if (arg === '--render-class') out.renderClass = argv[++i];
     else if (arg === '--verify') out.verify = true;
     else if (arg === '--repo-root') out.repoRoot = argv[++i];
     else throw new Error(`unknown argument: ${arg}`);
@@ -303,7 +349,7 @@ function main() {
     if (!options.verify && !options.recordDir) throw new Error('--record is required');
     const result = options.verify
       ? verifyExistingEvidence(path.resolve(options.runDir))
-      : materializeAudioRenderEvidence(path.resolve(options.runDir), path.resolve(options.recordDir), { projectId: options.projectId });
+      : materializeAudioRenderEvidence(path.resolve(options.runDir), path.resolve(options.recordDir), { projectId: options.projectId, renderClass: options.renderClass });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } catch (error) {
     process.stdout.write(`${JSON.stringify({ ok: false, code: error.code || 'AUDIO_RENDER_FAILED', message: error.message }, null, 2)}\n`);
@@ -313,8 +359,9 @@ function main() {
 
 module.exports = {
   ATTESTER_ID, PRODUCER, EVIDENCE_KIND, EVIDENCE_FILE, STATES,
+  SCHEMA_VERSION, DEFAULT_RENDER_CLASS,
   AudioRenderEvidenceError, probeAudio, loadCandidateRecord, validateProvenance,
-  attestAudioRender, materializeAudioRenderEvidence, verifyExistingEvidence,
+  resolveRenderClass, attestAudioRender, materializeAudioRenderEvidence, verifyExistingEvidence,
   evidencePath, main,
 };
 

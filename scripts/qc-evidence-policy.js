@@ -51,6 +51,71 @@ const APPLICABILITY_CLASSES = Object.freeze([
   'OPTIONAL_ADVISORY', 'HUMAN_EXTERNAL',
 ]);
 
+/* ── audio render classes (fidelity axis) ──────────────────────────────────
+ * Audio evidence has THREE orthogonal axes; conflating them is semantic
+ * collapse and is prohibited:
+ *   1. evidence kind      — WHAT is the artifact (AUDIO_RENDER,
+ *                           DRAFT_SYNTHETIC_NARRATION, ...)
+ *   2. render class       — at WHAT PRODUCTION LEVEL is the audio valid
+ *   3. source/producer    — WHO/HOW it was produced
+ *
+ * The render-class vocabulary below is canonical for the AUDIO_RENDER kind.
+ * DRAFT_SYNTHETIC_NARRATION is a distinct kind with its own declared fidelity
+ * (DRAFT_SYNTHETIC_PROXY, owned by its producer) and never becomes
+ * AUDIO_RENDER. Classes are NOT a quality ordering: a music candidate is not
+ * a lower-grade production mix — they are different semantic branches, and
+ * compatibility is encoded per requirement, not ranked.
+ */
+const RENDER_CLASSES = Object.freeze({
+  MUSIC_CANDIDATE: Object.freeze({
+    meaning: 'Scorecraft music-lane candidate render (production.wav of a completed music candidate)',
+    proves: 'a real music render exists, is technically valid, and carries complete generation provenance',
+    does_not_prove: ['final program mix', 'dialogue/narration audio', 'human performance', 'publication approval'],
+    authorized_producers: Object.freeze(['sound_music_director']),
+    supersedes: null,
+  }),
+  DRAFT_TEMPORARY: Object.freeze({
+    meaning: 'draft-grade temporary audio attested under AUDIO_RENDER (temporary music/temp mix in a DRAFT rough cut)',
+    proves: 'a technically valid temporary render exists for DRAFT use',
+    does_not_prove: ['production readiness', 'final program mix', 'human performance', 'publication approval'],
+    authorized_producers: Object.freeze(['sound_music_director']),
+    supersedes: null,
+  }),
+  PRODUCTION_MIX: Object.freeze({
+    meaning: 'final program mix (dialogue/narration + music + effects) at production fidelity',
+    proves: 'the complete production program audio exists and is technically valid',
+    does_not_prove: ['human performance', 'capture evidence', 'publication approval'],
+    authorized_producers: Object.freeze([]), // declared gap: no legitimate producer exists yet (§40 doctrine)
+    supersedes: null,
+  }),
+});
+
+/*
+ * Declarative producer → class authorization. A producer may only claim a
+ * class it semantically owns; writing the field is not authorization.
+ * PRODUCTION_MIX intentionally has no authorized producer: exposing the gap
+ * truthfully is the contract (a Sound & Music Director candidate render must
+ * never impersonate a final mix engine).
+ */
+function producerAuthorizedForClass(producer, renderClass) {
+  const cls = RENDER_CLASSES[renderClass];
+  if (!cls) return false;
+  return cls.authorized_producers.includes(producer);
+}
+
+/*
+ * Known, declared producer gaps for class-sensitive requirements. A gap is
+ * machine-readable and explained — it is never silently relaxed, and it is
+ * never reported as an unexplained invariant violation.
+ */
+const KNOWN_CLASS_GAPS = Object.freeze({
+  PRODUCTION_MIX: Object.freeze({
+    class: 'PRODUCTION_MIX',
+    status: 'PRODUCER_MISSING',
+    note: 'No final program-mix render path exists (dialogue + music + effects). When one lands it needs its own evidence kind/attestation; PRODUCTION program audio cannot be satisfied by a music candidate.',
+  }),
+});
+
 /*
  * The policy itself. `producer` names the canonical producer proven in the
  * STORY_VALIDATION / AUDIO_RENDER missions; producer-less rows are only legal
@@ -75,8 +140,18 @@ const EVIDENCE_POLICY = Object.freeze({
     earliest_gate: 'rough-cut-review',
     producer: 'sound_music_director',
     producer_module: 'scripts/audio-render-evidence.js',
-    rationale: 'A final rendered soundtrack is a production-fidelity requirement; before assembly no render can legitimately exist.',
-    fidelity_note: 'Current evidence records render provenance + technical facts but no draft/production fidelity class. A DRAFT synthetic/temporary render satisfies DRAFT QC only as OPTIONAL_ADVISORY material until the fidelity contract gains a render_class field; PRODUCTION is never satisfied by weaker semantics via policy relaxation — the producer must emit production-fidelity evidence.',
+    required_render_class: 'PRODUCTION_MIX',
+    rationale: 'A final rendered program soundtrack is a production-fidelity requirement; before assembly no render can legitimately exist.',
+    fidelity_contract: 'Mechanically enforced via render_class: PRODUCTION requires class PRODUCTION_MIX. The attester emits MUSIC_CANDIDATE for Scorecraft candidate renders. PRODUCTION_MIX has no authorized producer — a declared gap (KNOWN_CLASS_GAPS.PRODUCTION_MIX), never silently relaxed.',
+  }),
+  DRAFT_SYNTHETIC_NARRATION: Object.freeze({
+    class: 'MODE_REQUIRED',
+    modes: Object.freeze(['DRAFT', 'REVIEW']),
+    earliest_gate: 'capture-checklist',
+    producer: 'generation_supervisor',
+    producer_module: 'scripts/package-run-draft-narration.js',
+    rationale: 'Synthetic proxy narration is a DRAFT-mode capability; REVIEW reuses what the Draft produced without regenerating. It is its own evidence kind with its own declared fidelity (DRAFT_SYNTHETIC_PROXY) and never becomes AUDIO_RENDER.',
+    fidelity_note: 'Declared fidelity is owned by its producer (DRAFT_SYNTHETIC_PROXY); it does not participate in the AUDIO_RENDER render-class vocabulary and cannot satisfy any AUDIO_RENDER class requirement.',
   }),
   CAMERA_QUALITY: Object.freeze({
     class: 'GATE_REQUIRED',
@@ -286,8 +361,33 @@ function checkApplicabilityConsistency() {
   return { ok: violations.length === 0, violations };
 }
 
+/*
+ * Invariant 3 (audio fidelity): every class-sensitive QC audio requirement
+ * names a canonical render class, and every such class has at least one
+ * authorized producer path — OR is an explicitly declared known gap. No
+ * class-sensitive requirement may point at an unknown class, and no
+ * unexplained producer-less class requirement may exist.
+ */
+function checkAudioFidelityConsistency() {
+  const violations = [];
+  for (const [kind, row] of Object.entries(EVIDENCE_POLICY)) {
+    if (!row.required_render_class) continue;
+    const cls = RENDER_CLASSES[row.required_render_class];
+    if (!cls) {
+      violations.push({ kind, reason: `required_render_class is not canonical: ${row.required_render_class}` });
+      continue;
+    }
+    const declaredGap = KNOWN_CLASS_GAPS[row.required_render_class];
+    if (cls.authorized_producers.length === 0 && !declaredGap) {
+      violations.push({ kind, reason: `render class ${row.required_render_class} has no authorized producer and is not a declared known gap` });
+    }
+  }
+  return { ok: violations.length === 0, violations };
+}
+
 module.exports = {
   GATE_ORDER, MODES, MODE_UNSPECIFIED, APPLICABILITY_CLASSES, EVIDENCE_POLICY,
+  RENDER_CLASSES, KNOWN_CLASS_GAPS, producerAuthorizedForClass,
   gateIndex, policyForKind, resolveApplicability, auditRequiredEvidence,
-  checkProducerReachability, checkApplicabilityConsistency,
+  checkProducerReachability, checkApplicabilityConsistency, checkAudioFidelityConsistency,
 };
