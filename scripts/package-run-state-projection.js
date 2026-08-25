@@ -128,6 +128,42 @@ function splitExisting(text = "") {
   };
 }
 
+// Reduce an existing file to its recognized human-authority lines ONLY: the
+// top heading and the first occurrence of each marker line (Package run
+// state / Workflow path). Scans ONLY the human region (before the generated
+// body comment) and dedupes per kind — the generated body re-renders its own
+// marker lines, so scanning it would plant duplicates in the marker block on
+// every rebuild. Rebuild passes this — never the full pre-body region — so
+// forged projection grammar ("## Projection status: COMPLETE", gate counts,
+// arbitrary prose) planted without the generated-body comment cannot survive
+// a rebuild: everything outside heading + markers re-derives from canonical
+// evidence.
+function extractMarkerLines(text = "") {
+  const { markerLines } = splitExisting(text);
+  const kept = [];
+  const seen = new Set();
+  for (const line of markerLines) {
+    const trimmed = line.trim();
+    if (/^#\s+Package Run State\s*$/i.test(trimmed) && !seen.has("heading")) {
+      kept.push(trimmed);
+      seen.add("heading");
+      continue;
+    }
+    const markerMatch = trimmed.match(/^(?:[-*]\s*)?(Package run state|Workflow path)\s*:/i);
+    if (markerMatch) {
+      const kind = markerMatch[1].toLowerCase();
+      if (seen.has(kind)) continue;
+      seen.add(kind);
+      kept.push(line);
+    }
+  }
+  // Canonicalize the marker block to the same shape defaultMarkerLines()
+  // produces (blank line after the heading), so a rebuild of an existing file
+  // is byte-identical to a fresh creation — no diff noise across rebuilds.
+  if (kept.length && /^#\s/i.test(kept[0])) kept.splice(1, 0, "");
+  return kept;
+}
+
 // Canonical digest over the workflow-map body. Volatile fields are excluded
 // so reprojection of identical canonical evidence yields an identical digest.
 function canonicalDigest(map = {}) {
@@ -502,6 +538,7 @@ module.exports = {
   readMarkerState,
   readMarkerWorkflowPath,
   splitExisting,
+  extractMarkerLines,
   canonicalDigest,
   currentGateIdFromMap,
   deriveProjectionState,

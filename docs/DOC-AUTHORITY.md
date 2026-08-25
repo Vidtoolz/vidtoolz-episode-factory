@@ -11,7 +11,8 @@ beat hand-maintained prose.
 | Fact | Authoritative source | How to read it |
 | --- | --- | --- |
 | Production stage model | `VIDTOOLZ-CANONICAL-PRODUCTION-SPEC.md` (generated from `pipeline-tracker.js`) | `node scripts/generate-production-spec.js` regenerates it; a drift check runs in tests |
-| Active run / package-run state | `package-runs/<run>/package-run-state.md` + `scripts/package-run-active-state-audit.js` | `node scripts/package-run-active-state-audit.js` |
+| Production lifecycle state | the canonical 14-gate engine (`scripts/package-run-workflow-map.js`) over package evidence; projections: control room, tracker strip, `package-run-state.md` | `docs/workflow-state-authority.md`; shared projection authority in `scripts/workflow-stage-projection.js` |
+| Active run / package-run state | `package-runs/<run>/package-run-state.md` (durable PROJECTION, written only by Production Operations via `scripts/package-run-state-operations.js`) + `scripts/package-run-active-state-audit.js` | `node scripts/package-run-active-state-audit.js`; refresh/rebuild: `node scripts/package-run-state-operations.js --run <run-id> --refresh` |
 | Per-run diagnostics / blocker / next action | `scripts/package-run-doctor.js`, `scripts/package-run-next-safe-action.js` | `node scripts/package-run-doctor.js <run>` |
 | Components / services / ports | `config/system-registry.json` | `node scripts/system-registry.js` |
 | Index freshness | `scripts/package-runs-index.js --freshness` | rebuild with `node scripts/package-runs-index.js` |

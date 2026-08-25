@@ -145,9 +145,10 @@ function checkRunState(options = {}) {
 }
 
 // Deterministic rebuild: delete the projection and regenerate it from
-// canonical state. Human marker lines are preserved when the existing file
-// carries recognizable human authority (marker lines or a prior generated
-// body); fully foreign content is discarded — rebuild derives from canonical
+// canonical state. Only the recognized human-authority lines survive: the
+// top heading and the two marker lines (Package run state / Workflow path).
+// Everything else — including any forged projection grammar planted without
+// the generated-body comment — is discarded; rebuild derives from canonical
 // evidence, never from old markdown contents.
 function rebuildRunState(options = {}) {
   const { runDir } = runDirFor(options);
@@ -162,7 +163,7 @@ function rebuildRunState(options = {}) {
     /<!-- GENERATED PROJECTION/.test(existingText);
   return writeRunState({
     ...options,
-    existingText: hasHumanAuthority ? existingText : "",
+    existingText: hasHumanAuthority ? projectionModule.extractMarkerLines(existingText).join("\n") : "",
   });
 }
 
