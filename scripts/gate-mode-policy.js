@@ -23,7 +23,17 @@ const path = require('node:path');
 
 const productionMode = require('./package-run-production-mode.js');
 
-const POLICY_PATH = path.join(__dirname, '..', 'config', 'gate-mode-policy.json');
+// The policy is a repository fact. A minimal isolated root (a package-run root,
+// or a creation fixture that copies scripts/ without config/) legitimately has no
+// copy of it, so candidates are tried and absence is not fatal — mirroring how
+// owner readiness resolves the agent registry.
+// Resolved from this module's own location only. A process.cwd() candidate was
+// tried and rejected: it made the answer depend on where the process happened to
+// be launched, so the same root could be mode-aware or not by accident.
+const POLICY_CANDIDATES = [
+  path.join(__dirname, '..', 'config', 'gate-mode-policy.json'),
+];
+const POLICY_PATH = POLICY_CANDIDATES[0];
 const POLICY_SCHEMA = 'vidtoolz.gateModePolicy.v1';
 const IMPLEMENTED = 'IMPLEMENTED';
 const PLANNED = 'PLANNED';
@@ -41,9 +51,22 @@ function fail(code, message) { throw new GateModePolicyError(code, message); }
 
 let cached = null;
 
+/*
+ * Returns null when no policy file is reachable. Callers then treat every gate as
+ * mode-insensitive and defer to static behaviour, so a run created in a minimal
+ * root behaves exactly as it did before mode existed rather than failing.
+ */
+function policyPath() {
+  return POLICY_CANDIDATES.find((candidate) => {
+    try { return fs.existsSync(candidate); } catch (_) { return false; }
+  }) || null;
+}
+
 function loadPolicy() {
   if (cached) return cached;
-  const parsed = JSON.parse(fs.readFileSync(POLICY_PATH, 'utf8'));
+  const file = policyPath();
+  if (!file) return null;
+  const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
   if (parsed?.schema !== POLICY_SCHEMA) {
     fail('GATE_MODE_POLICY_SCHEMA_UNSUPPORTED', `gate-mode-policy schema is not ${POLICY_SCHEMA}`);
   }
@@ -52,7 +75,8 @@ function loadPolicy() {
 }
 
 function governedGates() {
-  return Object.keys(loadPolicy().gates);
+  const policy = loadPolicy();
+  return policy ? Object.keys(policy.gates) : [];
 }
 
 /*
@@ -71,7 +95,7 @@ function isModeSensitive(gateId) {
  */
 function policyFor(gateId, mode) {
   const policy = loadPolicy();
-  const gate = policy.gates[gateId];
+  const gate = policy ? policy.gates[gateId] : null;
   if (!gate) {
     return { gate_id: gateId, mode, mode_sensitive: false, ok: true, code: null, detail: 'gate behaviour does not vary by production mode' };
   }
@@ -136,6 +160,71 @@ function ownersFor(gateId, mode) {
   };
 }
 
+/*
+ * THE single owner-resolution authority for mode-sensitive gates.
+ *
+ * Before this existed, package-run-state read one static GATE_OWNERS entry, which
+ * was provably wrong: it named presenter_director for a DRAFT that needs no
+ * presenter at all, and for a REVIEW that re-enters no capture. Every consumer
+ * (package-run-state, control room, next-safe-action, operator guidance) must
+ * resolve ownership through here so they cannot disagree.
+ *
+ * Ownership is returned as a structure, because PRODUCTION genuinely has three
+ * distinct responsibilities and collapsing them into one string is what produced
+ * the original untruth.
+ *
+ * `owner_actionable` is separate from having an owner on purpose: an enabled,
+ * proven agent named against a gate whose inputs do not exist is not an
+ * actionable gate, and saying otherwise is how "proven on paper" starts.
+ */
+function resolveGateOwner(gateId, mode) {
+  const resolved = policyFor(gateId, mode);
+  if (!resolved.mode_sensitive) {
+    return { gate_id: gateId, mode, mode_sensitive: false, ok: true, code: null, expected_owner: null, defer_to_static: true };
+  }
+  if (!resolved.ok) {
+    return {
+      gate_id: gateId, mode, mode_sensitive: true, ok: false, code: resolved.code,
+      detail: resolved.detail, expected_owner: null, defer_to_static: false,
+      human_required: null,
+    };
+  }
+  const gate = loadPolicy().gates[gateId];
+  const modePolicy = gate.modes[mode];
+  return {
+    gate_id: gateId,
+    gate_number: gate.gate_number,
+    mode,
+    mode_sensitive: true,
+    ok: true,
+    code: null,
+    defer_to_static: false,
+    expected_owner: modePolicy.expected_owner ?? null,
+    next_specialist: modePolicy.next_specialist ?? null,
+    human_performer: modePolicy.human_performer ?? null,
+    human_required: Boolean(modePolicy.human_required),
+    human_marker_forbidden: Boolean(modePolicy.human_marker_forbidden),
+    disposition: modePolicy.disposition || modePolicy.required_disposition || null,
+    owner_actionable: modePolicy.owner_actionable === true,
+    owner_actionable_reason: modePolicy.owner_actionable_reason || null,
+    implementation_status: modePolicy.implementation_status,
+    static_owner: gate.static_owner || null,
+    static_owner_is_correct: (modePolicy.expected_owner ?? null) === (gate.static_owner || null),
+  };
+}
+
+/*
+ * Is a human genuinely required at this gate in this mode? The static HUMAN_GATES
+ * annotation says gate 8 always needs Mikko, which is true for PRODUCTION and
+ * false for a zero-human DRAFT. Unresolvable mode fails closed as "unknown".
+ */
+function humanRequiredFor(gateId, mode) {
+  const owner = resolveGateOwner(gateId, mode);
+  if (!owner.mode_sensitive) return null;   // defer to the static annotation
+  if (!owner.ok) return null;               // unknown, never assumed
+  return owner.human_required;
+}
+
 function requiredEvidenceFor(gateId, mode) {
   const resolved = policyFor(gateId, mode);
   return resolved.ok && resolved.mode_sensitive ? resolved.required_evidence : [];
@@ -159,6 +248,8 @@ function resolveForRun(runDir, gateId) {
 
 module.exports = {
   POLICY_PATH,
+  POLICY_CANDIDATES,
+  policyPath,
   POLICY_SCHEMA,
   IMPLEMENTED,
   PLANNED,
@@ -169,6 +260,8 @@ module.exports = {
   isModeSensitive,
   policyFor,
   ownersFor,
+  resolveGateOwner,
+  humanRequiredFor,
   requiredEvidenceFor,
   implementationStatusFor,
   resolveForRun,

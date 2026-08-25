@@ -28,6 +28,7 @@ const path = require("node:path");
 
 const workflowMapModule = require("./package-run-workflow-map.js");
 const productionModeModule = require("./package-run-production-mode.js");
+const gateModePolicy = require("./gate-mode-policy.js");
 const stageProjection = require("./workflow-stage-projection.js");
 const packageRunsIndex = require("./package-runs-index.js");
 
@@ -330,11 +331,34 @@ function buildProjection(options = {}) {
   const state = deriveProjectionState(map, { isPackageRun, markerState });
   const currentGateId = isPackageRun ? currentGateIdFromMap(map) : "";
   const currentGate = gateById(map, currentGateId);
-  const expectedOwner = GATE_OWNERS[currentGateId] || "";
+  /*
+   * Ownership for the capture gates depends on production mode, and the single
+   * static GATE_OWNERS entry was provably wrong for DRAFT and REVIEW. Resolve
+   * through the shared policy authority so this projection, the control room and
+   * next-safe-action cannot disagree; non-mode-sensitive gates keep the static
+   * table.
+   */
+  let ownerResolution;
+  try { ownerResolution = gateModePolicy.resolveGateOwner(currentGateId, productionMode); }
+  catch (_) { ownerResolution = { mode_sensitive: false, ok: true, defer_to_static: true }; }
+  const staticOwner = GATE_OWNERS[currentGateId] || "";
+  // A mode-sensitive gate with no declared mode has no truthful owner. Naming the
+  // static one would tell the operator something that may be false, which is the
+  // exact defect this replaces, so it reports no owner and says why instead.
+  const expectedOwner = ownerResolution.mode_sensitive
+    ? (ownerResolution.ok ? (ownerResolution.expected_owner || "") : "")
+    : staticOwner;
+
   const humanGated = HUMAN_GATES.includes(currentGateId);
-  const humanRequired = Boolean(
-    (map.nextSafeHumanAction && map.nextSafeHumanAction.humanApprovalRequired) || humanGated
-  );
+  // The static HUMAN_GATES annotation claims gate 8 always needs Mikko. That is
+  // true in PRODUCTION and false in a zero-human DRAFT, so a resolvable mode
+  // answer wins over the annotation. An unresolved mode keeps the annotation.
+  let modeHumanRequired = null;
+  try { modeHumanRequired = gateModePolicy.humanRequiredFor(currentGateId, productionMode); }
+  catch (_) { modeHumanRequired = null; }
+  const humanRequired = modeHumanRequired === null
+    ? Boolean((map.nextSafeHumanAction && map.nextSafeHumanAction.humanApprovalRequired) || humanGated)
+    : modeHumanRequired;
   return {
     schema: PROJECTION_SCHEMA,
     authority_source: AUTHORITY_SOURCE,
@@ -360,6 +384,22 @@ function buildProjection(options = {}) {
       missing: gate.missingArtifacts || [],
     })),
     expected_owner: expectedOwner,
+    capture_ownership: ownerResolution.mode_sensitive ? {
+      resolved_by: "gate-mode-policy",
+      mode: productionMode,
+      ok: ownerResolution.ok,
+      code: ownerResolution.code || null,
+      expected_owner: ownerResolution.expected_owner ?? null,
+      next_specialist: ownerResolution.next_specialist ?? null,
+      human_performer: ownerResolution.human_performer ?? null,
+      human_required: ownerResolution.human_required,
+      disposition: ownerResolution.disposition ?? null,
+      owner_actionable: ownerResolution.owner_actionable === true,
+      owner_actionable_reason: ownerResolution.owner_actionable_reason ?? null,
+      implementation_status: ownerResolution.implementation_status ?? null,
+      static_owner: ownerResolution.static_owner ?? null,
+      static_owner_is_correct: ownerResolution.static_owner_is_correct ?? null,
+    } : null,
     owner_readiness: readOwnerReadiness(repoRoot, expectedOwner),
     qc_disposition: readLatestQcDisposition(runDir),
     human_gated: humanGated,
