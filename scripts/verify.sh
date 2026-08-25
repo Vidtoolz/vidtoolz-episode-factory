@@ -188,6 +188,7 @@ node --check scripts/audio-render-evidence.js
 node --check scripts/qc-evidence-policy.js
 node --check scripts/production-mix-evidence.js
 node --check scripts/production-mix-upstream-readiness.js
+node --check scripts/production-capture-readiness.js
 node --check tests/audio-fidelity-contract.test.js
 node --check publish-gate-decision.js
 node --check idea-engine.js
