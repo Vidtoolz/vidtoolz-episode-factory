@@ -169,3 +169,99 @@ test('LI4: an inactive run reports no canonical gate, not the first or last one'
     assert.equal(parked.consistent, true);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('LI5: a parked run resumes on a correctly scoped human approval and advances exactly one gate', () => {
+  // The highest-value regression from the real run: human authority must be
+  // neither bypassable nor accidentally global. A recorded approval at one gate
+  // must advance that gate and grant nothing to later ones.
+  const root = scratchRepo();
+  const runId = '2099-02-06-integration-human-approval';
+  const runDir = path.join(root, 'package-runs', runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  try {
+    fs.writeFileSync(path.join(runDir, 'selected-package.json'),
+      JSON.stringify({ package: { proposedTitle: 'Human approval run' } }, null, 2));
+    // Research evidence complete, but no approval marker yet.
+    fs.writeFileSync(path.join(runDir, 'research-pack.md'), '# Research Pack\n\n- Status: PARTIAL\n');
+    fs.writeFileSync(path.join(runDir, 'source-support-map.md'),
+      '# Source Support Map\n\n| source/reference | claim supported | evidence type | reliability note | status |\n'
+      + '| --- | --- | --- | --- | --- |\n'
+      + '| scripts/package-run-workflow-map.js | fourteen canonical gates | primary source | authoritative | closed |\n'
+      + '| docs/workflow-state-authority.md | projections are not authorities | primary source | authoritative | closed |\n');
+    fs.writeFileSync(path.join(runDir, 'proof-capture-plan.md'),
+      '# Proof Capture Plan\n\n| proof item | what it proves | local capture method | file/app/source | status |\n'
+      + '| --- | --- | --- | --- | --- |\n'
+      + '| gate timeline | run crosses real gates | sample each surface | package-run-state.md | closed |\n');
+    fs.writeFileSync(path.join(runDir, 'research-objections.md'),
+      '# Research Objections\n\n| objection/counterexample | why it matters | evidence needed | response plan | status |\n'
+      + '| --- | --- | --- | --- | --- |\n'
+      + '| canary may not match production | proof would be void | isPackageRunDir true | verified | closed |\n');
+    fs.writeFileSync(path.join(runDir, 'research-evidence.md'),
+      '# Research Evidence\n\n## Human Evidence Notes\n\n- Evidence recorded in the mapped files.\n\n## Approval Marker\n\n- Research approval: TODO\n');
+    // Park it, as the real canary was.
+    runStateOps.writeRunState({ repoRoot: root, runId, actor: 'production_operations' });
+    const statePath = path.join(runDir, 'package-run-state.md');
+    fs.writeFileSync(statePath, fs.readFileSync(statePath, 'utf8').replace('- Package run state: active', '- Package run state: parked'));
+    runStateOps.writeRunState({ repoRoot: root, runId, actor: 'production_operations' });
+
+    const parked = surfaces(root, runId);
+    assert.equal(parked.stateValue, 'PARKED');
+    assert.equal(parked.canonicalGate, null, 'a parked run has no canonical gate');
+
+    // Record the human approval through the canonical marker, then resume.
+    fs.writeFileSync(path.join(runDir, 'research-evidence.md'),
+      fs.readFileSync(path.join(runDir, 'research-evidence.md'), 'utf8')
+        .replace('- Research approval: TODO', '- Research approval: PASS\n- Approved by: Mikko'));
+    fs.writeFileSync(statePath, fs.readFileSync(statePath, 'utf8').replace('- Package run state: parked', '- Package run state: active'));
+    runStateOps.writeRunState({ repoRoot: root, runId, actor: 'production_operations' });
+
+    const resumed = surfaces(root, runId);
+    assert.equal(resumed.stateValue !== 'PARKED', true, 'the run resumed');
+    assert.equal(resumed.canonicalGate, 'script-structure', 'the approval advanced exactly the research gate');
+    assert.equal(resumed.completeCount, 2, 'package-selection and research are complete — and nothing beyond');
+    assert.equal(resumed.consistent, true);
+    assert.equal(resumed.drift, null, 'no projection drift across a human-approval transition');
+
+    // The approval must not have leaked forward into any later gate.
+    const map = workflowMap.buildWorkflowMap(path.join('package-runs', runId), { repoRoot: root });
+    const later = (map.gates || []).filter((g) => ['script-review', 'production-plan', 'shot-edit-plan-review', 'final-review'].includes(g.id));
+    for (const gate of later) {
+      assert.notEqual(gate.status, 'complete', `${gate.id} must not be satisfied by a research approval`);
+    }
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('LI6: a recorded approval is evaluated against the current artifact, not the run id', () => {
+  // Approval binding: the marker alone must not hold a PASS once the governed
+  // evidence is materially revised.
+  const researchEvidence = require('../scripts/package-run-research-evidence.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'approval-binding-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'selected-package.json'), JSON.stringify({ package: { proposedTitle: 'Binding' } }));
+    fs.writeFileSync(path.join(dir, 'source-support-map.md'),
+      '# Source Support Map\n\n| source/reference | claim supported | evidence type | reliability note | status |\n'
+      + '| --- | --- | --- | --- | --- |\n'
+      + '| scripts/package-run-workflow-map.js | fourteen gates | primary source | authoritative | closed |\n'
+      + '| docs/workflow-state-authority.md | projections are views | primary source | authoritative | closed |\n');
+    fs.writeFileSync(path.join(dir, 'proof-capture-plan.md'),
+      '# Proof Capture Plan\n\n| proof item | what it proves | local capture method | file/app/source | status |\n'
+      + '| --- | --- | --- | --- | --- |\n'
+      + '| timeline | gates crossed | sample surfaces | package-run-state.md | closed |\n');
+    fs.writeFileSync(path.join(dir, 'research-objections.md'),
+      '# Research Objections\n\n| objection/counterexample | why it matters | evidence needed | response plan | status |\n'
+      + '| --- | --- | --- | --- | --- |\n'
+      + '| canary divergence | proof void | isPackageRunDir | verified | closed |\n');
+    fs.writeFileSync(path.join(dir, 'research-evidence.md'),
+      '# Research Evidence\n\n## Approval Marker\n\n- Research approval: PASS\n- Approved by: Mikko\n');
+
+    assert.equal(researchEvidence.evaluateResearchEvidence(dir).status, 'PASS');
+
+    // Materially revise the governed artifact; the marker is untouched.
+    fs.writeFileSync(path.join(dir, 'source-support-map.md'),
+      '# Source Support Map\n\n| source/reference | claim supported | evidence type | reliability note | status |\n'
+      + '| --- | --- | --- | --- | --- |\n| TODO | TODO | TODO | TODO | open |\n');
+    const revised = researchEvidence.evaluateResearchEvidence(dir);
+    assert.equal(revised.approval, true, 'the marker is still literally present');
+    assert.notEqual(revised.status, 'PASS', 'but it no longer carries the gate — approval binds the reviewed evidence');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

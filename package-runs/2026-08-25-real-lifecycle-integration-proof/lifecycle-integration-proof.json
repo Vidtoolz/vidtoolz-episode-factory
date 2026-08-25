@@ -87,50 +87,117 @@
       "control_room_gate": "(no active run)",
       "projection_drift": null,
       "note": "Parked after proof. An inactive run has no canonical gate — see the defect below, which this step exposed."
+    },
+    {
+      "timestamp": "2026-08-25",
+      "projection_drift": null,
+      "step": 7,
+      "gate_before": "research (parked)",
+      "evidence_added": "Mikko research approval recorded in research-evidence.md ## Approval Marker",
+      "actor": "Mikko",
+      "human_authority": "RESEARCH_SUFFICIENCY_APPROVAL (narrow, canary-scoped)",
+      "gate_after": "research (still parked)",
+      "tracker_stage": null,
+      "package_state": "PARKED",
+      "control_room_gate": "(inactive)",
+      "note": "Approval recorded through the existing canonical marker, not by editing package-run-state.md. Evaluator moved READY FOR RESEARCH REVIEW -> PASS with zero blockers. Marker survived tool regeneration because it lives in the human-authored evidence file."
+    },
+    {
+      "timestamp": "2026-08-25",
+      "projection_drift": null,
+      "step": 8,
+      "gate_before": "research",
+      "evidence_added": "unparked via the human-owned marker block; Production Operations refresh",
+      "actor": "operator",
+      "gate_after": "script-structure",
+      "tracker_stage": "script",
+      "package_state": "ACTIVE",
+      "control_room_gate": "script-structure",
+      "note": "FIRST PROOF OF: agent-produced evidence + Mikko approval -> legal gate advancement. research completed (2/14); owner became story_editor."
+    },
+    {
+      "timestamp": "2026-08-25",
+      "projection_drift": null,
+      "step": 9,
+      "gate_before": "script-structure",
+      "evidence_added": "script-structure.md via scripts/package-run-script-structure.js",
+      "actor": "production script",
+      "gate_after": "script-review",
+      "tracker_stage": "claims",
+      "package_state": "ACTIVE",
+      "control_room_gate": "script-review",
+      "note": "Tool honoured the real approval: emitted \"research gate: PASS\", status READY TO DRAFT. 3/14."
+    },
+    {
+      "timestamp": "2026-08-25",
+      "projection_drift": null,
+      "step": 10,
+      "gate_before": "script-review",
+      "evidence_added": "outline + script prep; final-script.md authored; script-review.md",
+      "actor": "operator + production scripts",
+      "gate_after": "production-plan",
+      "tracker_stage": "packaging",
+      "package_state": "BLOCKED",
+      "control_room_gate": "production-plan",
+      "note": "REFUSAL RECORDED: review returned NEEDS REVISION while the script was a scaffold marking itself a draft. Only real script content produced PASS. 4/14."
+    },
+    {
+      "timestamp": "2026-08-25",
+      "projection_drift": null,
+      "step": 11,
+      "gate_before": "production-plan",
+      "evidence_added": "production-plan.md + capture lists via scripts/package-run-production-plan.js",
+      "actor": "production script",
+      "gate_after": "shot-edit-plan-review",
+      "tracker_stage": "image-prompts",
+      "package_state": "BLOCKED",
+      "control_room_gate": "shot-edit-plan-review",
+      "note": "READY TO SHOOT derived from upstream approved gates, transitively resting on Mikko's research approval. 5/14. See declaration_mismatch below."
+    },
+    {
+      "timestamp": "2026-08-25",
+      "projection_drift": null,
+      "step": 12,
+      "gate_before": "shot-edit-plan-review",
+      "evidence_added": "shot-edit-plan-review.md via the real script",
+      "actor": "production script",
+      "gate_after": "shot-edit-plan-review (held)",
+      "tracker_stage": "image-prompts",
+      "package_state": "BLOCKED",
+      "control_room_gate": "shot-edit-plan-review",
+      "note": "STOP. NEEDS WORK / Stage accepted: no. The tool states it \"cannot self-approve Stage 4\" and that Mikko must add the exact approval marker."
     }
   ],
   "final_state": {
     "canonical": {
-      "gate": "research",
-      "label": "Research sufficiency",
+      "gate": "shot-edit-plan-review",
+      "label": "Shot/edit plan review",
       "complete": [
-        "package-selection"
+        "package-selection",
+        "research",
+        "script-structure",
+        "script-review",
+        "production-plan"
       ],
-      "complete_count": 1,
+      "complete_count": 5,
       "total": 14,
-      "blocker": "Research evidence is READY FOR RESEARCH REVIEW, but Research Sufficiency Gate is not PASS and exact research approval is missing."
+      "blocker": "Shot/edit plan review status is NEEDS WORK; Stage accepted is no. First blocker: shot-list.md is placeholder-only or too thin."
     },
     "package_run_state": {
-      "state": "HUMAN_REVIEW_REQUIRED",
-      "current_gate": "research",
-      "expected_owner": "research_director",
+      "state": "BLOCKED",
+      "current_gate": "shot-edit-plan-review",
+      "expected_owner": "visual_planning_director",
       "human_authority_required": true,
-      "pending_human_decision": "Review research evidence and decide whether to approve, request changes, or keep blocked before script structure or production planning.",
-      "owner_readiness": {
-        "owner_id": "research_director",
-        "kind": "agent",
-        "dispatch_enabled": true,
-        "implementation_state": "IMPLEMENTATION_PROVEN"
-      },
-      "canonical_digest": "893af8a82eda7dbca70b580337650bb85f2a6dfbcaa766dfe61c2aa452908f1f",
+      "canonical_digest": "3425d0a448ecada3ac70a81311546cb26d1bddf7fa40f3d48e0551c9bb920f11",
       "consistent": true,
       "defects": []
     },
     "tracker": {
-      "stage_key": "research",
-      "stage_index": 1,
-      "label": "Research",
-      "advanced_beyond_canonical": false
+      "stage_key": "image-prompts",
+      "stage_index": 5
     },
     "drift": null,
-    "all_surfaces_agree": true,
-    "parked": {
-      "state": "PARKED",
-      "current_gate": "",
-      "consistent": true,
-      "gates_all_inactive": true,
-      "history_preserved": "13 artifacts retained"
-    }
+    "all_surfaces_agree": true
   },
   "agent_dispatches": [
     {
@@ -170,6 +237,21 @@
       "readiness": "CANDIDATE",
       "infrastructure_state": "BLOCKED_IMPLEMENTATION_NOT_PROVEN",
       "lifecycle_effect": "refused before invocation"
+    },
+    {
+      "agent": "research_director",
+      "action": "status + evaluate_known_evidence",
+      "phase": "this mission",
+      "infrastructure_state": "COMPLETE",
+      "lifecycle_effect": "none"
+    },
+    {
+      "agent": "story_editor",
+      "action": "status",
+      "phase": "this mission",
+      "infrastructure_state": "COMPLETE",
+      "retained": false,
+      "removal_reason": "A pre-existing control-room test asserts a specific 2026-08-23/24 canary is story_editor's LATEST invocation. This probe displaced it. It was not load-bearing - the script-review gate advanced through the real production script, and story_editor returned BLOCKED - so it was removed rather than rewriting another mission's fixture."
     }
   ],
   "negative_canaries": {
@@ -216,10 +298,10 @@
     },
     "cockpit_took_canonical_branch": true
   },
-  "deepest_gate_earned": "package-selection (complete); research reached and held at HUMAN_REVIEW_REQUIRED",
-  "stop_reason": "STOP_CONDITION_A — HUMAN_REVIEW_REQUIRED. Returned to Mikko rather than forging an approval marker.",
+  "deepest_gate_earned": "production-plan complete (5/14); shot-edit-plan-review reached and held awaiting Mikko",
+  "stop_reason": "STOP_CONDITION_1 — another genuine Mikko approval is required (shot/edit plan Stage 4 acceptance).",
   "failures": [],
-  "verdict": "REAL_PACKAGE_RUN_REACHED_HUMAN_GATE",
+  "verdict": "REAL_PACKAGE_RUN_REACHED_NEXT_HUMAN_GATE",
   "defect_found": {
     "title": "Parking a run made two projection consumers invent a canonical position",
     "discovered_by": "this canary — the first genuine package run",
@@ -244,7 +326,7 @@
     },
     "note": "This is the value of the canary: five missions of isolated proofs did not surface it, and one real run did."
   },
-  "integration_test": "tests/package-lifecycle-integration.test.js (LI1-LI4)",
+  "integration_test": "tests/package-lifecycle-integration.test.js (LI1-LI6)",
   "retention": {
     "marked": [
       "CANARY",
@@ -255,5 +337,43 @@
     "parked": true,
     "completed": false,
     "statement": "Parked, never completed. It did not earn completion and is not marked as having done so."
+  },
+  "human_approval": {
+    "verdict": "APPROVED — research sufficiency for this bounded CANARY run only",
+    "recorded_in": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/research-evidence.md (## Approval Marker)",
+    "mechanism": "existing canonical marker read by APPROVAL_PATTERN in scripts/package-run-research-evidence.js",
+    "not_recorded_in": "package-run-state.md — that is a projection, not authority",
+    "scope_recorded_alongside": "explicitly excludes publication, editorial quality, pre-approval of later decisions, and bypass of any later human gate",
+    "evaluator_before": "READY FOR RESEARCH REVIEW (blocker: approval marker missing)",
+    "evaluator_after": "PASS (0 blockers)",
+    "survived_tool_regeneration": true
+  },
+  "approval_scope_negative_test": {
+    "later_gate": "shot-edit-plan-review",
+    "shotEditPlanReviewStatus": "NEEDS WORK",
+    "shotEditPlanAccepted": false,
+    "manual_approval_marker_detected": false,
+    "result": "PASS — the research approval satisfied only the research gate"
+  },
+  "approval_binding_test": {
+    "method": "isolated copy of the canary; governed source-support-map.md gutted; marker untouched",
+    "before": "PASS",
+    "after": "NEEDS EVIDENCE",
+    "marker_still_present": true,
+    "result": "PASS — approval binds the reviewed evidence state, not the run id",
+    "retained_canary_mutated": false
+  },
+  "declaration_mismatch": {
+    "finding": "The projection declares production-plan a human gate owned by mikko (HUMAN_GATES + GATE_OWNERS), but the canonical gate predicate requires no Mikko marker there — it completes on a tool-derived \"READY TO SHOOT\" status.",
+    "severity": "reported, not repaired",
+    "why_not_repaired": "Whether production-plan requires a separate Mikko decision is a lifecycle POLICY question that belongs to Mikko, not an agent. The canonical engine is authoritative and does not require it; the projection overstates where human authority is required.",
+    "not_a_split_brain": "All state surfaces agreed on the gate throughout and drift stayed null. The mismatch is in declared ownership, not in derived state.",
+    "contrast": "shot-edit-plan-review is declared human-gated AND its evaluator genuinely refuses to self-approve — that gate is consistent."
+  },
+  "latent_fragility_found": {
+    "finding": "tests/agent-control-room.test.js asserts a specific historical canary remains story_editor's latest runner invocation. Any future genuine run that dispatches story_editor will displace it and fail that test.",
+    "exposed_by": "this canary — the first real run to dispatch specialists",
+    "action_taken": "removed the non-load-bearing probe; did not rewrite the other suite's fixture",
+    "recommendation": "that fixture should pin by run id rather than assume \"latest\", but changing it belongs to its owner"
   }
 }

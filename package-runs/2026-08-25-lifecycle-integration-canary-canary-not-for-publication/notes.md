@@ -17,3 +17,18 @@
 
 - Do not create outlines or scripts until a winning package is selected.
 - Do not create an Episode Factory episode automatically in v1.
+
+## Outline Prep
+
+- outline-prompt.md created.
+- Paste the prompt into Hermes or ChatGPT.
+- Save the generated outline options into outlines.md.
+- Edit the chosen structure into final-outline.md.
+
+## Script Prep
+
+- script-prompt.md created.
+- script-draft.md created for the first reviewable draft.
+- final-script.md created for the approved script.
+- production-notes.md created for shoot, demo, visual, retention, and Shorts notes.
+- Packaging still needs verification before finalization.
