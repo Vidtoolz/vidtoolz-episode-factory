@@ -1,0 +1,10 @@
+{
+  "task_id": "vpd-canary-lifecycle-1",
+  "action": "plan_visuals",
+  "requested_by": "mikko",
+  "package_run_id": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+  "risk_level": "LOCAL_AUTO",
+  "privacy": { "local_only": true },
+  "retry_budget": 2,
+  "cost_budget": { "max_model_calls": 2 }
+}

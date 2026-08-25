@@ -182,6 +182,41 @@
       "control_room_gate": "shot-edit-plan-review",
       "projection_drift": null,
       "note": "Gate is NEEDS WORK, not READY FOR HUMAN APPROVAL. Five planning artifacts remain placeholders and the gate owner visual_planning_director has never been dispatched for this run, so machine-owned work is incomplete and Mikko was NOT asked to decide. No gate transition."
+    },
+    {
+      "step": 14,
+      "timestamp": "2026-08-25",
+      "event": "VISUAL_PLANNING_DIRECTOR_DISPATCHED",
+      "gate_before": "shot-edit-plan-review",
+      "gate_after": "shot-edit-plan-review",
+      "actor": "mikko (decision) / claude (execution via canonical runner)",
+      "human_authority": "DISPATCH decision only — no approval granted",
+      "approval_recorded": false,
+      "dispatch": {
+        "runner": "scripts/agent-run.js",
+        "agent_id": "visual_planning_director",
+        "action": "plan_visuals",
+        "task_id": "vpd-canary-lifecycle-1",
+        "invocation_id": "visual_planning_director:vpd-canary-lifecycle-1:1",
+        "infrastructure_state": "COMPLETE",
+        "semantic_state": "BLOCKED",
+        "attention": "DECISION",
+        "next_owner": "hermes",
+        "reason": "task identity incomplete; canonical Story identity/sections invalid; required_beats required"
+      },
+      "note": "Runner path healthy; the agent itself refused for lack of a canonical Story. No planning artifact was written."
+    },
+    {
+      "step": 15,
+      "timestamp": "2026-08-25",
+      "event": "ARCHITECTURE_DEFECT_FOUND",
+      "gate_before": "shot-edit-plan-review",
+      "gate_after": "shot-edit-plan-review",
+      "actor": "claude (integration verifier)",
+      "human_authority": null,
+      "approval_recorded": false,
+      "defect": "GATE_OWNER_WITHOUT_IMPLEMENTATION_PATH",
+      "note": "Gate 6 is attributed to visual_planning_director by package-run-state-projection.js:61, but that agent reads canonical Story from vidtoolz-script-builder and writes visual-plan.json into the agent lane, while the gate evaluates five package-run markdown files written only by deterministic package-run tools. No adapter exists in either direction."
     }
   ],
   "final_state": {
@@ -314,10 +349,10 @@
     },
     "cockpit_took_canonical_branch": true
   },
-  "deepest_gate_earned": "production-plan complete (5/14); shot-edit-plan-review held at NEEDS WORK — machine work incomplete, Mikko not yet asked",
-  "stop_reason": "STOP — gate 6 requires its owning specialist to produce a concrete shot/edit plan before any human decision is meaningful.",
+  "deepest_gate_earned": "production-plan complete (5/14); shot-edit-plan-review held at NEEDS WORK — declared machine owner cannot write the gate artifacts",
+  "stop_reason": "STOP — architecture defect (stop condition 3). Specialist dispatched through the real runner and refused; no path exists from any agent to this gate.",
   "failures": [],
-  "verdict": "HUMAN_REVIEW_NOT_YET_READY_MACHINE_REQUIREMENT_REMAINS",
+  "verdict": "ARCHITECTURE_DEFECT_FOUND",
   "defect_found": {
     "title": "Parking a run made two projection consumers invent a canonical position",
     "discovered_by": "this canary — the first genuine package run",
@@ -393,7 +428,7 @@
     "recommendation": "that fixture should pin by run id rather than assume \"latest\", but changing it belongs to its owner"
   },
   "human_review_readiness": {
-    "verdict": "HUMAN_REVIEW_NOT_YET_READY",
+    "verdict": "ARCHITECTURE_DEFECT_FOUND",
     "gate": "shot-edit-plan-review (6/14)",
     "gate_status": "NEEDS WORK",
     "gate_status_vocabulary": [
@@ -402,7 +437,7 @@
       "READY FOR HUMAN APPROVAL",
       "PASS"
     ],
-    "why_not_ready": "The evaluator reaches READY FOR HUMAN APPROVAL only after planning issues clear. Five planning artifacts are placeholder-only.",
+    "why_not_ready": "The gate's declared machine owner has no implementation path to the gate's artifacts, and the scaffold generator that does write them always emits TODO rows.",
     "machine_requirement_remaining": {
       "owner": "visual_planning_director",
       "owner_readiness": "IMPLEMENTATION_PROVEN / AUTHORIZED",
@@ -438,6 +473,47 @@
     "previous_approval_scope": "RESEARCH_ONLY",
     "previous_approval_leaked": false,
     "review_packet": "package-runs/2026-08-25-real-lifecycle-integration-proof/NEXT-HUMAN-REVIEW.md",
-    "packet_sha256": "c3f8e4491d4135ec63e060af6256a31ce00f0fba5f9318518be62bd2bedcb692"
+    "packet_sha256": "f530e621d0cf7c972d63cab13911e55d9fc6c937973562120771a556a7a03222"
+  },
+  "architecture_defect": {
+    "code": "GATE_OWNER_WITHOUT_IMPLEMENTATION_PATH",
+    "gate": "shot-edit-plan-review (6/14)",
+    "declared_owner": "visual_planning_director",
+    "declaration_site": "scripts/package-run-state-projection.js:61 (GATE_OWNERS)",
+    "owner_readiness": "IMPLEMENTATION_PROVEN / dispatch_enabled true — genuinely proven, genuinely dispatchable",
+    "evidence": [
+      "scripts/package-run-production-plan.js buildTemplateRows() hardcodes TODO in the status column of every emitted row for all five list types; the evaluator requires todos===0, so generator output can never satisfy the gate for any run.",
+      "Row text is a regex keyword grep over script prose (relevantLines), producing sentence fragments rather than shots.",
+      "visual_planning_director task assembly requires a canonical Story from /home/vidtoolz/vidtoolz-script-builder (project+version+content_hash+derived beats); the canary has no Story identity and no corresponding project exists.",
+      "visual_planning_director writes visual-plan.json under agents/<agent>/<task>/artifacts/, never the five run-root markdown files.",
+      "No agent module references any of the five planning artifacts; only deterministic package-run-*.js tools write them.",
+      "Neither package-run-production-plan.js nor package-run-shot-edit-plan-review.js references visual-plan in any form.",
+      "The only prior successful plan_visuals dispatch (2026-08-24-workspace-canary) ran off a real Script Builder Story, and that directory holds only agents/ — not a genuine package run."
+    ],
+    "self_contradiction": "The same projection object reports expected_owner=visual_planning_director while next_safe_human_action={actor:\"codex\",mode:\"draft-only\"} and pending_human_decision=\"Prepare a shot/edit planning repair brief\".",
+    "dispatch_proof": "package-runs/2026-08-25-lifecycle-integration-canary-canary-not-for-publication/agents/visual_planning_director/vpd-canary-lifecycle-1/",
+    "consequence": "Mikko was asked to choose an action that no code path can execute. The gate cannot be cleared by dispatching its declared owner.",
+    "not_repaired_because": "Choosing between correcting the owner map, building a Story+adapter bridge, or accepting the gate as human-authored is an architecture decision for Mikko.",
+    "options_for_mikko": [
+      "A: correct GATE_OWNERS to the real path",
+      "B: build package-run Story identity + visual-plan->markdown adapter",
+      "C: accept the gate as human-authored content over a scaffold template"
+    ]
+  },
+  "open_qc_blocker": {
+    "agent": "qc_director",
+    "task": "canary-qc-01",
+    "code": "QC_REQUIRED_EVIDENCE_MISSING",
+    "affected_gate": "research",
+    "next_gate_allowed": false,
+    "note": "Live, outside this mission scope, reported for visibility."
+  },
+  "projection_consistency_after": {
+    "canonical_gate": "shot-edit-plan-review",
+    "gates_complete": 5,
+    "tracker": "TRACKER_CONSISTENT",
+    "drift": null,
+    "consistency_ok": true,
+    "defects": 0
   }
 }

@@ -1,0 +1,61 @@
+{
+  "agent_id": "visual_planning_director",
+  "task_id": "vpd-canary-lifecycle-1",
+  "action": "plan_visuals",
+  "state": "BLOCKED",
+  "attempts": 0,
+  "max_attempts": 2,
+  "route": null,
+  "visual_plan": null,
+  "review_bundle": null,
+  "semantic": null,
+  "generation_handoffs": [],
+  "camera_handoffs": [],
+  "events": [
+    {
+      "at": "2026-08-25T08:46:11.987Z",
+      "state": "BLOCKED",
+      "reason": "task identity incomplete; canonical Story identity/sections invalid; required_beats required"
+    }
+  ],
+  "reason": "task identity incomplete; canonical Story identity/sections invalid; required_beats required",
+  "owner": "visual_planning_director",
+  "next_owner": "hermes",
+  "attention": "DECISION",
+  "control_room": {
+    "role": "Visual Planning Director",
+    "action": "plan_visuals",
+    "state": "BLOCKED",
+    "story": null,
+    "plan_id": null,
+    "plan_revision": null,
+    "plan_digest": null,
+    "required_beats": 0,
+    "covered_beats": 0,
+    "intentional_none": 0,
+    "shot_count": 0,
+    "media_types": {},
+    "prompt_ready": 0,
+    "research_sensitive": 0,
+    "camera_required": 0,
+    "redundancy_findings": [],
+    "story_rationale": [],
+    "operational_rationale": {
+      "decision": "BLOCKED",
+      "reason": "task identity incomplete; canonical Story identity/sections invalid; required_beats required",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": "task identity incomplete; canonical Story identity/sections invalid; required_beats required"
+    },
+    "authorization": null,
+    "owner": "visual_planning_director",
+    "next_owner": "hermes",
+    "attention": "DECISION",
+    "blocker": "task identity incomplete; canonical Story identity/sections invalid; required_beats required",
+    "latest_event": {
+      "at": "2026-08-25T08:46:11.987Z",
+      "state": "BLOCKED",
+      "reason": "task identity incomplete; canonical Story identity/sections invalid; required_beats required"
+    }
+  }
+}
