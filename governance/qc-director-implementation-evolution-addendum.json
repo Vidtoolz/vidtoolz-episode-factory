@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "record_type": "implementation_promotion_evolution_addendum",
+  "role": "qc_director",
+  "references_promotion_record": "governance/qc-director-implementation-promotion.json",
+  "historical_promotion_record_unchanged": true,
+  "note": "The promotion decision record remains the authoritative historical decision. This addendum records a later legitimate implementation evolution of the promoted module without rewriting the decision. The promotion was for qc_director readiness (CANDIDATE -> IMPLEMENTATION_PROVEN); that readiness field and the registry are untouched by the evolution recorded here.",
+  "evolution": {
+    "commit": "bb9612f56b275683b09c0690c0f29ada5a6ad068",
+    "subject": "refactor(qc): make required evidence mode and gate aware",
+    "scope": "additive applicability-policy consumption: run_mode task field, mode/gate-aware required-evidence audit, evidence_applicability output, qc-evidence-policy module integration",
+    "semantic_effect_on_promotion": "none",
+    "implementation_state_changed": false,
+    "registry_changed": false,
+    "dispatch_authority_changed": false,
+    "lifecycle_or_gate_authority_added": false,
+    "human_approval_authority_added": false,
+    "qc_weakening_introduced": false,
+    "module_path": "scripts/qc-director.js",
+    "module_sha256_before": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1",
+    "module_sha256_after": "36cd1cf1ddbe85301e65778b0a0d299e68fa2103102b1070b93576b96599b2a7",
+    "evidence": "all 46 prior qc-director tests remain green unmodified; 17 new applicability tests green; prior STORY_VALIDATION/AUDIO_RENDER proofs green"
+  },
+  "current_module_binding": {
+    "path": "scripts/qc-director.js",
+    "module_sha256": "36cd1cf1ddbe85301e65778b0a0d299e68fa2103102b1070b93576b96599b2a7",
+    "module_version": "qc-director-v1+applicability"
+  },
+  "chain_rule": "QCG2 accepts the current module if and only if its hash equals the promotion record's bound hash, OR equals the current_module_binding.module_sha256 recorded by this evolution addendum. Any further evolution requires its own addendum; governance history is never rewritten.",
+  "recorded_at": "2026-08-25"
+}

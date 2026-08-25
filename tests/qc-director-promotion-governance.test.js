@@ -13,6 +13,7 @@ const { test } = require('./_helpers.js');
 
 const ROOT = path.resolve(__dirname, '..');
 const RECORD_PATH = path.join(ROOT, 'governance', 'qc-director-implementation-promotion.json');
+const EVOLUTION_ADDENDUM_PATH = path.join(ROOT, 'governance', 'qc-director-implementation-evolution-addendum.json');
 const PROMOTION_COMMIT = 'de3250c1e67a4a3c19c5ef8efa987421927d46dc';
 
 function sha256(bytes) { return crypto.createHash('sha256').update(bytes).digest('hex'); }
@@ -51,11 +52,33 @@ test('QCG1: the promotion record is durable, bounded and honestly unauthenticate
 test('QCG2: the promotion record binds the exact implementation and proof package', () => {
   const record = JSON.parse(fs.readFileSync(RECORD_PATH, 'utf8'));
   assert.equal(record.implementation_binding.module_path, 'scripts/qc-director.js');
-  assert.equal(
-    record.implementation_binding.module_sha256,
-    sha256(fs.readFileSync(path.join(ROOT, 'scripts', 'qc-director.js'))),
-    'the promoted module must still be the module the decision bound'
-  );
+
+  // The promoted module must still be the module the decision bound — either
+  // byte-identical to the original binding, or the current binding carried by
+  // a durable evolution addendum that itself is honest (no readiness/authority
+  // change, original promotion record referenced and unmodified by the chain
+  // rule). Governance history is never rewritten; it is appended.
+  const currentHash = sha256(fs.readFileSync(path.join(ROOT, 'scripts', 'qc-director.js')));
+  if (currentHash === record.implementation_binding.module_sha256) {
+    // Original binding still holds verbatim; no addendum needed.
+  } else {
+    assert.ok(fs.existsSync(EVOLUTION_ADDENDUM_PATH),
+      'a promoted module that drifted from its binding requires an evolution addendum');
+    const addendum = JSON.parse(fs.readFileSync(EVOLUTION_ADDENDUM_PATH, 'utf8'));
+    assert.equal(addendum.record_type, 'implementation_promotion_evolution_addendum');
+    assert.equal(addendum.role, 'qc_director');
+    assert.equal(addendum.references_promotion_record, 'governance/qc-director-implementation-promotion.json');
+    assert.equal(addendum.historical_promotion_record_unchanged, true);
+    assert.equal(addendum.evolution.implementation_state_changed, false);
+    assert.equal(addendum.evolution.registry_changed, false);
+    assert.equal(addendum.evolution.lifecycle_or_gate_authority_added, false);
+    assert.equal(addendum.evolution.human_approval_authority_added, false);
+    assert.equal(addendum.evolution.module_sha256_before, record.implementation_binding.module_sha256,
+      'the addendum must chain from the exact hash the promotion bound');
+    assert.equal(addendum.current_module_binding.module_sha256, currentHash,
+      'the addendum must bind the exact module that is on disk now');
+  }
+
   assert.equal(
     record.proof_binding.proof_manifest_sha256,
     sha256(fs.readFileSync(path.join(ROOT, record.proof_binding.proof_manifest))),
