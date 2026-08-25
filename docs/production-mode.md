@@ -70,12 +70,20 @@ governed; everything else is mode-independent.
 
 ## Gate 7 `capture-checklist` per mode
 
-| mode | status | machine owner | human performance | human approval |
-| --- | --- | --- | --- | --- |
-| `DRAFT` | **BLOCKED** | `generation_supervisor` | no | no |
-| `REVIEW` | IMPLEMENTED | — | no | no |
-| `PRODUCTION` | **PLANNED** | `presenter_director` (+ `production_operations` preparing) | yes | no |
-| `MODE_UNSPECIFIED` | fails closed | — | — | — |
+| mode | status | expected owner | next specialist | human performer | disposition |
+| --- | --- | --- | --- | --- | --- |
+| `DRAFT` | **BLOCKED** | `generation_supervisor` | — | — | `PROXY_CAPTURE_REQUIRED` |
+| `REVIEW` | IMPLEMENTED | — (not re-entered) | — | — | `REUSE_PRIOR_CAPTURE` |
+| `PRODUCTION` | **PLANNED** | `production_operations` | `presenter_director` | `mikko` | `REAL_CAPTURE_REQUIRED` |
+| `MODE_UNSPECIFIED` | fails closed | none reported | — | — | — |
+
+Ownership resolves through one authority, `resolveGateOwner(gateId, mode)` in
+`scripts/gate-mode-policy.js`. Every consumer shares it, so `package-run-state`,
+the control room and next-safe-action cannot disagree. An undeclared mode reports
+**no** owner rather than a possibly-false one.
+
+`owner_actionable` is tracked separately from having an owner: an enabled, proven
+agent named against a gate whose inputs do not exist is not an actionable gate.
 
 Gate 7 never requires an approval in any mode. That matters: human capture
 authority belongs at gate 8, not here.
@@ -94,16 +102,44 @@ prerequisites include an explicit decision by Mikko.
 
 ## Gate 8 `capture-evidence` per mode
 
-| mode | status | human approval |
-| --- | --- | --- |
-| `DRAFT` | **BLOCKED** | required — collides with zero-human doctrine |
-| `REVIEW` | IMPLEMENTED | not re-evaluated because mode changed |
-| `PRODUCTION` | IMPLEMENTED | Mikko confirms the captured material |
+| mode | status | expected owner | human required | required disposition |
+| --- | --- | --- | --- | --- |
+| `DRAFT` | **BLOCKED** | `qc_director` | **no** | `PROXY_CAPTURE_READY` |
+| `REVIEW` | IMPLEMENTED | — | no | `REUSE_PRIOR_CAPTURE` |
+| `PRODUCTION` | IMPLEMENTED | `qc_director` | **yes** (`mikko`) | `REAL_CAPTURE_CONFIRMED` |
+
+**Draft Mode is not "stop before the human gate" — it is "finish the automatic
+draft without needing the human".** So DRAFT does not end before gate 8. It
+crosses gate 8 on machine-verifiable proxy evidence, and the human marker is
+*forbidden* there rather than required. The static `HUMAN_GATES` annotation still
+lists gate 8, but a resolvable mode answer now wins over it, so a zero-human draft
+is never told Mikko is needed.
+
+`PROXY_CAPTURE_READY` and `REAL_CAPTURE_CONFIRMED` are permanently distinct
+semantic classes; neither is derivable from the other, and a run's history always
+shows which one it crossed. Proxy media may never be recorded as a physical take
+or relabelled as real capture. The contract is
+`config/proxy-capture-evidence-contract.json`.
 
 Gate 8 reaches `PASS` only with an exact human approval marker recorded after
 real capture evidence, and it explicitly refuses rows marked `dummy`,
 `smoke-test`, `test-capture`, `test-screen`, `test-voiceover` or
 `generated checklist row`. Synthetic capture cannot be presented as capture.
+
+## Review entry and Production promotion
+
+A DRAFT runs through gate 8 on proxy evidence; the lifecycle then reaches gate 9
+`rough-cut-review`, which is the **first mandatory Mikko boundary**. Switching
+`DRAFT -> REVIEW` triggers no recapture and does not move the gate. No fifteenth
+gate was invented to hold Review Mode.
+
+Promotion `REVIEW -> PRODUCTION` is Mikko's alone and means real performance is
+now required. DRAFT proxy capture stays **historical evidence** and does not
+satisfy PRODUCTION capture policy, so a run promoted with only proxy capture no
+longer satisfies the capture gates and the canonical lifecycle reopens them.
+Rough-cut and review artifacts are retained as provenance from the approved
+draft — the same regression semantics gate 6 already uses for a superseded
+approval.
 
 ## Human authority boundaries
 
@@ -118,12 +154,23 @@ real capture evidence, and it explicitly refuses rows marked `dummy`,
 ## Implementation status
 
 - **IMPLEMENTED** — the run-mode contract, its transitions and authority rules;
-  the declarative gate/mode policy; mode exposure in `package-run-state`.
-- **PLANNED** — gate 7 in `PRODUCTION`, pending `presenter_director`.
-- **PLANNED** — a mode-aware `expected_owner` projection. The need is proven (the
-  one static owner is wrong for `DRAFT` and `REVIEW`) but the projection still
-  reports the static owner.
-- **BLOCKED** — gate 7 and gate 8 in `DRAFT`, pending a synthetic delivery
-  capability and a decision about whether a draft ends before gate 8.
+  the declarative gate/mode policy; mode exposure in `package-run-state`;
+  mode-aware ownership and mode-aware human-requirement resolution through one
+  shared authority; the `PROXY_CAPTURE_READY` evidence contract as a definition.
+- **PLANNED** — gate 7 in `PRODUCTION`, pending `presenter_director`
+  (contract `PLANNED`, `NOT_PROVEN`, dispatch `DISABLED`).
+- **BLOCKED** — gate 7 and gate 8 in `DRAFT`, on a missing producer and nothing
+  else. The evidence contract exists; the synthetic narration and proxy presenter
+  producers that would attest it do not.
+
+Verified absent rather than assumed: a hard search across `*.js`, `*.json`,
+`*.md`, `*.py` and `*.sh` found no TTS producer (the only MiniMax integration is
+music-caption work, and Scorecraft's narration references duck music *under*
+speech), and no avatar producer (every hit is prose in a checklist, a topic list,
+or one text classifier). `PRESENTER_A_ROLL` is absent from the generation lane
+**by design** — `edit-plan.js` maps it to the `PRESENTER_CAPTURE` source class
+alongside `SCREEN_CAPTURE` and `ARCHIVAL_EXTERNAL`, which are captured or sourced,
+never generated. Removing that exclusion would not create a producer; it would
+only let the system claim one exists.
 
 Nothing above is described as working because it is intended to.

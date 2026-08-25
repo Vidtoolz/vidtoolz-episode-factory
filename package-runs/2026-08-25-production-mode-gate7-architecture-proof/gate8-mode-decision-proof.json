@@ -1,0 +1,110 @@
+{
+  "schema": "vidtoolz.gate8ModeDecisionProof.v1",
+  "not_a_production_run": true,
+  "human_decision": {
+    "DRAFT": "zero-human THROUGH gate 8 — a draft finishes automatically rather than stopping before the human gate",
+    "REVIEW": "first mandatory Mikko boundary is gate 9 rough-cut-review; no recapture on the DRAFT -> REVIEW change",
+    "PRODUCTION": "real Mikko performance; gate 7 prepares it, gate 8 confirms it"
+  },
+  "what_changed": {
+    "before": "gate 8 required a human approval marker in EVERY mode, so a zero-human DRAFT was structurally impossible; package-run-state named presenter_director at gate 7 in every mode and claimed human authority was required at gate 8 even for a draft.",
+    "after": "gate-8 human requirement is PRODUCTION-only; DRAFT expects the PROXY_CAPTURE_READY disposition and the human marker is forbidden there; ownership and human-requirement resolve per (gate, mode) through one shared authority."
+  },
+  "gate8_policy": {
+    "DRAFT": {
+      "gate_id": "capture-evidence",
+      "gate_number": 8,
+      "mode": "DRAFT",
+      "mode_sensitive": true,
+      "ok": true,
+      "code": null,
+      "defer_to_static": false,
+      "expected_owner": "qc_director",
+      "next_specialist": "generation_supervisor",
+      "human_performer": null,
+      "human_required": false,
+      "human_marker_forbidden": true,
+      "disposition": "PROXY_CAPTURE_READY",
+      "owner_actionable": false,
+      "owner_actionable_reason": null,
+      "implementation_status": "BLOCKED",
+      "static_owner": "qc_director",
+      "static_owner_is_correct": true
+    },
+    "REVIEW": {
+      "gate_id": "capture-evidence",
+      "gate_number": 8,
+      "mode": "REVIEW",
+      "mode_sensitive": true,
+      "ok": true,
+      "code": null,
+      "defer_to_static": false,
+      "expected_owner": null,
+      "next_specialist": null,
+      "human_performer": null,
+      "human_required": false,
+      "human_marker_forbidden": false,
+      "disposition": "REUSE_PRIOR_CAPTURE",
+      "owner_actionable": false,
+      "owner_actionable_reason": null,
+      "implementation_status": "IMPLEMENTED",
+      "static_owner": "qc_director",
+      "static_owner_is_correct": false
+    },
+    "PRODUCTION": {
+      "gate_id": "capture-evidence",
+      "gate_number": 8,
+      "mode": "PRODUCTION",
+      "mode_sensitive": true,
+      "ok": true,
+      "code": null,
+      "defer_to_static": false,
+      "expected_owner": "qc_director",
+      "next_specialist": null,
+      "human_performer": "mikko",
+      "human_required": true,
+      "human_marker_forbidden": false,
+      "disposition": "REAL_CAPTURE_CONFIRMED",
+      "owner_actionable": false,
+      "owner_actionable_reason": null,
+      "implementation_status": "IMPLEMENTED",
+      "static_owner": "qc_director",
+      "static_owner_is_correct": true
+    }
+  },
+  "proxy_evidence_contract": {
+    "file": "config/proxy-capture-evidence-contract.json",
+    "status": "CONTRACT_DEFINED_PRODUCER_MISSING",
+    "disposition": "PROXY_CAPTURE_READY",
+    "distinct_from": "REAL_CAPTURE_CONFIRMED",
+    "never": "reuse the human marker vocabulary, log proxy media as a physical take, relabel synthetic media as real capture, or accept placeholder/dummy/zero-byte media",
+    "reuses": "presenter-take-manifest#verifyMediaBytes for byte verification and the AUDIO_RENDER evidence shape (state + hash + duration); QC consumes it as one more typed adapter rather than a new evaluator"
+  },
+  "regression_model": {
+    "question": "if a reviewed DRAFT is promoted to PRODUCTION, can proxy capture satisfy Production?",
+    "answer": "no. proxy_evidence_sufficient is false and PRODUCTION requires REAL_CAPTURE_CONFIRMED. A run promoted with only proxy capture no longer satisfies the capture gates, so the canonical lifecycle reopens them.",
+    "downstream": "rough-cut and review artifacts are retained as provenance from the approved draft — the same semantics gate 6 already uses when an approval is superseded.",
+    "mechanism": "the 14-gate engine recomputes position from evidence, which is why a mode change that invalidates earlier evidence reopens the gate rather than leaving a false linear position."
+  },
+  "draft_capability_inventory": {
+    "synthetic_delivery_contract": "DEFINED THIS MISSION (config/proxy-capture-evidence-contract.json); producer MISSING",
+    "tts": "MISSING — verified by search across *.js/*.json/*.md/*.py/*.sh. The only MiniMax integration is score-engine/adapters/minimax-caption-reference.js with zero voice tokens (music captions). Scorecraft narration references duck music UNDER speech; they consume narration rather than produce it.",
+    "avatar_proxy_presenter": "MISSING — every hit for avatar/talking-head/stickman/lip-sync is prose: a workflow-wizard checklist item, topic-scout requiredVisuals entries, one server-side text classifier.",
+    "presenter_a_roll_generation": "INTENTIONALLY EXCLUDED, not a missing adapter. edit-plan.js maps PRESENTER_A_ROLL to the PRESENTER_CAPTURE source class alongside SCREEN_CAPTURE and ARCHIVAL_EXTERNAL — captured or sourced, never generated. Removing the exclusion would not create a producer.",
+    "audio_render": "sibling-owned QC evidence adapter for the music mix (state + production_mix_sha256 + duration_seconds). Consumed read-only as a shape precedent; it does not provide speech."
+  },
+  "implemented_this_mission": [
+    "mode-aware owner resolution through one shared authority",
+    "mode-aware human-required projection (gate 8 is human-only in PRODUCTION)",
+    "gate-7 and gate-8 per-mode policy including dispositions",
+    "the PROXY_CAPTURE_READY evidence contract as a definition",
+    "resilience: a root without the policy config degrades to pre-mode behaviour instead of failing"
+  ],
+  "deliberately_not_implemented": [
+    "any TTS, avatar or proxy presenter producer",
+    "a mode-aware gate-8 EVALUATOR — the evaluator still requires the human marker in all modes. Harmless today because DRAFT cannot reach gate 8 without a producer, and rewiring it before the producer exists would create a path that accepts evidence nothing can produce.",
+    "presenter_director enablement"
+  ],
+  "verdict": "MODE_AWARE_CAPTURE_AUTHORITY_PROVEN_DRAFT_PROXY_CAPABILITY_STILL_MISSING",
+  "exact_next_capability": "a synthetic narration producer: approved script beats -> real audio bytes with duration and hash provenance. It is the smallest primitive that unblocks anything, it is independently useful (temp VO for rough cuts), and the proxy presenter visual is a separate, larger problem that can follow."
+}
