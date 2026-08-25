@@ -67,8 +67,25 @@ function main(argv = process.argv.slice(2)) {
     "utf8"
   );
 
+  // A new run must never be UNKNOWN: Production Operations writes the durable
+  // package-run-state.md projection of canonical 14-gate state immediately.
+  // Projection failure is reported but never blocks run creation — the run's
+  // canonical state lives in its evidence files, not in this projection.
+  let stateProjection = null;
+  try {
+    stateProjection = require("./package-run-state-operations.js").writeRunState({
+      repoRoot, runId, actor: "production_operations",
+      workflowPath: options.trackerWorkflowPath || "horizontal",
+    });
+  } catch (error) {
+    console.warn(`Package run state projection deferred: ${error.message}`);
+  }
+
   const relativeRunDir = path.relative(repoRoot, runDir);
   console.log(`Created package run: ${relativeRunDir}`);
+  if (stateProjection) {
+    console.log(`Run state: ${stateProjection.path} (gate ${stateProjection.current_gate}, ${stateProjection.state})`);
+  }
   console.log(`Prompt: ${relativeRunDir}/generation-prompt.md`);
   console.log(`Candidates: ${relativeRunDir}/package-candidates.json`);
   console.log(`Review URL: http://localhost:8010/package-engine.html?run=${runId}`);
