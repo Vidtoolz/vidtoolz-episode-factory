@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "runner_version": "agent-runner-v1",
+  "invocations": [
+    {
+      "invocation_id": "qc_director:qc-live-status-01:1",
+      "agent_id": "qc_director",
+      "task_id": "qc-live-status-01",
+      "attempt_number": 1,
+      "state": "COMPLETE",
+      "attention": "INFORMATION",
+      "next_owner": "hermes",
+      "task_directory": "qc_director/qc-live-status-01",
+      "completed_at": "2026-08-25T03:00:39.636Z"
+    },
+    {
+      "invocation_id": "qc_director:qc-live-positive-01:1",
+      "agent_id": "qc_director",
+      "task_id": "qc-live-positive-01",
+      "attempt_number": 1,
+      "state": "COMPLETE",
+      "attention": "INFORMATION",
+      "next_owner": "production_operations",
+      "task_directory": "qc_director/qc-live-positive-01",
+      "completed_at": "2026-08-25T03:01:11.480Z"
+    },
+    {
+      "invocation_id": "qc_director:qc-live-negative-01:1",
+      "agent_id": "qc_director",
+      "task_id": "qc-live-negative-01",
+      "attempt_number": 1,
+      "state": "BLOCKED",
+      "attention": "REVIEW",
+      "next_owner": "production_operations",
+      "task_directory": "qc_director/qc-live-negative-01",
+      "completed_at": "2026-08-25T03:01:11.532Z"
+    },
+    {
+      "invocation_id": "qc_director:qc-live-human-review-01:1",
+      "agent_id": "qc_director",
+      "task_id": "qc-live-human-review-01",
+      "attempt_number": 1,
+      "state": "HUMAN_REVIEW_REQUIRED",
+      "attention": "REVIEW",
+      "next_owner": "mikko",
+      "task_directory": "qc_director/qc-live-human-review-01",
+      "completed_at": "2026-08-25T03:01:11.582Z"
+    }
+  ]
+}

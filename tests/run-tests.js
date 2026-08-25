@@ -135,6 +135,7 @@ require("./decision-queue.test.js");
 require("./production-operations-promotion-governance.test.js");
 require("./qc-director.test.js");
 require("./qc-director-production-path.test.js");
+require("./qc-director-promotion-governance.test.js");
 require("./execution-ownership.test.js");
 require("./successor-task-contract.test.js");
 require("./agent-cancellation-adapters.test.js");

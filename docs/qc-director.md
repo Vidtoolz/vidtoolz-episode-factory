@@ -188,8 +188,18 @@ canonical dispatch chain through `scripts/agent-run.js` against an isolated
 root whose fixture registry carries `IMPLEMENTATION_PROVEN`; the live registry
 is never modified by the proof.
 
-While `implementation_state` is `CANDIDATE`, every production path — canonical
-runner, direct CLI and operator retry preview — refuses with
-`BLOCKED_IMPLEMENTATION_NOT_PROVEN` even though the module exists. Promotion to
-`IMPLEMENTATION_PROVEN` is Mikko's explicit human decision and is recorded in
-`governance/`.
+Before promotion, every production path — canonical runner, direct CLI and
+operator retry preview — refused with `BLOCKED_IMPLEMENTATION_NOT_PROVEN` even
+though the module existed; that baseline is preserved verbatim in
+`pre-promotion-dispatch-refusal.json`, because the point it proves is that the
+fail-closed registry, not module absence, is what withholds dispatch.
+
+`implementation_state` is now `IMPLEMENTATION_PROVEN`, promoted by Mikko's
+explicit human authorization and recorded in
+`governance/qc-director-implementation-promotion.json`. That promotion changed
+one readiness field and created no approval, aesthetic, publication or takeover
+authority. Post-promotion live dispatch through the real production path is
+recorded in `post-promotion-live-dispatch.json`.
+
+Camera Director remains `CANDIDATE` and Presenter/Creative Director remain
+`DISABLED`; this promotion covers QC Director only.

@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "qc-live-negative-01",
+  "action": "inspect_artifact",
+  "package_run_id": "2026-08-25-qc-director-live",
+  "project_id": null,
+  "gate": "production-plan",
+  "state": "BLOCKED",
+  "disposition": "BLOCKED",
+  "reason": "evidence generation-result was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+  "subject": {
+    "artifact_id": "qc-live-canary-asset",
+    "artifact_type": "GENERATED_MEDIA",
+    "producing_agent": "generation_supervisor",
+    "artifact_path": "package-runs/2026-08-25-qc-director-live/canary/rough-cut.mp4",
+    "artifact_sha256": "cc37918c21641ba8e23a12986c8ab2196b9437d6598e0eb5ebcbea6a008d5f92",
+    "version_id": "gen-v1"
+  },
+  "observed": {
+    "artifact_readable": true,
+    "artifact_sha256": "cc37918c21641ba8e23a12986c8ab2196b9437d6598e0eb5ebcbea6a008d5f92",
+    "byte_size": 36
+  },
+  "evidence": [
+    {
+      "evidence_id": "generation-result",
+      "kind": "GENERATION_RESULT",
+      "evidence_class": "SPECIALIST",
+      "produced_by": "generation_supervisor",
+      "path": "package-runs/2026-08-25-qc-director-live/canary/generation-result.json",
+      "declared_sha256": "199617bf1111de4a6d5e965d4c383ca38e7400d57cb8554c4bb82a0b7b4fffe9",
+      "observed_sha256": "199617bf1111de4a6d5e965d4c383ca38e7400d57cb8554c4bb82a0b7b4fffe9",
+      "binding": "STALE",
+      "used": false,
+      "summary": null
+    }
+  ],
+  "evidence_coverage": {
+    "required": [
+      "GENERATION_RESULT"
+    ],
+    "satisfied": [],
+    "missing": [
+      "GENERATION_RESULT"
+    ]
+  },
+  "checks": [],
+  "blockers": [
+    {
+      "code": "QC_EVIDENCE_STALE",
+      "severity": "BLOCKER",
+      "source": "qc_director",
+      "artifact_id": "qc-live-canary-asset",
+      "explanation": "evidence generation-result was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+      "evidence_ref": "generation-result",
+      "affected_gate": "production-plan",
+      "auto_repairable": false,
+      "human_judgment_required": false
+    },
+    {
+      "code": "QC_REQUIRED_EVIDENCE_MISSING",
+      "severity": "BLOCKER",
+      "source": "qc_director",
+      "artifact_id": "qc-live-canary-asset",
+      "explanation": "required evidence GENERATION_RESULT was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality",
+      "evidence_ref": null,
+      "affected_gate": "production-plan",
+      "auto_repairable": false,
+      "human_judgment_required": false
+    }
+  ],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": null,
+    "present": false,
+    "verdict": "NOT_REQUIRED",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [],
+  "next_gate_allowed": false,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T03:01:11.528Z",
+  "events": [
+    {
+      "at": "2026-08-25T03:01:11.528Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "qc-live-canary-asset"
+    },
+    {
+      "at": "2026-08-25T03:01:11.528Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "evidence generation-result was produced against a different artifact revision (bound hash does not match the inspected artifact)"
+    }
+  ],
+  "attention": "REVIEW",
+  "attention_level": "REVIEW",
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "RESTORE_QC_EVIDENCE_INTEGRITY"
+  },
+  "qc_result_digest_sha256": "0f74b5bfaf905f100bef3109ed5bfea83fe2613e43e8c1f8841271cf46966c39",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "BLOCKED",
+    "attention": "REVIEW",
+    "attention_level": "REVIEW",
+    "disposition": "BLOCKED",
+    "current_artifact": {
+      "artifact_id": "qc-live-canary-asset",
+      "artifact_type": "GENERATED_MEDIA",
+      "producing_agent": "generation_supervisor"
+    },
+    "package_run_id": "2026-08-25-qc-director-live",
+    "gate": "production-plan",
+    "next_gate_allowed": false,
+    "blockers": [
+      "evidence generation-result was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+      "required evidence GENERATION_RESULT was never produced or does not validly bind to this artifact; absence of a known defect is not proof of quality"
+    ],
+    "blocker": "evidence generation-result was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": false,
+    "human_authority": {
+      "required_scope": null,
+      "verdict": "NOT_REQUIRED"
+    },
+    "evidence_used": 0,
+    "evidence_total": 1,
+    "missing_evidence": [
+      "GENERATION_RESULT"
+    ],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "BLOCKED",
+      "reason": "evidence generation-result was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+      "evidence_refs": [
+        {
+          "ref": "generation-result",
+          "summary": "GENERATION_RESULT/STALE"
+        }
+      ],
+      "confidence": null,
+      "escalation_reason": "evidence generation-result was produced against a different artifact revision (bound hash does not match the inspected artifact)"
+    },
+    "owner": "qc_director",
+    "next_owner": "production_operations",
+    "latest_event": {
+      "at": "2026-08-25T03:01:11.528Z",
+      "actor": "qc_director",
+      "state": "QC_BLOCKED",
+      "detail": "evidence generation-result was produced against a different artifact revision (bound hash does not match the inspected artifact)"
+    }
+  },
+  "operational_rationale": {
+    "decision": "BLOCKED",
+    "reason": "evidence generation-result was produced against a different artifact revision (bound hash does not match the inspected artifact)",
+    "evidence_refs": [
+      {
+        "ref": "generation-result",
+        "summary": "GENERATION_RESULT/STALE"
+      }
+    ],
+    "confidence": null,
+    "escalation_reason": "evidence generation-result was produced against a different artifact revision (bound hash does not match the inspected artifact)"
+  }
+}

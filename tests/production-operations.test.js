@@ -198,9 +198,12 @@ test('PO15: promotion changes no other lifecycle or implementation-readiness bou
     assert.throws(() => runner.resolveAgent(path.resolve(__dirname, '..'), id),
       (error) => error.code === 'BLOCKED_AGENT_NOT_ENABLED');
   }
-  for (const id of ['camera_director', 'qc_director']) {
+  for (const id of ['camera_director']) {
     assert.throws(() => runner.resolveAgent(path.resolve(__dirname, '..'), id),
       (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
     assert.equal(agents.find((agent) => agent.agent_id === id).implementation_state, 'CANDIDATE');
   }
+  // qc_director was promoted separately and independently; its promotion must
+  // not have moved any other role's readiness or lifecycle.
+  assert.equal(agents.find((agent) => agent.agent_id === 'qc_director').implementation_state, 'IMPLEMENTATION_PROVEN');
 });

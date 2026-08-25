@@ -1,0 +1,35 @@
+{
+  "task_id": "qc-live-negative-01",
+  "package_run_id": "2026-08-25-qc-director-live",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "inspect_artifact"
+  },
+  "gate": "production-plan",
+  "subject": {
+    "artifact_id": "qc-live-canary-asset",
+    "artifact_type": "GENERATED_MEDIA",
+    "producing_agent": "generation_supervisor",
+    "artifact_path": "package-runs/2026-08-25-qc-director-live/canary/rough-cut.mp4",
+    "artifact_sha256": "cc37918c21641ba8e23a12986c8ab2196b9437d6598e0eb5ebcbea6a008d5f92",
+    "version_id": "gen-v1"
+  },
+  "evidence": [
+    {
+      "evidence_id": "generation-result",
+      "kind": "GENERATION_RESULT",
+      "evidence_class": "SPECIALIST",
+      "produced_by": "generation_supervisor",
+      "path": "package-runs/2026-08-25-qc-director-live/canary/generation-result.json",
+      "sha256": "199617bf1111de4a6d5e965d4c383ca38e7400d57cb8554c4bb82a0b7b4fffe9",
+      "binds_to": {
+        "artifact_id": "qc-live-canary-asset",
+        "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "version_id": "gen-v0"
+      }
+    }
+  ],
+  "required_evidence": [
+    "GENERATION_RESULT"
+  ]
+}

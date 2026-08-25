@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "record": "QC_DIRECTOR_POST_PROMOTION_LIVE_DISPATCH",
+  "promotion_commit": "de3250c1e67a4a3c19c5ef8efa987421927d46dc",
+  "historical_manifests_unchanged": true,
+  "proof_history": [
+    {
+      "manifest": "package-runs/2026-08-25-qc-director-proof-v2/proof-manifest-v2.json",
+      "sha256": "b3cbc335eadbb96de0083e870f48f4daef6892af0bc27ad88903e68a77b5a833"
+    },
+    {
+      "manifest": "package-runs/2026-08-25-qc-director-proof-v2/production-path-summary.json",
+      "sha256": "81920555975f957f5489a605529ca316cdf29268f93a0c8693a3312f92f83664"
+    },
+    {
+      "manifest": "package-runs/2026-08-25-qc-director-proof-v2/pre-promotion-dispatch-refusal.json",
+      "sha256": "4b5e95aa07430c02621ca5f9b9f6c7af56cd7af4ea4089a8bc56868e223455dd"
+    },
+    {
+      "governance_record": "governance/qc-director-implementation-promotion.json",
+      "sha256": "48eb7dec3ac5f317bcf4139afaa475059517baf368cf400d827a0452dc7cfd01"
+    }
+  ],
+  "promotion": {
+    "decision": "PERFORMED",
+    "human_authorized": true,
+    "authenticated": false
+  },
+  "live_dispatch": {
+    "statement": "These invocations ran through the real production path (scripts/agent-run.js) against the LIVE repository registry after promotion, not against an isolated fixture.",
+    "run_id": "2026-08-25-qc-director-live",
+    "cases": {
+      "positive": {
+        "task_id": "qc-live-positive-01",
+        "evidence_dir": "package-runs/2026-08-25-qc-director-live/agents/qc_director/qc-live-positive-01",
+        "infrastructure_state": "COMPLETE",
+        "envelope_error": null,
+        "module_path": "scripts/qc-director.js",
+        "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1",
+        "repository_head": "2c30297ee4d2c2426635f9b229491e79603144c1",
+        "disposition": "PASS",
+        "next_gate_allowed": true,
+        "attention": "INFORMATION",
+        "next_owner": "production_operations",
+        "blocker_codes": [],
+        "aesthetic_authority_claimed": false,
+        "qc_result_digest_sha256": "09e5fa5e96a5055bee16785c5797c7461a07cf7e0ad9821bbe825045498db9c3",
+        "result_sha256": "4c56889de6ffca31bf0aa723d03f96e4c2ea491062e2dfbdad335649c410857c"
+      },
+      "negative": {
+        "task_id": "qc-live-negative-01",
+        "evidence_dir": "package-runs/2026-08-25-qc-director-live/agents/qc_director/qc-live-negative-01",
+        "infrastructure_state": "COMPLETE",
+        "envelope_error": null,
+        "module_path": "scripts/qc-director.js",
+        "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1",
+        "repository_head": "2c30297ee4d2c2426635f9b229491e79603144c1",
+        "disposition": "BLOCKED",
+        "next_gate_allowed": false,
+        "attention": "REVIEW",
+        "next_owner": "production_operations",
+        "blocker_codes": [
+          "QC_EVIDENCE_STALE",
+          "QC_REQUIRED_EVIDENCE_MISSING"
+        ],
+        "aesthetic_authority_claimed": false,
+        "qc_result_digest_sha256": "0f74b5bfaf905f100bef3109ed5bfea83fe2613e43e8c1f8841271cf46966c39",
+        "result_sha256": "6309c9f8572d8c4e18181821024f1f9484d2b81dff0e75db95da59bd68e32e85"
+      },
+      "human_review": {
+        "task_id": "qc-live-human-review-01",
+        "evidence_dir": "package-runs/2026-08-25-qc-director-live/agents/qc_director/qc-live-human-review-01",
+        "infrastructure_state": "COMPLETE",
+        "envelope_error": null,
+        "module_path": "scripts/qc-director.js",
+        "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1",
+        "repository_head": "2c30297ee4d2c2426635f9b229491e79603144c1",
+        "disposition": "HUMAN_REVIEW_REQUIRED",
+        "next_gate_allowed": false,
+        "attention": "REVIEW",
+        "next_owner": "mikko",
+        "blocker_codes": [],
+        "aesthetic_authority_claimed": false,
+        "qc_result_digest_sha256": "d56aa6636c10dd26d54f3776c4c7bef81b5695ac778d1b9413e55876aeb71b6e",
+        "result_sha256": "ece0bd9f70e4e2a58aa9835160446e9f212d4fbcb665384917511bb0826384b7"
+      },
+      "status": {
+        "task_id": "qc-live-status-01",
+        "evidence_dir": "package-runs/2026-08-25-qc-director-live/agents/qc_director/qc-live-status-01",
+        "infrastructure_state": "COMPLETE",
+        "envelope_error": null,
+        "module_path": "scripts/qc-director.js",
+        "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1",
+        "repository_head": "2c30297ee4d2c2426635f9b229491e79603144c1",
+        "disposition": "PASS",
+        "next_gate_allowed": false,
+        "attention": "INFORMATION",
+        "next_owner": "hermes",
+        "blocker_codes": [],
+        "aesthetic_authority_claimed": false,
+        "qc_result_digest_sha256": "e4e0a5781341127fd6bfb280e442bf6b31b0356f32fc09c6ca7bf07a6f6f27dc",
+        "result_sha256": "67252061d19604ddece4f627ad52ca9ad84da143b2a9b31b41842b8b78e81858"
+      }
+    }
+  },
+  "mutation_safety": {
+    "inspected_artifact": "package-runs/2026-08-25-qc-director-live/canary/rough-cut.mp4",
+    "sha256_after_all_dispatches": "cc37918c21641ba8e23a12986c8ab2196b9437d6598e0eb5ebcbea6a008d5f92",
+    "statement": "the artifact QC inspected is byte-identical after four live dispatches"
+  },
+  "scope_limits": {
+    "human_approval_created": false,
+    "aesthetic_authority_created": false,
+    "publication_authority_created": false,
+    "statement": "QC Director gained implementation dispatch eligibility only."
+  }
+}

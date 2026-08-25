@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "verdict": "PASS_FOR_HUMAN_REVIEW",
+  "scope": "machine continuity and serialization checks; not an aesthetic approval",
+  "errors": [],
+  "warnings": []
+}

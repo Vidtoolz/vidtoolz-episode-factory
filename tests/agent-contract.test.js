@@ -272,10 +272,14 @@ test('AC22: complete doctrine never implies autonomous enablement', () => {
   assert.deepEqual(s.implementation_candidates, implementationCandidates);
   assert.equal(registry.agents.length, 12);
   assert.equal(s.enabled_for_dispatch.length, 10);
-  assert.equal(s.implementation_dispatchable.length, 8);
-  assert.equal(s.implementation_candidates.length, 2);
+  assert.equal(s.implementation_dispatchable.length, 9);
+  assert.equal(s.implementation_candidates.length, 1);
   assert.equal(s.doctrine_only.length, 2);
-  assert.deepEqual(s.implementation_candidates, ['camera_director', 'qc_director']);
+  // qc_director was promoted to IMPLEMENTATION_PROVEN (see
+  // governance/qc-director-implementation-promotion.json); camera_director is
+  // still the one unproven implementation.
+  assert.deepEqual(s.implementation_candidates, ['camera_director']);
+  assert.ok(s.implementation_dispatchable.includes('qc_director'));
   for (const id of ['presenter_director', 'creative_director']) {
     assert.ok(!s.enabled_for_dispatch.includes(id), `${id} must not be dispatch-enabled`);
   }

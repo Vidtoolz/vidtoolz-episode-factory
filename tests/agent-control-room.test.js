@@ -888,16 +888,24 @@ test('canonical cockpit exposes all registered agents and truthful implementatio
   const output = await controlRoom.buildAgentControlRoom({ root: path.join(__dirname, '..') });
   const registry = require('../config/agent-registry.json');
   assert.equal(output.agents.length, registry.agents.length);
-  for (const id of ['camera_director', 'qc_director']) {
+  for (const id of ['camera_director']) {
     const row = output.agents.find((item) => item.agent_id === id);
     assert.equal(row.implementation.state, 'IMPLEMENTATION_CANDIDATE');
     assert.equal(row.implementation.implementation_state, 'CANDIDATE');
     assert.equal(row.control_capabilities.retry, false);
   }
+  // QC Director is promoted, so the cockpit must project a loadable
+  // implementation rather than a candidate stub.
+  const qc = output.agents.find((item) => item.agent_id === 'qc_director');
+  assert.equal(qc.implementation.state, 'AVAILABLE');
+  assert.equal(qc.implementation.implementation_state, 'IMPLEMENTATION_PROVEN');
+  assert.equal(qc.implementation.module_path, 'scripts/qc-director.js');
+  assert.equal(qc.implementation.status_action_supported, true);
+  assert.equal(qc.implementation.control_room_view_supported, true);
   const production = output.agents.find((item) => item.agent_id === 'production_operations');
   assert.equal(production.implementation.state, 'AVAILABLE');
   assert.equal(production.implementation.implementation_state, 'IMPLEMENTATION_PROVEN');
-  assert.equal(output.summary.implementation_candidate, 2);
+  assert.equal(output.summary.implementation_candidate, 1);
   assert.equal(output.agents.find((item) => item.agent_id === 'generation_supervisor').implementation.state, 'STATUS_UNSUPPORTED');
 });
 

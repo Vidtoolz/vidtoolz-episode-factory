@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "qc-live-status-01",
+  "action": "status",
+  "package_run_id": "2026-08-25-qc-director-live",
+  "project_id": null,
+  "gate": null,
+  "state": "COMPLETE",
+  "disposition": "PASS",
+  "reason": "QC Director is available; no artifact was submitted for inspection",
+  "subject": null,
+  "observed": null,
+  "evidence": [],
+  "evidence_coverage": {
+    "required": [],
+    "satisfied": [],
+    "missing": []
+  },
+  "checks": [],
+  "blockers": [],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": null,
+    "present": false,
+    "verdict": "NOT_REQUIRED",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "next_gate_allowed": false,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T03:00:39.631Z",
+  "events": [
+    {
+      "at": "2026-08-25T03:00:39.631Z",
+      "actor": "qc_director",
+      "state": "QC_STATUS_REPORTED",
+      "detail": "qc-director-v1"
+    }
+  ],
+  "attention": "INFORMATION",
+  "attention_level": "INFORMATION",
+  "handoff": {
+    "next_owner": "hermes",
+    "next_action": "DISPATCH_QC_INSPECTION"
+  },
+  "qc_result_digest_sha256": "e4e0a5781341127fd6bfb280e442bf6b31b0356f32fc09c6ca7bf07a6f6f27dc",
+  "control_room": {
+    "role": "qc_director",
+    "action": "status",
+    "state": "COMPLETE",
+    "attention": "INFORMATION",
+    "attention_level": "INFORMATION",
+    "disposition": "PASS",
+    "current_artifact": null,
+    "package_run_id": "2026-08-25-qc-director-live",
+    "gate": null,
+    "next_gate_allowed": false,
+    "blockers": [],
+    "blocker": "QC Director is available; no artifact was submitted for inspection",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": false,
+    "human_authority": {
+      "required_scope": null,
+      "verdict": "NOT_REQUIRED"
+    },
+    "evidence_used": 0,
+    "evidence_total": 0,
+    "missing_evidence": [],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "PASS",
+      "reason": "QC Director is available; no artifact was submitted for inspection",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": null
+    },
+    "owner": "qc_director",
+    "next_owner": "hermes",
+    "latest_event": {
+      "at": "2026-08-25T03:00:39.631Z",
+      "actor": "qc_director",
+      "state": "QC_STATUS_REPORTED",
+      "detail": "qc-director-v1"
+    }
+  },
+  "operational_rationale": {
+    "decision": "PASS",
+    "reason": "QC Director is available; no artifact was submitted for inspection",
+    "evidence_refs": [],
+    "confidence": null,
+    "escalation_reason": null
+  }
+}

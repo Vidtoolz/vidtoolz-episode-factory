@@ -290,7 +290,7 @@ test('HB20: Hermes route authorization refuses every live implementation candida
   const root = path.resolve(__dirname, '..');
   const agents = registryAgents();
   const candidates = agents.filter((agent) => agent.implementation_state === 'CANDIDATE').map((agent) => agent.agent_id);
-  assert.deepEqual(candidates, ['camera_director', 'qc_director']);
+  assert.deepEqual(candidates, ['camera_director']);
   for (const id of candidates) {
     const readiness = bridge.implementationReadiness(root, id);
     assert.equal(readiness.implementation_state, 'CANDIDATE', id);

@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "record_type": "agent_implementation_promotion_decision",
+  "decision": "PROMOTE_IMPLEMENTATION",
+  "role": "qc_director",
+  "prior_implementation_state": "CANDIDATE",
+  "resulting_implementation_state": "IMPLEMENTATION_PROVEN",
+  "decision_maker": {
+    "identity_type": "HUMAN_ORCHESTRATION_AUTHORIZATION",
+    "identity": "Mikko",
+    "authenticated": false,
+    "authentication_note": "Authorization was explicitly supplied by Mikko in the orchestration prompt. This repository record has no cryptographic proof of human identity."
+  },
+  "authorization": {
+    "source": "explicit human authorization in the controlling orchestration prompt",
+    "authorized_change": "qc_director.implementation_state: CANDIDATE -> IMPLEMENTATION_PROVEN",
+    "scope": "qc_director implementation readiness only",
+    "authorization_received": "before promotion commit de3250c1e67a4a3c19c5ef8efa987421927d46dc; exact prompt timestamp is not available as repository evidence",
+    "recorded_at": "2026-08-25T03:01:42.630Z"
+  },
+  "promotion_commit": {
+    "commit": "de3250c1e67a4a3c19c5ef8efa987421927d46dc",
+    "subject": "promote(agents): prove qc director implementation",
+    "commit_object_sha256": "2568d810ad719651410486d63099ff8f493818b74a38f5eee13a3b86ba1b2c7a",
+    "registry_sha256_before": "c7086c00531c005cef8b98ca5c5bee474324d394b05a5663b14064443ba09eff",
+    "registry_sha256_after": "e2cd5a2f010922869805128af1f1c11ed2ef5ac1a99997f614d39379c4077e59",
+    "files_changed": [
+      "config/agent-registry.json"
+    ],
+    "semantic_diff": {
+      "changed_fields": [
+        "qc_director.implementation_state"
+      ],
+      "only_that_field_changed": true,
+      "lifecycle_or_authority_fields_changed": false,
+      "other_roles_changed": false
+    }
+  },
+  "implementation_binding": {
+    "proof_bound_commit": "2f03099c9001a136dc5b39a622c9b3a65044f637",
+    "proof_bound_commit_object_sha256": "be53adf43a7aa0e87db72bf1dab3d9927cc8fbfde0099fab8313588b55418db5",
+    "module_path": "scripts/qc-director.js",
+    "module_sha256": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1",
+    "module_version": "qc-director-v1"
+  },
+  "proof_binding": {
+    "proof_package": "package-runs/2026-08-25-qc-director-proof-v2",
+    "proof_manifest": "package-runs/2026-08-25-qc-director-proof-v2/proof-manifest-v2.json",
+    "proof_manifest_sha256": "b3cbc335eadbb96de0083e870f48f4daef6892af0bc27ad88903e68a77b5a833",
+    "pre_promotion_refusal_evidence": "package-runs/2026-08-25-qc-director-proof-v2/pre-promotion-dispatch-refusal.json",
+    "pre_promotion_refusal_sha256": "4b5e95aa07430c02621ca5f9b9f6c7af56cd7af4ea4089a8bc56868e223455dd",
+    "promotion_criteria_version": "v1 (docs/implementation-promotion-criteria.md)",
+    "promotion_criteria_sha256": "005ae7d914f8e7a52333c02b02527c1cc4b77bffc8fe1c5b1be1ac9d0ca4997d",
+    "criteria_result": "10/10 PASS"
+  },
+  "contract_alignment": {
+    "contract_role_status": "BUILT",
+    "contract_status_unchanged": true,
+    "note": "Contract role_roster status BUILT is the target-architecture classification and was already correct. The registry implementation_state is the separate readiness axis, and it is what this decision changes. After this promotion the contract and the live implementation tell the same truth: the role is built AND its canonical module is proven."
+  },
+  "authority_effect": {
+    "implementation_dispatch_eligibility_changed": true,
+    "doctrine_changed": false,
+    "lifecycle_proven_changed": false,
+    "autonomous_dispatch_changed": false,
+    "allowed_actions_changed": false,
+    "prohibited_actions_changed": false,
+    "human_gates_changed": false,
+    "approval_created": false,
+    "publication_authority_created": false,
+    "takeover_eligibility_created": false,
+    "aesthetic_authority_created": false
+  },
+  "statement": "PROMOTION WAS HUMAN-AUTHORIZED. The decision promotes only the QC Director implementation readiness axis. It is not a creative, artifact, final-cut, music, packaging, publication, or other approval. QC Director still cannot record human approval, cannot judge aesthetics, and fails closed when evidence is missing, stale or unsupported."
+}

@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "state": "COMPLETE",
+  "outputs": [{"path": "canary/rough-cut.mp4", "sha256": "cc37918c21641ba8e23a12986c8ab2196b9437d6598e0eb5ebcbea6a008d5f92"}],
+  "provenance": {"generating_agent": "generation_supervisor", "route": {"lane": "text_to_image_generation", "engine": "comfyui"}}
+}

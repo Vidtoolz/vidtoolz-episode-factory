@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "qc_director_version": "qc-director-v1",
+  "agent_id": "qc_director",
+  "task_id": "qc-live-human-review-01",
+  "action": "inspect_artifact",
+  "package_run_id": "2026-08-25-qc-director-live",
+  "project_id": null,
+  "gate": "rough-cut-review",
+  "state": "HUMAN_REVIEW_REQUIRED",
+  "disposition": "HUMAN_REVIEW_REQUIRED",
+  "reason": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded",
+  "subject": {
+    "artifact_id": "qc-live-canary-cut",
+    "artifact_type": "ROUGH_CUT",
+    "producing_agent": "editor",
+    "artifact_path": "package-runs/2026-08-25-qc-director-live/canary/rough-cut.mp4",
+    "artifact_sha256": "cc37918c21641ba8e23a12986c8ab2196b9437d6598e0eb5ebcbea6a008d5f92",
+    "version_id": "edit-v1"
+  },
+  "observed": {
+    "artifact_readable": true,
+    "artifact_sha256": "cc37918c21641ba8e23a12986c8ab2196b9437d6598e0eb5ebcbea6a008d5f92",
+    "byte_size": 36
+  },
+  "evidence": [
+    {
+      "evidence_id": "camera-quality",
+      "kind": "CAMERA_QUALITY",
+      "evidence_class": "DETERMINISTIC",
+      "produced_by": "earth-studio-camera-quality",
+      "path": "package-runs/2026-08-25-qc-director-live/canary/camera-quality.json",
+      "declared_sha256": "6520a5bdb6eaefeafa00022eb690dfa7040f8dd0c01e4c9b3fcbad1fd655e64b",
+      "observed_sha256": "6520a5bdb6eaefeafa00022eb690dfa7040f8dd0c01e4c9b3fcbad1fd655e64b",
+      "binding": "BOUND",
+      "used": true,
+      "summary": {
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "errors": 0,
+        "warnings": 0
+      }
+    }
+  ],
+  "evidence_coverage": {
+    "required": [
+      "CAMERA_QUALITY"
+    ],
+    "satisfied": [
+      "CAMERA_QUALITY"
+    ],
+    "missing": []
+  },
+  "checks": [
+    {
+      "evidence_id": "camera-quality",
+      "kind": "CAMERA_QUALITY",
+      "applied": true,
+      "schema_supported": true,
+      "defects": 0,
+      "warnings": 0
+    }
+  ],
+  "blockers": [],
+  "defects": [],
+  "warnings": [],
+  "human_authority": {
+    "required_scope": "FINAL_CUT_APPROVAL",
+    "present": false,
+    "verdict": "ABSENT",
+    "decision": null,
+    "approver": null,
+    "reason": null
+  },
+  "human_review_reasons": [
+    {
+      "evidence_id": "camera-quality",
+      "reason": "camera-quality is a machine continuity check and explicitly not an aesthetic approval"
+    }
+  ],
+  "next_gate_allowed": false,
+  "supported_evidence_kinds": [
+    "CAMERA_QUALITY",
+    "GENERATION_RESULT",
+    "EDIT_QC_HANDOFF",
+    "AUDIO_RENDER",
+    "STORY_VALIDATION"
+  ],
+  "canonical_gates": [
+    "package-selection",
+    "research",
+    "script-structure",
+    "script-review",
+    "production-plan",
+    "shot-edit-plan-review",
+    "capture-checklist",
+    "capture-evidence",
+    "rough-cut-review",
+    "final-review",
+    "export-check",
+    "publication-metadata",
+    "archive",
+    "repurposing"
+  ],
+  "aesthetic_authority": {
+    "claimed": false,
+    "owner": "mikko",
+    "fenced_dimensions": [
+      "beauty",
+      "cinematic_quality",
+      "humour",
+      "emotional_effect",
+      "taste",
+      "pacing_feel",
+      "title_appeal",
+      "music_fit"
+    ]
+  },
+  "inspected_at": "2026-08-25T03:01:11.579Z",
+  "events": [
+    {
+      "at": "2026-08-25T03:01:11.579Z",
+      "actor": "qc_director",
+      "state": "QC_INSPECTION_STARTED",
+      "detail": "qc-live-canary-cut"
+    },
+    {
+      "at": "2026-08-25T03:01:11.579Z",
+      "actor": "qc_director",
+      "state": "QC_HUMAN_REVIEW_REQUIRED",
+      "detail": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded"
+    }
+  ],
+  "attention": "REVIEW",
+  "attention_level": "REVIEW",
+  "handoff": {
+    "next_owner": "mikko",
+    "next_action": "REVIEW_QC_HUMAN_AUTHORITY_GAP"
+  },
+  "qc_result_digest_sha256": "d56aa6636c10dd26d54f3776c4c7bef81b5695ac778d1b9413e55876aeb71b6e",
+  "qc_handoff": null,
+  "control_room": {
+    "role": "qc_director",
+    "action": "inspect_artifact",
+    "state": "HUMAN_REVIEW_REQUIRED",
+    "attention": "REVIEW",
+    "attention_level": "REVIEW",
+    "disposition": "HUMAN_REVIEW_REQUIRED",
+    "current_artifact": {
+      "artifact_id": "qc-live-canary-cut",
+      "artifact_type": "ROUGH_CUT",
+      "producing_agent": "editor"
+    },
+    "package_run_id": "2026-08-25-qc-director-live",
+    "gate": "rough-cut-review",
+    "next_gate_allowed": false,
+    "blockers": [],
+    "blocker": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded",
+    "defects": 0,
+    "warnings": 0,
+    "human_review_required": true,
+    "human_authority": {
+      "required_scope": "FINAL_CUT_APPROVAL",
+      "verdict": "ABSENT"
+    },
+    "evidence_used": 1,
+    "evidence_total": 1,
+    "missing_evidence": [],
+    "implementation_proof_state": "qc-director-v1",
+    "aesthetic_authority_claimed": false,
+    "operational_rationale": {
+      "decision": "HUMAN_REVIEW_REQUIRED",
+      "reason": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded",
+      "evidence_refs": [
+        {
+          "ref": "camera-quality",
+          "summary": "CAMERA_QUALITY/BOUND"
+        }
+      ],
+      "confidence": null,
+      "escalation_reason": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded"
+    },
+    "owner": "qc_director",
+    "next_owner": "mikko",
+    "latest_event": {
+      "at": "2026-08-25T03:01:11.579Z",
+      "actor": "qc_director",
+      "state": "QC_HUMAN_REVIEW_REQUIRED",
+      "detail": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded"
+    }
+  },
+  "operational_rationale": {
+    "decision": "HUMAN_REVIEW_REQUIRED",
+    "reason": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded",
+    "evidence_refs": [
+      {
+        "ref": "camera-quality",
+        "summary": "CAMERA_QUALITY/BOUND"
+      }
+    ],
+    "confidence": null,
+    "escalation_reason": "technical checks pass, but FINAL_CUT_APPROVAL is a human decision that has not been recorded"
+  }
+}

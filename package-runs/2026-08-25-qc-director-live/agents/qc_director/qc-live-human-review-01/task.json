@@ -1,0 +1,35 @@
+{
+  "task_id": "qc-live-human-review-01",
+  "package_run_id": "2026-08-25-qc-director-live",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "inspect_artifact"
+  },
+  "gate": "rough-cut-review",
+  "subject": {
+    "artifact_id": "qc-live-canary-cut",
+    "artifact_type": "ROUGH_CUT",
+    "producing_agent": "editor",
+    "artifact_path": "package-runs/2026-08-25-qc-director-live/canary/rough-cut.mp4",
+    "artifact_sha256": "cc37918c21641ba8e23a12986c8ab2196b9437d6598e0eb5ebcbea6a008d5f92",
+    "version_id": "edit-v1"
+  },
+  "evidence": [
+    {
+      "evidence_id": "camera-quality",
+      "kind": "CAMERA_QUALITY",
+      "evidence_class": "DETERMINISTIC",
+      "produced_by": "earth-studio-camera-quality",
+      "path": "package-runs/2026-08-25-qc-director-live/canary/camera-quality.json",
+      "sha256": "6520a5bdb6eaefeafa00022eb690dfa7040f8dd0c01e4c9b3fcbad1fd655e64b",
+      "binds_to": {
+        "artifact_id": "qc-live-canary-cut",
+        "artifact_sha256": "cc37918c21641ba8e23a12986c8ab2196b9437d6598e0eb5ebcbea6a008d5f92",
+        "version_id": "edit-v1"
+      }
+    }
+  ],
+  "required_evidence": [
+    "CAMERA_QUALITY"
+  ]
+}
