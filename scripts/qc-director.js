@@ -320,9 +320,35 @@ function editAdapter(payload, context) {
 function audioAdapter(payload, context) {
   // Consumes a Sound & Music Director durable render record. QC checks
   // technical validity and binding only; musical fit is never scored here.
-  if (payload?.schema_version !== 1) return unsupportedSchema('AUDIO_RENDER', payload, context);
+  // schema_version 1 (legacy, no fidelity class) remains technically valid —
+  // class-sensitive requirements handle it at the required-evidence level as
+  // AUDIO_RENDER_CLASS_UNKNOWN, never as technical failure.
+  if (payload?.schema_version !== 1 && payload?.schema_version !== 2) {
+    return unsupportedSchema('AUDIO_RENDER', payload, context);
+  }
   const defects = [];
   const warnings = [];
+  const renderClass = payload.render_class || null;
+  if (payload.schema_version === 2) {
+    // v2 evidence must carry a canonical class from the fidelity vocabulary.
+    // Producer authorization was enforced at attestation; QC re-checks the
+    // class is canonical so a hand-edited file cannot smuggle a free-text one.
+    if (!renderClass || !evidencePolicy.RENDER_CLASSES[renderClass]) {
+      defects.push(defect({
+        code: 'AUDIO_RENDER_CLASS_UNKNOWN', severity: 'BLOCKER', source: 'sound_music_director',
+        artifact_id: context.artifactId,
+        explanation: `audio evidence render_class ${JSON.stringify(renderClass)} is not in the canonical vocabulary`,
+        evidence_ref: context.evidenceId, affected_gate: context.gate,
+      }));
+    } else if (!evidencePolicy.producerAuthorizedForClass(context.producedBy || 'sound_music_director', renderClass)) {
+      defects.push(defect({
+        code: 'AUDIO_RENDER_CLASS_UNAUTHORIZED', severity: 'BLOCKER', source: context.producedBy || 'sound_music_director',
+        artifact_id: context.artifactId,
+        explanation: `producer ${context.producedBy || '(unknown)'} is not authorized to claim render class ${renderClass}`,
+        evidence_ref: context.evidenceId, affected_gate: context.gate,
+      }));
+    }
+  }
   const state = String(payload.state || '');
   if (state && state !== 'PRODUCTION_READY') {
     defects.push(defect({
@@ -349,7 +375,64 @@ function audioAdapter(payload, context) {
   return {
     schema_supported: true, defects, warnings,
     human_review_required: false, human_review_reason: null,
-    summary: { state: state || null, duration_seconds: Number.isFinite(duration) ? duration : null },
+    summary: { state: state || null, render_class: renderClass, duration_seconds: Number.isFinite(duration) ? duration : null },
+  };
+}
+
+function draftNarrationAdapter(payload, context) {
+  // Consumes the DRAFT_SYNTHETIC_NARRATION evidence emitted by
+  // scripts/package-run-draft-narration.js (generation_supervisor lane).
+  // It is its own semantic kind — NEVER AUDIO_RENDER: the fidelity axis is
+  // declared by its producer (DRAFT_SYNTHETIC_PROXY) and does not participate
+  // in the AUDIO_RENDER render-class vocabulary. QC validates the typed
+  // self-describing envelope; it never infers human performance from it.
+  if (payload?.schema !== 'vidtoolz.draftSyntheticNarrationEvidence.v1') {
+    return unsupportedSchema('DRAFT_SYNTHETIC_NARRATION', payload, context);
+  }
+  const defects = [];
+  const warnings = [];
+  if (String(payload.kind || '') !== 'DRAFT_SYNTHETIC_NARRATION') {
+    defects.push(defect({
+      code: 'DRAFT_NARRATION_KIND_MISMATCH', severity: 'BLOCKER', source: 'generation_supervisor',
+      artifact_id: context.artifactId,
+      explanation: `evidence declares kind ${JSON.stringify(payload.kind)}; expected DRAFT_SYNTHETIC_NARRATION`,
+      evidence_ref: context.evidenceId, affected_gate: context.gate,
+    }));
+  }
+  if (String(payload.state || '') !== 'VERIFIED') {
+    defects.push(defect({
+      code: 'DRAFT_NARRATION_NOT_VERIFIED', severity: 'ERROR', source: 'generation_supervisor',
+      artifact_id: context.artifactId,
+      explanation: `draft narration evidence state is ${JSON.stringify(payload.state ?? null)}`,
+      evidence_ref: context.evidenceId, affected_gate: context.gate,
+    }));
+  }
+  if (payload?.technical_validation?.ok !== true) {
+    for (const failure of payload?.technical_validation?.failures || []) {
+      defects.push(defect({
+        code: 'DRAFT_NARRATION_TECHNICAL_FAILURE', severity: 'ERROR', source: 'generation_supervisor',
+        artifact_id: context.artifactId, explanation: String(failure),
+        evidence_ref: context.evidenceId, affected_gate: context.gate,
+      }));
+    }
+  }
+  if (payload?.script_binding?.ok !== true) {
+    defects.push(defect({
+      code: 'DRAFT_NARRATION_SCRIPT_DRIFT', severity: 'ERROR', source: 'generation_supervisor',
+      artifact_id: context.artifactId,
+      explanation: `draft narration is not bound to the current canonical Story: ${(payload?.script_binding?.drift || []).join('; ') || 'unknown drift'}`,
+      evidence_ref: context.evidenceId, affected_gate: context.gate,
+    }));
+  }
+  return {
+    schema_supported: true, defects, warnings,
+    human_review_required: false, human_review_reason: null,
+    summary: {
+      fidelity: payload.fidelity || null,
+      production_mode: payload.production_mode || null,
+      spoken_segments: payload.coverage?.spoken_segments ?? null,
+      complete: Boolean(payload.coverage?.complete),
+    },
   };
 }
 
@@ -405,6 +488,7 @@ const ADAPTERS = Object.freeze({
   EDIT_QC_HANDOFF: editAdapter,
   AUDIO_RENDER: audioAdapter,
   STORY_VALIDATION: storyAdapter,
+  DRAFT_SYNTHETIC_NARRATION: draftNarrationAdapter,
 });
 const SUPPORTED_EVIDENCE_KINDS = Object.freeze(Object.keys(ADAPTERS));
 
@@ -679,6 +763,7 @@ function applyAdapters(task, subject, evidenceRecords, blockers, defects, warnin
 function checkRequiredEvidence(task, subject, evidenceRecords, blockers) {
   const satisfied = new Set(evidenceRecords.filter((r) => r.binding === 'BOUND' && r.used).map((r) => r.kind));
   const missing = [];
+  const classInsufficient = [];
   const applicability = task.run_mode != null
     ? evidencePolicy.auditRequiredEvidence(task.required_evidence || [], task.gate || null, task.run_mode)
     : null;
@@ -714,8 +799,43 @@ function checkRequiredEvidence(task, subject, evidenceRecords, blockers) {
       evidence_ref: null, affected_gate: task.gate || null,
     }));
   }
+
+  // Class-sensitive requirements (§ doctrine): a satisfied kind may still be
+  // insufficient when the policy demands a specific render class. Presence is
+  // necessary, not sufficient — fidelity is a separate axis. A satisfied
+  // legacy (schema v1) record carries no class at all and therefore never
+  // satisfies a class-sensitive requirement (AUDIO_RENDER_CLASS_UNKNOWN).
+  for (const r of applicability?.required || []) {
+    const row = evidencePolicy.policyForKind(r.kind);
+    const requiredClass = row?.required_render_class;
+    if (!requiredClass) continue;
+    if (!satisfied.has(r.kind)) continue;
+    const record = evidenceRecords.find((e) => e.kind === r.kind && e.binding === 'BOUND' && e.used);
+    const observedClass = record?.summary?.render_class ?? null;
+    if (!observedClass) {
+      classInsufficient.push({ kind: r.kind, required_class: requiredClass, observed_class: 'AUDIO_RENDER_CLASS_UNKNOWN' });
+      blockers.push(defect({
+        code: 'AUDIO_RENDER_CLASS_UNKNOWN', severity: 'BLOCKER', source: AGENT_ID,
+        artifact_id: subject.artifact_id,
+        explanation: `required evidence ${r.kind} satisfies the kind but carries no fidelity class (legacy evidence); `
+          + `the requirement needs render class ${requiredClass} — re-attest the render, do not silently promote legacy evidence`,
+        evidence_ref: record?.evidence_id || null, affected_gate: task.gate || null,
+      }));
+    } else if (observedClass !== requiredClass) {
+      classInsufficient.push({ kind: r.kind, required_class: requiredClass, observed_class: observedClass });
+      blockers.push(defect({
+        code: 'AUDIO_RENDER_CLASS_INSUFFICIENT', severity: 'BLOCKER', source: AGENT_ID,
+        artifact_id: subject.artifact_id,
+        explanation: `required evidence ${r.kind} carries render class ${observedClass}; `
+          + `this requirement demands render class ${requiredClass} — render the required fidelity product, `
+          + 'a weaker class never satisfies by policy relaxation',
+        evidence_ref: record?.evidence_id || null, affected_gate: task.gate || null,
+      }));
+    }
+  }
   return {
     required: [...(task.required_evidence || [])], satisfied: [...satisfied], missing,
+    class_insufficient: classInsufficient,
     applicability: applicability ? {
       run_mode: task.run_mode,
       required: applicability.required.map((r) => r.kind),

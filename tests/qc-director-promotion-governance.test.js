@@ -69,12 +69,33 @@ test('QCG2: the promotion record binds the exact implementation and proof packag
     assert.equal(addendum.role, 'qc_director');
     assert.equal(addendum.references_promotion_record, 'governance/qc-director-implementation-promotion.json');
     assert.equal(addendum.historical_promotion_record_unchanged, true);
-    assert.equal(addendum.evolution.implementation_state_changed, false);
-    assert.equal(addendum.evolution.registry_changed, false);
-    assert.equal(addendum.evolution.lifecycle_or_gate_authority_added, false);
-    assert.equal(addendum.evolution.human_approval_authority_added, false);
-    assert.equal(addendum.evolution.module_sha256_before, record.implementation_binding.module_sha256,
-      'the addendum must chain from the exact hash the promotion bound');
+
+    // The hash chain must hold end-to-end: promotion binding -> each recorded
+    // evolution's before/after -> the addendum's current binding -> the bytes
+    // on disk. Every hop asserts zero authority effect.
+    const chain = Array.isArray(addendum.evolution_chain) && addendum.evolution_chain.length > 0
+      ? addendum.evolution_chain
+      : [{
+        scope: addendum.evolution.scope,
+        module_sha256_before: addendum.evolution.module_sha256_before,
+        module_sha256_after: addendum.evolution.module_sha256_after,
+        implementation_state_changed: addendum.evolution.implementation_state_changed,
+        registry_changed: addendum.evolution.registry_changed,
+        lifecycle_or_gate_authority_added: addendum.evolution.lifecycle_or_gate_authority_added,
+        human_approval_authority_added: addendum.evolution.human_approval_authority_added,
+      }];
+    let expected = record.implementation_binding.module_sha256;
+    for (const hop of chain) {
+      assert.equal(hop.module_sha256_before, expected,
+        'an evolution hop must chain from the exact hash of the previous binding');
+      assert.equal(hop.implementation_state_changed, false);
+      assert.equal(hop.registry_changed, false);
+      assert.equal(hop.lifecycle_or_gate_authority_added, false);
+      assert.equal(hop.human_approval_authority_added, false);
+      expected = hop.module_sha256_after;
+    }
+    assert.equal(addendum.current_module_binding.module_sha256, expected,
+      'the addendum must bind the exact terminal module hash of the chain');
     assert.equal(addendum.current_module_binding.module_sha256, currentHash,
       'the addendum must bind the exact module that is on disk now');
   }

@@ -23,9 +23,34 @@
   },
   "current_module_binding": {
     "path": "scripts/qc-director.js",
-    "module_sha256": "36cd1cf1ddbe85301e65778b0a0d299e68fa2103102b1070b93576b96599b2a7",
-    "module_version": "qc-director-v1+applicability"
+    "module_sha256": "3c87c23a43848b1bbd529b34599ea439b175bf18a55a4ce78524ef87e588a162",
+    "module_version": "qc-director-v1+applicability+fidelity"
   },
-  "chain_rule": "QCG2 accepts the current module if and only if its hash equals the promotion record's bound hash, OR equals the current_module_binding.module_sha256 recorded by this evolution addendum. Any further evolution requires its own addendum; governance history is never rewritten.",
-  "recorded_at": "2026-08-25"
+  "chain_rule": "QCG2 accepts the current module if and only if its hash equals the promotion record's bound hash, OR the hash chain holds: promotion binding -> evolution.module_sha256_after -> each evolution_chain entry's before/after -> current_module_binding.module_sha256. Governance history is appended, never rewritten.",
+  "recorded_at": "2026-08-25",
+  "evolution_chain": [
+    {
+      "commit": "b693331",
+      "subject": "govern(agents): record qc-director evolution after applicability policy",
+      "scope": "additive applicability-policy consumption: run_mode task field, mode/gate-aware required-evidence audit, evidence_applicability output, qc-evidence-policy module integration",
+      "module_sha256_before": "7891d51f587251e283ddfc7375b19d3ebf01f6f3820af8e71db87794a0b4b8d1",
+      "module_sha256_after": "36cd1cf1ddbe85301e65778b0a0d299e68fa2103102b1070b93576b96599b2a7",
+      "implementation_state_changed": false,
+      "registry_changed": false,
+      "lifecycle_or_gate_authority_added": false,
+      "human_approval_authority_added": false
+    },
+    {
+      "commit": "PENDING_FIDELITY_ENFORCEMENT_COMMIT",
+      "subject": "refactor(qc): enforce audio fidelity requirements",
+      "scope": "audioAdapter schema v2 acceptance + render-class canonical/authorization re-check; DRAFT_SYNTHETIC_NARRATION adapter registration (Claude's deferred QC surface); class-sensitive required-evidence enforcement with AUDIO_RENDER_CLASS_INSUFFICIENT / AUDIO_RENDER_CLASS_UNKNOWN blockers",
+      "module_sha256_before": "36cd1cf1ddbe85301e65778b0a0d299e68fa2103102b1070b93576b96599b2a7",
+      "module_sha256_after": "3c87c23a43848b1bbd529b34599ea439b175bf18a55a4ce78524ef87e588a162",
+      "implementation_state_changed": false,
+      "registry_changed": false,
+      "lifecycle_or_gate_authority_added": false,
+      "human_approval_authority_added": false,
+      "qc_weakening_introduced": false
+    }
+  ]
 }
