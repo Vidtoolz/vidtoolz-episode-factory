@@ -13,22 +13,21 @@
 - Projection schema: vidtoolz.packageRunStateProjection.v1
 - Authority source: 14-gate workflow authority
 - Owner agent: production_operations
-- Canonical digest: 3425d0a448ecada3ac70a81311546cb26d1bddf7fa40f3d48e0551c9bb920f11
-- Generated at: 2026-08-25T08:07:28.161Z
+- Canonical digest: 97888c2684baa24904ec10ea3bc8750de856b36560237dbaefd4a5cc760f8c0e
+- Generated at: 2026-08-25T09:54:01.082Z
 
-## Projection status: BLOCKED
+## Projection status: ACTIVE
 
 - Package-run identity: yes
-- Current authoritative gate: shot-edit-plan-review (Shot/edit plan review)
+- Current authoritative gate: capture-checklist (Capture checklist)
 - Gate status: current-blocked
-- Gates complete: 5/14
-- Expected owner (current gate): visual_planning_director
-- Owner readiness: implementation_state=IMPLEMENTATION_PROVEN, dispatch_enabled=true
+- Gates complete: 6/14
+- Expected owner (current gate): presenter_director
+- Owner readiness: implementation_state=CANDIDATE, dispatch_enabled=false
 - Latest QC disposition: BLOCKED (task canary-qc-01, inspected_at 2026-08-25T07:21:23.275Z, defects 0)
 - QC next-gate permission: not granted (canonical gate evidence still governs)
-- Human authority required: yes
-- Pending human decision: Prepare a shot/edit planning repair brief for the thin shot-list before capture evidence intake.
-- Blocker: Shot/edit plan review status is NEEDS WORK; Stage accepted is no. First blocker: shot-list.md is placeholder-only or too thin.
+- Human authority required: no
+- Blocker: Missing expected artifact: capture-checklist.md.
 
 ## 14-gate canonical sequence
 
@@ -39,8 +38,8 @@
 | 3 | script-structure | Script structure | complete | story_editor |
 | 4 | script-review | Script review | complete | story_editor |
 | 5 | production-plan | Production planning | complete | mikko |
-| 6 | shot-edit-plan-review | Shot/edit plan review | current-blocked | visual_planning_director |
-| 7 | capture-checklist | Capture checklist | pending | presenter_director |
+| 6 | shot-edit-plan-review | Shot/edit plan review | complete | visual_planning_director |
+| 7 | capture-checklist | Capture checklist | current-blocked | presenter_director |
 | 8 | capture-evidence | Capture evidence | pending | qc_director |
 | 9 | rough-cut-review | Rough-cut review | pending | editor |
 | 10 | final-review | Final review | pending | qc_director |
