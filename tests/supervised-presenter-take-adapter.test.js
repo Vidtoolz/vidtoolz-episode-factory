@@ -113,10 +113,26 @@ function productionRun(runId = 'sc-test-run') {
   return run;
 }
 
+/*
+ * Machine-preparation readiness is production-capture-readiness.js's own subject
+ * and has its own suite. These fixtures inject a green verdict so each test here
+ * exercises registration rather than re-testing someone else's prerequisites —
+ * the same injection idiom the manifest uses for its media probe.
+ */
+const readinessModule = require(path.join(ROOT, 'scripts', 'production-capture-readiness.js'));
+function greenReadiness() {
+  return {
+    schema: readinessModule.READINESS_SCHEMA,
+    state: readinessModule.STATE_READY,
+    checks: readinessModule.PREREQUISITE_IDS.map((id) => ({ prerequisite_id: id, ok: true, detail: 'fixture' })),
+  };
+}
+const READY = { evaluateReadiness: () => greenReadiness() };
+
 function preparedRun(runId = 'sc-test-run') {
   const run = productionRun(runId);
   const manifest = newManifest();
-  const session = adapter.prepareCaptureSession(run, { runId, profile: PROFILE, manifest }, {});
+  const session = adapter.prepareCaptureSession(run, { runId, profile: PROFILE, manifest }, { ...READY });
   return { run, runId, manifest, session, unit: manifest.recording_units[0].recording_unit_id };
 }
 
@@ -237,7 +253,7 @@ test('SC9: presenter audio is the take media itself, not a duplicate authority',
   assert.equal(result.provenance.audio_mode, 'mic');
   // A silent profile is refused at preflight, before Mikko performs.
   assert.throws(
-    () => adapter.prepareCaptureSession(run, { runId, profile: 'vidnux-screen-4k30-noaudio', manifest }, { write: false }),
+    () => adapter.prepareCaptureSession(run, { runId, profile: 'vidnux-screen-4k30-noaudio', manifest }, { ...READY, write: false }),
     (e) => e.code === adapter.CODES.CAPTURE_SILENT_PROFILE,
   );
 });
@@ -247,7 +263,7 @@ test('SC10/SC11/SC12: every valid take is registered and none is chosen', () => 
   const { run, runId, unit } = preparedRun();
   let manifest = newManifest();
   const first = manifest.recording_units[0].recording_unit_id;
-  adapter.prepareCaptureSession(run, { runId, profile: PROFILE, manifest }, {});
+  adapter.prepareCaptureSession(run, { runId, profile: PROFILE, manifest }, { ...READY });
   const hashes = new Set();
   for (const [index, frequency] of [[1, 200], [2, 300], [3, 400]]) {
     const mp4 = makeCapture(path.join(run, 'captures'), `cap-multi-${index}`, frequency);
@@ -358,9 +374,31 @@ test('SC: READY_FOR_HUMAN_PERFORMANCE says the machine is ready and nothing is r
   // A non-PRODUCTION run cannot prepare presenter capture at all.
   const draft = fs.mkdtempSync(path.join(os.tmpdir(), 'sc-draft-'));
   assert.throws(
-    () => adapter.prepareCaptureSession(draft, { runId: path.basename(draft), profile: PROFILE, manifest: newManifest() }, { write: false }),
+    () => adapter.prepareCaptureSession(draft, { runId: path.basename(draft), profile: PROFILE, manifest: newManifest() }, { ...READY, write: false }),
     (e) => e.code === adapter.CODES.MODE_NOT_PRODUCTION,
   );
+});
+
+/* ── The human is asked only after every machine prerequisite is green ─────── */
+test('SC: a NOT_READY machine verdict refuses to open a capture session', () => {
+  const run = productionRun('sc-not-ready');
+  const manifest = newManifest();
+  // The readiness authority is consumed, not second-guessed: if it says a
+  // prerequisite is unmet, Mikko is not asked to perform.
+  const notReady = {
+    evaluateReadiness: () => ({
+      schema: readinessModule.READINESS_SCHEMA,
+      state: readinessModule.STATE_NOT_READY,
+      checks: [{ prerequisite_id: 'DELIVERY_SCRIPT_BOUND', ok: false, detail: 'delivery script missing from run' }],
+    }),
+  };
+  assert.throws(
+    () => adapter.prepareCaptureSession(run, { runId: 'sc-not-ready', profile: PROFILE, manifest }, { ...notReady, write: false }),
+    (e) => e.code === adapter.CODES.NOT_READY_FOR_PERFORMANCE
+      && e.detail.unmet.some((entry) => entry.includes('DELIVERY_SCRIPT_BOUND')),
+  );
+  // One state string, one owner — never restated here.
+  assert.equal(adapter.READY_FOR_HUMAN_PERFORMANCE, readinessModule.STATE_READY);
 });
 
 module.exports = { tests };

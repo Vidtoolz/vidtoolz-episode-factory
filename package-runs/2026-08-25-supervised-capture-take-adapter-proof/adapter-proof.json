@@ -140,5 +140,29 @@
     "correct_future_rule": "derive music requiredness from the canonical edit/timeline AUDIO_MUSIC track declaration",
     "recorded_not_fixed_here": true
   },
-  "remaining_production_gap": "a real presenter performance does not exist. Everything a machine can do before it is done."
+  "remaining_production_gap": "a real presenter performance does not exist. Everything a machine can do before it is done.",
+  "readiness_authority_integration": {
+    "finding": "a sibling landed scripts/production-capture-readiness.js (commit 2a7bad3) owning machine-preparation readiness while this adapter was being built. Two modules minting READY_FOR_HUMAN_PERFORMANCE would be two authorities destined to disagree.",
+    "resolution": "the adapter re-exports the sibling state constant instead of restating it, and prepareCaptureSession consumes evaluateReadiness rather than deciding readiness itself. It refuses to open a session on any verdict other than READY, naming every unmet prerequisite.",
+    "readiness_owner": "scripts/production-capture-readiness.js",
+    "readiness_prerequisites": [
+      "PRODUCTION_MODE_DECLARED",
+      "STORY_BINDING_PRESENT",
+      "STORY_VALIDATION_PASS",
+      "STORY_IDENTITY_CONSISTENT",
+      "DELIVERY_SCRIPT_BOUND",
+      "PRESENTER_TAKE_MANIFEST_INITIALIZED",
+      "CAPTURE_ARTIFACTS_GENERATED"
+    ],
+    "adapter_contribution": "the destination and profile binding that registration later verifies a recording against, plus registration itself — which the readiness module does not do",
+    "single_state_source": true,
+    "refusal_code": "PRESENTER_CAPTURE_NOT_READY_FOR_PERFORMANCE"
+  },
+  "concurrency": {
+    "note": "HEAD moved twice during this mission (61ba4ef -> 2a7bad3 -> 8f383ed) as a sibling worked the same lane. All commits here are exact-path staged and contain only this mission files; git diff --cached was inspected before each.",
+    "sibling_commits_untouched": [
+      "2a7bad3",
+      "8f383ed"
+    ]
+  }
 }

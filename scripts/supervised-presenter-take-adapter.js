@@ -38,6 +38,7 @@ const crypto = require('node:crypto');
 const supervisedCapture = require('../supervised-capture.js');
 const takeManifest = require('./presenter-take-manifest.js');
 const productionModeModule = require('./package-run-production-mode.js');
+const captureReadiness = require('./production-capture-readiness.js');
 
 const ADAPTER_VERSION = 'supervised-presenter-take-adapter-v1';
 const SESSION_FILE = 'presenter-capture-session.json';
@@ -46,12 +47,14 @@ const SESSION_SCHEMA = 'vidtoolz.presenterCaptureSession.v1';
 const PROVENANCE_SCHEMA = 'vidtoolz.presenterTakeCaptureProvenance.v1';
 
 /*
- * The machine-ready pre-capture state. Everything a machine can do is done, the
- * destination and tooling are verified, and the only thing left is a human
- * performance that has not happened. Deliberately not a capture state: nothing
- * has been recorded.
+ * The machine-ready pre-capture state. Owned by production-capture-readiness.js,
+ * which decides whether every machine prerequisite is green, and re-exported here
+ * rather than restated — two modules minting the same state string would be two
+ * authorities disagreeing eventually. This module contributes the part readiness
+ * does not cover: the destination and profile binding that registration later
+ * verifies a recording against.
  */
-const READY_FOR_HUMAN_PERFORMANCE = 'READY_FOR_HUMAN_PERFORMANCE';
+const READY_FOR_HUMAN_PERFORMANCE = captureReadiness.STATE_READY;
 
 const CODES = Object.freeze({
   MODE_NOT_PRODUCTION: 'PRESENTER_CAPTURE_MODE_NOT_PRODUCTION',
@@ -61,6 +64,7 @@ const CODES = Object.freeze({
   DESTINATION_MISSING: 'PRESENTER_CAPTURE_DESTINATION_MISSING',
   TOOLING_UNAVAILABLE: 'PRESENTER_CAPTURE_TOOLING_UNAVAILABLE',
   MANIFEST_UNIT_UNKNOWN: 'PRESENTER_CAPTURE_RECORDING_UNIT_UNKNOWN',
+  NOT_READY_FOR_PERFORMANCE: 'PRESENTER_CAPTURE_NOT_READY_FOR_PERFORMANCE',
   CAPTURE_OUTSIDE_SESSION: 'PRESENTER_CAPTURE_OUTSIDE_SESSION_DESTINATION',
   CAPTURE_VERIFICATION_FAILED: 'PRESENTER_CAPTURE_VERIFICATION_FAILED',
   SIDECAR_MISSING: 'PRESENTER_CAPTURE_SIDECAR_MISSING',
@@ -166,6 +170,23 @@ function prepareCaptureSession(runDir, input = {}, options = {}) {
       {});
   }
 
+  /*
+   * Mikko is asked to perform only once every machine prerequisite is green. That
+   * judgement is not made here — production-capture-readiness.js owns it, and it
+   * checks more than this module ever should (story binding, story validation,
+   * delivery script, capture artifacts). Asking for a performance and then
+   * discovering a software blocker behind it is the failure this prevents.
+   */
+  const evaluate = options.evaluateReadiness || captureReadiness.evaluateReadiness;
+  const readiness = evaluate(resolvedRun, options);
+  if (readiness.state !== captureReadiness.STATE_READY) {
+    const unmet = (readiness.checks || []).filter((check) => !check.ok)
+      .map((check) => `${check.prerequisite_id}: ${check.detail}`);
+    fail(CODES.NOT_READY_FOR_PERFORMANCE,
+      `machine preparation is not complete (${readiness.state}); Mikko is not asked to perform yet`,
+      { state: readiness.state, unmet });
+  }
+
   const session = {
     schema: SESSION_SCHEMA,
     adapter_version: ADAPTER_VERSION,
@@ -191,6 +212,13 @@ function prepareCaptureSession(runDir, input = {}, options = {}) {
       framing_preset: unit.framing_preset,
       approved_dialogue_sha256: unit.approved_dialogue_sha256,
     })),
+    // The readiness verdict this session was opened on, so the binding and the
+    // prerequisites that justified it are one record.
+    readiness: {
+      schema: readiness.schema,
+      state: readiness.state,
+      prerequisites_green: (readiness.checks || []).filter((check) => check.ok).map((check) => check.prerequisite_id),
+    },
     // Nothing has been recorded. This state must never read as capture complete.
     takes_registered: 0,
     media_recorded: false,
