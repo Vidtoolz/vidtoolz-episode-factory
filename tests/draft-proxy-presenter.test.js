@@ -35,13 +35,32 @@ const UPSTREAM = [
 
 const READY = renderer.rendererReadiness().actionable && narrationProvider.providerReadiness().actionable;
 
+/*
+ * The retained canary is shared with other sessions that may be writing to it,
+ * so it is snapshotted ONCE here and every fixture is copied from that snapshot.
+ * Reading it per test left a window where a concurrent write produced confusing
+ * intermittent failures.
+ */
+let upstreamSnapshot = null;
+function upstreamDir() {
+  if (upstreamSnapshot) return upstreamSnapshot;
+  const snap = fs.mkdtempSync(path.join(os.tmpdir(), 'proxy-upstream-'));
+  for (const name of UPSTREAM) {
+    const src = path.join(CANARY_DIR, name);
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(snap, name));
+  }
+  upstreamSnapshot = snap;
+  return snap;
+}
+
 function draftRun(label, options = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `proxy-${label}-`));
   const runId = `2026-08-25-proxy-${label}`;
   const dir = path.join(root, 'package-runs', runId);
   fs.mkdirSync(dir, { recursive: true });
+  const snapshot = upstreamDir();
   for (const name of UPSTREAM) {
-    const src = path.join(CANARY_DIR, name);
+    const src = path.join(snapshot, name);
     if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dir, name));
   }
   const bindingPath = path.join(dir, 'story-binding.json');

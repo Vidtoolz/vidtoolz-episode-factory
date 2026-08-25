@@ -81,6 +81,7 @@ require("./earth-studio-agent-pilot.test.js");
 require("./generation-supervisor.test.js");
 require("./draft-synthetic-narration.test.js");
 require("./draft-proxy-presenter.test.js");
+require("./draft-proxy-capture-materialization.test.js");
 require("./generation-supervisor-dispatch.test.js");
 require("./generation-supervisor-proof-governance.test.js");
 require("./generation-package-bridge.test.js");
