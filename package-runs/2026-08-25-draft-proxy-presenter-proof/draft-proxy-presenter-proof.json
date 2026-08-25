@@ -1,0 +1,201 @@
+{
+  "schema": "vidtoolz.draftProxyPresenterProof.v1",
+  "not_a_production_run": true,
+  "verdict": "PROXY_PRESENTER_PATH_PROVEN_GATE7_CAPTURE_ARTIFACT_MATERIALIZATION_STILL_REQUIRED",
+  "verdict_note": "The nearest designated stop is \"PROXY_PRESENTER PATH PROVEN — AUTOMATIC ROUGH CUT STILL REQUIRED\", but the blocker is NOT the rough cut: it is upstream of it. Naming it precisely rather than approximating.",
+  "renderer_audit": {
+    "searched": [
+      "avatar",
+      "stickman",
+      "proxy presenter",
+      "synthetic presenter",
+      "generated host",
+      "talking head",
+      "lip sync",
+      "portrait animation",
+      "character animation",
+      "A-roll generator",
+      "presenter animation",
+      "ComfyUI workflows",
+      "Wan presenter workflows"
+    ],
+    "result": "NONE — every hit was prose (a workflow-wizard checklist item, topic-scout requiredVisuals entries, one text classifier) or this mission's own contract files. config/comfyui/registry.json holds one workflow family (flux-gguf-1080x1920) and no presenter workflow.",
+    "conclusion": "no existing producer, so one had to be built; nothing was duplicated"
+  },
+  "strategy": {
+    "selected": "ffmpeg lavfi + drawbox/drawtext stick figure",
+    "rejected": {
+      "wan_comfyui": "a generative video model for every Draft beat is slow, GPU-bound, non-deterministic in duration, and cannot guarantee exact beat alignment — the opposite of what a Draft needs",
+      "remotion": "lives in a separate repo and needs an npm render pipeline; heavier than a placeholder warrants"
+    },
+    "why": [
+      "ffmpeg is already a repository dependency",
+      "deterministic — duration is requested, not sampled",
+      "no GPU, 22x realtime",
+      "exact beat alignment by construction",
+      "near-zero failure surface",
+      "obviously a placeholder, which is a feature"
+    ],
+    "photorealism": "explicitly not a goal. The proxy must look like a placeholder so nobody mistakes it for finished visuals."
+  },
+  "style": {
+    "style": "STICK_FIGURE_SILHOUETTE",
+    "label_burned_into_every_frame": "PROXY PRESENTER — NOT FINAL",
+    "motion_model": "DETERMINISTIC_IDLE_SINE",
+    "lip_sync": "NONE",
+    "lip_sync_note": "declared NONE. Motion is a deterministic idle sine, declared heuristic; no viseme alignment is implemented and none is claimed.",
+    "is_real_presenter": false,
+    "is_mikko_likeness": false
+  },
+  "bindings": {
+    "story": {
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+      "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+    },
+    "narration": {
+      "manifest_sha256": "8c4c8efef6b159a598e28445d7b8d80e8343362e150307c2eb9e3cb8cba17138",
+      "audio_sha256": "f017bca4f4189886be3140b541d06cb8f5c493d32ed15dc1a18f72d3d212e9da",
+      "muxed": false,
+      "authority": "draft-narration.json"
+    }
+  },
+  "video": {
+    "standard": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "codec": "libx264",
+      "pixel_format": "yuv420p"
+    },
+    "derived_from_output_class": {
+      "aspect_ratio": "16:9",
+      "orientation": "horizontal"
+    },
+    "assembled": {
+      "video_path": "media/draft-proxy-presenter/proxy-presenter.mp4",
+      "video_sha256": "4c11c4035ab0ac17b26b0616545df74bb9409d25b2e916b9ec6c1dac2b5a97ac",
+      "bytes": 278816,
+      "duration_seconds": 74.466667,
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "frames": 2234,
+      "codec": "h264",
+      "pixel_format": "yuv420p"
+    }
+  },
+  "alignment": {
+    "narration_duration_seconds": 74.385188,
+    "presenter_duration_seconds": 74.466667,
+    "delta_seconds": 0.081479,
+    "tolerance_seconds": 0.15,
+    "aligned": true,
+    "narration_time_stretched": false
+  },
+  "coverage": {
+    "spoken_beats": 7,
+    "covered_beats": 7,
+    "complete": true,
+    "uncovered": []
+  },
+  "performance": {
+    "render_ms": 3371,
+    "video_seconds": 74.466667,
+    "realtime_factor": 22.09,
+    "bytes": 278816
+  },
+  "runner_dispatch": {
+    "action_registered": true,
+    "path": "scripts/agent-run.js -> generation_supervisor -> generate_draft_proxy_presenter",
+    "infrastructure_state": "COMPLETE",
+    "agent_state": "COMPLETE",
+    "route": {
+      "lane": "local_proxy_presenter",
+      "renderer": "ffmpeg-stickman",
+      "style": "STICK_FIGURE_SILHOUETTE"
+    },
+    "handoff": "qc_director / INSPECT_PROXY_PRESENTER"
+  },
+  "evidence": {
+    "kind": "PROXY_PRESENTER",
+    "state": "VERIFIED",
+    "fidelity": "DRAFT_SYNTHETIC_PROXY",
+    "track_role": "PROXY_PRESENTER",
+    "satisfies_proxy_presenter": true,
+    "satisfies_real_capture": false,
+    "human_performance": false,
+    "human_authority_required": false,
+    "does_not_assert": [
+      "presenter a-roll",
+      "human performance",
+      "real capture",
+      "mikko likeness",
+      "publish readiness",
+      "lip sync"
+    ],
+    "semantic_producer": "generation_supervisor",
+    "technical_producer": {
+      "renderer": "ffmpeg-stickman",
+      "version": "v1",
+      "style": "STICK_FIGURE_SILHOUETTE",
+      "motion_model": "DETERMINISTIC_IDLE_SINE",
+      "lip_sync": "NONE"
+    }
+  },
+  "presenter_a_roll_separation": "PRESENTER_A_ROLL keeps its capture-class meaning: still absent from PROMPT_MEDIA, still mapped to PRESENTER_CAPTURE in edit-plan.js. The Draft substitute is a distinct PROXY_PRESENTER artifact type, not a new fidelity on a capture class.",
+  "proxy_capture": {
+    "before_presenter": {
+      "audio": "PROXY_AUDIO_READY",
+      "visual": "PROXY_VISUAL_MISSING",
+      "capture_ready": false,
+      "next": "draft proxy presenter"
+    },
+    "after_presenter": {
+      "audio": "PROXY_AUDIO_READY",
+      "visual": "PROXY_VISUAL_READY",
+      "disposition": "PROXY_CAPTURE_READY",
+      "capture_ready": true,
+      "next": null,
+      "human_authority_required": false
+    }
+  },
+  "gate8": {
+    "production_mode": "DRAFT",
+    "proxy_capture": {
+      "disposition": "PROXY_CAPTURE_READY",
+      "capture_ready": true,
+      "audio": "PROXY_AUDIO_READY",
+      "visual": "PROXY_VISUAL_READY",
+      "next_capability": null,
+      "human_authority_required": false
+    },
+    "status": "BLOCKED",
+    "approval_marker_detected": false,
+    "why_still_blocked": "gate 8 requires the five gate-7 capture artifacts to exist. They do not, and the gate-7 generator is mode-blind: it asks for real capture execution artifacts and a human capture-readiness marker, knowing nothing about proxy capture.",
+    "missing_required_files": [
+      "capture-checklist.md",
+      "takes-log.md",
+      "screen-recording-checklist.md",
+      "audio-capture-checklist.md",
+      "missing-shot-tracker.md"
+    ],
+    "human_asked_for": false
+  },
+  "negatives": {
+    "mutated_video": "PROXY_PRESENTER_MEDIA_INVALID",
+    "narration_changed_after_render": "PROXY_PRESENTER_SOURCE_DRIFT",
+    "story_revision": "both components stale (PROXY_AUDIO_STALE + PROXY_VISUAL_STALE)",
+    "render_before_narration": "PROXY_NARRATION_MISSING",
+    "mode_not_draft": "PROXY_MODE_NOT_DRAFT",
+    "zero_byte_or_non_video": "refused by the probe",
+    "production_mode": "proxy readiness not applicable; realCaptureEvidence false; evidence retained as history with satisfies_real_capture false",
+    "review_mode": "evidence reused unchanged; regeneration refused"
+  },
+  "exact_next_primitive": {
+    "name": "DRAFT gate-7 capture-artifact materializer",
+    "shape": "proxy-capture evidence -> the five canonical gate-7 markdown artifacts (capture-checklist, takes-log, missing-shot-tracker, screen-recording-checklist, audio-capture-checklist)",
+    "precedent": "exactly the gate-6 pattern: visual-plan-package-materializer projected semantic evidence into canonical package-run markdown. The same shape is needed here.",
+    "why_not_now": "it is a distinct primitive, and hand-writing those five files or teaching the gate-7 generator to accept a human capture marker in DRAFT would both be the fake-evidence path this whole line of work exists to prevent."
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "schema": "vidtoolz.proxyPresenterEvidence.v1",
+  "kind": "PROXY_PRESENTER",
+  "fidelity": "DRAFT_SYNTHETIC_PROXY",
+  "track_role": "PROXY_PRESENTER",
+  "production_mode": "DRAFT",
+  "asserts": "verified machine-generated Draft presenter video, beat-aligned to the exact draft narration",
+  "does_not_assert": [
+    "presenter a-roll",
+    "human performance",
+    "real capture",
+    "mikko likeness",
+    "publish readiness",
+    "lip sync"
+  ],
+  "satisfies_proxy_presenter": true,
+  "satisfies_real_capture": false,
+  "human_performance": false,
+  "human_authority_required": false,
+  "is_real_presenter": false,
+  "is_mikko_likeness": false,
+  "run_id": "2026-08-25-draft-narration-canary",
+  "semantic_producer": "generation_supervisor",
+  "technical_producer": {
+    "renderer": "ffmpeg-stickman",
+    "version": "v1",
+    "style": "STICK_FIGURE_SILHOUETTE",
+    "motion_model": "DETERMINISTIC_IDLE_SINE",
+    "lip_sync": "NONE"
+  },
+  "attested_by": "package-run-draft-proxy-presenter.js",
+  "story": {
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+  },
+  "narration_binding": {
+    "manifest_sha256": "8c4c8efef6b159a598e28445d7b8d80e8343362e150307c2eb9e3cb8cba17138",
+    "audio_sha256": "f017bca4f4189886be3140b541d06cb8f5c493d32ed15dc1a18f72d3d212e9da",
+    "muxed": false
+  },
+  "presenter_manifest": {
+    "file": "draft-proxy-presenter.json",
+    "sha256": "17f6553f3d1b751ff93558bbe7e2c658a5c0b7a4837a107abeb1b93fbe2a141e"
+  },
+  "assembled": {
+    "video_path": "media/draft-proxy-presenter/proxy-presenter.mp4",
+    "video_sha256": "4c11c4035ab0ac17b26b0616545df74bb9409d25b2e916b9ec6c1dac2b5a97ac",
+    "bytes": 278816,
+    "duration_seconds": 74.466667,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "frames": 2234,
+    "codec": "h264",
+    "pixel_format": "yuv420p"
+  },
+  "alignment": {
+    "narration_duration_seconds": 74.385188,
+    "presenter_duration_seconds": 74.466667,
+    "delta_seconds": 0.081479,
+    "tolerance_seconds": 0.15,
+    "aligned": true,
+    "narration_time_stretched": false
+  },
+  "coverage": {
+    "spoken_beats": 7,
+    "covered_beats": 7,
+    "complete": true,
+    "uncovered": []
+  },
+  "video_standard": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "codec": "libx264",
+    "pixel_format": "yuv420p"
+  },
+  "technical_validation": {
+    "ok": true,
+    "failures": []
+  },
+  "source_binding": {
+    "ok": true,
+    "drift": []
+  },
+  "state": "VERIFIED",
+  "task_id": "gs-presenter-canary-1"
+}

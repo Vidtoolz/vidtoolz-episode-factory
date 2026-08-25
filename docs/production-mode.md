@@ -199,20 +199,61 @@ recorded as measured.
 by another session's mode-aware QC work. The evidence is self-describing so that
 policy can consume it without further changes here.
 
-### Proxy capture after narration
+## Proxy presenter (DRAFT visible speaker)
+
+Status: **IMPLEMENTED**, at DRAFT fidelity.
+
+The Draft presenter is a stick figure, on purpose.
+
+| | |
+| --- | --- |
+| renderer | `ffmpeg-stickman v1` — ffmpeg `lavfi` + `drawbox`/`drawtext`, local, no GPU |
+| style | `STICK_FIGURE_SILHOUETTE`, with `PROXY PRESENTER — NOT FINAL` burned into every frame |
+| motion | `DETERMINISTIC_IDLE_SINE` — declared heuristic |
+| lip sync | `NONE`, and none is claimed |
+| video | 30 fps h264 `yuv420p`; frame shape from the Story's own `output_class` |
+| location | `media/draft-proxy-presenter/proxy-presenter.mp4` plus per-beat segments |
+| manifest | `draft-proxy-presenter.json` (`vidtoolz.proxyPresenter.v1`) |
+| evidence | `PROXY_PRESENTER` in `draft-proxy-presenter-evidence.json` |
+| track role | `PROXY_PRESENTER` — never final A-roll |
+| owner | `generation_supervisor`, action `generate_draft_proxy_presenter` |
+| speed | ~22x realtime (74 s of video in 3.4 s, 279 KB) |
+
+A generative video model was deliberately **not** used. A Draft has to be
+producible for every run, cheaply, with exact beat alignment — so determinism,
+speed and reliability beat realism. Photorealism would actively hurt: the proxy
+must look like a placeholder.
+
+Narration stays the audio authority. The presenter track is silent and is paired
+downstream; speech is never re-encoded or regenerated here. Timing is not
+invented either: every segment is cut to the measured duration of the narration
+beat it covers, and total drift is checked against a one-frame-ish tolerance.
+
+`PRESENTER_A_ROLL` keeps its capture-class meaning — still absent from the
+generation lane, still mapped to `PRESENTER_CAPTURE`. The Draft substitute is a
+**distinct artifact type**, not a new fidelity on a capture class, so the final
+edit can replace it when Mikko actually performs without either ever having been
+confused for the other.
+
+### Proxy capture
 
 ```
-audio   PROXY_AUDIO_READY      implemented
-visual  PROXY_VISUAL_MISSING   no producer exists
---------------------------------------------
-        PROXY_CAPTURE_READY = false
+audio   PROXY_AUDIO_READY      DRAFT_SYNTHETIC_NARRATION
+visual  PROXY_VISUAL_READY     PROXY_PRESENTER
+-----------------------------------------------------
+        PROXY_CAPTURE_READY = true      (no human involved)
 ```
 
-Gate 8 in DRAFT is now blocked on exactly one thing, and it is not a human: the
-`PROXY_PRESENTER` visual producer. `PRESENTER_A_ROLL` keeps its intentional
-exclusion from the generation lane — the Draft substitute will be a distinct
-`PROXY_PRESENTER` artifact type rather than a new fidelity on a capture-class
-media type.
+Either component going stale takes the whole thing down: a Story revision stales
+both, mutated bytes invalidate their own component, and narration changing after
+the presenter was timed against it stales the presenter.
+
+**Gate 8 in DRAFT is still blocked, and not on a human.** It requires the five
+gate-7 capture artifacts, and the gate-7 generator is mode-blind: it asks for real
+capture execution artifacts and a human capture-readiness marker, knowing nothing
+about proxy capture. The remaining primitive is a **DRAFT gate-7 capture-artifact
+materializer** — the same shape as the gate-6 materializer that projected visual
+plans into canonical package-run markdown.
 
 ## Implementation status
 
@@ -222,11 +263,13 @@ media type.
   shared authority; the `PROXY_CAPTURE_READY` evidence contract as a definition.
 - **PLANNED** — gate 7 in `PRODUCTION`, pending `presenter_director`
   (contract `PLANNED`, `NOT_PROVEN`, dispatch `DISABLED`).
-- **IMPLEMENTED** — DRAFT synthetic narration (Piper) and its typed
-  `DRAFT_SYNTHETIC_NARRATION` evidence, dispatched through
-  `generation_supervisor`.
-- **BLOCKED** — gate 7 and gate 8 in `DRAFT`, now on one remaining capability:
-  the `PROXY_PRESENTER` visual producer. The audio half is done.
+- **IMPLEMENTED** — DRAFT synthetic narration (Piper) and the DRAFT proxy
+  presenter (ffmpeg), with their typed `DRAFT_SYNTHETIC_NARRATION` and
+  `PROXY_PRESENTER` evidence, both dispatched through `generation_supervisor`.
+  DRAFT proxy capture aggregates to `PROXY_CAPTURE_READY` with no human.
+- **BLOCKED** — gate 7 and gate 8 in `DRAFT`, on one remaining primitive: a
+  materializer that projects proxy-capture evidence into the five canonical
+  gate-7 capture artifacts. Both media halves are done.
 
 Verified absent rather than assumed: a hard search across `*.js`, `*.json`,
 `*.md`, `*.py` and `*.sh` found no TTS producer (the only MiniMax integration is
