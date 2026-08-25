@@ -1,0 +1,18 @@
+{
+  "task_id": "gs-v2-B-supervise",
+  "package_run_id": "gs-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "supervise_generation"
+  },
+  "project_id": "gs-proof",
+  "artifact_class": "image",
+  "brief": {
+    "purpose": "bounded production-path canary",
+    "input_artifacts": []
+  },
+  "routing": {
+    "lane": "text_to_image_generation"
+  },
+  "max_attempts": 2
+}

@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "agent_id": "generation_supervisor",
+  "task_id": "gs-v2-C-bad-lane",
+  "project_id": "gs-proof",
+  "artifact_class": "image",
+  "action": "supervise_generation",
+  "state": "NO_ELIGIBLE_ROUTE",
+  "owner_history": [
+    {
+      "agent": "generation_supervisor",
+      "state": "REQUESTED"
+    }
+  ],
+  "route": null,
+  "attempts": 0,
+  "max_attempts": 2,
+  "outputs": [],
+  "provenance": null,
+  "qc": {
+    "required": true,
+    "state": "QC_PENDING",
+    "verdict": null
+  },
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "REMEDIATE"
+  },
+  "events": [
+    {
+      "at": "2026-08-25T03:38:46.633Z",
+      "agent": "generation_supervisor",
+      "state": "INPUT_VALIDATED",
+      "detail": "0 inputs present"
+    }
+  ],
+  "reason": "unknown lane \"nonexistent_lane\" — routing policy defines the eligible set",
+  "retry": {
+    "attempts": 0,
+    "max": 2,
+    "classification": "unknown",
+    "retry_allowed": false
+  },
+  "attention": "INFORMATION",
+  "attention_level": "INFORMATION",
+  "control_room": {
+    "role": "generation_supervisor",
+    "action": "supervise_generation",
+    "state": "NO_ELIGIBLE_ROUTE",
+    "attention": "INFORMATION",
+    "attention_level": "INFORMATION",
+    "artifact_class": "image",
+    "route": null,
+    "readiness_probe": null,
+    "outputs": 0,
+    "qc": {
+      "required": true,
+      "state": "QC_PENDING",
+      "verdict": null
+    },
+    "retry": {
+      "attempts": 0,
+      "max": 2,
+      "classification": "unknown",
+      "retry_allowed": false
+    },
+    "blocker": "unknown lane \"nonexistent_lane\" — routing policy defines the eligible set",
+    "qc_verdict_claimed": false,
+    "human_approval_claimed": false,
+    "operational_rationale": {
+      "decision": "NO_ELIGIBLE_ROUTE",
+      "reason": "unknown lane \"nonexistent_lane\" — routing policy defines the eligible set",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": null
+    },
+    "owner": "generation_supervisor",
+    "next_owner": "production_operations",
+    "latest_event": {
+      "at": "2026-08-25T03:38:46.633Z",
+      "agent": "generation_supervisor",
+      "state": "INPUT_VALIDATED",
+      "detail": "0 inputs present"
+    }
+  },
+  "operational_rationale": {
+    "decision": "NO_ELIGIBLE_ROUTE",
+    "reason": "unknown lane \"nonexistent_lane\" — routing policy defines the eligible set",
+    "evidence_refs": [],
+    "confidence": null,
+    "escalation_reason": null
+  }
+}

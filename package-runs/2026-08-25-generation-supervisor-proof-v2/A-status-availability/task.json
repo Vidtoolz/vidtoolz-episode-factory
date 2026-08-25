@@ -1,0 +1,8 @@
+{
+  "task_id": "gs-v2-A-status",
+  "package_run_id": "gs-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "status"
+  }
+}

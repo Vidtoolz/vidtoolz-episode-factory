@@ -1,0 +1,19 @@
+{
+  "task_id": "gs-v2-E-missing-input",
+  "package_run_id": "gs-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "supervise_generation"
+  },
+  "project_id": "gs-proof",
+  "artifact_class": "image",
+  "brief": {
+    "purpose": "missing input canary",
+    "input_artifacts": [
+      "/tmp/gs-proof-definitely-absent.png"
+    ]
+  },
+  "routing": {
+    "lane": "text_to_image_generation"
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "agent_id": "generation_supervisor",
+  "task_id": "gs-v2-A-status",
+  "project_id": null,
+  "artifact_class": null,
+  "action": "status",
+  "state": "COMPLETE",
+  "owner_history": [
+    {
+      "agent": "generation_supervisor",
+      "state": "REQUESTED"
+    }
+  ],
+  "route": null,
+  "attempts": 0,
+  "max_attempts": 2,
+  "outputs": [],
+  "provenance": null,
+  "qc": {
+    "required": false,
+    "state": "NOT_APPLICABLE",
+    "verdict": null
+  },
+  "handoff": {
+    "next_owner": "hermes",
+    "next_action": "DISPATCH_GENERATION_BRIEF"
+  },
+  "events": [
+    {
+      "at": "2026-08-25T03:38:46.570Z",
+      "agent": "generation_supervisor",
+      "state": "STATUS_REPORTED",
+      "detail": "generation supervisor is available; no generation brief was submitted"
+    }
+  ],
+  "reason": "generation supervisor is available; no generation brief was submitted",
+  "supported_actions": [
+    "supervise_generation",
+    "status"
+  ],
+  "policy_source": "config/media-routing.json",
+  "retry": {
+    "attempts": 0,
+    "max": 2,
+    "classification": "unknown",
+    "retry_allowed": false
+  },
+  "attention": "INFORMATION",
+  "attention_level": "INFORMATION",
+  "control_room": {
+    "role": "generation_supervisor",
+    "action": "status",
+    "state": "COMPLETE",
+    "attention": "INFORMATION",
+    "attention_level": "INFORMATION",
+    "artifact_class": null,
+    "route": null,
+    "readiness_probe": null,
+    "outputs": 0,
+    "qc": {
+      "required": false,
+      "state": "NOT_APPLICABLE",
+      "verdict": null
+    },
+    "retry": {
+      "attempts": 0,
+      "max": 2,
+      "classification": "unknown",
+      "retry_allowed": false
+    },
+    "blocker": "generation supervisor is available; no generation brief was submitted",
+    "qc_verdict_claimed": false,
+    "human_approval_claimed": false,
+    "operational_rationale": {
+      "decision": "COMPLETE",
+      "reason": "generation supervisor is available; no generation brief was submitted",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": null
+    },
+    "owner": "generation_supervisor",
+    "next_owner": "hermes",
+    "latest_event": {
+      "at": "2026-08-25T03:38:46.570Z",
+      "agent": "generation_supervisor",
+      "state": "STATUS_REPORTED",
+      "detail": "generation supervisor is available; no generation brief was submitted"
+    }
+  },
+  "operational_rationale": {
+    "decision": "COMPLETE",
+    "reason": "generation supervisor is available; no generation brief was submitted",
+    "evidence_refs": [],
+    "confidence": null,
+    "escalation_reason": null
+  }
+}

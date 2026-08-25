@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "agent_id": "generation_supervisor",
+  "task_id": "gs-v2-B-supervise",
+  "project_id": "gs-proof",
+  "artifact_class": "image",
+  "action": "supervise_generation",
+  "state": "DISPATCH_BLOCKED_NO_REGISTERED_BRIDGE",
+  "owner_history": [
+    {
+      "agent": "generation_supervisor",
+      "state": "REQUESTED"
+    }
+  ],
+  "route": {
+    "lane": "text_to_image_generation",
+    "machine": "vidnux",
+    "engine": "comfyui",
+    "model": null,
+    "workflow": "flux-gguf-1080x1920",
+    "endpoint": "http://127.0.0.1:8188",
+    "fallback_allowed": false
+  },
+  "attempts": 0,
+  "max_attempts": 2,
+  "outputs": [],
+  "provenance": {
+    "generating_agent": "generation_supervisor",
+    "route": {
+      "lane": "text_to_image_generation",
+      "machine": "vidnux",
+      "engine": "comfyui",
+      "model": null,
+      "workflow": "flux-gguf-1080x1920",
+      "endpoint": "http://127.0.0.1:8188",
+      "fallback_allowed": false
+    },
+    "input_artifacts": [],
+    "source_commit": null,
+    "policy_source": "config/media-routing.json"
+  },
+  "qc": {
+    "required": true,
+    "state": "QC_PENDING",
+    "verdict": null
+  },
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "REGISTER_DISPATCH_BRIDGE_OR_SUBMIT_VIA_OPERATOR_BRIDGE"
+  },
+  "events": [
+    {
+      "at": "2026-08-25T03:38:46.600Z",
+      "agent": "generation_supervisor",
+      "state": "INPUT_VALIDATED",
+      "detail": "0 inputs present"
+    },
+    {
+      "at": "2026-08-25T03:38:46.600Z",
+      "agent": "generation_supervisor",
+      "state": "ROUTE_RESOLVED",
+      "detail": "vidnux/comfyui via http://127.0.0.1:8188"
+    },
+    {
+      "at": "2026-08-25T03:38:46.605Z",
+      "agent": "generation_supervisor",
+      "state": "DISPATCH_BLOCKED_NO_REGISTERED_BRIDGE",
+      "detail": "route resolved and healthy, but no registered programmatic dispatch bridge accepts a bare task file; engine submission requires the operator bridge (package-engine /api/flux/submit) with package context — fail-closed rather than bypassing policy"
+    }
+  ],
+  "readiness_probe": {
+    "endpoint": "http://127.0.0.1:8188",
+    "reachable": true,
+    "status": 200,
+    "owner": "production_operations"
+  },
+  "reason": "route resolved and healthy, but no registered programmatic dispatch bridge accepts a bare task file; engine submission requires the operator bridge (package-engine /api/flux/submit) with package context — fail-closed rather than bypassing policy",
+  "retry": {
+    "attempts": 0,
+    "max": 2,
+    "classification": "unknown",
+    "retry_allowed": false
+  },
+  "attention": "INFORMATION",
+  "attention_level": "INFORMATION",
+  "control_room": {
+    "role": "generation_supervisor",
+    "action": "supervise_generation",
+    "state": "DISPATCH_BLOCKED_NO_REGISTERED_BRIDGE",
+    "attention": "INFORMATION",
+    "attention_level": "INFORMATION",
+    "artifact_class": "image",
+    "route": {
+      "lane": "text_to_image_generation",
+      "machine": "vidnux",
+      "engine": "comfyui",
+      "model": null
+    },
+    "readiness_probe": {
+      "endpoint": "http://127.0.0.1:8188",
+      "reachable": true,
+      "owner": "production_operations"
+    },
+    "outputs": 0,
+    "qc": {
+      "required": true,
+      "state": "QC_PENDING",
+      "verdict": null
+    },
+    "retry": {
+      "attempts": 0,
+      "max": 2,
+      "classification": "unknown",
+      "retry_allowed": false
+    },
+    "blocker": "route resolved and healthy, but no registered programmatic dispatch bridge accepts a bare task file; engine submission requires the operator bridge (package-engine /api/flux/submit) with package context — fail-closed rather than bypassing policy",
+    "qc_verdict_claimed": false,
+    "human_approval_claimed": false,
+    "operational_rationale": {
+      "decision": "DISPATCH_BLOCKED_NO_REGISTERED_BRIDGE",
+      "reason": "route resolved and healthy, but no registered programmatic dispatch bridge accepts a bare task file; engine submission requires the operator bridge (package-engine /api/flux/submit) with package context — fail-closed rather than bypassing policy",
+      "evidence_refs": [
+        {
+          "ref": "route",
+          "summary": "vidnux/comfyui via text_to_image_generation"
+        }
+      ],
+      "confidence": null,
+      "escalation_reason": null
+    },
+    "owner": "generation_supervisor",
+    "next_owner": "production_operations",
+    "latest_event": {
+      "at": "2026-08-25T03:38:46.605Z",
+      "agent": "generation_supervisor",
+      "state": "DISPATCH_BLOCKED_NO_REGISTERED_BRIDGE",
+      "detail": "route resolved and healthy, but no registered programmatic dispatch bridge accepts a bare task file; engine submission requires the operator bridge (package-engine /api/flux/submit) with package context — fail-closed rather than bypassing policy"
+    }
+  },
+  "operational_rationale": {
+    "decision": "DISPATCH_BLOCKED_NO_REGISTERED_BRIDGE",
+    "reason": "route resolved and healthy, but no registered programmatic dispatch bridge accepts a bare task file; engine submission requires the operator bridge (package-engine /api/flux/submit) with package context — fail-closed rather than bypassing policy",
+    "evidence_refs": [
+      {
+        "ref": "route",
+        "summary": "vidnux/comfyui via text_to_image_generation"
+      }
+    ],
+    "confidence": null,
+    "escalation_reason": null
+  }
+}

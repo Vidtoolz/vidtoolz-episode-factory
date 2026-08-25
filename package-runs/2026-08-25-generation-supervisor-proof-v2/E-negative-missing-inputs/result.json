@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "agent_id": "generation_supervisor",
+  "task_id": "gs-v2-E-missing-input",
+  "project_id": "gs-proof",
+  "artifact_class": "image",
+  "action": "supervise_generation",
+  "state": "INPUT_MISSING",
+  "owner_history": [
+    {
+      "agent": "generation_supervisor",
+      "state": "REQUESTED"
+    }
+  ],
+  "route": null,
+  "attempts": 0,
+  "max_attempts": 2,
+  "outputs": [],
+  "provenance": null,
+  "qc": {
+    "required": true,
+    "state": "QC_PENDING",
+    "verdict": null
+  },
+  "handoff": {
+    "next_owner": "production_operations",
+    "next_action": "REMEDIATE"
+  },
+  "events": [],
+  "reason": "missing input artifacts: /tmp/gs-proof-definitely-absent.png",
+  "retry": {
+    "attempts": 0,
+    "max": 2,
+    "classification": "unknown",
+    "retry_allowed": false
+  },
+  "attention": "INFORMATION",
+  "attention_level": "INFORMATION",
+  "control_room": {
+    "role": "generation_supervisor",
+    "action": "supervise_generation",
+    "state": "INPUT_MISSING",
+    "attention": "INFORMATION",
+    "attention_level": "INFORMATION",
+    "artifact_class": "image",
+    "route": null,
+    "readiness_probe": null,
+    "outputs": 0,
+    "qc": {
+      "required": true,
+      "state": "QC_PENDING",
+      "verdict": null
+    },
+    "retry": {
+      "attempts": 0,
+      "max": 2,
+      "classification": "unknown",
+      "retry_allowed": false
+    },
+    "blocker": "missing input artifacts: /tmp/gs-proof-definitely-absent.png",
+    "qc_verdict_claimed": false,
+    "human_approval_claimed": false,
+    "operational_rationale": {
+      "decision": "INPUT_MISSING",
+      "reason": "missing input artifacts: /tmp/gs-proof-definitely-absent.png",
+      "evidence_refs": [],
+      "confidence": null,
+      "escalation_reason": null
+    },
+    "owner": "generation_supervisor",
+    "next_owner": "production_operations",
+    "latest_event": null
+  },
+  "operational_rationale": {
+    "decision": "INPUT_MISSING",
+    "reason": "missing input artifacts: /tmp/gs-proof-definitely-absent.png",
+    "evidence_refs": [],
+    "confidence": null,
+    "escalation_reason": null
+  }
+}

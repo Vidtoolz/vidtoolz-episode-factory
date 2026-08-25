@@ -1,0 +1,18 @@
+{
+  "task_id": "gs-v2-C-bad-lane",
+  "package_run_id": "gs-production-path-canary",
+  "requested_by": "hermes",
+  "assignment": {
+    "action": "supervise_generation"
+  },
+  "project_id": "gs-proof",
+  "artifact_class": "image",
+  "brief": {
+    "purpose": "negative canary",
+    "input_artifacts": []
+  },
+  "routing": {
+    "lane": "nonexistent_lane"
+  },
+  "max_attempts": 2
+}

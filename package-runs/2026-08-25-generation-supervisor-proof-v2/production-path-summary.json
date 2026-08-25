@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "proof": "GENERATION_SUPERVISOR_PRODUCTION_PATH_PROOF_V2",
+  "generated_at": "2026-08-25T03:38:46.696Z",
+  "promotion_criteria_version": "v1 (docs/implementation-promotion-criteria.md)",
+  "defect_under_investigation": {
+    "claim": "registry marked IMPLEMENTATION_PROVEN while the canonical runner could not dispatch the module",
+    "before": {
+      "refused": true,
+      "code": "RUNNER_AGENT_ID_MISMATCH",
+      "reason": "module AGENT_ID does not match registry identity: generation_supervisor"
+    },
+    "before_module_shape": "module.exports block removed - the exact historical shape (module.exports never existed in any commit of this file)",
+    "after": "canonical runner loads the module, verifies declared identity against the requested registry id, and dispatches",
+    "module_identity_verified_by_runner": "generation_supervisor"
+  },
+  "live_state_untouched": {
+    "registry_sha256_before": "e2cd5a2f010922869805128af1f1c11ed2ef5ac1a99997f614d39379c4077e59",
+    "registry_sha256_after": "e2cd5a2f010922869805128af1f1c11ed2ef5ac1a99997f614d39379c4077e59",
+    "registry_unchanged": true,
+    "module_sha256_before": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15",
+    "module_sha256_after": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15",
+    "module_unchanged": true,
+    "implementation_state": "IMPLEMENTATION_PROVEN",
+    "lifecycle": {
+      "doctrine": "DEFINED",
+      "proven": "PROVEN",
+      "autonomous_dispatch": "ENABLED"
+    }
+  },
+  "dispatch_chain_proven": [
+    "canonical resolve",
+    "implementation readiness",
+    "module load + AGENT_ID identity verification",
+    "declared action validation",
+    "child-process invocation",
+    "canonical envelope validation",
+    "result writing",
+    "invocation completion"
+  ],
+  "bounded_workload": {
+    "statement": "no render workload is started anywhere in this proof; the supervision cases resolve routing policy and fail closed at the dispatch bridge",
+    "generation_dispatched": false
+  },
+  "cases": {
+    "A-status-availability": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "COMPLETE",
+      "reason": "generation supervisor is available; no generation brief was submitted",
+      "attention": "INFORMATION",
+      "next_owner": "hermes",
+      "exit_code": 0,
+      "envelope_valid": true,
+      "module_declared_agent_id": "generation_supervisor",
+      "control_room_role": "generation_supervisor",
+      "qc_verdict_claimed": false,
+      "human_approval_claimed": false,
+      "route": null,
+      "task_sha256": "d82f36cbd50c28d784c9379669735309f11076b1848b4d936350a8c5f32cffe0",
+      "result_sha256": "7a114eac2f137e6d88664f88fd1b0506a1baffdf48765d7831be112e70797cdb",
+      "module_sha256": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15"
+    },
+    "B-supervise-bounded-brief": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "DISPATCH_BLOCKED_NO_REGISTERED_BRIDGE",
+      "reason": "route resolved and healthy, but no registered programmatic dispatch bridge accepts a bare task file; engine submission requires the operator bridge (package-engine /api/flux/submit) with package context — fail-closed rather than bypassing policy",
+      "attention": "INFORMATION",
+      "next_owner": "production_operations",
+      "exit_code": 1,
+      "envelope_valid": true,
+      "module_declared_agent_id": "generation_supervisor",
+      "control_room_role": "generation_supervisor",
+      "qc_verdict_claimed": false,
+      "human_approval_claimed": false,
+      "route": {
+        "lane": "text_to_image_generation",
+        "machine": "vidnux",
+        "engine": "comfyui"
+      },
+      "task_sha256": "a198a786c7f315832b72b0e1f2807cc85c0fd1c6b216d831a0c16b13eb109b11",
+      "result_sha256": "029f6c32f12a9872678229d27a48f9a6d5ad9b61706b3c5876d971c33eb71882",
+      "module_sha256": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15"
+    },
+    "C-negative-ineligible-lane": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "NO_ELIGIBLE_ROUTE",
+      "reason": "unknown lane \"nonexistent_lane\" — routing policy defines the eligible set",
+      "attention": "INFORMATION",
+      "next_owner": "production_operations",
+      "exit_code": 1,
+      "envelope_valid": true,
+      "module_declared_agent_id": "generation_supervisor",
+      "control_room_role": "generation_supervisor",
+      "qc_verdict_claimed": false,
+      "human_approval_claimed": false,
+      "route": null,
+      "task_sha256": "da9fd44ab2dcee29101943870d04d6bd3996bfdc9f3e9c58149cce5b4128a687",
+      "result_sha256": "bcc0dc59148e8911eb9d1664334d18aa71012759e2a80ec0a98ce98d46fb8192",
+      "module_sha256": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15"
+    },
+    "D-negative-policy-violation": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "NO_ELIGIBLE_ROUTE",
+      "reason": "lane engine \"comfyui\" is not in allowed_engines [\"unapproved-engine\"]",
+      "attention": "INFORMATION",
+      "next_owner": "production_operations",
+      "exit_code": 1,
+      "envelope_valid": true,
+      "module_declared_agent_id": "generation_supervisor",
+      "control_room_role": "generation_supervisor",
+      "qc_verdict_claimed": false,
+      "human_approval_claimed": false,
+      "route": null,
+      "task_sha256": "c092a71b7e9d34ad84e053f0e9f7c32dec76e662db58f787c72acc8c5fa13889",
+      "result_sha256": "dfd742b21afa987ff67bea73ccfcb22772d5deb0182f15d4d9087b7ce9227a29",
+      "module_sha256": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15"
+    },
+    "E-negative-missing-inputs": {
+      "runner_error": null,
+      "runner_infrastructure_state": "COMPLETE",
+      "semantic_state": "INPUT_MISSING",
+      "reason": "missing input artifacts: /tmp/gs-proof-definitely-absent.png",
+      "attention": "INFORMATION",
+      "next_owner": "production_operations",
+      "exit_code": 1,
+      "envelope_valid": true,
+      "module_declared_agent_id": "generation_supervisor",
+      "control_room_role": "generation_supervisor",
+      "qc_verdict_claimed": false,
+      "human_approval_claimed": false,
+      "route": null,
+      "task_sha256": "6fe7f6731118e1b3e8d22152a7da93ea4570e9bfa3088f96aa663c2d44c172df",
+      "result_sha256": "a57f4c9a820a5a7a83af31db7fd508a443f1fc254bf531bbd304270609d4d340",
+      "module_sha256": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15"
+    },
+    "F-negative-unsupported-action": {
+      "runner_error": {
+        "code": "RUNNER_ACTION_UNSUPPORTED",
+        "message": "agent does not support action: publish_video"
+      },
+      "runner_infrastructure_state": null,
+      "semantic_state": null,
+      "reason": null,
+      "attention": null,
+      "next_owner": null,
+      "exit_code": null,
+      "envelope_valid": false,
+      "module_declared_agent_id": null,
+      "control_room_role": null,
+      "qc_verdict_claimed": null,
+      "human_approval_claimed": null,
+      "route": null,
+      "task_sha256": null,
+      "result_sha256": null,
+      "module_sha256": null
+    }
+  },
+  "verdict": "PRODUCTION_PATH_PROOF_PASS"
+}
