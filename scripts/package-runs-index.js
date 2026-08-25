@@ -536,7 +536,21 @@ function readLifecycleGate(runDir, files = {}) {
     files.audio_capture_checklist ||
     files.missing_shot_tracker;
   const captureEvidenceEvaluation = hasCaptureEvidenceSource ? captureEvidenceReviewTool.evaluateCaptureEvidence(runDir) : null;
-  const sourceCaptureEvidenceInvalid = Boolean(captureEvidenceEvaluation && !captureEvidenceEvaluation.realCaptureEvidence);
+  /*
+   * This guard exists so a run cannot claim PASS in its review markdown while the
+   * underlying rows are not real capture. It assumed real capture is the only
+   * legitimate kind, which is true in PRODUCTION and false in a zero-human DRAFT:
+   * there, verified machine proxy capture IS the evidence, and realCaptureEvidence
+   * is deliberately false so proxy media can never be mistaken for a performance.
+   * A valid DRAFT proxy disposition therefore counts, and nothing else changes —
+   * proxyCapture is null in every other mode.
+   */
+  const proxyCaptureSatisfied = Boolean(
+    captureEvidenceEvaluation && captureEvidenceEvaluation.proxyCapture && captureEvidenceEvaluation.proxyCapture.capture_ready
+  );
+  const sourceCaptureEvidenceInvalid = Boolean(
+    captureEvidenceEvaluation && !captureEvidenceEvaluation.realCaptureEvidence && !proxyCaptureSatisfied
+  );
   const rawCaptureEvidenceReviewStatus = gateStatus(captureEvidenceReview, "Review status") || gateStatus(captureEvidenceReview);
   const rawCaptureEvidenceAccepted = acceptedYes(captureEvidenceReview, "Capture evidence accepted");
   const rawCaptureEvidenceRealEvidence =
@@ -549,7 +563,7 @@ function readLifecycleGate(runDir, files = {}) {
   const hasConcreteCaptureEvidence = sourceCaptureEvidenceInvalid
     ? false
     : files.capture_evidence_review
-      ? captureEvidenceReviewStatus === "PASS" && captureEvidenceAccepted && captureEvidenceRealEvidence
+      ? captureEvidenceReviewStatus === "PASS" && captureEvidenceAccepted && (captureEvidenceRealEvidence || proxyCaptureSatisfied)
       : captureApproved && hasRealCaptureEvidence;
   const hasRealRoughCutEvidence = hasRealWatchNotes(roughCutWatchNotes, "rough");
   const hasRealFinalWatchEvidence = hasRealWatchNotes(finalWatchNotes, "final");

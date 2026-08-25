@@ -164,6 +164,18 @@ function rowHasRealCaptureEvidence(row = "", type = "any") {
   if (/\b(?:verified in existing capture artifacts|approved screen recording from|approved proof screen recording|approved script audio|generated checklist row|dummy|smoke-test|test-capture|test-screen|test-voiceover|not real production approval)\b/i.test(row)) {
     return false;
   }
+  /*
+   * A DRAFT proxy row references real bytes, so the media checks above would
+   * happily accept it — which would let synthetic media satisfy the REAL-capture
+   * predicate the moment a run were promoted to PRODUCTION. Machine-generated
+   * media is never human capture, so it is rejected here explicitly. This is the
+   * predicate becoming accurate, not lenient: nothing that used to pass and was
+   * genuinely captured stops passing.
+   */
+  if (/\b(?:proxy|synthetic|PROXY_GENERATED|PROXY_PRESENTER|DRAFT_SYNTHETIC[A-Z_]*)\b/i.test(row)
+      || /(?:draft-proxy-presenter|draft-narration)\//i.test(row)) {
+    return false;
+  }
   if (type === "take") {
     return /\b(?:\d{1,2}:\d{2}(?::\d{2})?|take\s*\d+|a-roll|camera|media\/|captures\/|\.mp4|\.mov|\.mkv|\.webm)\b/i.test(row);
   }

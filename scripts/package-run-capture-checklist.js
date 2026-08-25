@@ -6,6 +6,8 @@ const path = require("node:path");
 
 const productionPlan = require("./package-run-production-plan.js");
 const researchPack = require("./package-run-research-pack.js");
+const draftCaptureMaterialization = require("./draft-proxy-capture-materializer.js");
+const productionModeModule = require("./package-run-production-mode.js");
 
 const TOOL_NAME = "package-run-capture-checklist.js";
 const CAPTURE_CHECKLIST_FILE = "capture-checklist.md";
@@ -157,6 +159,12 @@ function readContext(runDir) {
     demoRowsIncomplete: !files["demo-list.md"] || hasIncompleteRows(files["demo-list.md"]),
     captureArtifactsMissing: TARGET_FILES.some((filename) => !files[filename]),
     captureApproval: hasExactCaptureApprovalMarker(...captureTexts),
+    // DRAFT is zero-human, so a human capture-readiness marker can never be the
+    // thing that satisfies it. A valid proxy-capture materialization is the
+    // machine equivalent: the same question answered by verified evidence
+    // instead of by a signature. PRODUCTION is untouched.
+    productionMode: (() => { try { return productionModeModule.readProductionMode(runDir).mode; } catch (_) { return productionModeModule.MODE_UNSPECIFIED; } })(),
+    draftProxyMaterialization: (() => { try { return draftCaptureMaterialization.materializationStatus(runDir); } catch (error) { return { present: false, valid: false, code: error.code || 'CAPTURE_MATERIALIZATION_ERROR', detail: error.message }; } })(),
   };
 }
 
@@ -192,7 +200,20 @@ function determineCaptureReadiness(context) {
   if (context.shotRowsIncomplete) captureNeeds.push("shot-list.md has missing, TODO, open, or blocked required rows.");
   if (context.screenRowsIncomplete) captureNeeds.push("screen-capture-list.md has missing, TODO, open, or blocked required rows.");
   if (context.demoRowsIncomplete) captureNeeds.push("demo-list.md has missing, TODO, open, or blocked required rows.");
-  if (!context.captureApproval) captureNeeds.push("audio capture checklist lacks an exact capture readiness approval marker.");
+  // DRAFT earns proxy capture; REVIEW reuses it. Both read the machine
+  // disposition rather than looking for a human marker that DRAFT forbids.
+  const isDraft = context.productionMode === productionModeModule.DRAFT
+    || context.productionMode === productionModeModule.REVIEW;
+  if (isDraft) {
+    // The machine equivalent of capture readiness: proxy evidence materialized
+    // truthfully into these artifacts. No marker is sought, and none may be written.
+    const materialization = context.draftProxyMaterialization || {};
+    if (!materialization.valid) {
+      captureNeeds.push(`draft proxy capture materialization is not valid (${materialization.code || 'unknown'}): ${materialization.detail || 'no detail'}`);
+    }
+  } else if (!context.captureApproval) {
+    captureNeeds.push("audio capture checklist lacks an exact capture readiness approval marker.");
+  }
 
   if (captureNeeds.length) {
     return {
@@ -209,7 +230,9 @@ function determineCaptureReadiness(context) {
   return {
     status: "READY FOR ROUGH CUT",
     readyForRoughCut: true,
-    reason: "Production planning is ready, production blockers are clear, required planning rows are complete, and capture readiness is explicitly approved.",
+    reason: isDraft
+      ? "Production planning is ready, production blockers are clear, required planning rows are complete, and DRAFT proxy capture is machine-verified (no human approval is used or required)."
+      : "Production planning is ready, production blockers are clear, required planning rows are complete, and capture readiness is explicitly approved.",
     blockers: [],
     nextActions: ["Assemble the rough cut from the approved captured material."],
   };

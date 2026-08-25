@@ -103,14 +103,25 @@ function draftProxyCaptureReadiness(runDirInput, options = {}) {
   try { mode = productionMode.readProductionMode(runDir).mode; }
   catch (_) { mode = productionMode.MODE_UNSPECIFIED; }
 
-  if (mode !== productionMode.DRAFT) {
+  /*
+   * DRAFT produces proxy capture; REVIEW REUSES what the Draft produced. Both may
+   * therefore read this readiness — otherwise entering REVIEW would reopen the
+   * capture gates the Draft legitimately earned, which the mode policy
+   * (REUSE_PRIOR_CAPTURE, recapture_on_mode_change false) explicitly forbids.
+   *
+   * PRODUCTION stays inapplicable: asking it whether proxy media suffices is
+   * asking whether synthetic media can stand in for a human performance.
+   * Producing proxy capture remains DRAFT-only; that is enforced by the
+   * materializer and the producers, not here.
+   */
+  if (mode !== productionMode.DRAFT && mode !== productionMode.REVIEW) {
     return {
       applicable: false,
       production_mode: mode,
       disposition: null,
       capture_ready: false,
       human_authority_required: null,
-      detail: `proxy capture readiness applies to DRAFT only; this run declares ${mode}`,
+      detail: `proxy capture readiness applies to DRAFT and REVIEW only; this run declares ${mode}`,
     };
   }
 
