@@ -248,12 +248,47 @@ Either component going stale takes the whole thing down: a Story revision stales
 both, mutated bytes invalidate their own component, and narration changing after
 the presenter was timed against it stales the presenter.
 
-**Gate 8 in DRAFT is still blocked, and not on a human.** It requires the five
-gate-7 capture artifacts, and the gate-7 generator is mode-blind: it asks for real
-capture execution artifacts and a human capture-readiness marker, knowing nothing
-about proxy capture. The remaining primitive is a **DRAFT gate-7 capture-artifact
-materializer** — the same shape as the gate-6 materializer that projected visual
-plans into canonical package-run markdown.
+## Draft capture, end to end
+
+DRAFT capture is now complete and machine-verifiable:
+
+```
+canonical script
+  -> synthetic narration        (Piper)            DRAFT_SYNTHETIC_NARRATION
+  -> proxy presenter            (ffmpeg-stickman)  PROXY_PRESENTER
+  -> proxy capture aggregate                       PROXY_CAPTURE_READY
+  -> gate-7 capture-artifact materialization       five canonical artifacts
+  -> gate 7 READY FOR ROUGH CUT                    no human
+  -> gate 8 PASS                                   no human, no marker
+  -> gate 9 rough-cut-review                       Mikko's first real boundary
+```
+
+`scripts/draft-proxy-capture-materializer.js` projects the proxy evidence into
+`capture-checklist.md`, `takes-log.md`, `missing-shot-tracker.md`,
+`screen-recording-checklist.md` and `audio-capture-checklist.md`, with
+`proxy-capture-materialization.json` as the provenance sidecar and commit marker.
+It is pure projection: no model call, no media generation, no judgement.
+
+**Proxy work is written as proxy work.** Every takes-log row is marked
+`PROXY_GENERATED` and "not a human take"; every audio row is marked
+`DRAFT_SYNTHETIC` and states "not recorded presenter audio". No capture-readiness
+approval marker is written in any artifact, because a DRAFT is zero-human. The
+real-capture predicate was tightened to reject proxy and synthetic markers, so
+these artifacts can never satisfy a PRODUCTION requirement — genuine human
+capture rows still pass unchanged.
+
+Gates 7 and 8 read the machine proxy disposition in DRAFT and REVIEW; PRODUCTION
+still means real capture preparation and real captured evidence with human
+confirmation. Promoting a reviewed Draft to PRODUCTION reopens the capture gates
+and keeps the proxy evidence as provenance. A script revision or a mutated byte
+stales the materialization and reopens gates 7 and 8 together — completion is
+never inherited.
+
+**Gate 9 is where it stops, and that is correct** — it is Mikko's first mandatory
+review boundary. But it is not yet *review-ready*: there is nothing assembled to
+watch. No automatic rough-cut assembler exists (`edit-plan.js` is a typed schema
+module, not a renderer), so nothing muxes the proxy presenter video with the
+narration audio into one watchable draft. That is the remaining capability.
 
 ## Implementation status
 
@@ -267,9 +302,11 @@ plans into canonical package-run markdown.
   presenter (ffmpeg), with their typed `DRAFT_SYNTHETIC_NARRATION` and
   `PROXY_PRESENTER` evidence, both dispatched through `generation_supervisor`.
   DRAFT proxy capture aggregates to `PROXY_CAPTURE_READY` with no human.
-- **BLOCKED** — gate 7 and gate 8 in `DRAFT`, on one remaining primitive: a
-  materializer that projects proxy-capture evidence into the five canonical
-  gate-7 capture artifacts. Both media halves are done.
+- **IMPLEMENTED** — DRAFT gate-7 capture-artifact materialization. A zero-human
+  DRAFT now completes gates 7 and 8 on machine evidence and reaches gate 9.
+- **BLOCKED** — gate 9 review-readiness, on one remaining capability: an
+  automatic DRAFT rough-cut assembler. Capture is done; there is simply nothing
+  assembled for Mikko to watch yet.
 
 Verified absent rather than assumed: a hard search across `*.js`, `*.json`,
 `*.md`, `*.py` and `*.sh` found no TTS producer (the only MiniMax integration is

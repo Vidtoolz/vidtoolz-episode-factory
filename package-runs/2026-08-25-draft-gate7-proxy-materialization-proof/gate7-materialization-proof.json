@@ -1,0 +1,215 @@
+{
+  "schema": "vidtoolz.draftGate7ProxyMaterializationProof.v1",
+  "not_a_production_run": true,
+  "verdict": "DRAFT_ZERO_HUMAN_CAPTURE_PROVEN_AUTOMATIC_ROUGH_CUT_STILL_REQUIRED",
+  "red_baseline": {
+    "proxy_capture": "PROXY_CAPTURE_READY (audio READY + visual READY)",
+    "gate7": "NEEDS CAPTURE — the five canonical capture artifacts did not exist",
+    "gate8": "BLOCKED — missing capture-checklist.md, takes-log.md, missing-shot-tracker.md, screen-recording-checklist.md, audio-capture-checklist.md",
+    "human_required": false
+  },
+  "materializer": {
+    "module": "scripts/draft-proxy-capture-materializer.js",
+    "version": "draft-proxy-capture-materializer-v1",
+    "nature": "pure projection — no model call, no media generation, no judgement",
+    "inputs": [
+      "production mode DRAFT",
+      "DRAFT_SYNTHETIC_NARRATION evidence + manifest",
+      "PROXY_PRESENTER evidence + manifest",
+      "PROXY_CAPTURE_READY aggregate",
+      "Story binding",
+      "visual-plan screen-capture decision"
+    ],
+    "outputs": [
+      "capture-checklist.md",
+      "takes-log.md",
+      "missing-shot-tracker.md",
+      "screen-recording-checklist.md",
+      "audio-capture-checklist.md"
+    ],
+    "sidecar": "proxy-capture-materialization.json",
+    "proxy_markers": {
+      "take": "PROXY_GENERATED",
+      "audio": "DRAFT_SYNTHETIC"
+    },
+    "source_validation": "every input re-verified before any write; stale narration, mutated media, drifted Story, incomplete coverage or misalignment all refuse materialization",
+    "transactional": "prepare all five, validate all five (thin/scaffold/human-claim checks), then write, sidecar last as the commit marker"
+  },
+  "semantic_truth": {
+    "rule": "proxy work is written as proxy work",
+    "takes_log": "every row marked PROXY_GENERATED and \"not a human take\"; prose states \"machine render, not a take\" and \"Nobody performed\"",
+    "audio_checklist": "every row marked DRAFT_SYNTHETIC; states \"not recorded presenter audio\" and \"nobody spoke, no microphone was used\"",
+    "no_human_marker": "no capture-readiness approval marker is written in any artifact, by design",
+    "hardening": "the gate-8 real-capture predicate was tightened to reject proxy/synthetic markers and the proxy media directories, so these artifacts can never satisfy a PRODUCTION real-capture requirement. Genuine human capture rows still pass unchanged."
+  },
+  "sidecar_binding": {
+    "capture_class": "PROXY",
+    "human_performance": false,
+    "satisfies_real_capture": false,
+    "human_authority_required": false,
+    "story": {
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+      "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+    },
+    "source_evidence": {
+      "narration": {
+        "kind": "DRAFT_SYNTHETIC_NARRATION",
+        "state": "VERIFIED",
+        "manifest_sha256": "8c4c8efef6b159a598e28445d7b8d80e8343362e150307c2eb9e3cb8cba17138",
+        "audio_sha256": "f017bca4f4189886be3140b541d06cb8f5c493d32ed15dc1a18f72d3d212e9da",
+        "duration_seconds": 74.385188
+      },
+      "proxy_presenter": {
+        "kind": "PROXY_PRESENTER",
+        "state": "VERIFIED",
+        "manifest_sha256": "17f6553f3d1b751ff93558bbe7e2c658a5c0b7a4837a107abeb1b93fbe2a141e",
+        "video_sha256": "4c11c4035ab0ac17b26b0616545df74bb9409d25b2e916b9ec6c1dac2b5a97ac",
+        "duration_seconds": 74.466667
+      },
+      "aggregate": {
+        "disposition": "PROXY_CAPTURE_READY",
+        "capture_ready": true
+      }
+    },
+    "coverage": {
+      "spoken_beats": 7,
+      "covered_beats": 7,
+      "complete": true,
+      "uncovered": []
+    },
+    "alignment": {
+      "narration_duration_seconds": 74.385188,
+      "presenter_duration_seconds": 74.466667,
+      "delta_seconds": 0.081479,
+      "tolerance_seconds": 0.15,
+      "aligned": true,
+      "narration_time_stretched": false
+    },
+    "screen_recording": {
+      "decision": "NO_SCREEN_RECORDING_REQUIRED",
+      "authority": "screen-capture-list.md (visual plan: NO_SCREEN_CAPTURE_REQUIRED)"
+    },
+    "artifacts": [
+      {
+        "filename": "capture-checklist.md",
+        "sha256": "c39e5c3be0919e9cb7ad93ab455939895cf7b2ea209f266bc25ff7b17565482e",
+        "machine_sha256": "5a7b9dff1cb9ecca062fb5e34838494aadd695da4800916a9cf4d1b77cca6dd8",
+        "bytes": 1808
+      },
+      {
+        "filename": "takes-log.md",
+        "sha256": "1d2449e0ed79154c2c64f99c01aa71b76232c46db0c06a0d658cece1f9dd644a",
+        "machine_sha256": "93353569efa8a8c62e42a5f2582d43e30d7568f3dacbaaa267b5d3faded491c1",
+        "bytes": 2513
+      },
+      {
+        "filename": "missing-shot-tracker.md",
+        "sha256": "80b1a2620523dd62e881cc28a0fe95a87af614e9b2de7cc5007b9dad5cb1f731",
+        "machine_sha256": "dbd93f616b26c3b56cecb49be95e6ac39e7418cf5e98f1a80b1f8cea9665ec14",
+        "bytes": 1067
+      },
+      {
+        "filename": "screen-recording-checklist.md",
+        "sha256": "c5f48916056d9aff816927be18eb7d7732791ccdf801b61dd428c98a70165dbe",
+        "machine_sha256": "147950283b159c381d1aa2f916bc108062c8522a1a1f3cf23f67c54784154e43",
+        "bytes": 1261
+      },
+      {
+        "filename": "audio-capture-checklist.md",
+        "sha256": "e5758b7a401647379fb8b938519c167e7b716285fd4b0b4ee40e372bee3a8f4f",
+        "machine_sha256": "ba013ce71854bb407f23a4f2cc8f65c5528fa777c94efedfdff4b7812afd7c5e",
+        "bytes": 1697
+      }
+    ]
+  },
+  "gate7": {
+    "before": "NEEDS CAPTURE",
+    "after": "READY FOR ROUGH CUT",
+    "reason": "Production planning is ready, production blockers are clear, required planning rows are complete, and DRAFT proxy capture is machine-verified (no human approval is used or required).",
+    "readyForRoughCut": true,
+    "mode_aware_change": "in DRAFT and REVIEW the evaluator reads the machine proxy disposition instead of looking for a human capture marker; PRODUCTION is untouched"
+  },
+  "gate8": {
+    "before": "BLOCKED",
+    "after": "PASS",
+    "accepted": true,
+    "approval_marker_detected": false,
+    "real_capture_evidence": false,
+    "proxy_capture": {
+      "disposition": "PROXY_CAPTURE_READY",
+      "capture_ready": true,
+      "audio": "PROXY_AUDIO_READY",
+      "visual": "PROXY_VISUAL_READY",
+      "next_capability": null,
+      "human_authority_required": false
+    },
+    "note": "PASS on machine evidence with realCaptureEvidence false — proxy satisfied the DRAFT disposition without ever registering as real capture"
+  },
+  "lifecycle_gate_reader_fix": {
+    "file": "scripts/package-runs-index.js (readLifecycleGate only, not index discovery internals)",
+    "defect": "sourceCaptureEvidenceInvalid treated ANY non-real capture evidence as invalid, overriding the evaluator PASS. True in PRODUCTION, false in a zero-human DRAFT where verified proxy capture IS the evidence.",
+    "fix": "a valid DRAFT proxy disposition counts; proxyCapture is null in every other mode so nothing else changes",
+    "second_fix": "capture-checklist.md now carries the canonical \"Capture checklist status\" and \"Ready for rough cut\" lines the reader parses — without them the run status label never left \"Needs capture\" no matter how complete the evidence"
+  },
+  "canonical_position": {
+    "current_gate": "rough-cut-review",
+    "gate_number": 9,
+    "gates_complete": 8,
+    "completed": [
+      "package-selection",
+      "research",
+      "script-structure",
+      "script-review",
+      "production-plan",
+      "shot-edit-plan-review",
+      "capture-checklist",
+      "capture-evidence"
+    ],
+    "missing_for_current": [
+      "rough-cut-watch-notes.md",
+      "rough-cut-review.md"
+    ],
+    "run_status_label": "Ready for rough cut"
+  },
+  "package_run_state": {
+    "production_mode": "DRAFT",
+    "current_gate": "rough-cut-review",
+    "expected_owner": "editor",
+    "human_authority_required": true,
+    "tracker": "TRACKER_CONSISTENT",
+    "consistency_defects": 0
+  },
+  "mode_behaviour": {
+    "DRAFT": "gate 9 rough-cut-review, 8/14 complete",
+    "REVIEW": "holds at gate 9 — reuse, no recapture, materializer refuses to run",
+    "PRODUCTION": "capture reopens to gate 8; realCaptureEvidence false, proxy readiness not applicable, proxy evidence retained as history",
+    "MODE_UNSPECIFIED": "materializer refuses"
+  },
+  "negatives": {
+    "script_revision": "narration stale -> materialization invalid -> gate 7 NEEDS CAPTURE, gate 8 not PASS, completion not inherited",
+    "media_mutation": "proxy not ready -> materialization refused -> gate 7 reopens",
+    "machine_row_tampering": "CAPTURE_MATERIALIZATION_DRIFT; re-materialization restores machine rows and keeps the human note",
+    "human_note": "preserved across regeneration; cannot assert real capture because machine rows are restored",
+    "idempotency": "second pass reports every artifact unchanged with identical machine hashes"
+  },
+  "gate9": {
+    "requires": [
+      "rough-cut-watch-notes.md",
+      "rough-cut-review.md"
+    ],
+    "human_boundary": true,
+    "blocker": "there is nothing assembled to watch. No automatic rough-cut/edit assembler exists: edit-plan.js is a typed schema module (SCHEMA_VERSION, TRACK_ROLES, FIELDS, canonicalize), not a renderer, and nothing muxes the proxy presenter video with the narration audio into a single watchable draft.",
+    "not_faked": "no watch notes, no ratings, no rough-cut approval were written"
+  },
+  "next_capability": {
+    "name": "automatic DRAFT rough-cut assembler",
+    "shape": "proxy presenter video + narration audio + beat timing -> one watchable draft video, plus the rough-cut artifact gate 9 evaluates",
+    "useful_existing_pieces": [
+      "edit-plan.js typed edit contract with TRACK_ROLES and PROVENANCE_CLASSES",
+      "beat timing in both manifests",
+      "ffmpeg already proven for concat and mux in this lane"
+    ],
+    "note": "PROXY_PRESENTER is not among edit-plan TRACK_ROLES (VIDEO_PRIMARY, PRESENTER_PIP, AUDIO_DIALOGUE, ...), so the assembler will need to decide how a proxy track maps onto those roles."
+  }
+}

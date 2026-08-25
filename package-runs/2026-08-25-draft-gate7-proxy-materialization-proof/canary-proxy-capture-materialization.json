@@ -1,0 +1,86 @@
+{
+  "schema": "vidtoolz.proxyCaptureMaterialization.v1",
+  "materializer_version": "draft-proxy-capture-materializer-v1",
+  "run_id": "2026-08-25-draft-narration-canary",
+  "production_mode": "DRAFT",
+  "capture_class": "PROXY",
+  "human_performance": false,
+  "satisfies_real_capture": false,
+  "human_authority_required": false,
+  "story": {
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+  },
+  "source_evidence": {
+    "narration": {
+      "kind": "DRAFT_SYNTHETIC_NARRATION",
+      "state": "VERIFIED",
+      "manifest_sha256": "8c4c8efef6b159a598e28445d7b8d80e8343362e150307c2eb9e3cb8cba17138",
+      "audio_sha256": "f017bca4f4189886be3140b541d06cb8f5c493d32ed15dc1a18f72d3d212e9da",
+      "duration_seconds": 74.385188
+    },
+    "proxy_presenter": {
+      "kind": "PROXY_PRESENTER",
+      "state": "VERIFIED",
+      "manifest_sha256": "17f6553f3d1b751ff93558bbe7e2c658a5c0b7a4837a107abeb1b93fbe2a141e",
+      "video_sha256": "4c11c4035ab0ac17b26b0616545df74bb9409d25b2e916b9ec6c1dac2b5a97ac",
+      "duration_seconds": 74.466667
+    },
+    "aggregate": {
+      "disposition": "PROXY_CAPTURE_READY",
+      "capture_ready": true
+    }
+  },
+  "coverage": {
+    "spoken_beats": 7,
+    "covered_beats": 7,
+    "complete": true,
+    "uncovered": []
+  },
+  "alignment": {
+    "narration_duration_seconds": 74.385188,
+    "presenter_duration_seconds": 74.466667,
+    "delta_seconds": 0.081479,
+    "tolerance_seconds": 0.15,
+    "aligned": true,
+    "narration_time_stretched": false
+  },
+  "screen_recording": {
+    "decision": "NO_SCREEN_RECORDING_REQUIRED",
+    "authority": "screen-capture-list.md (visual plan: NO_SCREEN_CAPTURE_REQUIRED)"
+  },
+  "artifacts": [
+    {
+      "filename": "capture-checklist.md",
+      "sha256": "c39e5c3be0919e9cb7ad93ab455939895cf7b2ea209f266bc25ff7b17565482e",
+      "machine_sha256": "5a7b9dff1cb9ecca062fb5e34838494aadd695da4800916a9cf4d1b77cca6dd8",
+      "bytes": 1808
+    },
+    {
+      "filename": "takes-log.md",
+      "sha256": "1d2449e0ed79154c2c64f99c01aa71b76232c46db0c06a0d658cece1f9dd644a",
+      "machine_sha256": "93353569efa8a8c62e42a5f2582d43e30d7568f3dacbaaa267b5d3faded491c1",
+      "bytes": 2513
+    },
+    {
+      "filename": "missing-shot-tracker.md",
+      "sha256": "80b1a2620523dd62e881cc28a0fe95a87af614e9b2de7cc5007b9dad5cb1f731",
+      "machine_sha256": "dbd93f616b26c3b56cecb49be95e6ac39e7418cf5e98f1a80b1f8cea9665ec14",
+      "bytes": 1067
+    },
+    {
+      "filename": "screen-recording-checklist.md",
+      "sha256": "c5f48916056d9aff816927be18eb7d7732791ccdf801b61dd428c98a70165dbe",
+      "machine_sha256": "147950283b159c381d1aa2f916bc108062c8522a1a1f3cf23f67c54784154e43",
+      "bytes": 1261
+    },
+    {
+      "filename": "audio-capture-checklist.md",
+      "sha256": "e5758b7a401647379fb8b938519c167e7b716285fd4b0b4ee40e372bee3a8f4f",
+      "machine_sha256": "ba013ce71854bb407f23a4f2cc8f65c5528fa777c94efedfdff4b7812afd7c5e",
+      "bytes": 1697
+    }
+  ],
+  "task_id": "materialize-canary-2"
+}
