@@ -44,6 +44,7 @@ require("./audio-fidelity-contract.test.js");
 require("./production-mix-evidence.test.js");
 require("./production-mix-upstream-material.test.js");
 require("./production-capture-readiness.test.js");
+require("./supervised-presenter-take-adapter.test.js");
 require("./lifecycle-authority-invariant.test.js");
 require("./package-lifecycle-integration.test.js");
 require("./video-prompts.test.js");
