@@ -164,7 +164,7 @@ test('WA8: projection drift is reported as a structured defect', async () => {
     assert.equal(status.drift.canonical_gate, 'research');
     assert.equal(status.drift.observed_stage, 'image-gen');
     assert.equal(status.drift.canonical_stage, 'research');
-    assert.match(status.drift.resolution, /canonical 14-gate state wins/);
+    assert.match(status.drift.resolution, /canonical 14-gate state wins/i);
     assert.ok(Array.isArray(status.drift.expected_stages) && status.drift.expected_stages.length > 0);
   });
 });

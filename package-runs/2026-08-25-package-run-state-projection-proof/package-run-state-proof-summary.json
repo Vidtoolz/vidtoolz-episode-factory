@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "proof": "PACKAGE_RUN_STATE_PROJECTION_PROOF",
+  "consolidation": {
+    "shared_authority": "scripts/workflow-stage-projection.js",
+    "gate_mapping_disagreements": 0,
+    "gate_agreement": [
+      {
+        "gate": "package-selection",
+        "shared": 0,
+        "package_run_state": 0
+      },
+      {
+        "gate": "research",
+        "shared": 1,
+        "package_run_state": 1
+      },
+      {
+        "gate": "script-structure",
+        "shared": 2,
+        "package_run_state": 2
+      },
+      {
+        "gate": "script-review",
+        "shared": 3,
+        "package_run_state": 3
+      },
+      {
+        "gate": "production-plan",
+        "shared": 4,
+        "package_run_state": 4
+      },
+      {
+        "gate": "shot-edit-plan-review",
+        "shared": 5,
+        "package_run_state": 5
+      },
+      {
+        "gate": "capture-checklist",
+        "shared": 9,
+        "package_run_state": 9
+      },
+      {
+        "gate": "capture-evidence",
+        "shared": 9,
+        "package_run_state": 9
+      },
+      {
+        "gate": "rough-cut-review",
+        "shared": 10,
+        "package_run_state": 10
+      },
+      {
+        "gate": "final-review",
+        "shared": 11,
+        "package_run_state": 11
+      },
+      {
+        "gate": "export-check",
+        "shared": 11,
+        "package_run_state": 11
+      },
+      {
+        "gate": "publication-metadata",
+        "shared": 11,
+        "package_run_state": 11
+      },
+      {
+        "gate": "archive",
+        "shared": 12,
+        "package_run_state": 12
+      },
+      {
+        "gate": "repurposing",
+        "shared": 12,
+        "package_run_state": 12
+      }
+    ],
+    "package_run_state_delegates_drift": true,
+    "package_run_state_delegates_mapping": true,
+    "competing_defect_codes_removed": true,
+    "unknown_gate_is_null": true,
+    "statement": "Before consolidation two independently written gate->stage tables disagreed on 5 of 14 gates, and this module carried a competing RUN_STATE_TRACKER_LAG code. Both now delegate to one shared authority."
+  },
+  "drift_semantics": {
+    "ahead": {
+      "severity": "BLOCKER",
+      "direction": "PROJECTION_AHEAD_OF_CANONICAL",
+      "code": "RUN_STATE_PROJECTION_DRIFT"
+    },
+    "behind": {
+      "severity": "WARNING",
+      "direction": "PROJECTION_BEHIND_CANONICAL",
+      "code": "RUN_STATE_PROJECTION_DRIFT"
+    },
+    "consumers_agree_ahead": true,
+    "consumers_agree_behind": true,
+    "single_code": "RUN_STATE_PROJECTION_DRIFT"
+  },
+  "lifecycle_canary": {
+    "create": {
+      "action": "create",
+      "gate": "research",
+      "state": "ACTIVE"
+    },
+    "control_room_agrees": true,
+    "tracker_stage": "research",
+    "advance": {
+      "action": "refresh",
+      "from": "research",
+      "to": "script-structure",
+      "advanced": true
+    },
+    "corrupted_check": {
+      "ok": false,
+      "stale": true,
+      "defects": [
+        "RUN_STATE_PROJECTION_DRIFT"
+      ]
+    },
+    "rebuild": {
+      "ok": true,
+      "defects": [],
+      "gate": "script-structure"
+    },
+    "canonical_unchanged_by_projection": true,
+    "idempotent": {
+      "same_canonical_body": true,
+      "same_digest": true,
+      "digest": "a2b38a09e7e76444"
+    },
+    "unauthorized_writer": {
+      "refused": true,
+      "code": "RUN_STATE_WRITE_REFUSED"
+    },
+    "canonical_injection": {
+      "refused": true,
+      "code": "CANONICAL_OVERRIDE_REFUSED"
+    }
+  },
+  "projection_sample": "# Package Run State\n\n- Package run state: active\n- Workflow path: horizontal\n\n<!-- GENERATED PROJECTION — not a source of truth. Authority: scripts/package-run-workflow-map.js (14-gate engine). -->\n<!-- Regenerate: node scripts/package-run-state-operations.js --run <run-id> --refresh -->\n\n# Package Run State Projection — 2026-08-25-runstate-proof-canary\n\n- Package run state: active\n- Workflow path: horizontal\n- Projection schema: vidtoolz.packageRunStateProjection.v1\n- Authority source: 14-gate workflow authority\n- Owner agent: production_operations\n- Canonical digest: a2b38a09e7e76444837c8533c6ff5fb960b6780d5bbdc467d29bd721a59a2b3a\n- Generated at: 2026-12-31T00:00:00.000Z\n\n## Projection status: ACTIVE\n\n- Package-run identity: yes\n- Current authoritative gate: script-structure (Script structure)\n- Gate status: pending\n- Gates complete: 2/14",
+  "missing_projection": {
+    "projection_present": false,
+    "canonical_gate_still_known": "research",
+    "statement": "A missing package-run-state.md never means canonical state is unknown; the gate is still derivable."
+  },
+  "run_population": {
+    "directories_under_package_runs": 66,
+    "genuine_package_runs": 0,
+    "genuine_run_ids": [],
+    "migration_performed": 0,
+    "statement": "Every directory under package-runs/ is proof, canary or evidence material carrying no package-run identity file, so none is a production run to migrate. They are classified UNKNOWN_LEGACY rather than guessed at. New runs receive the projection automatically at creation."
+  },
+  "authority_chain": [
+    "package evidence / status markers",
+    "scripts/package-run-workflow-map.js — canonical 14 gates",
+    "scripts/workflow-stage-projection.js — shared projection + drift authority",
+    "consumers: pipeline-status/tracker, package-run-state.md, control room"
+  ],
+  "predecessor_proof": "package-runs/2026-08-25-workflow-authority-unification-proof",
+  "failures": [],
+  "verdict": "PACKAGE_RUN_STATE_PROJECTION_PROVEN",
+  "generated_at": "2026-08-25T06:25:46.958Z",
+  "module_sha256": {
+    "projection": "c07853afa5b8a424c7627a3560032889233f80729970d1d1e1640f8913aec2a4",
+    "operations": "d24dfe530b84247b82bb647abf582d82c9e6a195c3224ad64b57959fb6a3a8e7",
+    "shared": "427012a90a0a581b3679d2b9f7c4c0c713d87ceffecd63aa34ffb4a298ac15fb"
+  }
+}

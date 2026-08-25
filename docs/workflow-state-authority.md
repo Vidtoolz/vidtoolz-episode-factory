@@ -23,11 +23,26 @@ example `scriptReviewStatus === "PASS"`), not when a file merely exists.
 ## Everything else is a projection
 
 ```
-canonical 14-gate state
-  ├─→ package-run-state.md      durable projection (Production Operations)
-  ├─→ control room              derived view
-  └─→ pipeline tracker strip    display projection (13 horizontal / 8 vertical)
+package evidence / status markers
+        ↓
+14-gate canonical workflow      scripts/package-run-workflow-map.js
+        ↓
+shared projection authority     scripts/workflow-stage-projection.js
+        ├─→ control room              derived view
+        ├─→ pipeline tracker strip    display projection (13 horizontal / 8 vertical)
+        └─→ package-run-state.md      durable projection (Production Operations)
 ```
+
+**One implementation, not three.** `scripts/workflow-stage-projection.js` owns the
+gate→stage mapping and the drift rule. `package-run-state-projection.js`
+delegates to it rather than carrying its own copy — it previously held a second
+gate→stage table that disagreed on 5 of 14 gates, plus a competing
+`RUN_STATE_TRACKER_LAG` code. Both are gone.
+
+Durable writes are owned by Production Operations
+(`scripts/package-run-state-operations.js`), which is the only authorized
+writer; any other actor is refused. Canonical state cannot be injected into a
+projection — `buildProjection` refuses a supplied gate outright.
 
 No projection may own, advance, prove or imply lifecycle state. On any
 disagreement the rule is fixed: **canonical 14-gate state wins**, and the
