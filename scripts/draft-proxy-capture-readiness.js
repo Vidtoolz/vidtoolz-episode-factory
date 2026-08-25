@@ -6,13 +6,12 @@
  * The proxy-capture contract has two components. This module reports each
  * honestly and refuses to call the whole thing ready until both exist:
  *
- *   audio   DRAFT_SYNTHETIC_NARRATION — implemented, verified from real bytes
- *   visual  PROXY_PRESENTER           — not implemented, no producer exists
+ *   audio   DRAFT_SYNTHETIC_NARRATION — Piper speech, verified from real bytes
+ *   visual  PROXY_PRESENTER            — rendered presenter video, beat-aligned
  *
- * So the expected state today is PROXY_AUDIO_READY with PROXY_VISUAL_MISSING,
- * and PROXY_CAPTURE_READY stays false. Narration is the Draft presenter's voice;
- * it is not the Draft presenter, and reporting otherwise would be the exact lie
- * the capture contract was written to prevent.
+ * Both producers now exist, so PROXY_CAPTURE_READY is reachable — but only when
+ * every component actually verifies. A voice alone was never a presenter, and a
+ * presenter alone is not capture either.
  */
 
 const fs = require('node:fs');
@@ -20,6 +19,7 @@ const path = require('node:path');
 
 const productionMode = require('./package-run-production-mode.js');
 const narration = require('./package-run-draft-narration.js');
+const presenter = require('./package-run-draft-proxy-presenter.js');
 
 const CONTRACT_FILE = 'proxy-capture-evidence-contract.json';
 
@@ -29,21 +29,40 @@ const AUDIO_MISSING = 'PROXY_AUDIO_MISSING';
 const AUDIO_STALE = 'PROXY_AUDIO_STALE';
 const VISUAL_READY = 'PROXY_VISUAL_READY';
 const VISUAL_MISSING = 'PROXY_VISUAL_MISSING';
+const VISUAL_STALE = 'PROXY_VISUAL_STALE';
 
 // The whole-contract disposition, only reachable when every component is ready.
 const CAPTURE_READY = 'PROXY_CAPTURE_READY';
 
 /*
- * The visual component. There is no producer, so this is a declaration of
- * absence rather than a check that can pass. When PROXY_PRESENTER lands, this is
- * the single place that changes.
+ * The visual component. This used to be a declaration of absence; a real
+ * PROXY_PRESENTER producer now exists, so it is a check that can pass.
  */
-function proxyVisualStatus() {
+function proxyVisualStatus(runDir, options = {}) {
+  const status = presenter.proxyPresenterStatus(runDir, options);
+  if (!status.present) {
+    return { disposition: VISUAL_MISSING, ready: false, required_evidence_kind: presenter.EVIDENCE_KIND, detail: 'no draft proxy presenter has been produced' };
+  }
+  if (!status.valid) {
+    return {
+      disposition: status.code === 'PROXY_PRESENTER_SOURCE_DRIFT' ? VISUAL_STALE : VISUAL_MISSING,
+      ready: false,
+      required_evidence_kind: presenter.EVIDENCE_KIND,
+      code: status.code,
+      detail: status.detail,
+    };
+  }
   return {
-    disposition: VISUAL_MISSING,
-    ready: false,
-    required_evidence_kind: 'PROXY_PRESENTER',
-    detail: 'no proxy presenter visual producer exists; PRESENTER_A_ROLL is capture-class by design and is not generated',
+    disposition: VISUAL_READY,
+    ready: true,
+    required_evidence_kind: presenter.EVIDENCE_KIND,
+    duration_seconds: status.evidence.assembled.duration_seconds,
+    video_sha256: status.evidence.assembled.video_sha256,
+    video_path: status.evidence.assembled.video_path,
+    track_role: status.evidence.track_role,
+    fidelity: status.evidence.fidelity,
+    is_real_presenter: false,
+    satisfies_real_capture: false,
   };
 }
 
@@ -96,7 +115,7 @@ function draftProxyCaptureReadiness(runDirInput, options = {}) {
   }
 
   const audio = proxyAudioStatus(runDir, options);
-  const visual = proxyVisualStatus();
+  const visual = proxyVisualStatus(runDir, options);
   const components = { audio, visual };
   const ready = audio.ready && visual.ready;
   const blockers = [];
@@ -107,13 +126,13 @@ function draftProxyCaptureReadiness(runDirInput, options = {}) {
     applicable: true,
     production_mode: mode,
     // Never PROXY_CAPTURE_READY while any component is absent.
-    disposition: ready ? CAPTURE_READY : (audio.ready ? VISUAL_MISSING : audio.disposition),
+    disposition: ready ? CAPTURE_READY : (audio.ready ? visual.disposition : audio.disposition),
     capture_ready: ready,
     components,
     blockers,
     // A zero-human draft asks nothing of Mikko, in any state.
     human_authority_required: false,
-    next_capability: ready ? null : (audio.ready ? 'PROXY_PRESENTER visual producer' : 'draft synthetic narration'),
+    next_capability: ready ? null : (audio.ready ? 'draft proxy presenter' : 'draft synthetic narration'),
     contract: CONTRACT_FILE,
   };
 }
@@ -124,6 +143,7 @@ module.exports = {
   AUDIO_STALE,
   VISUAL_READY,
   VISUAL_MISSING,
+  VISUAL_STALE,
   CAPTURE_READY,
   CONTRACT_FILE,
   proxyVisualStatus,
