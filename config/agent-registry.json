@@ -589,14 +589,19 @@
       "name": "Presenter / Performance Director",
       "lifecycle": {
         "doctrine": "DEFINED",
-        "proven": "NOT_PROVEN",
-        "autonomous_dispatch": "DISABLED",
-        "dispatch_blocked_reason": "Presenter / Performance Director is contract status PLANNED (build_order 7). Doctrine is complete so authority is unambiguous the moment it is built; execution stays refused until Mikko authorizes enablement.",
-        "enablement_prerequisites": [
-          "canonical presenter take/delivery artifact contract proven end to end",
-          "Editor take-selection boundary demonstrated against real evidence",
-          "explicit human enablement decision by Mikko"
-        ]
+        "proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED",
+        "enablement_decision": {
+          "decision": "ENABLE",
+          "authority": "Mikko (explicit human creative authority)",
+          "decided_on": "2026-08-25",
+          "prerequisites_satisfied": [
+            "canonical presenter take/delivery artifact contract proven end to end",
+            "Editor take-selection boundary demonstrated against real evidence",
+            "explicit human enablement decision by Mikko"
+          ],
+          "governance_record": "governance/presenter-director-enablement.json"
+        }
       },
       "role": "creative_specialist",
       "mission": "Prepare an approved script for delivery and judge presenter performance craft — pacing, emphasis, pauses, pronunciation, line delivery, continuity — proposing takes, retakes, and alternate delivery without ever changing what the episode says or approving anything.",
@@ -683,7 +688,8 @@
         "meaning_is_not_delivery": "Delivery guidance may change how a line is said, never what it asserts. A change to what it asserts is an escalation, not a note.",
         "no_fabricated_performance": "Presenter must never synthesize, imitate, or attribute delivery to Mikko as if he performed it.",
         "proposal_not_selection": "Take ranking is advisory evidence for a human choice; the strongest recommendation is still not a selection."
-      }
+      },
+      "implementation_state": "IMPLEMENTATION_PROVEN"
     },
     {
       "agent_id": "creative_director",

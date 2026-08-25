@@ -291,8 +291,7 @@
     {
       "role_id": "presenter_director",
       "role_name": "Presenter / Performance Director",
-      "status": "PLANNED",
-      "build_order": 7,
+      "status": "BUILT",
       "owns": [
         "script-for-delivery preparation",
         "recording readiness",
@@ -475,7 +474,7 @@
     "rule": "Operator/UI trackers must never become a competing source of truth. Projection loss must degrade display, never authority.",
     "run_state": {
       "invariant": "Every active package run has one machine-readable canonical workflow state derived from the 14-gate engine.",
-      "marker": "package-run-state.md is an optional local marker (active/parked/superseded) read by package-runs-index.js \u2014 it classifies lifecycle, it does not override gate evidence.",
+      "marker": "package-run-state.md is an optional local marker (active/parked/superseded) read by package-runs-index.js — it classifies lifecycle, it does not override gate evidence.",
       "ambiguity": "If evidence is incomplete, state is AMBIGUOUS. Guessing is prohibited. Cockpit surfaces must never infer a more confident state than the evidence supports.",
       "owner": "Production Operations owns run-state maintenance; Hermes reads and routes from it."
     }
@@ -486,7 +485,7 @@
       "agent name",
       "state",
       "current task",
-      "owner \u2192 next owner",
+      "owner → next owner",
       "attention level",
       "one-line blocker",
       "unresolved disagreement",
