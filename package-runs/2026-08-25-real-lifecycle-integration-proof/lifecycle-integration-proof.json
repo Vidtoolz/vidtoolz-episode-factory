@@ -166,6 +166,22 @@
       "package_state": "BLOCKED",
       "control_room_gate": "shot-edit-plan-review",
       "note": "STOP. NEEDS WORK / Stage accepted: no. The tool states it \"cannot self-approve Stage 4\" and that Mikko must add the exact approval marker."
+    },
+    {
+      "step": 13,
+      "timestamp": "2026-08-25",
+      "event": "HUMAN_REVIEW_READINESS_AUDIT",
+      "gate_before": "shot-edit-plan-review",
+      "gate_after": "shot-edit-plan-review",
+      "evidence_added": "none — audit only",
+      "actor": "claude (review preparation)",
+      "human_authority": null,
+      "approval_recorded": false,
+      "tracker_stage": "image-prompts",
+      "package_state": "BLOCKED",
+      "control_room_gate": "shot-edit-plan-review",
+      "projection_drift": null,
+      "note": "Gate is NEEDS WORK, not READY FOR HUMAN APPROVAL. Five planning artifacts remain placeholders and the gate owner visual_planning_director has never been dispatched for this run, so machine-owned work is incomplete and Mikko was NOT asked to decide. No gate transition."
     }
   ],
   "final_state": {
@@ -298,10 +314,10 @@
     },
     "cockpit_took_canonical_branch": true
   },
-  "deepest_gate_earned": "production-plan complete (5/14); shot-edit-plan-review reached and held awaiting Mikko",
-  "stop_reason": "STOP_CONDITION_1 — another genuine Mikko approval is required (shot/edit plan Stage 4 acceptance).",
+  "deepest_gate_earned": "production-plan complete (5/14); shot-edit-plan-review held at NEEDS WORK — machine work incomplete, Mikko not yet asked",
+  "stop_reason": "STOP — gate 6 requires its owning specialist to produce a concrete shot/edit plan before any human decision is meaningful.",
   "failures": [],
-  "verdict": "REAL_PACKAGE_RUN_REACHED_NEXT_HUMAN_GATE",
+  "verdict": "HUMAN_REVIEW_NOT_YET_READY_MACHINE_REQUIREMENT_REMAINS",
   "defect_found": {
     "title": "Parking a run made two projection consumers invent a canonical position",
     "discovered_by": "this canary — the first genuine package run",
@@ -375,5 +391,53 @@
     "exposed_by": "this canary — the first real run to dispatch specialists",
     "action_taken": "removed the non-load-bearing probe; did not rewrite the other suite's fixture",
     "recommendation": "that fixture should pin by run id rather than assume \"latest\", but changing it belongs to its owner"
+  },
+  "human_review_readiness": {
+    "verdict": "HUMAN_REVIEW_NOT_YET_READY",
+    "gate": "shot-edit-plan-review (6/14)",
+    "gate_status": "NEEDS WORK",
+    "gate_status_vocabulary": [
+      "BLOCKED",
+      "NEEDS WORK",
+      "READY FOR HUMAN APPROVAL",
+      "PASS"
+    ],
+    "why_not_ready": "The evaluator reaches READY FOR HUMAN APPROVAL only after planning issues clear. Five planning artifacts are placeholder-only.",
+    "machine_requirement_remaining": {
+      "owner": "visual_planning_director",
+      "owner_readiness": "IMPLEMENTATION_PROVEN / AUTHORIZED",
+      "dispatched_for_this_run": false,
+      "owner_latest_invocation_run": "2026-08-24-workspace-canary (a different run)",
+      "artifacts": [
+        "shot-list.md",
+        "screen-capture-list.md",
+        "demo-list.md",
+        "b-roll-list.md",
+        "graphics-list.md"
+      ],
+      "concrete_already": [
+        "production-plan.md",
+        "audio-notes.md",
+        "production-blockers.md"
+      ],
+      "evaluator_next_action": "Edit the planning artifacts manually, then run this review again."
+    },
+    "approval_markers_accepted": [
+      "Manual approval: PASS",
+      "Production planning approval: PASS",
+      "Shot/edit plan approval: PASS"
+    ],
+    "no_rejection_marker": "Withholding the marker is the rejection; the gate holds.",
+    "staleness_proof": {
+      "method": "isolated copy; retained canary untouched",
+      "step1_concrete_no_marker": "READY FOR HUMAN APPROVAL",
+      "step2_marker_added": "PASS / accepted yes",
+      "step3_artifact_regressed_marker_present": "NEEDS WORK / accepted no",
+      "conclusion": "Approval binds the evaluated artifact state by re-evaluation, not a stored digest. Weaker than hash binding, but it does not survive a material regression."
+    },
+    "previous_approval_scope": "RESEARCH_ONLY",
+    "previous_approval_leaked": false,
+    "review_packet": "package-runs/2026-08-25-real-lifecycle-integration-proof/NEXT-HUMAN-REVIEW.md",
+    "packet_sha256": "c3f8e4491d4135ec63e060af6256a31ce00f0fba5f9318518be62bd2bedcb692"
   }
 }
