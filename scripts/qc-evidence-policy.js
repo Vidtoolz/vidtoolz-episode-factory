@@ -85,7 +85,7 @@ const RENDER_CLASSES = Object.freeze({
     meaning: 'final program mix (dialogue/narration + music + effects) at production fidelity',
     proves: 'the complete production program audio exists and is technically valid',
     does_not_prove: ['human performance', 'capture evidence', 'publication approval'],
-    authorized_producers: Object.freeze([]), // declared gap: no legitimate producer exists yet (§40 doctrine)
+    authorized_producers: Object.freeze(['editor']),
     supersedes: null,
   }),
 });
@@ -93,9 +93,9 @@ const RENDER_CLASSES = Object.freeze({
 /*
  * Declarative producer → class authorization. A producer may only claim a
  * class it semantically owns; writing the field is not authorization.
- * PRODUCTION_MIX intentionally has no authorized producer: exposing the gap
- * truthfully is the contract (a Sound & Music Director candidate render must
- * never impersonate a final mix engine).
+ * PRODUCTION_MIX names exactly one semantic producer: editor — the edit owns
+ * the assembled timeline and therefore the audible program. Resolve/ffmpeg is
+ * the technical renderer (external); the attester validates bytes, never mixes.
  */
 function producerAuthorizedForClass(producer, renderClass) {
   const cls = RENDER_CLASSES[renderClass];
@@ -109,10 +109,17 @@ function producerAuthorizedForClass(producer, renderClass) {
  * never reported as an unexplained invariant violation.
  */
 const KNOWN_CLASS_GAPS = Object.freeze({
+  // PRODUCTION_MIX producer path CLOSED (mission 2026-08-25): semantic producer
+  // = editor, attester = scripts/production-mix-evidence.js. What remains is an
+  // UPSTREAM material gap, declared machine-readably: no canonical assembled
+  // PRODUCTION timeline with real presenter audio has been rendered yet
+  // (automatic edit/assembly upstream is incomplete; real presenter performance
+  // belongs to the capture lane). Until those bytes exist, the class
+  // requirement stays unsatisfiable — by absence of material, not by design.
   PRODUCTION_MIX: Object.freeze({
     class: 'PRODUCTION_MIX',
-    status: 'PRODUCER_MISSING',
-    note: 'No final program-mix render path exists (dialogue + music + effects). When one lands it needs its own evidence kind/attestation; PRODUCTION program audio cannot be satisfied by a music candidate.',
+    status: 'UPSTREAM_MATERIAL_MISSING',
+    note: 'Producer path closed (editor + production-mix-evidence.js attester). No canonical PRODUCTION-mode assembled timeline with real presenter audio has been rendered yet; automatic edit/assembly upstream is incomplete. PRODUCTION program audio cannot be satisfied by a music candidate or synthetic narration.',
   }),
 });
 
@@ -142,7 +149,7 @@ const EVIDENCE_POLICY = Object.freeze({
     producer_module: 'scripts/audio-render-evidence.js',
     required_render_class: 'PRODUCTION_MIX',
     rationale: 'A final rendered program soundtrack is a production-fidelity requirement; before assembly no render can legitimately exist.',
-    fidelity_contract: 'Mechanically enforced via render_class: PRODUCTION requires class PRODUCTION_MIX. The attester emits MUSIC_CANDIDATE for Scorecraft candidate renders. PRODUCTION_MIX has no authorized producer — a declared gap (KNOWN_CLASS_GAPS.PRODUCTION_MIX), never silently relaxed.',
+    fidelity_contract: 'Mechanically enforced via render_class: PRODUCTION requires class PRODUCTION_MIX. The music attester emits MUSIC_CANDIDATE for Scorecraft candidate renders; the program-mix attester (scripts/production-mix-evidence.js) emits PRODUCTION_MIX bound to real assembled program audio + edit-plan identity. Producer path closed; upstream material gap (no canonical assembled PRODUCTION timeline with real presenter audio yet) is declared in KNOWN_CLASS_GAPS and never silently relaxed.',
   }),
   DRAFT_SYNTHETIC_NARRATION: Object.freeze({
     class: 'MODE_REQUIRED',

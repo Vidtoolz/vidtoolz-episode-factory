@@ -158,14 +158,23 @@ function validateProvenance(meta) {
 /*
  * Resolve and authorize the render class. Fail closed:
  *   - the class must exist in the canonical vocabulary
+ *   - this attester only mints music-lane classes: the assembled program
+ *     mix (PRODUCTION_MIX) is owned by the program-mix attester, never by
+ *     the music attester, regardless of policy-level authorization
  *   - the attesting producer must be authorized for that class
  * No free-text classes, no inference from filename or bytes.
  */
+const MUSIC_LANE_CLASSES = Object.freeze(['MUSIC_CANDIDATE', 'DRAFT_TEMPORARY']);
+
 function resolveRenderClass(renderClass, producer) {
   const cls = renderClass || DEFAULT_RENDER_CLASS;
   if (!evidencePolicy.RENDER_CLASSES[cls]) {
     fail('AUDIO_RENDER_CLASS_UNKNOWN',
       `render_class ${JSON.stringify(cls)} is not in the canonical vocabulary (allowed: ${Object.keys(evidencePolicy.RENDER_CLASSES).join(', ')})`);
+  }
+  if (!MUSIC_LANE_CLASSES.includes(cls)) {
+    fail('AUDIO_RENDER_CLASS_UNAUTHORIZED',
+      `the music attester cannot attest render class ${cls}; ${cls} evidence requires its own canonical producer path`);
   }
   if (!evidencePolicy.producerAuthorizedForClass(producer, cls)) {
     fail('AUDIO_RENDER_CLASS_UNAUTHORIZED',
@@ -359,7 +368,7 @@ function main() {
 
 module.exports = {
   ATTESTER_ID, PRODUCER, EVIDENCE_KIND, EVIDENCE_FILE, STATES,
-  SCHEMA_VERSION, DEFAULT_RENDER_CLASS,
+  SCHEMA_VERSION, DEFAULT_RENDER_CLASS, MUSIC_LANE_CLASSES,
   AudioRenderEvidenceError, probeAudio, loadCandidateRecord, validateProvenance,
   resolveRenderClass, attestAudioRender, materializeAudioRenderEvidence, verifyExistingEvidence,
   evidencePath, main,
