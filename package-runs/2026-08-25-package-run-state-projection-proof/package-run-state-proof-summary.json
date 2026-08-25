@@ -145,7 +145,7 @@
     "statement": "A missing package-run-state.md never means canonical state is unknown; the gate is still derivable."
   },
   "run_population": {
-    "directories_under_package_runs": 66,
+    "directories_under_package_runs": 67,
     "genuine_package_runs": 0,
     "genuine_run_ids": [],
     "migration_performed": 0,
@@ -160,10 +160,10 @@
   "predecessor_proof": "package-runs/2026-08-25-workflow-authority-unification-proof",
   "failures": [],
   "verdict": "PACKAGE_RUN_STATE_PROJECTION_PROVEN",
-  "generated_at": "2026-08-25T06:25:46.958Z",
+  "generated_at": "2026-08-25T06:51:57.693Z",
   "module_sha256": {
-    "projection": "c07853afa5b8a424c7627a3560032889233f80729970d1d1e1640f8913aec2a4",
-    "operations": "d24dfe530b84247b82bb647abf582d82c9e6a195c3224ad64b57959fb6a3a8e7",
+    "projection": "a850dd84ffa930beb26b61bc646fd3e322178fe9fd885617ce1a0a8acca5f911",
+    "operations": "48acbdb71592e5c0b388b3d2d6647b21e97e560b9c991a138c3835132c5f0aad",
     "shared": "427012a90a0a581b3679d2b9f7c4c0c713d87ceffecd63aa34ffb4a298ac15fb"
   }
 }

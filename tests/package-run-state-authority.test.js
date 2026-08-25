@@ -535,3 +535,49 @@ test("PR24: new-run lifecycle — creation writes the durable projection immedia
   assert.equal(check.ok, true);
   fs.rmSync(root, { recursive: true, force: true });
 });
+
+test("PR25: forged projection grammar without a generated body is not preserved as human content", () => {
+  // A hand-written file carrying marker lines PLUS forged projection claims
+  // ("## Projection status: COMPLETE") but NO generated-body comment must not
+  // have its forged body preserved on rebuild: only the heading and the two
+  // marker lines are human authority. Otherwise a specialist could plant a
+  // fake COMPLETE claim that survives every rebuild.
+  const root = makeRoot("prs-forge-");
+  const runId = "2026-08-25-state-forge-canary";
+  const runDir = makeRun(root, runId, {
+    "package-candidates.json": JSON.stringify({ topic: "forge", candidates: [] }),
+  });
+  fs.writeFileSync(
+    path.join(runDir, "package-run-state.md"),
+    "# Package Run State\n\n- Package run state: active\n- Workflow path: horizontal\n\n## Projection status: COMPLETE\n\nGates complete: 14/14\n",
+    "utf8"
+  );
+  operations.rebuildRunState({ repoRoot: root, runId, actor: "production_operations" });
+  const rebuilt = fs.readFileSync(path.join(runDir, "package-run-state.md"), "utf8");
+  assert.ok(!/Projection status: COMPLETE/.test(rebuilt), "forged COMPLETE claim must not survive rebuild");
+  assert.ok(!/Gates complete: 14\/14/.test(rebuilt), "forged gate count must not survive rebuild");
+  assert.match(rebuilt, /Package run state: active/);
+  assert.match(rebuilt, /Workflow path: horizontal/);
+  assert.match(rebuilt, /Projection status: ACTIVE/);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("PR26: rebuild never duplicates the marker block, even across repeated rebuilds", () => {
+  // The generated body re-renders marker lines of its own, so a rebuild that
+  // scans past the generated-body comment plants duplicate markers in the
+  // human block. Exactly one marker block must survive any number of rebuilds.
+  const root = makeRoot("prs-nodup-");
+  const runId = "2026-08-25-state-nodup-canary";
+  makeRun(root, runId, {
+    "package-candidates.json": JSON.stringify({ topic: "nodup", candidates: [] }),
+  });
+  operations.writeRunState({ repoRoot: root, runId, actor: "production_operations" });
+  operations.rebuildRunState({ repoRoot: root, runId, actor: "production_operations" });
+  operations.rebuildRunState({ repoRoot: root, runId, actor: "production_operations" });
+  const text = fs.readFileSync(path.join(root, "package-runs", runId, "package-run-state.md"), "utf8");
+  const humanRegion = text.split("<!-- GENERATED PROJECTION")[0];
+  assert.equal((humanRegion.match(/^- Package run state:/gm) || []).length, 1, "marker block duplicated in the human region");
+  assert.equal((humanRegion.match(/^- Workflow path:/gm) || []).length, 1, "workflow path duplicated in the human region");
+  assert.equal((humanRegion.match(/^#\s+Package Run State/gm) || []).length, 1, "heading duplicated");
+  fs.rmSync(root, { recursive: true, force: true });
+});

@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "proof": "PACKAGE_RUN_STATE_SPLIT_BRAIN_CANARY",
+  "positive": {
+    "create": {
+      "action": "create",
+      "gate": "package-selection",
+      "state": "ACTIVE",
+      "is_package_run": true
+    },
+    "derived_before": {
+      "gate": "package-selection",
+      "digest": "bfdc221a178ba6c8",
+      "tracker_stage": 0,
+      "endpoint_stage": 0,
+      "endpoint_clamped": true
+    },
+    "advance_evidence": "research-pack.md - Status: PASS",
+    "derived_after": {
+      "gate": "package-selection",
+      "digest": "44b9e22779e6b2a7",
+      "tracker_stage": 0,
+      "endpoint_stage": 0,
+      "endpoint_clamped": true
+    },
+    "refreshed": {
+      "action": "refresh",
+      "gate": "package-selection",
+      "state": "ACTIVE"
+    },
+    "all_views_advanced_together": true,
+    "canonical_digest_changed": true,
+    "durable_file_digest_matches_canonical": true
+  },
+  "negative": {
+    "forged_projection_claim": "COMPLETE (14/14 gates)",
+    "forged_tracker_stage": 12,
+    "canonical_state_after_forgery": {
+      "gate": "package-selection",
+      "state": "ACTIVE"
+    },
+    "canonical_state_not_fooled": true,
+    "split_brain_report": {
+      "ok": false,
+      "defects": [
+        "RUN_STATE_PROJECTION_UNTRACKED",
+        "RUN_STATE_PROJECTION_DRIFT"
+      ]
+    },
+    "shared_drift_detector": {
+      "code": "RUN_STATE_PROJECTION_DRIFT",
+      "severity": "BLOCKER",
+      "direction": "PROJECTION_AHEAD_OF_CANONICAL"
+    },
+    "canonical_evidence_unchanged": true,
+    "canonical_map_unchanged": true
+  },
+  "recovery": {
+    "rebuilt": {
+      "action": "refresh",
+      "gate": "package-selection",
+      "state": "ACTIVE"
+    },
+    "drift_cleared": true,
+    "remaining_defects": [],
+    "digest_matches_canonical": true,
+    "forged_claim_gone": true,
+    "markers_preserved": true
+  },
+  "authority_chain": [
+    "package evidence / status markers",
+    "scripts/package-run-workflow-map.js — canonical 14 gates",
+    "scripts/workflow-stage-projection.js — shared projection + drift authority",
+    "consumers: pipeline-status/tracker, package-run-state.md, control room"
+  ],
+  "failures": [],
+  "verdict": "SPLIT_BRAIN_CANARY_PROVEN",
+  "generated_at": "2026-08-25T06:51:57.538Z",
+  "module_sha256": {
+    "projection": "a850dd84ffa930beb26b61bc646fd3e322178fe9fd885617ce1a0a8acca5f911",
+    "operations": "48acbdb71592e5c0b388b3d2d6647b21e97e560b9c991a138c3835132c5f0aad",
+    "shared": "427012a90a0a581b3679d2b9f7c4c0c713d87ceffecd63aa34ffb4a298ac15fb"
+  }
+}
