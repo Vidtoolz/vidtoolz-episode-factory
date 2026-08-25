@@ -1,0 +1,161 @@
+{
+  "schema": "vidtoolz.syntheticNarration.v1",
+  "run_id": "2026-08-25-draft-narration-canary",
+  "production_mode": "DRAFT",
+  "fidelity": "DRAFT_SYNTHETIC_PROXY",
+  "purpose": "temporary proxy narration for a DRAFT rough cut",
+  "is_not": [
+    "mikko performance",
+    "real presenter capture",
+    "production audio",
+    "final mix",
+    "publish-ready audio"
+  ],
+  "semantic_producer": "generation_supervisor",
+  "technical_producer": {
+    "provider": "piper",
+    "version": "1.7.0"
+  },
+  "voice": {
+    "id": "en_US-lessac-medium",
+    "identity": "synthetic proxy narrator (not the presenter)",
+    "model_sha256": "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f",
+    "language": "en_US",
+    "is_presenter_voice": false
+  },
+  "story": {
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+  },
+  "audio_standard": {
+    "sample_rate": 48000,
+    "bit_depth": 24,
+    "channels": 1,
+    "codec": "pcm_s24le"
+  },
+  "assembled": {
+    "audio_path": "media/draft-narration/narration.wav",
+    "absolute_path": "/home/vidtoolz/.claude/jobs/f3d16212/tmp/draftcanary/package-runs/2026-08-25-draft-narration-canary/media/draft-narration/narration.wav",
+    "audio_sha256": "f017bca4f4189886be3140b541d06cb8f5c493d32ed15dc1a18f72d3d212e9da",
+    "bytes": 10711570,
+    "duration_seconds": 74.385188,
+    "codec": "pcm_s24le",
+    "sample_rate": 48000,
+    "channels": 1
+  },
+  "coverage": {
+    "story_sections": 7,
+    "spoken_segments": 7,
+    "intentionally_silent": 0,
+    "complete": true
+  },
+  "segments": [
+    {
+      "order": 1,
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "beat": "Hook",
+      "spoken": true,
+      "reason": null,
+      "source_text": "Your production system can describe where a run is. The question is whether every\npart of it describes the same place.",
+      "source_text_sha256": "e7fdf7537eff4d40d646f481ba2ead4f5f7aa586faab3fa7be0c80b7275315f9",
+      "audio_path": "media/draft-narration/segment-01.wav",
+      "audio_sha256": "2310054da538c5d2e7750b8acc92306750a382e4cab53b80e3142649df14af81",
+      "duration_seconds": 6.548042,
+      "start_seconds": 0,
+      "end_seconds": 6.548042,
+      "request_digest": "822df53e2f2119e208868c2ba00c4b77f43b37da78d9d3ead395b221d2405f4b"
+    },
+    {
+      "order": 2,
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "beat": "Viewer Problem",
+      "spoken": true,
+      "reason": null,
+      "source_text": "A production pipeline usually grows several ways to answer one question: what\nstage is this in? A gate engine says one thing, a UI tracker says another, a\ndurable status file says a third. Each looks reasonable alone. Together they let\nwork appear further along than the evidence supports.",
+      "source_text_sha256": "fb2cd39f973a676d7c33ebef3b3820e03e5fa44873487d8ea81cf0d789ba60ee",
+      "audio_path": "media/draft-narration/segment-02.wav",
+      "audio_sha256": "94989a25f2802a7891112cd912165ed1b50b0b7a1abc5d19d0e7b6ca548773a4",
+      "duration_seconds": 17.287271,
+      "start_seconds": 6.548042,
+      "end_seconds": 23.835313,
+      "request_digest": "fa7bc9243e7a431da946561821c7d1bb6ba13206af16c20c294fbc8b56a1e341"
+    },
+    {
+      "order": 3,
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "beat": "The Point",
+      "spoken": true,
+      "reason": null,
+      "source_text": "One authority answers that question. Everything else is a view of that answer.",
+      "source_text_sha256": "2396a5c9e2b8f67c0931fade93011a8161e1ccf167f45013ad54e5402bf16eb9",
+      "audio_path": "media/draft-narration/segment-03.wav",
+      "audio_sha256": "231c8fa592285d9582fe7e68db29cb288ab1c47185b69eafa1c820d2d41b96c9",
+      "duration_seconds": 4.493063,
+      "start_seconds": 23.835313,
+      "end_seconds": 28.328376,
+      "request_digest": "3ec8b9dd9c87b006504ac0dfc24ab716435fc0e1af84fa342296e3680b20596d"
+    },
+    {
+      "order": 4,
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "beat": "Evidence",
+      "spoken": true,
+      "reason": null,
+      "source_text": "The research for this run cites three in-repository sources: the gate engine that\ndefines the fourteen canonical gates, the authority document that records which\nsurfaces are views rather than authorities, and a recorded proof artifact showing\na contradiction between a gate and a display being detected and closed. Those\ncitations are listed in source-support-map.md.",
+      "source_text_sha256": "d0b32f5b2584e8541efa463d9b38fbaa6743af64e49890397eeff2b3ad5d04f7",
+      "audio_path": "media/draft-narration/segment-04.wav",
+      "audio_sha256": "db9445e5cecb6f5e4bbd2c18691939e9ccb5ab903f8401c9a5d329364a284bd0",
+      "duration_seconds": 21.373979,
+      "start_seconds": 28.328376,
+      "end_seconds": 49.702355,
+      "request_digest": "8fde97278ae49ad92d66d3ebf0a1c83218b56bd47b5c86b083a8ec3becba2b1b"
+    },
+    {
+      "order": 5,
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "beat": "What This Run Demonstrates",
+      "spoken": true,
+      "reason": null,
+      "source_text": "This package run moved through real gates using real evidence. Where evidence was\nmissing, the gate held. Where a human decision was required, the run stopped and\nwaited for it. That behaviour is the subject of this script.",
+      "source_text_sha256": "9a239e635d133b5f5e39dda51bef9c22454682d69ace0f4e385bd9d3613cd5ba",
+      "audio_path": "media/draft-narration/segment-05.wav",
+      "audio_sha256": "a41079fb6758350f3d61632205568fb4a2ef89f0f8ca2cd3ecf0755817b340aa",
+      "duration_seconds": 13.026396,
+      "start_seconds": 49.702355,
+      "end_seconds": 62.728751,
+      "request_digest": "2a6970d5ae6fd47dab2e08bf4cd20086ceef89c2e5fed14d347f0c56a5de2a89"
+    },
+    {
+      "order": 6,
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "beat": "Close",
+      "spoken": true,
+      "reason": null,
+      "source_text": "A detailed view is useful. A second authority is not.",
+      "source_text_sha256": "c473894ee8b09a7de0bc2101f2851a97fa9fbb5163cdc78b1222ec14043f99ba",
+      "audio_path": "media/draft-narration/segment-06.wav",
+      "audio_sha256": "4f1c9fa7cbb3c8fb3636709a95f3e58873bf5ebbf52f9b11a432d6f06cb37346",
+      "duration_seconds": 3.332083,
+      "start_seconds": 62.728751,
+      "end_seconds": 66.060834,
+      "request_digest": "44a7bc970b993bca91c7aa2d1fab8275fb9a86c57514121dfc1e688333ddfdb2"
+    },
+    {
+      "order": 7,
+      "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+      "beat": "Final Packaging Check",
+      "spoken": true,
+      "reason": null,
+      "source_text": "- Title and thumbnail assumptions verified: not applicable, this run does not ship.\n- Claims in the script map to entries in source-support-map.md.",
+      "source_text_sha256": "b70cb63fe9a8a718c02765d988fe3adac560c0f31e0517db3ca6b0e745828049",
+      "audio_path": "media/draft-narration/segment-07.wav",
+      "audio_sha256": "45b85e5df0a16f7c3f4a2686d98abe6b03c3d138419af2df3ca6f5f774cf6d2e",
+      "duration_seconds": 8.324354,
+      "start_seconds": 66.060834,
+      "end_seconds": 74.385188,
+      "request_digest": "d340641b29e5a3f9134b0d4dc1113c8a96829b96b4ce123d881beea6e2347da4"
+    }
+  ],
+  "task_id": "gs-narration-runner-1"
+}

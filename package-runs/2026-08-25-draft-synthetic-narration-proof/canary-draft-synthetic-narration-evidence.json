@@ -1,0 +1,71 @@
+{
+  "schema": "vidtoolz.draftSyntheticNarrationEvidence.v1",
+  "kind": "DRAFT_SYNTHETIC_NARRATION",
+  "fidelity": "DRAFT_SYNTHETIC_PROXY",
+  "production_mode": "DRAFT",
+  "asserts": "verified machine-generated speech representing the exact canonical script, for DRAFT use",
+  "does_not_assert": [
+    "mikko performance",
+    "real presenter capture",
+    "production-final audio",
+    "final mix",
+    "publish readiness"
+  ],
+  "satisfies_real_capture": false,
+  "human_authority_required": false,
+  "run_id": "2026-08-25-draft-narration-canary",
+  "semantic_producer": "generation_supervisor",
+  "technical_producer": {
+    "provider": "piper",
+    "version": "1.7.0"
+  },
+  "attested_by": "package-run-draft-narration.js",
+  "voice": {
+    "id": "en_US-lessac-medium",
+    "identity": "synthetic proxy narrator (not the presenter)",
+    "model_sha256": "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f",
+    "language": "en_US",
+    "is_presenter_voice": false
+  },
+  "story": {
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+  },
+  "narration_manifest": {
+    "file": "draft-narration.json",
+    "sha256": "8c4c8efef6b159a598e28445d7b8d80e8343362e150307c2eb9e3cb8cba17138"
+  },
+  "assembled": {
+    "audio_path": "media/draft-narration/narration.wav",
+    "absolute_path": "/home/vidtoolz/.claude/jobs/f3d16212/tmp/draftcanary/package-runs/2026-08-25-draft-narration-canary/media/draft-narration/narration.wav",
+    "audio_sha256": "f017bca4f4189886be3140b541d06cb8f5c493d32ed15dc1a18f72d3d212e9da",
+    "bytes": 10711570,
+    "duration_seconds": 74.385188,
+    "codec": "pcm_s24le",
+    "sample_rate": 48000,
+    "channels": 1
+  },
+  "coverage": {
+    "story_sections": 7,
+    "spoken_segments": 7,
+    "intentionally_silent": 0,
+    "complete": true
+  },
+  "audio_standard": {
+    "sample_rate": 48000,
+    "bit_depth": 24,
+    "channels": 1,
+    "codec": "pcm_s24le"
+  },
+  "technical_validation": {
+    "ok": true,
+    "failures": []
+  },
+  "script_binding": {
+    "ok": true,
+    "drift": []
+  },
+  "state": "VERIFIED",
+  "task_id": "gs-narration-runner-1"
+}

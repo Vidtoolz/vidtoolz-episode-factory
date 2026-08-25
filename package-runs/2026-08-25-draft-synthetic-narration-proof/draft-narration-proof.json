@@ -1,0 +1,176 @@
+{
+  "schema": "vidtoolz.draftSyntheticNarrationProof.v1",
+  "not_a_production_run": true,
+  "verdict": "SYNTHETIC_NARRATION_PATH_PROVEN_PROXY_VISUAL_STILL_REQUIRED",
+  "pre_install_audit": "recorded in narration-capability-audit.json: no TTS anywhere, no speech lane, AUDIO_RENDER unable to express draft fidelity",
+  "installation": {
+    "provider": "piper",
+    "package": "piper-tts",
+    "version": "1.7.0",
+    "method": "bounded venv, no global environment mutation",
+    "install_root": "/home/vidtoolz/vidtoolz-tools/piper",
+    "binary": "/home/vidtoolz/vidtoolz-tools/piper/venv/bin/piper",
+    "venv_disk": "198 MB",
+    "total_with_voice": "259 MB",
+    "committed_to_repo": false,
+    "note": "installed outside the repository on purpose; binaries and models are not committed"
+  },
+  "voice": {
+    "id": "en_US-lessac-medium",
+    "identity": "synthetic proxy narrator (not the presenter)",
+    "is_presenter_voice": false,
+    "is_mikko": false,
+    "model": "/home/vidtoolz/vidtoolz-tools/piper/voices/en_US-lessac-medium.onnx",
+    "model_sha256": "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f",
+    "metadata": {
+      "sample_rate": 22050,
+      "language": "en_US",
+      "dataset": "lessac",
+      "quality": "medium"
+    },
+    "size": "63 MB",
+    "selection_reason": "one neutral English voice, clear and fast; a library of voices was not installed and Mikko was not cloned"
+  },
+  "smoke_test": {
+    "generation_ms_short_sentence": 643,
+    "provider_native": "22050 Hz mono pcm_s16le",
+    "decodable": true
+  },
+  "audio_standard": {
+    "target": {
+      "sample_rate": 48000,
+      "bit_depth": 24,
+      "channels": 1,
+      "codec": "pcm_s24le"
+    },
+    "source": "score-provenance default_export_sample_rate 48000 / bit_depth 24",
+    "conversion": "ffmpeg, with both provider-raw and normalized hashes recorded so the conversion is auditable"
+  },
+  "draft_canary": {
+    "run_id": "2026-08-25-draft-narration-canary",
+    "mode": "DRAFT",
+    "story": {
+      "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+      "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+      "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+    },
+    "spoken_segments": 7,
+    "story_sections": 7,
+    "intentionally_silent": 0,
+    "assembled": {
+      "audio_path": "media/draft-narration/narration.wav",
+      "absolute_path": "/home/vidtoolz/.claude/jobs/f3d16212/tmp/draftcanary/package-runs/2026-08-25-draft-narration-canary/media/draft-narration/narration.wav",
+      "audio_sha256": "f017bca4f4189886be3140b541d06cb8f5c493d32ed15dc1a18f72d3d212e9da",
+      "bytes": 10711570,
+      "duration_seconds": 74.385188,
+      "codec": "pcm_s24le",
+      "sample_rate": 48000,
+      "channels": 1
+    },
+    "render_seconds_for_full_script": 7.1,
+    "beat_timing_sample": [
+      {
+        "beat": "Hook",
+        "start": 0,
+        "end": 6.548042,
+        "sha": "2310054da538c5d2"
+      },
+      {
+        "beat": "Viewer Problem",
+        "start": 6.548042,
+        "end": 23.835313,
+        "sha": "94989a25f2802a78"
+      },
+      {
+        "beat": "The Point",
+        "start": 23.835313,
+        "end": 28.328376,
+        "sha": "231c8fa592285d95"
+      }
+    ]
+  },
+  "runner_dispatch": {
+    "path": "scripts/agent-run.js -> generation_supervisor -> generate_draft_narration",
+    "action_registered": true,
+    "infrastructure_state": "COMPLETE",
+    "agent_state": "COMPLETE",
+    "route": {
+      "lane": "local_synthetic_narration",
+      "provider": "piper",
+      "version": "1.7.0",
+      "voice": "en_US-lessac-medium"
+    },
+    "handoff": "qc_director / INSPECT_DRAFT_SYNTHETIC_NARRATION"
+  },
+  "typed_evidence": {
+    "kind": "DRAFT_SYNTHETIC_NARRATION",
+    "schema": "vidtoolz.draftSyntheticNarrationEvidence.v1",
+    "state": "VERIFIED",
+    "fidelity": "DRAFT_SYNTHETIC_PROXY",
+    "semantic_producer": "generation_supervisor",
+    "technical_producer": {
+      "provider": "piper",
+      "version": "1.7.0"
+    },
+    "attested_by": "package-run-draft-narration.js",
+    "satisfies_real_capture": false,
+    "human_authority_required": false,
+    "does_not_assert": [
+      "mikko performance",
+      "real presenter capture",
+      "production-final audio",
+      "final mix",
+      "publish readiness"
+    ],
+    "not_audio_render": "AUDIO_RENDER was deliberately not reused: it requires state PRODUCTION_READY, has no fidelity field, and attributes to sound_music_director"
+  },
+  "gate8": {
+    "before_narration": {
+      "audio": "PROXY_AUDIO_MISSING",
+      "visual": "PROXY_VISUAL_MISSING",
+      "capture_ready": false,
+      "next": "draft synthetic narration"
+    },
+    "after_narration": {
+      "audio": "PROXY_AUDIO_READY",
+      "visual": "PROXY_VISUAL_MISSING",
+      "capture_ready": false,
+      "disposition": "PROXY_VISUAL_MISSING",
+      "next": "PROXY_PRESENTER visual producer"
+    },
+    "human_authority_required": false,
+    "note": "narration clears the audio blocker and nothing else. PROXY_CAPTURE_READY is not claimed, because a voice is not a presenter."
+  },
+  "negative_proofs": {
+    "mode_unspecified": "NARRATION_MODE_NOT_DRAFT",
+    "production_mode": "proxy readiness not applicable; evidence.satisfies_real_capture false; regeneration refused",
+    "review_mode": "evidence reused unchanged; regeneration refused",
+    "script_drift": "NARRATION_SCRIPT_DRIFT -> PROXY_AUDIO_STALE",
+    "mutated_bytes": "NARRATION_AUDIO_INVALID (hash mismatch)",
+    "empty_text": "NARRATION_TEXT_EMPTY (a silent beat is declared, never synthesized)",
+    "missing_model": "NARRATION_PROVIDER_UNAVAILABLE",
+    "wrong_run": "NARRATION_MANIFEST_RUN_MISMATCH"
+  },
+  "consumability": {
+    "scorecraft": "manifest exposes measured assembled duration, a run-relative path, and contiguous per-beat start/end seconds — the ducking and timing inputs. Scorecraft composition logic was not modified.",
+    "edit": "narration is discoverable by convention at media/draft-narration/narration.wav with a manifest beside it. No automatic edit ingestion exists yet; recorded as a downstream gap rather than expanded into."
+  },
+  "qc_integration": {
+    "status": "PENDING",
+    "reason": "scripts/qc-director.js is being modified by another session (mode-aware QC applicability), so DRAFT_SYNTHETIC_NARRATION was NOT added to its SUPPORTED_EVIDENCE_KINDS",
+    "mitigation": "the evidence is self-describing — kind, fidelity, satisfies_real_capture, human_authority_required, does_not_assert — so the QC policy can consume it without this module knowing about QC"
+  },
+  "next_capability": {
+    "name": "PROXY_PRESENTER",
+    "why_not_now": "no producer exists, and fabricating a blank or still-image video would be exactly the fake evidence the contract forbids",
+    "contract": {
+      "input": "canonical Story beats plus the narration manifest beat timing",
+      "output": "generated visual media with real bytes, per beat or continuous",
+      "media_type": "PROXY_PRESENTER, a distinct artifact type — NOT a new fidelity class on PRESENTER_A_ROLL, which stays capture-class by design",
+      "duration_alignment": "must cover the narration duration, per beat",
+      "coverage": "every spoken beat, with deliberate absence declared",
+      "provenance": "engine, model, settings, byte hashes, DRAFT fidelity",
+      "generation_owner": "generation_supervisor"
+    }
+  }
+}

@@ -153,53 +153,66 @@ approval.
 
 ## Synthetic narration (DRAFT proxy audio)
 
-Status: **BLOCKED — provider missing.** No audio has been produced and no
-placeholder exists.
+Status: **IMPLEMENTED**, at DRAFT fidelity.
 
-What it would be, when it exists: machine-generated speech representing the
-canonical script, adequate for a temporary draft VO, for Scorecraft's ducking and
-timing, and as the audio component of DRAFT proxy capture. What it would never be:
-Mikko's performance, production capture, or final mix. That distinction has to
-live in provenance, not in a filename.
+Piper is not the Draft presenter. It is the Draft presenter's *voice*.
 
-Two independent blockers, both verified rather than assumed:
+| | |
+| --- | --- |
+| provider | Piper 1.7.0, local and offline, in a bounded venv at `~/vidtoolz-tools/piper` |
+| voice | `en_US-lessac-medium`, one neutral synthetic narrator — **not Mikko**, not a clone |
+| output | 48 kHz / 24-bit mono WAV, normalized from Piper's native 22.05 kHz via ffmpeg |
+| location | `media/draft-narration/narration.wav` plus per-beat segments |
+| manifest | `draft-narration.json` (`vidtoolz.syntheticNarration.v1`) |
+| evidence | `DRAFT_SYNTHETIC_NARRATION` in `draft-synthetic-narration-evidence.json` |
+| owner | `generation_supervisor`, action `generate_draft_narration` |
+| speed | roughly 7 s of compute for 75 s of narration |
 
-**1. No TTS producer.** Nothing in the repository synthesizes speech. On this
-machine `libespeak-ng1`, `espeak-ng-data` and the `sd_espeak-ng` module are
-installed as *libraries*, but neither package ships a CLI and no `espeak-ng`,
-`piper`, `flite` or `festival` executable exists under `/usr/bin`,
-`/usr/local/bin` or `/opt`. `spd-say` is present but is a speech-dispatcher
-client: it speaks to an audio device and has no file output. No Python TTS package
-is importable. The ComfyUI registry contains no audio node, and the compute
-registry provisions a `music_generation` lane but **no speech lane at all**.
-MiniMax is music-caption only and unapproved. Scorecraft consumes narration
-timing; it never produces speech. `ffmpeg`/`ffprobe` are present, so validation is
-not the blocker.
+Neither the binary nor the voice model is committed to the repository.
 
-The smallest unblock is `espeak-ng` (~4 MB; its library and voice data are already
-installed, only the binary is missing) — robotic but fully intelligible, which is
-all a draft VO needs. `piper` is the better-quality option at ~60–120 MB. Both are
-local and free. Installing either is a dependency change, which is approval-gated
-in this workspace.
+**What it is sufficient for:** a temporary Draft VO, Scorecraft ducking and
+timing, and the audio component of DRAFT proxy capture.
 
-**2. `AUDIO_RENDER` cannot express draft fidelity.** Even with real speech bytes,
-the existing attestation path has nowhere truthful to record what they are. The
-adapter raises `AUDIO_NOT_PRODUCTION_READY` for any state other than
-`PRODUCTION_READY`, so draft narration would have to claim production readiness or
-omit state and attest nothing. It has no `fidelity`, `source_class` or `mix_kind`
-field, and it attributes defects to `sound_music_director` rather than the
-`generation_supervisor` that would render a draft. `EVIDENCE_CLASSES`
-(`DETERMINISTIC | SPECIALIST | HUMAN | UNVERIFIED`) is a verification-provenance
-axis and cannot express proxy versus real.
+**What it is not, and the evidence says so in typed fields:** Mikko's
+performance, real presenter capture, production audio, a final mix, or
+publish-ready sound. `satisfies_real_capture` is `false` and
+`human_authority_required` is `false`.
 
-The fix is a distinct typed evidence kind, `DRAFT_SYNTHETIC_NARRATION`, with its
-own QC adapter — the way `CAMERA_QUALITY` and `AUDIO_RENDER` are already separate.
-Overloading `AUDIO_RENDER` is how proxy audio would eventually be mistaken for a
-production mix.
+`AUDIO_RENDER` was deliberately **not** reused. It demands
+`state: PRODUCTION_READY`, has no fidelity field, and attributes to
+`sound_music_director` — so a draft proxy could only be recorded there by lying.
+`DRAFT_SYNTHETIC_NARRATION` is its own kind, the way `CAMERA_QUALITY` and
+`AUDIO_RENDER` are already separate.
 
-Once narration exists, the honest DRAFT state is `PROXY_AUDIO_READY` plus
-`PROXY_VISUAL_MISSING`, and gate 8 stays blocked. Narration alone is not a
-presenter.
+Narration is bound to the exact Story version and content hash. A script change
+makes it stale (`NARRATION_SCRIPT_DRIFT`); mutated bytes make it invalid
+(`NARRATION_AUDIO_INVALID`). It is DRAFT-only: `MODE_UNSPECIFIED`, `REVIEW` and
+`PRODUCTION` all refuse to generate it, and `REVIEW` reuses what the Draft
+produced without regenerating.
+
+Piper is not bit-deterministic, and that is not claimed. The *request* digest is
+stable for the same script, voice and configuration; the resulting bytes are
+recorded as measured.
+
+**QC registration is pending.** `DRAFT_SYNTHETIC_NARRATION` was not added to
+`qc-director.js` `SUPPORTED_EVIDENCE_KINDS` because that file is being modified
+by another session's mode-aware QC work. The evidence is self-describing so that
+policy can consume it without further changes here.
+
+### Proxy capture after narration
+
+```
+audio   PROXY_AUDIO_READY      implemented
+visual  PROXY_VISUAL_MISSING   no producer exists
+--------------------------------------------
+        PROXY_CAPTURE_READY = false
+```
+
+Gate 8 in DRAFT is now blocked on exactly one thing, and it is not a human: the
+`PROXY_PRESENTER` visual producer. `PRESENTER_A_ROLL` keeps its intentional
+exclusion from the generation lane — the Draft substitute will be a distinct
+`PROXY_PRESENTER` artifact type rather than a new fidelity on a capture-class
+media type.
 
 ## Implementation status
 
@@ -209,9 +222,11 @@ presenter.
   shared authority; the `PROXY_CAPTURE_READY` evidence contract as a definition.
 - **PLANNED** — gate 7 in `PRODUCTION`, pending `presenter_director`
   (contract `PLANNED`, `NOT_PROVEN`, dispatch `DISABLED`).
-- **BLOCKED** — gate 7 and gate 8 in `DRAFT`, on a missing producer and nothing
-  else. The evidence contract exists; the synthetic narration and proxy presenter
-  producers that would attest it do not.
+- **IMPLEMENTED** — DRAFT synthetic narration (Piper) and its typed
+  `DRAFT_SYNTHETIC_NARRATION` evidence, dispatched through
+  `generation_supervisor`.
+- **BLOCKED** — gate 7 and gate 8 in `DRAFT`, now on one remaining capability:
+  the `PROXY_PRESENTER` visual producer. The audio half is done.
 
 Verified absent rather than assumed: a hard search across `*.js`, `*.json`,
 `*.md`, `*.py` and `*.sh` found no TTS producer (the only MiniMax integration is
