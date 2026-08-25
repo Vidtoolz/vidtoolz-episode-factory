@@ -1,0 +1,168 @@
+{
+  "cases": {
+    "A-split-brain": {
+      "canonical_gate": "research",
+      "canonical_label": "Research sufficiency",
+      "displayed_stage_index": 1,
+      "displayed_stage": "research",
+      "raw_evidence_stage_index": 6,
+      "raw_evidence_stage": "image-gen",
+      "clamped": true,
+      "clamp_reason": "file evidence suggested stage 6, but canonical gate \"research\" caps display at stage 1",
+      "drift": {
+        "code": "RUN_STATE_PROJECTION_DRIFT",
+        "severity": "BLOCKER",
+        "run_id": "2026-08-25-authority-proof-splitbrain",
+        "canonical_gate": "research",
+        "canonical_stage": "research",
+        "canonical_stage_index": 1,
+        "observed_stage": "image-gen",
+        "observed_stage_index": 6,
+        "expected_stages": [
+          "research",
+          "research"
+        ],
+        "direction": "PROJECTION_AHEAD_OF_CANONICAL",
+        "resolution": "canonical 14-gate state wins; reproject the display from it",
+        "mapping_version": "workflow-stage-projection-v1"
+      },
+      "evidence_only_stages": [
+        "script",
+        "claims",
+        "packaging",
+        "image-prompts"
+      ],
+      "counted_complete": [
+        "idea",
+        "research"
+      ],
+      "projection_is_authoritative": false,
+      "statement": "Before the clamp the tracker displayed stage 6 \"Image Gen\" while canonical was gate 2 \"Research sufficiency\". The display is now capped at canonical, the surplus evidence is retained but denied progress, and the disagreement is reported as a structured defect."
+    },
+    "B-canonical-advance": {
+      "before": {
+        "gate": "research",
+        "stage": 1
+      },
+      "after": {
+        "gate": "script-structure",
+        "stage": 2
+      },
+      "display_followed_canonical": true,
+      "statement": "The display moved only because the canonical gate moved."
+    },
+    "C-reprojection": {
+      "forged_stage": 12,
+      "rebuilt_stage": 1,
+      "canonical_gate": "research",
+      "forgery_survived": false,
+      "deterministic": true,
+      "statement": "A projection edited to claim \"published\" is gone on the next refresh; the tracker view is disposable and derived."
+    },
+    "D-invalid-jump": {
+      "canonical_gate": "research",
+      "displayed_stage": 1,
+      "attempted_via": "downstream artifacts present (rough cut, final review, export checklist)",
+      "advanced_past_canonical": false,
+      "statement": "Downstream artifacts exist, but the canonical gate is still early, so the strip does not advance."
+    }
+  },
+  "mapping": {
+    "ok": true,
+    "errors": [],
+    "mapping_version": "workflow-stage-projection-v1",
+    "canonical_gates": 14,
+    "horizontal_stages": 13,
+    "vertical_stages": 8
+  },
+  "gate_coverage": [
+    {
+      "gate": "package-selection",
+      "horizontal": "idea",
+      "vertical": "idea"
+    },
+    {
+      "gate": "research",
+      "horizontal": "research",
+      "vertical": "idea"
+    },
+    {
+      "gate": "script-structure",
+      "horizontal": "script",
+      "vertical": "script"
+    },
+    {
+      "gate": "script-review",
+      "horizontal": "claims",
+      "vertical": "script"
+    },
+    {
+      "gate": "production-plan",
+      "horizontal": "packaging",
+      "vertical": "image-prompts"
+    },
+    {
+      "gate": "shot-edit-plan-review",
+      "horizontal": "image-prompts",
+      "vertical": "image-prompts"
+    },
+    {
+      "gate": "capture-checklist",
+      "horizontal": "image-gen",
+      "vertical": "image-gen"
+    },
+    {
+      "gate": "capture-evidence",
+      "horizontal": "video-gen",
+      "vertical": "i2v-prompts"
+    },
+    {
+      "gate": "rough-cut-review",
+      "horizontal": "assembly",
+      "vertical": "video-gen"
+    },
+    {
+      "gate": "final-review",
+      "horizontal": "assembly",
+      "vertical": "view"
+    },
+    {
+      "gate": "export-check",
+      "horizontal": "publish-gate",
+      "vertical": "view"
+    },
+    {
+      "gate": "publication-metadata",
+      "horizontal": "publish-gate",
+      "vertical": "view"
+    },
+    {
+      "gate": "archive",
+      "horizontal": "published",
+      "vertical": "view"
+    },
+    {
+      "gate": "repurposing",
+      "horizontal": "published",
+      "vertical": "view"
+    }
+  ],
+  "run_survey": {
+    "total_runs": 63,
+    "projectable": 63,
+    "unprojectable": [],
+    "migration_required": false,
+    "statement": "Every existing run projects cleanly from canonical state; no historical migration or LEGACY_STAGE_UNVERIFIED marking is required."
+  },
+  "schema_version": 1,
+  "proof": "SINGLE_LIFECYCLE_AUTHORITY_PROOF",
+  "authority_chain": [
+    "canonical: scripts/package-run-workflow-map.js GATE_DEFINITIONS (14 gates, derived from artifact status markers)",
+    "projection: scripts/workflow-stage-projection.js (mapping + clamp + drift)",
+    "display: /api/package-runs/pipeline-status -> pipeline-tracker.js (13 horizontal / 8 vertical)"
+  ],
+  "failures": [],
+  "verdict": "SINGLE_LIFECYCLE_AUTHORITY_PROVEN",
+  "generated_at": "2026-08-25T05:24:57.257Z",
+  "module_sha256": "04bf0e94d2e60f99411b5e0e16d14d42860fbaf3579c2e6fdb4a54555ed4294b"
+}

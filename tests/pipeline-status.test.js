@@ -59,6 +59,14 @@ function stageByKey(body, key) {
   return (payload.stages || []).find((stage) => stage.key === key);
 }
 
+// The canonical 14-gate engine owns lifecycle position, so `stages` is clamped
+// to it. These tests check the raw file-EVIDENCE derivation, which the endpoint
+// still computes and exposes unclamped as `evidenceStages`.
+function evidenceStageByKey(body, key) {
+  const payload = body.data !== undefined ? body.data : body;
+  return (payload.evidenceStages || []).find((stage) => stage.key === key) || {};
+}
+
 test("pipeline status treats final-script.md as completed script evidence", async () => {
   const runId = "2099-01-01-pipeline-final-script";
   await withPackageRun(runId, {
@@ -72,8 +80,8 @@ test("pipeline status treats final-script.md as completed script evidence", asyn
     try {
       const response = await requestJson(server, `/api/package-runs/pipeline-status?run=${runId}`);
       assert.equal(response.statusCode, 200);
-      assert.equal(stageByKey(response.body, "script").completed, true);
-      assert.equal(stageByKey(response.body, "claims").completed, true);
+      assert.equal(evidenceStageByKey(response.body, "script").completed, true);
+      assert.equal(evidenceStageByKey(response.body, "claims").completed, true);
     } finally {
       await close(server);
     }
@@ -100,11 +108,11 @@ test("pipeline status derives image generation and selection from run-local mani
     try {
       const response = await requestJson(server, `/api/package-runs/pipeline-status?run=${runId}`);
       assert.equal(response.statusCode, 200);
-      assert.equal(stageByKey(response.body, "image-prompts").completed, true);
-      assert.equal(stageByKey(response.body, "image-gen").completed, true);
-      assert.equal(stageByKey(response.body, "image-select").completed, true);
-      assert.equal(stageByKey(response.body, "video-gen").completed, false);
-      assert.equal(response.body.data.currentStage, 8);
+      assert.equal(evidenceStageByKey(response.body, "image-prompts").completed, true);
+      assert.equal(evidenceStageByKey(response.body, "image-gen").completed, true);
+      assert.equal(evidenceStageByKey(response.body, "image-select").completed, true);
+      assert.equal(evidenceStageByKey(response.body, "video-gen").completed, false);
+      assert.equal(response.body.data.evidenceCurrentStage, 8);
     } finally {
       await close(server);
     }
@@ -175,8 +183,8 @@ test("pipeline status marks a-roll complete but assembly incomplete when present
     try {
       const response = await requestJson(server, `/api/package-runs/pipeline-status?run=${runId}`);
       assert.equal(response.statusCode, 200);
-      assert.equal(stageByKey(response.body, "a-roll").completed, true, "a-roll complete: presenter pickup done");
-      assert.equal(stageByKey(response.body, "assembly").completed, false, "assembly incomplete: second-cut not ready yet");
+      assert.equal(evidenceStageByKey(response.body, "a-roll").completed, true, "a-roll complete: presenter pickup done");
+      assert.equal(evidenceStageByKey(response.body, "assembly").completed, false, "assembly incomplete: second-cut not ready yet");
     } finally {
       await close(server);
     }
@@ -206,9 +214,9 @@ test("pipeline status marks assembly complete when second-cut is ready despite r
     try {
       const response = await requestJson(server, `/api/package-runs/pipeline-status?run=${runId}`);
       assert.equal(response.statusCode, 200);
-      assert.equal(stageByKey(response.body, "a-roll").completed, true, "a-roll complete");
-      assert.equal(stageByKey(response.body, "assembly").completed, true, "assembly complete: second-cut ready");
-      assert.equal(response.body.data.currentStage, 11, "tracker advances to publish-gate (11)");
+      assert.equal(evidenceStageByKey(response.body, "a-roll").completed, true, "a-roll complete");
+      assert.equal(evidenceStageByKey(response.body, "assembly").completed, true, "assembly complete: second-cut ready");
+      assert.equal(response.body.data.evidenceCurrentStage, 11, "file evidence reaches publish-gate (11)");
     } finally {
       await close(server);
     }
@@ -233,8 +241,8 @@ test("pipeline status does not apply pickup-loop gating when rough-cut has passe
     try {
       const response = await requestJson(server, `/api/package-runs/pipeline-status?run=${runId}`);
       assert.equal(response.statusCode, 200);
-      assert.equal(stageByKey(response.body, "a-roll").completed, true, "a-roll complete: rough-cut passed, pickup loop not active");
-      assert.equal(stageByKey(response.body, "assembly").completed, true, "assembly complete: rough-cut passed");
+      assert.equal(evidenceStageByKey(response.body, "a-roll").completed, true, "a-roll complete: rough-cut passed, pickup loop not active");
+      assert.equal(evidenceStageByKey(response.body, "assembly").completed, true, "assembly complete: rough-cut passed");
     } finally {
       await close(server);
     }

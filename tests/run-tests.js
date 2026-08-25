@@ -33,6 +33,7 @@ require("./friction-log-nonce.test.js");
 require("./topic-scout-nonce.test.js");
 require("./outline-prompt-nonce.test.js");
 require("./pipeline-status.test.js");
+require("./workflow-stage-authority.test.js");
 require("./video-prompts.test.js");
 require("./package-run-candidate-discovery.test.js");
 require("./package-run-archive.test.js");
