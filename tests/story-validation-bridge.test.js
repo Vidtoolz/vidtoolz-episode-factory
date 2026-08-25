@@ -373,8 +373,8 @@ const REQUIRED_EVIDENCE_PRODUCERS = Object.freeze({
   },
   AUDIO_RENDER: {
     producer: 'sound_music_director',
-    producer_module: 'scripts/sound-music-director.js',
-    reachability: 'conditional: durable render record shape exists; AUDIO_RENDER record naming not yet emitted',
+    producer_module: 'scripts/audio-render-evidence.js',
+    reachability: 'deterministic attestation of Scorecraft music-lane candidate records (production.wav + provenance); see docs/audio-render-evidence.md',
   },
 });
 
