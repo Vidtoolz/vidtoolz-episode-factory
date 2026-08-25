@@ -157,7 +157,8 @@ test('narration SN3: only section dialogue is spoken, never stage directions', (
   // Headings and visual notes are never part of the spoken text.
   for (const segment of segments) {
     assert.ok(!/CUT TO WIDE|push in|graphic only/.test(segment.text));
-    assert.ok(!segment.text.includes(segment.beat || ' '));
+    // A beat label is a structural marker, never something the voice says.
+    if (segment.beat) assert.ok(!segment.text.includes(segment.beat));
   }
 });
 
