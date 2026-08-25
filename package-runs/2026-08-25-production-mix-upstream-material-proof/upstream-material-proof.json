@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "proof": "production-mix-upstream-material",
+  "generated_at": "2026-08-25",
+  "verdict": "PRODUCTION_MIX BLOCKED BY REAL PRESENTER AUDIO",
+  "not_a_package_run": true,
+
+  "baseline_generic_blocker": {
+    "policy": "KNOWN_CLASS_GAPS.PRODUCTION_MIX",
+    "status": "UPSTREAM_MATERIAL_MISSING",
+    "refined_to": "typed upstream blocks in dependency order, root_blocker named"
+  },
+
+  "upstream_blocks_typed": [
+    { "block": "REAL_PRESENTER_AUDIO_MISSING", "owner": "capture lane (Mikko real performance)", "gate": "capture-evidence", "artifact": "presenter take manifest with media sha256 + fidelity record" },
+    { "block": "EDIT_PLAN_MISSING", "owner": "editor", "gate": "rough-cut assembly", "artifact": "Edit Plan V1 with presenter_sources/sound_sources/timeline + digest" },
+    { "block": "MUSIC_RUN_BINDING_MISSING", "owner": "sound_music_director + human Scorecraft verdict", "gate": "rough-cut assembly", "artifact": "selected candidate binding (candidate_id + production.wav sha256)" },
+    { "block": "PROGRAM_RENDER_MISSING", "owner": "DaVinci Resolve", "gate": "rough-cut-review", "artifact": "program audio bytes bound to edit plan identity" }
+  ],
+
+  "root_blocker": "REAL_PRESENTER_AUDIO_MISSING",
+  "root_blocker_reasoning": "Dependency chain: real presenter performance must exist before an edit plan can legitimately place it, before music selection matters for the mix, before Resolve can render a complete program. Live audit: no presenter take has ever passed through the canonical capture lane for any PRODUCTION-mode run. The capture lane itself (supervised-capture.js + presenter-take-manifest.js) EXISTS and is functional — the missing piece is the human performance, not the machinery.",
+
+  "source_matrix": {
+    "presenter": { "required": true, "exists_in_production": false, "producer": "capture lane / Mikko", "blocking": true },
+    "music": { "required": true, "exists_in_production": "candidates exist in Scorecraft (music3-live-canary human_verdict=use); run-level binding missing", "producer": "sound_music_director + human verdict", "blocking": true },
+    "effects": { "required": false, "exists_in_production": false, "producer": "editor (when used)", "blocking": false, "note": "explicit NOT_USED never blocks" },
+    "timeline": { "required": true, "exists_in_production": false, "producer": "editor (Edit Plan V1)", "blocking": true, "note": "assembly gap, downstream of presenter gap" }
+  },
+
+  "draft_proxy_exclusion": "DRAFT_SYNTHETIC_NARRATION and PROXY_PRESENTER are forbidden as Production presenter sources (PROGRAM_MIX_PRESENTER_SOURCE_PROXY_FORBIDDEN, proven UM4)",
+
+  "real_canary": {
+    "used_real_media": false,
+    "reason": "no legitimate complete program audio exists upstream; hermetic fixtures prove the path without fabricating Production material (§35)",
+    "complete_hermetic_attestation": "proven: sources + edit plan + rendered mix → attester → PRODUCTION_MIX evidence (UM13)"
+  },
+
+  "tests": "tests/production-mix-upstream-material.test.js — 16/16 (UM1-UM16)",
+  "regressions": {
+    "production-mix-evidence": "20/20",
+    "audio-fidelity-contract": "16/16",
+    "audio-render-evidence": "15/15",
+    "qc-evidence-applicability": "17/17",
+    "qc-director": "46/46",
+    "story-validation-bridge": "13/13",
+    "production-mode-gate-policy": "42/42",
+    "qc-director-promotion-governance": "5/5",
+    "draft-synthetic-narration": "19/19"
+  },
+
+  "proven_path_unchanged": "PRODUCTION_MIX evidence contract, render class, and attester semantics untouched except source/timeline drift hardening (dead loop replaced with real hash comparison)",
+  "remaining_gap": "REAL_PRESENTER_AUDIO_MISSING — first true missing primitive; everything downstream is blocked behind it, honestly"
+}
