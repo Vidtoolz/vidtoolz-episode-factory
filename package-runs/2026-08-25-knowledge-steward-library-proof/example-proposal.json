@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "artifact_type": "knowledge-steward-proposal",
+  "canonical_status": "NOT_CANONICAL_KNOWLEDGE",
+  "steward_version": "knowledge-steward-v1",
+  "actor": {
+    "identity_type": "SUPPORT_ROLE",
+    "identity": "knowledge_steward",
+    "authenticated": false,
+    "context": "knowledge stewardship support role — non-agent per agent contract; build-order support role 6"
+  },
+  "proposal_id": "ksp-example-r1",
+  "revision": 1,
+  "created_at": "2026-08-25T12:00:00.000Z",
+  "candidate": {
+    "candidate_id": "example",
+    "proposing_agent": null,
+    "source_run_id": null,
+    "confidence": null
+  },
+  "statement": "Camera wobble is desirable by default.",
+  "operation": "add",
+  "target": {
+    "namespace": "production-doctrine",
+    "reference_id": "wobble-doctrine",
+    "canonical_path_hint": null,
+    "expected_predecessor_digest": null,
+    "canonical_store": "hermes-organiser/brain (Hermes-side canonical writer)",
+    "writable_by_this_library": false
+  },
+  "classification": {
+    "knowledge_class": "HUMAN_DOCTRINE",
+    "durable_value": true,
+    "reason": "HUMAN_DOCTRINE is a durable knowledge class",
+    "human_approval_required": true,
+    "governance_reference_only": false,
+    "historical_immutable": false
+  },
+  "authority": {
+    "authority": "UNVERIFIED",
+    "reason": "no durable evidence backs this statement"
+  },
+  "sources": [],
+  "evidence": {},
+  "rationale": "Established by the QC Director production-path proof.",
+  "canonical_comparison": {
+    "state": "COMPARED",
+    "entries_compared": 2
+  },
+  "duplicates": {
+    "state": "NO_DUPLICATE",
+    "matches": []
+  },
+  "conflicts": {
+    "state": "CONFLICT",
+    "conflicts": [
+      {
+        "reference_id": "wobble-doctrine",
+        "current_statement": "Camera wobble is a defect.",
+        "current_authority": "HUMAN_VERDICT",
+        "proposed_statement": "Camera wobble is desirable by default.",
+        "proposed_operation": "add",
+        "conflict_kind": "OCCUPIED_REFERENCE",
+        "note": "add targets a reference that already holds a different active statement; the steward cannot determine whether these agree, contradict, or supersede — a human decides. No winner is chosen."
+      }
+    ]
+  },
+  "supersession": {
+    "state": "NOT_A_SUPERSESSION",
+    "predecessor": null
+  },
+  "blockers": [],
+  "human_approval": {
+    "required": true,
+    "state": "NOT_RECORDED",
+    "approval": null,
+    "reason": null
+  },
+  "disposition": "CONFLICT_REQUIRES_HUMAN_REVIEW",
+  "reason": "add targets a reference that already holds a different active statement; the steward cannot determine whether these agree, contradict, or supersede — a human decides. No winner is chosen.",
+  "applied": false,
+  "application_owner": "future sanctioned Hermes-side canonical knowledge writer",
+  "proposal_digest_sha256": "2871f2477e5df9c2f9a255db1a6cc38b9e5d6f2e378cb41cb8dcf1c3ab9e6d73"
+}
