@@ -189,11 +189,22 @@ test('QAP10: Story version change invalidates prior validation (policy + live ve
 });
 
 /* ── QAP11: DRAFT audio is not required and not faked ──────────────────── */
-test('QAP11: AUDIO_RENDER Draft semantics are documented as a fidelity gap, not silently satisfied', () => {
+test('QAP11: AUDIO_RENDER Draft semantics are mechanically enforced, not silently satisfied', () => {
   const row = policy.policyForKind('AUDIO_RENDER');
   assert.equal(row.class, 'MODE_REQUIRED');
   assert.deepEqual([...row.modes], ['PRODUCTION']);
-  assert.ok(row.fidelity_note && /draft/i.test(row.fidelity_note), 'fidelity gap must be documented');
+  // The free-text fidelity_note workaround is gone: class semantics are now
+  // machine-enforced. PRODUCTION demands render class PRODUCTION_MIX, and the
+  // fact that no producer can yet emit it is a DECLARED gap, not a relaxed one.
+  assert.equal(row.required_render_class, 'PRODUCTION_MIX');
+  assert.ok(row.fidelity_contract && /PRODUCTION_MIX/.test(row.fidelity_contract));
+  const gap = policy.KNOWN_CLASS_GAPS.PRODUCTION_MIX;
+  assert.equal(gap.status, 'PRODUCER_MISSING', 'the final-mix producer gap must stay declared');
+  // Fidelity invariant green with the declared gap; without it, red.
+  assert.equal(policy.checkAudioFidelityConsistency().ok, true);
+  // A weaker class can never satisfy the requirement by relaxation:
+  // MUSIC_CANDIDATE is a different semantic branch, not a lower grade of mix.
+  assert.notEqual(row.required_render_class, 'MUSIC_CANDIDATE');
 });
 
 /* ── QAP12: PRODUCTION fidelity enforced at QC level ───────────────────── */

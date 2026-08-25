@@ -1,8 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "evidence_kind": "AUDIO_RENDER",
+  "render_class": "MUSIC_CANDIDATE",
   "producer": "sound_music_director",
-  "attester": "audio-render-attester-v1",
+  "attester": "audio-render-attester-v2",
   "state": "PRODUCTION_READY",
   "production_mix_sha256": "83dbd1d2872040e96f0b43af0d5e2a3d164a9793df7a246ee8e6f9bebc48eeaf",
   "duration_seconds": 11.993107,
@@ -33,15 +34,15 @@
   "provenance": {
     "producer": "sound_music_director",
     "producer_type": "deterministic_attestation",
-    "attester": "audio-render-attester-v1",
+    "attester": "audio-render-attester-v2",
     "generation_job_id": "music-job-3d00a14b-34cb-4e8b-99f5-02ecc9500995",
     "workflow_hash": "2a651a1e9e2be52da82eff13d2ab6d887affe7a9319599b8c2165a02f792b9dc",
     "brief_hash": "88d437ab6828380513420b2cbba410100587fdbee28eee1adfe4998786a3767c",
     "candidate_record_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-25-audio-render-evidence-canary/audio"
   },
   "note": "Rendered-audio technical attestation only. Not aesthetic judgment; not human approval; not the final program mix.",
-  "payload_digest_sha256": "11383a88513552d00111e421b1771fc32dc7190b282dee613efdb407134b1a99",
+  "payload_digest_sha256": "0d2f27c451d265862004ec5875df2d95e8bf532d727815ccbaa6b125ca73a00c",
   "produced_by": "sound_music_director",
-  "created_at": "2026-08-25T11:48:37.900Z",
+  "created_at": "2026-08-25T13:58:46.330Z",
   "package_run_id": null
 }

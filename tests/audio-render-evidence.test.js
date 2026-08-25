@@ -24,6 +24,7 @@ const { tests, test } = require('./_helpers');
 
 const ROOT = path.resolve(__dirname, '..');
 const are = require('../scripts/audio-render-evidence.js');
+const policy = require('../scripts/qc-evidence-policy.js');
 const qc = require('../scripts/qc-director.js');
 
 const REAL_CANARY = '2026-08-25-audio-render-evidence-canary';
@@ -134,7 +135,7 @@ test('AR2: real decodable audio attests PRODUCTION_READY and satisfies QC', () =
 
   const evBytes = fs.readFileSync(materialized.path);
   const payload = JSON.parse(evBytes.toString('utf8'));
-  assert.equal(payload.schema_version, 1);
+  assert.equal(payload.schema_version, are.SCHEMA_VERSION);
   assert.equal(payload.evidence_kind, 'AUDIO_RENDER');
   assert.equal(payload.produced_by, 'sound_music_director');
   assert.equal(payload.production_mix_sha256, sha256(fs.readFileSync(rec.wavPath)));
@@ -358,16 +359,11 @@ test('AR14: the bounded canary evidence satisfies QC (hermetic copy)', () => {
 /* ------------------------------------------------------- invariant --------- */
 
 test('AR15: after this mission no mandatory QC evidence kind lacks a reachable producer', () => {
-  const INVENTORY = Object.freeze({
-    STORY_VALIDATION: 'scripts/package-run-story-validation.js',
-    AUDIO_RENDER: 'scripts/audio-render-evidence.js',
-    CAMERA_QUALITY: 'earth-studio-camera-quality.js',
-    GENERATION_RESULT: 'scripts/generation-supervisor.js',
-    EDIT_QC_HANDOFF: 'scripts/edit-plan.js',
-  });
   for (const kind of qc.SUPPORTED_EVIDENCE_KINDS) {
-    assert.ok(INVENTORY[kind], `required evidence ${kind} has no declared producer module`);
-    assert.ok(fs.existsSync(path.join(ROOT, INVENTORY[kind])), `${kind}: producer module missing: ${INVENTORY[kind]}`);
+    const row = policy.EVIDENCE_POLICY[kind];
+    assert.ok(row, `required evidence ${kind} has no applicability policy row`);
+    assert.ok(row.producer_module, `required evidence ${kind} has no declared producer module`);
+    assert.ok(fs.existsSync(path.join(ROOT, row.producer_module)), `${kind}: producer module missing: ${row.producer_module}`);
   }
   // AUDIO_RENDER specifically must no longer be the conditional gap.
   const source = fs.readFileSync(path.join(ROOT, 'scripts/audio-render-evidence.js'), 'utf8');

@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "proof": "audio-fidelity-contract",
+  "generated_at": "2026-08-25",
+  "verdict": "AUDIO FIDELITY CONTRACT PROVEN",
+  "not_a_package_run": true,
+
+  "three_axes": {
+    "evidence_kind": "WHAT is the artifact (AUDIO_RENDER, DRAFT_SYNTHETIC_NARRATION, ...)",
+    "render_class": "at WHAT PRODUCTION LEVEL is the audio valid",
+    "source_producer": "WHO/HOW was it produced",
+    "conflation_prohibited": true
+  },
+
+  "render_class_vocabulary": {
+    "owner": "scripts/qc-evidence-policy.js RENDER_CLASSES",
+    "classes": ["MUSIC_CANDIDATE", "DRAFT_TEMPORARY", "PRODUCTION_MIX"],
+    "ordering": "none — classes are semantic branches, compatibility encoded per requirement",
+    "PRODUCTION_MIX_gap": {
+      "status": "PRODUCER_MISSING",
+      "declared_in": "KNOWN_CLASS_GAPS.PRODUCTION_MIX",
+      "policy": "attester refuses; QC fidelity invariant treats the declared gap as honest"
+    }
+  },
+
+  "schema_evolution": {
+    "v1": "legacy render attestation without fidelity class; remains historically valid",
+    "v2": "adds render_class (canonical vocabulary), validated + producer-authorized at attestation",
+    "legacy_policy": "v1 evidence is AUDIO_RENDER_CLASS_UNKNOWN for class-sensitive requirements; re-attest, never silently promote"
+  },
+
+  "producer_class_matrix": {
+    "sound_music_director": ["MUSIC_CANDIDATE", "DRAFT_TEMPORARY"],
+    "generation_supervisor": [],
+    "editor": [],
+    "PRODUCTION_MIX": "no authorized producer (declared gap)"
+  },
+
+  "real_evidence": {
+    "canary": "package-runs/2026-08-25-audio-render-evidence-canary",
+    "schema_version": 2,
+    "render_class": "MUSIC_CANDIDATE",
+    "production_mix_sha256": "83dbd1d2872040e96f0b43af0d5e2a3d164a9793df7a246ee8e6f9bebc48eeaf",
+    "upgraded_from": "schema v1 (pre-fidelity-contract attestation)",
+    "note": "real Scorecraft candidate render (2026-08-22-music3-live-canary-001 / candidate-004, human verdict 'use'); re-attested under the fidelity contract without re-rendering"
+  },
+
+  "production_mix_real_audio": {
+    "exists": false,
+    "reason": "no final program-mix render path exists in the production system",
+    "policy": "PRODUCTION_MIX PRODUCER MISSING is reported as the next gap, never faked"
+  },
+
+  "qc_blockers": {
+    "missing": "QC_REQUIRED_EVIDENCE_MISSING",
+    "insufficient_class": "AUDIO_RENDER_CLASS_INSUFFICIENT",
+    "unknown_class_legacy": "AUDIO_RENDER_CLASS_UNKNOWN",
+    "unauthorized_class": "AUDIO_RENDER_CLASS_UNAUTHORIZED"
+  },
+
+  "mode_semantics": {
+    "DRAFT": "does not require AUDIO_RENDER; draft audio handled by DRAFT_SYNTHETIC_NARRATION (own kind) or advisory",
+    "REVIEW": "reuses completed Draft media per its declared class; no Production mix required merely for review",
+    "PRODUCTION": "requires AUDIO_RENDER with render_class PRODUCTION_MIX at/after rough-cut-review; weaker classes block with typed reason"
+  },
+
+  "draft_synthetic_narration": {
+    "kind": "DRAFT_SYNTHETIC_NARRATION",
+    "fidelity": "DRAFT_SYNTHETIC_PROXY (declared by its producer)",
+    "qc_adapter": "registered in QC Director (draftNarrationAdapter) — Claude's deferred QC surface, coordinated not overwritten",
+    "distinct_from_audio_render": true,
+    "cannot_satisfy_audio_render": true
+  },
+
+  "tests": {
+    "suite": "tests/audio-fidelity-contract.test.js",
+    "count": "AF1-AF16",
+    "result": "16/16",
+    "regressions": {
+      "audio-render-evidence.test.js": "15/15",
+      "qc-evidence-applicability.test.js": "17/17",
+      "qc-director.test.js": "46/46",
+      "story-validation-bridge.test.js": "13/13",
+      "qc-director-promotion-governance.test.js": "5/5 (evolution chain extended)"
+    }
+  },
+
+  "invariants": {
+    "producer_reachability": "checkProducerReachability ok",
+    "applicability_consistency": "checkApplicabilityConsistency ok",
+    "audio_fidelity": "checkAudioFidelityConsistency ok (declared gaps allowed)"
+  },
+
+  "governance": {
+    "qc_director_promotion_governed": true,
+    "evolution_addendum": "governance/qc-director-implementation-evolution-addendum.json",
+    "chain": "promotion binding -> applicability evolution -> fidelity enforcement evolution -> current binding",
+    "history_rewritten": false
+  }
+}

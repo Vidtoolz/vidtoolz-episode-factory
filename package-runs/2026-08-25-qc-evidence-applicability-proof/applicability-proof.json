@@ -8,19 +8,66 @@
   "policy_module": "scripts/qc-evidence-policy.js",
   "documentation": "docs/qc-evidence-applicability.md",
   "evidence_matrix": {
-    "STORY_VALIDATION": { "class": "MODE_AND_GATE_REQUIRED", "modes": ["DRAFT", "REVIEW", "PRODUCTION"], "earliest_gate": "research", "producer": "story_validator" },
-    "AUDIO_RENDER": { "class": "MODE_REQUIRED", "modes": ["PRODUCTION"], "earliest_gate": "rough-cut-review", "producer": "sound_music_director", "fidelity_gap": "no render_class/fidelity field yet; Draft audio advisory-only, documented not resolved" },
-    "CAMERA_QUALITY": { "class": "GATE_REQUIRED", "earliest_gate": "capture-evidence", "producer": "camera_director" },
-    "GENERATION_RESULT": { "class": "GATE_REQUIRED", "earliest_gate": "production-plan", "producer": "generation_supervisor" },
-    "EDIT_QC_HANDOFF": { "class": "GATE_REQUIRED", "earliest_gate": "rough-cut-review", "producer": "editor" },
-    "FINAL_CUT_APPROVAL": { "class": "HUMAN_EXTERNAL", "earliest_gate": "rough-cut-review", "producer": null },
-    "TITLE_THUMBNAIL_APPROVAL": { "class": "HUMAN_EXTERNAL", "earliest_gate": "publication-metadata", "producer": null }
+    "STORY_VALIDATION": {
+      "class": "MODE_AND_GATE_REQUIRED",
+      "modes": [
+        "DRAFT",
+        "REVIEW",
+        "PRODUCTION"
+      ],
+      "earliest_gate": "research",
+      "producer": "story_validator"
+    },
+    "AUDIO_RENDER": {
+      "class": "MODE_REQUIRED",
+      "modes": [
+        "PRODUCTION"
+      ],
+      "earliest_gate": "rough-cut-review",
+      "producer": "sound_music_director",
+      "fidelity_gap": "no render_class/fidelity field yet; Draft audio advisory-only, documented not resolved"
+    },
+    "CAMERA_QUALITY": {
+      "class": "GATE_REQUIRED",
+      "earliest_gate": "capture-evidence",
+      "producer": "camera_director"
+    },
+    "GENERATION_RESULT": {
+      "class": "GATE_REQUIRED",
+      "earliest_gate": "production-plan",
+      "producer": "generation_supervisor"
+    },
+    "EDIT_QC_HANDOFF": {
+      "class": "GATE_REQUIRED",
+      "earliest_gate": "rough-cut-review",
+      "producer": "editor"
+    },
+    "FINAL_CUT_APPROVAL": {
+      "class": "HUMAN_EXTERNAL",
+      "earliest_gate": "rough-cut-review",
+      "producer": null
+    },
+    "TITLE_THUMBNAIL_APPROVAL": {
+      "class": "HUMAN_EXTERNAL",
+      "earliest_gate": "publication-metadata",
+      "producer": null
+    }
   },
   "promotion_invalidation_matrix": {
-    "STORY_VALIDATION": { "DRAFT_to_REVIEW": "survives (exact Story version unchanged)", "REVIEW_to_PRODUCTION": "survives (exact Story version unchanged); stale on Story version change — verified by SV7 drift test" },
-    "AUDIO_RENDER": { "DRAFT_to_REVIEW": "not required in DRAFT; PRODUCTION-only requirement unchanged", "REVIEW_to_PRODUCTION": "required at/after rough-cut-review; draft audio never satisfies via policy relaxation" },
-    "visual_plan": { "note": "not a QC evidence kind; approval-binding staleness already proven by the gate-6 missions" },
-    "capture_evidence": { "note": "gate 7/8 capture policy owned by the sibling mode mission; audited read-only here" }
+    "STORY_VALIDATION": {
+      "DRAFT_to_REVIEW": "survives (exact Story version unchanged)",
+      "REVIEW_to_PRODUCTION": "survives (exact Story version unchanged); stale on Story version change — verified by SV7 drift test"
+    },
+    "AUDIO_RENDER": {
+      "DRAFT_to_REVIEW": "not required in DRAFT; PRODUCTION-only requirement unchanged",
+      "REVIEW_to_PRODUCTION": "required at/after rough-cut-review; draft audio never satisfies via policy relaxation"
+    },
+    "visual_plan": {
+      "note": "not a QC evidence kind; approval-binding staleness already proven by the gate-6 missions"
+    },
+    "capture_evidence": {
+      "note": "gate 7/8 capture policy owned by the sibling mode mission; audited read-only here"
+    }
   },
   "fail_closed_rules": [
     "required kind with no policy row -> QC_EVIDENCE_POLICY_VIOLATION",
@@ -74,5 +121,10 @@
     "scorecraft": "zero changes",
     "story_validation_producer": "untouched (reference only)",
     "audio_render_producer": "untouched (reference only)"
+  },
+  "fidelity_contract_resolved": {
+    "resolved_by": "audio-fidelity-contract mission",
+    "mechanism": "RENDER_CLASSES vocabulary + required_render_class + producer authorization",
+    "proof": "package-runs/2026-08-25-audio-fidelity-contract-proof/fidelity-proof.json"
   }
 }
