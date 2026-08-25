@@ -1,0 +1,36 @@
+{
+  "schema": "vidtoolz.presenterTakeCaptureProvenance.v1",
+  "adapter_version": "supervised-presenter-take-adapter-v1",
+  "registrations": [
+    {
+      "take_id": "take-01M0WZZ3M17FFYPRZBW6WV26B1",
+      "recording_unit_id": "recording-unit-01M0WZZ3J2PTB647Z0DRK8S919",
+      "run_id": "sc-fixture-run",
+      "production_mode": "PRODUCTION",
+      "capture_id": "capture-fixture-01",
+      "capture_file": "<fixture>/sc-fixture-run/captures/capture-fixture-01.mp4",
+      "capture_sidecar_file": "<fixture>/sc-fixture-run/captures/capture-fixture-01.json",
+      "capture_sidecar_sha256": "b94e469221f5a2fb857d43e5e3adadf678e4152f3554dbd2c8f43f59f4b9f544",
+      "media_sha256": "bd9f77e452f5e639b2259c0f82f50a999b03fe4e374d78fe8e3c68db01286b10",
+      "byte_size": 2186281,
+      "duration_s": 10,
+      "profile": "vidnux-screen-4k30-mic",
+      "audio_mode": "mic",
+      "human_performance": true,
+      "proxy": false,
+      "synthetic": false,
+      "satisfies_real_capture": true,
+      "is_not": [
+        "take selection",
+        "best-take judgement",
+        "fidelity approval",
+        "gate approval"
+      ],
+      "registered_by": "supervised-presenter-take-adapter-v1",
+      "registered_at": "2026-08-25T17:37:24.609Z",
+      "manifest_id": "01M0WZZ3M1J33H1RNPKFD4R3DE",
+      "manifest_revision": 2,
+      "manifest_digest_sha256": "956a09db9b77015d15177f075a54c198aaa9a9e43147ca0b699fe561a2f6f092"
+    }
+  ]
+}

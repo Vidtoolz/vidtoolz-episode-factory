@@ -1,0 +1,144 @@
+{
+  "schema": "vidtoolz.supervisedCaptureTakeAdapterProof.v1",
+  "not_a_production_run": true,
+  "verdict": "SUPERVISED_CAPTURE_ADAPTER_PROVEN_PRESENTER_DIRECTOR_ENABLEMENT_REQUIRED",
+  "red_baseline": {
+    "finding": "supervised-capture.js verified a real MP4 + sidecar with ZERO errors, and the upstream audit still reported REAL_PRESENTER_AUDIO_MISSING. A verified human recording existed and the production system had no way to know it was a presenter take.",
+    "capture_verification_errors": [],
+    "upstream_root_blocker": "REAL_PRESENTER_AUDIO_MISSING",
+    "presenter_take_manifests_in_repo": 0,
+    "cause": "no producer connected the two; supervised-capture.js deliberately does not touch package-run state, and presenter-take-manifest.js had no caller"
+  },
+  "four_distinct_acts": {
+    "verification": "supervised-capture.js — are these bytes a valid recording?",
+    "registration": "scripts/supervised-presenter-take-adapter.js (THIS mission) — is this recording a take of this unit, in this run?",
+    "selection": "presenter-take-manifest.createHumanSelection — a verified human only",
+    "approval": "the lifecycle gates, unchanged",
+    "note": "the adapter performs exactly one of these"
+  },
+  "adapter": {
+    "module": "scripts/supervised-presenter-take-adapter.js",
+    "version": "supervised-presenter-take-adapter-v1",
+    "records": {
+      "session": "presenter-capture-session.json",
+      "provenance": "presenter-take-capture-provenance.json"
+    },
+    "schemas": {
+      "session": "vidtoolz.presenterCaptureSession.v1",
+      "provenance": "vidtoolz.presenterTakeCaptureProvenance.v1"
+    },
+    "refusal_codes": 16,
+    "deterministic": "no model call, no judgement, no media generation",
+    "boundary_preserved": "supervised-capture.js is unchanged and still never mutates lifecycle state"
+  },
+  "run_binding": {
+    "problem": "the capture sidecar carries no run_id, so nothing tied a recording to a run",
+    "solution": "the run declares its capture destination at preflight; a recording is bound to this run because it was written where this run said to write it",
+    "rejected_alternative": "teaching supervised-capture.js about package runs, which would break its boundary",
+    "no_latest_lookup": true
+  },
+  "sidecar_finding": {
+    "code": "CAPTURE_SIDECAR_NO_MEDIA_HASH",
+    "detail": "the sidecar records no media hash, so verifyCaptureFile cannot distinguish a mutated recording from an intact one — appending bytes to an MP4 leaves the file large enough, the sidecar consistent and ffprobe satisfied.",
+    "mitigation": "the adapter hashes what it registers, so every later change is detectable and is reported as MEDIA_DRIFT, distinct from ALREADY_REGISTERED",
+    "residual": "byte mutation between capture and FIRST registration is not detectable from the sidecar alone. Not a blocker (the capture tool is the trusted local producer) but recorded honestly.",
+    "not_a_stop_condition": "provenance is otherwise sufficient: capture_id ↔ MP4 basename ↔ output_file ↔ metadata_file ↔ approval_boundary ↔ audio_mode, plus ffprobe streams"
+  },
+  "presenter_audio_authority": {
+    "chosen": "A — the audio stream of the registered take media",
+    "reason": "the dialogue IS the audio stream; the take already carries has_audio and an exact hash, so no extraction and no second authority is created",
+    "no_extraction_performed": true,
+    "never_called_production_mix": true,
+    "silent_profile_refused_at_preflight": "a presenter dialogue take requires an audio-bearing profile, and that is checked BEFORE Mikko performs rather than after"
+  },
+  "human_only_semantics": {
+    "human_performance": true,
+    "proxy": false,
+    "synthetic": false,
+    "production_mode": "PRODUCTION",
+    "is_not": [
+      "take selection",
+      "best-take judgement",
+      "fidelity approval",
+      "gate approval"
+    ]
+  },
+  "proven": {
+    "preflight_state": "READY_FOR_HUMAN_PERFORMANCE",
+    "registration": "MEDIA_VALID take, manifest revision 1 -> 2, successor chain valid, manifest valid",
+    "exact_binding": "media sha256 + byte_size + duration + has_video + has_audio + capture_binding_sha256 + sidecar sha256",
+    "multiple_takes": "3 distinct recordings -> 3 takes, 3 distinct hashes, 0 selections, 0 recommendations",
+    "upstream_before": "REAL_PRESENTER_AUDIO_MISSING",
+    "upstream_after": "EDIT_PLAN_MISSING (presenter satisfied)",
+    "chain_advanced_exactly_one_step": true
+  },
+  "negatives": {
+    "missing_sidecar": "PRESENTER_CAPTURE_VERIFICATION_FAILED",
+    "wrong_run": "PRESENTER_CAPTURE_SESSION_RUN_MISMATCH",
+    "outside_declared_destination": "PRESENTER_CAPTURE_OUTSIDE_SESSION_DESTINATION",
+    "mutated_media": "PRESENTER_CAPTURE_MEDIA_DRIFT",
+    "duplicate_capture": "PRESENTER_CAPTURE_ALREADY_REGISTERED",
+    "proxy_presenter": "PRESENTER_CAPTURE_PROXY_SOURCE_FORBIDDEN",
+    "synthetic_narration": "PRESENTER_CAPTURE_PROXY_SOURCE_FORBIDDEN",
+    "renamed_proxy_via_mic_source": "PRESENTER_CAPTURE_PROXY_SOURCE_FORBIDDEN",
+    "silent_profile": "PRESENTER_CAPTURE_SILENT_PROFILE",
+    "non_production_mode": "PRESENTER_CAPTURE_MODE_NOT_PRODUCTION"
+  },
+  "proxy_guard_note": "the upstream audit checks take.origin / take.proxy, but the take schema is a strict object with no such fields — on a schema-valid manifest that check can never fire. The refusal therefore happens in the adapter, before anything is written.",
+  "selection_authority": {
+    "propose": "presenter_director (advisory recommendations, rank-ordered) — currently DISABLED",
+    "select": "a verified human via createHumanSelection; verifierValid refuses type AGENT and refuses any agent id posing as HUMAN",
+    "approve": "the lifecycle gates",
+    "adapter_never_selects": true,
+    "proven_refusals": [
+      "HUMAN with an agent id -> refused",
+      "AGENT selector -> refused"
+    ],
+    "after_a_genuine_human_selection": "the Editor handoff is still not ready: blockers were CURRENT_STORY_REQUIRED, PREVIEW_ONLY, TRANSCRIPT_OR_HUMAN_FIDELITY_REQUIRED, FIDELITY_UNRESOLVED. Registration is not the end of the presenter lane."
+  },
+  "leniency_observation": "the program-mix audit clears presenter on a registered take alone, while the presenter manifest itself does not consider that take editor-ready until a transcript and fidelity record exist. The two thresholds differ; recorded, not changed.",
+  "presenter_director": {
+    "module_exists": true,
+    "doctrine": "DEFINED",
+    "proven": "NOT_PROVEN",
+    "autonomous_dispatch": "DISABLED",
+    "enablement_prerequisites": [
+      "canonical presenter take/delivery artifact contract proven end to end",
+      "Editor take-selection boundary demonstrated against real evidence",
+      "explicit human enablement decision by Mikko"
+    ],
+    "not_enabled_by_this_mission": true,
+    "prerequisite_progress": "this mission addresses \"canonical presenter take/delivery artifact contract proven end to end\" and demonstrates the Editor take-selection boundary; the explicit human enablement decision by Mikko remains outstanding and was not taken"
+  },
+  "production_operations": {
+    "doctrine": "DEFINED",
+    "proven": "PROVEN",
+    "autonomous_dispatch": "ENABLED",
+    "role_here": "gate-7 PRODUCTION preparation_owner; orchestrates the capture session",
+    "semantic_take_ownership": "NOT assigned to it — orchestrating a capture is not owning the performance"
+  },
+  "gates": {
+    "gate7": {
+      "expected_owner": "production_operations",
+      "implementation_status": "PLANNED",
+      "human_performer": "mikko",
+      "owner_actionable": false,
+      "note": "unchanged by this mission; the adapter never advances a gate"
+    },
+    "gate8": {
+      "expected_owner": "qc_director",
+      "human_required": true,
+      "note": "real human capture evidence still required; no proxy disposition, no synthetic marker, no automatic approval"
+    },
+    "real_capture_predicate": "a registered supervised take row passes; proxy and synthetic rows still fail"
+  },
+  "human_boundary": "the machine says: record the real presenter performance. Nothing earlier is outstanding, and no later software blocker is hiding behind that action within the capture lane.",
+  "twelve_agents_unchanged": 12,
+  "music_requiredness_finding": {
+    "code": "MUSIC_REQUIREDNESS_POLICY_DEFECT",
+    "detail": "production-mix-upstream-readiness hardcodes music as required while the proven attester accepts presenter-only program audio, so a legitimate no-music Short can be reported MUSIC_RUN_BINDING_MISSING.",
+    "correct_future_rule": "derive music requiredness from the canonical edit/timeline AUDIO_MUSIC track declaration",
+    "recorded_not_fixed_here": true
+  },
+  "remaining_production_gap": "a real presenter performance does not exist. Everything a machine can do before it is done."
+}

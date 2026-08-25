@@ -307,6 +307,66 @@ narration audio into one watchable draft. That is the remaining capability.
 - **BLOCKED** — gate 9 review-readiness, on one remaining capability: an
   automatic DRAFT rough-cut assembler. Capture is done; there is simply nothing
   assembled for Mikko to watch yet.
+- **IMPLEMENTED** — the supervised-capture → presenter-take adapter. PRODUCTION
+  capture is now machine-ready up to Mikko's performance, and a verified
+  recording becomes a canonical presenter take with no human bookkeeping.
+
+## PRODUCTION presenter capture
+
+A verified human recording and a canonical presenter take used to be two
+separate truths with nothing joining them. `supervised-capture.js` recorded and
+verified real media and deliberately never touched package-run state;
+`presenter-take-manifest.js` owned take identity and had no producer. So a
+successful capture left the upstream audit still reporting
+`REAL_PRESENTER_AUDIO_MISSING`. `scripts/supervised-presenter-take-adapter.js`
+is that seam.
+
+**Four acts, deliberately distinct — the adapter performs exactly one:**
+
+| Act | Owner | Module |
+|---|---|---|
+| Verification | capture subsystem | `supervised-capture.js` — are these bytes a valid recording? |
+| **Registration** | capture subsystem (deterministic) | **the adapter — is this recording a take of this unit, in this run?** |
+| Selection | a verified human (Mikko) | `presenter-take-manifest.createHumanSelection` |
+| Approval | the lifecycle gates | unchanged |
+
+```
+PRODUCTION run -> machine preflight -> READY_FOR_HUMAN_PERFORMANCE
+              -> Mikko records            <-- only a human can do this
+              -> capture verified -> take registered -> presenter source canonical
+              -> REAL_PRESENTER_AUDIO_MISSING clears -> next: EDIT_PLAN_MISSING
+```
+
+`READY_FOR_HUMAN_PERFORMANCE` means the machine is ready and **nothing has been
+recorded** (`media_recorded: false`, `takes_registered: 0`). It never reads as
+capture complete.
+
+**The run binding comes from the destination, not the sidecar.** The capture
+sidecar carries no `run_id`, so the run declares its capture destination at
+preflight and a recording belongs to the run because it was written where that
+run said to write it. The alternative — teaching the capture tool about package
+runs — would break the boundary that keeps it from mutating lifecycle state.
+
+**Presenter audio is the take's own audio stream.** No extraction, no parallel
+presenter-audio artifact, nothing for the Editor to reconcile. A silent capture
+profile is refused at preflight rather than after Mikko has performed.
+
+**Registration is not selection.** Every valid take is registered and none is
+chosen; the adapter writes no recommendation and no human selection. Craft
+judgement belongs to `presenter_director` (still `DISABLED`, pending Mikko's
+explicit enablement) and the choice belongs to Mikko — `verifierValid` refuses an
+`AGENT` selector and refuses any agent id posing as `HUMAN`.
+
+**Registration is also not the end of the lane.** With a genuine human selection
+in place, the Editor handoff still reports `TRANSCRIPT_OR_HUMAN_FIDELITY_REQUIRED`
+and `FIDELITY_UNRESOLVED`: a take must be transcribed and its fidelity resolved
+before the Editor can use it. None of that is fabricated.
+
+One honest limit: because the sidecar records no media hash, byte mutation
+between capture and *first* registration cannot be detected from the sidecar
+alone. The adapter hashes what it registers, so every later change surfaces as
+`PRESENTER_CAPTURE_MEDIA_DRIFT` — reported distinctly from
+`PRESENTER_CAPTURE_ALREADY_REGISTERED`, because those are different facts.
 
 Verified absent rather than assumed: a hard search across `*.js`, `*.json`,
 `*.md`, `*.py` and `*.sh` found no TTS producer (the only MiniMax integration is
