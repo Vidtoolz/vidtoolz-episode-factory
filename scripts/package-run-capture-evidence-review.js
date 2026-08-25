@@ -4,6 +4,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const researchPack = require("./package-run-research-pack.js");
+const draftProxyReadiness = require("./draft-proxy-capture-readiness.js");
 
 const TOOL_NAME = "package-run-capture-evidence-review.js";
 const REVIEW_FILE = "capture-evidence-review.md";
@@ -244,10 +245,27 @@ function evaluateCaptureEvidence(runDir) {
   if (!approvalMarkerPresent) findings.push("Exact capture-stage approval marker is missing.");
   else if (!approval) findings.push("Exact capture-stage approval marker must appear after the concrete take, screen, and audio evidence it approves.");
 
+  /*
+   * DRAFT is evaluated against machine-verifiable proxy capture, not against a
+   * human performance. A zero-human draft must never be told to wait for Mikko,
+   * so the human-approval rungs are unreachable in that mode; equally, synthetic
+   * proxy media can never satisfy the real-capture rungs used by PRODUCTION.
+   */
+  const proxy = draftProxyReadiness.draftProxyCaptureReadiness(runDir);
   let status = "NEEDS CAPTURE";
-  if (!stage4Accepted || missingRequiredFiles.length) status = "BLOCKED";
+  if (proxy.applicable) {
+    if (!stage4Accepted || missingRequiredFiles.length) status = "BLOCKED";
+    else if (proxy.capture_ready) status = "PASS";
+    else status = "NEEDS CAPTURE";
+  } else if (!stage4Accepted || missingRequiredFiles.length) status = "BLOCKED";
   else if (realCaptureEvidence && missingClosed && blockersResolved && !approval) status = "READY FOR HUMAN APPROVAL";
   else if (stage4Accepted && realCaptureEvidence && missingClosed && blockersResolved && approval) status = "PASS";
+
+  if (proxy.applicable) {
+    // Replace human-capture findings with the truthful machine blockers.
+    findings.length = 0;
+    for (const blocker of proxy.blockers) findings.push(blocker);
+  }
 
   return {
     runId: path.basename(runDir),
@@ -260,6 +278,15 @@ function evaluateCaptureEvidence(runDir) {
     missingShotsClosed: missingClosed,
     captureBlockersResolved: blockersResolved,
     approvalMarkerDetected: approval,
+    productionMode: proxy.production_mode,
+    proxyCapture: proxy.applicable ? {
+      disposition: proxy.disposition,
+      capture_ready: proxy.capture_ready,
+      audio: proxy.components.audio.disposition,
+      visual: proxy.components.visual.disposition,
+      next_capability: proxy.next_capability,
+      human_authority_required: proxy.human_authority_required,
+    } : null,
     staleApprovalMarkerDetected: approvalMarkerPresent && !approval,
     missingRequiredFiles,
     findings,
