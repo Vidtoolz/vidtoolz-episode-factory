@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "record_type": "agent_implementation_proof_correction",
+  "role": "generation_supervisor",
+  "correction": "RETROACTIVE_PROOF_OF_AN_UNEARNED_PROMOTION",
+  "registry_state_before_correction": "IMPLEMENTATION_PROVEN",
+  "registry_state_after_correction": "IMPLEMENTATION_PROVEN",
+  "registry_value_changed": false,
+  "human_authorization_required": false,
+  "human_authorization_note": "No lifecycle, readiness or authority VALUE changes in this correction, so no new human promotion decision is created or implied. What changed is that the existing IMPLEMENTATION_PROVEN claim is now supported by evidence. Promoting or demoting a role remains Mikko's decision alone.",
+  "defect": {
+    "summary": "The registry marked generation_supervisor IMPLEMENTATION_PROVEN while the canonical production runner could not dispatch it at all.",
+    "observed_failure": "RUNNER_AGENT_ID_MISMATCH — module AGENT_ID does not match registry identity: generation_supervisor",
+    "mechanism": "scripts/agent-run.js resolveAgent() require()s the module and compares loaded.AGENT_ID against the requested registry id. The module defined AGENT_ID as a file-local const but had no module.exports block at all, so loaded.AGENT_ID was undefined and the identity check failed before any invocation.",
+    "scope": "generation_supervisor only. Every other IMPLEMENTATION_PROVEN agent was verified to satisfy the runner identity contract at the time of this correction.",
+    "severity": "HIGH — an architecture truth defect: the registry asserted a production capability the production path did not have."
+  },
+  "historical_cause": {
+    "module_never_exported_identity": true,
+    "module_history": [
+      {
+        "commit": "33b388151d0f2faf2825a508d81a249f97c53dbf",
+        "subject": "fix(agents): harden supervision boundaries",
+        "module_exports_occurrences": 0
+      },
+      {
+        "commit": "0b6db08ba84fcbd731c5db2b0239c50d922b37e0",
+        "subject": "feat(hermes): add generation supervisor agent",
+        "module_exports_occurrences": 0
+      }
+    ],
+    "promotion_commit": {
+      "commit": "5ca7334d49fc5209612f3b889a4170df86c3025a",
+      "subject": "fix(agents): enforce canonical implementation readiness",
+      "finding": "This commit INTRODUCED the implementation_state field and backfilled six agents directly to IMPLEMENTATION_PROVEN. generation_supervisor was among them. No proof package, no governance record and no implementation_state_note was produced for it.",
+      "backfill_decision": {
+        "production_operations": "CANDIDATE",
+        "camera_director": "CANDIDATE",
+        "generation_supervisor": "IMPLEMENTATION_PROVEN",
+        "qc_director": "CANDIDATE",
+        "editor": "IMPLEMENTATION_PROVEN",
+        "sound_music_director": "IMPLEMENTATION_PROVEN",
+        "research_director": "IMPLEMENTATION_PROVEN",
+        "story_editor": "IMPLEMENTATION_PROVEN",
+        "visual_planning_director": "IMPLEMENTATION_PROVEN",
+        "audience_packaging_director": "IMPLEMENTATION_PROVEN",
+        "presenter_director": null,
+        "creative_director": null
+      },
+      "held_at_candidate": [
+        "production_operations",
+        "camera_director",
+        "qc_director"
+      ]
+    },
+    "conclusion": "The original promotion was never earned. It was a bulk backfill assumption, not a demonstrated capability. Canonical dispatch for this agent never worked at any commit in the module's history.",
+    "why_it_survived": "tests/generation-supervisor.test.js exercises the module only as a direct CLI subprocess (execFileSync on the script). Direct CLI execution never loads module.exports, so it could not detect the missing identity contract. Direct CLI success was mistaken for production dispatch capability."
+  },
+  "repair": {
+    "principle": "The shared runner safety contract was NOT weakened. The runner still refuses any module whose declared identity is absent or mismatched; the agent was fixed to satisfy it.",
+    "module_path": "scripts/generation-supervisor.js",
+    "module_sha256": "26c6933c731521f5790c1919a57a3e9024c84edd8c237295392781d826bc9f15",
+    "changes": [
+      "added module.exports declaring AGENT_ID and the canonical agent surface (the identity defect)",
+      "declared ACTIONS = [supervise_generation, status]; the runner now validates actions before invoking, which it previously could not do at all",
+      "added a bounded status action: availability only, resolves no lane, probes no endpoint, dispatches nothing",
+      "added control_room projection and attention derived from the registry escalation contract, completing the canonical envelope the runner validates",
+      "extracted run(task) from main() so the control room can load and inspect the module like every other mature specialist; main() is now a thin CLI wrapper",
+      "replaced process.exit() with process.exitCode so runner-piped stdout cannot be truncated"
+    ],
+    "generation_behaviour_changed": false,
+    "generation_behaviour_note": "Routing, readiness probing, provenance, retry classification, state vocabulary, handoff owners and CLI exit codes are unchanged. All 19 pre-existing generation-supervisor and generation-package-bridge tests pass unmodified.",
+    "input_contract_changed": false,
+    "output_contract_changed": "additive only — action, attention, attention_level, control_room, operational_rationale, and (status action only) supported_actions/policy_source",
+    "repair_commit": "8d73771d758a7d8a0a28a1020453803120366b81"
+  },
+  "proof_binding": {
+    "proof_package": "package-runs/2026-08-25-generation-supervisor-proof-v2",
+    "proof_summary": "package-runs/2026-08-25-generation-supervisor-proof-v2/production-path-summary.json",
+    "proof_summary_sha256": "e41388c2c896f78e1beeac94b95c48e4fe48c6236ac8735ac748d0829f100060",
+    "proof_script": "scripts/generation-supervisor-proof-v2.js",
+    "proof_script_sha256": "ad16156e1712f0efdf2f574036c5526163475fd771074a0dc0b4252cb8c8a517",
+    "promotion_criteria_version": "v1 (docs/implementation-promotion-criteria.md)",
+    "promotion_criteria_sha256": "005ae7d914f8e7a52333c02b02527c1cc4b77bffc8fe1c5b1be1ac9d0ca4997d",
+    "before_after_preserved": "The proof reproduces the pre-repair module shape (module.exports removed) inside an isolated root and drives the REAL runner against it, capturing RUNNER_AGENT_ID_MISMATCH as durable BEFORE evidence, then proves six AFTER cases through the same runner.",
+    "proof_commit": "c913734bf80a447ebb9b1ea36be2374a1caf609e"
+  },
+  "authority_effect": {
+    "implementation_dispatch_eligibility_changed": false,
+    "implementation_dispatch_eligibility_note": "The registry already claimed dispatch eligibility. This correction makes that claim true rather than granting anything new.",
+    "doctrine_changed": false,
+    "lifecycle_proven_changed": false,
+    "autonomous_dispatch_changed": false,
+    "allowed_actions_changed": false,
+    "prohibited_actions_changed": false,
+    "approval_created": false,
+    "qc_authority_created": false,
+    "publication_authority_created": false
+  },
+  "statement": "THE ORIGINAL PROMOTION WAS NOT VALID. generation_supervisor was marked IMPLEMENTATION_PROVEN by a bulk backfill while the canonical runner could never dispatch it. This record does not pretend otherwise and does not rewrite that history. The implementation has been repaired to satisfy the runner identity contract, production-path proof has now been earned, and the registry claim is truthful as of this record."
+}

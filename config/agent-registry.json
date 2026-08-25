@@ -130,6 +130,7 @@
         "autonomous_dispatch": "ENABLED"
       },
       "implementation_state": "IMPLEMENTATION_PROVEN",
+      "implementation_state_note": "Originally set by the bulk backfill in 5ca7334 without a proof package; the canonical runner could not in fact dispatch this module because it declared no identity. Repaired and proven by package-runs/2026-08-25-generation-supervisor-proof-v2 and recorded in governance/generation-supervisor-implementation-proof-correction.json. The state value itself was never changed.",
       "role": "execution_specialist",
       "mission": "Convert approved production briefs into bounded generation jobs, select an eligible engine/resource through existing routing abstractions, supervise execution, preserve provenance, reject incomplete generation, and hand completed artifacts to QC.",
       "reports_to": "hermes",
