@@ -28,6 +28,7 @@ const crypto = require('node:crypto');
 const { guardExecutableLifecycle } = require('./agent-executable-boundary.js');
 const contractValidator = require('./agent-contract-validator.js');
 const approvalScopes = require('./approval-scopes.js');
+const evidencePolicy = require('./qc-evidence-policy.js');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const AGENT_ID = 'qc_director';
@@ -69,7 +70,7 @@ const AESTHETIC_DIMENSIONS = Object.freeze([
 
 const TASK_FIELDS = Object.freeze([
   'task_id', 'action', 'assignment', 'package_run_id', 'project_id', 'requested_by',
-  'gate', 'subject', 'evidence', 'required_evidence', 'human_authority',
+  'gate', 'subject', 'evidence', 'required_evidence', 'run_mode', 'human_authority',
   'privacy', 'deadline', 'declared_exceptions', 'previous_qc_result',
 ]);
 const SUBJECT_FIELDS = Object.freeze([
@@ -457,6 +458,13 @@ function validateTask(task) {
   if (!Array.isArray(task.required_evidence || [])) {
     throw new QCInputError('QC_TASK_INVALID', 'required_evidence must be an array');
   }
+  // run_mode is optional; when present it must be one of the declared modes or
+  // the explicit MODE_UNSPECIFIED. An unknown mode string fails closed — QC
+  // never interprets a typo as a policy.
+  if (task.run_mode != null && task.run_mode !== 'MODE_UNSPECIFIED'
+      && !['DRAFT', 'REVIEW', 'PRODUCTION'].includes(task.run_mode)) {
+    throw new QCInputError('QC_TASK_INVALID', `run_mode must be DRAFT|REVIEW|PRODUCTION|MODE_UNSPECIFIED, got ${task.run_mode}`);
+  }
   return { action };
 }
 
@@ -661,10 +669,41 @@ function applyAdapters(task, subject, evidenceRecords, blockers, defects, warnin
 }
 
 // ── required evidence: absence of a defect is not proof of quality ────────
+// Applicability doctrine: a missing artifact blocks QC only when (1) the
+// evidence has a legitimate producer, (2) the run has reached the point where
+// it should exist, and (3) the run's production mode actually requires it.
+// The policy is consulted if and only if the task declares run_mode; a task
+// without a declared mode keeps the legacy semantics exactly (QC never
+// guesses a mode). A declared MODE_UNSPECIFIED run fails closed for
+// mode-sensitive evidence — absence of a declared mode is never defaulted.
 function checkRequiredEvidence(task, subject, evidenceRecords, blockers) {
   const satisfied = new Set(evidenceRecords.filter((r) => r.binding === 'BOUND' && r.used).map((r) => r.kind));
   const missing = [];
-  for (const kind of task.required_evidence || []) {
+  const applicability = task.run_mode != null
+    ? evidencePolicy.auditRequiredEvidence(task.required_evidence || [], task.gate || null, task.run_mode)
+    : null;
+
+  if (applicability) {
+    for (const r of applicability.mode_blocked) {
+      blockers.push(defect({
+        code: 'QC_PRODUCTION_MODE_REQUIRED', severity: 'BLOCKER', source: AGENT_ID,
+        artifact_id: subject.artifact_id, explanation: r.reason,
+        evidence_ref: null, affected_gate: task.gate || null,
+      }));
+    }
+    for (const r of applicability.policy_violations) {
+      blockers.push(defect({
+        code: 'QC_EVIDENCE_POLICY_VIOLATION', severity: 'BLOCKER', source: AGENT_ID,
+        artifact_id: subject.artifact_id, explanation: r.reason,
+        evidence_ref: null, affected_gate: task.gate || null,
+      }));
+    }
+  }
+
+  const applicableKinds = applicability
+    ? applicability.required.map((r) => r.kind)
+    : [...(task.required_evidence || [])];
+  for (const kind of applicableKinds) {
     if (satisfied.has(kind)) continue;
     missing.push(kind);
     blockers.push(defect({
@@ -675,7 +714,18 @@ function checkRequiredEvidence(task, subject, evidenceRecords, blockers) {
       evidence_ref: null, affected_gate: task.gate || null,
     }));
   }
-  return { required: [...(task.required_evidence || [])], satisfied: [...satisfied], missing };
+  return {
+    required: [...(task.required_evidence || [])], satisfied: [...satisfied], missing,
+    applicability: applicability ? {
+      run_mode: task.run_mode,
+      required: applicability.required.map((r) => r.kind),
+      not_applicable_yet: applicability.not_applicable_yet.map((r) => ({ kind: r.kind, reason: r.reason, earliest_gate: r.detail?.earliest_gate || null })),
+      mode_not_required: applicability.mode_not_required.map((r) => ({ kind: r.kind, reason: r.reason })),
+      mode_blocked: applicability.mode_blocked.map((r) => ({ kind: r.kind, reason: r.reason })),
+      policy_violations: applicability.policy_violations.map((r) => ({ kind: r.kind, reason: r.reason })),
+      human_boundary: applicability.human_boundary.map((r) => ({ kind: r.kind, reason: r.reason })),
+    } : null,
+  };
 }
 
 // ── human authority (consumed, never authored) ────────────────────────────
@@ -1020,6 +1070,7 @@ module.exports = {
   validateTask, taskAction, inspectSubjectIntegrity, resolveEvidence,
   checkRequiredEvidence, evaluateHumanAuthority, deriveDisposition, deriveAttention,
   deriveHandoff, controlRoomView, canonicalBody, run, parseArgs, main,
+  evidencePolicy,
 };
 
 if (require.main === module && guardExecutableLifecycle(AGENT_ID)) main();
