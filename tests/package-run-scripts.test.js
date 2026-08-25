@@ -1298,7 +1298,10 @@ test("shot/edit plan review preserves manually edited planning artifacts", () =>
   });
 });
 
-test("shot/edit plan review requires exact manual approval marker for accepted stage", () => {
+// Approval binding (2026-08-25): a marker that names no visual plan is no longer
+// authority. A hand-authored planning set has no plan to bind to, so it now stops
+// at READY FOR HUMAN APPROVAL with APPROVED_PLAN_DIGEST_UNKNOWN instead of PASS.
+test("shot/edit plan review requires an approval bound to a visual plan, not a bare marker", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-approval-"));
   const readyDir = path.join(tempRoot, "package-runs", "2026-05-10-ready");
   const passDir = path.join(tempRoot, "package-runs", "2026-05-10-pass");
@@ -1312,8 +1315,10 @@ test("shot/edit plan review requires exact manual approval marker for accepted s
 
   assert.match(stage4ReviewText(readyDir), /Review status: READY FOR HUMAN APPROVAL/);
   assert.match(stage4ReviewText(readyDir), /Stage accepted: no/);
-  assert.match(stage4ReviewText(passDir), /Review status: PASS/);
-  assert.match(stage4ReviewText(passDir), /Stage accepted: yes/);
+  // The bare marker is detected but not trusted: nothing binds it to a plan.
+  assert.match(stage4ReviewText(passDir), /Review status: READY FOR HUMAN APPROVAL/);
+  assert.match(stage4ReviewText(passDir), /Stage accepted: no/);
+  assert.match(stage4ReviewText(passDir), /APPROVED_PLAN_DIGEST_UNKNOWN/);
 });
 
 test("shot/edit plan review accepts approved research sufficiency review without research pack", () => {
@@ -1350,7 +1355,7 @@ test("shot/edit plan review blocks unapproved research sufficiency review withou
   assert.doesNotMatch(review, /Review status: PASS/);
 });
 
-test("shot/edit plan review still requires manual marker after approved research sufficiency fallback", () => {
+test("shot/edit plan review still requires a bound approval after the research sufficiency fallback", () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "package-stage4-review-research-manual-"));
   const readyDir = path.join(tempRoot, "package-runs", "2026-05-10-review-research-ready");
   const passDir = path.join(tempRoot, "package-runs", "2026-05-10-review-research-pass");
@@ -1367,9 +1372,11 @@ test("shot/edit plan review still requires manual marker after approved research
   assert.match(stage4ReviewText(readyDir), /Review status: READY FOR HUMAN APPROVAL/);
   assert.match(stage4ReviewText(readyDir), /Stage accepted: no/);
   assert.match(stage4ReviewText(readyDir), /Manual approval marker detected: no/);
-  assert.match(stage4ReviewText(passDir), /Review status: PASS/);
-  assert.match(stage4ReviewText(passDir), /Stage accepted: yes/);
+  // Marker present and detected, but unbound — so still not an accepted stage.
+  assert.match(stage4ReviewText(passDir), /Review status: READY FOR HUMAN APPROVAL/);
+  assert.match(stage4ReviewText(passDir), /Stage accepted: no/);
   assert.match(stage4ReviewText(passDir), /Manual approval marker detected: yes/);
+  assert.match(stage4ReviewText(passDir), /APPROVED_PLAN_DIGEST_UNKNOWN/);
 });
 
 test("shot/edit plan review ignores upstream manual approval markers for stage acceptance", () => {

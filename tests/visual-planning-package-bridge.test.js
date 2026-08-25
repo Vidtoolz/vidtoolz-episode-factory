@@ -453,18 +453,25 @@ test('bridge HG1: a complete machine plan does not advance the canonical gate', 
   assert.equal(map.gates.filter((gate) => gate.status === 'complete').length, 5);
 });
 
-test('bridge HG2: PASS remains reachable only through an exact human marker', () => {
+test('bridge HG2: PASS needs a human marker AND a binding to the current plan', () => {
   const dir = stagedRun('humanmarker');
   const planPath = writePlanTo(dir, loadRealPlan());
   materializer.materialize(dir, planPath, {});
   assert.equal(shotEditReview.buildOutputs(dir).verdict.status, 'READY FOR HUMAN APPROVAL');
 
-  // Only a human adds this line; the adapter never can (AD7 locks that).
-  const target = path.join(dir, 'shot-list.md');
-  fs.appendFileSync(target, '\nManual approval: PASS\n');
-  const approved = shotEditReview.buildOutputs(dir);
-  assert.equal(approved.verdict.status, 'PASS');
-  assert.equal(approved.verdict.accepted, true);
+  // A bare marker is no longer authority: it names no plan, so it is not trusted.
+  fs.appendFileSync(path.join(dir, 'production-plan.md'), '\nManual approval: PASS\n');
+  const unbound = shotEditReview.buildOutputs(dir);
+  assert.notEqual(unbound.verdict.status, 'PASS');
+  assert.equal(unbound.verdict.approvalBindingCode, 'APPROVED_PLAN_DIGEST_UNKNOWN');
+
+  // Bound to the plan actually materialized, the same human decision passes.
+  const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+  fs.appendFileSync(path.join(dir, 'production-plan.md'), `\n- Approved plan digest: ${plan.plan_digest_sha256}\n`);
+  const bound = shotEditReview.buildOutputs(dir);
+  assert.equal(bound.verdict.status, 'PASS');
+  assert.equal(bound.verdict.accepted, true);
+  assert.equal(bound.verdict.approvalBindingCode, null);
 });
 
 test('bridge HG3: at the human gate the projection asks Mikko, not the agent', () => {
@@ -570,6 +577,200 @@ test('bridge AP3: superseding an approval must be explicit, and an unbound appro
     () => materializer.materialize(loose, loosePath, {}),
     (error) => error.code === 'APPROVED_PLAN_DIGEST_UNKNOWN'
   );
+});
+
+/* ============================ APPROVAL IS BOUND TO ONE PLAN (canonical) ==== */
+
+/*
+ * A gate approval must mean "Mikko approved THIS exact materialized plan", not
+ * "some PASS text exists somewhere". The adapter guard alone was not enough: any
+ * other write path could mutate a projection and leave the marker effective, and
+ * the canonical evaluator would still return PASS. Reproduced before the fix:
+ *
+ *   approve r1 -> PASS
+ *   hand-edit shot-list.md (concrete, plausible, unreviewed) -> still PASS
+ *
+ * These lock the evaluator itself, not just the adapter.
+ */
+
+const CANARY_PLAN_REL = 'agents/visual_planning_director/vpd-canary-bridge-1/artifacts/visual-plan.json';
+
+// Staged runs must keep the canary's own directory name: materialized artifacts
+// embed the run id, so a renamed copy would not re-derive identically.
+function boundRun(label) {
+  const root = tmpDir(label);
+  const dir = path.join(root, 'package-runs', CANARY_ID);
+  fs.mkdirSync(dir, { recursive: true });
+  for (const name of fs.readdirSync(CANARY_DIR)) {
+    const src = path.join(CANARY_DIR, name);
+    if (fs.statSync(src).isDirectory()) continue;
+    fs.copyFileSync(src, path.join(dir, name));
+  }
+  const planTarget = path.join(dir, CANARY_PLAN_REL);
+  fs.mkdirSync(path.dirname(planTarget), { recursive: true });
+  fs.copyFileSync(path.join(CANARY_DIR, CANARY_PLAN_REL), planTarget);
+  return { root, dir, planPath: planTarget };
+}
+
+function supersedingPlan() {
+  return planVariant((p) => {
+    p.plan_revision = 2;
+    p.shots[0].subject = 'A slow push into a single blinking cursor on a black frame';
+    p.shots[0].shot_brief = 'A dark frame with one cursor. Nothing the approver ever saw.';
+  });
+}
+
+function verdictOf(dir) {
+  const outputs = shotEditReview.buildOutputs(dir);
+  return { status: outputs.verdict.status, code: outputs.verdict.approvalBindingCode || null };
+}
+
+test('bridge AB1: the retained canary approval is bound and passes', () => {
+  const verdict = verdictOf(CANARY_DIR);
+  assert.equal(verdict.status, 'PASS');
+  assert.equal(verdict.code, null);
+  const binding = materializer.verifyApprovalBinding(CANARY_DIR);
+  assert.equal(binding.ok, true);
+  assert.equal(binding.approved_digest, binding.current_plan_digest);
+});
+
+test('bridge AB2: a superseded plan makes the approval stale, not the gate passed', () => {
+  const { dir, planPath } = boundRun('stale');
+  assert.equal(verdictOf(dir).status, 'PASS');
+
+  fs.writeFileSync(planPath, `${JSON.stringify(supersedingPlan(), null, 2)}\n`);
+  materializer.materialize(dir, planPath, { replaceApproved: true });
+
+  const verdict = verdictOf(dir);
+  assert.equal(verdict.status, 'READY FOR HUMAN APPROVAL');
+  assert.equal(verdict.code, 'APPROVED_PLAN_SUPERSEDED');
+});
+
+test('bridge AB3: editing a projection outside the adapter invalidates the approval', () => {
+  for (const [name, mutate] of [
+    ['shot-list.md', (text) => text.replace(/\| Hook: [^|]+\|/, '| Hook: plausible but unreviewed content |')],
+    ['demo-list.md', (text) => text.replace('NO_DEMO_REQUIRED', 'NO_DEMO_REQUIRED_TAMPERED')],
+  ]) {
+    const { dir } = boundRun(`mutate-${name.replace(/\W/g, '')}`);
+    const file = path.join(dir, name);
+    fs.writeFileSync(file, mutate(fs.readFileSync(file, 'utf8')));
+    const verdict = verdictOf(dir);
+    assert.equal(verdict.status, 'NEEDS WORK', `${name} edit must not stay PASS`);
+    assert.equal(verdict.code, 'APPROVED_PLAN_ARTIFACT_DRIFT');
+  }
+});
+
+test('bridge AB4: forging the sidecar hash alongside the edit does not help', () => {
+  // The expected bytes are re-derived from the plan, so the sidecar is never the
+  // source of truth for artifact content. Before that change this case passed.
+  const { dir } = boundRun('coforge');
+  const file = path.join(dir, 'shot-list.md');
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/\| Hook: [^|]+\|/, '| Hook: forged content |'));
+
+  const sidecarPath = path.join(dir, materializer.PROVENANCE_FILE);
+  const sidecar = JSON.parse(fs.readFileSync(sidecarPath, 'utf8'));
+  const forged = storyBinding.sha256(materializer.machineCanonicalText(fs.readFileSync(file, 'utf8')));
+  sidecar.artifacts = sidecar.artifacts.map((entry) => (
+    entry.filename === 'shot-list.md' ? { ...entry, machine_sha256: forged, sha256: forged } : entry
+  ));
+  fs.writeFileSync(sidecarPath, JSON.stringify(sidecar, null, 2));
+
+  const verdict = verdictOf(dir);
+  assert.notEqual(verdict.status, 'PASS');
+  assert.equal(verdict.code, 'APPROVED_PLAN_ARTIFACT_DRIFT');
+});
+
+test('bridge AB5: a sidecar that disagrees with the plan fails closed', () => {
+  const { dir } = boundRun('sidecardigest');
+  const sidecarPath = path.join(dir, materializer.PROVENANCE_FILE);
+  const sidecar = JSON.parse(fs.readFileSync(sidecarPath, 'utf8'));
+  sidecar.source_visual_plan.plan_digest_sha256 = '0'.repeat(64);
+  fs.writeFileSync(sidecarPath, JSON.stringify(sidecar, null, 2));
+  const verdict = verdictOf(dir);
+  assert.notEqual(verdict.status, 'PASS');
+  assert.equal(verdict.code, 'APPROVED_PLAN_MATERIALIZATION_DRIFT');
+});
+
+test('bridge AB6: deleting the provenance cannot downgrade to marker-only trust', () => {
+  const { dir } = boundRun('nosidecar');
+  fs.rmSync(path.join(dir, materializer.PROVENANCE_FILE));
+  const verdict = verdictOf(dir);
+  assert.notEqual(verdict.status, 'PASS');
+  assert.equal(verdict.code, 'APPROVED_PLAN_DIGEST_UNKNOWN');
+});
+
+test('bridge AB7: no single human-editable field can manufacture validity', () => {
+  const { dir } = boundRun('forgetext');
+  const file = path.join(dir, 'production-plan.md');
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+    .replace(/Approved plan digest: [0-9a-f]{64}/, `Approved plan digest: ${'a'.repeat(64)}`));
+  const verdict = verdictOf(dir);
+  assert.notEqual(verdict.status, 'PASS');
+  assert.equal(verdict.code, 'APPROVED_PLAN_SUPERSEDED');
+});
+
+test('bridge AB8: re-materializing the approved plan keeps the approval and the bytes', () => {
+  const { dir, planPath } = boundRun('remat');
+  const before = readAll(dir);
+  materializer.materialize(dir, planPath, { taskId: 'vpd-canary-bridge-1' });
+  assert.deepEqual(readAll(dir), before, 'regeneration of the approved plan must be byte-identical');
+  assert.equal(verdictOf(dir).status, 'PASS');
+});
+
+test('bridge AB9: a sanctioned human note does not invalidate the approval', () => {
+  const { dir } = boundRun('humannote');
+  const file = path.join(dir, 'shot-list.md');
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
+    .replace(materializer.HUMAN_REGION_START, `${materializer.HUMAN_REGION_START}\nMikko: keep beat 3 abstract.`));
+  const verdict = verdictOf(dir);
+  assert.equal(verdict.status, 'PASS', 'editing the human-notes region is explicitly allowed');
+  assert.equal(verdict.code, null);
+});
+
+test('bridge AB10: a stale approval regresses the canonical gate, and every projection follows', () => {
+  const { root, dir, planPath } = boundRun('regression');
+  const opts = { repoRoot: root, runId: CANARY_ID, runDir: dir };
+
+  const refresh = () => shotEditReview.writeOutputs(dir, shotEditReview.buildOutputs(dir), true);
+  const position = () => {
+    const map = workflowMap.buildWorkflowMap(dir, { repoRoot: root });
+    const current = map.gates.find((gate) => String(gate.status).startsWith('current'));
+    return { gate: current.id, complete: map.gates.filter((gate) => gate.status === 'complete').length };
+  };
+
+  refresh();
+  assert.deepEqual(position(), { gate: 'capture-checklist', complete: 6 });
+  assert.equal(stateProjection.buildProjection(opts).current_gate, 'capture-checklist');
+
+  fs.writeFileSync(planPath, `${JSON.stringify(supersedingPlan(), null, 2)}\n`);
+  materializer.materialize(dir, planPath, { replaceApproved: true });
+  refresh();
+
+  // The 14-gate engine recomputes completion from evidence, so a stale approval
+  // genuinely un-completes gate 6 rather than leaving production truth claiming
+  // capture-checklist over an unapproved plan.
+  assert.deepEqual(position(), { gate: 'shot-edit-plan-review', complete: 5 });
+  const projection = stateProjection.buildProjection(opts);
+  assert.equal(projection.current_gate, 'shot-edit-plan-review');
+  assert.equal(projection.state, 'HUMAN_REVIEW_REQUIRED');
+  assert.equal(projection.expected_owner, 'visual_planning_director');
+  assert.equal(stateProjection.trackerDivergence(opts).code, 'TRACKER_CONSISTENT');
+  assert.deepEqual(stateProjection.consistencyReport(opts).defects, []);
+});
+
+test('bridge AB11: gate-6 approval stays narrow and does not leak across gates', () => {
+  // Research approval did not satisfy gate 6, and gate 6 does not satisfy gate 7.
+  const map = workflowMap.buildWorkflowMap(path.relative(ROOT, CANARY_DIR));
+  const gate7 = map.gates.find((gate) => gate.id === 'capture-checklist');
+  assert.ok(String(gate7.status).startsWith('current'), 'gate 7 must still be pending');
+  assert.ok(gate7.missingArtifacts.length > 0, 'gate 7 still needs its own evidence');
+
+  // The gate-6 marker vocabulary must not appear in gate 7's required artifacts.
+  for (const filename of gate7.missingArtifacts) {
+    assert.ok(!fs.existsSync(path.join(CANARY_DIR, filename)), `${filename} must not be fabricated by gate 6 approval`);
+  }
+  const gatesAfter = map.gates.slice(map.gates.findIndex((gate) => gate.id === 'capture-checklist'));
+  assert.ok(gatesAfter.every((gate) => gate.status !== 'complete'), 'no later gate may be completed by a gate-6 approval');
 });
 
 /* ======================================== GATE OWNER REACHABILITY (§20) ==== */
