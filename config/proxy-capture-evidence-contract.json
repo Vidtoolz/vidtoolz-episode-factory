@@ -1,0 +1,53 @@
+{
+  "schema": "vidtoolz.proxyCaptureEvidenceContract.v1",
+  "status": "CONTRACT_DEFINED_PRODUCER_MISSING",
+  "disposition": "PROXY_CAPTURE_READY",
+  "gate": "capture-evidence",
+  "mode": "DRAFT",
+  "purpose": "Let a zero-human DRAFT cross capture evidence on machine-verifiable proxy media, without ever letting proxy media be mistaken for a human performance.",
+  "what_it_asserts": "A machine-generated presenter and narration substitute exists, its bytes are real and verifiable, and it covers the approved script well enough for rough-cut assembly and human review to proceed.",
+  "what_it_does_not_assert": [
+    "that Mikko performed anything",
+    "that the material is publishable",
+    "that PRODUCTION capture requirements are satisfied",
+    "that a later real capture is unnecessary"
+  ],
+  "never": [
+    "reuse the human capture approval marker vocabulary (Manual approval, Capture approval, Capture evidence approval, Rough-cut assembly approval)",
+    "record proxy media in takes-log.md as though it were a physical take",
+    "relabel synthetic media as real capture",
+    "satisfy this disposition with placeholder, dummy, smoke-test or zero-byte media"
+  ],
+  "distinguishable_forever": "PROXY_CAPTURE_READY and REAL_CAPTURE_CONFIRMED are separate semantic classes and neither is derivable from the other. A run's history must always show which one it crossed.",
+  "required_fields": {
+    "schema_version": "integer, 1",
+    "disposition": "must equal PROXY_CAPTURE_READY",
+    "run_id": "the package run this evidence belongs to",
+    "story": "project_id, version_id and content_hash of the approved Story the delivery was generated from",
+    "produced_by": "the agent that generated it; expected generation_supervisor",
+    "delivery_units": "one entry per covered script beat, each carrying beat reference, media path, media sha256, duration_seconds and generation provenance (engine, model, settings)",
+    "narration_audio": "path, sha256, duration_seconds — the synthetic voice bytes",
+    "presenter_visual": "path, sha256, duration_seconds — the proxy presenter or avatar bytes",
+    "coverage": "required_beats, covered_beats, and any beat deliberately carrying no proxy delivery with its reason",
+    "technical_validation": "media bytes verified to exist, be non-empty, and match their recorded hash and duration"
+  },
+  "reuse_rather_than_reinvent": {
+    "media_byte_verification": "presenter-take-manifest.js#verifyMediaBytes already verifies media existence and hashes; the proxy verifier should use the same primitive rather than a parallel one",
+    "evidence_shape": "the AUDIO_RENDER QC adapter already validates audio evidence as state + production_mix_sha256 + duration_seconds; PROXY_CAPTURE_READY mirrors that shape deliberately",
+    "qc_consumption": "qc-director.js consumes typed evidence classes through adapters; PROXY_CAPTURE_READY should become one more adapter, not a new evaluator"
+  },
+  "producer_requirements": {
+    "status": "MISSING",
+    "needed": [
+      "a synthetic narration producer that turns approved script beats into real audio bytes",
+      "a proxy presenter visual producer (avatar, stickman or equivalent) that produces real video bytes",
+      "a synthetic delivery manifest binding those assets to canonical Story beats with provenance"
+    ],
+    "verified_absent": {
+      "tts": "searched *.js, *.json, *.md, *.py and *.sh for tts, text-to-speech, minimax, elevenlabs, piper, coqui, espeak, kokoro, xtts and bark. The only MiniMax integration is score-engine/adapters/minimax-caption-reference.js, which carries zero voice tokens and is music-caption work. Scorecraft's narration references duck music UNDER narration; they consume speech rather than produce it.",
+      "avatar": "searched for avatar, talking-head, stickman, proxy presenter, synthetic presenter, generated host, digital human, lip-sync, wav2lip, sadtalker, heygen and d-id. Every hit is prose: a workflow-wizard checklist item, topic-scout requiredVisuals entries, and one server-side text classifier. No producer.",
+      "presenter_a_roll": "PRESENTER_A_ROLL is absent from visual-plan-prompt-adapter PROMPT_MEDIA by design, not by omission: edit-plan.js maps it to the PRESENTER_CAPTURE source class alongside SCREEN_CAPTURE and ARCHIVAL_EXTERNAL. Those media types are captured or sourced, never generated. Removing the exclusion would not create a producer; it would only let the system claim one exists."
+    }
+  },
+  "until_the_producer_exists": "gate 8 in DRAFT is honestly BLOCKED on a missing producer. It is NOT blocked on Mikko, and the projection must not claim a human is needed in a zero-human draft."
+}
