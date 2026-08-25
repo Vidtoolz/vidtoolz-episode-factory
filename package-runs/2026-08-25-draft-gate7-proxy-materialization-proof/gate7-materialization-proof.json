@@ -228,5 +228,48 @@
       "narration_time_stretched": false
     }
   },
-  "canary_sidecar_refreshed": true
+  "canary_sidecar_refreshed": true,
+  "draft_gate_ownership": {
+    "capture-checklist": {
+      "expected_owner": "generation_supervisor",
+      "human_required": false,
+      "owner_actionable": true,
+      "disposition": "PROXY_CAPTURE_REQUIRED"
+    },
+    "capture-evidence": {
+      "expected_owner": "qc_director",
+      "human_required": false,
+      "human_marker_forbidden": true,
+      "disposition": "PROXY_CAPTURE_READY"
+    },
+    "rough-cut-review": {
+      "defers_to_static_human_gate": true,
+      "note": "gate 9 is Mikko’s first mandatory review boundary"
+    }
+  },
+  "human_boundary_note": "human_authority_required is false at gates 7 and 8 in DRAFT and true at gate 9 — gate 9 is Mikko’s first mandatory review boundary, which is where a zero-human Draft is supposed to stop.",
+  "declared_status_correction": {
+    "defect": "the gate-mode policy still declared DRAFT gates 7 and 8 BLOCKED, with the reason \"the proxy presenter and synthetic narration it would need do not exist\". Both exist and the path completes, so the policy was asserting a blocker that the same repository disproves — the exact true-on-paper class this series has been removing.",
+    "fix": "both DRAFT entries are now IMPLEMENTED and actionable. blocked_by is emptied but not erased: satisfied_by records how each former blocker was closed, and boundaries_that_remain records what still bounds the gate.",
+    "boundaries_kept": [
+      "PRESENTER_A_ROLL is still excluded from visual-plan-prompt-adapter PROMPT_MEDIA: real presenter delivery is not machine-generable, and proxy media is never presented as it",
+      "presenter-take-manifest still models real human delivery only; proxy capture uses its own typed evidence kinds and never that contract"
+    ],
+    "satisfied_by": [
+      "synthetic narration producer exists (Piper, local and offline) and attests typed DRAFT_SYNTHETIC_NARRATION evidence",
+      "proxy presenter producer exists (deterministic ffmpeg render) and attests typed PROXY_PRESENTER evidence",
+      "the capture materializer projects both, once aggregated as PROXY_CAPTURE_READY, into the five canonical capture artifacts"
+    ],
+    "gate7": {
+      "implementation_status": "IMPLEMENTED",
+      "human_performance_required": false,
+      "human_approval_required": false,
+      "machine_owner": "generation_supervisor"
+    },
+    "gate8": {
+      "implementation_status": "IMPLEMENTED",
+      "human_approval_required": false,
+      "architecture_need": "SATISFIED. The producers exist: synthetic narration (Piper) and the proxy presenter, aggregated as PROXY_CAPTURE_READY and projected into the canonical capture artifacts by the capture materializer. The gate accepts that typed evidence with no human marker. The remaining DRAFT need is downstream: an automatic rough-cut assembler, so gate 9 has something to review."
+    }
+  }
 }

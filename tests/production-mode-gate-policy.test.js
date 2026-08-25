@@ -217,21 +217,25 @@ test('mode M14: a legacy run is never given a guessed mode', () => {
 
 /* ========================== GATE-7 MODE POLICY (G7M1-G7M10) =============== */
 
-test('gate7 G7M1: DRAFT requires proxy delivery and is blocked by named capabilities', () => {
+test('gate7 G7M1: DRAFT proxy delivery is implemented, and its boundaries hold', () => {
   const policy = gateModePolicy.policyFor('capture-checklist', 'DRAFT');
-  assert.equal(policy.implementation_status, 'BLOCKED');
+  assert.equal(policy.implementation_status, 'IMPLEMENTED');
   assert.equal(policy.human_performance_required, false);
   assert.equal(policy.machine_owner, 'generation_supervisor');
   assert.ok(policy.required_evidence.length > 0);
-  assert.ok(policy.blocked_by.length >= 3, 'the blockers must be named, not implied');
+  // The capabilities this gate was once blocked on now exist, and the policy
+  // records how each one was closed rather than silently dropping the list.
+  assert.deepEqual(policy.blocked_by, []);
+  assert.ok(policy.satisfied_by.length >= 3, 'how it was unblocked must be named, not implied');
 
-  // Each named blocker is a live fact, not an assertion in prose.
+  // Unblocked is not unbounded. Both boundaries are still live facts.
   const promptAdapter = require('../scripts/visual-plan-prompt-adapter.js');
   assert.ok(!promptAdapter.PROMPT_MEDIA.has('PRESENTER_A_ROLL'),
-    'presenter A-roll must be outside the generation lane for this blocker to be real');
+    'real presenter A-roll must stay outside the generation lane');
   const manifest = fs.readFileSync(path.join(ROOT, 'scripts', 'presenter-take-manifest.js'), 'utf8');
   assert.ok(!/\b(proxy|synthetic|avatar)\b/i.test(manifest),
-    'the take manifest must model real delivery only for this blocker to be real');
+    'the take manifest must keep modelling real delivery only');
+  assert.ok(policy.boundaries_that_remain.length >= 2);
 });
 
 test('gate7 G7M2: REVIEW introduces no capture requirement', () => {
@@ -308,12 +312,12 @@ test('gate7 G7M9: gate 8 is where human capture authority belongs', () => {
   assert.equal(stateProjection.HUMAN_GATES.includes('capture-checklist'), false);
   assert.equal(stateProjection.HUMAN_GATES.includes('capture-evidence'), true);
 
-  // DRAFT no longer asks for Mikko at gate 8: the doctrine is that a draft
-  // finishes automatically, so the gate expects machine-verified proxy evidence
-  // instead. It is still BLOCKED, but on a missing producer rather than on a
-  // human who should never have been required.
+  // DRAFT does not ask for Mikko at gate 8: a draft finishes automatically, so
+  // the gate expects machine-verified proxy evidence. The producers it was once
+  // blocked on now exist — synthetic narration and the proxy presenter, both
+  // materialized into the canonical capture artifacts — so it is IMPLEMENTED.
   const draft8 = gateModePolicy.policyFor('capture-evidence', 'DRAFT');
-  assert.equal(draft8.implementation_status, 'BLOCKED');
+  assert.equal(draft8.implementation_status, 'IMPLEMENTED');
   assert.equal(draft8.human_approval_required, false);
   assert.equal(gateModePolicy.resolveGateOwner('capture-evidence', 'DRAFT').human_marker_forbidden, true);
   assert.equal(gateModePolicy.resolveGateOwner('capture-evidence', 'DRAFT').disposition, 'PROXY_CAPTURE_READY');
@@ -350,8 +354,8 @@ test('owner O1: DRAFT gate 7 belongs to the generation lane, not the presenter',
   assert.equal(owner.human_required, false);
   assert.equal(owner.human_performer, null);
   assert.equal(owner.disposition, 'PROXY_CAPTURE_REQUIRED');
-  // Enabled is not the same as actionable: the inputs do not exist yet.
-  assert.equal(owner.owner_actionable, false);
+  // Enabled AND actionable: the inputs it needs are now produced in-lane.
+  assert.equal(owner.owner_actionable, true);
   assert.ok(owner.owner_actionable_reason);
 });
 

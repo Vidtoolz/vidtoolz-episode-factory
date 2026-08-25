@@ -21,7 +21,7 @@
       "modes": {
         "DRAFT": {
           "meaning": "Proxy delivery readiness. A draft is performed by the machine, so nothing here may require Mikko to record.",
-          "implementation_status": "BLOCKED",
+          "implementation_status": "IMPLEMENTED",
           "machine_owner": "generation_supervisor",
           "preparation_owner": "production_operations",
           "human_performance_required": false,
@@ -33,18 +33,24 @@
             "automated screen-capture requirements",
             "missing-shot tracking"
           ],
-          "blocked_by": [
-            "no synthetic delivery artifact contract exists; presenter-take-manifest models real human delivery only (TRANSCRIPT_SOURCES HUMAN_SUPPLIED/IMPORTED/EXTERNAL_TRANSCRIPTION, FIDELITY_METHODS ... HUMAN_VERIFIED, createHumanSelection)",
-            "PRESENTER_A_ROLL is excluded from visual-plan-prompt-adapter PROMPT_MEDIA, so presenter delivery is contractually not machine-generable",
-            "no text-to-speech, avatar, or synthetic-voice producer exists anywhere in the repository"
-          ],
+          "blocked_by": [],
           "expected_owner": "generation_supervisor",
           "next_specialist": null,
           "human_performer": null,
           "human_required": false,
           "disposition": "PROXY_CAPTURE_REQUIRED",
-          "owner_actionable": false,
-          "owner_actionable_reason": "generation_supervisor is enabled and proven, but the proxy presenter and synthetic narration it would need do not exist. An enabled owner is not an actionable gate."
+          "owner_actionable": true,
+          "owner_actionable_reason": "generation_supervisor produces both halves of DRAFT capture — synthetic narration and the proxy presenter — and the capture materializer projects that verified evidence into the five canonical capture artifacts. The gate completes with no human input.",
+          "architecture_need": "SATISFIED. Proxy capture is produced and materialized automatically. The next DRAFT need is an automatic rough-cut assembler at gate 9.",
+          "satisfied_by": [
+            "synthetic narration producer exists (Piper, local and offline) and attests typed DRAFT_SYNTHETIC_NARRATION evidence",
+            "proxy presenter producer exists (deterministic ffmpeg render) and attests typed PROXY_PRESENTER evidence",
+            "the capture materializer projects both, once aggregated as PROXY_CAPTURE_READY, into the five canonical capture artifacts"
+          ],
+          "boundaries_that_remain": [
+            "PRESENTER_A_ROLL is still excluded from visual-plan-prompt-adapter PROMPT_MEDIA: real presenter delivery is not machine-generable, and proxy media is never presented as it",
+            "presenter-take-manifest still models real human delivery only; proxy capture uses its own typed evidence kinds and never that contract"
+          ]
         },
         "REVIEW": {
           "meaning": "Entering REVIEW introduces no capture requirement. Review judges a draft that already exists; whatever capture the draft produced stands.",
@@ -101,20 +107,22 @@
       "modes": {
         "DRAFT": {
           "meaning": "A zero-human draft crosses capture evidence on machine-verifiable proxy media. QC validates the proxy disposition; Mikko is not involved and no human marker may be written.",
-          "implementation_status": "BLOCKED",
+          "implementation_status": "IMPLEMENTED",
           "human_approval_required": false,
           "blocked_by": [
             "no producer exists for the proxy presenter or synthetic narration the PROXY_CAPTURE_READY disposition must attest",
             "PRESENTER_A_ROLL is capture-class by design (edit-plan maps it to PRESENTER_CAPTURE, alongside SCREEN_CAPTURE and ARCHIVAL_EXTERNAL), so it is not produced by the generation lane"
           ],
-          "architecture_need": "DRAFT does not end before capture-evidence-review. It needs a PROXY_CAPTURE_READY evidence class attested by a real synthetic-delivery producer. Until that producer exists the gate is honestly BLOCKED; it must never be crossed by writing a human marker or by relabelling proxy media as real capture.",
+          "architecture_need": "SATISFIED. The producers exist: synthetic narration (Piper) and the proxy presenter, aggregated as PROXY_CAPTURE_READY and projected into the canonical capture artifacts by the capture materializer. The gate accepts that typed evidence with no human marker. The remaining DRAFT need is downstream: an automatic rough-cut assembler, so gate 9 has something to review.",
           "expected_owner": "qc_director",
           "next_specialist": "generation_supervisor",
           "human_performer": null,
           "human_required": false,
           "human_marker_forbidden": true,
           "required_disposition": "PROXY_CAPTURE_READY",
-          "previously_required_human_approval": "Before this decision the gate required a human marker in every mode, which made zero-human DRAFT impossible. The requirement is now PRODUCTION-only."
+          "previously_required_human_approval": "Before this decision the gate required a human marker in every mode, which made zero-human DRAFT impossible. The requirement is now PRODUCTION-only.",
+          "owner_actionable": true,
+          "owner_actionable_reason": "typed proxy capture evidence is machine-verifiable, so the gate accepts it without a human capture-readiness marker. Proxy evidence can never satisfy the PRODUCTION real-capture requirement."
         },
         "REVIEW": {
           "meaning": "Already settled by the DRAFT that produced the draft. Entering REVIEW does not re-earn it.",

@@ -129,6 +129,10 @@ function policyFor(gateId, mode) {
     human_approval_required: Boolean(modePolicy.human_approval_required),
     required_evidence: [...(modePolicy.required_evidence || [])],
     blocked_by: [...(modePolicy.blocked_by || [])],
+    // An emptied blocked_by list would otherwise erase the history of what
+    // was closed and what still bounds the gate. Both are carried forward.
+    satisfied_by: [...(modePolicy.satisfied_by || [])],
+    boundaries_that_remain: [...(modePolicy.boundaries_that_remain || [])],
     human_owns: modePolicy.human_owns || null,
     recapture_on_mode_change: modePolicy.recapture_on_mode_change === true,
     architecture_need: modePolicy.architecture_need || null,
