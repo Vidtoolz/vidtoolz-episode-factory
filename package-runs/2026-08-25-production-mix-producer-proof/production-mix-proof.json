@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "proof": "production-mix-producer",
+  "generated_at": "2026-08-25",
+  "verdict": "PRODUCER PATH CLOSED — UPSTREAM MATERIAL MISSING (declared)",
+  "not_a_package_run": true,
+
+  "mission_question": "Who genuinely owns the complete program audio mix?",
+
+  "producer_audit": {
+    "editor": {
+      "verdict": "SEMANTIC PRODUCER",
+      "evidence": "scripts/editor.js owns the assembled timeline via edit-plan.js (presenter_sources, sound_sources, timeline{frame_rate, expected_duration_frames}); its QC handoff (buildQCHandoff) carries the full source_manifest. The audible program is the edit's output. Editor renders no media itself — bytes come from the external renderer."
+    },
+    "resolve_integration": {
+      "verdict": "TECHNICAL RENDERER (external)",
+      "evidence": "scripts/resolve-handoff.js builds a media manifest for Resolve; no render automation exists in-repo. Resolve is where bytes are produced in the real workflow."
+    },
+    "production_operations": {
+      "verdict": "ORCHESTRATOR ONLY",
+      "evidence": "May schedule/move/register; orchestration is not semantic mix ownership."
+    },
+    "sound_music_director": {
+      "verdict": "MUSIC LANE ONLY",
+      "evidence": "Owns MUSIC_CANDIDATE / DRAFT_TEMPORARY attestation; cannot claim PRODUCTION_MIX (verified: resolveRenderClass lane guard + policy authorization)."
+    },
+    "generation_supervisor": {
+      "verdict": "NARRATION LANE ONLY",
+      "evidence": "Owns DRAFT_SYNTHETIC_NARRATION (a distinct kind); cannot claim any AUDIO_RENDER class."
+    },
+    "deterministic_ffmpeg": {
+      "verdict": "NO CANONICAL AUTOMATIC MIX PATH EXISTS",
+      "evidence": "No automatic rough-cut assembly/mixdown renderer in-repo; automatic edit/assembly is incomplete upstream."
+    }
+  },
+
+  "decision": {
+    "semantic_producer": "editor",
+    "technical_renderer": "external (DaVinci Resolve)",
+    "attester": "scripts/production-mix-evidence.js (deterministic, validates bytes; never mixes)",
+    "authorized_producers_after_mission": ["editor"],
+    "preference_honored": "attestation of an existing mix path over a second mix engine — no mixer was built"
+  },
+
+  "production_mix_definition": "the actual complete program-audio mix (presenter/dialogue + music + effects) at production fidelity, appropriate for the PRODUCTION-mode rough cut at the gate where QC requires AUDIO_RENDER",
+  "required_source_classes": { "presenter": "required", "music": "declared per edit", "effects": "optional" },
+
+  "input_contract": "vidtoolz.programMixInput.v1 — consumes the real edit-plan contract; mix timing stays the edit's authority (never re-derived in evidence code)",
+
+  "upstream_material_status": {
+    "status": "UPSTREAM_MATERIAL_MISSING",
+    "reasons": [
+      "no canonical assembled PRODUCTION-mode timeline has been rendered yet",
+      "automatic edit/assembly upstream is incomplete",
+      "real presenter performance belongs to the capture lane (gate 7+)",
+      "the only in-repo rough-cut media is an undecodable QC fixture",
+      "the only real program audio on the estate (VIDNAS youtube/ekaAI1A.mp4) is outside any package-run lifecycle with no edit-plan identity — not attestable"
+    ],
+    "classification": "A+B+C+D all partially present: attestation now exists (A closed); renderer is external (B external, not missing); automatic assembly upstream incomplete (C); real presenter audio absent (D). The blocker is upstream material, not this repo."
+  },
+
+  "hermetic_canary": {
+    "purpose": "prove the producer path end-to-end with REAL audio bytes",
+    "fixtures": "deterministic ffmpeg-generated presenter+music WAVs mixed to one program WAV (hermetic, labeled test fixtures — NOT production media)",
+    "tests": "PM1–PM18 + silence/duration supplements: 20/20 green",
+    "what_it_proves": [
+      "editor-authorized attestation emits AUDIO_RENDER v2 / PRODUCTION_MIX",
+      "bytes/exact-hash bound; edit-plan identity bound; source hashes bound",
+      "zero-byte / undecodable / silent-track / music-only / narration-only / wrong-producer / duration-mismatch all fail closed",
+      "source drift stales evidence; mode switch never mutates evidence",
+      "human/publication authority never inferred"
+    ],
+    "what_it_does_not_prove": "real production media readiness — no such media exists yet"
+  },
+
+  "qc_integration": {
+    "policy_row": "AUDIO_RENDER required_render_class PRODUCTION_MIX at/after rough-cut-review (PRODUCTION mode)",
+    "known_class_gap": "KNOWN_CLASS_GAPS.PRODUCTION_MIX = UPSTREAM_MATERIAL_MISSING (declared machine-readably)",
+    "fidelity_invariant": "checkAudioFidelityConsistency green; producer reachability green",
+    "qc_director_untouched": true,
+    "governance_addendum_needed": false
+  },
+
+  "negative_matrix": {
+    "PM3": "sound_music_director / generation_supervisor / qc_director / production_operations all rejected",
+    "PM10": "music-only manifest cannot masquerade as program mix",
+    "PM11": "narration-only cannot masquerade; DRAFT_SYNTHETIC_NARRATION stays distinct",
+    "PM12": "DRAFT_TEMPORARY cannot satisfy the PRODUCTION_MIX requirement",
+    "PM-S": "silent-track cheat rejected",
+    "PM-D": "duration deviating from timeline expectation rejected"
+  },
+
+  "regressions_preserved": [
+    "story-validation-bridge 13/13",
+    "audio-render-evidence 15/15",
+    "audio-fidelity-contract 16/16 (AF4/AF7 retargeted to post-closure contract)",
+    "qc-evidence-applicability 17/17 (QAP11 retargeted)",
+    "qc-director 46/46",
+    "production-mode-gate-policy 42/42"
+  ]
+}
