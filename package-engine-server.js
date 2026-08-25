@@ -20,6 +20,7 @@ const packageRunsIndexScript = require('./scripts/package-runs-index.js');
 const systemRegistryScript = require('./scripts/system-registry.js');
 const agentControlRoom = require('./scripts/agent-control-room.js');
 const packageRunWorkflowMap = require('./scripts/package-run-workflow-map.js');
+const workflowStageProjection = require('./scripts/workflow-stage-projection.js');
 const agentControls = require('./scripts/agent-controls.js');
 const operatorActionLedger = require('./scripts/operator-action-ledger.js');
 const cancellationAdapters = require('./scripts/agent-cancellation-adapters.js');
@@ -13892,13 +13893,59 @@ function handlePipelineStatus(req, res, url) {
 
   const runWorkflowPath = workflowPathModel.readWorkflowPathFromState(
     safeReadText(path.join(runDir, 'package-run-state.md'), ''));
+
+  // ── canonical authority ──────────────────────────────────────────────────
+  // Everything above derives a stage strip from raw file evidence. That is
+  // display detail, not lifecycle truth: file existence alone once showed a run
+  // at "Image Gen" while the canonical gate was still "Research sufficiency".
+  // The 14-gate engine owns lifecycle position, so its current gate caps what
+  // the strip may claim. Evidence past the cap is kept but marked evidenceOnly.
+  let canonicalBlock = null;
+  let projectedStages = stages;
+  let projectedCurrentStage = currentStage;
+  let drift = null;
+  try {
+    const canonicalMap = packageRunWorkflowMap.buildWorkflowMap(path.relative(ROOT, runDir), { repoRoot: ROOT });
+    const canonicalGate = workflowStageProjection.currentCanonicalGate(canonicalMap.gates || []);
+    const projection = workflowStageProjection.projectGate(canonicalGate ? canonicalGate.id : null, runWorkflowPath);
+    const clamped = workflowStageProjection.clampToCanonical(stages, currentStage, projection);
+    projectedStages = clamped.stages;
+    projectedCurrentStage = clamped.currentStage;
+    drift = workflowStageProjection.detectDrift({
+      runId: runFolder, gateId: canonicalGate ? canonicalGate.id : null,
+      workflowPath: runWorkflowPath, evidenceCurrentStage: currentStage,
+    });
+    canonicalBlock = {
+      authority: 'CANONICAL_14_GATE',
+      gate: canonicalGate ? canonicalGate.id : null,
+      label: canonicalGate ? canonicalGate.label : null,
+      completeGates: (canonicalMap.gates || []).filter((g) => g.status === 'complete').length,
+      totalGates: (canonicalMap.gates || []).length,
+      mappingVersion: workflowStageProjection.MAPPING_VERSION,
+      clamped: clamped.clamped,
+      clampReason: clamped.reason,
+    };
+  } catch (error) {
+    // Canonical state unavailable: say so rather than silently presenting the
+    // unclamped evidence strip as if it were lifecycle truth.
+    canonicalBlock = { authority: 'CANONICAL_14_GATE', gate: null, unavailable: true, reason: error.message };
+  }
+
   sendJSON(res, 200, {
     runFolder,
     workflowPath: runWorkflowPath,
-    currentStage,
-    stages,
+    currentStage: projectedCurrentStage,
+    stages: projectedStages,
     blocker,
     gate: currentGate,
+    canonical: canonicalBlock,
+    projectionIsAuthoritative: false,
+    drift,
+    // The raw file-evidence strip, unclamped. Useful operator detail and the
+    // subject of the evidence-derivation tests, but explicitly NOT lifecycle
+    // position — `stages` above is the canonical-authoritative display.
+    evidenceCurrentStage: currentStage,
+    evidenceStages: stages,
     evidence: {
       manifestPath: generationManifest ? manifestPath : '',
       klingCandidateDir,
