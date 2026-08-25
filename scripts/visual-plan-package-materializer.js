@@ -34,6 +34,10 @@ const visualPlan = require('./visual-plan.js');
 const ADAPTER_VERSION = 'visual-plan-package-materializer-v1';
 const MACHINE_OWNER = 'visual_planning_director';
 const PROVENANCE_FILE = 'visual-plan-materialization.json';
+// Declared by scripts/package-run-human-planning-approval.js. Referenced by name
+// rather than by require, because that module depends on this one; a test asserts
+// the two constants cannot drift apart.
+const HUMAN_PLANNING_RECORD = 'human-planning-approval.json';
 const PROVENANCE_SCHEMA = 'vidtoolz.visualPlanMaterialization.v1';
 
 const HUMAN_REGION_START = '<!-- human-notes:start -->';
@@ -617,6 +621,21 @@ function materialize(runDirInput, planPathInput, options = {}) {
   if (!fs.existsSync(runDir) || !fs.statSync(runDir).isDirectory()) {
     fail('MATERIALIZE_RUN_NOT_FOUND', `package run folder not found: ${runDirInput}`);
   }
+  // A run whose planning is explicitly human-authored is not silently taken over
+  // by an agent plan. Switching authority is a decision, and the human approval
+  // that covered the manual set must not carry to a machine-generated one.
+  const humanRecordPath = path.join(runDir, HUMAN_PLANNING_RECORD);
+  if (fs.existsSync(humanRecordPath)) {
+    let humanRecord = null;
+    try { humanRecord = JSON.parse(fs.readFileSync(humanRecordPath, 'utf8')); } catch (_) { humanRecord = {}; }
+    // replaceApproved is deliberately NOT an escape here: it permits replacing an
+    // approved PLAN, not silently seizing authority from the human path. Handing
+    // authority back is its own explicit act, recorded in the human record.
+    if (!humanRecord?.retired) {
+      fail('PLANNING_AUTHORITY_AMBIGUOUS',
+        `${HUMAN_PLANNING_RECORD} declares human-authored planning; retire it explicitly before materializing an agent plan`);
+    }
+  }
   const runId = path.basename(runDir);
   const plan = assertPlanUsable(loadPlan(planPathInput));
   const approval = assertNotSupersedingApproval(runDir, plan, options);
@@ -727,6 +746,7 @@ module.exports = {
   ADAPTER_VERSION,
   MACHINE_OWNER,
   PROVENANCE_FILE,
+  HUMAN_PLANNING_RECORD,
   PROVENANCE_SCHEMA,
   OUTPUT_FILES,
   APPROVAL_SCAN_FILES,

@@ -8,6 +8,7 @@ const productionPlan = require("./package-run-production-plan.js");
 const packageRunsIndex = require("./package-runs-index.js");
 const researchPack = require("./package-run-research-pack.js");
 const visualPlanMaterializer = require("./visual-plan-package-materializer.js");
+const humanPlanningApproval = require("./package-run-human-planning-approval.js");
 
 const TOOL_NAME = "package-run-shot-edit-plan-review.js";
 const REVIEW_FILE = "shot-edit-plan-review.md";
@@ -201,6 +202,51 @@ function planningFileFinding(filename, markdown) {
   };
 }
 
+/*
+ * Gate 6 accepts exactly two legitimate planning provenance classes, and each is
+ * DECLARED by a machine-written artifact rather than inferred:
+ *
+ *   AGENT_GENERATED  visual-plan-materialization.json  -> approval binds to the plan digest
+ *   HUMAN_AUTHORED   human-planning-approval.json      -> approval binds to an artifact snapshot
+ *
+ * Both declared at once is not a fallback, it is an unanswered question about who
+ * owns the plan, so it fails closed unless a human explicitly recorded taking
+ * over. Neither declared means there is nothing to bind an approval to.
+ *
+ * There is deliberately no "a marker exists, therefore PASS" branch.
+ */
+function resolvePlanningApproval(runDir) {
+  const agentDeclared = fs.existsSync(path.join(runDir, visualPlanMaterializer.PROVENANCE_FILE));
+  const humanDeclared = humanPlanningApproval.hasRecord(runDir);
+
+  if (agentDeclared && humanDeclared) {
+    let record = null;
+    try { record = humanPlanningApproval.readRecord(runDir); } catch (_) { record = null; }
+    const supersedes = record?.supersedes?.planning_source === "AGENT_GENERATED";
+    if (!supersedes) {
+      return {
+        present: true,
+        ok: false,
+        code: "PLANNING_AUTHORITY_AMBIGUOUS",
+        detail: `both ${visualPlanMaterializer.PROVENANCE_FILE} and ${humanPlanningApproval.RECORD_FILE} declare gate-6 planning authority; no explicit supersession is recorded`,
+      };
+    }
+    return { ...humanPlanningApproval.verifyHumanApprovalBinding(runDir), planning_source: "HUMAN_AUTHORED" };
+  }
+  if (agentDeclared) {
+    return { ...visualPlanMaterializer.verifyApprovalBinding(runDir), planning_source: "AGENT_GENERATED" };
+  }
+  if (humanDeclared) {
+    return { ...humanPlanningApproval.verifyHumanApprovalBinding(runDir), planning_source: "HUMAN_AUTHORED" };
+  }
+  return {
+    present: true,
+    ok: false,
+    code: "APPROVED_PLAN_DIGEST_UNKNOWN",
+    detail: "no planning provenance is declared, so this approval is not bound to any reviewed planning state",
+  };
+}
+
 function readContext(runDir) {
   const upstream = Object.fromEntries(
     [...UPSTREAM_FILES, "final-outline.md", "production-prep-review-2.md"].map((filename) => [filename, readOptionalFile(runDir, filename)])
@@ -222,9 +268,9 @@ function readContext(runDir) {
     manualVerticalPrepChain,
     planningFindings,
     approvalMarker,
-    // A marker alone is not authority. Whenever one exists, resolve what plan it
-    // was actually given for and whether that plan is still what is on disk.
-    approvalBinding: approvalMarker ? visualPlanMaterializer.verifyApprovalBinding(runDir) : null,
+    // A marker alone is not authority. Whenever one exists, resolve the run's
+    // EXPLICIT planning provenance and verify the approval against that mode.
+    approvalBinding: approvalMarker ? resolvePlanningApproval(runDir) : null,
     missingRequired: missingRequiredFiles(upstream, planning, researchGate, manualVerticalPrepChain),
   };
 }
@@ -293,7 +339,14 @@ function determineStatus(context) {
   // moved through the adapter or by any other write path.
   const binding = context.approvalBinding;
   if (binding && !binding.ok) {
-    const humanDecisionAgain = ["APPROVED_PLAN_SUPERSEDED", "APPROVED_PLAN_DIGEST_UNKNOWN"].includes(binding.code);
+    // Codes split by who must act: a missing or outdated human decision returns
+    // to the human; inconsistent machine state must be repaired first.
+    const humanDecisionAgain = [
+      "APPROVED_PLAN_SUPERSEDED",
+      "APPROVED_PLAN_DIGEST_UNKNOWN",
+      "HUMAN_PLAN_APPROVAL_SUPERSEDED",
+      "HUMAN_PLAN_APPROVAL_DIGEST_UNKNOWN",
+    ].includes(binding.code);
     return {
       status: humanDecisionAgain ? "READY FOR HUMAN APPROVAL" : "NEEDS WORK",
       accepted: false,
@@ -301,9 +354,10 @@ function determineStatus(context) {
       planningIssues: [],
       concreteCount,
       approvalBindingCode: binding.code,
+      approvalPlanningSource: binding.planning_source || null,
       nextSafeAction: humanDecisionAgain
-        ? "The recorded approval no longer covers the current visual plan. Mikko reviews the current plan and records a new approval bound to it."
-        : "Re-materialize the planning artifacts from the canonical visual plan, then run this review again.",
+        ? "The recorded approval no longer covers the current shot/edit plan. Mikko reviews the current plan and records a new approval bound to it."
+        : "Repair the planning provenance — re-materialize from the canonical visual plan, or re-record the human planning snapshot — then run this review again.",
     };
   }
   return {
@@ -313,6 +367,7 @@ function determineStatus(context) {
     planningIssues: [],
     concreteCount,
     approvalBindingCode: null,
+    approvalPlanningSource: (context.approvalBinding && context.approvalBinding.planning_source) || null,
     nextSafeAction: "Proceed only with the explicitly approved shooting/edit-planning scope.",
   };
 }
@@ -536,6 +591,7 @@ module.exports = {
   isPlaceholderOnly,
   planningFileFinding,
   hasApprovalMarker,
+  resolvePlanningApproval,
   readContext,
   determineStatus,
   buildReview,
