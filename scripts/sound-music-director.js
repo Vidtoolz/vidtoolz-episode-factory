@@ -37,6 +37,13 @@ const crypto = require('node:crypto');
 const REPO_ROOT = path.resolve(__dirname, '..');
 const AGENT_ID = 'sound_music_director';
 
+// The canonical runner reads ACTIONS to refuse an unsupported action BEFORE it
+// invokes the module. This agent has always validated the same three actions
+// internally (see validateInputs); exporting that existing vocabulary restores
+// the runner-level gate its peers already have. Declarative only - no music,
+// routing, synthesis or selection behaviour changes.
+const ACTIONS = Object.freeze(['generate', 'evaluate', 'status']);
+
 const scoreLane = require(path.join(REPO_ROOT, 'score-engine', 'score-lane.js'));
 const dispatch = require(path.join(REPO_ROOT, 'score-engine', 'music-dispatch.js'));
 const contractValidator = require(path.join(REPO_ROOT, 'scripts', 'agent-contract-validator.js'));
@@ -104,9 +111,9 @@ function validateInputs(task, result) {
     return false;
   }
   const action = (task.assignment && task.assignment.action) || 'generate';
-  if (!['generate', 'evaluate', 'status'].includes(action)) {
+  if (!ACTIONS.includes(action)) {
     result.state = 'INPUT_MISSING';
-    result.reason = `assignment.action "${action}" is not one of generate|evaluate|status`;
+    result.reason = `assignment.action "${action}" is not one of ${ACTIONS.join('|')}`;
     return false;
   }
   const lane = task.authorized_lane || AUTHORIZED_LANE;
@@ -461,7 +468,7 @@ async function main() {
 }
 
 module.exports = {
-  AGENT_ID, AUTHORIZED_LANE, STATE_OWNERS,
+  AGENT_ID, ACTIONS, AUTHORIZED_LANE, STATE_OWNERS,
   MAX_ATTEMPTS_HARD_CAP, DEFAULT_MAX_ATTEMPTS,
   validateInputs, requireApprovedBrief, evaluateCandidateDeterministic,
   judgeCandidate, approvalBindingStatus, run, controlRoomView,
