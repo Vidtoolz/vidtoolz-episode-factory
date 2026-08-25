@@ -54,5 +54,10 @@
       "sha256": "2e31799139d83e92a8b19b862291f9daf21f9f9ac4a7272d439e64bfed935a29",
       "bytes": 6392
     }
-  ]
+  ],
+  "human_approval": {
+    "recorded_in": "production-plan.md",
+    "approved_plan_digest": "9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7",
+    "matches_source_plan": true
+  }
 }

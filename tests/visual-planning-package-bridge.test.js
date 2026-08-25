@@ -72,7 +72,32 @@ function stagedRun(label) {
     if (fs.statSync(src).isDirectory()) continue;
     fs.copyFileSync(src, path.join(dir, name));
   }
+  // A staged run is a PRE-approval baseline. The live canary now carries Mikko's
+  // recorded approval, and inheriting it would silently change what these tests
+  // are measuring — so it is stripped here and re-added only where intended.
+  for (const name of ['production-plan.md', 'audio-notes.md', 'production-blockers.md']) {
+    const file = path.join(dir, name);
+    if (!fs.existsSync(file)) continue;
+    const stripped = fs.readFileSync(file, 'utf8')
+      .split(/\r?\n/)
+      .filter((line) => !/^(?:[-*]\s*)?(?:Manual approval|Production planning approval|Shot\/edit plan approval):\s*PASS\s*$/i.test(line))
+      .filter((line) => !/Approved plan digest:/i.test(line))
+      .join('\n');
+    fs.writeFileSync(file, stripped);
+  }
+  // The copied review artifacts record the canary's PASS. Left in place they
+  // would make the gate engine read this baseline as already past gate 6.
+  for (const name of [shotEditReview.REVIEW_FILE, shotEditReview.ENHANCEMENT_FILE]) {
+    const file = path.join(dir, name);
+    if (fs.existsSync(file)) fs.rmSync(file);
+  }
   return dir;
+}
+
+// Write the review artifacts from the run's own current state, so the gate
+// engine sees this staged run rather than an inherited verdict.
+function refreshReview(dir) {
+  shotEditReview.writeOutputs(dir, shotEditReview.buildOutputs(dir), true);
 }
 
 function rows(markdown) {
@@ -397,17 +422,32 @@ test('bridge E2E1: the machine path alone reaches READY FOR HUMAN APPROVAL', () 
   }
 });
 
-test('bridge E2E2: the retained canary is at READY FOR HUMAN APPROVAL with no marker', () => {
+test('bridge E2E2: the retained canary records Mikko\'s approval of the exact plan', () => {
+  // The live canary has since been approved by Mikko, so this asserts the real
+  // post-approval truth rather than a snapshot that moves under the test.
   const outputs = shotEditReview.buildOutputs(CANARY_DIR);
-  assert.equal(outputs.verdict.status, 'READY FOR HUMAN APPROVAL');
-  assert.equal(outputs.verdict.accepted, false);
-  assert.equal(outputs.context.approvalMarker, false);
+  assert.equal(outputs.verdict.status, 'PASS');
+  assert.equal(outputs.verdict.accepted, true);
+  assert.equal(outputs.context.approvalMarker, true);
+
+  // And the approval is bound to the plan that was actually materialized.
+  const approval = materializer.readApprovalBinding(CANARY_DIR);
+  const provenance = JSON.parse(fs.readFileSync(path.join(CANARY_DIR, materializer.PROVENANCE_FILE), 'utf8'));
+  assert.equal(approval.approvedDigest, provenance.source_visual_plan.plan_digest_sha256);
 });
 
 /* ================================================ HUMAN GATE (§31) ======== */
 
 test('bridge HG1: a complete machine plan does not advance the canonical gate', () => {
-  const map = workflowMap.buildWorkflowMap(path.relative(ROOT, CANARY_DIR));
+  // Measured on a pre-approval staged run: machine planning alone must leave the
+  // run at gate 6 with 5 gates complete.
+  const dir = stagedRun('holdgate');
+  const planPath = writePlanTo(dir, loadRealPlan());
+  materializer.materialize(dir, planPath, {});
+  assert.equal(shotEditReview.buildOutputs(dir).verdict.status, 'READY FOR HUMAN APPROVAL');
+  refreshReview(dir);
+
+  const map = workflowMap.buildWorkflowMap(dir);
   const current = map.gates.find((gate) => String(gate.status).startsWith('current'));
   assert.equal(current.id, 'shot-edit-plan-review');
   assert.equal(map.gates.filter((gate) => gate.status === 'complete').length, 5);
@@ -427,8 +467,13 @@ test('bridge HG2: PASS remains reachable only through an exact human marker', ()
   assert.equal(approved.verdict.accepted, true);
 });
 
-test('bridge HG3: once machine planning is complete the projection asks Mikko, not the agent', () => {
-  const projection = stateProjection.buildProjection({ runId: CANARY_ID });
+test('bridge HG3: at the human gate the projection asks Mikko, not the agent', () => {
+  const dir = stagedRun('projection');
+  const planPath = writePlanTo(dir, loadRealPlan());
+  materializer.materialize(dir, planPath, {});
+  refreshReview(dir);
+
+  const projection = stateProjection.buildProjection({ runId: CANARY_ID, runDir: dir });
   assert.equal(projection.current_gate, 'shot-edit-plan-review');
   assert.equal(projection.state, 'HUMAN_REVIEW_REQUIRED');
   assert.equal(projection.next_safe_human_action.actor, 'mikko');
@@ -437,67 +482,94 @@ test('bridge HG3: once machine planning is complete the projection asks Mikko, n
   // the next safe action pointed somewhere else entirely.
   assert.equal(projection.expected_owner, 'visual_planning_director');
   assert.equal(projection.owner_readiness.implementation_state, 'IMPLEMENTATION_PROVEN');
+});
+
+test('bridge HG4: after approval the run advances and stops asking for the agent', () => {
+  const map = workflowMap.buildWorkflowMap(path.relative(ROOT, CANARY_DIR));
+  const current = map.gates.find((gate) => String(gate.status).startsWith('current'));
+  assert.equal(current.id, 'capture-checklist');
+  assert.equal(map.gates.filter((gate) => gate.status === 'complete').length, 6);
+
+  const projection = stateProjection.buildProjection({ runId: CANARY_ID });
+  assert.equal(projection.current_gate, 'capture-checklist');
+  assert.notEqual(projection.expected_owner, 'visual_planning_director');
   assert.deepEqual(stateProjection.consistencyReport({ runId: CANARY_ID }).defects, []);
   assert.equal(stateProjection.trackerDivergence({ runId: CANARY_ID }).code, 'TRACKER_CONSISTENT');
 });
 
-/* ============================================= REVISION SEMANTICS (§32) ==== */
+/* ==================================== APPROVAL CANNOT BE INHERITED ========= */
 
-test('bridge RV1: a degraded artifact is repaired from the plan, not by hand', () => {
-  const dir = stagedRun('repair');
-  const planPath = writePlanTo(dir, loadRealPlan());
+/*
+ * Making the five artifacts machine-regenerable turned a latent gap into a
+ * practical authority bypass: approve plan r1, materialize r2, and the gate
+ * re-reads the same marker and still passes — over content the approver never
+ * saw. Reproduced on an isolated run before the guard existed; locked here.
+ */
+function approvedRun(label, plan) {
+  const dir = stagedRun(label);
+  const planPath = writePlanTo(dir, plan);
   materializer.materialize(dir, planPath, {});
-  assert.equal(shotEditReview.buildOutputs(dir).verdict.status, 'READY FOR HUMAN APPROVAL');
+  fs.appendFileSync(path.join(dir, 'production-plan.md'), [
+    '',
+    '## Human Shot/Edit Plan Approval',
+    '',
+    'Shot/edit plan approval: PASS',
+    '',
+    `- Approved plan digest: ${plan.plan_digest_sha256}`,
+    '',
+  ].join('\n'));
+  return { dir, planPath };
+}
 
-  // Regress one artifact the way the old scaffold generator would have.
-  fs.writeFileSync(path.join(dir, 'shot-list.md'),
-    '# Shot List\n\n| shot | reason | priority | status |\n| --- | --- | --- | --- |\n| a scraped fragment | Supports a visible script beat. | high | TODO |\n');
-  assert.equal(shotEditReview.buildOutputs(dir).verdict.status, 'NEEDS WORK');
+test('bridge AP1: a different plan revision cannot inherit a human approval', () => {
+  const approved = loadRealPlan();
+  const { dir } = approvedRun('inherit', approved);
+  assert.equal(shotEditReview.buildOutputs(dir).verdict.status, 'PASS');
 
-  // The repair is re-materialization from the canonical plan. No hand editing.
-  materializer.materialize(dir, planPath, {});
-  const repaired = shotEditReview.buildOutputs(dir);
-  assert.equal(repaired.verdict.status, 'READY FOR HUMAN APPROVAL');
-  assert.equal(repaired.context.approvalMarker, false);
+  const other = planVariant((p) => {
+    p.plan_revision = 2;
+    p.shots[0].subject = 'A completely different opening: a slow push into a single blinking cursor';
+    p.shots[0].shot_brief = 'Nothing like the approved hook. A dark frame, one cursor, no diagram at all.';
+  });
+  const otherPath = writePlanTo(dir, other);
+  fs.renameSync(otherPath, path.join(dir, 'other-plan.json'));
+
+  assert.throws(
+    () => materializer.materialize(dir, path.join(dir, 'other-plan.json'), {}),
+    (error) => error.code === 'APPROVED_PLAN_SUPERSEDED'
+  );
+  const shotList = fs.readFileSync(path.join(dir, 'shot-list.md'), 'utf8');
+  assert.ok(!shotList.includes('blinking cursor'), 'approved artifacts must not be replaced');
 });
 
-test('bridge RV2: a superseding plan revision widens coverage through the adapter', () => {
-  const dir = stagedRun('revisionloop');
+test('bridge AP2: re-materializing the approved plan is still allowed', () => {
+  const approved = loadRealPlan();
+  const { dir, planPath } = approvedRun('reapprove', approved);
+  const result = materializer.materialize(dir, planPath, {});
+  assert.equal(result.provenance.human_approval.matches_source_plan, true);
+  assert.equal(result.provenance.human_approval.approved_plan_digest, approved.plan_digest_sha256);
+  assert.equal(shotEditReview.buildOutputs(dir).verdict.status, 'PASS');
+});
 
-  // Revision 1: deliberately narrow — one covered beat, the rest explicitly
-  // carrying a no-visual decision. Structurally valid, just thin coverage.
-  const narrow = planVariant((p) => {
-    const kept = p.shots[0];
-    p.shots = [kept];
-    p.coverage = p.coverage.map((entry) => (
-      entry.shot_ids.length && !entry.shot_ids.includes(kept.shot_id)
-        ? { ...entry, decision: 'INTENTIONAL_NO_VISUAL', shot_ids: [], reason: 'Held back for a later revision in this bounded coverage fixture.' }
-        : entry
-    ));
-  });
-  const planPath = writePlanTo(dir, narrow);
-  materializer.materialize(dir, planPath, {});
-  const narrowShotList = fs.readFileSync(path.join(dir, 'shot-list.md'), 'utf8');
-  assert.equal(rows(narrowShotList).length, 1);
-  assert.match(narrowShotList, /Deliberate No-Visual Decision/);
-  assert.equal(shotEditReview.buildOutputs(dir).verdict.status, 'READY FOR HUMAN APPROVAL');
+test('bridge AP3: superseding an approval must be explicit, and an unbound approval is refused', () => {
+  const approved = loadRealPlan();
+  const { dir } = approvedRun('supersede', approved);
+  const other = planVariant((p) => { p.plan_revision = 2; });
+  const otherPath = path.join(dir, 'other-plan.json');
+  fs.writeFileSync(otherPath, `${JSON.stringify(other, null, 2)}\n`);
 
-  // Revision 2: the specialist supersedes it with full coverage.
-  const widened = planVariant((p) => {
-    p.plan_revision = 2;
-    p.supersedes = { plan_id: narrow.plan_id, plan_revision: 1 };
-  });
-  writePlanTo(dir, widened);
-  materializer.materialize(dir, planPath, {});
-  const widenedShotList = fs.readFileSync(path.join(dir, 'shot-list.md'), 'utf8');
+  const replaced = materializer.materialize(dir, otherPath, { replaceApproved: true });
+  assert.equal(replaced.provenance.human_approval.matches_source_plan, false);
 
-  assert.ok(rows(widenedShotList).length > rows(narrowShotList).length, 'the revision widens coverage');
-  assert.match(widenedShotList, /r2/);
-  assert.equal(shotEditReview.buildOutputs(dir).verdict.status, 'READY FOR HUMAN APPROVAL');
-
-  // The provenance sidecar tracks which revision the artifacts came from.
-  const provenance = JSON.parse(fs.readFileSync(path.join(dir, materializer.PROVENANCE_FILE), 'utf8'));
-  assert.equal(provenance.source_visual_plan.plan_revision, 2);
+  // An approval with no digest cannot be checked, so it is not trusted either.
+  const loose = stagedRun('loosely-approved');
+  const loosePath = writePlanTo(loose, approved);
+  materializer.materialize(loose, loosePath, {});
+  fs.appendFileSync(path.join(loose, 'production-plan.md'), '\nManual approval: PASS\n');
+  assert.throws(
+    () => materializer.materialize(loose, loosePath, {}),
+    (error) => error.code === 'APPROVED_PLAN_DIGEST_UNKNOWN'
+  );
 });
 
 /* ======================================== GATE OWNER REACHABILITY (§20) ==== */

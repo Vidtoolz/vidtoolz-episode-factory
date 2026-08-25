@@ -53,6 +53,16 @@ const OUTPUT_FILES = Object.freeze([
   'graphics-list.md',
 ]);
 
+// Where a human approval marker can legitimately live. The three non-OUTPUT
+// files are human-owned (this adapter never rewrites them); the OUTPUT files are
+// scanned too because a marker can be placed in their human-notes region.
+const APPROVAL_SCAN_FILES = Object.freeze([
+  'production-plan.md',
+  'audio-notes.md',
+  'production-blockers.md',
+  ...OUTPUT_FILES,
+]);
+
 class MaterializationError extends Error {
   constructor(code, message) {
     super(message);
@@ -420,6 +430,46 @@ function atomicWrite(target, contents) {
   fs.renameSync(tmp, target);
 }
 
+/*
+ * Once a human has approved a shot/edit plan, regenerating these artifacts from
+ * a DIFFERENT plan would hand that approval to content the approver never saw:
+ * the gate re-reads the marker, still finds it, and passes. Making the artifacts
+ * machine-regenerable is what turned that into a practical bypass, so the guard
+ * belongs here.
+ *
+ * A recorded approval names the plan digest it was given for. If the plan on the
+ * table is not that plan, materialization refuses. Re-planning after approval is
+ * legitimate, but it must be an explicit act that supersedes the approval rather
+ * than a silent inheritance of it.
+ */
+function readApprovalBinding(runDir) {
+  const APPROVAL = /^(?:[-*]\s*)?(?:Manual approval|Production planning approval|Shot\/edit plan approval):\s*PASS\s*$/im;
+  const DIGEST = /Approved plan digest:\s*([0-9a-f]{64})/i;
+  for (const filename of APPROVAL_SCAN_FILES) {
+    const file = path.join(runDir, filename);
+    if (!fs.existsSync(file)) continue;
+    const text = fs.readFileSync(file, 'utf8');
+    if (!APPROVAL.test(text)) continue;
+    const digest = DIGEST.exec(text);
+    return { filename, approvedDigest: digest ? digest[1].toLowerCase() : null };
+  }
+  return null;
+}
+
+function assertNotSupersedingApproval(runDir, plan, options) {
+  const approval = readApprovalBinding(runDir);
+  if (!approval) return null;
+  if (options.replaceApproved) return approval;
+  if (approval.approvedDigest === plan.plan_digest_sha256) return approval;
+  if (!approval.approvedDigest) {
+    fail('APPROVED_PLAN_DIGEST_UNKNOWN',
+      `${approval.filename} records a human approval with no approved plan digest; refusing to regenerate approved artifacts`);
+  }
+  fail('APPROVED_PLAN_SUPERSEDED',
+    `${approval.filename} approves plan digest ${approval.approvedDigest}, not ${plan.plan_digest_sha256}; clear or renew the approval before materializing a different plan`);
+  return null;
+}
+
 function materialize(runDirInput, planPathInput, options = {}) {
   const runDir = path.resolve(runDirInput);
   if (!fs.existsSync(runDir) || !fs.statSync(runDir).isDirectory()) {
@@ -427,6 +477,7 @@ function materialize(runDirInput, planPathInput, options = {}) {
   }
   const runId = path.basename(runDir);
   const plan = assertPlanUsable(loadPlan(planPathInput));
+  const approval = assertNotSupersedingApproval(runDir, plan, options);
 
   const { classified, files } = buildArtifacts(plan, runId);
   const written = [];
@@ -479,6 +530,9 @@ function materialize(runDirInput, planPathInput, options = {}) {
       graphics: classified.graphics.length,
     },
     artifacts: written.map(({ filename, sha256: digest, bytes }) => ({ filename, sha256: digest, bytes })),
+    human_approval: approval
+      ? { recorded_in: approval.filename, approved_plan_digest: approval.approvedDigest, matches_source_plan: approval.approvedDigest === plan.plan_digest_sha256 }
+      : null,
   };
   if (!options.dryRun) {
     atomicWrite(path.join(runDir, PROVENANCE_FILE), `${JSON.stringify(provenance, null, 2)}\n`);
@@ -532,6 +586,8 @@ module.exports = {
   PROVENANCE_FILE,
   PROVENANCE_SCHEMA,
   OUTPUT_FILES,
+  APPROVAL_SCAN_FILES,
+  readApprovalBinding,
   BROLL_MEDIA,
   GRAPHICS_MEDIA,
   CAPTURE_MEDIA,

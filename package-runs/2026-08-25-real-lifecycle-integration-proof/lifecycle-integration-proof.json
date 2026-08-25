@@ -315,6 +315,103 @@
         "drift": null
       },
       "note": "Earned by the machine path alone. Gate did NOT advance: Mikko's marker is still required and PASS remains unreachable without it."
+    },
+    {
+      "step": 20,
+      "timestamp": "2026-08-25",
+      "event": "HUMAN_SHOT_EDIT_PLAN_APPROVAL",
+      "gate_before": "shot-edit-plan-review",
+      "gate_after": "capture-checklist",
+      "actor": "mikko",
+      "human_authority": "Shot/edit plan approval: PASS",
+      "approval_recorded": true,
+      "approval": {
+        "marker": "Shot/edit plan approval: PASS",
+        "recorded_in": "production-plan.md",
+        "approved_by": "Mikko",
+        "approved_date": "2026-08-25",
+        "approved_plan": "visual-plan-01M0W34QTVW6SG24TKPEKAJERW r1",
+        "approved_plan_digest": "9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7",
+        "approved_story": "01M0W30GA5ZAXXQPX9SS0R2N29 @ 01M0W30GAA8DFZCTPRXN4Y4DXV",
+        "scope": "gate 6 completion and advance to gate 7 for this bounded CANARY / NOT_FOR_PUBLICATION run only",
+        "not_authorized": [
+          "publication",
+          "generation",
+          "capture-evidence",
+          "rough-cut-review",
+          "final-review",
+          "export-check",
+          "publication-metadata",
+          "archive",
+          "inheritance by a later plan revision"
+        ]
+      },
+      "evaluator_after": {
+        "status": "PASS",
+        "accepted": true
+      },
+      "note": "Marker recorded verbatim from Mikko in production-plan.md — a human-owned artifact the evaluator reads and the materializer never regenerates, so it can neither be destroyed nor carried by regeneration."
+    },
+    {
+      "step": 21,
+      "timestamp": "2026-08-25",
+      "event": "GATE_ADVANCED_TO_CAPTURE_CHECKLIST",
+      "gate_before": "shot-edit-plan-review",
+      "gate_after": "capture-checklist",
+      "actor": "canonical gate engine",
+      "human_authority": null,
+      "approval_recorded": false,
+      "gates_complete": 6,
+      "gate_index": 7,
+      "gate7": {
+        "owner": "presenter_director",
+        "dispatch_enabled": false,
+        "implementation_state": "CANDIDATE",
+        "missing": [
+          "capture-checklist.md",
+          "takes-log.md",
+          "missing-shot-tracker.md",
+          "screen-recording-checklist.md",
+          "audio-capture-checklist.md"
+        ],
+        "next_safe_actor": "codex",
+        "mode": "draft-only"
+      },
+      "projection": {
+        "state": "ACTIVE",
+        "tracker": "TRACKER_CONSISTENT",
+        "drift": null,
+        "consistency_defects": 0
+      },
+      "note": "Gate 7 work NOT started. Its declared owner presenter_director is CANDIDATE and not dispatch-enabled — the projection is honest about that rather than recommending a dispatch."
+    },
+    {
+      "step": 22,
+      "timestamp": "2026-08-25",
+      "event": "APPROVAL_INHERITANCE_BYPASS_FOUND_AND_CLOSED",
+      "gate_before": "capture-checklist",
+      "gate_after": "capture-checklist",
+      "actor": "claude",
+      "human_authority": null,
+      "approval_recorded": false,
+      "defect": {
+        "code": "APPROVAL_INHERITED_BY_LATER_PLAN_REVISION",
+        "reproduced": "approved r1, materialized a different r2 on an isolated copy: status stayed PASS, accepted true, marker still detected, artifacts carried unreviewed content",
+        "newly_reachable_because": "this mission made the five artifacts machine-regenerable; previously the same bypass required hand-editing",
+        "closed_by": "materializer refuses when a recorded approval names a different plan digest",
+        "codes": [
+          "APPROVED_PLAN_SUPERSEDED",
+          "APPROVED_PLAN_DIGEST_UNKNOWN"
+        ],
+        "explicit_override": "replaceApproved",
+        "tests": [
+          "AP1",
+          "AP2",
+          "AP3"
+        ],
+        "residual": "the gate evaluator itself still detects a marker without digest-checking it, so artifacts changed by other means could carry a stale approval; making the evaluator digest-bound changes shared gate semantics and was not done unasked"
+      },
+      "note": "Found while recording Mikko's approval. Closed in the module that created the risk."
     }
   ],
   "final_state": {
@@ -447,10 +544,10 @@
     },
     "cockpit_took_canonical_branch": true
   },
-  "deepest_gate_earned": "shot-edit-plan-review READY FOR HUMAN APPROVAL by the machine path (5/14 complete, gate 6 held for Mikko)",
-  "stop_reason": "STOP — READY FOR HUMAN APPROVAL truthfully reached. No marker written, gate 7 not entered.",
+  "deepest_gate_earned": "shot-edit-plan-review complete by human approval (6/14); run at gate 7 capture-checklist",
+  "stop_reason": "STOP — Mikko approved gate 6 and the run advanced to gate 7. Gate 7 work was not started; it was not authorized.",
   "failures": [],
-  "verdict": "READY_FOR_MIKKO_SHOT_EDIT_REVIEW",
+  "verdict": "GATE_6_APPROVED_BY_MIKKO_RUN_AT_GATE_7",
   "defect_found": {
     "title": "Parking a run made two projection consumers invent a canonical position",
     "discovered_by": "this canary — the first genuine package run",
@@ -526,7 +623,7 @@
     "recommendation": "that fixture should pin by run id rather than assume \"latest\", but changing it belongs to its owner"
   },
   "human_review_readiness": {
-    "verdict": "READY_FOR_HUMAN_APPROVAL",
+    "verdict": "APPROVED_BY_MIKKO",
     "gate": "shot-edit-plan-review (6/14)",
     "gate_status": "NEEDS WORK",
     "gate_status_vocabulary": [
@@ -553,7 +650,7 @@
     "previous_approval_scope": "RESEARCH_ONLY",
     "previous_approval_leaked": false,
     "review_packet": "package-runs/2026-08-25-real-lifecycle-integration-proof/NEXT-HUMAN-REVIEW.md",
-    "packet_sha256": "cf02e61841b11358eedaa6e9a5884b7b52012abdbf45ce31a8d25100ab1af2f7"
+    "packet_sha256": "4b6b24bb32b31c1e9052cb95cdd77980052c490a415f5272cefd724425b4c261"
   },
   "architecture_defect": {
     "code": "GATE_OWNER_WITHOUT_IMPLEMENTATION_PATH",
@@ -589,11 +686,10 @@
     "note": "Still live and still out of scope. The new Story binding makes the STORY_VALIDATION path reachable for the first time, but emitting it is a story_editor dispatch on gate 2."
   },
   "projection_consistency_after": {
-    "canonical_gate": "shot-edit-plan-review",
-    "gates_complete": 5,
-    "state": "HUMAN_REVIEW_REQUIRED",
-    "expected_owner": "visual_planning_director",
-    "next_safe_actor": "mikko",
+    "canonical_gate": "capture-checklist",
+    "gates_complete": 6,
+    "state": "ACTIVE",
+    "expected_owner": "presenter_director",
     "tracker": "TRACKER_CONSISTENT",
     "drift": null,
     "consistency_ok": true,
@@ -631,5 +727,14 @@
     "human_region": "<!-- human-notes:start --> survives regeneration; edits elsewhere are overwritten, never silently merged",
     "gate_owner_invariant": "tests/visual-planning-package-bridge.test.js INV1 locks that gate 6's declared owner has a reachable production path to the gate artifacts",
     "tests": "34 new tests (SB1-SB10 binding, AD1-AD15 adapter, E2E1-E2E2, HG1-HG3, RV1-RV2, INV1-INV2)"
+  },
+  "human_approval_record": {
+    "gate": "shot-edit-plan-review (6/14)",
+    "verdict": "PASS",
+    "approved_by": "Mikko",
+    "date": "2026-08-25",
+    "recorded_in": "production-plan.md",
+    "digest_bound_to": "9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7",
+    "inheritance_guarded": true
   }
 }

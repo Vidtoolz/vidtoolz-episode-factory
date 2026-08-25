@@ -1,6 +1,25 @@
-# REVIEW MATERIAL — NOT AN APPROVAL
+# DECISION RECORDED — MIKKO APPROVED THIS PLAN
 
-Prepared for Mikko. Nothing here records or implies a decision.
+**Verdict: `Shot/edit plan approval: PASS`** — given by Mikko on 2026-08-25.
+
+Recorded in `production-plan.md` (a human-owned planning artifact the evaluator
+reads and the materializer never regenerates), bound to visual plan
+`visual-plan-01M0W34QTVW6SG24TKPEKAJERW` r1, digest `9c960c15c92bfe71…`.
+
+Result: gate 6 `shot-edit-plan-review` is **complete** (6/14). The run advanced
+to gate 7 `capture-checklist`. Nothing beyond that was authorized.
+
+One thing was found while recording it: the approval could have been inherited
+by a *different* plan revision, because the artifacts are now machine-regenerable.
+That bypass was reproduced and closed — see "Approval cannot be inherited" below.
+
+The review material that led to this decision is preserved unchanged below.
+
+---
+
+# REVIEW MATERIAL (as presented, before the decision)
+
+This section is the packet Mikko reviewed. It recorded no decision at the time.
 
 ## Headline
 
@@ -195,3 +214,43 @@ recommends dispatching an agent whose work is finished. It asks you.
 
 `REVIEW MATERIAL — NOT AN APPROVAL` · no marker written · no gate advanced ·
 run remains at gate 6.
+
+
+---
+
+## Approval cannot be inherited
+
+Recording the approval exposed a real authority bypass, newly reachable because
+this mission made the five artifacts machine-regenerable. Reproduced on an
+isolated copy of the approved run:
+
+```
+approve plan r1              -> PASS, accepted yes
+materialize a DIFFERENT r2   -> PASS, accepted yes, marker still detected
+                                shot-list now contains content never reviewed
+```
+
+The gate re-reads the marker, still finds it, and passes — over creative content
+the approver never saw. Before the bridge this needed hand-editing; afterwards a
+single materialize call would do it.
+
+Closed in the adapter, where the risk was created. A recorded approval names the
+plan digest it was given for; if the plan on the table is not that plan,
+materialization refuses:
+
+```
+APPROVED_PLAN_SUPERSEDED       different plan digest -> refused, artifacts untouched
+APPROVED_PLAN_DIGEST_UNKNOWN   approval with no digest -> not trusted either
+replaceApproved: true          explicit supersede still possible
+```
+
+Re-materializing the approved plan still works, and the provenance sidecar now
+records `human_approval: {recorded_in, approved_plan_digest, matches_source_plan}`.
+Locked by tests AP1–AP3.
+
+**Residual gap, for your awareness:** this guard covers the adapter path. The
+gate evaluator itself still detects an approval marker without checking which
+plan it was bound to, so artifacts changed by some *other* means could still
+carry a stale approval. Making the evaluator's approval digest-bound is the
+deeper fix; it changes shared gate semantics for every run, so I did not do it
+unasked.

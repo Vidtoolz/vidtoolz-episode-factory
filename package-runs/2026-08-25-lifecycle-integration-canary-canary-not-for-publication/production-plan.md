@@ -112,3 +112,35 @@
 - Reason: Script review, production planning readiness, research gate, script structure, and script file are all approved.
 - Next actions:
 - Review the generated production lists, then capture only the approved scope.
+
+## Human Shot/Edit Plan Approval
+
+Recorded verbatim from Mikko's explicit decision. This is his authority, not a
+machine determination, and it is written here rather than in a planning list
+because the five lists are machine-owned projections that the materializer
+regenerates.
+
+Shot/edit plan approval: PASS
+
+- Approved by: Mikko
+- Approval date: 2026-08-25
+- Approved artifact: visual plan visual-plan-01M0W34QTVW6SG24TKPEKAJERW r1
+- Approved plan digest: 9c960c15c92bfe71086708b422db2277e00da7b8187a92c4e39307f848e52ef7
+- Approved Story: 01M0W30GA5ZAXXQPX9SS0R2N29 @ 01M0W30GAA8DFZCTPRXN4Y4DXV
+  (content hash 71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203)
+- Approved planning artifacts, as reviewed:
+  - shot-list.md a9f2bab784236faa
+  - screen-capture-list.md 829d328a515b5781
+  - demo-list.md ee86280c4b77b1a6
+  - b-roll-list.md 5ab7b42dd5fd86f7
+  - graphics-list.md 2e31799139d83e92
+
+Approval scope: the shot/edit plan above is an acceptable visual interpretation
+of the approved canary script, sufficient to complete gate 6 and advance this
+bounded CANARY / NOT_FOR_PUBLICATION run to gate 7 capture-checklist.
+
+This approval does NOT mean: the material is approved for publication; the plan
+is approved for generation; later gates (capture-evidence, rough-cut-review,
+final-review, export-check, publication-metadata, archive) are pre-approved; or
+that a later visual plan revision inherits this decision. It is bound to the
+plan digest recorded above.
