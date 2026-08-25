@@ -308,10 +308,15 @@ test('gate7 G7M9: gate 8 is where human capture authority belongs', () => {
   assert.equal(stateProjection.HUMAN_GATES.includes('capture-checklist'), false);
   assert.equal(stateProjection.HUMAN_GATES.includes('capture-evidence'), true);
 
-  // And DRAFT's zero-human doctrine collides there, with the need recorded.
+  // DRAFT no longer asks for Mikko at gate 8: the doctrine is that a draft
+  // finishes automatically, so the gate expects machine-verified proxy evidence
+  // instead. It is still BLOCKED, but on a missing producer rather than on a
+  // human who should never have been required.
   const draft8 = gateModePolicy.policyFor('capture-evidence', 'DRAFT');
   assert.equal(draft8.implementation_status, 'BLOCKED');
-  assert.equal(draft8.human_approval_required, true);
+  assert.equal(draft8.human_approval_required, false);
+  assert.equal(gateModePolicy.resolveGateOwner('capture-evidence', 'DRAFT').human_marker_forbidden, true);
+  assert.equal(gateModePolicy.resolveGateOwner('capture-evidence', 'DRAFT').disposition, 'PROXY_CAPTURE_READY');
   assert.ok(draft8.architecture_need && draft8.architecture_need.length > 0);
 });
 
@@ -328,4 +333,226 @@ test('gate7 G7M10: mode policy governs evidence and ownership only, never gate o
   const serialized = JSON.stringify(policy);
   assert.ok(!/gate_order|insert_gate|skip_gate|new_gate/i.test(serialized));
   assert.equal(definitions.length, 14);
+});
+
+/* ================= MODE-AWARE CAPTURE OWNERSHIP (O1-O8) =================== */
+
+/*
+ * Before this, package-run-state read one static GATE_OWNERS entry and named
+ * presenter_director at gate 7 in every mode — for a DRAFT that needs no
+ * presenter and a REVIEW that re-enters no capture. Ownership now resolves
+ * through the shared policy, so every consumer gets the same answer.
+ */
+
+test('owner O1: DRAFT gate 7 belongs to the generation lane, not the presenter', () => {
+  const owner = gateModePolicy.resolveGateOwner('capture-checklist', 'DRAFT');
+  assert.equal(owner.expected_owner, 'generation_supervisor');
+  assert.equal(owner.human_required, false);
+  assert.equal(owner.human_performer, null);
+  assert.equal(owner.disposition, 'PROXY_CAPTURE_REQUIRED');
+  // Enabled is not the same as actionable: the inputs do not exist yet.
+  assert.equal(owner.owner_actionable, false);
+  assert.ok(owner.owner_actionable_reason);
+});
+
+test('owner O2: REVIEW gate 7 re-enters no capture and names no capture owner', () => {
+  const owner = gateModePolicy.resolveGateOwner('capture-checklist', 'REVIEW');
+  assert.equal(owner.expected_owner, null);
+  assert.equal(owner.disposition, 'REUSE_PRIOR_CAPTURE');
+  assert.equal(owner.human_required, false);
+  assert.notEqual(owner.expected_owner, 'presenter_director');
+});
+
+test('owner O3: PRODUCTION gate 7 separates preparation, direction and performance', () => {
+  const owner = gateModePolicy.resolveGateOwner('capture-checklist', 'PRODUCTION');
+  assert.equal(owner.expected_owner, 'production_operations');
+  assert.equal(owner.next_specialist, 'presenter_director');
+  assert.equal(owner.human_performer, 'mikko');
+  assert.equal(owner.disposition, 'REAL_CAPTURE_REQUIRED');
+  // Gate 7 still asks for no approval; that belongs at gate 8.
+  assert.equal(owner.human_required, false);
+  assert.equal(owner.owner_actionable, false, 'presenter_director is still disabled');
+});
+
+test('owner O4: an undeclared mode yields no owner at all', () => {
+  const owner = gateModePolicy.resolveGateOwner('capture-checklist', productionMode.MODE_UNSPECIFIED);
+  assert.equal(owner.ok, false);
+  assert.equal(owner.code, 'PRODUCTION_MODE_UNSPECIFIED');
+  assert.equal(owner.expected_owner, null);
+  assert.equal(owner.human_required, null);
+});
+
+test('owner O5: package-run-state reports the resolved owner, and agrees with the policy', () => {
+  for (const [mode, setter, expected] of [
+    ['DRAFT', 'generation_supervisor (agent)', 'generation_supervisor'],
+    ['REVIEW', 'editor (agent)', ''],
+  ]) {
+    const { root, dir, runId } = modeRun(`o5-${mode.toLowerCase()}`);
+    if (mode === 'REVIEW') productionMode.setProductionMode(dir, 'DRAFT', { setBy: 'generation_supervisor (agent)' });
+    productionMode.setProductionMode(dir, mode, { setBy: setter });
+
+    const projection = stateProjection.buildProjection({ repoRoot: root, runId, runDir: dir });
+    assert.equal(projection.current_gate, 'capture-checklist');
+    assert.equal(projection.expected_owner, expected, `${mode} expected_owner`);
+    // The structured resolution accompanies it and matches the shared authority.
+    const authority = gateModePolicy.resolveGateOwner('capture-checklist', mode);
+    assert.equal(projection.capture_ownership.resolved_by, 'gate-mode-policy');
+    assert.equal(projection.capture_ownership.expected_owner, authority.expected_owner);
+    assert.equal(projection.capture_ownership.next_specialist, authority.next_specialist);
+    assert.equal(projection.capture_ownership.human_performer, authority.human_performer);
+    assert.equal(projection.capture_ownership.disposition, authority.disposition);
+  }
+});
+
+test('owner O7: the static presenter owner no longer leaks into DRAFT or REVIEW', () => {
+  for (const [mode, setter] of [['DRAFT', 'generation_supervisor (agent)'], ['REVIEW', 'editor (agent)']]) {
+    const { root, dir, runId } = modeRun(`o7-${mode.toLowerCase()}`);
+    if (mode === 'REVIEW') productionMode.setProductionMode(dir, 'DRAFT', { setBy: 'generation_supervisor (agent)' });
+    productionMode.setProductionMode(dir, mode, { setBy: setter });
+    const projection = stateProjection.buildProjection({ repoRoot: root, runId, runDir: dir });
+    assert.notEqual(projection.expected_owner, 'presenter_director',
+      `${mode} must not be told the presenter owns capture`);
+    assert.equal(projection.capture_ownership.static_owner, 'presenter_director');
+    assert.equal(projection.capture_ownership.static_owner_is_correct, false);
+  }
+  // An undeclared mode reports no owner rather than a possibly-false one.
+  const { root, dir, runId } = modeRun('o7-unspecified');
+  const projection = stateProjection.buildProjection({ repoRoot: root, runId, runDir: dir });
+  assert.equal(projection.expected_owner, '');
+  assert.equal(projection.capture_ownership.ok, false);
+});
+
+test('owner O8: changing mode refreshes ownership', () => {
+  const { root, dir, runId } = modeRun('o8');
+  const ownerNow = () => stateProjection.buildProjection({ repoRoot: root, runId, runDir: dir }).expected_owner;
+
+  productionMode.setProductionMode(dir, 'DRAFT', { setBy: 'generation_supervisor (agent)' });
+  assert.equal(ownerNow(), 'generation_supervisor');
+  productionMode.setProductionMode(dir, 'REVIEW', { setBy: 'editor (agent)' });
+  assert.equal(ownerNow(), '');
+  productionMode.setProductionMode(dir, 'PRODUCTION', { setBy: 'Mikko' });
+  assert.equal(ownerNow(), 'production_operations');
+});
+
+/* ==================== GATE-8 MODE POLICY (E1-E10) ======================== */
+
+test('gate8 E1/E3: DRAFT expects machine proxy evidence and forbids a human marker', () => {
+  const owner = gateModePolicy.resolveGateOwner('capture-evidence', 'DRAFT');
+  assert.equal(owner.expected_owner, 'qc_director');
+  assert.equal(owner.next_specialist, 'generation_supervisor');
+  assert.equal(owner.human_required, false, 'a zero-human draft must not need Mikko here');
+  assert.equal(owner.human_performer, null);
+  assert.equal(owner.human_marker_forbidden, true);
+  assert.equal(owner.disposition, 'PROXY_CAPTURE_READY');
+});
+
+test('gate8 E2: the proxy contract refuses fake media and keeps quality checks intact', () => {
+  const contract = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'proxy-capture-evidence-contract.json'), 'utf8'));
+  assert.equal(contract.disposition, 'PROXY_CAPTURE_READY');
+  assert.ok(contract.never.some((rule) => /placeholder, dummy, smoke-test or zero-byte/i.test(rule)));
+  assert.ok(contract.required_fields.technical_validation.includes('sha256') || /hash/i.test(contract.required_fields.technical_validation));
+
+  // The live human-capture evaluator still rejects fake evidence: unchanged.
+  const evaluator = fs.readFileSync(path.join(ROOT, 'scripts', 'package-run-capture-evidence-review.js'), 'utf8');
+  for (const marker of ['dummy', 'smoke-test', 'test-capture', 'test-voiceover']) {
+    assert.ok(evaluator.includes(marker), `real-capture evidence must still reject ${marker}`);
+  }
+});
+
+test('gate8 E4/E9: proxy evidence never satisfies PRODUCTION capture', () => {
+  const policy = gateModePolicy.loadPolicy();
+  const production = policy.gates['capture-evidence'].modes.PRODUCTION;
+  assert.equal(production.proxy_evidence_sufficient, false);
+  assert.equal(production.required_disposition, 'REAL_CAPTURE_CONFIRMED');
+  assert.notEqual(production.required_disposition, 'PROXY_CAPTURE_READY');
+  // The two classes are declared permanently distinct.
+  const contract = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'proxy-capture-evidence-contract.json'), 'utf8'));
+  assert.match(contract.distinguishable_forever, /neither is derivable from the other/i);
+  assert.ok(contract.what_it_does_not_assert.some((claim) => /PRODUCTION capture requirements/i.test(claim)));
+});
+
+test('gate8 E5: PRODUCTION keeps human confirmation of real capture', () => {
+  const owner = gateModePolicy.resolveGateOwner('capture-evidence', 'PRODUCTION');
+  assert.equal(owner.human_required, true);
+  assert.equal(owner.human_performer, 'mikko');
+  assert.equal(owner.human_marker_forbidden, false);
+  assert.equal(gateModePolicy.humanRequiredFor('capture-evidence', 'PRODUCTION'), true);
+});
+
+test('gate8 E6: REVIEW does not re-earn capture evidence', () => {
+  const owner = gateModePolicy.resolveGateOwner('capture-evidence', 'REVIEW');
+  assert.equal(owner.disposition, 'REUSE_PRIOR_CAPTURE');
+  assert.equal(owner.human_required, false);
+  assert.equal(gateModePolicy.policyFor('capture-evidence', 'REVIEW').recapture_on_mode_change, false);
+});
+
+test('gate8 E7: an undeclared mode fails closed at gate 8 too', () => {
+  const owner = gateModePolicy.resolveGateOwner('capture-evidence', productionMode.MODE_UNSPECIFIED);
+  assert.equal(owner.ok, false);
+  assert.equal(owner.human_required, null);
+  assert.equal(gateModePolicy.humanRequiredFor('capture-evidence', productionMode.MODE_UNSPECIFIED), null);
+});
+
+test('gate8 E8: human-required projection is mode-aware, not statically true', () => {
+  // The static annotation says gate 8 always needs Mikko. That is now only true
+  // in PRODUCTION, and a zero-human DRAFT must not be told otherwise.
+  assert.equal(stateProjection.HUMAN_GATES.includes('capture-evidence'), true);
+  assert.equal(gateModePolicy.humanRequiredFor('capture-evidence', 'DRAFT'), false);
+  assert.equal(gateModePolicy.humanRequiredFor('capture-evidence', 'PRODUCTION'), true);
+});
+
+test('gate8 E10: the review entry and promotion regression model are recorded', () => {
+  const policy = gateModePolicy.loadPolicy();
+  assert.equal(policy.review_entry.gate_number, 9);
+  assert.equal(policy.review_entry.first_mandatory_human_boundary, 'rough-cut-review');
+  assert.match(policy.review_entry.rule, /no recapture/i);
+
+  assert.equal(policy.production_promotion.authority, 'mikko only');
+  assert.match(policy.production_promotion.regression, /reopens them/i);
+  assert.match(policy.production_promotion.downstream_preserved, /retained as provenance/i);
+  // Gate 9 exists and is the human boundary the doctrine names.
+  const gates = workflowMap.GATE_DEFINITIONS.map((gate) => gate.id);
+  assert.equal(gates[8], 'rough-cut-review');
+  assert.equal(stateProjection.HUMAN_GATES.includes('rough-cut-review'), true);
+  // And no fifteenth gate was invented to hold Review Mode.
+  assert.equal(gates.length, 14);
+});
+
+test('gate8 E-proxy: the proxy producer is honestly recorded as missing', () => {
+  const contract = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'proxy-capture-evidence-contract.json'), 'utf8'));
+  assert.equal(contract.status, 'CONTRACT_DEFINED_PRODUCER_MISSING');
+  assert.equal(contract.producer_requirements.status, 'MISSING');
+  assert.ok(contract.producer_requirements.needed.length >= 3);
+  assert.match(contract.until_the_producer_exists, /NOT blocked on Mikko/i);
+
+  // The absence claims are live facts, not prose.
+  const promptAdapter = require('../scripts/visual-plan-prompt-adapter.js');
+  assert.ok(!promptAdapter.PROMPT_MEDIA.has('PRESENTER_A_ROLL'));
+  const editPlan = fs.readFileSync(path.join(ROOT, 'scripts', 'edit-plan.js'), 'utf8');
+  assert.match(editPlan, /PRESENTER_A_ROLL:\s*\[\s*'PRESENTER_CAPTURE'\s*\]/,
+    'the exclusion is capture-class policy, and that mapping is the evidence');
+});
+
+test('mode M15: a root without the policy config degrades instead of failing', () => {
+  // Regression: making the projection consult the policy broke real run creation
+  // in an isolated root that copies scripts/ but not config/. A missing policy
+  // must mean "behave as it did before mode existed", never a thrown error.
+  const policy = gateModePolicy.policyPath();
+  assert.ok(policy && fs.existsSync(policy), 'the real repository has the policy');
+
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'mode-nopolicy-'));
+  const scriptDir = path.join(bare, 'scripts');
+  fs.mkdirSync(scriptDir, { recursive: true });
+  for (const name of ['gate-mode-policy.js', 'package-run-production-mode.js', 'human-approval-identity.js']) {
+    fs.copyFileSync(path.join(ROOT, 'scripts', name), path.join(scriptDir, name));
+  }
+  // No config/ directory at all, exactly like the creation fixture.
+  const isolated = require(path.join(scriptDir, 'gate-mode-policy.js'));
+  assert.equal(isolated.policyPath(), null);
+  assert.deepEqual(isolated.governedGates(), []);
+  assert.equal(isolated.isModeSensitive('capture-checklist'), false);
+  const resolved = isolated.resolveGateOwner('capture-checklist', 'DRAFT');
+  assert.equal(resolved.mode_sensitive, false);
+  assert.equal(resolved.defer_to_static, true);
+  assert.equal(isolated.humanRequiredFor('capture-checklist', 'DRAFT'), null);
 });
