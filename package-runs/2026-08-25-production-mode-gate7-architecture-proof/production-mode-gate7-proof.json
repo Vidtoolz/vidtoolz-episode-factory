@@ -1,0 +1,284 @@
+{
+  "schema": "vidtoolz.productionModeGate7Proof.v1",
+  "not_a_production_run": true,
+  "authority_note": "Canary promotion authority is a TEST_ONLY fixture. No real Mikko decision was fabricated; the retained lifecycle canary was not classified or moved.",
+  "baseline": {
+    "finding": "PRODUCTION_MODE_MODEL_MISSING",
+    "evidence": "Zero files across *.js, *.json and *.md for draft_mode, review_mode, production_mode, capture_mode, presenter_mode, proxy_presenter, human_presenter, synthetic_delivery, real_capture, production_tier and run_mode. The REVIEW literals that do exist are attention levels (INFORMATION | REVIEW | DECISION), an unrelated axis.",
+    "consequence": "Gate 7 conflated machine preparation, proxy delivery, real human performance and take logging, so its single declared owner could only be correct for one of them."
+  },
+  "mode_contract": {
+    "authority_file": "production-mode.json",
+    "schema": "vidtoolz.packageRunProductionMode.v1",
+    "level": "per package run, durable",
+    "modes": [
+      "DRAFT",
+      "REVIEW",
+      "PRODUCTION"
+    ],
+    "legacy": "MODE_UNSPECIFIED",
+    "transitions": {
+      "DRAFT": [
+        "REVIEW"
+      ],
+      "REVIEW": [
+        "DRAFT",
+        "PRODUCTION"
+      ],
+      "PRODUCTION": [
+        "REVIEW"
+      ]
+    },
+    "agent_settable": [
+      "DRAFT",
+      "REVIEW"
+    ],
+    "human_only": [
+      "PRODUCTION"
+    ],
+    "no_production_to_draft": "discarding a locked human performance back to proxy delivery is a new run, not a mode change",
+    "fields": [
+      "schema",
+      "run_id",
+      "mode",
+      "set_by",
+      "set_at",
+      "predecessor",
+      "rationale"
+    ],
+    "not_owned_by": [
+      "package-run-state.md",
+      "tracker",
+      "control room",
+      "UI state"
+    ]
+  },
+  "gate7": {
+    "DRAFT": {
+      "gate_id": "capture-checklist",
+      "gate_number": 7,
+      "mode": "DRAFT",
+      "mode_sensitive": true,
+      "ok": true,
+      "code": null,
+      "meaning": "Proxy delivery readiness. A draft is performed by the machine, so nothing here may require Mikko to record.",
+      "implementation_status": "BLOCKED",
+      "machine_owner": "generation_supervisor",
+      "preparation_owner": "production_operations",
+      "human_performance_required": false,
+      "human_approval_required": false,
+      "required_evidence": [
+        "synthetic delivery manifest (proxy presenter delivery plan)",
+        "proxy presenter A-roll asset",
+        "generated narration audio",
+        "automated screen-capture requirements",
+        "missing-shot tracking"
+      ],
+      "blocked_by": [
+        "no synthetic delivery artifact contract exists; presenter-take-manifest models real human delivery only (TRANSCRIPT_SOURCES HUMAN_SUPPLIED/IMPORTED/EXTERNAL_TRANSCRIPTION, FIDELITY_METHODS ... HUMAN_VERIFIED, createHumanSelection)",
+        "PRESENTER_A_ROLL is excluded from visual-plan-prompt-adapter PROMPT_MEDIA, so presenter delivery is contractually not machine-generable",
+        "no text-to-speech, avatar, or synthetic-voice producer exists anywhere in the repository"
+      ],
+      "human_owns": null,
+      "recapture_on_mode_change": false,
+      "architecture_need": null,
+      "static_owner": "presenter_director",
+      "human_gate_today": false
+    },
+    "REVIEW": {
+      "gate_id": "capture-checklist",
+      "gate_number": 7,
+      "mode": "REVIEW",
+      "mode_sensitive": true,
+      "ok": true,
+      "code": null,
+      "meaning": "Entering REVIEW introduces no capture requirement. Review judges a draft that already exists; whatever capture the draft produced stands.",
+      "implementation_status": "IMPLEMENTED",
+      "machine_owner": null,
+      "preparation_owner": null,
+      "human_performance_required": false,
+      "human_approval_required": false,
+      "required_evidence": [],
+      "blocked_by": [],
+      "human_owns": null,
+      "recapture_on_mode_change": false,
+      "architecture_need": null,
+      "static_owner": "presenter_director",
+      "human_gate_today": false
+    },
+    "PRODUCTION": {
+      "gate_id": "capture-checklist",
+      "gate_number": 7,
+      "mode": "PRODUCTION",
+      "mode_sensitive": true,
+      "ok": true,
+      "code": null,
+      "meaning": "Machine preparation for a real recording session, then Mikko's actual performance. The two are separate and only the first is automatable.",
+      "implementation_status": "PLANNED",
+      "machine_owner": "presenter_director",
+      "preparation_owner": "production_operations",
+      "human_performance_required": true,
+      "human_approval_required": false,
+      "required_evidence": [
+        "capture-checklist.md",
+        "takes-log.md",
+        "missing-shot-tracker.md",
+        "screen-recording-checklist.md",
+        "audio-capture-checklist.md",
+        "presenter-take-manifest (delivery direction and take records)"
+      ],
+      "blocked_by": [
+        "presenter_director is contract status PLANNED (build_order 7), NOT_PROVEN, autonomous_dispatch DISABLED",
+        "its enablement prerequisites are unmet and include an explicit human enablement decision by Mikko"
+      ],
+      "human_owns": "the physical performance itself, which no agent may synthesize away",
+      "recapture_on_mode_change": false,
+      "architecture_need": null,
+      "static_owner": "presenter_director",
+      "human_gate_today": false
+    },
+    "MODE_UNSPECIFIED": {
+      "gate_id": "capture-checklist",
+      "mode": "MODE_UNSPECIFIED",
+      "mode_sensitive": true,
+      "ok": false,
+      "code": "PRODUCTION_MODE_UNSPECIFIED",
+      "detail": "capture-checklist requires a declared production mode: its required evidence and owner differ between DRAFT, REVIEW, PRODUCTION",
+      "static_owner": "presenter_director"
+    }
+  },
+  "gate8": {
+    "DRAFT": {
+      "gate_id": "capture-evidence",
+      "gate_number": 8,
+      "mode": "DRAFT",
+      "mode_sensitive": true,
+      "ok": true,
+      "code": null,
+      "meaning": "A zero-human draft cannot satisfy a gate that structurally requires a human approval marker placed after real capture evidence.",
+      "implementation_status": "BLOCKED",
+      "machine_owner": null,
+      "preparation_owner": null,
+      "human_performance_required": false,
+      "human_approval_required": true,
+      "required_evidence": [],
+      "blocked_by": [
+        "package-run-capture-evidence-review.js reaches PASS only with an exact human approval marker recorded after the evidence",
+        "rowHasRealCaptureEvidence explicitly rejects rows matching dummy, smoke-test, test-capture, test-screen, test-voiceover and generated checklist row, so synthetic capture cannot be presented as capture evidence"
+      ],
+      "human_owns": null,
+      "recapture_on_mode_change": false,
+      "architecture_need": "Either DRAFT needs a machine-verifiable proxy-capture disposition at gate 8, or the draft lifecycle must legitimately end before gate 8 and hand over to REVIEW. This is a human architecture decision, not a code fix, and it must not be resolved by weakening human gates generally.",
+      "static_owner": "qc_director",
+      "human_gate_today": true
+    },
+    "REVIEW": {
+      "gate_id": "capture-evidence",
+      "gate_number": 8,
+      "mode": "REVIEW",
+      "mode_sensitive": true,
+      "ok": true,
+      "code": null,
+      "meaning": "Already settled by the run that produced the draft. Not re-evaluated because mode changed.",
+      "implementation_status": "IMPLEMENTED",
+      "machine_owner": null,
+      "preparation_owner": null,
+      "human_performance_required": false,
+      "human_approval_required": false,
+      "required_evidence": [],
+      "blocked_by": [],
+      "human_owns": null,
+      "recapture_on_mode_change": false,
+      "architecture_need": null,
+      "static_owner": "qc_director",
+      "human_gate_today": true
+    },
+    "PRODUCTION": {
+      "gate_id": "capture-evidence",
+      "gate_number": 8,
+      "mode": "PRODUCTION",
+      "mode_sensitive": true,
+      "ok": true,
+      "code": null,
+      "meaning": "Mikko confirms the real captured material. This is the correct home for human capture authority, and it is why gate 7 should not ask for approval.",
+      "implementation_status": "IMPLEMENTED",
+      "machine_owner": null,
+      "preparation_owner": null,
+      "human_performance_required": false,
+      "human_approval_required": true,
+      "required_evidence": [],
+      "blocked_by": [],
+      "human_owns": "confirmation that the captured material is what was intended",
+      "recapture_on_mode_change": false,
+      "architecture_need": null,
+      "static_owner": "qc_director",
+      "human_gate_today": true
+    }
+  },
+  "owner_matrix": {
+    "DRAFT": {
+      "mode_sensitive": true,
+      "ok": true,
+      "machine_owner": "generation_supervisor",
+      "preparation_owner": "production_operations",
+      "human_performance_required": false,
+      "human_owns": null,
+      "static_owner": "presenter_director",
+      "static_owner_is_correct": false
+    },
+    "REVIEW": {
+      "mode_sensitive": true,
+      "ok": true,
+      "machine_owner": null,
+      "preparation_owner": null,
+      "human_performance_required": false,
+      "human_owns": null,
+      "static_owner": "presenter_director",
+      "static_owner_is_correct": false
+    },
+    "PRODUCTION": {
+      "mode_sensitive": true,
+      "ok": true,
+      "machine_owner": "presenter_director",
+      "preparation_owner": "production_operations",
+      "human_performance_required": true,
+      "human_owns": "the physical performance itself, which no agent may synthesize away",
+      "static_owner": "presenter_director",
+      "static_owner_is_correct": true
+    },
+    "finding": "The single GATE_OWNERS entry (presenter_director) is correct for PRODUCTION and wrong for DRAFT and REVIEW. A mode-aware owner projection is therefore needed, and the need is now proven rather than asserted."
+  },
+  "live_evaluator_is_mode_blind": {
+    "observed": "The gate-7 evaluator returned NEEDS CAPTURE identically in the DRAFT and PRODUCTION canaries, with the same reason string.",
+    "meaning": "Gate 7 today cannot tell a proxy draft from a real recording session. That is the conflation, demonstrated rather than argued."
+  },
+  "draft_mode_blockers": [
+    "no synthetic delivery artifact contract: presenter-take-manifest models real human delivery only (TRANSCRIPT_SOURCES HUMAN_SUPPLIED/IMPORTED/EXTERNAL_TRANSCRIPTION, FIDELITY_METHODS including HUMAN_VERIFIED, createHumanSelection, verifyMediaBytes)",
+    "PRESENTER_A_ROLL is excluded from visual-plan-prompt-adapter PROMPT_MEDIA, so presenter delivery is contractually not machine-generable",
+    "no text-to-speech, avatar or synthetic-voice producer exists anywhere in the repository",
+    "gate 8 reaches PASS only with an exact human approval marker recorded after real capture evidence, and rowHasRealCaptureEvidence explicitly rejects dummy, smoke-test, test-capture, test-screen, test-voiceover and generated checklist row"
+  ],
+  "review_mode_entry": {
+    "finding": "Gate 9 rough-cut-review is the natural Review Mode boundary: it is a HUMAN gate owned by editor and its artifacts are rough-cut-watch-notes.md and rough-cut-review.md — a human watching a produced draft.",
+    "no_fifteenth_gate_needed": true,
+    "caveat": "A DRAFT run still cannot legitimately reach gate 9, because gate 8 sits between and requires human capture approval. Whether a draft should end before gate 8 or gain a machine proxy disposition at gate 8 is a human architecture decision."
+  },
+  "lifecycle_orthogonality": {
+    "gate_count": 14,
+    "gate_order_changed": false,
+    "governed_gates": [
+      "capture-checklist",
+      "capture-evidence"
+    ],
+    "proof": "M10 asserts the full 14-gate order and position are byte-identical across DRAFT, REVIEW and PRODUCTION transitions; G7M10 asserts the policy cannot reorder, add or skip a gate."
+  },
+  "retained_canary": {
+    "run": "2026-08-25-lifecycle-integration-canary-canary-not-for-publication",
+    "classified": false,
+    "mode": "MODE_UNSPECIFIED",
+    "moved": false,
+    "policy": "left unclassified deliberately. Guessing PRODUCTION would silently commit Mikko to a real performance; guessing DRAFT would silently claim a proxy is acceptable."
+  },
+  "tests": "M1-M14 run-mode contract, G7M1-G7M10 gate-7 policy, 21 total",
+  "verdict": "DRAFT_MODE_BLOCKED_BY_CAPTURE_CONTRACT — the mode model is landed and proven; DRAFT cannot be satisfied by existing capabilities."
+}

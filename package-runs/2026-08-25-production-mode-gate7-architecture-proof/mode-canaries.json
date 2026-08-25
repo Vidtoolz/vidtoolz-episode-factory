@@ -1,0 +1,58 @@
+{
+  "DRAFT": {
+    "mode": "DRAFT",
+    "set_by": "generation_supervisor (agent)",
+    "agent_could_set": true,
+    "gate_position": "capture-checklist (7/14)",
+    "gate7_policy_status": "BLOCKED",
+    "gate7_machine_owner": "generation_supervisor",
+    "gate7_requires_human_performance": false,
+    "gate7_blocked_by": [
+      "no synthetic delivery artifact contract exists; presenter-take-manifest models real human delivery only (TRANSCRIPT_SOURCES HUMAN_SUPPLIED/IMPORTED/EXTERNAL_TRANSCRIPTION, FIDELITY_METHODS ... HUMAN_VERIFIED, createHumanSelection)",
+      "PRESENTER_A_ROLL is excluded from visual-plan-prompt-adapter PROMPT_MEDIA, so presenter delivery is contractually not machine-generable",
+      "no text-to-speech, avatar, or synthetic-voice producer exists anywhere in the repository"
+    ],
+    "gate8_policy_status": "BLOCKED",
+    "gate8_requires_human_approval": true,
+    "gate8_architecture_need": "Either DRAFT needs a machine-verifiable proxy-capture disposition at gate 8, or the draft lifecycle must legitimately end before gate 8 and hand over to REVIEW. This is a human architecture decision, not a code fix, and it must not be resolved by weakening human gates generally.",
+    "live_gate7_evaluator_status": "NEEDS CAPTURE",
+    "live_gate7_reason": "capture execution artifacts are missing. audio capture checklist lacks an exact capture readiness approval marker.",
+    "projection_mode": "DRAFT"
+  },
+  "REVIEW": {
+    "mode": "REVIEW",
+    "predecessor": {
+      "mode": "DRAFT",
+      "set_by": "generation_supervisor (agent)"
+    },
+    "set_by": "editor (agent)",
+    "gate_position_unchanged_by_mode_change": "capture-checklist (7/14)",
+    "gate7_policy_status": "IMPLEMENTED",
+    "gate7_required_evidence": [],
+    "gate7_recapture_required": false,
+    "gate8_recapture_required": false,
+    "note": "Entering REVIEW introduces no capture requirement. Review judges a draft that already exists; whatever capture the draft produced stands.",
+    "projection_mode": "REVIEW"
+  },
+  "PRODUCTION": {
+    "mode": "PRODUCTION",
+    "set_by": "Mikko",
+    "agent_self_promotion": "refused -> PRODUCTION_MODE_HUMAN_AUTHORITY_REQUIRED",
+    "gate_position": "capture-checklist (7/14)",
+    "gate7_policy_status": "PLANNED",
+    "gate7_machine_owner": "presenter_director",
+    "gate7_preparation_owner": "production_operations",
+    "gate7_human_owns": "the physical performance itself, which no agent may synthesize away",
+    "gate7_requires_human_performance": true,
+    "gate7_requires_human_approval": false,
+    "gate7_blocked_by": [
+      "presenter_director is contract status PLANNED (build_order 7), NOT_PROVEN, autonomous_dispatch DISABLED",
+      "its enablement prerequisites are unmet and include an explicit human enablement decision by Mikko"
+    ],
+    "gate8_policy_status": "IMPLEMENTED",
+    "gate8_human_owns": "confirmation that the captured material is what was intended",
+    "live_gate7_evaluator_status": "NEEDS CAPTURE",
+    "live_gate7_reason": "capture execution artifacts are missing. audio capture checklist lacks an exact capture readiness approval marker.",
+    "projection_mode": "PRODUCTION"
+  }
+}
