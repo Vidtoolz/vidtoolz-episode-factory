@@ -32,26 +32,31 @@
     {
       "filename": "shot-list.md",
       "sha256": "a9f2bab784236faa8f5f7e9097c10bad195beca0aca4f16d50974e009ae77613",
+      "machine_sha256": "03a6117a0a0214148731ea80328264c43e741f14f177ddffd694451bd7cf6538",
       "bytes": 5700
     },
     {
       "filename": "screen-capture-list.md",
       "sha256": "829d328a515b578158d611608c0300be497904d6b0b859cfd16591c12acccc76",
+      "machine_sha256": "6489864562946af3ab79b4b90ad6c2d0789ee2e1708d6b578af37fb93b76de87",
       "bytes": 991
     },
     {
       "filename": "demo-list.md",
       "sha256": "ee86280c4b77b1a6b33cacf303a314bef315a4fd119f9c03ec1e1ff143673582",
+      "machine_sha256": "6e3ef78689b1116acc6f0903d8e1c40ad768427e96211936655dc4610f304e0e",
       "bytes": 985
     },
     {
       "filename": "b-roll-list.md",
       "sha256": "5ab7b42dd5fd86f71d2ee509785fe7060cebc72cae3ab5ddefd634b536a1df0f",
+      "machine_sha256": "396e91fbdbe2fe4296da9c366df86174ef449ee7a6be339d04c40f95d088095a",
       "bytes": 929
     },
     {
       "filename": "graphics-list.md",
       "sha256": "2e31799139d83e92a8b19b862291f9daf21f9f9ac4a7272d439e64bfed935a29",
+      "machine_sha256": "b317dd52a468b3df70b8a64830cb663fb170efb0d2610e71b9ef3c6ffcb11100",
       "bytes": 6392
     }
   ],

@@ -362,6 +362,20 @@ const RENDERERS = Object.freeze({
 
 /* ------------------------------------------------------- human-notes region -- */
 
+/*
+ * The machine-owned part of an artifact: everything except the human-notes
+ * region, which a human is explicitly allowed to edit after approval. Approval
+ * binds to this, so adding a note never reads as tampering — and rewriting a row
+ * always does.
+ */
+function machineCanonicalText(text) {
+  const value = String(text || '');
+  const start = value.indexOf(HUMAN_REGION_START);
+  const end = value.indexOf(HUMAN_REGION_END);
+  if (start === -1 || end === -1 || end < start) return value;
+  return `${value.slice(0, start + HUMAN_REGION_START.length)}\n${value.slice(end)}`;
+}
+
 function extractHumanRegion(existing) {
   if (!existing) return '';
   const start = existing.indexOf(HUMAN_REGION_START);
@@ -456,6 +470,134 @@ function readApprovalBinding(runDir) {
   return null;
 }
 
+/*
+ * Verify that a recorded human approval still applies to what is on disk.
+ *
+ * A gate approval must mean "Mikko approved THIS exact materialized plan", not
+ * "some PASS text exists somewhere". Three things therefore have to agree, and
+ * no single human-editable field is sufficient on its own:
+ *
+ *   1. the digest named beside the marker (human-written text)
+ *   2. the provenance sidecar's source plan digest (machine-written)
+ *   3. the visual plan's own recomputed digest (canonical content)
+ *
+ * plus every projected artifact's machine-owned bytes must still hash to what
+ * the sidecar recorded. Editing "Approved plan digest:" in Markdown cannot
+ * manufacture validity, because the sidecar and the plan itself are cross-checked.
+ *
+ * Returns a typed verdict; the caller decides the gate consequence.
+ */
+function verifyApprovalBinding(runDirInput) {
+  const runDir = path.resolve(runDirInput);
+  const approval = readApprovalBinding(runDir);
+  if (!approval) return { present: false, ok: false, code: null, detail: 'no approval marker' };
+
+  const base = {
+    present: true,
+    marker_file: approval.filename,
+    approved_digest: approval.approvedDigest,
+    current_plan_digest: null,
+  };
+  const reject = (code, detail) => ({ ...base, ok: false, code, detail });
+
+  // Artifacts that name a machine owner must be backed by provenance. Deleting
+  // the sidecar to fall back to marker-only trust is itself a drift.
+  const claimsMachine = OUTPUT_FILES.some((filename) => {
+    const file = path.join(runDir, filename);
+    return fs.existsSync(file) && new RegExp(`^- Machine owner: ${MACHINE_OWNER}$`, 'm').test(fs.readFileSync(file, 'utf8'));
+  });
+
+  const sidecarPath = path.join(runDir, PROVENANCE_FILE);
+  if (!fs.existsSync(sidecarPath)) {
+    return reject('APPROVED_PLAN_DIGEST_UNKNOWN', claimsMachine
+      ? `planning artifacts name ${MACHINE_OWNER} but ${PROVENANCE_FILE} is missing, so the approval cannot be bound to a plan`
+      : `no ${PROVENANCE_FILE}, so this approval is not bound to any visual plan`);
+  }
+
+  let sidecar;
+  try { sidecar = JSON.parse(fs.readFileSync(sidecarPath, 'utf8')); }
+  catch (_) { return reject('APPROVED_PLAN_MATERIALIZATION_DRIFT', `${PROVENANCE_FILE} is not valid JSON`); }
+  if (sidecar?.schema !== PROVENANCE_SCHEMA) {
+    return reject('APPROVED_PLAN_MATERIALIZATION_DRIFT', `${PROVENANCE_FILE} schema is not ${PROVENANCE_SCHEMA}`);
+  }
+
+  const relPlan = sidecar.source_visual_plan?.path;
+  if (typeof relPlan !== 'string' || !relPlan) {
+    return reject('APPROVED_PLAN_MATERIALIZATION_DRIFT', 'provenance does not name its source visual plan');
+  }
+  const planPath = path.resolve(runDir, relPlan);
+  if (!planPath.startsWith(path.resolve(runDir) + path.sep)) {
+    return reject('APPROVED_PLAN_MATERIALIZATION_DRIFT', 'provenance names a source plan outside the run');
+  }
+  if (!fs.existsSync(planPath)) {
+    return reject('APPROVED_PLAN_MATERIALIZATION_DRIFT', `source visual plan is missing: ${relPlan}`);
+  }
+
+  let plan;
+  try { plan = JSON.parse(fs.readFileSync(planPath, 'utf8')); }
+  catch (_) { return reject('APPROVED_PLAN_MATERIALIZATION_DRIFT', 'source visual plan is not valid JSON'); }
+
+  // The plan must hash to its own recorded digest, or the "current plan digest"
+  // is just another editable field.
+  const recomputed = visualPlan.planDigest(plan);
+  if (recomputed !== plan.plan_digest_sha256) {
+    return reject('APPROVED_PLAN_MATERIALIZATION_DRIFT', 'source visual plan does not hash to its recorded digest');
+  }
+  base.current_plan_digest = recomputed;
+
+  if (sidecar.source_visual_plan.plan_digest_sha256 !== recomputed) {
+    return reject('APPROVED_PLAN_MATERIALIZATION_DRIFT',
+      `provenance records plan digest ${sidecar.source_visual_plan.plan_digest_sha256} but the plan hashes to ${recomputed}`);
+  }
+
+  /*
+   * Every projection must still be what this plan materializes to. The expected
+   * bytes are RE-DERIVED from the plan rather than compared against the hashes
+   * the sidecar recorded: the adapter is deterministic, so the plan is the
+   * authority. Trusting the sidecar's own artifact hashes would leave it
+   * forgeable — edit a row, update its hash, and everything looks consistent.
+   *
+   * The sidecar is still checked (schema, source plan, digest, coverage of every
+   * artifact), but it is never the source of truth for artifact content.
+   */
+  const recorded = new Map((sidecar.artifacts || []).map((entry) => [entry.filename, entry]));
+  let expected;
+  try { expected = buildArtifacts(plan, path.basename(runDir)).files; }
+  catch (error) { return reject('APPROVED_PLAN_MATERIALIZATION_DRIFT', `plan cannot be re-materialized for verification: ${error.message}`); }
+
+  for (const filename of OUTPUT_FILES) {
+    if (!recorded.has(filename)) return reject('APPROVED_PLAN_MATERIALIZATION_DRIFT', `provenance does not record ${filename}`);
+    const file = path.join(runDir, filename);
+    if (!fs.existsSync(file)) return reject('APPROVED_PLAN_ARTIFACT_DRIFT', `${filename} is missing`);
+    const actual = sha256(machineCanonicalText(fs.readFileSync(file, 'utf8')));
+    const derived = sha256(machineCanonicalText(withHumanRegion(expected[filename], '')));
+    if (actual !== derived) {
+      return reject('APPROVED_PLAN_ARTIFACT_DRIFT', `${filename} is not what the approved plan materializes to`);
+    }
+    // A sidecar that disagrees with the re-derived bytes is stale or forged.
+    if (recorded.get(filename).machine_sha256 !== derived) {
+      return reject('APPROVED_PLAN_MATERIALIZATION_DRIFT', `provenance for ${filename} does not match the plan's own materialization`);
+    }
+  }
+
+  if (!approval.approvedDigest) {
+    return reject('APPROVED_PLAN_DIGEST_UNKNOWN', `${approval.filename} records an approval with no approved plan digest`);
+  }
+  if (approval.approvedDigest !== recomputed) {
+    return reject('APPROVED_PLAN_SUPERSEDED',
+      `the approval names plan digest ${approval.approvedDigest} but the current plan is ${recomputed}`);
+  }
+
+  return {
+    ...base,
+    ok: true,
+    code: null,
+    detail: 'approval is bound to the current visual plan and its materialized artifacts',
+    plan_id: plan.plan_id,
+    plan_revision: plan.plan_revision,
+  };
+}
+
 function assertNotSupersedingApproval(runDir, plan, options) {
   const approval = readApprovalBinding(runDir);
   if (!approval) return null;
@@ -493,6 +635,7 @@ function materialize(runDirInput, planPathInput, options = {}) {
       filename,
       path: target,
       sha256: sha256(contents),
+      machine_sha256: sha256(machineCanonicalText(contents)),
       bytes: Buffer.byteLength(contents),
       unchanged,
       human_notes_preserved: Boolean(extractHumanRegion(existing)),
@@ -529,7 +672,7 @@ function materialize(runDirInput, planPathInput, options = {}) {
       broll: classified.broll.length,
       graphics: classified.graphics.length,
     },
-    artifacts: written.map(({ filename, sha256: digest, bytes }) => ({ filename, sha256: digest, bytes })),
+    artifacts: written.map(({ filename, sha256: digest, machine_sha256: machineDigest, bytes }) => ({ filename, sha256: digest, machine_sha256: machineDigest, bytes })),
     human_approval: approval
       ? { recorded_in: approval.filename, approved_plan_digest: approval.approvedDigest, matches_source_plan: approval.approvedDigest === plan.plan_digest_sha256 }
       : null,
@@ -588,6 +731,7 @@ module.exports = {
   OUTPUT_FILES,
   APPROVAL_SCAN_FILES,
   readApprovalBinding,
+  verifyApprovalBinding,
   BROLL_MEDIA,
   GRAPHICS_MEDIA,
   CAPTURE_MEDIA,
@@ -596,6 +740,7 @@ module.exports = {
   MaterializationError,
   cell,
   classifyPlan,
+  machineCanonicalText,
   extractHumanRegion,
   withHumanRegion,
   loadPlan,

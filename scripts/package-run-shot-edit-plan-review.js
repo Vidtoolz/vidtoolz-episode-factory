@@ -7,6 +7,7 @@ const path = require("node:path");
 const productionPlan = require("./package-run-production-plan.js");
 const packageRunsIndex = require("./package-runs-index.js");
 const researchPack = require("./package-run-research-pack.js");
+const visualPlanMaterializer = require("./visual-plan-package-materializer.js");
 
 const TOOL_NAME = "package-run-shot-edit-plan-review.js";
 const REVIEW_FILE = "shot-edit-plan-review.md";
@@ -221,6 +222,9 @@ function readContext(runDir) {
     manualVerticalPrepChain,
     planningFindings,
     approvalMarker,
+    // A marker alone is not authority. Whenever one exists, resolve what plan it
+    // was actually given for and whether that plan is still what is on disk.
+    approvalBinding: approvalMarker ? visualPlanMaterializer.verifyApprovalBinding(runDir) : null,
     missingRequired: missingRequiredFiles(upstream, planning, researchGate, manualVerticalPrepChain),
   };
 }
@@ -284,12 +288,31 @@ function determineStatus(context) {
       nextSafeAction: "Mikko reviews the concrete shot/edit plan and adds an exact approval marker only if the scope is accepted.",
     };
   }
+  // An approval means "Mikko approved THIS exact materialized plan". If the plan
+  // or its projections have moved since, the approval stops applying — whether it
+  // moved through the adapter or by any other write path.
+  const binding = context.approvalBinding;
+  if (binding && !binding.ok) {
+    const humanDecisionAgain = ["APPROVED_PLAN_SUPERSEDED", "APPROVED_PLAN_DIGEST_UNKNOWN"].includes(binding.code);
+    return {
+      status: humanDecisionAgain ? "READY FOR HUMAN APPROVAL" : "NEEDS WORK",
+      accepted: false,
+      blockers: [`${binding.code}: ${binding.detail}`],
+      planningIssues: [],
+      concreteCount,
+      approvalBindingCode: binding.code,
+      nextSafeAction: humanDecisionAgain
+        ? "The recorded approval no longer covers the current visual plan. Mikko reviews the current plan and records a new approval bound to it."
+        : "Re-materialize the planning artifacts from the canonical visual plan, then run this review again.",
+    };
+  }
   return {
     status: "PASS",
     accepted: true,
     blockers: [],
     planningIssues: [],
     concreteCount,
+    approvalBindingCode: null,
     nextSafeAction: "Proceed only with the explicitly approved shooting/edit-planning scope.",
   };
 }
