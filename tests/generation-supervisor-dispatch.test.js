@@ -21,6 +21,34 @@ const executableBoundary = require('../scripts/agent-executable-boundary.js');
 const ROOT = path.resolve(__dirname, '..');
 const AGENT = 'generation_supervisor';
 
+let readinessFixture = null;
+
+function healthyReadinessEndpoint() {
+  if (readinessFixture) return readinessFixture.url;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gs-dispatch-readiness-'));
+  const readyPath = path.join(dir, 'port');
+  const serverSource = [
+    "const fs = require('node:fs');",
+    "const http = require('node:http');",
+    "const readyPath = process.argv[1];",
+    "const server = http.createServer((_req, res) => { res.writeHead(200); res.end('ready'); });",
+    "server.listen(0, '127.0.0.1', () => fs.writeFileSync(readyPath, String(server.address().port)));",
+  ].join('\n');
+  const child = childProcess.spawn(process.execPath, ['-e', serverSource, readyPath], { stdio: 'ignore' });
+  child.unref();
+  const deadline = Date.now() + 5000;
+  while (!fs.existsSync(readyPath) && Date.now() < deadline) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+  }
+  if (!fs.existsSync(readyPath)) {
+    child.kill();
+    throw new Error('dispatch readiness fixture failed to start');
+  }
+  readinessFixture = { child, url: `http://127.0.0.1:${fs.readFileSync(readyPath, 'utf8').trim()}` };
+  process.once('exit', () => child.kill());
+  return readinessFixture.url;
+}
+
 function registration() {
   const registry = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'agent-registry.json'), 'utf8'));
   return registry.agents.find((agent) => agent.agent_id === AGENT);
@@ -227,9 +255,15 @@ test('GS14: direct CLI invocation still behaves exactly as before the repair', (
   let stdout = '';
   let code = 0;
   try {
+    const endpoint = healthyReadinessEndpoint();
     stdout = childProcess.execFileSync(process.execPath,
       [path.join(ROOT, 'scripts', 'generation-supervisor.js'), '--task', taskPath],
-      { cwd: ROOT, encoding: 'utf8', timeout: 120000 });
+      {
+        cwd: ROOT,
+        encoding: 'utf8',
+        timeout: 120000,
+        env: { ...process.env, AIGEN_COMFYUI_URL: endpoint },
+      });
   } catch (error) { stdout = String(error.stdout || ''); code = error.status; }
   const status = JSON.parse(stdout);
   assert.equal(status.agent_id, AGENT);
