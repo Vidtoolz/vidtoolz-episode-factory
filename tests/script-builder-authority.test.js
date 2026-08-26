@@ -66,4 +66,6 @@ test('the canonical workflow rejects a missing credential before private checkou
   assert.match(workflow, /secrets\.SCRIPT_BUILDER_DEPLOY_KEY != ''/);
   assert.match(workflow, /persist-credentials: false/);
   assert.doesNotMatch(workflow, /pull_request_target/);
+  assert.match(workflow, /command -v ffmpeg[\s\S]*command -v ffprobe[\s\S]*timeout 180s apt-get/,
+    'runner media tooling must reuse an installed binary or fail within a bounded install');
 });

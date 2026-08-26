@@ -69,7 +69,15 @@ jobs:
           node-version: "22"
 
       - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: |
+          if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1; then
+            echo "Using ffmpeg already provided by the GitHub-hosted runner."
+          else
+            sudo env DEBIAN_FRONTEND=noninteractive timeout 180s apt-get -o Acquire::Retries=3 update
+            sudo env DEBIAN_FRONTEND=noninteractive timeout 180s apt-get -o Acquire::Retries=3 install -y ffmpeg
+          fi
+          ffmpeg -version | head -n 1
+          ffprobe -version | head -n 1
 
       - name: Run source-of-truth verification
         run: ./scripts/verify.sh
