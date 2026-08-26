@@ -66,12 +66,12 @@ function execFile(command, args, options = {}) {
   return result.stdout;
 }
 function probeMedia(filePath) {
-  const parsed = JSON.parse(execFile('ffprobe', ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', filePath], { code: 'MEDIA_PROBE_FAILED' }));
+  const parsed = JSON.parse(execFile('ffprobe', ['-v', 'error', '-count_frames', '-show_format', '-show_streams', '-of', 'json', filePath], { code: 'MEDIA_PROBE_FAILED' }));
   const video = (parsed.streams || []).find((stream) => stream.codec_type === 'video');
   const audio = (parsed.streams || []).find((stream) => stream.codec_type === 'audio');
   return {
     duration_ms: Math.round(Number(parsed.format?.duration || video?.duration || audio?.duration || 0) * 1000),
-    video: video ? { codec: video.codec_name, width: video.width, height: video.height, r_frame_rate: video.r_frame_rate, avg_frame_rate: video.avg_frame_rate, nb_frames: video.nb_frames === undefined ? undefined : Number(video.nb_frames) } : null,
+    video: video ? { codec: video.codec_name, width: video.width, height: video.height, r_frame_rate: video.r_frame_rate, avg_frame_rate: video.avg_frame_rate, nb_frames: Number(video.nb_read_frames ?? video.nb_frames) } : null,
     audio: audio ? { codec: audio.codec_name, sample_rate: Number(audio.sample_rate), channels: audio.channels } : null,
     raw: parsed,
   };
@@ -381,7 +381,7 @@ function qcCandidate(filePath, plan, options = {}) {
   const probe = (options.probeMedia || probeMedia)(filePath);
   if (!probe.video || !probe.audio || probe.video.width !== plan.output.width || probe.video.height !== plan.output.height || probe.video.codec !== 'h264' || probe.audio.codec !== 'aac' || probe.audio.sample_rate !== plan.output.audio_sample_rate || probe.audio.channels !== plan.output.audio_channels) fail('OUTPUT_QC_STREAMS_FAILED', 'output streams do not match contract');
   if (!['30/1', '60/2'].includes(probe.video.avg_frame_rate)) fail('OUTPUT_QC_CADENCE_FAILED', `expected CFR30, got ${probe.video.avg_frame_rate}`);
-  if (probe.video.nb_frames !== undefined && Number(probe.video.nb_frames) <= 0) fail('OUTPUT_QC_FRAME_COUNT_FAILED', 'positive output frame count required');
+  if (!Number.isInteger(probe.video.nb_frames) || probe.video.nb_frames <= 0) fail('OUTPUT_QC_FRAME_COUNT_FAILED', 'positive measured output frame count required');
   const tolerance = Math.ceil(1000 / plan.output.fps) + 25;
   if (Math.abs(probe.duration_ms - plan.programme_duration_ms) > tolerance) fail('OUTPUT_QC_DURATION_FAILED', `${probe.duration_ms} vs ${plan.programme_duration_ms}`);
   if (options.decode !== false) execFile('ffmpeg', ['-v', 'error', '-xerror', '-i', filePath, '-map', '0:v:0', '-map', '0:a:0', '-f', 'null', '-'], { code: 'OUTPUT_QC_DECODE_FAILED' });

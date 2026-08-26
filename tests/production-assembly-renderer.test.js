@@ -77,8 +77,8 @@ async function fixture(options = {}) {
   setHumanMusic(spec, 'NONE');
   const specPath = path.join(root, 'spec.json'); writeJson(specPath, spec);
   const fakeProbe = (filePath) => filePath.includes('.partial') || filePath.endsWith('candidate.mp4')
-    ? { duration_ms: 1133, video: { codec: 'h264', width: 1080, height: 1920, avg_frame_rate: '30/1' }, audio: { codec: 'aac', sample_rate: 48000, channels: 2 } }
-    : { duration_ms: 1000, video: { codec: 'h264', width: 1920, height: 1080, avg_frame_rate: options.vfr ? '24000/1001' : '30/1' }, audio: { codec: 'aac', sample_rate: 48000, channels: 2 } };
+    ? { duration_ms: 1133, video: { codec: 'h264', width: 1080, height: 1920, avg_frame_rate: '30/1', nb_frames: 34 }, audio: { codec: 'aac', sample_rate: 48000, channels: 2 } }
+    : { duration_ms: 1000, video: { codec: 'h264', width: 1920, height: 1080, avg_frame_rate: options.vfr ? '24000/1001' : '30/1', nb_frames: 24 }, audio: { codec: 'aac', sample_rate: 48000, channels: 2 } };
   const save = () => { writeJson(reviewPath, review); packet.human_review_binding_sha256 = review.binding_digest_sha256; writeJson(packetPath, packet); spec.release_packet.sha256 = sha(fs.readFileSync(packetPath)); spec.human_review.file_sha256 = sha(fs.readFileSync(reviewPath)); writeJson(specPath, spec); };
   return { root, out, masters, review, reviewPath, packet, packetPath, spec, specPath, insertPath, fakeProbe, save };
 }
@@ -172,9 +172,14 @@ test('PAR-36 completed candidate refuses a different render plan', async () => {
   await renderer.renderFromSpec(f.specPath, options); f.spec.crops[0].x = 11; writeJson(f.specPath, f.spec);
   await throwsCode(() => renderer.renderFromSpec(f.specPath, options), 'EXISTING_OUTPUT_CONFLICT');
 });
+test('PAR-37 QC fails closed when ffprobe cannot measure a positive frame count', async () => {
+  const f = await fixture(); const checked = await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }); const plan = renderer.buildPlan(f.spec, checked);
+  const noFrames = () => ({ duration_ms: 1100, video: { codec: 'h264', width: 1080, height: 1920, avg_frame_rate: '30/1', nb_frames: null }, audio: { codec: 'aac', sample_rate: 48000, channels: 2 } });
+  assert.throws(() => renderer.qcCandidate('/tmp/not-read-with-injected-probe.mp4', plan, { probeMedia: noFrames, decode: false }), (error) => error.code === 'OUTPUT_QC_FRAME_COUNT_FAILED');
+});
 function readLock(filePath) { return JSON.parse(fs.readFileSync(filePath, 'utf8')); }
 
-test('PAR-37 real ffmpeg canary covers VFR-like interleave, crop, essential overlay, music fade, QC, evidence and idempotency', async () => {
+test('PAR-38 real ffmpeg canary covers VFR-like interleave, crop, essential overlay, music fade, QC, evidence and idempotency', async () => {
   if (childProcess.spawnSync('ffmpeg', ['-version']).status !== 0) return;
   const f = await fixture();
   for (const [index, id] of ['A', 'T', 'C'].entries()) {
