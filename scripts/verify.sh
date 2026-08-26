@@ -4,6 +4,31 @@ set -eu
 cd "$(dirname "$0")/.."
 
 node scripts/verify-dependencies.js
+
+# Runtime consumers need deterministic Story data in addition to Script
+# Builder's pinned executable authority. Build an isolated checkout and seed the
+# public canary through the real pinned store/version implementation; never
+# mutate the operator's live/private checkout.
+script_builder_source="${VIDTOOLZ_SCRIPT_BUILDER_ROOT:-}"
+if [ -z "$script_builder_source" ]; then
+  echo "VIDTOOLZ_SCRIPT_BUILDER_ROOT must resolve the verified Script Builder authority" >&2
+  exit 1
+fi
+script_builder_test_parent="$(mktemp -d /tmp/episode-factory-script-builder-test.XXXXXX)"
+script_builder_test_root="$script_builder_test_parent/authority"
+cleanup_script_builder_test_authority() {
+  case "$script_builder_test_parent" in
+    /tmp/episode-factory-script-builder-test.*) rm -rf -- "$script_builder_test_parent" ;;
+    *) echo "refusing to remove unexpected test-authority path: $script_builder_test_parent" >&2 ;;
+  esac
+}
+trap cleanup_script_builder_test_authority EXIT HUP INT TERM
+node scripts/prepare-script-builder-test-authority.js \
+  --source "$script_builder_source" \
+  --out "$script_builder_test_root"
+VIDTOOLZ_SCRIPT_BUILDER_ROOT="$script_builder_test_root"
+export VIDTOOLZ_SCRIPT_BUILDER_ROOT
+
 node tests/run-tests.js
 node --check episode-model.js
 node --check score-engine/cue-analysis.js

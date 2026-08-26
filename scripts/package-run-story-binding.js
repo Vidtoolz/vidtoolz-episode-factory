@@ -25,6 +25,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const compat = require('./script-builder-compat.js');
+const scriptBuilderAuthority = require('./script-builder-authority.js');
 
 const BINDING_FILE = 'story-binding.json';
 const BINDING_SCHEMA = 'vidtoolz.packageRunStoryBinding.v1';
@@ -104,7 +105,14 @@ function resolveBoundStory(runDir, options = {}) {
     readBinding(runDir) || fail('STORY_BINDING_MISSING', `${BINDING_FILE} is missing; this run is not bound to a canonical Story`)
   );
 
-  const { root, versions } = compat.load(options.scriptBuilderRoot || binding.story.source_root);
+  // A binding's source_root records where the Story authority lived when the
+  // binding was written. It is useful as a local-development fallback, but it
+  // must not override the authority explicitly configured for this process
+  // (notably the pinned checkout used by CI).
+  const configuredRoot = options.scriptBuilderRoot
+    || process.env[scriptBuilderAuthority.ENV_NAME]
+    || binding.story.source_root;
+  const { root, versions } = compat.load(configuredRoot);
   const dataRoot = path.join(root, 'data');
   const store = require(path.join(root, 'lib', 'store.js'));
 

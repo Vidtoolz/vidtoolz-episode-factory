@@ -16,6 +16,7 @@
 
 const { assert, fs, os, path, test } = require('./_helpers.js');
 const storyBinding = require('../scripts/package-run-story-binding.js');
+const scriptBuilderAuthority = require('../scripts/script-builder-authority.js');
 const storyRegistration = require('../scripts/package-run-story-registration.js');
 const materializer = require('../scripts/visual-plan-package-materializer.js');
 const shotEditReview = require('../scripts/package-run-shot-edit-plan-review.js');
@@ -122,6 +123,26 @@ test('bridge SB1: a valid binding resolves the exact canonical Story version', (
   assert.equal(resolved.versionId, binding.story.version_id);
   assert.equal(resolved.contentHash, binding.story.content_hash);
   assert.match(resolved.contentHash, /^[0-9a-f]{64}$/);
+});
+
+test('bridge SB1b: configured Script Builder authority wins over a stored workstation locator', () => {
+  const dir = stagedRun('configured-authority');
+  const binding = storyBinding.readBinding(dir);
+  binding.story.source_root = path.join(os.tmpdir(), `retired-script-builder-${process.pid}`);
+  fs.writeFileSync(path.join(dir, storyBinding.BINDING_FILE), JSON.stringify(binding, null, 2));
+
+  const envName = scriptBuilderAuthority.ENV_NAME;
+  const previous = process.env[envName];
+  const canonical = scriptBuilderAuthority.resolveScriptBuilderRoot().root;
+  process.env[envName] = canonical;
+  try {
+    const resolved = storyBinding.resolveBoundStory(dir);
+    assert.equal(resolved.scriptBuilderRoot, canonical);
+    assert.equal(resolved.versionId, binding.story.version_id);
+  } finally {
+    if (previous === undefined) delete process.env[envName];
+    else process.env[envName] = previous;
+  }
 });
 
 test('bridge SB2: an unbound run fails closed instead of guessing a Story', () => {
