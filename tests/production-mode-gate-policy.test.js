@@ -34,6 +34,16 @@ const UPSTREAM = [
   'graphics-list.md', 'shot-edit-plan-review.md',
 ];
 
+// These four generated canary artifacts exist in some working trees but are
+// not part of the committed fixture. Keep the mode-policy fixture deterministic
+// by supplying bounded synthetic equivalents instead of reading local dirt.
+const SYNTHETIC_UPSTREAM = {
+  'final-script.md': '# Final Script\n\nCommitted-fixture lifecycle canary script.\n',
+  'selected-package.json': `${JSON.stringify({ package: { proposedTitle: 'Lifecycle canary', idea: 'Mode-policy fixture', viewerPromise: 'Fixture only' } }, null, 2)}\n`,
+  'b-roll-list.md': '# B-Roll List\n\nNo b-roll required for this fixture.\n',
+  'graphics-list.md': '# Graphics List\n\nNo graphics required for this fixture.\n',
+};
+
 // A run at gate 7 with real upstream evidence, so mode is the only variable.
 function modeRun(label) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `mode-${label}-`));
@@ -41,8 +51,13 @@ function modeRun(label) {
   const dir = path.join(root, 'package-runs', runId);
   fs.mkdirSync(dir, { recursive: true });
   for (const name of UPSTREAM) {
+    if (Object.hasOwn(SYNTHETIC_UPSTREAM, name)) {
+      fs.writeFileSync(path.join(dir, name), SYNTHETIC_UPSTREAM[name]);
+      continue;
+    }
     const src = path.join(CANARY_DIR, name);
-    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dir, name));
+    assert.ok(fs.existsSync(src), `committed mode fixture source missing: ${name}`);
+    fs.copyFileSync(src, path.join(dir, name));
   }
   return { root, dir, runId };
 }
