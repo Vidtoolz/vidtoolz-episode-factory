@@ -30,6 +30,16 @@ function scratchRepo() {
   return root;
 }
 
+const WORKFLOW_SENTINEL = 'Lifecycle integration workflow authority fixture.';
+function createThroughRealPath(topic, date) {
+  const workflowRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lifecycle-workflow-'));
+  const workflowPath = path.join(workflowRoot, 'vidtoolz-package-engine.md');
+  fs.writeFileSync(workflowPath, `# Package Engine Workflow\n\n${WORKFLOW_SENTINEL}\n`);
+  try {
+    return require('../scripts/package-engine-new-run.js').main([topic, '--date', date, '--workflow', workflowPath]);
+  } finally { fs.rmSync(workflowRoot, { recursive: true, force: true }); }
+}
+
 /** Sample every state surface for one run. */
 function surfaces(repoRoot, runId) {
   const runDir = path.join(repoRoot, 'package-runs', runId);
@@ -68,14 +78,15 @@ test('LI1: a run created by the real creation path is consistent across every su
   const runId = '2099-02-02-integration-test-run';
   const runDir = path.join(ROOT, 'package-runs', runId);
   fs.rmSync(runDir, { recursive: true, force: true });
-  const creation = require('../scripts/package-engine-new-run.js');
-  const exitCode = creation.main(['integration test run', '--date', '2099-02-02']);
+  const exitCode = createThroughRealPath('integration test run', '2099-02-02');
   let primaryError = null;
   try {
     assert.equal(exitCode, 0, 'the real creation path must succeed');
     assert.ok(fs.existsSync(runDir), 'creation must produce the run directory');
     assert.ok(fs.existsSync(path.join(runDir, 'package-run-state.md')),
       'creation must write the durable projection immediately — a new run is never UNKNOWN');
+    assert.match(fs.readFileSync(path.join(runDir, 'generation-prompt.md'), 'utf8'), new RegExp(WORKFLOW_SENTINEL),
+      'the real creation path must consume the explicitly supplied workflow authority');
 
     const s = surfaces(ROOT, runId);
     assert.equal(s.genuine, true, 'the real creation path must produce a genuine package run');
@@ -322,8 +333,7 @@ function runIdSet() {
 
 test('LI7: teardown leaves the index consistent — create, index, delete, rebuild, no ghost', () => {
   const runId = '2099-02-07-teardown-normal';
-  const creation = require('../scripts/package-engine-new-run.js');
-  assert.equal(creation.main(['teardown normal', '--date', '2099-02-07']), 0);
+  assert.equal(createThroughRealPath('teardown normal', '2099-02-07'), 0);
   try {
     // The production creation hook indexed the run immediately.
     assert.ok(runIdSet().has(runId), 'the production creation path must index the new run');
@@ -340,8 +350,7 @@ test('LI7: teardown leaves the index consistent — create, index, delete, rebui
 
 test('LI8: a failing canary still tears down — delete and rebuild happen, primary error wins', () => {
   const runId = '2099-02-08-teardown-failure';
-  const creation = require('../scripts/package-engine-new-run.js');
-  assert.equal(creation.main(['teardown failure', '--date', '2099-02-08']), 0);
+  assert.equal(createThroughRealPath('teardown failure', '2099-02-08'), 0);
   let primaryError = null;
   try {
     assert.ok(runIdSet().has(runId), 'the temporary run is indexed before the failure');
@@ -364,11 +373,10 @@ test('LI9: multiple temporary runs — every deleted entry disappears, retained 
   const runB = '2099-02-09-teardown-multi-b';
   const retained = '2026-08-25-lifecycle-integration-canary-canary-not-for-publication';
   const retainedOnDisk = fs.existsSync(path.join(ROOT, 'package-runs', retained));
-  const creation = require('../scripts/package-engine-new-run.js');
-  assert.equal(creation.main(['teardown multi a', '--date', '2099-02-09']), 0);
+  assert.equal(createThroughRealPath('teardown multi a', '2099-02-09'), 0);
   try {
     // A second temporary run the same day (creation appends a suffix on id collision).
-    assert.equal(creation.main(['teardown multi b', '--date', '2099-02-09']), 0);
+    assert.equal(createThroughRealPath('teardown multi b', '2099-02-09'), 0);
     const indexed = runIdSet();
     assert.ok(indexed.has(runA), 'first temporary run indexed');
     assert.ok([...indexed].some((id) => id.startsWith('2099-02-09-teardown-multi')), 'second temporary run indexed');
@@ -391,8 +399,7 @@ test('LI9: multiple temporary runs — every deleted entry disappears, retained 
 
 test('LI10: teardown is idempotent — a second pass after removal is harmless', () => {
   const runId = '2099-02-10-teardown-idempotent';
-  const creation = require('../scripts/package-engine-new-run.js');
-  assert.equal(creation.main(['teardown idempotent', '--date', '2099-02-10']), 0);
+  assert.equal(createThroughRealPath('teardown idempotent', '2099-02-10'), 0);
   const first = teardownRealRepoTempRun(runId);
   assert.deepEqual(first, [], 'first teardown clean');
   // Second pass: the directory is already gone (rmSync force tolerates it) and
