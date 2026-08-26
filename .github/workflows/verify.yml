@@ -1,6 +1,7 @@
 name: Verify
 
 "on":
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -35,7 +36,7 @@ jobs:
 
   verify:
     name: Canonical verification with pinned Script Builder authority
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
