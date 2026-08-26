@@ -49,6 +49,17 @@ function healthyReadinessEndpoint() {
   return readinessFixture.url;
 }
 
+async function withHealthyReadiness(fn) {
+  const previous = process.env.AIGEN_COMFYUI_URL;
+  process.env.AIGEN_COMFYUI_URL = healthyReadinessEndpoint();
+  try {
+    return await fn();
+  } finally {
+    if (previous === undefined) delete process.env.AIGEN_COMFYUI_URL;
+    else process.env.AIGEN_COMFYUI_URL = previous;
+  }
+}
+
 function registration() {
   const registry = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'agent-registry.json'), 'utf8'));
   return registry.agents.find((agent) => agent.agent_id === AGENT);
@@ -335,7 +346,8 @@ test('GS18: status is idempotent over identical input', async () => {
 
 test('GS19: production-path proof reproduces the BEFORE defect and proves the AFTER repair', async () => {
   const proofV2 = require('../scripts/generation-supervisor-proof-v2.js');
-  const proof = await proofV2.runProductionPath({ sourceRoot: ROOT, runId: 'gs-test-prodpath' });
+  const proof = await withHealthyReadiness(() =>
+    proofV2.runProductionPath({ sourceRoot: ROOT, runId: 'gs-test-prodpath' }));
   try {
     // BEFORE: the exact historical module shape, refused by the real runner.
     assert.equal(proof.before.refused, true, 'the pre-repair shape must be refused');
@@ -355,7 +367,8 @@ test('GS20: the proof never mutates the live registry or the live module', async
   const modulePath = path.join(ROOT, 'scripts', 'generation-supervisor.js');
   const registryBefore = fs.readFileSync(registryPath, 'utf8');
   const moduleBefore = fs.readFileSync(modulePath, 'utf8');
-  const proof = await proofV2.runProductionPath({ sourceRoot: ROOT, runId: 'gs-test-fidelity' });
+  const proof = await withHealthyReadiness(() =>
+    proofV2.runProductionPath({ sourceRoot: ROOT, runId: 'gs-test-fidelity' }));
   try {
     assert.equal(fs.readFileSync(registryPath, 'utf8'), registryBefore, 'live registry must be byte-identical');
     assert.equal(fs.readFileSync(modulePath, 'utf8'), moduleBefore, 'live module must be byte-identical');
@@ -371,7 +384,8 @@ test('GS21: no render workload is started by any proof case', async () => {
   }
   // Every supervision case fails closed before any engine submission: the agent
   // has no registered programmatic dispatch bridge and says so explicitly.
-  const status = await gs.run(supervisionTask({ task_id: 'gs-no-workload' }));
+  const status = await withHealthyReadiness(() =>
+    gs.run(supervisionTask({ task_id: 'gs-no-workload' })));
   assert.equal(status.state, 'DISPATCH_BLOCKED_NO_REGISTERED_BRIDGE');
   assert.deepEqual(status.outputs, [], 'no artifact may be fabricated');
   assert.match(status.reason, /fail-closed rather than bypassing policy/);
