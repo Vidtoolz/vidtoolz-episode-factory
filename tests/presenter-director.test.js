@@ -657,10 +657,11 @@ test('PD95: runner resolves the canonically enabled presenter implementation', (
   assert.equal(resolved.registration.lifecycle.autonomous_dispatch, 'ENABLED');
   assert.equal(loads, 1);
 });
-test('PD96: control room reports the enabled presenter as available', async () => {
+test('PD96: control room reports the enabled presenter implementation as available', async () => {
   const view = await controlRoom.buildAgentControlRoom({ root: path.join(__dirname, '..') });
   const presenter = view.agents.find((agent) => agent.agent_id === 'presenter_director');
-  assert.equal(presenter.state, 'COMPLETE');
+  assert.ok(['NO_RUNTIME_STATE', 'COMPLETE'].includes(presenter.state),
+    'runtime history is optional; implementation availability is canonical');
   assert.equal(presenter.implementation.state, 'AVAILABLE');
   assert.equal(presenter.lifecycle.proven, 'PROVEN');
   assert.equal(presenter.lifecycle.autonomous_dispatch, 'ENABLED');
