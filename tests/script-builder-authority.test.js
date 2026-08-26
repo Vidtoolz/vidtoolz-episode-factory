@@ -61,6 +61,8 @@ test('the canonical workflow rejects a missing credential before private checkou
   const credentialGate = workflow.indexOf('Require private Script Builder read credential');
   const privateCheckout = workflow.indexOf('Check out pinned Script Builder authority');
   assert.ok(credentialGate > 0 && privateCheckout > credentialGate);
+  assert.match(workflow.slice(0, credentialGate), /Check out repository[\s\S]*fetch-depth: 0/,
+    'the canonical gate needs recorded history for durability verification');
   assert.match(workflow, /secrets\.SCRIPT_BUILDER_DEPLOY_KEY != ''/);
   assert.match(workflow, /persist-credentials: false/);
   assert.doesNotMatch(workflow, /pull_request_target/);
