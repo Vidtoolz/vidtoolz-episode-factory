@@ -152,6 +152,69 @@
         }
       },
       "human_gate_today_note": "The static HUMAN_GATE annotation is true for PRODUCTION and false for DRAFT. Human authority at this gate is mode-dependent."
+    },
+    "rough-cut-review": {
+      "gate_number": 9,
+      "static_owner": "editor",
+      "static_owner_note": "Editor V1 owns the edit decision. It is explicit that it never renders media, which is why a DRAFT rough cut needed a separate technical producer beneath it rather than a change to Editor's boundary.",
+      "human_gate_today": true,
+      "modes": {
+        "DRAFT": {
+          "meaning": "A DRAFT rough cut is assembled automatically from verified proxy capture and bound visual/music assets, so that the human review this gate exists for has something to watch. Assembly is machine work; the review is not.",
+          "implementation_status": "IMPLEMENTED",
+          "machine_owner": "editor",
+          "technical_producer": "ffmpeg-draft-assembler v0",
+          "preparation_owner": "production_operations",
+          "human_performance_required": false,
+          "human_approval_required": true,
+          "required_predecessor_disposition": "PROXY_CAPTURE_READY",
+          "required_predecessor_authority": "scripts/draft-proxy-capture-readiness.js",
+          "required_evidence": [
+            "draft assembly binding naming the exact visual and music assets",
+            "DRAFT_ASSEMBLY evidence over a decodable, duration-verified MP4",
+            "rough-cut watch notes authored by Mikko"
+          ],
+          "blocked_by": [],
+          "expected_owner": "editor",
+          "next_specialist": null,
+          "human_performer": "mikko",
+          "human_required": true,
+          "disposition": "DRAFT_ASSEMBLY_READY",
+          "owner_actionable": true,
+          "owner_actionable_reason": "Draft Assembly V0 renders the rough cut deterministically from already-verified assets on the narration's own measured timing. The artifact is produced without a human; the gate still closes on Mikko's watch notes.",
+          "architecture_need": "SATISFIED for artifact production. The remaining need at this gate is human: a rendered Draft V1 makes gate 9 ACTIONABLE and never completes it.",
+          "satisfies_gate": false,
+          "satisfies_gate_note": "A rendered draft is material for review, never a review outcome. Gate 9 completion rules (real watch notes plus a second-cut readiness marker) are unchanged.",
+          "satisfied_by": [
+            "draft assembly binding (scripts/draft-assembly-binding.js) records which visuals and music the draft uses, hash-bound to their owning roots",
+            "the deterministic timeline (scripts/draft-assembly-timeline.js) derives every duration from measured narration, never from invented pacing",
+            "the renderer (scripts/draft-assembly-render.js) produces and ffprobe-validates a real MP4",
+            "DRAFT_ASSEMBLY evidence re-verifies the bytes and fails closed on upstream drift"
+          ],
+          "boundaries_that_remain": [
+            "the draft speaks DRAFT_SYNTHETIC_PROXY narration and inherits every boundary that evidence declares",
+            "assembly is positional and timing-driven; it is not an edit, and edit quality is not asserted",
+            "the audio is a narration/music sum with a safety limiter, not a mix; loudness compliance is not asserted",
+            "no Resolve project is created, opened, or controlled"
+          ]
+        },
+        "PRODUCTION": {
+          "meaning": "A PRODUCTION rough cut is a real edit of real captured material. Nothing in the DRAFT assembler may stand in for it.",
+          "implementation_status": "PLANNED",
+          "human_approval_required": true,
+          "blocked_by": [
+            "no producer exists for a production rough cut; Editor V1 plans the edit and explicitly does not render it",
+            "Resolve automation is deliberately out of scope"
+          ],
+          "expected_owner": "editor",
+          "next_specialist": null,
+          "human_performer": "mikko",
+          "human_required": true,
+          "disposition": null,
+          "owner_actionable": false,
+          "owner_actionable_reason": "the production rough cut is assembled by Mikko in an NLE; the estate stops at the edit handoff by doctrine."
+        }
+      }
     }
   },
   "dispositions": {
@@ -159,7 +222,8 @@
     "PROXY_CAPTURE_READY": "gate 8, DRAFT: machine-verified proxy media exists and is sufficient to proceed toward rough-cut assembly. Explicitly NOT a human performance.",
     "REAL_CAPTURE_REQUIRED": "gate 7, PRODUCTION: a real recording session must be prepared and performed",
     "REAL_CAPTURE_CONFIRMED": "gate 8, PRODUCTION: Mikko has confirmed the real captured material",
-    "REUSE_PRIOR_CAPTURE": "REVIEW: capture is not re-entered; prior evidence stands"
+    "REUSE_PRIOR_CAPTURE": "REVIEW: capture is not re-entered; prior evidence stands",
+    "DRAFT_ASSEMBLY_READY": "gate 9, DRAFT: a deterministic draft assembly exists, is decodable and duration-verified, and is bound to the exact assets recorded. Explicitly NOT an approved rough cut and NOT gate completion."
   },
   "review_entry": {
     "first_mandatory_human_boundary": "rough-cut-review",

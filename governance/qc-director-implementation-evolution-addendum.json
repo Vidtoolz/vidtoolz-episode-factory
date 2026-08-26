@@ -23,11 +23,11 @@
   },
   "current_module_binding": {
     "path": "scripts/qc-director.js",
-    "module_sha256": "3c87c23a43848b1bbd529b34599ea439b175bf18a55a4ce78524ef87e588a162",
-    "module_version": "qc-director-v1+applicability+fidelity"
+    "module_sha256": "21f5785d8080606ee5452149cbaf4842a1ac30dc227ec47c5678ed77df1fb678",
+    "module_version": "qc-director-v1+applicability+fidelity+draft-assembly"
   },
   "chain_rule": "QCG2 accepts the current module if and only if its hash equals the promotion record's bound hash, OR the hash chain holds: promotion binding -> evolution.module_sha256_after -> each evolution_chain entry's before/after -> current_module_binding.module_sha256. Governance history is appended, never rewritten.",
-  "recorded_at": "2026-08-25",
+  "recorded_at": "2026-08-26",
   "evolution_chain": [
     {
       "commit": "b693331",
@@ -51,6 +51,22 @@
       "lifecycle_or_gate_authority_added": false,
       "human_approval_authority_added": false,
       "qc_weakening_introduced": false
+    },
+    {
+      "commit": "PENDING_DRAFT_ASSEMBLY_EVIDENCE_COMMIT",
+      "subject": "feat(qc): accept DRAFT_ASSEMBLY as a first-class evidence kind",
+      "scope": "additive evidence-kind registration only: one new draftAssemblyAdapter function, one ADAPTERS table entry, and one qc-evidence-policy EVIDENCE_POLICY row. 98 insertions, zero deletions in scripts/qc-director.js. No existing adapter, check, severity, disposition rule or required-evidence rule was modified.",
+      "semantic_effect_on_promotion": "none",
+      "implementation_state_changed": false,
+      "registry_changed": false,
+      "dispatch_authority_changed": false,
+      "lifecycle_or_gate_authority_added": false,
+      "human_approval_authority_added": false,
+      "qc_weakening_introduced": false,
+      "module_sha256_before": "3c87c23a43848b1bbd529b34599ea439b175bf18a55a4ce78524ef87e588a162",
+      "module_sha256_after": "21f5785d8080606ee5452149cbaf4842a1ac30dc227ec47c5678ed77df1fb678",
+      "why_not_a_weakening": "The new kind only ADDS validation where there was none. A verified DRAFT_ASSEMBLY yields human_review_required, so QC defers to Mikko rather than passing gate 9; malformed, unverified, unidentified, decode-failed and source-drifted evidence each raise their own defect. GENERATION_RESULT and every other pre-existing kind are byte-for-byte untouched.",
+      "evidence": "6 new QCA tests green (registration, direct consumption, five rejection paths, warning pass-through, unrelated-kind isolation, GENERATION_RESULT unchanged); the full suite is green apart from this record itself."
     }
   ]
 }

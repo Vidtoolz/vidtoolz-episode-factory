@@ -1,0 +1,191 @@
+{
+  "schema": "vidtoolz.proxyPresenter.v1",
+  "run_id": "2026-08-26-draft-assembly-v0-canary",
+  "production_mode": "DRAFT",
+  "fidelity": "DRAFT_SYNTHETIC_PROXY",
+  "track_role": "PROXY_PRESENTER",
+  "purpose": "machine-generated Draft presenter substitute, so a completed automatic draft can be watched for pacing and structure",
+  "is_not": [
+    "presenter a-roll",
+    "mikko likeness",
+    "human performance",
+    "real capture",
+    "publish-ready presenter"
+  ],
+  "is_real_presenter": false,
+  "is_mikko_likeness": false,
+  "semantic_producer": "generation_supervisor",
+  "technical_producer": {
+    "renderer": "ffmpeg-stickman",
+    "version": "v1",
+    "style": "STICK_FIGURE_SILHOUETTE",
+    "motion_model": "DETERMINISTIC_IDLE_SINE",
+    "lip_sync": "NONE"
+  },
+  "story": {
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+  },
+  "output_class": {
+    "aspect_ratio": "16:9",
+    "orientation": "horizontal"
+  },
+  "video_standard": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "codec": "libx264",
+    "pixel_format": "yuv420p"
+  },
+  "audio": {
+    "muxed": false,
+    "authority": "draft-narration.json",
+    "narration_manifest_sha256": "fe82c89b5ebf904c4130d658e728c671c7206260b3d1393a519ac01f1d59ef7b",
+    "narration_audio_sha256": "df70460da695522d968fca1cda5d87cdc7b62385e1df03456f8536754377158d",
+    "narration_audio_path": "media/draft-narration/narration.wav",
+    "narration_duration_seconds": 75.778375
+  },
+  "assembled": {
+    "video_path": "media/draft-proxy-presenter/proxy-presenter.mp4",
+    "video_sha256": "95617d6151b3bd682f8328b87e2eee6d8e560253c51c97da6a8aac7aa4b4c524",
+    "bytes": 291894,
+    "duration_seconds": 75.9,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "frames": 2277,
+    "codec": "h264",
+    "pixel_format": "yuv420p"
+  },
+  "alignment": {
+    "narration_duration_seconds": 75.778375,
+    "presenter_duration_seconds": 75.9,
+    "delta_seconds": 0.121625,
+    "tolerance_seconds": 0.2833,
+    "per_beat_tolerance_seconds": 0.15,
+    "tolerance_basis": "7 beats quantized at 30fps plus 0.05s",
+    "aligned": true,
+    "narration_time_stretched": false
+  },
+  "coverage": {
+    "spoken_beats": 7,
+    "covered_beats": 7,
+    "complete": true,
+    "uncovered": []
+  },
+  "performance": {
+    "render_ms": 3469,
+    "video_seconds": 75.9,
+    "realtime_factor": 21.88,
+    "bytes": 291894
+  },
+  "segments": [
+    {
+      "order": 1,
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "beat": "Hook",
+      "narration_start_seconds": 0,
+      "narration_end_seconds": 6.524813,
+      "narration_duration_seconds": 6.524813,
+      "narration_audio_sha256": "6d9191c91c4d5dcae0b57e2d274d1d0d5b419829ffb9bb76490d9f96dd8710d1",
+      "video_path": "media/draft-proxy-presenter/segment-01.mp4",
+      "video_sha256": "2aa0c7bfa586187522393969c685a4a9710bb8be32dfc8a9160680b0f6000385",
+      "duration_seconds": 6.533333,
+      "start_seconds": 0,
+      "end_seconds": 6.533333,
+      "frames": 196
+    },
+    {
+      "order": 2,
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "beat": "Viewer Problem",
+      "narration_start_seconds": 6.524813,
+      "narration_end_seconds": 24.079105,
+      "narration_duration_seconds": 17.554292,
+      "narration_audio_sha256": "63d8d27d9a162620d43ccfd662cb688a512eedd9ce68488a63e56729dc417521",
+      "video_path": "media/draft-proxy-presenter/segment-02.mp4",
+      "video_sha256": "d11ee5b2af7a753af7f9ec5d019e781dcff4351e059517892a587175a42e0c58",
+      "duration_seconds": 17.566667,
+      "start_seconds": 6.533333,
+      "end_seconds": 24.1,
+      "frames": 527
+    },
+    {
+      "order": 3,
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "beat": "The Point",
+      "narration_start_seconds": 24.079105,
+      "narration_end_seconds": 28.514126,
+      "narration_duration_seconds": 4.435021,
+      "narration_audio_sha256": "860c3154140d0fca0f83a367cc895e733d2dac159ddaa913023431a20404c222",
+      "video_path": "media/draft-proxy-presenter/segment-03.mp4",
+      "video_sha256": "17b168c8c25d59f77e574a86185df4725aab0226093a60544213fe385be966cf",
+      "duration_seconds": 4.466667,
+      "start_seconds": 24.1,
+      "end_seconds": 28.566667,
+      "frames": 134
+    },
+    {
+      "order": 4,
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "beat": "Evidence",
+      "narration_start_seconds": 28.514126,
+      "narration_end_seconds": 50.398939,
+      "narration_duration_seconds": 21.884813,
+      "narration_audio_sha256": "d176435dcae397732ca90fb823d7b9977b9248e5e700aaa54305b3a7c1eee7b6",
+      "video_path": "media/draft-proxy-presenter/segment-04.mp4",
+      "video_sha256": "678bb7283bba0507f3e24b515d7e0b87f27fd0135c5e32a8c6296a66048c451e",
+      "duration_seconds": 21.9,
+      "start_seconds": 28.566667,
+      "end_seconds": 50.466667,
+      "frames": 657
+    },
+    {
+      "order": 5,
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "beat": "What This Run Demonstrates",
+      "narration_start_seconds": 50.398939,
+      "narration_end_seconds": 63.785252,
+      "narration_duration_seconds": 13.386313,
+      "narration_audio_sha256": "4f5cc59314ae79b1f8755bdd7c3eafd0d66279044825ed76d7af1893e660de26",
+      "video_path": "media/draft-proxy-presenter/segment-05.mp4",
+      "video_sha256": "6b309c14a8c43ac11d09e64351e4f8c8836fe398b6b68370d03632e0c61a0d93",
+      "duration_seconds": 13.4,
+      "start_seconds": 50.466667,
+      "end_seconds": 63.866667,
+      "frames": 402
+    },
+    {
+      "order": 6,
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "beat": "Close",
+      "narration_start_seconds": 63.785252,
+      "narration_end_seconds": 66.989606,
+      "narration_duration_seconds": 3.204354,
+      "narration_audio_sha256": "7f20dff33de7e6e9cf7fe10878ccd57a715c844f355791ae5c1c92c0726cd66b",
+      "video_path": "media/draft-proxy-presenter/segment-06.mp4",
+      "video_sha256": "3e7e8a10203d9574c36819a78698ab411db512f55726d871c77f4e947b1bff84",
+      "duration_seconds": 3.233333,
+      "start_seconds": 63.866667,
+      "end_seconds": 67.1,
+      "frames": 97
+    },
+    {
+      "order": 7,
+      "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+      "beat": "Final Packaging Check",
+      "narration_start_seconds": 66.989606,
+      "narration_end_seconds": 75.778377,
+      "narration_duration_seconds": 8.788771,
+      "narration_audio_sha256": "e3c81ac7ed2ebc6a42db8f305dbe7c8df449afac91a5c80130092812f5306a7c",
+      "video_path": "media/draft-proxy-presenter/segment-07.mp4",
+      "video_sha256": "f22fc8399796d2c1ef726e9167ba0e685616c215e6e2b71c2e14fd7852a2c27c",
+      "duration_seconds": 8.8,
+      "start_seconds": 67.1,
+      "end_seconds": 75.9,
+      "frames": 264
+    }
+  ],
+  "task_id": "draft-assembly-canary-presenter-1"
+}

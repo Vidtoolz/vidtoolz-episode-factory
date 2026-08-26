@@ -1,0 +1,103 @@
+{
+  "schema": "vidtoolz.draftAssemblyBinding.v1",
+  "artifact_type": "draft-assembly-binding",
+  "run_id": "2026-08-26-draft-assembly-v0-canary",
+  "bound_at": "2026-08-26T04:13:17.596Z",
+  "bound_by": "claude-code",
+  "visuals": {
+    "source_kind": "EXPLICIT_ASSETS",
+    "root": "/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-packages",
+    "assets": [
+      {
+        "order": 1,
+        "asset_id": "visual-001",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/001.mp4",
+        "sha256": "caa9720189d95cd8c420fa9212ce6d055642d690298b4602d119f419ed6627a1",
+        "bytes": 297399,
+        "prompt_index": null,
+        "description": null
+      },
+      {
+        "order": 2,
+        "asset_id": "visual-002",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/002.mp4",
+        "sha256": "9c176121e287d6caf1ac1e86dcd14b5fde5d6f304ca1dc4407e1631abb0c8624",
+        "bytes": 765004,
+        "prompt_index": null,
+        "description": null
+      },
+      {
+        "order": 3,
+        "asset_id": "visual-003",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/003.mp4",
+        "sha256": "750e7300d7b7e98e0eea650729a5b13a48542f368817c7ab0019b0ccd9d66dd4",
+        "bytes": 562978,
+        "prompt_index": null,
+        "description": null
+      },
+      {
+        "order": 4,
+        "asset_id": "visual-004",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/004.mp4",
+        "sha256": "7fcd2499852c330a881f73bc4286d99c6494d0c6a214fe3bec1598c317f3f53a",
+        "bytes": 650065,
+        "prompt_index": null,
+        "description": null
+      },
+      {
+        "order": 5,
+        "asset_id": "visual-005",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/005.mp4",
+        "sha256": "36a77d22936eefa5532fd54d9fa06bba5c579920eac1011973be679d51a950c3",
+        "bytes": 951464,
+        "prompt_index": null,
+        "description": null
+      },
+      {
+        "order": 6,
+        "asset_id": "visual-006",
+        "kind": "VIDEO",
+        "relative_path": "ai-tools-waste-time/videos/mp4/001.mp4",
+        "sha256": "ef7375cd6e213b60a955678081fdf08a8d8410fa6589cab213e82d6c0eba5637",
+        "bytes": 500780,
+        "prompt_index": null,
+        "description": null
+      },
+      {
+        "order": 7,
+        "asset_id": "visual-007",
+        "kind": "IMAGE",
+        "relative_path": "ai-tools-waste-time/images/001.png",
+        "sha256": "60c9b0b4c5b49d1438aa28af544cd7507c787af212b5f80e9a2bd4c8837b7a1c",
+        "bytes": 107,
+        "prompt_index": null,
+        "description": null
+      }
+    ]
+  },
+  "music": {
+    "source_kind": "SCORECRAFT_APPROVED_MIX",
+    "root": "/home/vidtoolz/vidtoolz-score-projects/projects/2026-08-21-qg-a-calm-explainer-real",
+    "variant": "dialogue_safe",
+    "relative_path": "approved/mix-dialogue-safe.wav",
+    "sha256": "ae8e1e95021bc4935b0778b524c0314b2d5bff50e3b9df15ca4680f624719bf8",
+    "bytes": 38880044,
+    "provenance_file": "approved/provenance.json",
+    "provenance_sha256": "b5468d1861139e3c39ca67c4fbc32d7989e51246694ad44ac92f4d40851a058c"
+  },
+  "output": null,
+  "policy": {
+    "visual_shortfall": "FAIL",
+    "transition": "CROSSFADE",
+    "fit": "COVER",
+    "crossfade_seconds": 0.4,
+    "music_gain_db": -14,
+    "review_slate": true
+  },
+  "notes": null
+}

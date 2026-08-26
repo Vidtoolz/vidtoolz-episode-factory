@@ -1,0 +1,312 @@
+{
+  "schema": "vidtoolz.draftAssemblyPlan.v1",
+  "run_id": "2026-08-26-draft-assembly-v0-canary",
+  "story": {
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+    "approval_state": "none"
+  },
+  "narration": {
+    "manifest_schema": "vidtoolz.syntheticNarration.v1",
+    "fidelity": "DRAFT_SYNTHETIC_PROXY",
+    "relative_path": "media/draft-narration/narration.wav",
+    "sha256": "df70460da695522d968fca1cda5d87cdc7b62385e1df03456f8536754377158d",
+    "duration_seconds": 75.778,
+    "sample_rate": 48000,
+    "channels": 1
+  },
+  "output": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "aspect_ratio": "16:9",
+    "geometry_source": "STORY_OUTPUT_CLASS",
+    "video_codec": "libx264",
+    "pixel_format": "yuv420p",
+    "audio_codec": "aac",
+    "audio_sample_rate": 48000,
+    "audio_channels": 2,
+    "container": "mp4"
+  },
+  "policy": {
+    "visual_shortfall": "FAIL",
+    "transition": "CROSSFADE",
+    "fit": "COVER",
+    "crossfade_seconds": 0.4,
+    "music_gain_db": -14,
+    "review_slate": true
+  },
+  "timeline": {
+    "segment_count": 7,
+    "total_duration_seconds": 75.778377,
+    "total_frames": 2273,
+    "silent_section_count": 0
+  },
+  "segments": [
+    {
+      "order": 1,
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "beat": "Hook",
+      "beat_source": "STORY_BEAT",
+      "narration_order": 1,
+      "start_seconds": 0,
+      "end_seconds": 6.524813,
+      "duration_seconds": 6.524813,
+      "render_duration_seconds": 6.924813,
+      "visual": {
+        "asset_id": "visual-001",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/001.mp4",
+        "sha256": "caa9720189d95cd8c420fa9212ce6d055642d690298b4602d119f419ed6627a1",
+        "source_duration_seconds": 2.7,
+        "source_width": 1080,
+        "source_height": 1920,
+        "fill": "LOOP",
+        "reused": false,
+        "description": null
+      }
+    },
+    {
+      "order": 2,
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "beat": "Viewer Problem",
+      "beat_source": "STORY_BEAT",
+      "narration_order": 2,
+      "start_seconds": 6.524813,
+      "end_seconds": 24.079105,
+      "duration_seconds": 17.554292,
+      "render_duration_seconds": 17.954292,
+      "visual": {
+        "asset_id": "visual-002",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/002.mp4",
+        "sha256": "9c176121e287d6caf1ac1e86dcd14b5fde5d6f304ca1dc4407e1631abb0c8624",
+        "source_duration_seconds": 2.7,
+        "source_width": 1080,
+        "source_height": 1920,
+        "fill": "LOOP",
+        "reused": false,
+        "description": null
+      }
+    },
+    {
+      "order": 3,
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "beat": "The Point",
+      "beat_source": "STORY_BEAT",
+      "narration_order": 3,
+      "start_seconds": 24.079105,
+      "end_seconds": 28.514126,
+      "duration_seconds": 4.435021,
+      "render_duration_seconds": 4.835021,
+      "visual": {
+        "asset_id": "visual-003",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/003.mp4",
+        "sha256": "750e7300d7b7e98e0eea650729a5b13a48542f368817c7ab0019b0ccd9d66dd4",
+        "source_duration_seconds": 2.7,
+        "source_width": 1080,
+        "source_height": 1920,
+        "fill": "LOOP",
+        "reused": false,
+        "description": null
+      }
+    },
+    {
+      "order": 4,
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "beat": "Evidence",
+      "beat_source": "STORY_BEAT",
+      "narration_order": 4,
+      "start_seconds": 28.514126,
+      "end_seconds": 50.398939,
+      "duration_seconds": 21.884813,
+      "render_duration_seconds": 22.284813,
+      "visual": {
+        "asset_id": "visual-004",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/004.mp4",
+        "sha256": "7fcd2499852c330a881f73bc4286d99c6494d0c6a214fe3bec1598c317f3f53a",
+        "source_duration_seconds": 2.7,
+        "source_width": 1080,
+        "source_height": 1920,
+        "fill": "LOOP",
+        "reused": false,
+        "description": null
+      }
+    },
+    {
+      "order": 5,
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "beat": "What This Run Demonstrates",
+      "beat_source": "STORY_BEAT",
+      "narration_order": 5,
+      "start_seconds": 50.398939,
+      "end_seconds": 63.785252,
+      "duration_seconds": 13.386313,
+      "render_duration_seconds": 13.786313,
+      "visual": {
+        "asset_id": "visual-005",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/005.mp4",
+        "sha256": "36a77d22936eefa5532fd54d9fa06bba5c579920eac1011973be679d51a950c3",
+        "source_duration_seconds": 2.7,
+        "source_width": 1080,
+        "source_height": 1920,
+        "fill": "LOOP",
+        "reused": false,
+        "description": null
+      }
+    },
+    {
+      "order": 6,
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "beat": "Close",
+      "beat_source": "STORY_BEAT",
+      "narration_order": 6,
+      "start_seconds": 63.785252,
+      "end_seconds": 66.989606,
+      "duration_seconds": 3.204354,
+      "render_duration_seconds": 3.604354,
+      "visual": {
+        "asset_id": "visual-006",
+        "kind": "VIDEO",
+        "relative_path": "ai-tools-waste-time/videos/mp4/001.mp4",
+        "sha256": "ef7375cd6e213b60a955678081fdf08a8d8410fa6589cab213e82d6c0eba5637",
+        "source_duration_seconds": 2.7,
+        "source_width": 1080,
+        "source_height": 1920,
+        "fill": "LOOP",
+        "reused": false,
+        "description": null
+      }
+    },
+    {
+      "order": 7,
+      "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+      "beat": "Final Packaging Check",
+      "beat_source": "STORY_BEAT",
+      "narration_order": 7,
+      "start_seconds": 66.989606,
+      "end_seconds": 75.778377,
+      "duration_seconds": 8.788771,
+      "render_duration_seconds": 9.188771,
+      "visual": {
+        "asset_id": "visual-007",
+        "kind": "IMAGE",
+        "relative_path": "ai-tools-waste-time/images/001.png",
+        "sha256": "60c9b0b4c5b49d1438aa28af544cd7507c787af212b5f80e9a2bd4c8837b7a1c",
+        "source_duration_seconds": null,
+        "source_width": 32,
+        "source_height": 56,
+        "fill": "HOLD",
+        "reused": false,
+        "description": null
+      }
+    }
+  ],
+  "music": {
+    "present": true,
+    "source_kind": "SCORECRAFT_APPROVED_MIX",
+    "relative_path": "approved/mix-dialogue-safe.wav",
+    "sha256": "ae8e1e95021bc4935b0778b524c0314b2d5bff50e3b9df15ca4680f624719bf8",
+    "variant": "dialogue_safe",
+    "source_duration_seconds": 135,
+    "start_seconds": 0,
+    "end_seconds": 75.778377,
+    "fill": "TRIM",
+    "gain_db": -14,
+    "fade_in_seconds": 1.5,
+    "fade_out_seconds": 1.5
+  },
+  "warnings": [
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 1,
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "detail": "visual visual-001 is 2.7s and is looped to cover 6.925s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 1,
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "detail": "visual visual-001 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 2,
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "detail": "visual visual-002 is 2.7s and is looped to cover 17.954s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 2,
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "detail": "visual visual-002 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 3,
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "detail": "visual visual-003 is 2.7s and is looped to cover 4.835s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 3,
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "detail": "visual visual-003 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 4,
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "detail": "visual visual-004 is 2.7s and is looped to cover 22.285s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 4,
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "detail": "visual visual-004 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 5,
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "detail": "visual visual-005 is 2.7s and is looped to cover 13.786s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 5,
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "detail": "visual visual-005 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 6,
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "detail": "visual visual-006 is 2.7s and is looped to cover 3.604s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 6,
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "detail": "visual visual-006 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 7,
+      "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+      "detail": "visual visual-007 is 32x56 in a 1920x1080 frame; it is cropped"
+    }
+  ],
+  "plan_digest_sha256": "b5e2abe3182dc4fd8c3fbb26ef7cfa9ed095de7856925557c6a6d7e0510f54f3",
+  "sources": {
+    "visual_root": "/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-packages",
+    "visual_source_kind": "EXPLICIT_ASSETS",
+    "music_root": "/home/vidtoolz/vidtoolz-score-projects/projects/2026-08-21-qg-a-calm-explainer-real",
+    "music_source_kind": "SCORECRAFT_APPROVED_MIX",
+    "binding_file": "draft-assembly-binding.json",
+    "binding_sha256": "193275fd6074d1cd882695813cde127af3bd17c3c6d45ca867cd0ace15dfd4ef"
+  }
+}

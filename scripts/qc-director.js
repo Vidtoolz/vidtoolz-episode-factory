@@ -436,6 +436,103 @@ function draftNarrationAdapter(payload, context) {
   };
 }
 
+function draftAssemblyAdapter(payload, context) {
+  // Consumes the DRAFT_ASSEMBLY evidence emitted by
+  // scripts/package-run-draft-assembly.js (editor lane, technical producer
+  // ffmpeg-draft-assembler). It is its own semantic kind, deliberately NOT
+  // GENERATION_RESULT: that kind means generated source media, and a run
+  // that wrapped an assembled draft in it would be claiming the draft is
+  // another generated asset rather than the assembly OF those assets.
+  //
+  // QC validates the typed self-describing envelope: the producer already did
+  // the ffprobe and full-decode work and recorded the result, so QC verifies
+  // the verdict exists, belongs to this artifact, and did not pass over
+  // failures — it never re-renders and never infers edit quality.
+  if (payload?.schema !== 'vidtoolz.draftAssemblyEvidence.v1') {
+    return unsupportedSchema('DRAFT_ASSEMBLY', payload, context);
+  }
+  const defects = [];
+  const warnings = [];
+  if (String(payload.kind || '') !== 'DRAFT_ASSEMBLY') {
+    defects.push(defect({
+      code: 'DRAFT_ASSEMBLY_KIND_MISMATCH', severity: 'BLOCKER', source: 'editor',
+      artifact_id: context.artifactId,
+      explanation: `evidence declares kind ${JSON.stringify(payload.kind)}; expected DRAFT_ASSEMBLY`,
+      evidence_ref: context.evidenceId, affected_gate: context.gate,
+    }));
+  }
+  if (String(payload.state || '') !== 'VERIFIED') {
+    defects.push(defect({
+      code: 'DRAFT_ASSEMBLY_NOT_VERIFIED', severity: 'ERROR', source: 'editor',
+      artifact_id: context.artifactId,
+      explanation: `draft assembly evidence state is ${JSON.stringify(payload.state ?? null)}`,
+      evidence_ref: context.evidenceId, affected_gate: context.gate,
+    }));
+  }
+  // The rendered artifact must identify itself by hash, or nothing downstream
+  // can say which file was inspected.
+  if (!/^[0-9a-f]{64}$/.test(String(payload?.output?.sha256 || ''))) {
+    defects.push(defect({
+      code: 'DRAFT_ASSEMBLY_OUTPUT_UNIDENTIFIED', severity: 'BLOCKER', source: 'editor',
+      artifact_id: context.artifactId,
+      explanation: 'draft assembly evidence carries no sha256 for the rendered draft',
+      evidence_ref: context.evidenceId, affected_gate: context.gate,
+    }));
+  }
+  if (payload?.technical_validation?.ok !== true) {
+    for (const failure of payload?.technical_validation?.failures || []) {
+      defects.push(defect({
+        code: 'DRAFT_ASSEMBLY_TECHNICAL_FAILURE', severity: 'ERROR', source: 'editor',
+        artifact_id: context.artifactId, explanation: String(failure),
+        evidence_ref: context.evidenceId, affected_gate: context.gate,
+      }));
+    }
+  }
+  // A clean probe with a failed decode pass is the truncated-file case.
+  if (payload?.technical_validation?.decode_pass === false) {
+    defects.push(defect({
+      code: 'DRAFT_ASSEMBLY_DECODE_FAILED', severity: 'ERROR', source: 'editor',
+      artifact_id: context.artifactId,
+      explanation: 'the rendered draft did not survive a full decode pass',
+      evidence_ref: context.evidenceId, affected_gate: context.gate,
+    }));
+  }
+  if (payload?.source_binding?.ok !== true) {
+    defects.push(defect({
+      code: 'DRAFT_ASSEMBLY_SOURCE_DRIFT', severity: 'ERROR', source: 'editor',
+      artifact_id: context.artifactId,
+      explanation: `draft assembly is no longer bound to the assets it was rendered from: ${(payload?.source_binding?.drift || []).join('; ') || 'unknown drift'}`,
+      evidence_ref: context.evidenceId, affected_gate: context.gate,
+    }));
+  }
+  // Everything the assembler flagged as visible-but-not-chosen travels to QC as
+  // a warning, so a reviewer is never surprised by a looped or reused shot.
+  for (const item of payload.warnings || []) {
+    warnings.push(defect({
+      code: 'DRAFT_ASSEMBLY_WARNING', severity: 'WARNING', source: 'editor',
+      artifact_id: context.artifactId,
+      explanation: `${item.code || 'WARNING'}: ${item.detail || ''}`.trim(),
+      evidence_ref: context.evidenceId, affected_gate: context.gate,
+    }));
+  }
+  return {
+    schema_supported: true, defects, warnings,
+    // A verified draft is exactly the point at which a human must watch it.
+    human_review_required: defects.length === 0,
+    human_review_reason: defects.length === 0
+      ? 'a verified draft assembly is material for gate 9; rough-cut review closes on Mikko\'s watch notes, never on this evidence'
+      : null,
+    summary: {
+      fidelity: payload.fidelity || null,
+      production_mode: payload.production_mode || null,
+      draft_version: payload.draft_version ?? null,
+      output_sha256: payload?.output?.sha256 ?? null,
+      duration_seconds: payload?.output?.duration_seconds ?? null,
+      completes_rough_cut_gate: false,
+    },
+  };
+}
+
 function storyAdapter(payload, context) {
   // Consumes Story Editor / Research Director validation output. QC does NOT
   // re-derive semantic judgement; it verifies that the specialist verdict
@@ -489,6 +586,7 @@ const ADAPTERS = Object.freeze({
   AUDIO_RENDER: audioAdapter,
   STORY_VALIDATION: storyAdapter,
   DRAFT_SYNTHETIC_NARRATION: draftNarrationAdapter,
+  DRAFT_ASSEMBLY: draftAssemblyAdapter,
 });
 const SUPPORTED_EVIDENCE_KINDS = Object.freeze(Object.keys(ADAPTERS));
 

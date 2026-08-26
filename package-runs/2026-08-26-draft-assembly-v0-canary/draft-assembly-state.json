@@ -1,0 +1,28 @@
+{
+  "schema": "vidtoolz.draftAssemblyState.v1",
+  "run_id": "2026-08-26-draft-assembly-v0-canary",
+  "state": "COMPLETE",
+  "plan_digest_sha256": "b5e2abe3182dc4fd8c3fbb26ef7cfa9ed095de7856925557c6a6d7e0510f54f3",
+  "draft_version": 2,
+  "updated_at": "2026-08-26T04:13:38.193Z",
+  "attempt": 2,
+  "last_error": null,
+  "history": [
+    {
+      "draft_version": 1,
+      "plan_digest_sha256": "b609d3a4105a9fb33b57fbce3dc7bbc775c726304173f2e4be4c6dfb0104b6d3",
+      "output_path": "media/draft-assembly/draft-v1.mp4",
+      "output_sha256": "4260d222a99a055d491682594492870c50de42e1397d2c75d201c818d02f7817",
+      "duration_seconds": 75.778377,
+      "completed_at": "2026-08-26T04:13:08.449Z"
+    },
+    {
+      "draft_version": 2,
+      "plan_digest_sha256": "b5e2abe3182dc4fd8c3fbb26ef7cfa9ed095de7856925557c6a6d7e0510f54f3",
+      "output_path": "media/draft-assembly/draft-v2.mp4",
+      "output_sha256": "b3d6c7d20b5a93e5e83556f5c58b7476f1d0c2cac6bb45c0ac16bd9470ffbeb0",
+      "duration_seconds": 75.778377,
+      "completed_at": "2026-08-26T04:13:38.193Z"
+    }
+  ]
+}

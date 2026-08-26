@@ -1,0 +1,91 @@
+{
+  "schema": "vidtoolz.proxyPresenterEvidence.v1",
+  "kind": "PROXY_PRESENTER",
+  "fidelity": "DRAFT_SYNTHETIC_PROXY",
+  "track_role": "PROXY_PRESENTER",
+  "production_mode": "DRAFT",
+  "asserts": "verified machine-generated Draft presenter video, beat-aligned to the exact draft narration",
+  "does_not_assert": [
+    "presenter a-roll",
+    "human performance",
+    "real capture",
+    "mikko likeness",
+    "publish readiness",
+    "lip sync"
+  ],
+  "satisfies_proxy_presenter": true,
+  "satisfies_real_capture": false,
+  "human_performance": false,
+  "human_authority_required": false,
+  "is_real_presenter": false,
+  "is_mikko_likeness": false,
+  "run_id": "2026-08-26-draft-assembly-v0-canary",
+  "semantic_producer": "generation_supervisor",
+  "technical_producer": {
+    "renderer": "ffmpeg-stickman",
+    "version": "v1",
+    "style": "STICK_FIGURE_SILHOUETTE",
+    "motion_model": "DETERMINISTIC_IDLE_SINE",
+    "lip_sync": "NONE"
+  },
+  "attested_by": "package-run-draft-proxy-presenter.js",
+  "story": {
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+  },
+  "narration_binding": {
+    "manifest_sha256": "fe82c89b5ebf904c4130d658e728c671c7206260b3d1393a519ac01f1d59ef7b",
+    "audio_sha256": "df70460da695522d968fca1cda5d87cdc7b62385e1df03456f8536754377158d",
+    "muxed": false
+  },
+  "presenter_manifest": {
+    "file": "draft-proxy-presenter.json",
+    "sha256": "a5bdc727b75dabb2206c764572bac033bbfa1f65ebf4adb303a8166b34473335"
+  },
+  "assembled": {
+    "video_path": "media/draft-proxy-presenter/proxy-presenter.mp4",
+    "video_sha256": "95617d6151b3bd682f8328b87e2eee6d8e560253c51c97da6a8aac7aa4b4c524",
+    "bytes": 291894,
+    "duration_seconds": 75.9,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "frames": 2277,
+    "codec": "h264",
+    "pixel_format": "yuv420p"
+  },
+  "alignment": {
+    "narration_duration_seconds": 75.778375,
+    "presenter_duration_seconds": 75.9,
+    "delta_seconds": 0.121625,
+    "tolerance_seconds": 0.2833,
+    "per_beat_tolerance_seconds": 0.15,
+    "tolerance_basis": "7 beats quantized at 30fps plus 0.05s",
+    "aligned": true,
+    "narration_time_stretched": false
+  },
+  "coverage": {
+    "spoken_beats": 7,
+    "covered_beats": 7,
+    "complete": true,
+    "uncovered": []
+  },
+  "video_standard": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "codec": "libx264",
+    "pixel_format": "yuv420p"
+  },
+  "technical_validation": {
+    "ok": true,
+    "failures": []
+  },
+  "source_binding": {
+    "ok": true,
+    "drift": []
+  },
+  "state": "VERIFIED",
+  "task_id": "draft-assembly-canary-presenter-1"
+}

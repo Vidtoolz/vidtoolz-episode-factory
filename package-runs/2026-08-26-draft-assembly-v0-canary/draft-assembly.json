@@ -1,0 +1,452 @@
+{
+  "schema": "vidtoolz.draftAssembly.v1",
+  "run_id": "2026-08-26-draft-assembly-v0-canary",
+  "draft_version": 2,
+  "production_mode": "DRAFT",
+  "fidelity": "DRAFT_AUTOMATED_ASSEMBLY",
+  "purpose": "automatically assembled DRAFT V1 for human structural review",
+  "is_not": [
+    "an approved rough cut",
+    "a production edit",
+    "a final mix",
+    "a colour or sound pass",
+    "a Resolve timeline",
+    "publishable media"
+  ],
+  "semantic_producer": "editor",
+  "technical_producer": {
+    "renderer": "ffmpeg-draft-assembler",
+    "version": "v0",
+    "ffmpeg_version": "6.1.1-3ubuntu5"
+  },
+  "attested_by": "package-run-draft-assembly.js",
+  "script": {
+    "source_system": "vidtoolz-script-builder",
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+    "approval_state": "none",
+    "title": "CANARY — Lifecycle Integration Test Package (NOT FOR PUBLICATION)"
+  },
+  "narration": {
+    "manifest_file": "draft-narration.json",
+    "manifest_sha256": "fe82c89b5ebf904c4130d658e728c671c7206260b3d1393a519ac01f1d59ef7b",
+    "evidence_kind": "DRAFT_SYNTHETIC_NARRATION",
+    "fidelity": "DRAFT_SYNTHETIC_PROXY",
+    "voice": {
+      "id": "en_US-lessac-medium",
+      "identity": "synthetic proxy narrator (not the presenter)",
+      "model_sha256": "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f",
+      "language": "en_US",
+      "is_presenter_voice": false
+    },
+    "audio_path": "media/draft-narration/narration.wav",
+    "audio_sha256": "df70460da695522d968fca1cda5d87cdc7b62385e1df03456f8536754377158d",
+    "duration_seconds": 75.778375,
+    "sample_rate": 48000,
+    "is_presenter_voice": false
+  },
+  "visuals": {
+    "source_kind": "EXPLICIT_ASSETS",
+    "root": "/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-packages",
+    "assets": [
+      {
+        "asset_id": "visual-001",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/001.mp4",
+        "sha256": "caa9720189d95cd8c420fa9212ce6d055642d690298b4602d119f419ed6627a1",
+        "bytes": 297399,
+        "description": null
+      },
+      {
+        "asset_id": "visual-002",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/002.mp4",
+        "sha256": "9c176121e287d6caf1ac1e86dcd14b5fde5d6f304ca1dc4407e1631abb0c8624",
+        "bytes": 765004,
+        "description": null
+      },
+      {
+        "asset_id": "visual-003",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/003.mp4",
+        "sha256": "750e7300d7b7e98e0eea650729a5b13a48542f368817c7ab0019b0ccd9d66dd4",
+        "bytes": 562978,
+        "description": null
+      },
+      {
+        "asset_id": "visual-004",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/004.mp4",
+        "sha256": "7fcd2499852c330a881f73bc4286d99c6494d0c6a214fe3bec1598c317f3f53a",
+        "bytes": 650065,
+        "description": null
+      },
+      {
+        "asset_id": "visual-005",
+        "kind": "VIDEO",
+        "relative_path": "2026-06-24-ideation/videos/mp4/005.mp4",
+        "sha256": "36a77d22936eefa5532fd54d9fa06bba5c579920eac1011973be679d51a950c3",
+        "bytes": 951464,
+        "description": null
+      },
+      {
+        "asset_id": "visual-006",
+        "kind": "VIDEO",
+        "relative_path": "ai-tools-waste-time/videos/mp4/001.mp4",
+        "sha256": "ef7375cd6e213b60a955678081fdf08a8d8410fa6589cab213e82d6c0eba5637",
+        "bytes": 500780,
+        "description": null
+      },
+      {
+        "asset_id": "visual-007",
+        "kind": "IMAGE",
+        "relative_path": "ai-tools-waste-time/images/001.png",
+        "sha256": "60c9b0b4c5b49d1438aa28af544cd7507c787af212b5f80e9a2bd4c8837b7a1c",
+        "bytes": 107,
+        "description": null
+      }
+    ]
+  },
+  "music": {
+    "present": true,
+    "source_kind": "SCORECRAFT_APPROVED_MIX",
+    "root": "/home/vidtoolz/vidtoolz-score-projects/projects/2026-08-21-qg-a-calm-explainer-real",
+    "relative_path": "approved/mix-dialogue-safe.wav",
+    "sha256": "ae8e1e95021bc4935b0778b524c0314b2d5bff50e3b9df15ca4680f624719bf8",
+    "variant": "dialogue_safe",
+    "provenance_file": "approved/provenance.json",
+    "provenance_sha256": "b5468d1861139e3c39ca67c4fbc32d7989e51246694ad44ac92f4d40851a058c",
+    "gain_db": -14,
+    "fill": "TRIM"
+  },
+  "binding": {
+    "file": "draft-assembly-binding.json",
+    "sha256": "193275fd6074d1cd882695813cde127af3bd17c3c6d45ca867cd0ace15dfd4ef"
+  },
+  "plan_file": "draft-assembly-plan.json",
+  "plan_digest_sha256": "b5e2abe3182dc4fd8c3fbb26ef7cfa9ed095de7856925557c6a6d7e0510f54f3",
+  "render_settings": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "aspect_ratio": "16:9",
+    "geometry_source": "STORY_OUTPUT_CLASS",
+    "video_codec": "libx264",
+    "pixel_format": "yuv420p",
+    "audio_codec": "aac",
+    "audio_sample_rate": 48000,
+    "audio_channels": 2,
+    "container": "mp4"
+  },
+  "policy": {
+    "visual_shortfall": "FAIL",
+    "transition": "CROSSFADE",
+    "fit": "COVER",
+    "crossfade_seconds": 0.4,
+    "music_gain_db": -14,
+    "review_slate": true
+  },
+  "timeline": {
+    "segment_count": 7,
+    "total_duration_seconds": 75.778377,
+    "total_frames": 2273,
+    "silent_section_count": 0
+  },
+  "segments": [
+    {
+      "order": 1,
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "beat": "Hook",
+      "beat_source": "STORY_BEAT",
+      "start_seconds": 0,
+      "end_seconds": 6.524813,
+      "duration_seconds": 6.524813,
+      "visual_asset_id": "visual-001",
+      "visual_sha256": "caa9720189d95cd8c420fa9212ce6d055642d690298b4602d119f419ed6627a1",
+      "visual_kind": "VIDEO",
+      "fill": "LOOP",
+      "reused_visual": false
+    },
+    {
+      "order": 2,
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "beat": "Viewer Problem",
+      "beat_source": "STORY_BEAT",
+      "start_seconds": 6.524813,
+      "end_seconds": 24.079105,
+      "duration_seconds": 17.554292,
+      "visual_asset_id": "visual-002",
+      "visual_sha256": "9c176121e287d6caf1ac1e86dcd14b5fde5d6f304ca1dc4407e1631abb0c8624",
+      "visual_kind": "VIDEO",
+      "fill": "LOOP",
+      "reused_visual": false
+    },
+    {
+      "order": 3,
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "beat": "The Point",
+      "beat_source": "STORY_BEAT",
+      "start_seconds": 24.079105,
+      "end_seconds": 28.514126,
+      "duration_seconds": 4.435021,
+      "visual_asset_id": "visual-003",
+      "visual_sha256": "750e7300d7b7e98e0eea650729a5b13a48542f368817c7ab0019b0ccd9d66dd4",
+      "visual_kind": "VIDEO",
+      "fill": "LOOP",
+      "reused_visual": false
+    },
+    {
+      "order": 4,
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "beat": "Evidence",
+      "beat_source": "STORY_BEAT",
+      "start_seconds": 28.514126,
+      "end_seconds": 50.398939,
+      "duration_seconds": 21.884813,
+      "visual_asset_id": "visual-004",
+      "visual_sha256": "7fcd2499852c330a881f73bc4286d99c6494d0c6a214fe3bec1598c317f3f53a",
+      "visual_kind": "VIDEO",
+      "fill": "LOOP",
+      "reused_visual": false
+    },
+    {
+      "order": 5,
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "beat": "What This Run Demonstrates",
+      "beat_source": "STORY_BEAT",
+      "start_seconds": 50.398939,
+      "end_seconds": 63.785252,
+      "duration_seconds": 13.386313,
+      "visual_asset_id": "visual-005",
+      "visual_sha256": "36a77d22936eefa5532fd54d9fa06bba5c579920eac1011973be679d51a950c3",
+      "visual_kind": "VIDEO",
+      "fill": "LOOP",
+      "reused_visual": false
+    },
+    {
+      "order": 6,
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "beat": "Close",
+      "beat_source": "STORY_BEAT",
+      "start_seconds": 63.785252,
+      "end_seconds": 66.989606,
+      "duration_seconds": 3.204354,
+      "visual_asset_id": "visual-006",
+      "visual_sha256": "ef7375cd6e213b60a955678081fdf08a8d8410fa6589cab213e82d6c0eba5637",
+      "visual_kind": "VIDEO",
+      "fill": "LOOP",
+      "reused_visual": false
+    },
+    {
+      "order": 7,
+      "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+      "beat": "Final Packaging Check",
+      "beat_source": "STORY_BEAT",
+      "start_seconds": 66.989606,
+      "end_seconds": 75.778377,
+      "duration_seconds": 8.788771,
+      "visual_asset_id": "visual-007",
+      "visual_sha256": "60c9b0b4c5b49d1438aa28af544cd7507c787af212b5f80e9a2bd4c8837b7a1c",
+      "visual_kind": "IMAGE",
+      "fill": "HOLD",
+      "reused_visual": false
+    }
+  ],
+  "output": {
+    "path": "media/draft-assembly/draft-v2.mp4",
+    "sha256": "b3d6c7d20b5a93e5e83556f5c58b7476f1d0c2cac6bb45c0ac16bd9470ffbeb0",
+    "bytes": 16967803,
+    "container": "mp4",
+    "probe": {
+      "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+      "has_video": true,
+      "has_audio": true,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "frames": 2274,
+      "pixel_format": "yuv420p",
+      "sample_rate": 48000,
+      "channels": 2,
+      "duration_seconds": 75.8
+    }
+  },
+  "render_report": {
+    "segments_rendered": 7,
+    "segments_reused": 0,
+    "validation": {
+      "ok": true,
+      "decode_pass": true,
+      "failures": []
+    },
+    "segment_files": [
+      {
+        "order": 1,
+        "work_file": "seg-001-0f5632ed8c19.mp4",
+        "segment_digest": "0f5632ed8c1938c372a2389f5b0e86642d71d333ef865f24ee8f46ac7d6073ea",
+        "reused": false,
+        "duration_seconds": 6.933333,
+        "frames": 208
+      },
+      {
+        "order": 2,
+        "work_file": "seg-002-1683aad0bf8b.mp4",
+        "segment_digest": "1683aad0bf8bdff42d7ec1c977dfba992cb601778e569f9c016fd5ae84862236",
+        "reused": false,
+        "duration_seconds": 17.966667,
+        "frames": 539
+      },
+      {
+        "order": 3,
+        "work_file": "seg-003-99e3fd0ee401.mp4",
+        "segment_digest": "99e3fd0ee4015d710da5d5fcb8972344b733f53b0fb0c12a962e8dba484e3686",
+        "reused": false,
+        "duration_seconds": 4.833333,
+        "frames": 145
+      },
+      {
+        "order": 4,
+        "work_file": "seg-004-80621d9d0b5d.mp4",
+        "segment_digest": "80621d9d0b5d1a47a7d3d0d40ebea1b4bd12fd7d325de0f64f61d9acb0a7387b",
+        "reused": false,
+        "duration_seconds": 22.3,
+        "frames": 669
+      },
+      {
+        "order": 5,
+        "work_file": "seg-005-16138406636b.mp4",
+        "segment_digest": "16138406636b23b81738081bdd6ab7754846572ceedb4415811c461b75e9391d",
+        "reused": false,
+        "duration_seconds": 13.8,
+        "frames": 414
+      },
+      {
+        "order": 6,
+        "work_file": "seg-006-51a2974380db.mp4",
+        "segment_digest": "51a2974380db519c0024812f24c8eabf9469c70102f6c3c0f80a39ba96ef41bc",
+        "reused": false,
+        "duration_seconds": 3.6,
+        "frames": 108
+      },
+      {
+        "order": 7,
+        "work_file": "seg-007-59b879b1caec.mp4",
+        "segment_digest": "59b879b1caec729cdf7f0bc48f21ad64ed8ff1b736b8f14d457bbab7a99a32c0",
+        "reused": false,
+        "duration_seconds": 9.2,
+        "frames": 276
+      }
+    ]
+  },
+  "warnings": [
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 1,
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "detail": "visual visual-001 is 2.7s and is looped to cover 6.925s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 1,
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "detail": "visual visual-001 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 2,
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "detail": "visual visual-002 is 2.7s and is looped to cover 17.954s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 2,
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "detail": "visual visual-002 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 3,
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "detail": "visual visual-003 is 2.7s and is looped to cover 4.835s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 3,
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "detail": "visual visual-003 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 4,
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "detail": "visual visual-004 is 2.7s and is looped to cover 22.285s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 4,
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "detail": "visual visual-004 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 5,
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "detail": "visual visual-005 is 2.7s and is looped to cover 13.786s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 5,
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "detail": "visual visual-005 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 6,
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "detail": "visual visual-006 is 2.7s and is looped to cover 3.604s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 6,
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "detail": "visual visual-006 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 7,
+      "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+      "detail": "visual visual-007 is 32x56 in a 1920x1080 frame; it is cropped"
+    }
+  ],
+  "placeholders_used": [],
+  "missing_or_failed_assets": [],
+  "lineage": {
+    "predecessors": [
+      {
+        "kind": "DRAFT_SYNTHETIC_NARRATION",
+        "file": "draft-synthetic-narration-evidence.json"
+      },
+      {
+        "kind": "PROXY_CAPTURE_READY",
+        "disposition": "PROXY_CAPTURE_READY"
+      }
+    ],
+    "successors": [
+      {
+        "gate": "rough-cut-review",
+        "requires": "human watch notes by mikko",
+        "satisfied_by_this_artifact": false
+      }
+    ],
+    "supersedes": "draft-v1.mp4"
+  },
+  "approval": {
+    "state": "UNREVIEWED",
+    "human_approval_present": false,
+    "note": "a rendered draft is material for review, never a review outcome"
+  },
+  "created_at": "2026-08-26T04:13:38.193Z"
+}

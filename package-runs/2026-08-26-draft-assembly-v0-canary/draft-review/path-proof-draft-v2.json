@@ -1,0 +1,115 @@
+{
+  "schema": "vidtoolz.draftReview.v2",
+  "artifact_type": "draft-review",
+  "review_id": "path-proof-draft-v2",
+  "run_id": "2026-08-26-draft-assembly-v0-canary",
+  "reviewer": "claude-code-path-proof",
+  "reviewer_authority": "claude-code-path-proof (NOT a human review)",
+  "recorded_by": null,
+  "opened_at": "2026-08-26T04:15:08.003Z",
+  "submitted_at": "2026-08-26T04:15:08.090Z",
+  "completion_status": "SUBMITTED",
+  "draft": {
+    "draft_version": 2,
+    "output_path": "media/draft-assembly/draft-v2.mp4",
+    "output_sha256": "b3d6c7d20b5a93e5e83556f5c58b7476f1d0c2cac6bb45c0ac16bd9470ffbeb0",
+    "duration_seconds": 75.8,
+    "assembly_manifest_sha256": "6d34105bb70077210a3f8a9c95947e0350db5ca05a69958f478ce15873f14375",
+    "plan_digest_sha256": "b5e2abe3182dc4fd8c3fbb26ef7cfa9ed095de7856925557c6a6d7e0510f54f3",
+    "fidelity": "DRAFT_AUTOMATED_ASSEMBLY"
+  },
+  "script": {
+    "source_system": "vidtoolz-script-builder",
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+    "approval_state": "none",
+    "title": "CANARY — Lifecycle Integration Test Package (NOT FOR PUBLICATION)"
+  },
+  "draft_verdict": null,
+  "draft_verdict_note": null,
+  "ratings": {
+    "story": null,
+    "pacing": null,
+    "visuals": null,
+    "humor": null,
+    "clarity": null,
+    "music": null,
+    "overall_potential": null
+  },
+  "rating_scale": {
+    "min": 1,
+    "max": 10,
+    "integer": true,
+    "absent_means": "not supplied — never defaulted, never rescaled"
+  },
+  "notes": [
+    {
+      "note_id": "note-0001",
+      "timecode_seconds": 10,
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "beat": "Viewer Problem",
+      "segment_order": 2,
+      "segment_start_seconds": 6.524813,
+      "segment_end_seconds": 24.079105,
+      "predecessor_draft_version": 2,
+      "predecessor_visual_asset_id": "visual-002",
+      "predecessor_visual_sha256": "9c176121e287d6caf1ac1e86dcd14b5fde5d6f304ca1dc4407e1631abb0c8624",
+      "disposition": "CHANGE",
+      "target_domain": "PACING",
+      "comment": "Beat 'Viewer Problem' runs 17.6s on one 2.7s generated clip looped about 6.5 times; the loop is visible and the shot does not develop.",
+      "created_at": "2026-08-26T04:15:08.026Z"
+    },
+    {
+      "note_id": "note-0002",
+      "timecode_seconds": 35,
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "beat": "Evidence",
+      "segment_order": 4,
+      "segment_start_seconds": 28.514126,
+      "segment_end_seconds": 50.398939,
+      "predecessor_draft_version": 2,
+      "predecessor_visual_asset_id": "visual-004",
+      "predecessor_visual_sha256": "7fcd2499852c330a881f73bc4286d99c6494d0c6a214fe3bec1598c317f3f53a",
+      "disposition": "CHANGE",
+      "target_domain": "PACING",
+      "comment": "Beat 'Evidence' runs 21.9s, the longest beat in the draft, on a single looped clip. Structurally this is where pacing pressure shows first.",
+      "created_at": "2026-08-26T04:15:08.048Z"
+    },
+    {
+      "note_id": "note-0003",
+      "timecode_seconds": 70,
+      "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+      "beat": "Final Packaging Check",
+      "segment_order": 7,
+      "segment_start_seconds": 66.989606,
+      "segment_end_seconds": 75.778377,
+      "predecessor_draft_version": 2,
+      "predecessor_visual_asset_id": "visual-007",
+      "predecessor_visual_sha256": "60c9b0b4c5b49d1438aa28af544cd7507c787af212b5f80e9a2bd4c8837b7a1c",
+      "disposition": "KEEP",
+      "target_domain": "VISUAL",
+      "comment": "Beat 'Final Packaging Check' is a held still for 8.8s. The hold reads as deliberate at this length and does not fight the narration.",
+      "created_at": "2026-08-26T04:15:08.069Z"
+    }
+  ],
+  "overall_comment": "Path proof only: structural observations recorded to exercise review intake against a real rendered draft. This is NOT Mikko's rough-cut review. No ratings and no draft verdict are recorded, and both approvals stay NOT_ASSESSED; the editorial verdict is his to make.",
+  "approvals": {
+    "research": {
+      "state": "NOT_ASSESSED",
+      "note": null,
+      "decided_at": null
+    },
+    "script": {
+      "state": "NOT_ASSESSED",
+      "note": null,
+      "decided_at": null
+    }
+  },
+  "authority": {
+    "completes_rough_cut_gate": false,
+    "approvals_are_advisory": true,
+    "note": "a recorded review is input to gate 9, never its completion; the research and script states here are the reviewer's declaration, not the canonical gate markers"
+  },
+  "binding_digest_sha256": "1ad14edf481658b2331a9c07f5c3b067d395756cd700b6dbbbf74b1552efd724"
+}

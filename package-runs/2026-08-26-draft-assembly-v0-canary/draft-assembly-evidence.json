@@ -1,0 +1,145 @@
+{
+  "schema": "vidtoolz.draftAssemblyEvidence.v1",
+  "kind": "DRAFT_ASSEMBLY",
+  "fidelity": "DRAFT_AUTOMATED_ASSEMBLY",
+  "production_mode": "DRAFT",
+  "asserts": "a real, decodable, duration-verified video file was assembled deterministically from the exact recorded assets",
+  "does_not_assert": [
+    "edit quality",
+    "production readiness",
+    "approved rough cut",
+    "mix quality or loudness compliance",
+    "visual approval",
+    "publish readiness"
+  ],
+  "satisfies_real_capture": false,
+  "completes_rough_cut_gate": false,
+  "human_authority_required": true,
+  "human_authority_note": "gate 9 closes on Mikko's watch notes; this artifact is what he watches",
+  "run_id": "2026-08-26-draft-assembly-v0-canary",
+  "draft_version": 2,
+  "semantic_producer": "editor",
+  "technical_producer": {
+    "renderer": "ffmpeg-draft-assembler",
+    "version": "v0",
+    "ffmpeg_version": "6.1.1-3ubuntu5"
+  },
+  "attested_by": "package-run-draft-assembly.js",
+  "script": {
+    "source_system": "vidtoolz-script-builder",
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203",
+    "approval_state": "none",
+    "title": "CANARY — Lifecycle Integration Test Package (NOT FOR PUBLICATION)"
+  },
+  "narration": {
+    "audio_sha256": "df70460da695522d968fca1cda5d87cdc7b62385e1df03456f8536754377158d",
+    "fidelity": "DRAFT_SYNTHETIC_PROXY",
+    "is_presenter_voice": false
+  },
+  "assembly_manifest": {
+    "file": "draft-assembly.json",
+    "sha256": "6d34105bb70077210a3f8a9c95947e0350db5ca05a69958f478ce15873f14375"
+  },
+  "output": {
+    "path": "media/draft-assembly/draft-v2.mp4",
+    "sha256": "b3d6c7d20b5a93e5e83556f5c58b7476f1d0c2cac6bb45c0ac16bd9470ffbeb0",
+    "bytes": 16967803,
+    "duration_seconds": 75.8,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "has_audio": true
+  },
+  "technical_validation": {
+    "ok": true,
+    "failures": [],
+    "decode_pass": true
+  },
+  "source_binding": {
+    "ok": true,
+    "drift": []
+  },
+  "warnings": [
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 1,
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "detail": "visual visual-001 is 2.7s and is looped to cover 6.925s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 1,
+      "section_id": "01M0W30GA6XPJWK39QKARCR2CC",
+      "detail": "visual visual-001 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 2,
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "detail": "visual visual-002 is 2.7s and is looped to cover 17.954s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 2,
+      "section_id": "01M0W30GA7EZYRZCDQKFH5JBK8",
+      "detail": "visual visual-002 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 3,
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "detail": "visual visual-003 is 2.7s and is looped to cover 4.835s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 3,
+      "section_id": "01M0W30GA7H83X932A0NBZR4HZ",
+      "detail": "visual visual-003 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 4,
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "detail": "visual visual-004 is 2.7s and is looped to cover 22.285s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 4,
+      "section_id": "01M0W30GA7F6Y1MN4MBTT2TS7X",
+      "detail": "visual visual-004 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 5,
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "detail": "visual visual-005 is 2.7s and is looped to cover 13.786s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 5,
+      "section_id": "01M0W30GA7AFTN0GSB5394G7MH",
+      "detail": "visual visual-005 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_LOOPED",
+      "segment_order": 6,
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "detail": "visual visual-006 is 2.7s and is looped to cover 3.604s"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 6,
+      "section_id": "01M0W30GA703JCAW3MAB7TNGZC",
+      "detail": "visual visual-006 is 1080x1920 in a 1920x1080 frame; it is cropped"
+    },
+    {
+      "code": "VISUAL_ORIENTATION_MISMATCH",
+      "segment_order": 7,
+      "section_id": "01M0W30GA7PQMYYBSK5B050N41",
+      "detail": "visual visual-007 is 32x56 in a 1920x1080 frame; it is cropped"
+    }
+  ],
+  "state": "VERIFIED"
+}

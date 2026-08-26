@@ -1,0 +1,9 @@
+{
+  "schema": "vidtoolz.packageRunProductionMode.v1",
+  "run_id": "2026-08-26-draft-assembly-v0-canary",
+  "mode": "DRAFT",
+  "set_by": "claude-code",
+  "set_at": null,
+  "predecessor": null,
+  "rationale": "Draft Assembly V0 assembly canary"
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "vidtoolz.packageRunStoryBinding.v1",
+  "artifact_type": "package-run-story-binding",
+  "contract_id": "vidtoolz-script-builder/story-version-authority/v1",
+  "run_id": "2026-08-26-draft-assembly-v0-canary",
+  "story": {
+    "source_system": "vidtoolz-script-builder",
+    "source_root": null,
+    "project_id": "01M0W30GA5ZAXXQPX9SS0R2N29",
+    "version_id": "01M0W30GAA8DFZCTPRXN4Y4DXV",
+    "content_hash": "71f9828a7e04ec091c66e9748693139147bfbb52c828eb0f56a0482c9cfc6203"
+  },
+  "bound_at": "2026-08-26T02:52:06.592Z",
+  "bound_by": "claude-code",
+  "provenance": null
+}

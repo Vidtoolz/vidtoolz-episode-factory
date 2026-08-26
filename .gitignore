@@ -64,3 +64,12 @@ package-runs/2026-08-19-earth-studio-journey-visual-acceptance/rounds/**/*.png
 # are tracked; raw PNGs are pinned in SHA256SUMS-raw-captures.txt.
 package-runs/2026-08-19-earth-studio-director-acceptance/observations/**/*.png
 package-runs/2026-08-19-earth-studio-director-acceptance/rounds/**/*.png
+
+# DRAFT media (narration, proxy presenter, assembled drafts) stays untracked like
+# all package-run media. Every byte is pinned by sha256 in the run's own
+# manifests (draft-narration.json / draft-proxy-presenter.json /
+# draft-assembly.json), and media/draft-assembly/work/ is a rebuildable cache
+# whose whole purpose is to be thrown away and regenerated.
+package-runs/*/media/draft-narration/
+package-runs/*/media/draft-proxy-presenter/
+package-runs/*/media/draft-assembly/

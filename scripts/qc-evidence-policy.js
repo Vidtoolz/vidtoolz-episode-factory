@@ -55,7 +55,7 @@ const APPLICABILITY_CLASSES = Object.freeze([
  * Audio evidence has THREE orthogonal axes; conflating them is semantic
  * collapse and is prohibited:
  *   1. evidence kind      — WHAT is the artifact (AUDIO_RENDER,
- *                           DRAFT_SYNTHETIC_NARRATION, ...)
+ *                           DRAFT_SYNTHETIC_NARRATION, DRAFT_ASSEMBLY, ...)
  *   2. render class       — at WHAT PRODUCTION LEVEL is the audio valid
  *   3. source/producer    — WHO/HOW it was produced
  *
@@ -171,6 +171,15 @@ const EVIDENCE_POLICY = Object.freeze({
     producer_module: 'scripts/package-run-draft-narration.js',
     rationale: 'Synthetic proxy narration is a DRAFT-mode capability; REVIEW reuses what the Draft produced without regenerating. It is its own evidence kind with its own declared fidelity (DRAFT_SYNTHETIC_PROXY) and never becomes AUDIO_RENDER.',
     fidelity_note: 'Declared fidelity is owned by its producer (DRAFT_SYNTHETIC_PROXY); it does not participate in the AUDIO_RENDER render-class vocabulary and cannot satisfy any AUDIO_RENDER class requirement.',
+  }),
+  DRAFT_ASSEMBLY: Object.freeze({
+    class: 'MODE_REQUIRED',
+    modes: Object.freeze(['DRAFT', 'REVIEW']),
+    earliest_gate: 'rough-cut-review',
+    producer: 'editor',
+    producer_module: 'scripts/package-run-draft-assembly.js',
+    rationale: 'An automatically assembled DRAFT rough cut is a DRAFT-mode capability; REVIEW watches what the Draft produced without reassembling it. It exists no earlier than gate 9 because there is nothing to assemble before capture is complete.',
+    fidelity_note: 'Declared fidelity is owned by its producer (DRAFT_AUTOMATED_ASSEMBLY). It asserts a real, decodable, duration-verified file assembled from the exact recorded assets and nothing more — not edit quality, not a mix, not an approved rough cut. It cannot satisfy any AUDIO_RENDER render-class requirement, and it never completes gate 9: that gate closes on Mikko\'s watch notes.',
   }),
   CAMERA_QUALITY: Object.freeze({
     class: 'GATE_REQUIRED',

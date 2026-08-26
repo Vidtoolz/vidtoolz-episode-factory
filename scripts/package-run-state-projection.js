@@ -84,6 +84,61 @@ const HUMAN_GATES = Object.freeze([
   "archive",
 ]);
 
+/*
+ * Draft Assembly V0 visibility.
+ *
+ * A DRAFT run can now have a rendered, watchable rough cut. The projection is
+ * where an operator looks to find out where a run stands, so "there is a Draft
+ * V1 and here it is" belongs here — and so does "assembly is eligible but has
+ * not been run".
+ *
+ * Strictly additive and strictly read-only. It never changes a gate status, and
+ * a rendered draft never advances gate 9: that gate closes on Mikko's watch
+ * notes, exactly as before. Runs with no draft-assembly artifacts get null and
+ * render byte-identically to how they always did.
+ */
+function readDraftAssembly(runDir, productionMode) {
+  if (productionMode !== productionModeModule.DRAFT) return null;
+  let assembly;
+  let bindingModule;
+  try {
+    assembly = require("./package-run-draft-assembly.js");
+    bindingModule = require("./draft-assembly-binding.js");
+  } catch (_) { return null; }
+
+  // Only pay for the readiness walk when the run has actually opted in by
+  // declaring a binding or by having produced a draft.
+  const hasBinding = fs.existsSync(path.join(runDir, bindingModule.BINDING_FILE));
+  const hasManifest = fs.existsSync(path.join(runDir, assembly.MANIFEST_FILE));
+  if (!hasBinding && !hasManifest) return null;
+
+  let eligibility = null;
+  try { eligibility = assembly.assemblyEligibility(runDir); }
+  catch (_) { eligibility = null; }
+  let status = null;
+  try { status = assembly.draftAssemblyStatus(runDir); }
+  catch (_) { status = null; }
+
+  return {
+    inputs_present: Boolean(eligibility && eligibility.narration.valid && eligibility.binding.valid),
+    story_approval_state: eligibility ? eligibility.story_approval_state : null,
+    proxy_capture_disposition: eligibility ? eligibility.proxy_capture.disposition : null,
+    eligible: Boolean(eligibility && eligibility.eligible),
+    blockers: eligibility ? eligibility.blockers : ["draft assembly eligibility could not be evaluated"],
+    render_state: status ? status.state : null,
+    draft_present: Boolean(status && status.present),
+    draft_valid: Boolean(status && status.valid),
+    draft_version: status && status.valid ? status.draft_version : null,
+    draft_path: status ? status.draft_path : null,
+    draft_duration_seconds: status && status.valid ? status.duration_seconds : null,
+    draft_invalid_reason: status && status.present && !status.valid ? `${status.code}: ${status.detail}` : null,
+    // The whole point of stating this here: a file is not a gate.
+    review_can_begin: Boolean(status && status.valid),
+    completes_rough_cut_gate: false,
+    authority_note: "a rendered draft makes gate 9 actionable; gate 9 still completes on Mikko's rough-cut watch notes",
+  };
+}
+
 class PackageRunStateProjectionError extends Error {
   constructor(code, message) {
     super(message);
@@ -402,6 +457,7 @@ function buildProjection(options = {}) {
     } : null,
     owner_readiness: readOwnerReadiness(repoRoot, expectedOwner),
     qc_disposition: readLatestQcDisposition(runDir),
+    draft_assembly: readDraftAssembly(runDir, productionMode),
     human_gated: humanGated,
     human_authority_required: humanRequired,
     pending_human_decision: humanRequired
@@ -448,6 +504,18 @@ function renderProjectionMarkdown(projection = {}, generatedAt = "") {
     const qc = projection.qc_disposition;
     lines.push(`- Latest QC disposition: ${qc.disposition || qc.state || "unknown"} (task ${qc.task_dir}, inspected_at ${qc.inspected_at || "n/a"}, defects ${qc.defect_count})`);
     if (!qc.next_gate_allowed) lines.push("- QC next-gate permission: not granted (canonical gate evidence still governs)");
+  }
+  if (projection.draft_assembly) {
+    const draft = projection.draft_assembly;
+    if (draft.draft_valid) {
+      lines.push(`- Draft assembly: Draft v${draft.draft_version} at ${draft.draft_path} (${draft.draft_duration_seconds}s) — material for review, NOT gate completion`);
+    } else if (draft.draft_present) {
+      lines.push(`- Draft assembly: present but not valid — ${draft.draft_invalid_reason}`);
+    } else if (draft.eligible) {
+      lines.push("- Draft assembly: eligible, not yet rendered (node scripts/package-run-draft-assembly.js build <run-dir>)");
+    } else {
+      lines.push(`- Draft assembly: not eligible — ${draft.blockers.join("; ")}`);
+    }
   }
   lines.push(`- Human authority required: ${projection.human_authority_required ? "yes" : "no"}`);
   if (projection.human_authority_required && projection.pending_human_decision) {
