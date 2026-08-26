@@ -214,8 +214,9 @@ test('mode M14: a legacy run is never given a guessed mode', () => {
   assert.equal(fs.existsSync(productionMode.modePath(CANARY_DIR)), false);
   const projection = stateProjection.buildProjection({ runId: CANARY_ID });
   assert.equal(projection.production_mode, productionMode.MODE_UNSPECIFIED);
-  // And it is still exactly where it was: mode work did not move it.
-  assert.equal(projection.current_gate, 'capture-checklist');
+  // And it is still exactly where its committed evidence places it: mode work
+  // did not move it. Untracked local canary artifacts are not fixture inputs.
+  assert.equal(projection.current_gate, gatePosition(ROOT, CANARY_DIR).gate);
 });
 
 /* ========================== GATE-7 MODE POLICY (G7M1-G7M10) =============== */
