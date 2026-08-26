@@ -248,6 +248,10 @@ test('narration SN11b: the runner action fails closed without a run and without 
   const { dir, runId } = draftRun('runner-mode', { mode: null });
   const wrongMode = await generationSupervisor.run({
     task_id: 't2', action: 'generate_draft_narration', package_run_id: runId, run_dir: dir,
+  }, {
+    narrationProviderModule: {
+      providerReadiness() { throw new Error('resource readiness must not mask an invalid mode'); },
+    },
   });
   assert.equal(wrongMode.state, 'INPUT_MISSING');
   assert.match(wrongMode.reason, /NARRATION_MODE_NOT_DRAFT/);

@@ -207,7 +207,21 @@ async function run(task, options = {}) {
       return finish();
     }
     const narration = require('./package-run-draft-narration.js');
-    const providerModule = require('./synthetic-narration-provider.js');
+
+    // Validate the run's Story/mode contract before probing machine resources.
+    // Otherwise a missing local provider can mask an invalid request as an
+    // environment failure, making the same task mean something different on CI.
+    try {
+      narration.resolveNarrationContext(runDir);
+    } catch (error) {
+      status.state = ['NARRATION_MODE_NOT_DRAFT', 'NARRATION_NO_SPOKEN_TEXT', 'NARRATION_STORY_EMPTY'].includes(error.code)
+        ? 'INPUT_MISSING' : 'GENERATION_FAILED';
+      status.reason = `${error.code || 'NARRATION_FAILED'}: ${error.message}`;
+      ev(status.state, status.reason);
+      return finish();
+    }
+
+    const providerModule = options.narrationProviderModule || require('./synthetic-narration-provider.js');
 
     const readiness = providerModule.providerReadiness({ voice: task.voice });
     status.route = { lane: 'local_synthetic_narration', provider: readiness.provider, version: readiness.version, voice: readiness.voice };
