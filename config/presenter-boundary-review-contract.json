@@ -1,0 +1,40 @@
+{
+  "schema": "vidtoolz.presenterBoundaryReviewContract.v1",
+  "status": "ACTIVE",
+  "time_representation": "INTEGER_MILLISECONDS",
+  "proposal_classes": [
+    "MACHINE_INFERRED_PROVISIONAL",
+    "TRANSCRIPT_ALIGNED_PROVISIONAL"
+  ],
+  "authoritative_classes": [
+    "CAPTURE_EVENT_BOUND",
+    "HUMAN_CONFIRMED"
+  ],
+  "human_confirmation": {
+    "actor_type": "HUMAN",
+    "identity_verifier": "scripts/human-approval-identity.js",
+    "interaction": "one explicit Confirm section action binds both displayed edges",
+    "agent_may_persist_human_click": true,
+    "agent_may_confirm": false
+  },
+  "append_only_history": {
+    "historical_keep_all_mutated": false,
+    "successor_schema": "vidtoolz.humanPerformanceReview.v2",
+    "successor_binds": [
+      "predecessor review path and SHA-256",
+      "Story project/version/content hash/approval",
+      "Visual Plan ID/version/digest/approval",
+      "exact accepted master SHA-256 set",
+      "all confirmed section intervals",
+      "human confirmer and confirmation timestamp"
+    ]
+  },
+  "assembly_release": {
+    "requires_all_sections_exactly_once": true,
+    "requires_presenter_state": "ASSEMBLY_ELIGIBLE",
+    "output_class": "PRODUCTION_ASSEMBLY_CANDIDATE",
+    "evidence_class": "PROPOSED_PRODUCTION_ASSEMBLY_TECHNICAL_EVIDENCE",
+    "gate_authority": false,
+    "provisional_boundaries_forbidden": true
+  }
+}

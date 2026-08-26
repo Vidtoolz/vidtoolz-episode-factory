@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * Presenter Source Authority v1
+ * Presenter Source Authority v2
  *
  * One authority model covers both a whole-file SECTION_TAKE and a BATCH_MASTER
  * referenced by section-level intervals. A segment is a reference into an
@@ -13,7 +13,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const childProcess = require('node:child_process');
 
-const SCHEMA = 'vidtoolz.presenterSourceAuthority.v1';
+const SCHEMA = 'vidtoolz.presenterSourceAuthority.v2';
 const ARTIFACT_TYPE = 'presenter-source-authority';
 const SOURCE_KINDS = Object.freeze(['SECTION_TAKE', 'BATCH_MASTER']);
 const QUALITY_CLASSES = Object.freeze(['PROOF_CAPTURE', 'PRODUCTION_CAPTURE']);
@@ -178,40 +178,49 @@ function validateAuthority(authority, options = {}) {
   const activeBySection = new Map();
   const activeIntervalsByMaster = new Map();
   for (const segment of authority.segments || []) {
-    rejectUnknown(errors, segment, ['segment_id','master_id','source_master_sha256','recording_unit_id','section_id','in_s','out_s','duration_s','story','visual_plan','framing_setup','status','boundary'], `segment:${segment.segment_id}`);
+    rejectUnknown(errors, segment, ['segment_id','master_id','source_master_sha256','recording_unit_id','section_id','in_ms','out_ms','duration_ms','story','visual_plan','planned_framing','captured_framing','crop_policy','status','boundary'], `segment:${segment.segment_id}`);
     if (!segment.segment_id || segments.has(segment.segment_id)) { push(errors, 'SEGMENT_ID_DUPLICATE', String(segment.segment_id)); continue; }
     segments.set(segment.segment_id, segment);
     const master = masters.get(segment.master_id);
     if (!master || segment.source_master_sha256 !== master.media?.sha256) push(errors, 'SEGMENT_MASTER_LINEAGE_INVALID', segment.segment_id);
     if (!sectionIds.has(segment.section_id) || !master?.sections_declared?.includes(segment.section_id) || !(authority.recording_units || []).some((unit) => unit.recording_unit_id === segment.recording_unit_id && unit.section_id === segment.section_id)) push(errors, 'SEGMENT_SECTION_INVALID', segment.segment_id);
     if (!sameStory(segment.story, authority.story) || !samePlan(segment.visual_plan, authority.visual_plan)) push(errors, 'SEGMENT_STORY_PLAN_INVALID', segment.segment_id);
-    if (!(segment.in_s >= 0) || !(segment.out_s > segment.in_s) || !master || segment.out_s > master.media.duration_s + 0.001) push(errors, 'SEGMENT_INTERVAL_INVALID', segment.segment_id);
-    if (Math.abs((segment.out_s - segment.in_s) - segment.duration_s) > 0.001) push(errors, 'SEGMENT_DURATION_INVALID', segment.segment_id);
+    if (!Number.isInteger(segment.in_ms) || !Number.isInteger(segment.out_ms) || segment.in_ms < 0 || segment.out_ms <= segment.in_ms || !master || segment.out_ms > Math.round(master.media.duration_s * 1000)) push(errors, 'SEGMENT_INTERVAL_INVALID', segment.segment_id);
+    if (!Number.isInteger(segment.duration_ms) || segment.out_ms - segment.in_ms !== segment.duration_ms) push(errors, 'SEGMENT_DURATION_INVALID', segment.segment_id);
+    if (!segment.planned_framing || !segment.captured_framing) push(errors, 'SEGMENT_FRAMING_IDENTITY_MISSING', segment.segment_id);
     if (!BOUNDARY_CLASSES.includes(segment.boundary?.class)) push(errors, 'SEGMENT_BOUNDARY_CLASS_INVALID', segment.segment_id);
     if (!segment.boundary?.asserted_by || !validTime(segment.boundary?.asserted_at) || !segment.boundary?.evidence_ref || !SHA_RE.test(segment.boundary?.evidence_sha256 || '')) push(errors, 'SEGMENT_BOUNDARY_EVIDENCE_INVALID', segment.segment_id);
     if (segment.status === 'ACTIVE') {
       if (activeBySection.has(segment.section_id)) push(errors, 'SECTION_ACTIVE_SOURCE_AMBIGUOUS', segment.section_id);
       activeBySection.set(segment.section_id, segment.segment_id);
       const intervals = activeIntervalsByMaster.get(segment.master_id) || [];
-      if (intervals.some((prior) => segment.in_s < prior.out_s && segment.out_s > prior.in_s)) push(errors, 'MASTER_ACTIVE_SEGMENTS_OVERLAP', segment.segment_id);
+      if (intervals.some((prior) => segment.in_ms < prior.out_ms && segment.out_ms > prior.in_ms)) push(errors, 'MASTER_ACTIVE_SEGMENTS_OVERLAP', segment.segment_id);
       intervals.push(segment); activeIntervalsByMaster.set(segment.master_id, intervals);
     } else if (segment.status !== 'SUPERSEDED') push(errors, 'SEGMENT_STATUS_INVALID', segment.segment_id);
   }
 
   const reviews = new Map();
   for (const review of authority.human_reviews || []) {
-    rejectUnknown(errors, review, ['review_id','run_id','verdict','reviewer','reviewed_at','story','visual_plan','masters','review_binding_sha256'], `review:${review.review_id}`);
+    rejectUnknown(errors, review, ['review_id','run_id','verdict','reviewer','reviewed_at','story','visual_plan','masters','predecessor_review','segments','review_binding_sha256'], `review:${review.review_id}`);
     if (!review.review_id || reviews.has(review.review_id)) { push(errors, 'REVIEW_ID_DUPLICATE', String(review.review_id)); continue; }
     reviews.set(review.review_id, review);
     if (!isHuman(review.reviewer, options)) push(errors, 'REVIEWER_AUTHORITY_INVALID', review.review_id);
     if (!['KEEP_ALL', 'PARTIAL_KEEP'].includes(review.verdict) || review.run_id !== authority.run_id || !sameStory(review.story, authority.story) || !samePlan(review.visual_plan, authority.visual_plan) || !validTime(review.reviewed_at)) push(errors, 'REVIEW_LINEAGE_INVALID', review.review_id);
     if (!SHA_RE.test(review.review_binding_sha256 || '') || reviewDigest(review) !== review.review_binding_sha256) push(errors, 'REVIEW_BINDING_INVALID', review.review_id);
+    if (review.predecessor_review && (!review.predecessor_review.path || !SHA_RE.test(review.predecessor_review.sha256 || ''))) push(errors, 'REVIEW_PREDECESSOR_BINDING_INVALID', review.review_id);
     const reviewed = new Map((review.masters || []).map((entry) => [entry.master_id, entry]));
     for (const [id, entry] of reviewed) if (!masters.has(id) || masters.get(id).media.sha256 !== entry.media_sha256 || canonicalize(masters.get(id).sections_declared) !== canonicalize(entry.sections_declared)) push(errors, 'REVIEW_MASTER_BINDING_STALE', `${review.review_id}:${id}`);
     if (review.verdict === 'KEEP_ALL') {
       for (const [id, master] of masters) { const entry = reviewed.get(id); if (!entry || entry.media_sha256 !== master.media.sha256 || canonicalize(entry.sections_declared) !== canonicalize(master.sections_declared)) push(errors, 'REVIEW_MASTER_BINDING_STALE_OR_PARTIAL', `${review.review_id}:${id}`); }
       if (reviewed.size !== masters.size) push(errors, 'REVIEW_MASTER_SET_MISMATCH', review.review_id);
     } else if (reviewed.size === 0) push(errors, 'REVIEW_MASTER_SET_EMPTY', review.review_id);
+    if (review.segments) {
+      const reviewedSegments = new Map((review.segments || []).map((entry) => [entry.segment_id, entry]));
+      for (const [id, entry] of reviewedSegments) {
+        const segment = segments.get(id);
+        if (!segment || entry.section_id !== segment.section_id || entry.master_id !== segment.master_id || entry.master_sha256 !== segment.source_master_sha256 || entry.in_ms !== segment.in_ms || entry.out_ms !== segment.out_ms || entry.boundary_class !== segment.boundary.class) push(errors, 'REVIEW_SEGMENT_BINDING_STALE', `${review.review_id}:${id}`);
+      }
+    }
   }
 
   const activeSelectionBySection = new Map();
@@ -251,9 +260,10 @@ function buildEditorHandoff(authority, options = {}) {
       section_id: segment.section_id, recording_unit_id: segment.recording_unit_id,
       selected_segment_id: segment.segment_id, master_id: master.master_id,
       master_media_path: master.media.path, master_media_sha256: master.media.sha256,
-      in_s: segment.in_s, out_s: segment.out_s, duration_s: segment.duration_s,
+      in_ms: segment.in_ms, out_ms: segment.out_ms, duration_ms: segment.duration_ms,
       story: authority.story, visual_plan: authority.visual_plan,
-      framing_setup: segment.framing_setup,
+      planned_framing: segment.planned_framing, captured_framing: segment.captured_framing,
+      crop_policy: segment.crop_policy || null,
       quality_class: master.quality_class,
       capture_provenance: { sidecar_path: master.sidecar.path, sidecar_sha256: master.sidecar.sha256, captured_at: master.captured_at, devices: master.device_provenance },
       derivative_is_authority: false,

@@ -8,7 +8,7 @@
     "exact approved Story project/version/content hash",
     "exact approved Visual Plan V2 identity/digest",
     "human performance review bound to every selected master SHA-256",
-    "exact HUMAN_CONFIRMED or CAPTURE_EVENT_BOUND section intervals",
+    "exact HUMAN_CONFIRMED or CAPTURE_EVENT_BOUND section intervals in integer milliseconds",
     "explicitly bound approved insert assets",
     "explicitly bound selected music identity",
     "explicit timeline/edit plan identity and digest"
@@ -20,7 +20,8 @@
     "stale Visual Plan V1",
     "unapproved or unbound inserts",
     "latest-file discovery",
-    "provisional or inferred segment boundaries"
+    "provisional or inferred segment boundaries",
+    "a historical KEEP ALL review used as boundary approval"
   ],
   "output_class": "PRODUCTION_ASSEMBLY_CANDIDATE",
   "evidence_class": "PROPOSED_PRODUCTION_ASSEMBLY_TECHNICAL_EVIDENCE",
