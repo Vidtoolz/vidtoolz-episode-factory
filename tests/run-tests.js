@@ -47,6 +47,7 @@ require("./production-capture-readiness.test.js");
 require("./supervised-presenter-take-adapter.test.js");
 require("./tier3-human-performance-authority.test.js");
 require("./presenter-boundary-review.test.js");
+require("./production-assembly-renderer.test.js");
 require("./lifecycle-authority-invariant.test.js");
 require("./package-lifecycle-integration.test.js");
 require("./video-prompts.test.js");

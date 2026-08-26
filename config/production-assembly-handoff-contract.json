@@ -46,5 +46,29 @@
     "may": ["materialize already-authoritative bindings", "route the exact handoff", "present the candidate for Mikko review"],
     "may_not": ["infer boundaries", "select a take", "approve the edit", "write final-review PASS"]
   },
-  "human_gate": "Mikko confirms boundaries and selections before assembly eligibility, then separately reviews the Production assembly candidate. KEEP ALL performance review is not final-edit approval."
+  "human_gate": "Mikko confirms boundaries and selections before assembly eligibility, then separately reviews the Production assembly candidate. KEEP ALL performance review is not final-edit approval.",
+  "deterministic_renderer_closure": {
+    "canonical_implementation": "scripts/production-assembly-renderer.js",
+    "other_supported_production_renderers": [],
+    "entrypoint": "node scripts/production-assembly-renderer.js --spec <production-assembly-render-spec.json>",
+    "sequence": [
+      "validate exact release packet, V2 human review, Story, VP2, source hashes, crops, inserts and human-authorized music policy",
+      "acquire an owner-identity render lock and conservatively recover only a provably dead stable holder",
+      "persist a digest-bound deterministic render plan",
+      "render only to a plan-specific partial path",
+      "run stream, cadence, frame-count, duration, source-coverage, insert and full-decode machine QC",
+      "emit renderer manifest and non-gating technical evidence",
+      "move the candidate into place and write the COMPLETE marker last"
+    ],
+    "completion_authority": "A candidate without the matching .complete.json marker is incomplete even if MP4 bytes exist.",
+    "recovery": "Retry the identical spec and plan; an exact QC-valid staged render may resume at attestation/finalization, exact completed output is reused, and conflicting or changing output fails closed.",
+    "overwrite_policy": "A COMPLETE candidate is immutable. The identical plan reuses it; a different plan requires a new output/candidate identity.",
+    "lock_identity": ["render ID", "PID", "process start identity", "hostname", "start timestamp", "handoff digest", "plan digest", "intended output"],
+    "independent_qc": "Hermes/QC remains a separate attester after renderer closure; renderer evidence does not replace independent QC or human review.",
+    "music_authority": "Music policy uses an append-only digest-bound succession chain. The latest sole ACTIVE decision must be HUMAN and agree with the release packet; AGENT_DEFAULT may remain historical but is not durable creative authority.",
+    "performance_roles": {
+      "HUMAN_DRAFT_PERFORMANCE": "May consume selected PROOF_CAPTURE or PRODUCTION_CAPTURE sources; output remains a human draft candidate.",
+      "FINAL_HUMAN_PERFORMANCE": "Requires selected PRODUCTION_CAPTURE sources; renderer success still does not confer final creative or gate approval."
+    }
+  }
 }
