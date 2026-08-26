@@ -1,0 +1,20 @@
+{
+  "canary": true,
+  "not_for_publication": true,
+  "package": {
+    "packageNumber": 1,
+    "score": 62,
+    "recommendation": "Maybe",
+    "proposedTitle": "CANARY — Lifecycle Integration Test Package (NOT FOR PUBLICATION)",
+    "idea": "Bounded architecture canary that exercises the canonical 14-gate lifecycle end to end. Not creative content and never to be published.",
+    "thumbnailConcept": "Not applicable — canary run, no thumbnail will be produced.",
+    "onThumbnailText": "",
+    "viewerPromise": "None. This package exists to prove lifecycle integration, not to serve viewers.",
+    "targetViewer": "Architecture evidence only.",
+    "productionDifficulty": "Low",
+    "mainRisk": "Being mistaken for a real production package. Marked CANARY / NOT_FOR_PUBLICATION throughout.",
+    "why_this_matters_now": "Every lifecycle component was proven in isolation; none had been proven against one genuine run.",
+    "why_this_stays_relevant": "Retained as the first integrated lifecycle evidence for future regression.",
+    "shortsIdeas": []
+  }
+}
