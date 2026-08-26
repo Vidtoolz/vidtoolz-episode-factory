@@ -46,6 +46,7 @@ node --check scripts/agent-run.js
 node --check scripts/agent-task-story-editor.js
 node --check scripts/human-approval-identity.js
 node --check scripts/production-assembly-renderer.js
+node --check scripts/production-assembly-composition.js
 node --check storage-adapter.js
 node --check app.js
 node --check agent-control-room-ui.js

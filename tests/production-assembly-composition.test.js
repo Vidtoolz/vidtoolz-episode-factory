@@ -1,0 +1,87 @@
+'use strict';
+
+const { test, assert, fs, os, path, childProcess } = require('./_helpers.js');
+const crypto = require('node:crypto');
+const composition = require('../scripts/production-assembly-composition.js');
+const renderer = require('../scripts/production-assembly-renderer.js');
+
+function sha(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
+function clone(value) { return structuredClone(value); }
+function geometry(x, y, width, height, extra = {}) { return { x, y, width, height, anchor: 'TOP_LEFT', bleed: [], edge_treatment: { type: 'NONE' }, ...extra }; }
+function presenter(id, z, value, primary = false) { return { layer_id: id, type: 'PRESENTER', primary, z, visible: true, geometry: value }; }
+function visual(id, z, assetId, primary = true, extra = {}) { return { layer_id: id, type: 'FULL_CANVAS_VISUAL', primary, z, asset_id: assetId, fit: 'COVER', duration_policy: assetId === 'still' ? 'STILL' : 'TRIM', asset_in_ms: 0, ...extra }; }
+function typography(id, z, primary = true) {
+  const content = 'The human chooses the boundary.';
+  return { layer_id: id, type: 'TYPOGRAPHY', primary, z, typography: { content, content_sha256: composition.digest(content), preset: 'QUOTE', region: geometry(80, 300, 920, 900), alignment: 'CENTER', safe_margin_px: 32, render_mode: 'DRAW_TEXT' } };
+}
+function makeFixture(step = 1000) {
+  const beatIds = Array.from({ length: 7 }, (_, index) => `B${index + 1}`);
+  const assets = [
+    { asset_id: 'video', role: 'GENERATED_VIDEO', path: '/canary/video.mp4', sha256: 'a'.repeat(64), media_kind: 'VIDEO', width: 640, height: 360, duration_ms: 10000, provenance: { producer: 'test' }, status: 'ACCEPTED', policy: 'REQUIRED', intended_beat_ids: beatIds },
+    { asset_id: 'still', role: 'STATIC_GENERATED_IMAGE_WITH_MOTION', path: '/canary/still.png', sha256: 'b'.repeat(64), media_kind: 'IMAGE', width: 640, height: 360, provenance: { producer: 'test' }, status: 'ACCEPTED', policy: 'REQUIRED', intended_beat_ids: beatIds },
+  ];
+  const beats = [
+    { primary_owner: 'GENERATED_VISUAL', layers: [visual('visual', 1, 'video'), presenter('presenter', 2, geometry(700, 1250, 360, 640))] },
+    { primary_owner: 'GENERATED_VISUAL', layers: [visual('visual', 1, 'still', true, { motion: { type: 'SLOW_SCALE', start_scale_milli: 1000, end_scale_milli: 1060 } }), presenter('presenter', 2, geometry(20, 1180, 380, 680, { bleed: ['LEFT', 'BOTTOM'], edge_treatment: { type: 'FEATHER_INNER', edge: 'RIGHT', feather_px: 40 } }))] },
+    { primary_owner: 'GENERATED_VISUAL', layers: [visual('visual', 1, 'video'), presenter('presenter', 2, geometry(760, 1480, 250, 440))] },
+    { primary_owner: 'GENERATED_VISUAL', layers: [visual('visual', 1, 'still', true, { motion: { type: 'STATIC' } })] },
+    { primary_owner: 'TYPOGRAPHY', layers: [visual('background', 1, 'video', false), typography('type', 2)] },
+    { primary_owner: 'PRESENTER', layers: [visual('background', 1, 'video', false), presenter('presenter', 2, geometry(0, 0, 1080, 1920), true)] },
+    { primary_owner: 'GENERATED_VISUAL', layers: [visual('visual', 1, 'video'), presenter('presenter', 2, geometry(20, 1180, 380, 680, { bleed: ['LEFT', 'BOTTOM'], ramp: { curve: 'SMOOTH', end: geometry(700, 1250, 360, 640) } }))] },
+  ].map((beat, index) => ({ beat_id: beatIds[index], section_id: index < 4 ? 'S01' : 'S02', start_ms: index * step, end_ms: (index + 1) * step, transition_in: index === 4 ? 'DISSOLVE_200MS' : 'CUT', transition_out: 'CUT', ...beat }));
+  const timeline = [
+    { section_id: 'S01', in_ms: 0, out_ms: 4 * step, programme_in_ms: 0, programme_out_ms: 4 * step },
+    { section_id: 'S02', in_ms: 0, out_ms: 3 * step, programme_in_ms: 4 * step, programme_out_ms: 7 * step },
+  ];
+  const manifest = { schema: composition.ASSET_MANIFEST_SCHEMA, run_id: 'run', assets };
+  const model = { schema: composition.SCHEMA, design_package: { path: '/design.json', sha256: 'c'.repeat(64), schema: 'vidtoolz.productionAssemblySpec.v2' }, approved_visual_plan: { path: '/vp3.json', file_sha256: 'd'.repeat(64), plan_id: 'vp3', digest_sha256: 'e'.repeat(64) }, asset_manifest: { path: '/assets.json', sha256: 'f'.repeat(64) }, coverage: 'FULL_PROGRAMME', expected_beat_count: 7, forbidden_asset_ids: ['stale-v1-overlay'], beats };
+  return { model, timeline, manifest, output: { width: 1080, height: 1920, fps: 30 }, beatIds };
+}
+function errorCode(fn, code) { assert.throws(fn, (error) => error.code === code); }
+
+test('PAC-01 seven required composition canaries validate through one model', () => { const f = makeFixture(); const result = composition.validateComposition(f.model, f.timeline, f.output, f.manifest); assert.equal(result.beats.length, 7); });
+test('PAC-02 full-screen visual may own the frame with presenter absent', () => { const f = makeFixture(); const result = composition.validateComposition(f.model, f.timeline, f.output, f.manifest); assert.equal(result.beats[3].layers.some((x) => x.type === 'PRESENTER'), false); });
+test('PAC-02b presenter_visible=false is first-class and requires no off-canvas geometry trick', () => { const f = makeFixture(); f.model.beats[3].layers.push({ layer_id: 'presenter-absent', type: 'PRESENTER', primary: false, z: 2, visible: false }); const result = composition.validateComposition(f.model, f.timeline, f.output, f.manifest); assert.equal(result.beats[3].layers.at(-1).visible, false); });
+test('PAC-03 presenter-left is not normalized to right', () => { const f = makeFixture(); assert.equal(composition.validateComposition(f.model, f.timeline, f.output, f.manifest).beats[1].layers.at(-1).geometry.x, 20); });
+test('PAC-04 small presenter geometry is retained exactly', () => { const f = makeFixture(); assert.equal(composition.validateComposition(f.model, f.timeline, f.output, f.manifest).beats[2].layers.at(-1).geometry.width, 250); });
+test('PAC-05 typography is a primary composition owner', () => { const f = makeFixture(); assert.equal(composition.validateComposition(f.model, f.timeline, f.output, f.manifest).beats[4].primary_owner, 'TYPOGRAPHY'); });
+test('PAC-06 presenter-dominant mode is explicit', () => { const f = makeFixture(); assert.equal(composition.validateComposition(f.model, f.timeline, f.output, f.manifest).beats[5].layers.filter((x) => x.primary)[0].type, 'PRESENTER'); });
+test('PAC-07 zero primary owners reject', () => { const f = makeFixture(); f.model.beats[0].layers[0].primary = false; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_PRIMARY_OWNER_INVALID'); });
+test('PAC-08 multiple primary owners reject', () => { const f = makeFixture(); f.model.beats[0].layers[1].primary = true; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_PRIMARY_OWNER_INVALID'); });
+test('PAC-09 duplicate z-order rejects', () => { const f = makeFixture(); f.model.beats[0].layers[1].z = 1; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_Z_ORDER_INVALID'); });
+test('PAC-10 duplicate full-frame identity rejects anti-stacking', () => { const f = makeFixture(); f.model.beats[0].layers.push(visual('stale', 3, 'video', false)); errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_ANTI_STACKING_VIOLATION'); });
+test('PAC-10b duplicate presenter in one beat rejects', () => { const f = makeFixture(); f.model.beats[0].layers.push(presenter('presenter-duplicate', 3, geometry(10, 10, 200, 300))); errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_DUPLICATE_PRESENTER'); });
+test('PAC-11 stale V1 asset is forbidden', () => { const f = makeFixture(); f.model.beats[0].layers[0].asset_id = 'stale-v1-overlay'; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_STALE_ASSET_FORBIDDEN'); });
+test('PAC-12 floating beat boundary rejects', () => { const f = makeFixture(); f.model.beats[0].end_ms = 999.5; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_INTEGER_REQUIRED'); });
+test('PAC-13 gap rejects', () => { const f = makeFixture(); f.model.beats[1].start_ms += 1; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_TIMELINE_COVERAGE_INVALID'); });
+test('PAC-14 overlap rejects', () => { const f = makeFixture(); f.model.beats[1].start_ms -= 1; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_TIMELINE_COVERAGE_INVALID'); });
+test('PAC-15 beat cannot escape confirmed section', () => { const f = makeFixture(); f.model.beats[3].end_ms += 1; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_BEAT_OUTSIDE_HUMAN_SECTION'); });
+test('PAC-16 zero presenter scale/geometry rejects', () => { const f = makeFixture(); f.model.beats[0].layers[1].geometry.width = 0; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_GEOMETRY_INVALID'); });
+test('PAC-17 declared bottom/outer bleed and inner feather validate', () => { const f = makeFixture(); const layer = composition.validateComposition(f.model, f.timeline, f.output, f.manifest).beats[1].layers.at(-1); assert.deepEqual(layer.geometry.bleed, ['LEFT', 'BOTTOM']); assert.equal(layer.geometry.edge_treatment.type, 'FEATHER_INNER'); });
+test('PAC-18 off-canvas placement without bleed rejects', () => { const f = makeFixture(); f.model.beats[0].layers[1].geometry.x = 900; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_GEOMETRY_OFF_CANVAS'); });
+test('PAC-19 smooth ramp is deterministic plan data', () => { const f = makeFixture(); const first = composition.validateComposition(f.model, f.timeline, f.output, f.manifest); const second = composition.validateComposition(clone(f.model), f.timeline, f.output, clone(f.manifest)); assert.equal(first.composition_digest_sha256, second.composition_digest_sha256); assert.equal(first.beats[6].layers.at(-1).geometry.ramp.curve, 'SMOOTH'); });
+test('PAC-20 generated asset hash drift changes composition digest', () => { const f = makeFixture(); const first = composition.validateComposition(f.model, f.timeline, f.output, f.manifest); f.manifest.assets[0].sha256 = '9'.repeat(64); const second = composition.validateComposition(f.model, f.timeline, f.output, f.manifest); assert.notEqual(first.composition_digest_sha256, second.composition_digest_sha256); });
+test('PAC-21 required missing visual blocks', () => { const f = makeFixture(); f.manifest.assets[0].status = 'ABSENT'; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_REQUIRED_ASSET_MISSING'); });
+test('PAC-22 declared fallback is recorded', () => { const f = makeFixture(); f.manifest.assets[0].status = 'ABSENT'; f.manifest.assets[0].policy = 'FALLBACK_ALLOWED'; f.manifest.assets[0].fallback_asset_id = 'fallback-video'; f.manifest.assets.push({ ...f.manifest.assets[0], asset_id: 'fallback-video', status: 'ACCEPTED', policy: 'REQUIRED', fallback_asset_id: undefined, sha256: '8'.repeat(64) }); const result = composition.validateComposition(f.model, f.timeline, f.output, f.manifest); assert.ok(result.used_fallbacks.length > 0); });
+test('PAC-23 arbitrary unknown composition field rejects', () => { const f = makeFixture(); f.model.beats[0].layers[0].ffmpeg_filter = 'movie=/etc/passwd'; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_UNKNOWN_FIELD'); });
+test('PAC-24 asset may only be consumed by its declared beat', () => { const f = makeFixture(); f.manifest.assets[0].intended_beat_ids = ['B2']; errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_ASSET_BEAT_BINDING_INVALID'); });
+test('PAC-25 operation digest records resolved beat semantics', () => { const f = makeFixture(); const result = composition.validateComposition(f.model, f.timeline, f.output, f.manifest); assert.match(result.beats[0].operation_digest_sha256, /^[a-f0-9]{64}$/); });
+test('PAC-25b presenter derivative remains bound to the exact authoritative master', () => { const f = makeFixture(); f.timeline[0].master_id = 'A'; f.timeline[0].master_sha256 = '1'.repeat(64); f.model.beats[0].layers[1].asset_id = 'presenter-A'; f.manifest.assets.push({ asset_id: 'presenter-A', role: 'PRESENTER_ONLY', path: '/canary/presenter.webm', sha256: '2'.repeat(64), media_kind: 'VIDEO', width: 608, height: 1080, duration_ms: 4000, provenance: { source_master_id: 'A', source_master_sha256: '1'.repeat(64), timeline_basis: 'MASTER_ZERO' }, status: 'ACCEPTED', policy: 'REQUIRED', intended_beat_ids: ['B1'] }); assert.equal(composition.validateComposition(f.model, f.timeline, f.output, f.manifest).beats[0].layers.at(-1).resolved_asset.role, 'PRESENTER_ONLY'); f.manifest.assets.at(-1).provenance.source_master_sha256 = '3'.repeat(64); errorCode(() => composition.validateComposition(f.model, f.timeline, f.output, f.manifest), 'COMPOSITION_PRESENTER_DERIVATIVE_INVALID'); });
+test('PAC-25c 26 adjacent integer-ms beats validate as a complete semantic timeline', () => { const f = makeFixture(); const ids = Array.from({ length: 26 }, (_, index) => `R${index + 1}`); f.timeline = [{ section_id: 'S01', in_ms: 0, out_ms: 2600, programme_in_ms: 0, programme_out_ms: 2600 }]; f.model.expected_beat_count = 26; f.model.beats = ids.map((id, index) => ({ beat_id: id, section_id: 'S01', start_ms: index * 100, end_ms: (index + 1) * 100, primary_owner: 'GENERATED_VISUAL', transition_in: 'CUT', transition_out: 'CUT', layers: [visual('visual', 1, 'video')] })); f.manifest.assets[0].intended_beat_ids = ids; f.manifest.assets = [f.manifest.assets[0]]; const result = composition.validateComposition(f.model, f.timeline, f.output, f.manifest); assert.equal(result.beats.length, 26); assert.equal(result.beats.at(-1).end_ms, 2600); });
+
+test('PAC-26 real layered ffmpeg canary full-decodes with continuous dialogue, music, typography, absence and ramp', () => {
+  if (childProcess.spawnSync('ffmpeg', ['-version']).status !== 0) return;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'production-composition-canary-')); const step = 300; const f = makeFixture(step);
+  const master1 = path.join(root, 'master1.mp4'); const master2 = path.join(root, 'master2.mp4'); const video = path.join(root, 'generated.mp4'); const still = path.join(root, 'still.png'); const music = path.join(root, 'music.wav'); const output = path.join(root, 'canary.mp4');
+  for (const [target, color, duration] of [[master1, 'blue', 1.2], [master2, 'green', 0.9]]) childProcess.execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `color=c=${color}:s=1920x1080:r=24000/1001`, '-f', 'lavfi', '-i', 'sine=frequency=500:sample_rate=48000', '-t', String(duration), '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', '-ac', '2', target]);
+  childProcess.execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=s=640x360:r=25', '-t', '3', '-c:v', 'libx264', '-preset', 'ultrafast', video]);
+  childProcess.execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=purple:s=640x360', '-frames:v', '1', still]);
+  childProcess.execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=220:sample_rate=48000', '-t', '2.1', '-ac', '2', music]);
+  f.manifest.assets[0].path = video; f.manifest.assets[0].sha256 = fs.readFileSync(video).length ? sha(fs.readFileSync(video)) : '';
+  f.manifest.assets[1].path = still; f.manifest.assets[1].sha256 = sha(fs.readFileSync(still));
+  const validated = composition.validateComposition(f.model, f.timeline, f.output, f.manifest);
+  const timeline = [{ ...f.timeline[0], master_path: master1, crop: { x: 420, y: 0, width: 1080, height: 1080 }, duration_ms: 1200, master_id: 'A', story_order: 1, quality_class: 'PROOF_CAPTURE', source_capture_cadence: '24000/1001' }, { ...f.timeline[1], master_path: master2, crop: { x: 420, y: 0, width: 1080, height: 1080 }, duration_ms: 900, master_id: 'T', story_order: 2, quality_class: 'PROOF_CAPTURE', source_capture_cadence: '24000/1001' }];
+  const plan = { timeline, composition: validated, inserts: [], music: { policy: 'FULL_PROGRAMME', path: music, sha256: sha(fs.readFileSync(music)), gain_db: -24, media_duration_ms: 2100 }, output: { width: 1080, height: 1920, fps: 30, video_codec: 'libx264', audio_codec: 'aac', audio_sample_rate: 48000, audio_channels: 2, preset: 'ultrafast', crf: 32 }, programme_duration_ms: 2100 };
+  const command = renderer.buildFfmpegCommand(plan, output); childProcess.execFileSync(command[0], command.slice(1), { stdio: ['ignore', 'ignore', 'pipe'] });
+  const probe = renderer.probeMedia(output); assert.equal(probe.video.width, 1080); assert.equal(probe.video.height, 1920); assert.equal(probe.video.avg_frame_rate, '30/1'); assert.ok(probe.audio); childProcess.execFileSync('ffmpeg', ['-v', 'error', '-xerror', '-i', output, '-f', 'null', '-']);
+});

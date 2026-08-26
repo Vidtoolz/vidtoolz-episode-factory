@@ -51,6 +51,10 @@
     "canonical_implementation": "scripts/production-assembly-renderer.js",
     "other_supported_production_renderers": [],
     "entrypoint": "node scripts/production-assembly-renderer.js --spec <production-assembly-render-spec.json>",
+    "composition_helper": "scripts/production-assembly-composition.js (internal module; not an entry point)",
+    "v2_composition_schema": "vidtoolz.productionAssemblyComposition.v1",
+    "v2_asset_manifest_schema": "vidtoolz.productionAssemblyAssetManifest.v1",
+    "preview_entrypoint": "node scripts/production-assembly-renderer.js --spec <production-assembly-render-spec.json> --beat <beat-id> --preview-output <relative-preview.mp4>",
     "sequence": [
       "validate exact release packet, V2 human review, Story, VP2, source hashes, crops, inserts and human-authorized music policy",
       "acquire an owner-identity render lock and conservatively recover only a provably dead stable holder",

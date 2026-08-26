@@ -14,6 +14,7 @@ const os = require('node:os');
 const path = require('node:path');
 const childProcess = require('node:child_process');
 const boundaryReview = require('./presenter-boundary-review.js');
+const compositionEngine = require('./production-assembly-composition.js');
 
 const SPEC_SCHEMA = 'vidtoolz.productionAssemblyRenderSpec.v1';
 const PACKET_SCHEMA = 'vidtoolz.productionAssemblyReleasePacket.v1';
@@ -24,7 +25,7 @@ const COMPLETION_SCHEMA = 'vidtoolz.productionAssemblyCompletion.v1';
 const SHA_RE = /^[a-f0-9]{64}$/;
 const FORBIDDEN_RE = /(?:proxy|piper|synthetic|tts|draft-v1|draft[_-]narration|draft[_-]presenter)/i;
 const BOUNDARY_CLASSES = new Set(['HUMAN_CONFIRMED', 'CAPTURE_EVENT_BOUND']);
-const MUSIC_POLICIES = new Set(['FADE_EARLY', 'LOOP_WITH_CROSSFADE', 'NONE']);
+const MUSIC_POLICIES = new Set(['FADE_EARLY', 'LOOP_WITH_CROSSFADE', 'FULL_PROGRAMME', 'NONE']);
 const INSERT_NECESSITY = new Set(['ESSENTIAL', 'USEFUL', 'OPTIONAL']);
 const PERFORMANCE_ROLES = new Set(['HUMAN_DRAFT_PERFORMANCE', 'FINAL_HUMAN_PERFORMANCE']);
 const LOCK_SCHEMA = 'vidtoolz.productionAssemblyRenderLock.v1';
@@ -254,13 +255,16 @@ async function validateInputs(spec, options = {}) {
     cropByMaster.set(crop.master_id, crop);
   }
   if (cropByMaster.size !== masterInfo.size) fail('CROP_POLICY_INCOMPLETE', 'one exact crop per master required');
+  const replacedInsertIds = new Set((spec.composition?.beats || []).flatMap((beat) => (beat.layers || []).flatMap((layer) => layer.replaces_insert_ids || [])));
   const packetInserts = new Map((packet.insert_policy || []).map((item) => [item.shot_id, item]));
   const inserts = [];
   for (const item of spec.inserts || []) {
     const policy = packetInserts.get(item.shot_id);
     if (!policy || !INSERT_NECESSITY.has(policy.necessity) || policy.necessity !== item.necessity || policy.section_id !== item.section_id || policy.section_order !== item.section_order) fail('INSERT_POLICY_DRIFT', String(item.shot_id));
-    if (!['RENDER', 'FALLBACK_A_ROLL', 'OMIT'].includes(item.decision)) fail('INSERT_DECISION_INVALID', item.shot_id);
-    if (policy.necessity === 'ESSENTIAL' && item.decision !== 'RENDER') fail('ESSENTIAL_INSERT_REQUIRED', item.shot_id);
+    if (!['RENDER', 'FALLBACK_A_ROLL', 'OMIT', 'REPLACED_BY_COMPOSITION'].includes(item.decision)) fail('INSERT_DECISION_INVALID', item.shot_id);
+    if (item.decision === 'REPLACED_BY_COMPOSITION' && (!spec.composition || !replacedInsertIds.has(item.shot_id))) fail('INSERT_COMPOSITION_REPLACEMENT_INVALID', item.shot_id);
+    if (spec.composition && item.decision === 'RENDER') fail('COMPOSITION_LEGACY_INSERT_STACKING_FORBIDDEN', item.shot_id);
+    if (policy.necessity === 'ESSENTIAL' && !['RENDER', 'REPLACED_BY_COMPOSITION'].includes(item.decision)) fail('ESSENTIAL_INSERT_REQUIRED', item.shot_id);
     if (policy.necessity === 'USEFUL' && item.decision === 'OMIT') fail('USEFUL_INSERT_FALLBACK_REQUIRED', item.shot_id);
     if (policy.necessity === 'OPTIONAL' && item.decision === 'FALLBACK_A_ROLL') fail('OPTIONAL_INSERT_DECISION_INVALID', item.shot_id);
     if (item.decision === 'RENDER') {
@@ -273,13 +277,14 @@ async function validateInputs(spec, options = {}) {
     inserts.push(item);
   }
   for (const policy of packetInserts.values()) if (policy.necessity === 'ESSENTIAL' && !inserts.some((item) => item.shot_id === policy.shot_id)) fail('ESSENTIAL_INSERT_REQUIRED', policy.shot_id);
-  if (!MUSIC_POLICIES.has(spec.music?.policy)) fail('MUSIC_POLICY_REQUIRED', 'explicit FADE_EARLY, LOOP_WITH_CROSSFADE, or NONE required');
+  if (!MUSIC_POLICIES.has(spec.music?.policy)) fail('MUSIC_POLICY_REQUIRED', 'explicit FADE_EARLY, LOOP_WITH_CROSSFADE, FULL_PROGRAMME, or NONE required');
   const musicDecision = activeMusicDecision(spec.music);
   let music = null;
   const packetMusic = packet.music_policy || null;
   if (spec.music.policy === 'NONE' && packetMusic?.sha256) fail('MUSIC_PACKET_DRIFT', 'release packet requires a bound music source');
   if (spec.music.policy === 'FADE_EARLY' && packetMusic && packetMusic.option !== 'B' && packetMusic.decision !== 'FADE_EARLY' && packetMusic.decision !== 'END_NATURALLY_OR_FADE_BEFORE_PROGRAMME_END') fail('MUSIC_PACKET_DRIFT', 'release packet does not authorize FADE_EARLY');
   if (spec.music.policy === 'LOOP_WITH_CROSSFADE' && packetMusic && packetMusic.option !== 'A' && packetMusic.decision !== 'LOOP_WITH_CROSSFADE') fail('MUSIC_PACKET_DRIFT', 'release packet does not authorize looping');
+  if (spec.music.policy === 'FULL_PROGRAMME' && packetMusic && packetMusic.decision !== 'FULL_PROGRAMME' && packetMusic.option !== 'FULL_PROGRAMME') fail('MUSIC_PACKET_DRIFT', 'release packet does not authorize full-programme music');
   if (spec.music.policy !== 'NONE') {
     assertSha(spec.music.sha256, 'music');
     const musicPath = requireInputPath(spec.music.path, spec.input_roots, 'music');
@@ -293,12 +298,40 @@ async function validateInputs(spec, options = {}) {
   }
   const output = requireOutputPath(spec.output_root, spec.output.relative_path);
   if (spec.output.width !== 1080 || spec.output.height !== 1920 || spec.output.fps !== 30 || spec.output.video_codec !== 'libx264' || spec.output.audio_codec !== 'aac' || spec.output.audio_sample_rate !== 48000 || spec.output.audio_channels !== 2) fail('OUTPUT_FORMAT_INVALID', 'canonical 1080x1920 CFR30 H.264/AAC stereo required');
-  return { packetPath, reviewPath, packetHash, reviewFileHash, packet, review, sources, masterInfo, cropByMaster, inserts, music, musicDecision, output };
+  const partial = { packetPath, reviewPath, packetHash, reviewFileHash, packet, review, sources, masterInfo, cropByMaster, inserts, music, musicDecision, output };
+  const timeline = buildTimeline(partial);
+  let composition = null;
+  if (spec.composition) {
+    const designPath = requireInputPath(spec.composition.design_package?.path, spec.input_roots, 'V2 design package');
+    const visualPlanPath = requireInputPath(spec.composition.approved_visual_plan?.path, spec.input_roots, 'approved visual plan');
+    const assetManifestPath = requireInputPath(spec.composition.asset_manifest?.path, spec.input_roots, 'composition asset manifest');
+    const hashFile = options.hashFile || sha256File;
+    if (await hashFile(designPath) !== spec.composition.design_package.sha256) fail('COMPOSITION_DESIGN_PACKAGE_DRIFT', designPath);
+    if (await hashFile(visualPlanPath) !== spec.composition.approved_visual_plan.file_sha256) fail('COMPOSITION_VISUAL_PLAN_DRIFT', visualPlanPath);
+    if (await hashFile(assetManifestPath) !== spec.composition.asset_manifest.sha256) fail('COMPOSITION_ASSET_MANIFEST_DRIFT', assetManifestPath);
+    const designPackage = readJson(designPath, 'COMPOSITION_DESIGN_PACKAGE_INVALID');
+    if (designPackage.schema !== spec.composition.design_package.schema) fail('COMPOSITION_DESIGN_PACKAGE_DRIFT', 'design package schema mismatch');
+    const approved = readJson(visualPlanPath, 'COMPOSITION_VISUAL_PLAN_INVALID');
+    if (approved.plan_id !== spec.composition.approved_visual_plan.plan_id || (spec.composition.approved_visual_plan.digest_sha256 && approved.digest_sha256 !== spec.composition.approved_visual_plan.digest_sha256)) fail('COMPOSITION_VISUAL_PLAN_DRIFT', 'approved visual-plan identity mismatch');
+    const assetManifest = readJson(assetManifestPath, 'COMPOSITION_ASSET_MANIFEST_INVALID');
+    for (const asset of assetManifest.assets || []) if (asset.status === 'ACCEPTED') {
+      asset.path = requireInputPath(asset.path, spec.input_roots, `composition asset ${asset.asset_id}`);
+      if (await hashFile(asset.path) !== asset.sha256) fail('COMPOSITION_ASSET_DRIFT', asset.asset_id);
+      const media = (options.probeMedia || probeMedia)(asset.path);
+      const stream = asset.media_kind === 'IMAGE' ? media.video : media.video;
+      if (!stream || stream.width !== asset.width || stream.height !== asset.height) fail('COMPOSITION_ASSET_METADATA_DRIFT', asset.asset_id);
+      if (asset.media_kind === 'VIDEO' && Number.isInteger(asset.duration_ms) && Math.abs(media.duration_ms - asset.duration_ms) > 100) fail('COMPOSITION_ASSET_METADATA_DRIFT', asset.asset_id);
+    }
+    composition = compositionEngine.validateComposition(spec.composition, timeline, spec.output, assetManifest);
+  }
+  const programmeDuration = timeline.at(-1)?.programme_out_ms || 0;
+  if (music?.policy === 'FULL_PROGRAMME' && music.media_duration_ms + 50 < programmeDuration) fail('MUSIC_FULL_PROGRAMME_TOO_SHORT', `${music.media_duration_ms} < ${programmeDuration}`);
+  return { ...partial, timeline, composition };
 }
 
-function buildPlan(spec, validated) {
+function buildTimeline(validated) {
   let cursor = 0;
-  const timeline = validated.sources.map((source) => {
+  return validated.sources.map((source) => {
     const crop = validated.cropByMaster.get(source.master_id);
     const entry = {
       story_order: source.story_order, section_id: source.section_id, selected_segment_id: source.selected_segment_id,
@@ -313,6 +346,11 @@ function buildPlan(spec, validated) {
     cursor += source.duration_ms;
     return entry;
   });
+}
+
+function buildPlan(spec, validated) {
+  const timeline = validated.timeline || buildTimeline(validated);
+  const cursor = timeline.at(-1)?.programme_out_ms || 0;
   const inserts = validated.inserts.map((item) => {
     const section = timeline.find((entry) => entry.story_order === item.section_order);
     return { ...item, programme_in_ms: item.decision === 'RENDER' ? section.programme_in_ms + item.start_offset_ms : null, programme_out_ms: item.decision === 'RENDER' ? section.programme_in_ms + item.end_offset_ms : null };
@@ -323,7 +361,7 @@ function buildPlan(spec, validated) {
     release_packet: { path: validated.packetPath, sha256: validated.packetHash },
     human_review: { path: validated.reviewPath, file_sha256: validated.reviewFileHash, binding_digest_sha256: validated.review.binding_digest_sha256 },
     story: validated.packet.story, visual_plan: validated.packet.visual_plan,
-    timeline, inserts, music: validated.music ? { ...validated.music, media: undefined } : { ...spec.music, active_decision: validated.musicDecision },
+    timeline, inserts, composition: validated.composition, music: validated.music ? { ...validated.music, media: undefined } : { ...spec.music, active_decision: validated.musicDecision },
     output: spec.output, programme_duration_ms: cursor,
     toolchain: { node: process.version, ffmpeg: ffmpegVersion(), ffprobe: ffprobeVersion(), renderer: SPEC_SCHEMA },
   };
@@ -338,25 +376,30 @@ function buildFfmpegCommand(plan, stagedOutput) {
   let musicIndex = null;
   if (plan.music.policy !== 'NONE') { musicIndex = plan.timeline.length; command.push('-i', plan.music.path); }
   const renderedInserts = plan.inserts.filter((item) => item.decision === 'RENDER');
-  const imageBase = plan.timeline.length + (musicIndex === null ? 0 : 1);
-  for (const insert of renderedInserts) command.push('-loop', '1', '-framerate', String(plan.output.fps), '-t', ((insert.programme_out_ms - insert.programme_in_ms) / 1000 + 0.5).toFixed(6), '-i', insert.asset_path);
   const filters = [];
   for (let index = 0; index < plan.timeline.length; index += 1) {
     const segment = plan.timeline[index]; const duration = (segment.duration_ms / 1000).toFixed(6); const crop = segment.crop;
-    filters.push(`[${index}:v]setpts=PTS-STARTPTS,fps=${plan.output.fps},crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},scale=${plan.output.width}:${plan.output.height}:flags=lanczos,setsar=1,tpad=stop_mode=clone:stop_duration=2,trim=duration=${duration},setpts=PTS-STARTPTS,format=yuv420p[v${index}]`);
     filters.push(`[${index}:a]asetpts=PTS-STARTPTS,aresample=${plan.output.audio_sample_rate},apad=whole_dur=${duration},atrim=duration=${duration},asetpts=PTS-STARTPTS[a${index}]`);
   }
-  filters.push(`${plan.timeline.map((_, index) => `[v${index}][a${index}]`).join('')}concat=n=${plan.timeline.length}:v=1:a=1[vcat][dial]`);
-  let video = 'vcat';
-  renderedInserts.forEach((insert, index) => {
-    const firstFrame = Math.ceil(insert.programme_in_ms / 1000 * plan.output.fps);
-    const endFrame = Math.ceil(insert.programme_out_ms / 1000 * plan.output.fps);
-    const start = firstFrame / plan.output.fps; const low = start - 0.5 / plan.output.fps; const high = (endFrame - 1) / plan.output.fps + 0.5 / plan.output.fps;
-    filters.push(`[${imageBase + index}:v]format=rgba,fps=${plan.output.fps},setpts=PTS+${start.toFixed(6)}/TB[g${index}]`);
-    filters.push(`[${video}][g${index}]overlay=x=0:y=0:eof_action=pass:enable='between(t,${low.toFixed(6)},${high.toFixed(6)})'[ov${index}]`);
-    video = `ov${index}`;
-  });
-  filters.push(`[${video}]format=yuv420p[vout]`);
+  filters.push(`${plan.timeline.map((_, index) => `[a${index}]`).join('')}concat=n=${plan.timeline.length}:v=0:a=1[dial]`);
+  if (plan.composition) compositionEngine.buildVideoGraph(plan, command, filters);
+  else {
+    const imageBase = plan.timeline.length + (musicIndex === null ? 0 : 1);
+    for (const insert of renderedInserts) command.push('-loop', '1', '-framerate', String(plan.output.fps), '-t', ((insert.programme_out_ms - insert.programme_in_ms) / 1000 + 0.5).toFixed(6), '-i', insert.asset_path);
+    for (let index = 0; index < plan.timeline.length; index += 1) {
+      const segment = plan.timeline[index]; const duration = (segment.duration_ms / 1000).toFixed(6); const crop = segment.crop;
+      filters.push(`[${index}:v]setpts=PTS-STARTPTS,fps=${plan.output.fps},crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},scale=${plan.output.width}:${plan.output.height}:flags=lanczos,setsar=1,tpad=stop_mode=clone:stop_duration=2,trim=duration=${duration},setpts=PTS-STARTPTS,format=yuv420p[v${index}]`);
+    }
+    filters.push(`${plan.timeline.map((_, index) => `[v${index}]`).join('')}concat=n=${plan.timeline.length}:v=1:a=0[vcat]`);
+    let video = 'vcat';
+    renderedInserts.forEach((insert, index) => {
+      const firstFrame = Math.ceil(insert.programme_in_ms / 1000 * plan.output.fps); const endFrame = Math.ceil(insert.programme_out_ms / 1000 * plan.output.fps);
+      const start = firstFrame / plan.output.fps; const low = start - 0.5 / plan.output.fps; const high = (endFrame - 1) / plan.output.fps + 0.5 / plan.output.fps;
+      filters.push(`[${imageBase + index}:v]format=rgba,fps=${plan.output.fps},setpts=PTS+${start.toFixed(6)}/TB[g${index}]`);
+      filters.push(`[${video}][g${index}]overlay=x=0:y=0:eof_action=pass:enable='between(t,${low.toFixed(6)},${high.toFixed(6)})'[ov${index}]`); video = `ov${index}`;
+    });
+    filters.push(`[${video}]format=yuv420p[vout]`);
+  }
   const total = (plan.programme_duration_ms / 1000).toFixed(6);
   if (plan.music.policy === 'NONE') filters.push(`[dial]apad=whole_dur=${total},atrim=duration=${total},alimiter=limit=0.85:level=disabled[aout]`);
   if (plan.music.policy === 'FADE_EARLY') {
@@ -371,6 +414,10 @@ function buildFfmpegCommand(plan, stagedOutput) {
     let current = 'mt0';
     for (let index = 1; index < count; index += 1) { filters.push(`[${current}][mt${index}]acrossfade=d=${(crossfade / 1000).toFixed(6)}:c1=tri:c2=tri[mx${index}]`); current = `mx${index}`; }
     filters.push(`[${current}]volume=${Number(plan.music.gain_db || -14).toFixed(2)}dB,atrim=duration=${total},apad=whole_dur=${total}[music]`);
+    filters.push(`[dial][music]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,alimiter=limit=0.85:level=disabled,atrim=duration=${total},asetpts=PTS-STARTPTS[aout]`);
+  }
+  if (plan.music.policy === 'FULL_PROGRAMME') {
+    filters.push(`[${musicIndex}:a]aresample=${plan.output.audio_sample_rate},volume=${Number(plan.music.gain_db || -18).toFixed(2)}dB,apad=whole_dur=${total},atrim=duration=${total},asetpts=PTS-STARTPTS[music]`);
     filters.push(`[dial][music]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,alimiter=limit=0.85:level=disabled,atrim=duration=${total},asetpts=PTS-STARTPTS[aout]`);
   }
   command.push('-filter_complex', filters.join(';'), '-map', '[vout]', '-map', '[aout]', '-c:v', plan.output.video_codec, '-preset', plan.output.preset || 'slow', '-crf', String(plan.output.crf ?? 18), '-pix_fmt', 'yuv420p', '-r', String(plan.output.fps), '-c:a', plan.output.audio_codec, '-b:a', plan.output.audio_bitrate || '192k', '-ar', String(plan.output.audio_sample_rate), '-ac', String(plan.output.audio_channels), '-movflags', '+faststart', stagedOutput);
@@ -390,6 +437,15 @@ function qcCandidate(filePath, plan, options = {}) {
     expected_duration_ms: plan.programme_duration_ms, duration_tolerance_ms: tolerance, video: probe.video, audio: probe.audio,
     source_coverage: plan.timeline.map((item) => item.section_id), story_order: plan.timeline.map((item) => item.story_order),
     required_inserts: plan.inserts.filter((item) => item.necessity === 'ESSENTIAL').map((item) => ({ shot_id: item.shot_id, decision: item.decision })),
+    composition: plan.composition ? {
+      beat_count: plan.composition.beats.length,
+      coverage_start_ms: plan.composition.beats[0].start_ms,
+      coverage_end_ms: plan.composition.beats.at(-1).end_ms,
+      primary_owners: plan.composition.beats.map((beat) => ({ beat_id: beat.beat_id, primary_owner: beat.primary_owner })),
+      presenter_absent_beats: plan.composition.beats.filter((beat) => !beat.layers.some((layer) => layer.type === 'PRESENTER' && layer.visible !== false)).map((beat) => beat.beat_id),
+      operation_digests: plan.composition.beats.map((beat) => ({ beat_id: beat.beat_id, sha256: beat.operation_digest_sha256 })),
+      music_branch: plan.music.policy === 'FULL_PROGRAMME' ? { policy: 'FULL_PROGRAMME', source_sha256: plan.music.sha256, start_ms: 0, end_ms: plan.programme_duration_ms } : null,
+    } : null,
   };
 }
 
@@ -456,7 +512,7 @@ async function renderFromSpec(specPath, options = {}) {
       source_capture_cadence: [...new Map(plan.timeline.map((item) => [item.master_id, { master_id: item.master_id, average_frame_rate: item.source_capture_cadence }])).values()],
       output_cadence: `${spec.output.fps}/1`, output_sha256: outputSha, output_size_bytes: fs.statSync(candidatePath).size,
       programme_duration_ms: plan.programme_duration_ms, story: plan.story, visual_plan: plan.visual_plan,
-      human_review_binding_sha256: plan.human_review.binding_digest_sha256, timeline: plan.timeline, inserts: plan.inserts,
+      human_review_binding_sha256: plan.human_review.binding_digest_sha256, timeline: plan.timeline, inserts: plan.inserts, composition: plan.composition,
       music: plan.music, ffmpeg_invocation: buildFfmpegCommand(plan, '<STAGING>'), toolchain: plan.toolchain, qc,
     };
     const manifest = { ...semanticManifest, semantic_digest_sha256: digest(semanticManifest) };
@@ -465,7 +521,7 @@ async function renderFromSpec(specPath, options = {}) {
       producer: spec.producer, attester: { type: 'MACHINE', id: 'production-assembly-renderer' },
       plan_digest_sha256: plan.plan_digest_sha256, manifest_digest_sha256: manifest.semantic_digest_sha256,
       output_sha256: outputSha, performance_role: spec.performance_role, qc, toolchain: plan.toolchain,
-      positive_claims: ['exact selected HUMAN intervals consumed in explicit Story order', 'output bytes passed deterministic stream, duration, coverage and full-decode QC', 'output is bound to declared Story, VP2, V2 human review, source hashes, crops, inserts and active human music policy'],
+      positive_claims: ['exact selected HUMAN intervals consumed in explicit Story order', 'output bytes passed deterministic stream, duration, coverage and full-decode QC', 'output is bound to declared Story, VP2, V2 human review, source hashes, crops, inserts and active human music policy', ...(plan.composition ? ['frozen beat composition, explicit primary ownership, z-order, geometry and exact asset hashes were executed'] : [])],
       negative_claims: ['not final creative approval', 'not final performance approval', 'not final mix approval', 'not Gate 9 authority', 'not Gate 10 authority', 'not publish-ready'],
     };
     const evidence = { ...evidenceCore, evidence_digest_sha256: digest(evidenceCore) };
@@ -488,25 +544,59 @@ async function renderFromSpec(specPath, options = {}) {
   }
 }
 
+async function renderPreviewFromSpec(specPath, selector, options = {}) {
+  const spec = readJson(specPath, 'RENDER_SPEC_JSON_INVALID');
+  if (!spec.composition) fail('PREVIEW_COMPOSITION_REQUIRED', 'preview mode requires the canonical composition plan');
+  const validated = await validateInputs(spec, options); const plan = buildPlan(spec, validated);
+  let startMs; let endMs; let label;
+  if (selector.beat) {
+    const beat = plan.composition.beats.find((item) => item.beat_id === selector.beat);
+    if (!beat) fail('PREVIEW_BEAT_UNKNOWN', selector.beat); startMs = beat.start_ms; endMs = beat.end_ms; label = beat.beat_id;
+  } else {
+    const match = /^(\d+):(\d+)$/.exec(selector.rangeMs || '');
+    if (!match) fail('PREVIEW_RANGE_INVALID', 'range must be integer start:end milliseconds');
+    startMs = Number(match[1]); endMs = Number(match[2]); label = `${startMs}-${endMs}`;
+    if (!Number.isInteger(startMs) || !Number.isInteger(endMs) || startMs < 0 || endMs <= startMs || endMs > plan.programme_duration_ms) fail('PREVIEW_RANGE_INVALID', selector.rangeMs);
+  }
+  const preview = requireOutputPath(spec.output_root, selector.output);
+  if (preview.target === validated.output.target) fail('PREVIEW_OUTPUT_CONFLICT', 'preview cannot target the Production candidate');
+  fs.mkdirSync(path.dirname(preview.target), { recursive: true });
+  const command = buildFfmpegCommand(plan, preview.target); command.splice(command.length - 1, 0, '-ss', (startMs / 1000).toFixed(6), '-t', ((endMs - startMs) / 1000).toFixed(6));
+  if (typeof options.render === 'function') await options.render(command, preview.target, plan);
+  else execFile(command[0], command.slice(1), { stdio: options.quiet ? 'ignore' : 'inherit', code: 'PREVIEW_RENDER_FAILED' });
+  if (!fs.existsSync(preview.target)) fail('PREVIEW_OUTPUT_MISSING', preview.target);
+  const metadata = { schema: 'vidtoolz.productionAssemblyPreview.v1', authority: 'NON_AUTHORITATIVE_ENGINEERING_PREVIEW', complete_marker_written: false, plan_digest_sha256: plan.plan_digest_sha256, selector: label, start_ms: startMs, end_ms: endMs, output_sha256: await (options.hashFile || sha256File)(preview.target) };
+  writeJsonAtomic(`${preview.target}.preview.json`, metadata);
+  return { status: 'PREVIEW_COMPLETE_NON_AUTHORITATIVE', output: preview.target, metadata, plan };
+}
+
 function parseCli(argv) {
   const args = {};
   for (let index = 0; index < argv.length; index += 1) {
     if (argv[index] === '--spec') args.spec = argv[++index];
     else if (argv[index] === '--quiet') args.quiet = true;
+    else if (argv[index] === '--beat') args.beat = argv[++index];
+    else if (argv[index] === '--range-ms') args.rangeMs = argv[++index];
+    else if (argv[index] === '--preview-output') args.previewOutput = argv[++index];
     else fail('CLI_ARGUMENT_INVALID', argv[index]);
   }
   if (!args.spec) fail('CLI_SPEC_REQUIRED', '--spec is required');
+  if ((args.beat || args.rangeMs) && (!args.previewOutput || (args.beat && args.rangeMs))) fail('CLI_PREVIEW_INVALID', 'preview requires exactly one --beat/--range-ms and --preview-output');
   return args;
 }
 
 if (require.main === module) {
-  renderFromSpec(path.resolve(parseCli(process.argv.slice(2)).spec), { quiet: process.argv.includes('--quiet') })
-    .then((result) => process.stdout.write(`${JSON.stringify({ status: result.status, output: result.paths.output, completion: result.paths.completion })}\n`))
+  const cli = parseCli(process.argv.slice(2));
+  const operation = cli.beat || cli.rangeMs
+    ? renderPreviewFromSpec(path.resolve(cli.spec), { beat: cli.beat, rangeMs: cli.rangeMs, output: cli.previewOutput }, { quiet: cli.quiet })
+    : renderFromSpec(path.resolve(cli.spec), { quiet: cli.quiet });
+  operation
+    .then((result) => process.stdout.write(`${JSON.stringify({ status: result.status, output: result.paths?.output || result.output, completion: result.paths?.completion || null })}\n`))
     .catch((error) => { process.stderr.write(`${error.code || 'RENDERER_ERROR'}: ${error.message}\n`); process.exitCode = 1; });
 }
 
 module.exports = {
   SPEC_SCHEMA, PACKET_SCHEMA, PLAN_SCHEMA, MANIFEST_SCHEMA, EVIDENCE_SCHEMA, COMPLETION_SCHEMA, LOCK_SCHEMA,
   canonicalize, digest, sha256File, probeMedia, musicDecisionDigest, activeMusicDecision, processStartIdentity,
-  lockHolderState, acquireRenderLock, releaseRenderLock, validateInputs, buildPlan, buildFfmpegCommand, qcCandidate, renderFromSpec,
+  lockHolderState, acquireRenderLock, releaseRenderLock, validateInputs, buildTimeline, buildPlan, buildFfmpegCommand, qcCandidate, renderFromSpec, renderPreviewFromSpec,
 };

@@ -83,6 +83,26 @@ async function fixture(options = {}) {
   return { root, out, masters, review, reviewPath, packet, packetPath, spec, specPath, insertPath, fakeProbe, save };
 }
 
+async function addComposition(f) {
+  const composition = require('../scripts/production-assembly-composition.js');
+  const designPath = path.join(f.root, 'v2-design.json'); const vp3Path = path.join(f.root, 'vp3.json'); const assetPath = path.join(f.root, 'visual.png'); const assetManifestPath = path.join(f.root, 'assets.json');
+  writeJson(designPath, { schema: 'vidtoolz.productionAssemblySpec.v2', beats: 11 });
+  writeJson(vp3Path, { plan_id: 'vp3', digest_sha256: '7'.repeat(64) }); fs.writeFileSync(assetPath, 'visual');
+  const beatIds = Array.from({ length: 11 }, (_, index) => `C${index + 1}`);
+  const assetManifest = { schema: composition.ASSET_MANIFEST_SCHEMA, run_id: f.spec.run_id, assets: [{ asset_id: 'visual', role: 'STATIC_GENERATED_IMAGE_WITH_MOTION', path: assetPath, sha256: sha('visual'), media_kind: 'IMAGE', width: 1920, height: 1080, provenance: { producer: 'test' }, status: 'ACCEPTED', policy: 'REQUIRED', intended_beat_ids: beatIds }] };
+  writeJson(assetManifestPath, assetManifest);
+  f.spec.composition = {
+    schema: composition.SCHEMA,
+    design_package: { path: designPath, sha256: await renderer.sha256File(designPath), schema: 'vidtoolz.productionAssemblySpec.v2' },
+    approved_visual_plan: { path: vp3Path, file_sha256: await renderer.sha256File(vp3Path), plan_id: 'vp3', digest_sha256: '7'.repeat(64) },
+    asset_manifest: { path: assetManifestPath, sha256: await renderer.sha256File(assetManifestPath) }, coverage: 'FULL_PROGRAMME', expected_beat_count: 11,
+    forbidden_asset_ids: ['v1-overlay'], beats: beatIds.map((beatId, index) => ({ beat_id: beatId, section_id: `S${index + 1}`, start_ms: index * 100, end_ms: (index + 1) * 100, primary_owner: 'GENERATED_VISUAL', transition_in: 'CUT', transition_out: 'CUT', layers: [{ layer_id: 'visual', type: 'FULL_CANVAS_VISUAL', primary: true, z: 1, asset_id: 'visual', fit: 'COVER', duration_policy: 'STILL', asset_in_ms: 0, replaces_insert_ids: index === 8 ? ['essential-s9'] : [] }] })),
+  };
+  f.spec.inserts.find((item) => item.shot_id === 'essential-s9').decision = 'REPLACED_BY_COMPOSITION';
+  delete f.spec.inserts.find((item) => item.shot_id === 'essential-s9').asset_path; delete f.spec.inserts.find((item) => item.shot_id === 'essential-s9').asset_sha256;
+  f.save();
+}
+
 test('PAR-01 valid eligible HUMAN_DRAFT handoff validates', async () => { const f = await fixture(); const checked = await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }); assert.equal(checked.sources.length, 11); });
 test('PAR-02 provisional boundary is rejected', async () => { const f = await fixture(); f.review.segments[0].boundary_class = 'MACHINE_INFERRED_PROVISIONAL'; f.review.binding_digest_sha256 = boundary.successorDigest(f.review); f.save(); await throwsCode(() => renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }), 'PROVISIONAL_BOUNDARY_FORBIDDEN'); });
 test('PAR-03 Story drift is rejected', async () => { const f = await fixture(); f.spec.story.version_id = 'drift'; await throwsCode(() => renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }), 'SPEC_STORY_PLAN_DRIFT'); });
@@ -200,4 +220,28 @@ test('PAR-38 real ffmpeg canary covers VFR-like interleave, crop, essential over
   assert.equal(result.status, 'COMPLETE'); assert.equal(result.manifest.timeline.map((item) => item.master_id).join(''), MASTER_SEQUENCE.join(''));
   const probe = renderer.probeMedia(result.paths.output); assert.equal(probe.video.width, 1080); assert.equal(probe.video.height, 1920); assert.equal(probe.video.avg_frame_rate, '30/1'); assert.ok(probe.audio);
   const second = await renderer.renderFromSpec(f.specPath, { quiet: true }); assert.equal(second.status, 'REUSED');
+});
+
+test('PAR-39 preview uses the exact frozen composition graph and writes no Production COMPLETE marker', async () => {
+  const f = await fixture(); await addComposition(f); let previewCommand;
+  const result = await renderer.renderPreviewFromSpec(f.specPath, { beat: 'C2', output: 'previews/c2.mp4' }, { probeMedia: f.fakeProbe, render: async (command, output) => { previewCommand = command; fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, 'preview'); } });
+  const checked = await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }); const full = renderer.buildFfmpegCommand(renderer.buildPlan(f.spec, checked), '<STAGING>');
+  assert.equal(previewCommand[previewCommand.indexOf('-filter_complex') + 1], full[full.indexOf('-filter_complex') + 1]);
+  assert.equal(result.metadata.authority, 'NON_AUTHORITATIVE_ENGINEERING_PREVIEW'); assert.equal(fs.existsSync(path.join(f.out, 'candidate.complete.json')), false);
+});
+
+test('PAR-40 composition is frozen into plan identity and a geometry change changes the digest', async () => {
+  const f = await fixture(); await addComposition(f); const first = renderer.buildPlan(f.spec, await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }));
+  f.spec.composition.beats[0].layers.push({ layer_id: 'presenter', type: 'PRESENTER', primary: false, z: 2, visible: true, geometry: { x: 700, y: 1250, width: 360, height: 640, anchor: 'TOP_LEFT', bleed: [], edge_treatment: { type: 'NONE' } } }); f.save();
+  const second = renderer.buildPlan(f.spec, await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe })); assert.notEqual(first.plan_digest_sha256, second.plan_digest_sha256);
+});
+
+test('PAR-41 human-authorized FULL_PROGRAMME music must span the semantic ending', async () => {
+  const f = await fixture(); const musicPath = path.join(f.root, 'full-bed.wav'); fs.writeFileSync(musicPath, 'full-bed'); const musicSha = sha('full-bed');
+  setHumanMusic(f.spec, 'FULL_PROGRAMME', musicSha, { path: musicPath, gain_db: -18 }); f.packet.music_policy = { sha256: musicSha, decision: 'FULL_PROGRAMME' }; f.save();
+  const probe = (filePath) => filePath === musicPath ? { duration_ms: 1200, video: null, audio: { codec: 'pcm_s16le', sample_rate: 48000, channels: 2 } } : f.fakeProbe(filePath);
+  const checked = await renderer.validateInputs(f.spec, { probeMedia: probe }); const plan = renderer.buildPlan(f.spec, checked); const command = renderer.buildFfmpegCommand(plan, '/tmp/staged.mp4').join(' ');
+  assert.ok(command.includes('whole_dur=1.100000')); assert.equal(plan.music.policy, 'FULL_PROGRAMME');
+  f.spec.music.path = path.join(f.root, 'short.wav'); fs.writeFileSync(f.spec.music.path, 'short'); f.spec.music.sha256 = sha('short'); f.spec.music.policy_history[0].music_sha256 = f.spec.music.sha256; f.spec.music.policy_history[0].binding_digest_sha256 = renderer.musicDecisionDigest(f.spec.music.policy_history[0]); f.packet.music_policy.sha256 = f.spec.music.sha256; f.save();
+  await throwsCode(() => renderer.validateInputs(f.spec, { probeMedia: (filePath) => filePath === f.spec.music.path ? { duration_ms: 500, video: null, audio: { codec: 'pcm_s16le', sample_rate: 48000, channels: 2 } } : f.fakeProbe(filePath) }), 'MUSIC_FULL_PROGRAMME_TOO_SHORT');
 });
