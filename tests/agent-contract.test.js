@@ -280,7 +280,8 @@ test('AC22: complete doctrine never implies autonomous enablement', () => {
   // still the one unproven implementation.
   assert.deepEqual(s.implementation_candidates, ['camera_director']);
   assert.ok(s.implementation_dispatchable.includes('qc_director'));
-  for (const id of ['presenter_director', 'creative_director']) {
+  assert.ok(s.enabled_for_dispatch.includes('presenter_director'));
+  for (const id of ['creative_director']) {
     assert.ok(!s.enabled_for_dispatch.includes(id), `${id} must not be dispatch-enabled`);
   }
   // Self-promotion to ENABLED while NOT_PROVEN is rejected
