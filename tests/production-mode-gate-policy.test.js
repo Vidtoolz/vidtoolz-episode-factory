@@ -183,11 +183,14 @@ test('mode M10: a mode change never advances or reorders the canonical lifecycle
 
 test('mode M11: package-run-state exposes mode without owning it', () => {
   const { root, dir, runId } = modeRun('m11');
+  const gateBeforeMode = gatePosition(root, dir).gate;
   productionMode.setProductionMode(dir, 'REVIEW', { setBy: 'editor (agent)' });
   const projection = stateProjection.buildProjection({ repoRoot: root, runId, runDir: dir });
   assert.equal(projection.production_mode, 'REVIEW');
   // Mode and gate are separate dimensions and must not be collapsed.
-  assert.equal(projection.current_gate, 'capture-checklist');
+  // Compare with the fixture's actual committed evidence rather than assuming
+  // untracked local canary artifacts exist in a clean checkout.
+  assert.equal(projection.current_gate, gateBeforeMode);
   assert.notEqual(projection.current_gate, projection.production_mode);
   // Injecting mode into the projection is refused the same way canonical state is.
   assert.throws(
