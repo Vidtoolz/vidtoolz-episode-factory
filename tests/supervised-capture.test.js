@@ -563,6 +563,7 @@ test("capture PROFILES pin their audio and display configuration", () => {
     "vidnux-screen-4k30-systemaudio-mic": { audio: true, audioMode: "systemaudio-mic", fullDisplay: true, primary: true },
     "vidnux-screen-1080p30-noaudio": { audio: false, audioMode: "none", fullDisplay: false, primary: false },
     "vidnux-screen-1080p30-mic": { audio: true, audioMode: "mic", fullDisplay: false, primary: false },
+    "presto-webcam-1080p30-mic": { audio: true, audioMode: "mic", fullDisplay: false, primary: false },
   };
   assert.deepEqual(Object.keys(supervisedCapture.PROFILES).sort(), Object.keys(expected).sort());
   for (const [name, want] of Object.entries(expected)) {

@@ -97,6 +97,33 @@
       primary: false,
       description: "Secondary 1080p crop profile with explicit mic source. Not the default full-screen vidnux capture.",
     },
+    "presto-webcam-1080p30-mic": {
+      profile: "presto-webcam-1080p30-mic",
+      label: "profile-webcam-1080p30-mic",
+      machine: "presto",
+      backend: "ffmpeg-dshow",
+      captureMode: "DIRECTSHOW_SUPERVISED",
+      captureClass: "REAL_HUMAN_PERFORMANCE",
+      qualityClass: "PROOF_CAPTURE",
+      origin: "HUMAN",
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      inputPixelFormat: "mjpeg",
+      videoCodec: "h264",
+      container: "mp4",
+      audio: true,
+      audioMode: "mic",
+      audioCodec: "aac",
+      audioSampleRate: 48000,
+      fullDisplay: false,
+      primary: false,
+      requiresExplicitVideoDevice: true,
+      requiresExplicitAudioDevice: true,
+      destinationBoundary: "RUN_DECLARED_DIRECTORY",
+      cadenceAcceptance: "MEASURED_NOT_NOMINAL",
+      description: "Supervised PRESTO DirectShow webcam and microphone capture for a real human performance.",
+    },
   };
 
   function nowIso(date = new Date()) {
@@ -120,11 +147,34 @@
     return PROFILES[String(profileName || "").trim()] || null;
   }
 
+  function validateProductionCaptureDeclaration(profileName, declaration = {}) {
+    const profile = profileFor(profileName);
+    const errors = [];
+    if (!profile) return { ok: false, errors: [`Unsupported profile: ${profileName}`] };
+    if (profile.captureClass !== "REAL_HUMAN_PERFORMANCE" || profile.origin !== "HUMAN") {
+      errors.push("profile is not a real-human performance profile");
+    }
+    if (declaration.host !== profile.machine) errors.push(`capture host must be ${profile.machine}`);
+    if (profile.requiresExplicitVideoDevice && !declaration.videoDevice) errors.push("explicit video device identity is required");
+    if (profile.requiresExplicitAudioDevice && !declaration.audioDevice) errors.push("explicit audio device identity is required");
+    if (!Number.isInteger(profile.width) || profile.width < 16 || !Number.isInteger(profile.height) || profile.height < 16) errors.push("profile geometry is invalid");
+    if (!(Number(profile.fps) > 0) || profile.captureMode !== "DIRECTSHOW_SUPERVISED") errors.push("profile capture mode is unsupported");
+    if (!profile.container || !profile.videoCodec || !profile.audioCodec || !(profile.audioSampleRate > 0)) errors.push("profile codec/container/audio mode is incomplete");
+    if (!declaration.destination || !path.isAbsolute(declaration.destination)) errors.push("absolute output destination is required");
+    if (declaration.allowedDestination) {
+      const allowed = path.resolve(declaration.allowedDestination);
+      const target = path.resolve(declaration.destination || "");
+      const relative = path.relative(allowed, target);
+      if (relative.startsWith("..") || path.isAbsolute(relative)) errors.push("output destination is outside the declared run boundary");
+    }
+    return { ok: errors.length === 0, profile, errors };
+  }
+
   function buildCapturePaths(options = {}) {
     const profile = profileFor(options.profile);
     if (!profile) throw new Error(`Unsupported profile: ${options.profile}`);
     const timestamp = options.timestamp || timestampForFilename(options.date || new Date());
-    const basename = `VT_capture_vidnux_${timestamp}_${profile.label}`;
+    const basename = `VT_capture_${profile.machine}_${timestamp}_${profile.label}`;
     const outputDir = path.resolve(options.outputDir || DEFAULT_OUTPUT_DIR);
     return {
       captureId: basename,
@@ -220,6 +270,9 @@
   function buildFfmpegCommand(options = {}) {
     const profile = profileFor(options.profile);
     if (!profile) throw new Error(`Unsupported profile: ${options.profile}`);
+    if (profile.backend !== "ffmpeg") {
+      throw new Error(`Profile ${profile.profile} requires its declared ${profile.backend} controller; the x11 capture command builder cannot run it`);
+    }
     const audio = normalizeAudioOptions(profile, options);
     if (audio.errors.length) throw new Error(audio.errors.join(" "));
     const display = options.display || ":0.0";
@@ -404,10 +457,11 @@
   }
 
   function buildMetadata(options = {}) {
+    const profile = profileFor(options.profile);
     return {
       capture_id: options.captureId,
-      machine: "vidnux",
-      backend: "ffmpeg",
+      machine: profile?.machine || options.machine || "unknown",
+      backend: profile?.backend || options.backend || "unknown",
       profile: options.profile,
       started_at: options.startedAt,
       stopped_at: null,
@@ -431,6 +485,31 @@
           ? ["Rights boundary: captured third-party system audio/video is for supervised review only and is not publication clearance."]
           : []),
       approval_boundary: APPROVAL_BOUNDARY,
+    };
+  }
+
+  function buildHumanCaptureSidecar(options = {}) {
+    const declared = validateProductionCaptureDeclaration(options.profile, {
+      host: options.host, videoDevice: options.videoDevice, audioDevice: options.audioDevice,
+      destination: options.destination, allowedDestination: options.allowedDestination,
+    });
+    if (!declared.ok) throw new Error(declared.errors.join("; "));
+    if (!options.runId || !options.masterId || !/^[a-f0-9]{64}$/.test(options.mediaSha256 || "")) throw new Error("runId, masterId and exact mediaSha256 are required");
+    if (!options.story?.project_id || !options.story?.version_id || !/^[a-f0-9]{64}$/.test(options.story?.content_hash || "")) throw new Error("exact Story identity is required");
+    if (!options.visualPlan?.plan_id || !/^[a-f0-9]{64}$/.test(options.visualPlan?.digest_sha256 || "")) throw new Error("exact Visual Plan identity is required");
+    return {
+      schema: "vidtoolz.humanCaptureSidecar.v1",
+      origin: "HUMAN", capture_class: "REAL_HUMAN_PERFORMANCE",
+      quality_class: declared.profile.qualityClass,
+      run_id: options.runId, master_id: options.masterId, media_sha256: options.mediaSha256,
+      story: options.story, visual_plan: options.visualPlan,
+      captured_at: options.capturedAt,
+      profile: declared.profile.profile,
+      intended_mode: { width: declared.profile.width, height: declared.profile.height, nominal_fps: declared.profile.fps, input_pixel_format: declared.profile.inputPixelFormat },
+      output: { container: declared.profile.container, video_codec: declared.profile.videoCodec, audio_codec: declared.profile.audioCodec, audio_sample_rate: declared.profile.audioSampleRate },
+      device_provenance: { host: options.host, video: { identity: options.videoDevice }, audio: { identity: options.audioDevice } },
+      destination_boundary: declared.profile.destinationBoundary,
+      human_performance: true, proxy: false, synthetic: false,
     };
   }
 
@@ -600,6 +679,7 @@
     captureGeometryForProfile,
     timestampForFilename,
     profileFor,
+    validateProductionCaptureDeclaration,
     buildCapturePaths,
     displaySessionInfo,
     waylandWarning,
@@ -612,6 +692,7 @@
     readProcCmdline,
     processExists,
     buildMetadata,
+    buildHumanCaptureSidecar,
     validateActiveState,
     readJsonIfExists,
     inferMetadataPath,

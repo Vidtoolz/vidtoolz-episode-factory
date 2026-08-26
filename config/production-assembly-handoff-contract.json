@@ -1,0 +1,49 @@
+{
+  "schema": "vidtoolz.productionAssemblyHandoffContract.v1",
+  "status": "PROPOSED_NOT_GATE_AUTHORITY",
+  "architecture_outcome": "C",
+  "statement": "The canonical Production rough-cut path remains human NLE assembly. This contract makes its inputs deterministic; it does not authorize Draft Assembly evidence in Production.",
+  "authoritative_inputs": [
+    "presenter-editor-handoff v2 with ASSEMBLY_ELIGIBLE selected HUMAN segments",
+    "exact approved Story project/version/content hash",
+    "exact approved Visual Plan V2 identity/digest",
+    "human performance review bound to every selected master SHA-256",
+    "exact HUMAN_CONFIRMED or CAPTURE_EVENT_BOUND section intervals",
+    "explicitly bound approved insert assets",
+    "explicitly bound selected music identity",
+    "explicit timeline/edit plan identity and digest"
+  ],
+  "forbidden_inputs": [
+    "DRAFT_SYNTHETIC_NARRATION",
+    "PROXY_PRESENTER",
+    "Draft V1 as presenter source",
+    "stale Visual Plan V1",
+    "unapproved or unbound inserts",
+    "latest-file discovery",
+    "provisional or inferred segment boundaries"
+  ],
+  "output_class": "PRODUCTION_ASSEMBLY_CANDIDATE",
+  "evidence_class": "PROPOSED_PRODUCTION_ASSEMBLY_TECHNICAL_EVIDENCE",
+  "evidence_may_claim": [
+    "the exact selected human source intervals were consumed",
+    "the output bytes decode and match their recorded SHA-256",
+    "the output is bound to the declared Story, Visual Plan, sources, inserts, music, timeline and toolchain"
+  ],
+  "evidence_must_not_claim": [
+    "final creative approval",
+    "final mix approval",
+    "color approval",
+    "publication readiness",
+    "Gate 9 completion",
+    "Gate 10 approval"
+  ],
+  "claude_boundary": {
+    "may": ["implement or operate the technical assembly lane against exact eligible inputs", "emit a hash-bound candidate and technical evidence"],
+    "may_not": ["infer section boundaries", "select performances", "substitute proxy or synthetic media", "reuse DRAFT_ASSEMBLY as Production authority", "claim a human gate"]
+  },
+  "hermes_boundary": {
+    "may": ["materialize already-authoritative bindings", "route the exact handoff", "present the candidate for Mikko review"],
+    "may_not": ["infer boundaries", "select a take", "approve the edit", "write final-review PASS"]
+  },
+  "human_gate": "Mikko confirms boundaries and selections before assembly eligibility, then separately reviews the Production assembly candidate. KEEP ALL performance review is not final-edit approval."
+}

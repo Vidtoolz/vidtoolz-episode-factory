@@ -152,6 +152,20 @@ function prepareCaptureSession(runDir, input = {}, options = {}) {
       `unknown capture profile ${JSON.stringify(profileName)}; expected one of ${Object.keys(supervisedCapture.PROFILES).join(', ')}`,
       { profile: profileName });
   }
+  if (profile.captureClass === 'REAL_HUMAN_PERFORMANCE') {
+    const declaration = supervisedCapture.validateProductionCaptureDeclaration(profile.profile, {
+      host: input.captureHost,
+      videoDevice: input.videoDevice,
+      audioDevice: input.audioDevice,
+      destination,
+      allowedDestination: resolvedRun,
+    });
+    if (!declaration.ok) {
+      fail(CODES.TOOLING_UNAVAILABLE,
+        `capture profile declaration is incomplete: ${declaration.errors.join('; ')}`,
+        { profile: profile.profile, errors: declaration.errors });
+    }
+  }
   /*
    * A presenter dialogue take has to carry voice. A silent profile can produce a
    * perfectly valid recording that is useless as a dialogue source, and finding
@@ -201,6 +215,12 @@ function prepareCaptureSession(runDir, input = {}, options = {}) {
     capture_destination: destination,
     expected_profile: profile.profile,
     expected_audio_mode: profile.audioMode,
+    capture_host: input.captureHost || profile.machine,
+    video_device_identity: input.videoDevice || null,
+    audio_device_identity: input.audioDevice || null,
+    capture_class: profile.captureClass || null,
+    origin: profile.origin || null,
+    quality_class: profile.qualityClass || null,
     capture_command_hint: `node scripts/supervised-capture.js start --profile ${profile.profile} --out ${destination} --mic-source <source> --confirm`,
     story: manifest.story,
     manifest_id: manifest.manifest_id,

@@ -54,6 +54,32 @@ const PREREQUISITE_IDS = Object.freeze([
   'CAPTURE_ARTIFACTS_GENERATED',
 ]);
 
+/*
+ * source_artifact is an identity field, not prose.  CAP-1 was caused by adding
+ * an annotation to that string ("final-script.md (...)") and then using the
+ * annotated value as a path.  Keep annotations in source_artifact_annotation;
+ * never trim, parse, or guess a filename out of an identity value.
+ */
+function resolveDeliveryScript(binding, runDir) {
+  const provenance = binding?.provenance || {};
+  const artifact = provenance.source_artifact;
+  if (typeof artifact !== 'string' || artifact.length === 0) {
+    return { ok: false, code: 'DELIVERY_SCRIPT_ARTIFACT_ID_MISSING', detail: 'story binding provenance.source_artifact is required' };
+  }
+  if (artifact !== path.basename(artifact) || artifact === '.' || artifact === '..' || !/^[A-Za-z0-9._-]+$/.test(artifact)) {
+    return { ok: false, code: 'DELIVERY_SCRIPT_ARTIFACT_ID_INVALID', detail: 'source_artifact must be one exact run-local filename; annotations belong in source_artifact_annotation' };
+  }
+  const file = path.join(path.resolve(runDir), artifact);
+  return {
+    ok: true,
+    artifact,
+    file,
+    annotation: typeof provenance.source_artifact_annotation === 'string'
+      ? provenance.source_artifact_annotation : null,
+    expected_sha256: provenance.source_artifact_sha256 || null,
+  };
+}
+
 function sha256File(file) {
   return require('node:crypto').createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }
@@ -125,16 +151,18 @@ function evaluateReadiness(runDir, options = {}) {
   }
 
   // 5. Delivery script: the exact file Mikko performs, bound by hash.
-  const sourceArtifact = binding?.provenance?.source_artifact || 'final-script.md';
-  const scriptFile = path.join(dir, sourceArtifact);
-  const expectedHash = binding?.provenance?.source_artifact_sha256 || null;
-  if (!fs.existsSync(scriptFile)) {
-    checks.push(check('DELIVERY_SCRIPT_BOUND', false, `delivery script ${sourceArtifact} missing from run`));
+  const delivery = resolveDeliveryScript(binding, dir);
+  if (!delivery.ok) {
+    checks.push(check('DELIVERY_SCRIPT_BOUND', false, `${delivery.code}: ${delivery.detail}`));
+  } else if (!fs.existsSync(delivery.file)) {
+    checks.push(check('DELIVERY_SCRIPT_BOUND', false, `delivery script ${delivery.artifact} missing from run`));
   } else {
-    const actualHash = sha256File(scriptFile);
-    const bound = expectedHash ? actualHash === expectedHash : true;
+    const actualHash = sha256File(delivery.file);
+    const bound = delivery.expected_sha256 ? actualHash === delivery.expected_sha256 : false;
     checks.push(check('DELIVERY_SCRIPT_BOUND', bound,
-      bound ? `${sourceArtifact} present${expectedHash ? ', sha256 matches story-binding provenance' : ''}` : `sha256 mismatch: delivery script changed after binding`));
+      bound ? `${delivery.artifact} present, sha256 matches story-binding provenance` : delivery.expected_sha256
+        ? 'sha256 mismatch: delivery script changed after binding'
+        : 'story binding provenance.source_artifact_sha256 is required; delivery identity cannot be guessed'));
   }
 
   // 6. Presenter take manifest initialized — the ingestion contract exists
@@ -200,5 +228,6 @@ module.exports = {
   STATE_NOT_READY,
   STATE_MODE_BLOCKED,
   PREREQUISITE_IDS,
+  resolveDeliveryScript,
   evaluateReadiness,
 };

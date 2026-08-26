@@ -209,6 +209,10 @@ node --check scripts/agent-task-visual-planning.js
 node --check scripts/audience-package.js
 node --check scripts/audience-packaging-director.js
 node --check scripts/presenter-take-manifest.js
+node --check scripts/presenter-source-authority.js
+node --check scripts/directshow-device-resolver.js
+node --check scripts/tier3-real-run-canary.js
+node --check scripts/supervised-presenter-take-adapter.js
 node --check scripts/presenter-director.js
 node --check scripts/edit-plan.js
 node --check scripts/editor.js
