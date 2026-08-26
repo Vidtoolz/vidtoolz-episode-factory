@@ -1,7 +1,7 @@
 'use strict';
 
 const { assert, fs, test } = require('./_helpers.js');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawn } = require('node:child_process');
 const path = require('node:path');
 const os = require('node:os');
 
@@ -14,7 +14,59 @@ const BRIDGE = path.join(REPO, 'scripts', 'generation-package-bridge.js');
 const SUP = path.join(REPO, 'scripts', 'generation-supervisor.js');
 const auth = require(path.join(REPO, 'aigen-authority-chain.js'));
 
-const AIGEN_ROOT = '/mnt/vidnas_public/VIDTOOLZ/03_SHARED_MEDIA_LIBRARY/aigen/script-packages';
+const FIXTURE_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'generation-package-bridge-'));
+const AIGEN_ROOT = path.join(FIXTURE_ROOT, 'script-packages');
+fs.mkdirSync(AIGEN_ROOT, { recursive: true });
+
+let packageEngineFixture = null;
+
+function controlledPackageEngine() {
+  if (packageEngineFixture) return packageEngineFixture.url;
+  const readyPath = path.join(FIXTURE_ROOT, 'port');
+  const serverSource = [
+    "const fs = require('node:fs');",
+    "const http = require('node:http');",
+    "const path = require('node:path');",
+    "const authority = require(process.argv[1]);",
+    "const packagesRoot = process.argv[2];",
+    "const readyPath = process.argv[3];",
+    "const nonce = 'controlled-read-only-test-nonce';",
+    "const send = (res, status, body) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)); };",
+    "const server = http.createServer((req, res) => {",
+    "  const url = new URL(req.url, 'http://127.0.0.1');",
+    "  if (req.method === 'GET' && url.pathname === '/api/package-engine/status') return send(res, 200, { ok: true, data: { localWriteNonce: nonce } });",
+    "  if (req.method === 'GET' && url.pathname === '/api/flux/job-status') return send(res, 200, { ok: true, data: { active: false, job_id: 'fixture-job', exit_state: 'completed', exit_code: 0 } });",
+    "  if (req.method === 'GET' && url.pathname === '/api/flux/results') return send(res, 200, { ok: true, data: { items: [] } });",
+    "  if (req.method === 'POST' && url.pathname === '/api/flux/submit') {",
+    "    let raw = ''; req.on('data', (chunk) => { raw += chunk; }); req.on('end', () => {",
+    "      if (req.headers['x-vidtoolz-local-write-nonce'] !== nonce) return send(res, 403, { error: { code: 'NONCE_INVALID' } });",
+    "      let payload; try { payload = JSON.parse(raw); } catch { return send(res, 400, { error: { code: 'INVALID_JSON' } }); }",
+    "      const id = String(payload.package_id || '');",
+    "      if (!/^[A-Za-z0-9._-]+$/.test(id) || id.includes('..')) return send(res, 400, { error: { code: 'PACKAGE_INVALID' } });",
+    "      try { authority.assertStageFresh(path.join(packagesRoot, id), 'image_prompts'); }",
+    "      catch (error) { return send(res, 409, { error: { code: 'AUTHORITY_STALE', message: error.message } }); }",
+    "      return send(res, 200, { ok: true, job_id: 'fixture-job' });",
+    "    }); return;",
+    "  }",
+    "  send(res, 404, { error: { code: 'NOT_FOUND' } });",
+    "});",
+    "server.listen(0, '127.0.0.1', () => fs.writeFileSync(readyPath, String(server.address().port)));",
+  ].join('\n');
+  const child = spawn(process.execPath, ['-e', serverSource,
+    path.join(REPO, 'aigen-authority-chain.js'), AIGEN_ROOT, readyPath], { stdio: 'ignore' });
+  child.unref();
+  const deadline = Date.now() + 5000;
+  while (!fs.existsSync(readyPath) && Date.now() < deadline) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+  }
+  if (!fs.existsSync(readyPath)) {
+    child.kill();
+    throw new Error('controlled package-engine fixture failed to start');
+  }
+  packageEngineFixture = { child, url: `http://127.0.0.1:${fs.readFileSync(readyPath, 'utf8').trim()}` };
+  process.once('exit', () => child.kill());
+  return packageEngineFixture.url;
+}
 
 function makeCanaryPackage(label) {
   const pkgId = `gen-sup-bridge-test-${label}-${Date.now()}`;
@@ -33,8 +85,14 @@ function runBridge(task) {
   const taskPath = path.join(dir, 'task.json');
   fs.writeFileSync(taskPath, JSON.stringify(task, null, 2));
   try {
-    return { code: 0, out: JSON.parse(execFileSync('node', [BRIDGE, '--task', taskPath],
-      { cwd: REPO, encoding: 'utf8', timeout: 300000 })) };
+    return { code: 0, out: JSON.parse(execFileSync('node',
+      [BRIDGE, '--task', taskPath, '--cockpit', controlledPackageEngine()],
+      {
+        cwd: REPO,
+        encoding: 'utf8',
+        timeout: 300000,
+        env: { ...process.env, AIGEN_SCRIPT_PACKAGES: AIGEN_ROOT },
+      })) };
   } catch (e) {
     let out = null; try { out = JSON.parse(e.stdout); } catch {}
     return { code: e.status === undefined ? -1 : e.status, out };
