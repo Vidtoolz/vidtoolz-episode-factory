@@ -19,7 +19,7 @@ Use `--new-attempt` only to retry the exact same task bytes after preserving pri
 
 A registry entry proves that a role's doctrine is defined. It never means the role may run. Before any module is resolved or loaded, the runner requires the registration's `lifecycle` to carry `proven: "PROVEN"` and `autonomous_dispatch: "ENABLED"`; anything else — including a registration with no lifecycle block at all — is refused fail-closed as `BLOCKED_AGENT_NOT_ENABLED`, with the registry's `dispatch_blocked_reason` reported.
 
-`presenter_director` and `creative_director` carry complete doctrine in `config/agent-registry.json` and are deliberately `NOT_PROVEN` / `DISABLED`: they are contract status `PLANNED` and `PLANNED_LAST`. Enabling a role is Mikko's decision, and `scripts/agent-contract-validator.js` requires the registry lifecycle to agree with the contract's `role_roster` status, so a role cannot be enabled in one file alone. The Agent Control Room shows such roles as `PLANNED_NOT_ENABLED` and never loads or runs their modules.
+`presenter_director` was enabled by Mikko's explicit decision on 2026-08-25 and is now `PROVEN` / `ENABLED`, implementation state `IMPLEMENTATION_PROVEN`, and contract status `BUILT`. Its authority boundaries did not change. `creative_director` remains deliberately `NOT_PROVEN` / `DISABLED` and contract status `PLANNED_LAST`. Enabling a role is Mikko's decision, and `scripts/agent-contract-validator.js` requires the registry lifecycle to agree with the contract's `role_roster` status, so a role cannot be enabled in one file alone. The Agent Control Room never loads or runs a role that remains `PLANNED_NOT_ENABLED`.
 
 ## Persistence and completion
 

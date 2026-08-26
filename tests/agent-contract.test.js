@@ -251,7 +251,7 @@ test('AC21: a PROVEN role missing its doctrine entry is rejected', () => {
 });
 
 test('AC22: complete doctrine never implies autonomous enablement', () => {
-  for (const id of ['presenter_director', 'creative_director']) {
+  for (const id of ['creative_director']) {
     const agent = registered(registry, id);
     assert.equal(agent.lifecycle.doctrine, 'DEFINED', `${id} doctrine must be DEFINED`);
     assert.equal(agent.lifecycle.proven, 'NOT_PROVEN');
@@ -271,10 +271,10 @@ test('AC22: complete doctrine never implies autonomous enablement', () => {
   assert.deepEqual(s.implementation_dispatchable, implementationProven);
   assert.deepEqual(s.implementation_candidates, implementationCandidates);
   assert.equal(registry.agents.length, 12);
-  assert.equal(s.enabled_for_dispatch.length, 10);
-  assert.equal(s.implementation_dispatchable.length, 9);
+  assert.equal(s.enabled_for_dispatch.length, 11);
+  assert.equal(s.implementation_dispatchable.length, 10);
   assert.equal(s.implementation_candidates.length, 1);
-  assert.equal(s.doctrine_only.length, 2);
+  assert.equal(s.doctrine_only.length, 1);
   // qc_director was promoted to IMPLEMENTATION_PROVEN (see
   // governance/qc-director-implementation-promotion.json); camera_director is
   // still the one unproven implementation.
@@ -472,6 +472,6 @@ test('AC30: implementation readiness is closed and independent from lifecycle au
   registered(misspelled, 'editor').implementation_state = 'PROVEN_IMPLEMENTATION';
   assert.ok(validator.validateContract(contract, misspelled).errors.some((e) => /implementation_state must be/.test(e)));
   const disabled = baseRegistry();
-  registered(disabled, 'presenter_director').implementation_state = 'IMPLEMENTATION_PROVEN';
+  registered(disabled, 'creative_director').implementation_state = 'IMPLEMENTATION_PROVEN';
   assert.equal(validator.validateContract(contract, disabled).ok, true, 'readiness must not override disabled lifecycle');
 });

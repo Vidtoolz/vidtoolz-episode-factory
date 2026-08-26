@@ -196,8 +196,8 @@ test('AR27: the canonical registry enables exactly the proven roles', () => {
   const canonical = require('../config/agent-registry.json');
   const enabled = canonical.agents.filter((a) => a.lifecycle?.autonomous_dispatch === 'ENABLED').map((a) => a.agent_id);
   const refused = canonical.agents.filter((a) => a.lifecycle?.autonomous_dispatch !== 'ENABLED').map((a) => a.agent_id);
-  assert.deepEqual(refused, ['presenter_director', 'creative_director']);
-  assert.equal(enabled.length, 10);
+  assert.deepEqual(refused, ['creative_director']);
+  assert.equal(enabled.length, 11);
   const root = path.join(__dirname, '..');
   for (const id of refused) {
     assert.throws(() => runner.resolveAgent(root, id), (e) => e.code === 'BLOCKED_AGENT_NOT_ENABLED',
@@ -231,17 +231,10 @@ test('AR30: operational rationale is bounded, attributed, and confidence is fail
   }
 });
 
-test('AR31: executable boundary refuses disabled roles before task loading', () => {
+test('AR31: executable boundary distinguishes enabled presenter from disabled doctrine', () => {
   const root = path.join(__dirname, '..');
-  assert.equal(executableBoundary.executableLifecycle('presenter_director', { repoRoot: root }).code, 'BLOCKED_AGENT_NOT_ENABLED');
+  assert.equal(executableBoundary.executableLifecycle('presenter_director', { repoRoot: root }).allowed, true);
   assert.equal(executableBoundary.executableLifecycle('creative_director', { repoRoot: root }).code, 'BLOCKED_AGENT_NOT_ENABLED');
-  let failure;
-  try { childProcess.execFileSync(process.execPath, [path.join(root, 'scripts/presenter-director.js'), '--task', '/definitely/missing/task.json'], { encoding: 'utf8' }); }
-  catch (error) { failure = error; }
-  assert.equal(failure.status, 1);
-  const refusal = JSON.parse(failure.stdout);
-  assert.equal(refusal.infrastructure_state, 'BLOCKED_AGENT_NOT_ENABLED');
-  assert.equal(refusal.agent_id, 'presenter_director');
   assert.equal(fs.existsSync(path.join(root, 'scripts/creative-director.js')), false, 'Creative has no executable module to bypass its lifecycle');
   const enabled = childProcess.execFileSync(process.execPath, [path.join(root, 'scripts/editor.js'), '--help'], { encoding: 'utf8' });
   assert.match(enabled, /usage: editor\.js/);

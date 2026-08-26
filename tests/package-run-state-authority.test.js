@@ -473,7 +473,7 @@ test("PR21: operations module declares MUTATES package-run-state.md ONLY and bou
   assert.deepEqual(operations.AUTHORIZED_WRITERS, ["production_operations"]);
 });
 
-test("PR22: owner readiness — unproven gate owners are represented truthfully, never substituted", () => {
+test("PR22: owner readiness — gate owners are represented truthfully, never substituted", () => {
   const root = makeRoot("prs-owner-");
   const runId = "2026-08-25-state-owner-canary";
   makeRun(root, runId, {
@@ -483,12 +483,15 @@ test("PR22: owner readiness — unproven gate owners are represented truthfully,
   assert.equal(proj.expected_owner, "research_director");
   assert.equal(proj.owner_readiness.kind, "agent");
   assert.equal(proj.owner_readiness.implementation_state, "IMPLEMENTATION_PROVEN");
-  // Capture-checklist gate names presenter_director — dispatch is disabled;
-  // the projection must say so, not silently substitute another agent.
+  // Capture-checklist gate names presenter_director. Commit 029c407 enabled
+  // that existing role through the registry + contract coupling, so the
+  // projection must report it as dispatchable, not preserve the older disabled
+  // state or silently substitute another agent.
   const capGate = "capture-checklist";
   assert.equal(projection.GATE_OWNERS[capGate], "presenter_director");
   const readiness = projection.readOwnerReadiness(path.resolve(__dirname, ".."), "presenter_director");
-  assert.equal(readiness.dispatch_enabled, false);
+  assert.equal(readiness.implementation_state, "IMPLEMENTATION_PROVEN");
+  assert.equal(readiness.dispatch_enabled, true);
   fs.rmSync(root, { recursive: true, force: true });
 });
 

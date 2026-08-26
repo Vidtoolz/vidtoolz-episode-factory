@@ -84,7 +84,7 @@ test('PV6: adversarial — creative blocker disguised as resource language stays
 test('PV7: adversarial — self-route and disabled-role routing are refused', async () => {
   const self = await resultFor({ ...infraTask(), assignment: { action: 'prepare_route' }, route_target_agent_id: 'production_operations' });
   assert.ok(!self.route_preparation || self.route_preparation.dispatched === false, 'self route must not dispatch');
-  const disabled = await resultFor({ ...infraTask(), assignment: { action: 'prepare_route' }, route_target_agent_id: 'presenter_director' });
+  const disabled = await resultFor({ ...infraTask(), assignment: { action: 'prepare_route' }, route_target_agent_id: 'creative_director' });
   assert.equal(disabled.route_preparation, null);
   assert.match(disabled.reason, /not lifecycle-enabled/);
 });

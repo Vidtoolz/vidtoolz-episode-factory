@@ -74,7 +74,7 @@ governed; everything else is mode-independent.
 | --- | --- | --- | --- | --- | --- |
 | `DRAFT` | **BLOCKED** | `generation_supervisor` | — | — | `PROXY_CAPTURE_REQUIRED` |
 | `REVIEW` | IMPLEMENTED | — (not re-entered) | — | — | `REUSE_PRIOR_CAPTURE` |
-| `PRODUCTION` | **PLANNED** | `production_operations` | `presenter_director` | `mikko` | `REAL_CAPTURE_REQUIRED` |
+| `PRODUCTION` | IMPLEMENTED | `production_operations` | `presenter_director` | `mikko` | `REAL_CAPTURE_REQUIRED` |
 | `MODE_UNSPECIFIED` | fails closed | none reported | — | — | — |
 
 Ownership resolves through one authority, `resolveGateOwner(gateId, mode)` in
@@ -96,9 +96,11 @@ authority belongs at gate 8, not here.
   so presenter delivery is contractually not machine-generable
 - no text-to-speech, avatar or synthetic-voice producer exists in the repository
 
-**PRODUCTION is PLANNED** — `presenter_director` is contract status `PLANNED`
-(build_order 7), `NOT_PROVEN`, dispatch `DISABLED`, and its enablement
-prerequisites include an explicit decision by Mikko.
+**PRODUCTION presenter direction is implemented** — `presenter_director` is
+contract status `BUILT`, lifecycle `PROVEN`, implementation state
+`IMPLEMENTATION_PROVEN`, and dispatch `ENABLED` after Mikko's explicit
+enablement decision. Human performance, take selection, and approval remain
+human-only boundaries.
 
 ## Gate 8 `capture-evidence` per mode
 
@@ -296,8 +298,8 @@ narration audio into one watchable draft. That is the remaining capability.
   the declarative gate/mode policy; mode exposure in `package-run-state`;
   mode-aware ownership and mode-aware human-requirement resolution through one
   shared authority; the `PROXY_CAPTURE_READY` evidence contract as a definition.
-- **PLANNED** — gate 7 in `PRODUCTION`, pending `presenter_director`
-  (contract `PLANNED`, `NOT_PROVEN`, dispatch `DISABLED`).
+- **IMPLEMENTED** — gate 7 in `PRODUCTION`, including the enabled
+  `presenter_director` path; Mikko still owns the performance and human gates.
 - **IMPLEMENTED** — DRAFT synthetic narration (Piper) and the DRAFT proxy
   presenter (ffmpeg), with their typed `DRAFT_SYNTHETIC_NARRATION` and
   `PROXY_PRESENTER` evidence, both dispatched through `generation_supervisor`.
@@ -353,8 +355,8 @@ profile is refused at preflight rather than after Mikko has performed.
 
 **Registration is not selection.** Every valid take is registered and none is
 chosen; the adapter writes no recommendation and no human selection. Craft
-judgement belongs to `presenter_director` (still `DISABLED`, pending Mikko's
-explicit enablement) and the choice belongs to Mikko — `verifierValid` refuses an
+judgement belongs to the enabled `presenter_director` as advisory evidence, and
+the choice belongs to Mikko — `verifierValid` refuses an
 `AGENT` selector and refuses any agent id posing as `HUMAN`.
 
 **Registration is also not the end of the lane.** With a genuine human selection

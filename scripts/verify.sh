@@ -165,6 +165,7 @@ node --check scripts/research-director.js
 node --check scripts/hermes-escalation.js
 node --check scripts/production-operations.js
 node --check scripts/production-operations-proof.js
+node --check scripts/presenter-director-proof-v2.js
 node --check scripts/story-revision-review.js
 node --check scripts/story-editor.js
 node --check scripts/story-assertion-continuity.js

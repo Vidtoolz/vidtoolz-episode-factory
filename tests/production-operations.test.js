@@ -126,10 +126,10 @@ test('PO8: task carrying forbidden approval metadata is rejected at preflight', 
   assert.match(result.reason, /preflight failed/);
 });
 
-test('PO9: prepare_route refuses disabled targets — Presenter cannot be routed through Production Operations', async () => {
+test('PO9: prepare_route refuses disabled targets — Creative Director cannot be routed through Production Operations', async () => {
   const result = await po.run(baseTask({
     assignment: { action: 'prepare_route' },
-    route_target_agent_id: 'presenter_director',
+    route_target_agent_id: 'creative_director',
     blocker_evidence: { reason: 'resource lane unavailable', source_invocation_id: 'gs:t:1' },
   }), { root: path.resolve(__dirname, '..') });
   assert.equal(result.route_preparation, null);
@@ -194,7 +194,7 @@ test('PO14: lifecycle/readiness remain fail-closed if registry block vanishes', 
 
 test('PO15: promotion changes no other lifecycle or implementation-readiness boundary', () => {
   const agents = registryAgents();
-  for (const id of ['presenter_director', 'creative_director']) {
+  for (const id of ['creative_director']) {
     assert.throws(() => runner.resolveAgent(path.resolve(__dirname, '..'), id),
       (error) => error.code === 'BLOCKED_AGENT_NOT_ENABLED');
   }

@@ -249,7 +249,7 @@ test('gate7 G7M2: REVIEW introduces no capture requirement', () => {
 test('gate7 G7M3: PRODUCTION separates machine preparation from human performance', () => {
   const policy = gateModePolicy.policyFor('capture-checklist', 'PRODUCTION');
   const owners = gateModePolicy.ownersFor('capture-checklist', 'PRODUCTION');
-  assert.equal(policy.implementation_status, 'PLANNED');
+  assert.equal(policy.implementation_status, 'IMPLEMENTED');
   assert.equal(policy.human_performance_required, true);
   assert.equal(owners.machine_owner, 'presenter_director');
   assert.equal(owners.preparation_owner, 'production_operations');
@@ -375,7 +375,7 @@ test('owner O3: PRODUCTION gate 7 separates preparation, direction and performan
   assert.equal(owner.disposition, 'REAL_CAPTURE_REQUIRED');
   // Gate 7 still asks for no approval; that belongs at gate 8.
   assert.equal(owner.human_required, false);
-  assert.equal(owner.owner_actionable, false, 'presenter_director is still disabled');
+  assert.equal(owner.owner_actionable, true, 'enabled presenter_director makes delivery direction actionable');
 });
 
 test('owner O4: an undeclared mode yields no owner at all', () => {

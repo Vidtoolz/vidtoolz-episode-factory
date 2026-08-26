@@ -23,8 +23,8 @@
  * Those four are distinct and this module performs exactly one of them. It never
  * selects a take, never ranks takes, never records a human selection, and never
  * advances a gate. Registering every valid take and choosing none is the point:
- * craft judgement belongs to presenter_director (still DISABLED pending Mikko's
- * enablement) and the choice belongs to Mikko.
+ * craft judgement belongs to the enabled presenter_director as advisory evidence,
+ * and the choice belongs to Mikko.
  *
  * It also cannot manufacture a performance. Every path here requires bytes that
  * already exist, decode, carry both streams, and match a capture session this

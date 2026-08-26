@@ -16,8 +16,8 @@
  *     bytes, rejects mutation, rejects run/proxy mismatch, and hands off to the
  *     Editor deterministically — closing the loop with the upstream-material
  *     auditor that feeds PRODUCTION_MIX
- *   - no 13th agent exists; Presenter Director stays DISABLED until Mikko
- *     authorizes enablement (asserted live, not by documentation)
+ *   - no 13th agent exists; Presenter Director is enabled only through Mikko's
+ *     recorded decision and the canonical registry/contract coupling
  *
  * No real presenter performance is fabricated. The real-media fixture is a
  * deterministic ffmpeg-generated stand-in used ONLY to exercise the ingestion
@@ -305,21 +305,22 @@ test('PC15: readiness reports never claim a performance happened', () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-/* ── PC16: canonical specialist count stays 12; PD stays disabled ─────── */
-test('PC16: exactly 12 agents; presenter_director disabled until Mikko enablement', () => {
+/* ── PC16: canonical specialist count stays 12; PD enablement is bound ─── */
+test('PC16: exactly 12 agents; presenter_director enablement is canonical', () => {
   const registry = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'agent-registry.json'), 'utf8'));
   assert.equal(registry.agents.length, 12);
   const pd = registry.agents.find((agent) => agent.agent_id === 'presenter_director');
-  assert.equal(pd.lifecycle.autonomous_dispatch, 'DISABLED');
-  assert.equal(pd.lifecycle.proven, 'NOT_PROVEN');
-  assert.ok(pd.lifecycle.enablement_prerequisites.some((item) => /explicit human enablement/i.test(item)));
-  // Live boundary agrees: execution is refused.
+  assert.equal(pd.lifecycle.autonomous_dispatch, 'ENABLED');
+  assert.equal(pd.lifecycle.proven, 'PROVEN');
+  assert.equal(pd.implementation_state, 'IMPLEMENTATION_PROVEN');
+  assert.equal(pd.lifecycle.enablement_decision.decision, 'ENABLE');
+  // Live boundary agrees: execution is permitted.
   const boundary = require(path.join(ROOT, 'scripts', 'agent-executable-boundary.js'));
-  assert.equal(boundary.guardExecutableLifecycle('presenter_director'), false);
-  // No governance enablement record exists — enablement is genuinely outstanding.
+  assert.equal(boundary.guardExecutableLifecycle('presenter_director'), true);
+  // The referenced human decision exists as durable governance.
   const governanceDir = path.join(ROOT, 'governance');
   const enablementRecord = fs.readdirSync(governanceDir).find((name) => /presenter-director.*enable/i.test(name));
-  assert.equal(enablementRecord, undefined);
+  assert.equal(enablementRecord, 'presenter-director-enablement.json');
 });
 
 module.exports = { tests };

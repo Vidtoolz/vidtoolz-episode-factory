@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "record_type": "agent_enablement_decision",
+  "decision": "ENABLE",
+  "role": "presenter_director",
+  "prior_state": {
+    "lifecycle_proven": "NOT_PROVEN",
+    "autonomous_dispatch": "DISABLED",
+    "implementation_state": null,
+    "contract_status": "PLANNED"
+  },
+  "resulting_state": {
+    "lifecycle_proven": "PROVEN",
+    "autonomous_dispatch": "ENABLED",
+    "implementation_state": "IMPLEMENTATION_PROVEN",
+    "contract_status": "BUILT"
+  },
+  "decision_maker": {
+    "identity_type": "HUMAN_ORCHESTRATION_AUTHORIZATION",
+    "identity": "Mikko",
+    "authenticated": false,
+    "authentication_note": "Authorization was explicitly supplied by Mikko in the controlling orchestration prompt. This repository record carries no cryptographic proof of human identity."
+  },
+  "authorization": {
+    "source": "explicit human authorization in the controlling orchestration prompt",
+    "authorized_change": "presenter_director: doctrine-only -> enabled and implementation-proven for dispatch",
+    "scope": "presenter_director enablement only",
+    "recorded_at": "2026-08-25T18:20:00.000Z",
+    "authorized_responsibilities": [
+      "prepare the approved script for delivery",
+      "surface existing performance/delivery guidance",
+      "evaluate recording readiness",
+      "direct the supervised presenter-capture session",
+      "register/consume canonical presenter-take information through the proven capture path",
+      "inspect verified takes",
+      "propose/rank best-take candidates",
+      "identify missing/failed takes",
+      "request another take when evidence supports it",
+      "hand verified capture state downstream"
+    ],
+    "prohibited_authorities": [
+      "perform in place of Mikko",
+      "synthesize Mikko's voice",
+      "synthesize Mikko's likeness",
+      "fabricate presenter media",
+      "treat PROXY_PRESENTER as human capture",
+      "treat DRAFT_SYNTHETIC_NARRATION as human audio",
+      "make a human take selection",
+      "call createHumanSelection as an agent",
+      "impersonate a HUMAN selector",
+      "approve Mikko's performance",
+      "approve gate 8 on Mikko's behalf",
+      "promote a run to PRODUCTION",
+      "alter Story/script creative authority",
+      "become lifecycle authority",
+      "change the canonical 12-agent roster"
+    ]
+  },
+  "prerequisite_state": {
+    "declared_by_registry_before_enablement": [
+      "canonical presenter take/delivery artifact contract proven end to end",
+      "Editor take-selection boundary demonstrated against real evidence",
+      "explicit human enablement decision by Mikko"
+    ],
+    "satisfied": {
+      "take_contract": "scripts/supervised-presenter-take-adapter.js + scripts/presenter-take-manifest.js, proven end to end (commits 29cb626, 8f137d7, 54fea5d)",
+      "editor_selection_boundary": "buildEditorHandoff proven to hold at AWAITING_HUMAN_SELECTION; verifierValid refuses AGENT selectors and agent ids posing as HUMAN",
+      "human_decision": "this record"
+    },
+    "defect_found_and_repaired_before_enablement": {
+      "defect": "presenter_director never emitted operational_rationale, so every REVIEW/DECISION refusal was rejected by the canonical runner as RUNNER_ENVELOPE_INVALID",
+      "severity": "blocking for dispatch of all refusal paths",
+      "repair_commit": "7175755a023208981973e1efcb449b32ce3ab27d",
+      "note": "human authorization does not override a broken technical prerequisite; the defect was repaired and proven before the flip, not waived"
+    }
+  },
+  "enablement_commit": {
+    "commit": "029c40756cb4bf31a5bd05d39be26a89462f5498",
+    "subject": "feat(agents): enable presenter director",
+    "registry_sha256_before": "b96d0af563cb72230f7d6e047e4d3723b3a29c029d6c1c5ea7cb4e56b1a12594",
+    "registry_sha256_after": "05fa4f58ef1a174d323259f323b029a92247a1eb17978871266eaa43164e6829",
+    "files_changed": [
+      "config/agent-registry.json",
+      "config/agent-contract.json"
+    ],
+    "semantic_diff": {
+      "changed_fields": [
+        "presenter_director.implementation_state",
+        "presenter_director.lifecycle.proven",
+        "presenter_director.lifecycle.autonomous_dispatch",
+        "presenter_director.lifecycle.dispatch_blocked_reason (removed)",
+        "presenter_director.lifecycle.enablement_decision (added)",
+        "contract role_roster.presenter_director.status"
+      ],
+      "other_roles_changed": false,
+      "roster_size_changed": false,
+      "roster_size": 12
+    }
+  },
+  "implementation_binding": {
+    "module_path": "scripts/presenter-director.js",
+    "module_sha256": "2c29e4ed1f6a453f3450ef9d9e45077335f234ef733f3d9c8a6f28f75ead0183",
+    "actions": [
+      "prepare_delivery",
+      "log_takes",
+      "evaluate_takes",
+      "status"
+    ],
+    "proof_module": "scripts/presenter-director-proof-v2.js",
+    "proof_module_sha256": "13dcdba359b5a02a8157d8bdbea489d19d94491693db0ed6efc48da08512479d",
+    "in_process_suite": "tests/presenter-director.test.js (91 cases, model adapter injected)",
+    "promotion_criteria_version": "v1 (docs/implementation-promotion-criteria.md)",
+    "promotion_criteria_sha256": "005ae7d914f8e7a52333c02b02527c1cc4b77bffc8fe1c5b1be1ac9d0ca4997d",
+    "proof_scope_boundary": "the production-path proof drives the model-free dispatch paths, because a model adapter cannot cross the runner process boundary. The model-bearing actions are covered in-process by the 91-case suite. Stated rather than implied."
+  },
+  "authority_effect": {
+    "implementation_dispatch_eligibility_changed": true,
+    "doctrine_changed": false,
+    "lifecycle_proven_changed": true,
+    "autonomous_dispatch_changed": true,
+    "allowed_actions_changed": false,
+    "prohibited_actions_changed": false,
+    "human_gates_changed": false,
+    "approval_created": false,
+    "take_selection_authority_created": false,
+    "performance_authority_created": false,
+    "publication_authority_created": false,
+    "lifecycle_authority_created": false,
+    "roster_changed": false
+  },
+  "take_authority_separation": {
+    "presenter_director": "advisory ranking and proposal only",
+    "verified_human": "selection (createHumanSelection, HUMAN verifier required)",
+    "lifecycle_gates": "approval",
+    "unchanged_by_this_decision": true
+  },
+  "statement": "ENABLEMENT WAS HUMAN-AUTHORIZED. Presenter Director exists to make the human performance better prepared, not to replace it. It may direct, inspect, and recommend. It may never perform, select a take, or approve a performance. One blocking envelope defect was found during prerequisite verification and repaired before the flip rather than waived."
+}

@@ -86,8 +86,6 @@ test('HB5: INFORMATION cannot be escalated — REVIEW/DECISION only', () => {
 });
 
 test('HB6: disabled role cannot become a route target', () => {
-  assert.throws(() => bridge.assertRouteTargetAuthorized(registryAgents(), 'presenter_director'),
-    (error) => error.code === 'HERMES_ROUTE_TARGET_DISABLED');
   assert.throws(() => bridge.assertRouteTargetAuthorized(registryAgents(), 'creative_director'),
     (error) => error.code === 'HERMES_ROUTE_TARGET_DISABLED');
   assert.throws(() => bridge.assertRouteTargetAuthorized(registryAgents(), 'nonexistent_role'),
@@ -100,7 +98,7 @@ test('HB7: ROUTE action to a disabled target is refused at receipt creation', ()
   const repo = tempRepo();
   try {
     assert.throws(() => bridge.createReceipt(repo, 'run-x', baseEscalation({
-      action: 'ROUTE', routing_category: 'INFRASTRUCTURE_RESOURCE', route_target_agent_id: 'presenter_director',
+      action: 'ROUTE', routing_category: 'INFRASTRUCTURE_RESOURCE', route_target_agent_id: 'creative_director',
     }), { registryAgents: registryAgents() }),
       (error) => error.code === 'HERMES_ROUTE_TARGET_DISABLED');
   } finally { fs.rmSync(repo, { recursive: true, force: true }); }

@@ -144,6 +144,7 @@ require("./manual-edit-recovery.test.js");
 require("./audience-packaging-director.test.js");
 require("./presenter-take-manifest.test.js");
 require("./presenter-director.test.js");
+require("./presenter-director-enablement.test.js");
 require("./edit-plan.test.js");
 require("./editor-agent.test.js");
 require("./agent-control-room.test.js");

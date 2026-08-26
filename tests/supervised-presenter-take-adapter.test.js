@@ -340,11 +340,13 @@ test('SC18: no new agent is introduced and the adapter is not an actor', () => {
   assert.equal(list.length, 12, 'the roster must stay at twelve agents');
   const source = fs.readFileSync(path.join(ROOT, 'scripts', 'supervised-presenter-take-adapter.js'), 'utf8');
   assert.ok(!/agent_id\s*:/.test(source), 'the adapter must not register itself as an agent');
-  // presenter_director stays disabled: this mission does not enable it.
+  // Later enablement changed the existing role only; the adapter is still not
+  // an actor and the roster remains twelve.
   const pd = (Array.isArray(agents) ? agents : Object.entries(agents).map(([id, value]) => ({ agent_id: id, ...value })))
     .find((entry) => entry.agent_id === 'presenter_director');
-  assert.equal(pd.lifecycle.autonomous_dispatch, 'DISABLED');
-  assert.equal(pd.lifecycle.proven, 'NOT_PROVEN');
+  assert.equal(pd.lifecycle.autonomous_dispatch, 'ENABLED');
+  assert.equal(pd.lifecycle.proven, 'PROVEN');
+  assert.equal(pd.implementation_state, 'IMPLEMENTATION_PROVEN');
 });
 
 /* ── Preflight: the machine-ready state must never read as capture done ───── */

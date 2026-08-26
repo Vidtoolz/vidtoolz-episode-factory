@@ -648,24 +648,22 @@ test('PD94: take logging is deterministic and invalidates prior selection bindin
   assert.equal(out.take_log.invalidated_human_selections, 1);
   assert.equal(routeCalls, 0); assert.equal(modelCalls, 0);
 });
-test('PD95: runner refuses candidate before resolving or loading its module', () => {
+test('PD95: runner resolves the canonically enabled presenter implementation', () => {
   const root = path.join(__dirname, '..');
   let loads = 0;
-  assert.throws(() => runner.resolveAgent(root, 'presenter_director', { loadModule: () => { loads += 1; return pd; } }), (error) => {
-    assert.equal(error.code, 'BLOCKED_AGENT_NOT_ENABLED');
-    assert.equal(error.details.proven, 'NOT_PROVEN');
-    assert.equal(error.details.autonomous_dispatch, 'DISABLED');
-    return true;
-  });
-  assert.equal(loads, 0);
+  const resolved = runner.resolveAgent(root, 'presenter_director', { loadModule: () => { loads += 1; return pd; } });
+  assert.equal(resolved.registration.agent_id, 'presenter_director');
+  assert.equal(resolved.registration.lifecycle.proven, 'PROVEN');
+  assert.equal(resolved.registration.lifecycle.autonomous_dispatch, 'ENABLED');
+  assert.equal(loads, 1);
 });
-test('PD96: control room reports module-bearing candidate as planned/not-enabled', async () => {
+test('PD96: control room reports the enabled presenter as available', async () => {
   const view = await controlRoom.buildAgentControlRoom({ root: path.join(__dirname, '..') });
   const presenter = view.agents.find((agent) => agent.agent_id === 'presenter_director');
-  assert.equal(presenter.state, 'PLANNED_NOT_ENABLED');
-  assert.equal(presenter.implementation.state, 'DISPATCH_NOT_ENABLED');
-  assert.equal(presenter.lifecycle.proven, 'NOT_PROVEN');
-  assert.equal(presenter.lifecycle.autonomous_dispatch, 'DISABLED');
+  assert.equal(presenter.state, 'COMPLETE');
+  assert.equal(presenter.implementation.state, 'AVAILABLE');
+  assert.equal(presenter.lifecycle.proven, 'PROVEN');
+  assert.equal(presenter.lifecycle.autonomous_dispatch, 'ENABLED');
 });
 
 // ── Harness ──────────────────────────────────────────────────────────────────

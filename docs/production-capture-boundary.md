@@ -49,13 +49,12 @@ REVIEW approved
 
 ## Presenter Director enablement
 
-Presenter Director is doctrine-complete but `NOT_PROVEN` /
-`autonomous_dispatch: DISABLED`. The executable boundary refuses it live.
-Enablement prerequisites include an explicit human enablement decision by
-Mikko; no such record exists in governance. Delivery direction therefore
-cannot be dispatched until Mikko authorizes enablement. Machine preparation
-does not depend on it: the capture artifacts are generated deterministically
-without any specialist.
+Presenter Director is doctrine-complete, `PROVEN`, implementation state
+`IMPLEMENTATION_PROVEN`, and `autonomous_dispatch: ENABLED` after Mikko's
+explicit decision recorded in `governance/presenter-director-enablement.json`.
+The executable boundary permits its declared delivery-direction actions.
+Machine preparation does not depend on it: the capture artifacts are generated
+deterministically without any specialist.
 
 ## Gates
 

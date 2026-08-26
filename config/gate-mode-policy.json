@@ -72,7 +72,7 @@
         },
         "PRODUCTION": {
           "meaning": "Machine preparation for a real recording session, then Mikko's actual performance. The two are separate and only the first is automatable.",
-          "implementation_status": "PLANNED",
+          "implementation_status": "IMPLEMENTED",
           "machine_owner": "presenter_director",
           "preparation_owner": "production_operations",
           "human_performance_required": true,
@@ -85,9 +85,10 @@
             "audio-capture-checklist.md",
             "presenter-take-manifest (delivery direction and take records)"
           ],
-          "blocked_by": [
-            "presenter_director is contract status PLANNED (build_order 7), NOT_PROVEN, autonomous_dispatch DISABLED",
-            "its enablement prerequisites are unmet and include an explicit human enablement decision by Mikko"
+          "blocked_by": [],
+          "satisfied_by": [
+            "presenter_director is contract status BUILT, lifecycle PROVEN, implementation state IMPLEMENTATION_PROVEN, autonomous dispatch ENABLED",
+            "Mikko supplied the explicit enablement decision after the presenter take contract and Editor selection boundary were proven"
           ],
           "human_owns": "the physical performance itself, which no agent may synthesize away",
           "expected_owner": "production_operations",
@@ -95,8 +96,8 @@
           "human_performer": "mikko",
           "human_required": false,
           "disposition": "REAL_CAPTURE_REQUIRED",
-          "owner_actionable": false,
-          "owner_actionable_reason": "preparation is orchestrable, but presenter_director is contract PLANNED / NOT_PROVEN / DISABLED, so delivery direction cannot be dispatched yet."
+          "owner_actionable": true,
+          "owner_actionable_reason": "production_operations can prepare the session and the enabled presenter_director can dispatch delivery direction; Mikko still owns the physical performance."
         }
       }
     },

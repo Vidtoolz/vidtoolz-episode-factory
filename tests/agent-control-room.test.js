@@ -873,7 +873,7 @@ test('canonical cockpit separates dispatch-enabled agents from registered doctri
   const output = await controlRoom.buildAgentControlRoom({ root: path.join(__dirname, '..') });
   const registry = require('../config/agent-registry.json');
   const refused = registry.agents.filter((a) => a.lifecycle?.autonomous_dispatch !== 'ENABLED').map((a) => a.agent_id);
-  assert.deepEqual(refused, ['presenter_director', 'creative_director']);
+  assert.deepEqual(refused, ['creative_director']);
   for (const id of refused) {
     const row = output.agents.find((a) => a.agent_id === id);
     assert.equal(row.state, 'PLANNED_NOT_ENABLED');
