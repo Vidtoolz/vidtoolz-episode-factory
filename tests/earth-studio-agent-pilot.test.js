@@ -156,9 +156,9 @@ test('A8: missing artifact fails closed with owner assigned', () => {
   assert.equal(r.out.agents.production_operations.next_owner, 'production_operations');
 });
 
-test('A9: heavy sibling dirt does not contaminate the structured view', () => {
-  const porcelain = execFileSync('git', ['status', '--porcelain'], { cwd: REPO, encoding: 'utf8' });
-  assert.ok(porcelain.split('\n').filter(Boolean).length > 50, 'precondition: dirty estate present');
+test('A9: checkout dirt is not required by or consumed by the structured view', () => {
+  // This assertion must pass in both the heavily dirty integration checkout and
+  // a clean CI clone. Repository dirt is sibling state, not a test fixture.
   const dir = scratch(true);
   const r = agentView(dir, DURABLE_COMMIT);
   assert.equal(r.out.promotion_status, 'PROMOTED');
