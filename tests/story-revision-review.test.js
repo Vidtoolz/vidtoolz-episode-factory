@@ -8,8 +8,9 @@ const crypto = require('node:crypto');
 const srr = require('../scripts/story-revision-review.js');
 const rrv = require('../scripts/research-result-validator.js');
 const authority = require('../scripts/research-result-authority.js');
+const scriptBuilderAuthority = require('../scripts/script-builder-authority.js');
 
-const SB_ROOT = '/home/vidtoolz/vidtoolz-script-builder';
+const SB_ROOT = scriptBuilderAuthority.resolveScriptBuilderRoot().root;
 const versions = require(path.join(SB_ROOT, 'lib', 'versions.js'));
 const store = require(path.join(SB_ROOT, 'lib', 'store.js'));
 const sha = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');

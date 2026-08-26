@@ -3,6 +3,7 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
+node scripts/verify-dependencies.js
 node tests/run-tests.js
 node --check episode-model.js
 node --check score-engine/cue-analysis.js
@@ -172,6 +173,8 @@ node --check scripts/story-assertion-continuity.js
 node --check scripts/story-successor.js
 node --check scripts/story-edit-contract.js
 node --check scripts/script-builder-compat.js
+node --check scripts/script-builder-authority.js
+node --check scripts/verify-dependencies.js
 node --check scripts/story-manual-edit.js
 node --check scripts/story-workspace.js
 node --check scripts/visual-plan.js

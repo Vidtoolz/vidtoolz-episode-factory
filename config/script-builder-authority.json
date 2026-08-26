@@ -1,0 +1,12 @@
+{
+  "schema": "vidtoolz.scriptBuilderAuthorityLock.v1",
+  "repository": "Vidtoolz/vidtoolz-script-builder",
+  "remote_ref": "refs/heads/ci/episode-factory-story-version-authority-v1",
+  "ref": "b4627a817346634a8bf0cf780e227e77b529014e",
+  "contract_id": "vidtoolz-script-builder/story-version-authority/v1",
+  "required_files": {
+    "lib/versions.js": "d82a0707120e00f5f6bbdcbb40f4f554036603c9a8db2100d9602ed359c486e9",
+    "lib/store.js": "224676bb8c2ec1dffc2f9c689096ef6987378e1825d422d6511f8186027c22b7"
+  },
+  "provenance": "Script Builder b4627a8 introduced the v1 version-authority contract consumed by Episode Factory 86b6c3f."
+}

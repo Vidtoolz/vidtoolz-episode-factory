@@ -15,6 +15,7 @@
 
 # Dependencies
 node_modules/
+/_ci/
 
 # Local stale package-run archive (redundant copies of tracked runs)
 package-runs/stale-runs/

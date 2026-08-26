@@ -7,8 +7,9 @@ const { atomicWrite, safeId } = require('./agent-run');
 const { sha256 } = require('./agent-contract-validator.js');
 const researchAuthority = require('./research-result-authority.js');
 const humanIdentity = require('./human-approval-identity.js');
+const scriptBuilderAuthority = require('./script-builder-authority.js');
 
-const DEFAULT_SCRIPT_BUILDER_ROOT = '/home/vidtoolz/vidtoolz-script-builder';
+const DEFAULT_SCRIPT_BUILDER_ROOT = scriptBuilderAuthority.defaultCandidates()[0].root;
 const DEFAULT_REPO_ROOT = path.resolve(__dirname, '..');
 
 function typedError(code, message) { const error = new Error(message); error.code = code; return error; }
@@ -54,6 +55,7 @@ function loadResearchContext({ repoRoot = DEFAULT_REPO_ROOT, runId, projectId, v
 }
 
 function loadStoryAuthority({ scriptBuilderRoot = DEFAULT_SCRIPT_BUILDER_ROOT, projectId, versionId }) {
+  scriptBuilderRoot = scriptBuilderAuthority.resolveScriptBuilderRoot(scriptBuilderRoot).root;
   safeId(projectId, 'project_id');
   safeId(versionId, 'version_id');
   const dataRoot = path.join(scriptBuilderRoot, 'data');
@@ -117,7 +119,7 @@ function assembleStoryEditorTask(options) {
       bindings_sha256: research.bindings_sha256, asOf: research.asOf,
     },
     data_root: loaded.dataRoot,
-    script_builder_root: path.resolve(options.scriptBuilderRoot || DEFAULT_SCRIPT_BUILDER_ROOT),
+    script_builder_root: scriptBuilderAuthority.resolveScriptBuilderRoot(options.scriptBuilderRoot || DEFAULT_SCRIPT_BUILDER_ROOT).root,
     risk_level: 'LOCAL_AUTO',
     retry_budget: 2,
     cost_budget: { max_model_calls: 2 },

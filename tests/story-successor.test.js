@@ -11,8 +11,9 @@ const ownership = require('../scripts/execution-ownership.js');
 const successor = require('../scripts/successor-task-contract.js');
 const storySuccessor = require('../scripts/story-successor.js');
 const storyManualEdit = require('../scripts/story-manual-edit.js');
+const scriptBuilderAuthority = require('../scripts/script-builder-authority.js');
 
-const SB_ROOT = '/home/vidtoolz/vidtoolz-script-builder';
+const SB_ROOT = scriptBuilderAuthority.resolveScriptBuilderRoot().root;
 const versions = require(path.join(SB_ROOT, 'lib', 'versions.js'));
 const store = require(path.join(SB_ROOT, 'lib', 'store.js'));
 const CONFIG = { wpm: { value: 130, calibrated: false } };

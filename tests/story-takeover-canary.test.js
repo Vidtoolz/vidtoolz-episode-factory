@@ -18,8 +18,9 @@ const storyManualEdit = require('../scripts/story-manual-edit.js');
 const manualRecovery = require('../scripts/manual-edit-recovery.js');
 const packageEngineServer = require('../package-engine-server.js');
 const researchValidator = require('../scripts/research-result-validator.js');
+const scriptBuilderAuthority = require('../scripts/script-builder-authority.js');
 
-const SB_ROOT = '/home/vidtoolz/vidtoolz-script-builder';
+const SB_ROOT = scriptBuilderAuthority.resolveScriptBuilderRoot().root;
 const versions = require(path.join(SB_ROOT, 'lib', 'versions.js'));
 const store = require(path.join(SB_ROOT, 'lib', 'store.js'));
 const CONFIG = { wpm: { value: 130, calibrated: false } };

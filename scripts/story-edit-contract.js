@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('node:path');
+const scriptBuilderAuthority = require('./script-builder-authority.js');
 const assertions = require('./story-assertion-continuity.js');
 const storySuccessor = require('./story-successor.js');
 
@@ -131,7 +132,7 @@ function resolveSectionEvidence(story, section) {
 }
 
 function assertExactHead(task, story) {
-  const root = path.resolve(task.script_builder_root || '/home/vidtoolz/vidtoolz-script-builder');
+  const root = scriptBuilderAuthority.resolveScriptBuilderRoot(task.script_builder_root).root;
   const versions = require(path.join(root, 'lib', 'versions.js'));
   const current = versions.listVersions(task.data_root, story.project_id).at(-1);
   if (!current || current.id !== story.version_id || current.content_hash !== story.content_hash) {

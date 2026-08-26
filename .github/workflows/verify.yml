@@ -2,19 +2,65 @@ name: Verify
 
 "on":
   push:
+    branches:
+      - main
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
+  public-source-checks:
+    name: Public source checks (not the promotion gate)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out public pull-request source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check public dependency-boundary sources
+        run: |
+          node --check scripts/script-builder-authority.js
+          node --check scripts/script-builder-compat.js
+          node --check scripts/verify-dependencies.js
+          sh -n scripts/verify.sh
+
   verify:
-    name: Run local verification
+    name: Canonical verification with pinned Script Builder authority
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Require private Script Builder read credential
+        env:
+          SCRIPT_BUILDER_DEPLOY_KEY_PRESENT: ${{ secrets.SCRIPT_BUILDER_DEPLOY_KEY != '' }}
+        run: |
+          if [ "$SCRIPT_BUILDER_DEPLOY_KEY_PRESENT" != "true" ]; then
+            echo "::error::SCRIPT_BUILDER_DEPLOY_KEY is required for the canonical verification gate. Configure a read-only deploy key for Vidtoolz/vidtoolz-script-builder."
+            exit 1
+          fi
+
+      - name: Check out pinned Script Builder authority
+        uses: actions/checkout@v4
+        with:
+          repository: Vidtoolz/vidtoolz-script-builder
+          ref: b4627a817346634a8bf0cf780e227e77b529014e
+          path: _ci/vidtoolz-script-builder
+          ssh-key: ${{ secrets.SCRIPT_BUILDER_DEPLOY_KEY }}
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -26,3 +72,5 @@ jobs:
 
       - name: Run source-of-truth verification
         run: ./scripts/verify.sh
+        env:
+          VIDTOOLZ_SCRIPT_BUILDER_ROOT: ${{ github.workspace }}/_ci/vidtoolz-script-builder

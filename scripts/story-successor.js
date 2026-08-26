@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('node:path');
+const scriptBuilderAuthority = require('./script-builder-authority.js');
 const ledger = require('./operator-action-ledger.js');
 const storyReview = require('./story-revision-review.js');
 const assertions = require('./story-assertion-continuity.js');
@@ -14,7 +15,7 @@ const CONTINUATION_ACTION = 'review_successor';
 const POLICY_ID = 'PROVEN_SPECIALIST_SUCCESSOR_ADAPTERS_V2';
 
 function versionsFor(task) {
-  const root = path.resolve(task.script_builder_root || '/home/vidtoolz/vidtoolz-script-builder');
+  const root = scriptBuilderAuthority.resolveScriptBuilderRoot(task.script_builder_root).root;
   return require(path.join(root, 'lib', 'versions.js'));
 }
 
@@ -150,7 +151,8 @@ function materializeRecovery(context, candidate, options = {}) {
   const shape = validateShape(candidate?.value);
   if (!shape.ok) { const error = new Error(`Story recovery source is invalid: ${shape.reason_codes.join(', ')}`); error.code = 'MANUAL_EDIT_RECOVERY_VALIDATION_FAILED'; throw error; }
   const versions = versionsFor(context.task);
-  const store = require(path.join(path.resolve(context.task.script_builder_root), 'lib', 'store.js'));
+  const scriptBuilderRoot = scriptBuilderAuthority.resolveScriptBuilderRoot(context.task.script_builder_root).root;
+  const store = require(path.join(scriptBuilderRoot, 'lib', 'store.js'));
   const project = store.loadProject(context.task.data_root, candidate.value.project_id);
   const head = versions.listVersions(context.task.data_root, candidate.value.project_id).at(-1);
   const registered = JSON.parse(require('node:fs').readFileSync(path.join(context.root, 'package-runs', context.runId, 'agents', 'manual-work', context.agentId, context.record.task_id, 'artifact.json'), 'utf8'));

@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('node:path');
+const authority = require('./script-builder-authority.js');
 
 const SUPPORTED_CONTRACT_ID = 'vidtoolz-script-builder/story-version-authority/v1';
 const VECTOR_HASH = '02d060ba63b1821e224754bf0416ec906facc632a9df9a5b61c64cc0dac2e447';
@@ -12,8 +13,10 @@ const VECTOR_SECTIONS = Object.freeze([
 function incompatible(message) { const error = new Error(message); error.code = 'SCRIPT_BUILDER_CONTRACT_INCOMPATIBLE'; error.statusCode = 503; return error; }
 
 function load(scriptBuilderRoot) {
-  const root = path.resolve(scriptBuilderRoot || '/home/vidtoolz/vidtoolz-script-builder');
-  const versions = require(path.join(root, 'lib', 'versions.js'));
+  const root = authority.resolveScriptBuilderRoot(scriptBuilderRoot).root;
+  let versions;
+  try { versions = require(path.join(root, 'lib', 'versions.js')); }
+  catch (error) { throw incompatible(`Script Builder version authority could not be loaded from ${root}: ${error.message}`); }
   const contract = versions.VERSION_AUTHORITY_CONTRACT;
   if (!contract || contract.contract_id !== SUPPORTED_CONTRACT_ID
       || contract.canonical_sections_version !== 1

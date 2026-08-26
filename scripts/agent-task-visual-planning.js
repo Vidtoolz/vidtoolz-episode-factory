@@ -6,8 +6,9 @@ const path = require('node:path');
 const { atomicWrite, safeId } = require('./agent-run.js');
 const visualPlan = require('./visual-plan.js');
 const humanIdentity = require('./human-approval-identity.js');
+const scriptBuilderAuthority = require('./script-builder-authority.js');
 
-const DEFAULT_SCRIPT_BUILDER_ROOT = '/home/vidtoolz/vidtoolz-script-builder';
+const DEFAULT_SCRIPT_BUILDER_ROOT = scriptBuilderAuthority.defaultCandidates()[0].root;
 
 function canonicalApproval(project, version) {
   const approved = version.approval?.state === 'approved' && project.approved_version_id === version.id;
@@ -22,6 +23,7 @@ function canonicalApproval(project, version) {
 }
 
 function loadCanonicalStory({ scriptBuilderRoot = DEFAULT_SCRIPT_BUILDER_ROOT, projectId, versionId }) {
+  scriptBuilderRoot = scriptBuilderAuthority.resolveScriptBuilderRoot(scriptBuilderRoot).root;
   safeId(projectId, 'project_id');
   safeId(versionId, 'version_id');
   const root = path.resolve(scriptBuilderRoot);

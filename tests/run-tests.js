@@ -127,6 +127,7 @@ require("./sound-music-director.test.js");
 require("./research-result-validator.test.js");
 require("./research-result-phase-b.test.js");
 require("./research-director.test.js");
+require("./script-builder-authority.test.js");
 require("./story-revision-review.test.js");
 require("./story-editor.test.js");
 require("./story-successor.test.js");

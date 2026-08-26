@@ -4,12 +4,13 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const compat = require('../scripts/script-builder-compat.js');
+const scriptBuilderAuthority = require('../scripts/script-builder-authority.js');
 
 const tests = [];
 function test(name, fn) { tests.push({ name, fn }); }
 
 test('SW1 Episode Factory and Script Builder share an explicit executable version-authority contract', () => {
-  const loaded = compat.load('/home/vidtoolz/vidtoolz-script-builder');
+  const loaded = compat.load(scriptBuilderAuthority.resolveScriptBuilderRoot().root);
   assert.equal(loaded.contract.contract_id, compat.SUPPORTED_CONTRACT_ID);
   assert.equal(loaded.versions.scriptContentHash(compat.VECTOR_SECTIONS), compat.VECTOR_HASH);
 });

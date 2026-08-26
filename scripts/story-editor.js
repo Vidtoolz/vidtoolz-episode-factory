@@ -23,6 +23,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const scriptBuilderAuthority = require('./script-builder-authority.js');
 const { guardExecutableLifecycle } = require('./agent-executable-boundary.js');
 const os = require('node:os');
 const crypto = require('node:crypto');
@@ -395,7 +396,7 @@ async function run(task, options = {}) {
 
   ev('ASSIGNMENT_RECEIVED', `${task.assignment?.action} from ${out.requested_by}`);
 
-  const sbRoot = task.script_builder_root || options.scriptBuilderRoot || '/home/vidtoolz/vidtoolz-script-builder';
+  const sbRoot = scriptBuilderAuthority.resolveScriptBuilderRoot(task.script_builder_root || options.scriptBuilderRoot).root;
   let sbVersions = null;
   try { sbVersions = require(path.join(sbRoot, 'lib', 'versions.js')); }
   catch (e) { out.state = 'BLOCKED'; out.reason = `Script Builder unavailable: ${e.message}`; return finish('production_operations'); }
