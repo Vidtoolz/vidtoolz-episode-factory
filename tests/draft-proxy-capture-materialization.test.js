@@ -39,6 +39,13 @@ const UPSTREAM = [
   'shot-edit-plan-review.md', 'story-binding.json',
 ];
 
+const SYNTHETIC_UPSTREAM = {
+  'final-script.md': '# Final Script\n\nCommitted-fixture lifecycle canary script.\n',
+  'selected-package.json': `${JSON.stringify({ package: { proposedTitle: 'Lifecycle canary', idea: 'Proxy capture fixture', viewerPromise: 'Fixture only' } }, null, 2)}\n`,
+  'b-roll-list.md': '# B-Roll List\n\nNo b-roll required for this fixture.\n',
+  'graphics-list.md': '# Graphics List\n\nNo graphics required for this fixture.\n',
+};
+
 const READY = narrationProvider.providerReadiness().actionable && presenterRenderer.rendererReadiness().actionable;
 
 /*
@@ -58,8 +65,13 @@ function producedRun(label, options = {}) {
     const seed = path.join(seedRoot, 'package-runs', runId);
     fs.mkdirSync(seed, { recursive: true });
     for (const name of UPSTREAM) {
+      if (Object.hasOwn(SYNTHETIC_UPSTREAM, name)) {
+        fs.writeFileSync(path.join(seed, name), SYNTHETIC_UPSTREAM[name]);
+        continue;
+      }
       const src = path.join(CANARY_DIR, name);
-      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(seed, name));
+      assert.ok(fs.existsSync(src), `committed proxy fixture source missing: ${name}`);
+      fs.copyFileSync(src, path.join(seed, name));
     }
     const bindingPath = path.join(seed, 'story-binding.json');
     const binding = JSON.parse(fs.readFileSync(bindingPath, 'utf8'));
