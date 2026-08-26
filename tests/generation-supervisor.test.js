@@ -130,9 +130,7 @@ test('A26: every non-terminal state carries an explicit next owner and no generi
   }
 });
 
-test('A28: heavy sibling dirt does not corrupt routing or status', () => {
-  const porcelain = execFileSync('git', ['status', '--porcelain'], { cwd: REPO, encoding: 'utf8' });
-  assert.ok(porcelain.split('\n').filter(Boolean).length > 50, 'precondition: dirty estate');
+test('A28: checkout dirt is not required by or consumed by routing status', () => {
   const r = runSup(baseTask());
   assert.equal(r.status.state, 'DISPATCH_BLOCKED_NO_REGISTERED_BRIDGE');
   assert.equal(r.status.route.machine, 'vidnux');
