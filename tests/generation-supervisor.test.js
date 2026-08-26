@@ -1,7 +1,7 @@
 'use strict';
 
 const { assert, fs, test } = require('./_helpers.js');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawn } = require('node:child_process');
 const path = require('node:path');
 const os = require('node:os');
 
@@ -11,15 +11,50 @@ const REPO = path.join(__dirname, '..');
 const SUP = path.join(REPO, 'scripts', 'generation-supervisor.js');
 const REGISTRY = path.join(REPO, 'config', 'agent-registry.json');
 
-function runSup(taskObj) {
+let readinessFixture = null;
+
+function healthyReadinessEndpoint() {
+  if (readinessFixture) return readinessFixture.url;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'es-gensup-readiness-'));
+  const readyPath = path.join(dir, 'port');
+  const serverSource = [
+    "const fs = require('node:fs');",
+    "const http = require('node:http');",
+    "const readyPath = process.argv[1];",
+    "const server = http.createServer((_req, res) => { res.writeHead(200); res.end('ready'); });",
+    "server.listen(0, '127.0.0.1', () => fs.writeFileSync(readyPath, String(server.address().port)));",
+  ].join('\n');
+  const child = spawn(process.execPath, ['-e', serverSource, readyPath], {
+    stdio: 'ignore',
+  });
+  child.unref();
+  const deadline = Date.now() + 5000;
+  while (!fs.existsSync(readyPath) && Date.now() < deadline) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+  }
+  if (!fs.existsSync(readyPath)) {
+    child.kill();
+    throw new Error('readiness fixture failed to start');
+  }
+  readinessFixture = { child, url: `http://127.0.0.1:${fs.readFileSync(readyPath, 'utf8').trim()}` };
+  process.once('exit', () => child.kill());
+  return readinessFixture.url;
+}
+
+function runSup(taskObj, options = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'es-gensup-'));
   const taskPath = path.join(dir, 'task.json');
   const outPath = path.join(dir, 'status.json');
   fs.writeFileSync(taskPath, JSON.stringify(taskObj, null, 2));
   let code = -1, status = null;
   try {
-    const stdout = execFileSync('node', [SUP, '--task', taskPath, '--out', outPath],
-      { cwd: REPO, encoding: 'utf8', timeout: 120000 });
+    const endpoint = options.endpoint || healthyReadinessEndpoint();
+    const stdout = execFileSync('node', [SUP, '--task', taskPath, '--out', outPath], {
+      cwd: REPO,
+      encoding: 'utf8',
+      timeout: 120000,
+      env: { ...process.env, AIGEN_COMFYUI_URL: endpoint, OLLAMA_PRESTO_URL: endpoint },
+    });
     status = JSON.parse(stdout); code = 0;
   } catch (e) {
     code = e.status === undefined ? -1 : e.status;
@@ -89,6 +124,15 @@ test('A18-positive-path-prefix: valid task resolves route + healthy endpoint + p
   assert.equal(s.readiness_probe.reachable, true);
   assert.ok(s.provenance.source_commit);
   assert.equal(s.provenance.policy_source, 'config/media-routing.json');
+});
+
+test('A18-negative-path: unreachable endpoint fails closed under Production Operations', () => {
+  const r = runSup(baseTask(), { endpoint: 'http://127.0.0.1:1' });
+  assert.equal(r.code, 1);
+  assert.equal(r.status.state, 'RESOURCE_UNAVAILABLE');
+  assert.equal(r.status.route, null);
+  assert.equal(r.status.readiness_probe.reachable, false);
+  assert.equal(r.status.handoff.next_owner, 'production_operations');
 });
 
 test('A19: unknown lane -> NO_ELIGIBLE_ROUTE, exit 1, Ops owns remediation', () => {
