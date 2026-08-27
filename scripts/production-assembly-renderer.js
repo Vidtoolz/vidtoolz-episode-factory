@@ -28,6 +28,9 @@ const BOUNDARY_CLASSES = new Set(['HUMAN_CONFIRMED', 'CAPTURE_EVENT_BOUND']);
 const MUSIC_POLICIES = new Set(['FADE_EARLY', 'LOOP_WITH_CROSSFADE', 'FULL_PROGRAMME', 'NONE']);
 const INSERT_NECESSITY = new Set(['ESSENTIAL', 'USEFUL', 'OPTIONAL']);
 const PERFORMANCE_ROLES = new Set(['HUMAN_DRAFT_PERFORMANCE', 'FINAL_HUMAN_PERFORMANCE']);
+const DRAFT_CLASSES = new Set(['VISUAL_DRAFT', 'PRESENTER_VALIDATION_DRAFT', 'FINAL_PERFORMANCE_ASSEMBLY']);
+const NARRATION_SOURCE_CLASSES = new Set(['SYNTHETIC_DRAFT_NARRATION', 'HUMAN_DRAFT_NARRATION']);
+const NARRATION_ALIGNMENT_SCHEMA = 'vidtoolz.productionAssemblyNarrationAlignment.v1';
 const LOCK_SCHEMA = 'vidtoolz.productionAssemblyRenderLock.v1';
 const STATE_SCHEMA = 'vidtoolz.productionAssemblyRenderState.v1';
 
@@ -102,6 +105,18 @@ function requireOutputPath(outputRoot, relativePath) {
 function assertSha(value, label) { if (!SHA_RE.test(value || '')) fail('SHA256_INVALID', label); }
 function assertExactKeys(value, allowed, label) {
   for (const key of Object.keys(value || {})) if (!allowed.includes(key)) fail('UNKNOWN_FIELD', `${label}.${key}`);
+}
+function narrationAlignmentDigest(value) {
+  const copy = { ...value }; delete copy.alignment_digest_sha256;
+  return digest(copy);
+}
+function visiblePresenterRequested(spec) {
+  return (spec.composition?.beats || []).some((beat) => (beat.layers || []).some((layer) => layer.type === 'PRESENTER' && layer.visible !== false));
+}
+function resolveDraftClass(spec, packet) {
+  if (spec.draft_class === undefined && packet.draft_class === undefined) return spec.performance_role === 'FINAL_HUMAN_PERFORMANCE' ? 'FINAL_PERFORMANCE_ASSEMBLY' : 'PRESENTER_VALIDATION_DRAFT'; // historical v1 compatibility
+  if (!DRAFT_CLASSES.has(spec.draft_class) || spec.draft_class !== packet.draft_class) fail('DRAFT_CLASS_MISMATCH', 'spec and release packet require the same supported draft class');
+  return spec.draft_class;
 }
 function ffmpegVersion() { return execFile('ffmpeg', ['-version']).split('\n')[0].trim(); }
 function ffprobeVersion() { return execFile('ffprobe', ['-version']).split('\n')[0].trim(); }
@@ -216,48 +231,86 @@ function activeMusicDecision(music) {
 
 async function validateInputs(spec, options = {}) {
   if (spec?.schema !== SPEC_SCHEMA) fail('RENDER_SPEC_SCHEMA_INVALID', 'exact render spec schema required');
-  if (!spec.run_id || !PERFORMANCE_ROLES.has(spec.performance_role)) fail('PERFORMANCE_ROLE_INVALID', 'supported exact human performance role required');
+  if (!spec.run_id) fail('RUN_ID_REQUIRED', 'run identity required');
   if (spec.output_class !== 'PRODUCTION_ASSEMBLY_CANDIDATE' || spec.evidence_class !== 'PROPOSED_PRODUCTION_ASSEMBLY_TECHNICAL_EVIDENCE' || spec.gate_authority !== false) fail('OUTPUT_AUTHORITY_INVALID', 'non-gating Production candidate semantics required');
   if (!Array.isArray(spec.input_roots) || spec.input_roots.length === 0) fail('INPUT_ROOTS_REQUIRED', 'explicit input roots required');
   const packetPath = requireInputPath(spec.release_packet?.path, spec.input_roots, 'release packet');
-  const reviewPath = requireInputPath(spec.human_review?.path, spec.input_roots, 'human review');
   assertSha(spec.release_packet?.sha256, 'release packet sha256');
-  assertSha(spec.human_review?.file_sha256, 'human review file sha256');
   const packetHash = await (options.hashFile || sha256File)(packetPath);
-  const reviewFileHash = await (options.hashFile || sha256File)(reviewPath);
   if (packetHash !== spec.release_packet.sha256) fail('RELEASE_PACKET_DRIFT', 'release packet bytes changed');
-  if (reviewFileHash !== spec.human_review.file_sha256) fail('HUMAN_REVIEW_FILE_DRIFT', 'human review bytes changed');
   const packet = readJson(packetPath, 'RELEASE_PACKET_JSON_INVALID');
-  const review = readJson(reviewPath, 'HUMAN_REVIEW_JSON_INVALID');
   if (packet.schema !== PACKET_SCHEMA || packet.artifact_type !== 'production-assembly-release-packet') fail('RELEASE_PACKET_SCHEMA_INVALID', 'release packet schema mismatch');
-  if (packet.run_id !== spec.run_id || review.run_id !== spec.run_id) fail('RUN_DRIFT', 'run identity mismatch');
+  if (packet.run_id !== spec.run_id) fail('RUN_DRIFT', 'run identity mismatch');
   if (packet.ready !== true || (packet.blockers || []).length !== 0) fail('ASSEMBLY_NOT_ELIGIBLE', 'release packet is not ASSEMBLY_ELIGIBLE');
   if (packet.output_class !== spec.output_class || packet.evidence_class !== spec.evidence_class || packet.gate_authority !== false) fail('PACKET_OUTPUT_AUTHORITY_INVALID', 'release packet claims wrong authority');
-  if (review.schema !== boundaryReview.SUCCESSOR_SCHEMA || boundaryReview.successorDigest(review) !== review.binding_digest_sha256 || packet.human_review_binding_sha256 !== review.binding_digest_sha256) fail('HUMAN_REVIEW_DRIFT', 'exact valid V2 human review required');
-  if (review.verdict !== 'KEEP_ALL' || review.reviewer?.type !== 'HUMAN') fail('HUMAN_REVIEW_AUTHORITY_INVALID', 'human KEEP_ALL successor required');
-  if (!sameStory(packet.story, review.story) || !samePlan(packet.visual_plan, review.visual_plan)) fail('STORY_PLAN_DRIFT', 'packet and human review lineage differ');
   if (!sameStory(packet.story, spec.story) || !samePlan(packet.visual_plan, spec.visual_plan)) fail('SPEC_STORY_PLAN_DRIFT', 'render spec lineage differs');
-  const sources = packet.presenter_sources || [];
-  if (sources.length === 0 || sources.length !== review.segments?.length) fail('SECTION_COVERAGE_INCOMPLETE', 'every reviewed segment must appear exactly once');
-  const declaredOrder = packet.section_story_order || sources.map((source) => source.story_order);
-  if (declaredOrder.length !== sources.length || new Set(declaredOrder).size !== declaredOrder.length) fail('STORY_ORDER_INVALID', 'explicit unique Story order required');
-  const sorted = sources.slice().sort((a, b) => a.story_order - b.story_order);
-  if (canonicalize(sources.map((source) => source.story_order)) !== canonicalize(declaredOrder) || canonicalize(sorted.map((source) => source.story_order)) !== canonicalize(declaredOrder)) fail('STORY_ORDER_INVALID', 'sources must already be in explicit Story order');
-  const reviewSegments = new Map(review.segments.map((segment) => [segment.segment_id, segment]));
-  const sectionIds = new Set(); const masterPaths = new Map(); const masterInfo = new Map();
-  for (const source of sources) {
-    const reviewed = reviewSegments.get(source.selected_segment_id);
-    if (!reviewed || reviewed.section_id !== source.section_id || reviewed.master_id !== source.master_id || reviewed.master_sha256 !== source.master_media_sha256 || reviewed.in_ms !== source.in_ms || reviewed.out_ms !== source.out_ms || reviewed.duration_ms !== source.duration_ms) fail('SEGMENT_REVIEW_DRIFT', source.section_id);
-    if (!BOUNDARY_CLASSES.has(reviewed.boundary_class)) fail('PROVISIONAL_BOUNDARY_FORBIDDEN', source.section_id);
-    if (sectionIds.has(source.section_id)) fail('DUPLICATE_SECTION', source.section_id); sectionIds.add(source.section_id);
-    if (!Number.isInteger(source.story_order) || !Number.isInteger(source.in_ms) || !Number.isInteger(source.out_ms) || !Number.isInteger(source.duration_ms) || source.in_ms < 0 || source.out_ms <= source.in_ms || source.duration_ms !== source.out_ms - source.in_ms) fail('SEGMENT_INTERVAL_INVALID', source.section_id);
-    if (!sameStory(source.story, packet.story) || !samePlan(source.visual_plan, packet.visual_plan)) fail('SEGMENT_LINEAGE_DRIFT', source.section_id);
-    if (source.derivative_is_authority !== false || !['PROOF_CAPTURE', 'PRODUCTION_CAPTURE'].includes(source.quality_class) || (spec.performance_role === 'FINAL_HUMAN_PERFORMANCE' && source.quality_class !== 'PRODUCTION_CAPTURE')) fail('HUMAN_SOURCE_SEMANTICS_INVALID', source.section_id);
-    if (FORBIDDEN_RE.test(canonicalize(source))) fail('FORBIDDEN_SOURCE_REFERENCE', source.section_id);
-    assertSha(source.master_media_sha256, `master ${source.master_id}`);
-    const sourcePath = requireInputPath(source.master_media_path, spec.input_roots, `master ${source.master_id}`);
-    if (masterPaths.has(source.master_id) && masterPaths.get(source.master_id) !== sourcePath) fail('MASTER_PATH_AMBIGUOUS', source.master_id);
-    masterPaths.set(source.master_id, sourcePath);
+  const draftClass = resolveDraftClass(spec, packet);
+  const presenterRequested = visiblePresenterRequested(spec);
+  if (draftClass === 'VISUAL_DRAFT' && presenterRequested) fail('VISUAL_DRAFT_PRESENTER_FORBIDDEN', 'VISUAL_DRAFT cannot request presenter pixels');
+  if (draftClass === 'VISUAL_DRAFT' && !spec.composition) fail('VISUAL_DRAFT_COMPOSITION_REQUIRED', 'VISUAL_DRAFT requires the canonical beat composition engine');
+  if (draftClass === 'FINAL_PERFORMANCE_ASSEMBLY' && spec.performance_role !== 'FINAL_HUMAN_PERFORMANCE') fail('FINAL_PERFORMANCE_AUTHORITY_REQUIRED', 'final mode requires FINAL_HUMAN_PERFORMANCE');
+  if (draftClass !== 'FINAL_PERFORMANCE_ASSEMBLY' && spec.performance_role === 'FINAL_HUMAN_PERFORMANCE') fail('DRAFT_CLASS_PERFORMANCE_MISMATCH', draftClass);
+  const requiresHumanPerformance = draftClass === 'FINAL_PERFORMANCE_ASSEMBLY' || presenterRequested || (draftClass === 'PRESENTER_VALIDATION_DRAFT' && !spec.narration);
+  if (!requiresHumanPerformance && !spec.composition) fail('VISUAL_DRAFT_COMPOSITION_REQUIRED', 'presenter-independent modes require the canonical beat composition engine');
+  if (requiresHumanPerformance && !PERFORMANCE_ROLES.has(spec.performance_role)) fail('PERFORMANCE_ROLE_INVALID', 'presenter/final path requires an exact human performance role');
+  if (!requiresHumanPerformance && spec.performance_role != null) fail('DRAFT_CLASS_PERFORMANCE_MISMATCH', 'presenter-independent narration must not claim a human performance role');
+  let reviewPath = null; let reviewFileHash = null; let review = null; let narration = null;
+  let sources = []; const masterPaths = new Map(); const masterInfo = new Map(); const cropByMaster = new Map();
+  if (requiresHumanPerformance) {
+    reviewPath = requireInputPath(spec.human_review?.path, spec.input_roots, 'human review');
+    assertSha(spec.human_review?.file_sha256, 'human review file sha256');
+    reviewFileHash = await (options.hashFile || sha256File)(reviewPath);
+    if (reviewFileHash !== spec.human_review.file_sha256) fail('HUMAN_REVIEW_FILE_DRIFT', 'human review bytes changed');
+    review = readJson(reviewPath, 'HUMAN_REVIEW_JSON_INVALID');
+    if (review.run_id !== spec.run_id) fail('RUN_DRIFT', 'human review run identity mismatch');
+    if (review.schema !== boundaryReview.SUCCESSOR_SCHEMA || boundaryReview.successorDigest(review) !== review.binding_digest_sha256 || packet.human_review_binding_sha256 !== review.binding_digest_sha256) fail('HUMAN_REVIEW_DRIFT', 'exact valid V2 human review required');
+    if (review.verdict !== 'KEEP_ALL' || review.reviewer?.type !== 'HUMAN') fail('HUMAN_REVIEW_AUTHORITY_INVALID', 'human KEEP_ALL successor required');
+    if (!sameStory(packet.story, review.story) || !samePlan(packet.visual_plan, review.visual_plan)) fail('STORY_PLAN_DRIFT', 'packet and human review lineage differ');
+    sources = packet.presenter_sources || [];
+    if (sources.length === 0 || sources.length !== review.segments?.length) fail('SECTION_COVERAGE_INCOMPLETE', 'every reviewed segment must appear exactly once');
+    const declaredOrder = packet.section_story_order || sources.map((source) => source.story_order);
+    if (declaredOrder.length !== sources.length || new Set(declaredOrder).size !== declaredOrder.length) fail('STORY_ORDER_INVALID', 'explicit unique Story order required');
+    const sorted = sources.slice().sort((a, b) => a.story_order - b.story_order);
+    if (canonicalize(sources.map((source) => source.story_order)) !== canonicalize(declaredOrder) || canonicalize(sorted.map((source) => source.story_order)) !== canonicalize(declaredOrder)) fail('STORY_ORDER_INVALID', 'sources must already be in explicit Story order');
+    const reviewSegments = new Map(review.segments.map((segment) => [segment.segment_id, segment])); const sectionIds = new Set();
+    for (const source of sources) {
+      const reviewed = reviewSegments.get(source.selected_segment_id);
+      if (!reviewed || reviewed.section_id !== source.section_id || reviewed.master_id !== source.master_id || reviewed.master_sha256 !== source.master_media_sha256 || reviewed.in_ms !== source.in_ms || reviewed.out_ms !== source.out_ms || reviewed.duration_ms !== source.duration_ms) fail('SEGMENT_REVIEW_DRIFT', source.section_id);
+      if (!BOUNDARY_CLASSES.has(reviewed.boundary_class)) fail('PROVISIONAL_BOUNDARY_FORBIDDEN', source.section_id);
+      if (sectionIds.has(source.section_id)) fail('DUPLICATE_SECTION', source.section_id); sectionIds.add(source.section_id);
+      if (!Number.isInteger(source.story_order) || !Number.isInteger(source.in_ms) || !Number.isInteger(source.out_ms) || !Number.isInteger(source.duration_ms) || source.in_ms < 0 || source.out_ms <= source.in_ms || source.duration_ms !== source.out_ms - source.in_ms) fail('SEGMENT_INTERVAL_INVALID', source.section_id);
+      if (!sameStory(source.story, packet.story) || !samePlan(source.visual_plan, packet.visual_plan)) fail('SEGMENT_LINEAGE_DRIFT', source.section_id);
+      if (source.derivative_is_authority !== false || !['PROOF_CAPTURE', 'PRODUCTION_CAPTURE'].includes(source.quality_class) || (draftClass === 'FINAL_PERFORMANCE_ASSEMBLY' && source.quality_class !== 'PRODUCTION_CAPTURE')) fail('HUMAN_SOURCE_SEMANTICS_INVALID', source.section_id);
+      if (FORBIDDEN_RE.test(canonicalize(source))) fail('FORBIDDEN_SOURCE_REFERENCE', source.section_id);
+      assertSha(source.master_media_sha256, `master ${source.master_id}`);
+      const sourcePath = requireInputPath(source.master_media_path, spec.input_roots, `master ${source.master_id}`);
+      if (masterPaths.has(source.master_id) && masterPaths.get(source.master_id) !== sourcePath) fail('MASTER_PATH_AMBIGUOUS', source.master_id);
+      masterPaths.set(source.master_id, sourcePath);
+    }
+  } else {
+    if (spec.human_review != null || packet.human_review_binding_sha256 != null || (packet.presenter_sources || []).length !== 0 || (spec.crops || []).length !== 0) fail('VISUAL_DRAFT_PRESENTER_PLACEHOLDER_FORBIDDEN', 'presenter authority/crops must be absent when no presenter is requested');
+    if (!spec.narration || canonicalize(spec.narration) !== canonicalize(packet.narration)) fail('NARRATION_PACKET_DRIFT', 'exact narration binding required in spec and release packet');
+    if (!NARRATION_SOURCE_CLASSES.has(spec.narration.source_class)) fail('NARRATION_SOURCE_CLASS_INVALID', String(spec.narration.source_class));
+    assertSha(spec.narration.sha256, 'narration sha256'); assertSha(spec.narration.alignment?.sha256, 'narration alignment sha256');
+    const narrationPath = requireInputPath(spec.narration.path, spec.input_roots, 'narration');
+    const alignmentPath = requireInputPath(spec.narration.alignment.path, spec.input_roots, 'narration alignment');
+    const hashFile = options.hashFile || sha256File;
+    const narrationSha = await hashFile(narrationPath); const alignmentSha = await hashFile(alignmentPath);
+    if (narrationSha !== spec.narration.sha256) fail('NARRATION_SHA_DRIFT', 'narration bytes changed');
+    if (alignmentSha !== spec.narration.alignment.sha256) fail('NARRATION_ALIGNMENT_DRIFT', 'alignment bytes changed');
+    const alignment = readJson(alignmentPath, 'NARRATION_ALIGNMENT_JSON_INVALID');
+    if (alignment.schema !== NARRATION_ALIGNMENT_SCHEMA || alignment.run_id !== spec.run_id || alignment.narration_sha256 !== narrationSha || alignment.source_class !== spec.narration.source_class || !sameStory(alignment.story, packet.story) || narrationAlignmentDigest(alignment) !== alignment.alignment_digest_sha256) fail('NARRATION_ALIGNMENT_INVALID', 'alignment authority does not bind run, Story, narration, or digest');
+    const media = (options.probeMedia || probeMedia)(narrationPath);
+    if (!media.audio) fail('NARRATION_AUDIO_REQUIRED', 'narration source has no audio');
+    if (!Array.isArray(alignment.sections) || alignment.sections.length === 0) fail('NARRATION_ALIGNMENT_INVALID', 'script-derived narration sections required');
+    const sectionIds = new Set(); let expectedOrder = 1; let previousOut = 0;
+    sources = alignment.sections.map((section) => {
+      if (!section.section_id || sectionIds.has(section.section_id) || section.story_order !== expectedOrder || !Number.isInteger(section.in_ms) || !Number.isInteger(section.out_ms) || !Number.isInteger(section.duration_ms) || section.in_ms !== previousOut || section.out_ms <= section.in_ms || section.duration_ms !== section.out_ms - section.in_ms || !Array.isArray(section.script_beat_ids) || section.script_beat_ids.length === 0) fail('NARRATION_ALIGNMENT_INVALID', String(section.section_id));
+      sectionIds.add(section.section_id); expectedOrder += 1; previousOut = section.out_ms;
+      return { ...section, quality_class: spec.narration.source_class };
+    });
+    if (previousOut > media.duration_ms + (spec.source_duration_tolerance_ms || 250)) fail('NARRATION_OUT_OF_RANGE', `${previousOut} > ${media.duration_ms}`);
+    narration = { source_class: spec.narration.source_class, path: narrationPath, sha256: narrationSha, media, alignment: { path: alignmentPath, sha256: alignmentSha, schema: alignment.schema, alignment_digest_sha256: alignment.alignment_digest_sha256 } };
   }
   if (!Array.isArray(spec.forbidden_media_sha256)) fail('FORBIDDEN_MEDIA_REGISTRY_REQUIRED', 'explicit proxy/Piper hash registry required');
   for (const [masterId, sourcePath] of masterPaths) {
@@ -270,14 +323,13 @@ async function validateInputs(spec, options = {}) {
     for (const item of sources.filter((entry) => entry.master_id === masterId)) if (item.out_ms > media.duration_ms + (spec.source_duration_tolerance_ms || 250)) fail('SEGMENT_OUT_OF_RANGE', item.section_id);
     masterInfo.set(masterId, { path: sourcePath, sha256: actual, media });
   }
-  const cropByMaster = new Map();
   for (const crop of spec.crops || []) {
     if (!masterInfo.has(crop.master_id) || cropByMaster.has(crop.master_id)) fail('CROP_POLICY_INVALID', String(crop.master_id));
     const media = masterInfo.get(crop.master_id).media;
     if (!Number.isInteger(crop.x) || !Number.isInteger(crop.y) || !Number.isInteger(crop.width) || !Number.isInteger(crop.height) || crop.x < 0 || crop.y < 0 || crop.width <= 0 || crop.height <= 0 || crop.x + crop.width > media.video.width || crop.y + crop.height > media.video.height) fail('CROP_OUT_OF_BOUNDS', crop.master_id);
     cropByMaster.set(crop.master_id, crop);
   }
-  if (cropByMaster.size !== masterInfo.size) fail('CROP_POLICY_INCOMPLETE', 'one exact crop per master required');
+  if (requiresHumanPerformance && cropByMaster.size !== masterInfo.size) fail('CROP_POLICY_INCOMPLETE', 'one exact crop per master required');
   const replacedInsertIds = new Set((spec.composition?.beats || []).flatMap((beat) => (beat.layers || []).flatMap((layer) => layer.replaces_insert_ids || [])));
   const packetInserts = new Map((packet.insert_policy || []).map((item) => [item.shot_id, item]));
   const inserts = [];
@@ -321,7 +373,7 @@ async function validateInputs(spec, options = {}) {
   }
   const output = requireOutputPath(spec.output_root, spec.output.relative_path);
   if (spec.output.width !== 1080 || spec.output.height !== 1920 || spec.output.fps !== 30 || spec.output.video_codec !== 'libx264' || spec.output.audio_codec !== 'aac' || spec.output.audio_sample_rate !== 48000 || spec.output.audio_channels !== 2) fail('OUTPUT_FORMAT_INVALID', 'canonical 1080x1920 CFR30 H.264/AAC stereo required');
-  const partial = { packetPath, reviewPath, packetHash, reviewFileHash, packet, review, sources, masterInfo, cropByMaster, inserts, music, musicDecision, output };
+  const partial = { packetPath, reviewPath, packetHash, reviewFileHash, packet, review, narration, draftClass, presenterRequested, requiresHumanPerformance, sources, masterInfo, cropByMaster, inserts, music, musicDecision, output };
   const timeline = buildTimeline(partial);
   let composition = null;
   if (spec.composition) {
@@ -337,6 +389,7 @@ async function validateInputs(spec, options = {}) {
     const approved = readJson(visualPlanPath, 'COMPOSITION_VISUAL_PLAN_INVALID');
     if (approved.plan_id !== spec.composition.approved_visual_plan.plan_id || (spec.composition.approved_visual_plan.digest_sha256 && approved.digest_sha256 !== spec.composition.approved_visual_plan.digest_sha256)) fail('COMPOSITION_VISUAL_PLAN_DRIFT', 'approved visual-plan identity mismatch');
     const assetManifest = readJson(assetManifestPath, 'COMPOSITION_ASSET_MANIFEST_INVALID');
+    if (draftClass === 'VISUAL_DRAFT' && (assetManifest.assets || []).some((asset) => asset.role === 'PRESENTER_ONLY')) fail('VISUAL_DRAFT_PRESENTER_PLACEHOLDER_FORBIDDEN', 'VISUAL_DRAFT manifest cannot carry presenter placeholders');
     const alphaEvidence = new Map();
     for (const asset of assetManifest.assets || []) if (asset.status === 'ACCEPTED') {
       asset.path = requireInputPath(asset.path, spec.input_roots, `composition asset ${asset.asset_id}`);
@@ -358,12 +411,25 @@ async function validateInputs(spec, options = {}) {
 
 function buildTimeline(validated) {
   let cursor = 0;
+  if (!validated.requiresHumanPerformance) return validated.sources.map((source) => {
+    const entry = {
+      story_order: source.story_order, section_id: source.section_id,
+      in_ms: source.in_ms, out_ms: source.out_ms, duration_ms: source.duration_ms,
+      programme_in_ms: cursor, programme_out_ms: cursor + source.duration_ms,
+      audio_path: validated.narration.path, audio_sha256: validated.narration.sha256,
+      boundary_class: 'NARRATION_ALIGNED', quality_class: source.quality_class,
+      script_beat_ids: source.script_beat_ids, presenter_authority: 'NOT_APPLICABLE',
+    };
+    cursor += source.duration_ms;
+    return entry;
+  });
   return validated.sources.map((source) => {
     const crop = validated.cropByMaster.get(source.master_id);
     const entry = {
       story_order: source.story_order, section_id: source.section_id, selected_segment_id: source.selected_segment_id,
       master_id: source.master_id, master_path: validated.masterInfo.get(source.master_id).path,
       master_sha256: source.master_media_sha256, in_ms: source.in_ms, out_ms: source.out_ms,
+      audio_path: validated.masterInfo.get(source.master_id).path, audio_sha256: source.master_media_sha256,
       duration_ms: source.duration_ms, programme_in_ms: cursor, programme_out_ms: cursor + source.duration_ms,
       crop: { x: crop.x, y: crop.y, width: crop.width, height: crop.height },
       boundary_class: validated.review.segments.find((segment) => segment.segment_id === source.selected_segment_id).boundary_class,
@@ -383,10 +449,14 @@ function buildPlan(spec, validated) {
     return { ...item, programme_in_ms: item.decision === 'RENDER' ? section.programme_in_ms + item.start_offset_ms : null, programme_out_ms: item.decision === 'RENDER' ? section.programme_in_ms + item.end_offset_ms : null };
   });
   const semantic = {
-    schema: PLAN_SCHEMA, run_id: spec.run_id, performance_role: spec.performance_role,
+    schema: PLAN_SCHEMA, run_id: spec.run_id, draft_class: validated.draftClass, performance_role: spec.performance_role || null,
+    narration_source_class: validated.narration?.source_class || (spec.performance_role === 'FINAL_HUMAN_PERFORMANCE' ? 'FINAL_HUMAN_PERFORMANCE_AUDIO' : 'HUMAN_DRAFT_NARRATION'),
+    presenter_visual_present: validated.presenterRequested,
+    presenter_authority: validated.presenterRequested || validated.draftClass === 'FINAL_PERFORMANCE_ASSEMBLY' ? 'BOUND_HUMAN_PERFORMANCE' : 'NOT_APPLICABLE',
     output_class: spec.output_class, evidence_class: spec.evidence_class, gate_authority: false,
     release_packet: { path: validated.packetPath, sha256: validated.packetHash },
-    human_review: { path: validated.reviewPath, file_sha256: validated.reviewFileHash, binding_digest_sha256: validated.review.binding_digest_sha256 },
+    human_review: validated.review ? { path: validated.reviewPath, file_sha256: validated.reviewFileHash, binding_digest_sha256: validated.review.binding_digest_sha256 } : null,
+    narration: validated.narration ? { ...validated.narration, media: undefined } : null,
     story: validated.packet.story, visual_plan: validated.packet.visual_plan,
     timeline, inserts, composition: validated.composition, music: validated.music ? { ...validated.music, media: undefined } : { ...spec.music, active_decision: validated.musicDecision },
     output: spec.output, programme_duration_ms: cursor,
@@ -399,7 +469,7 @@ function buildPlan(spec, validated) {
 
 function buildFfmpegCommand(plan, stagedOutput) {
   const command = ['-nostdin', '-hide_banner', '-y'];
-  for (const segment of plan.timeline) command.push('-ss', (segment.in_ms / 1000).toFixed(6), '-t', (segment.duration_ms / 1000).toFixed(6), '-i', segment.master_path);
+  for (const segment of plan.timeline) command.push('-ss', (segment.in_ms / 1000).toFixed(6), '-t', (segment.duration_ms / 1000).toFixed(6), '-i', segment.audio_path || segment.master_path);
   let musicIndex = null;
   if (plan.music.policy !== 'NONE') { musicIndex = plan.timeline.length; command.push('-i', plan.music.path); }
   const renderedInserts = plan.inserts.filter((item) => item.decision === 'RENDER');
@@ -535,12 +605,13 @@ async function renderFromSpec(specPath, options = {}) {
     const outputSha = await hashFile(candidatePath);
     const semanticManifest = {
       schema: MANIFEST_SCHEMA, state: 'QC_PASSED_PENDING_FINALIZATION', run_id: spec.run_id,
-      plan_digest_sha256: plan.plan_digest_sha256, output_class: spec.output_class, performance_role: spec.performance_role,
+      plan_digest_sha256: plan.plan_digest_sha256, output_class: spec.output_class, draft_class: plan.draft_class, performance_role: spec.performance_role || null,
+      narration_source_class: plan.narration_source_class, presenter_visual_present: plan.presenter_visual_present, presenter_authority: plan.presenter_authority,
       source_capture_quality_classes: [...new Set(plan.timeline.map((item) => item.quality_class))],
-      source_capture_cadence: [...new Map(plan.timeline.map((item) => [item.master_id, { master_id: item.master_id, average_frame_rate: item.source_capture_cadence }])).values()],
+      source_capture_cadence: [...new Map(plan.timeline.filter((item) => item.master_id).map((item) => [item.master_id, { master_id: item.master_id, average_frame_rate: item.source_capture_cadence }])).values()],
       output_cadence: `${spec.output.fps}/1`, output_sha256: outputSha, output_size_bytes: fs.statSync(candidatePath).size,
       programme_duration_ms: plan.programme_duration_ms, story: plan.story, visual_plan: plan.visual_plan,
-      human_review_binding_sha256: plan.human_review.binding_digest_sha256, timeline: plan.timeline, inserts: plan.inserts, composition: plan.composition,
+      human_review_binding_sha256: plan.human_review?.binding_digest_sha256 || null, narration: plan.narration, timeline: plan.timeline, inserts: plan.inserts, composition: plan.composition,
       music: plan.music, ffmpeg_invocation: buildFfmpegCommand(plan, '<STAGING>'), toolchain: plan.toolchain, qc,
     };
     const manifest = { ...semanticManifest, semantic_digest_sha256: digest(semanticManifest) };
@@ -548,9 +619,16 @@ async function renderFromSpec(specPath, options = {}) {
       schema: EVIDENCE_SCHEMA, evidence_class: spec.evidence_class, gate_authority: false,
       producer: spec.producer, attester: { type: 'MACHINE', id: 'production-assembly-renderer' },
       plan_digest_sha256: plan.plan_digest_sha256, manifest_digest_sha256: manifest.semantic_digest_sha256,
-      output_sha256: outputSha, performance_role: spec.performance_role, qc, toolchain: plan.toolchain,
-      positive_claims: ['exact selected HUMAN intervals consumed in explicit Story order', 'output bytes passed deterministic stream, duration, coverage and full-decode QC', 'output is bound to declared Story, VP2, V2 human review, source hashes, crops, inserts and active human music policy', ...(plan.composition ? ['frozen beat composition, explicit primary ownership, z-order, geometry and exact asset hashes were executed'] : [])],
-      negative_claims: ['not final creative approval', 'not final performance approval', 'not final mix approval', 'not Gate 9 authority', 'not Gate 10 authority', 'not publish-ready'],
+      output_sha256: outputSha, draft_class: plan.draft_class, narration_source_class: plan.narration_source_class,
+      presenter_visual_present: plan.presenter_visual_present, presenter_authority: plan.presenter_authority,
+      performance_role: spec.performance_role || null, qc, toolchain: plan.toolchain,
+      positive_claims: [
+        plan.human_review ? 'exact selected HUMAN intervals consumed in explicit Story order' : 'exact script-derived narration alignment consumed in explicit Story order',
+        'output bytes passed deterministic stream, duration, coverage and full-decode QC',
+        plan.human_review ? 'output is bound to declared Story, visual plan, human review, source hashes, crops, inserts and active human music policy' : 'output is bound to declared Story, visual plan, narration bytes/alignment, visual assets, inserts and active human music policy',
+        ...(plan.composition ? ['frozen beat composition, explicit primary ownership, z-order, geometry and exact asset hashes were executed'] : []),
+      ],
+      negative_claims: ['not final creative approval', 'not final performance approval', ...(plan.presenter_visual_present ? [] : ['does not validate presenter performance, keying, camera framing, or presenter capture']), 'not final mix approval', 'not Gate 9 authority', 'not Gate 10 authority', 'not publish-ready'],
     };
     const evidence = { ...evidenceCore, evidence_digest_sha256: digest(evidenceCore) };
     if (options.failAt === 'manifest') fail('INJECTED_MANIFEST_FAILURE', 'manifest phase');
@@ -624,7 +702,7 @@ if (require.main === module) {
 }
 
 module.exports = {
-  SPEC_SCHEMA, PACKET_SCHEMA, PLAN_SCHEMA, MANIFEST_SCHEMA, EVIDENCE_SCHEMA, COMPLETION_SCHEMA, LOCK_SCHEMA,
-  canonicalize, digest, sha256File, probeMedia, ffmpegDecoders, inspectAlpha, validatePresenterAlphaAsset, musicDecisionDigest, activeMusicDecision, processStartIdentity,
+  SPEC_SCHEMA, PACKET_SCHEMA, PLAN_SCHEMA, MANIFEST_SCHEMA, EVIDENCE_SCHEMA, COMPLETION_SCHEMA, LOCK_SCHEMA, NARRATION_ALIGNMENT_SCHEMA,
+  canonicalize, digest, narrationAlignmentDigest, sha256File, probeMedia, ffmpegDecoders, inspectAlpha, validatePresenterAlphaAsset, musicDecisionDigest, activeMusicDecision, processStartIdentity,
   lockHolderState, acquireRenderLock, releaseRenderLock, validateInputs, buildTimeline, buildPlan, buildFfmpegCommand, qcCandidate, renderFromSpec, renderPreviewFromSpec,
 };

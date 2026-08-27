@@ -211,6 +211,7 @@ function buildClaudeReleasePacket(editorHandoff, successorReview, policy = {}) {
   if (policy.music_policy?.state === 'MUSIC_DURATION_POLICY_HUMAN_DECISION_REQUIRED') blockers.push({ code: 'MUSIC_DURATION_POLICY_HUMAN_DECISION_REQUIRED' });
   return {
     schema: 'vidtoolz.productionAssemblyReleasePacket.v1', artifact_type: 'production-assembly-release-packet',
+    draft_class: policy.draft_class || 'PRESENTER_VALIDATION_DRAFT',
     run_id: successorReview?.run_id, story: successorReview?.story, visual_plan: successorReview?.visual_plan,
     presenter_sources: editorHandoff?.sources || [], human_review_binding_sha256: successorReview?.binding_digest_sha256,
     insert_policy: structuredClone(policy.insert_policy || []), crop_policy: structuredClone(policy.crop_policy || []), music_policy: structuredClone(policy.music_policy || null),
@@ -220,9 +221,24 @@ function buildClaudeReleasePacket(editorHandoff, successorReview, policy = {}) {
   };
 }
 
+function buildVisualDraftReleasePacket(authority, policy = {}) {
+  const blockers = [];
+  if (!authority?.run_id || !authority.story || !authority.visual_plan) blockers.push({ code: 'VISUAL_DRAFT_LINEAGE_REQUIRED' });
+  if (!authority?.narration || !['SYNTHETIC_DRAFT_NARRATION', 'HUMAN_DRAFT_NARRATION'].includes(authority.narration.source_class) || !/^[a-f0-9]{64}$/.test(authority.narration.sha256 || '') || !/^[a-f0-9]{64}$/.test(authority.narration.alignment?.sha256 || '')) blockers.push({ code: 'NARRATION_BINDING_REQUIRED' });
+  return {
+    schema: 'vidtoolz.productionAssemblyReleasePacket.v1', artifact_type: 'production-assembly-release-packet',
+    draft_class: 'VISUAL_DRAFT', run_id: authority?.run_id, story: structuredClone(authority?.story || null), visual_plan: structuredClone(authority?.visual_plan || null),
+    narration: structuredClone(authority?.narration || null), presenter_sources: [], human_review_binding_sha256: null,
+    insert_policy: structuredClone(policy.insert_policy || []), music_policy: structuredClone(policy.music_policy || null),
+    output_class: 'PRODUCTION_ASSEMBLY_CANDIDATE', evidence_class: 'PROPOSED_PRODUCTION_ASSEMBLY_TECHNICAL_EVIDENCE', gate_authority: false,
+    forbidden_sources: ['PROXY_PRESENTER', 'DRAFT_V1', 'STALE_VISUAL_PLAN', 'UNBOUND_MEDIA'],
+    ready: blockers.length === 0, blockers,
+  };
+}
+
 module.exports = {
   SESSION_SCHEMA, SUCCESSOR_SCHEMA, PROVISIONAL_CLASSES, HUMAN_CLASS,
   sha256, canonicalize, sessionDigest, successorDigest,
   validateInterval, validateSession, createSession, adjustBoundary, resetProposal,
-  confirmSection, buildSuccessorReview, applySuccessorReview, buildClaudeReleasePacket,
+  confirmSection, buildSuccessorReview, applySuccessorReview, buildClaudeReleasePacket, buildVisualDraftReleasePacket,
 };

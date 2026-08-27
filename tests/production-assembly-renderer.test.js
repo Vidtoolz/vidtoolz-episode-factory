@@ -44,7 +44,7 @@ async function fixture(options = {}) {
   review.binding_digest_sha256 = boundary.successorDigest(review);
   const reviewPath = path.join(root, 'review-v2.json'); writeJson(reviewPath, review);
   const packet = {
-    schema: renderer.PACKET_SCHEMA, artifact_type: 'production-assembly-release-packet', run_id: 'run-1', story: STORY, visual_plan: VP2,
+    schema: renderer.PACKET_SCHEMA, artifact_type: 'production-assembly-release-packet', draft_class: 'PRESENTER_VALIDATION_DRAFT', run_id: 'run-1', story: STORY, visual_plan: VP2,
     presenter_sources: review.segments.map((segment, index) => ({ section_id: segment.section_id, recording_unit_id: segment.recording_unit_id, selected_segment_id: segment.segment_id, master_id: segment.master_id, master_media_path: masters[segment.master_id].path, master_media_sha256: segment.master_sha256, in_ms: segment.in_ms, out_ms: segment.out_ms, duration_ms: segment.duration_ms, story: STORY, visual_plan: VP2, planned_framing: 'planned', captured_framing: 'captured', crop_policy: segment.crop_policy, quality_class: 'PROOF_CAPTURE', capture_provenance: {}, derivative_is_authority: false, story_order: index + 1 })),
     human_review_binding_sha256: review.binding_digest_sha256,
     insert_policy: [
@@ -59,7 +59,7 @@ async function fixture(options = {}) {
   const insertPath = path.join(root, 'essential.png'); fs.writeFileSync(insertPath, 'image');
   const packetPath = path.join(root, 'packet.json'); writeJson(packetPath, packet);
   const spec = {
-    schema: renderer.SPEC_SCHEMA, run_id: 'run-1', performance_role: 'HUMAN_DRAFT_PERFORMANCE',
+    schema: renderer.SPEC_SCHEMA, run_id: 'run-1', draft_class: 'PRESENTER_VALIDATION_DRAFT', performance_role: 'HUMAN_DRAFT_PERFORMANCE',
     output_class: 'PRODUCTION_ASSEMBLY_CANDIDATE', evidence_class: 'PROPOSED_PRODUCTION_ASSEMBLY_TECHNICAL_EVIDENCE', gate_authority: false,
     input_roots: [root], output_root: out,
     release_packet: { path: packetPath, sha256: await renderer.sha256File(packetPath) },
@@ -79,7 +79,7 @@ async function fixture(options = {}) {
   const fakeProbe = (filePath) => filePath.includes('.partial') || filePath.endsWith('candidate.mp4')
     ? { duration_ms: 1133, video: { codec: 'h264', width: 1080, height: 1920, avg_frame_rate: '30/1', nb_frames: 34 }, audio: { codec: 'aac', sample_rate: 48000, channels: 2 } }
     : { duration_ms: 1000, video: { codec: 'h264', width: 1920, height: 1080, avg_frame_rate: options.vfr ? '24000/1001' : '30/1', nb_frames: 24 }, audio: { codec: 'aac', sample_rate: 48000, channels: 2 } };
-  const save = () => { writeJson(reviewPath, review); packet.human_review_binding_sha256 = review.binding_digest_sha256; writeJson(packetPath, packet); spec.release_packet.sha256 = sha(fs.readFileSync(packetPath)); spec.human_review.file_sha256 = sha(fs.readFileSync(reviewPath)); writeJson(specPath, spec); };
+  const save = () => { writeJson(reviewPath, review); if (spec.human_review) packet.human_review_binding_sha256 = review.binding_digest_sha256; writeJson(packetPath, packet); spec.release_packet.sha256 = sha(fs.readFileSync(packetPath)); if (spec.human_review) spec.human_review.file_sha256 = sha(fs.readFileSync(reviewPath)); writeJson(specPath, spec); };
   return { root, out, masters, review, reviewPath, packet, packetPath, spec, specPath, insertPath, fakeProbe, save };
 }
 
@@ -101,6 +101,23 @@ async function addComposition(f) {
   f.spec.inserts.find((item) => item.shot_id === 'essential-s9').decision = 'REPLACED_BY_COMPOSITION';
   delete f.spec.inserts.find((item) => item.shot_id === 'essential-s9').asset_path; delete f.spec.inserts.find((item) => item.shot_id === 'essential-s9').asset_sha256;
   f.save();
+}
+
+async function makeVisualDraft(f, sourceClass = 'SYNTHETIC_DRAFT_NARRATION') {
+  await addComposition(f);
+  const narrationPath = path.join(f.root, 'narration.wav'); fs.writeFileSync(narrationPath, 'narration');
+  const alignmentPath = path.join(f.root, 'narration-alignment.json');
+  const alignment = {
+    schema: renderer.NARRATION_ALIGNMENT_SCHEMA, run_id: f.spec.run_id, story: STORY,
+    source_class: sourceClass, narration_sha256: sha('narration'), timing_basis: 'SCRIPT_BEAT_NARRATION_ALIGNMENT',
+    sections: Array.from({ length: 11 }, (_, index) => ({ section_id: `S${index + 1}`, story_order: index + 1, in_ms: index * 100, out_ms: (index + 1) * 100, duration_ms: 100, script_beat_ids: [`C${index + 1}`] })),
+  };
+  alignment.alignment_digest_sha256 = renderer.narrationAlignmentDigest(alignment); writeJson(alignmentPath, alignment);
+  const narration = { source_class: sourceClass, path: narrationPath, sha256: sha('narration'), alignment: { path: alignmentPath, sha256: sha(fs.readFileSync(alignmentPath)) } };
+  f.spec.draft_class = 'VISUAL_DRAFT'; f.packet.draft_class = 'VISUAL_DRAFT'; f.spec.narration = narration; f.packet.narration = clone(narration);
+  delete f.spec.performance_role; delete f.spec.human_review; f.spec.crops = [];
+  f.packet.presenter_sources = []; f.packet.human_review_binding_sha256 = null; delete f.packet.section_story_order;
+  f.save(); return { narrationPath, alignmentPath, alignment };
 }
 
 test('PAR-01 valid eligible HUMAN_DRAFT handoff validates', async () => { const f = await fixture(); const checked = await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }); assert.equal(checked.sources.length, 11); });
@@ -145,7 +162,8 @@ test('PAR-28 tampered or non-linear music succession is rejected', async () => {
   await throwsCode(() => renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }), 'MUSIC_POLICY_HISTORY_INVALID');
 });
 test('PAR-29 FINAL_HUMAN_PERFORMANCE requires PRODUCTION_CAPTURE sources', async () => {
-  const f = await fixture(); f.spec.performance_role = 'FINAL_HUMAN_PERFORMANCE';
+  const f = await fixture(); f.spec.draft_class = 'FINAL_PERFORMANCE_ASSEMBLY'; f.packet.draft_class = 'FINAL_PERFORMANCE_ASSEMBLY'; f.spec.performance_role = 'FINAL_HUMAN_PERFORMANCE';
+  await f.save();
   await throwsCode(() => renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }), 'HUMAN_SOURCE_SEMANTICS_INVALID');
   f.packet.presenter_sources.forEach((source) => { source.quality_class = 'PRODUCTION_CAPTURE'; }); f.save();
   const checked = await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }); assert.equal(checked.sources[0].quality_class, 'PRODUCTION_CAPTURE');
@@ -274,4 +292,56 @@ test('PAR-46 real VP9-alpha reproduces opaque default decode and preserves alpha
   function range(decoder) { const args = ['-v', 'error']; if (decoder) args.push('-c:v', decoder); args.push('-i', webm, '-frames:v', '1', '-vf', 'format=rgba,alphaextract', '-pix_fmt', 'gray', '-f', 'rawvideo', 'pipe:1'); const values = childProcess.execFileSync('ffmpeg', args); return { min: Math.min(...values), max: Math.max(...values) }; }
   assert.deepEqual(range(null), { min: 255, max: 255 }); assert.deepEqual(range('libvpx-vp9'), { min: 0, max: 255 });
   const result = renderer.validatePresenterAlphaAsset(alphaAsset({ path: webm }), renderer.probeMedia(webm)); assert.equal(result.alpha_nontrivial, true);
+});
+
+test('PAR-47 VISUAL_DRAFT validates with script timing, synthetic narration, zero presenter assets, review, boundaries, or crops', async () => {
+  const f = await fixture(); await makeVisualDraft(f); const checked = await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }); const plan = renderer.buildPlan(f.spec, checked);
+  assert.equal(plan.draft_class, 'VISUAL_DRAFT'); assert.equal(plan.performance_role, null); assert.equal(plan.narration_source_class, 'SYNTHETIC_DRAFT_NARRATION');
+  assert.equal(plan.presenter_visual_present, false); assert.equal(plan.presenter_authority, 'NOT_APPLICABLE'); assert.equal(plan.human_review, null);
+  assert.ok(plan.timeline.every((section) => section.boundary_class === 'NARRATION_ALIGNED' && section.presenter_authority === 'NOT_APPLICABLE'));
+});
+test('PAR-48 human narration never implies presenter video', async () => { const f = await fixture(); await makeVisualDraft(f, 'HUMAN_DRAFT_NARRATION'); const plan = renderer.buildPlan(f.spec, await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe })); assert.equal(plan.narration_source_class, 'HUMAN_DRAFT_NARRATION'); assert.equal(plan.presenter_visual_present, false); });
+test('PAR-49 VISUAL_DRAFT rejects presenter layers and fake presenter manifest placeholders', async () => {
+  const f = await fixture(); await makeVisualDraft(f); f.spec.composition.beats[0].layers.push({ layer_id: 'presenter', type: 'PRESENTER', primary: false, z: 2, visible: true, geometry: { x: 700, y: 1200, width: 360, height: 640, anchor: 'BOTTOM_RIGHT', bleed: ['BOTTOM'], edge_treatment: { type: 'NONE' } } });
+  await throwsCode(() => renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }), 'VISUAL_DRAFT_PRESENTER_FORBIDDEN');
+  f.spec.composition.beats[0].layers.pop(); const manifest = JSON.parse(fs.readFileSync(f.spec.composition.asset_manifest.path)); manifest.assets.push({ asset_id: 'fake-presenter', role: 'PRESENTER_ONLY', path: manifest.assets[0].path, sha256: manifest.assets[0].sha256, media_kind: 'VIDEO', width: 1920, height: 1080, duration_ms: 1100, provenance: {}, status: 'ABSENT', policy: 'OPTIONAL', intended_beat_ids: [] }); writeJson(f.spec.composition.asset_manifest.path, manifest); f.spec.composition.asset_manifest.sha256 = sha(fs.readFileSync(f.spec.composition.asset_manifest.path)); f.save();
+  await throwsCode(() => renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }), 'VISUAL_DRAFT_PRESENTER_PLACEHOLDER_FORBIDDEN');
+});
+test('PAR-50 PRESENTER_VALIDATION_DRAFT permits visual-only beats but requires exact human authority when one presenter beat is requested', async () => {
+  const f = await fixture(); await addComposition(f); f.spec.composition.beats[0].layers.push({ layer_id: 'presenter', type: 'PRESENTER', primary: false, z: 2, visible: true, geometry: { x: 700, y: 1200, width: 360, height: 640, anchor: 'BOTTOM_RIGHT', bleed: ['BOTTOM'], edge_treatment: { type: 'NONE' } } }); f.save();
+  const plan = renderer.buildPlan(f.spec, await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe })); assert.equal(plan.presenter_visual_present, true); assert.equal(plan.composition.beats.filter((beat) => beat.layers.some((layer) => layer.type === 'PRESENTER' && layer.visible !== false)).length, 1);
+  delete f.spec.human_review; f.save(); await throwsCode(() => renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }), 'INPUT_PATH_REQUIRED');
+});
+test('PAR-51 explicit draft-class mismatch and narration alignment drift fail closed', async () => {
+  const f = await fixture(); await makeVisualDraft(f); f.packet.draft_class = 'PRESENTER_VALIDATION_DRAFT'; f.save(); await throwsCode(() => renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }), 'DRAFT_CLASS_MISMATCH');
+  f.packet.draft_class = 'VISUAL_DRAFT'; fs.appendFileSync(f.spec.narration.alignment.path, ' '); f.save(); await throwsCode(() => renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe }), 'NARRATION_ALIGNMENT_DRIFT');
+});
+test('PAR-52 VISUAL_DRAFT evidence names draft/narration authority and does not claim human performance', async () => {
+  const f = await fixture(); await makeVisualDraft(f); const result = await renderer.renderFromSpec(f.specPath, { probeMedia: f.fakeProbe, decode: false, render: async (_, staged) => fs.writeFileSync(staged, 'candidate') });
+  assert.equal(result.evidence.draft_class, 'VISUAL_DRAFT'); assert.equal(result.evidence.narration_source_class, 'SYNTHETIC_DRAFT_NARRATION'); assert.equal(result.evidence.presenter_authority, 'NOT_APPLICABLE'); assert.equal(result.evidence.performance_role, null); assert.ok(result.evidence.negative_claims.some((claim) => claim.includes('does not validate presenter')));
+});
+
+test('PAR-53 real VISUAL_DRAFT canary completes with zero presenter, narration, motion, typography, music and canonical QC', async () => {
+  if (childProcess.spawnSync('ffmpeg', ['-version']).status !== 0) return;
+  const f = await fixture(); const { alignmentPath, alignment } = await makeVisualDraft(f);
+  childProcess.execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', '1.1', '-ac', '2', f.spec.narration.path]);
+  const narrationSha = await renderer.sha256File(f.spec.narration.path); f.spec.narration.sha256 = narrationSha; f.packet.narration.sha256 = narrationSha; alignment.narration_sha256 = narrationSha; alignment.alignment_digest_sha256 = renderer.narrationAlignmentDigest(alignment); writeJson(alignmentPath, alignment);
+  const alignmentSha = await renderer.sha256File(alignmentPath); f.spec.narration.alignment.sha256 = alignmentSha; f.packet.narration.alignment.sha256 = alignmentSha;
+  const motionPath = path.join(f.root, 'visual-motion.mp4'); childProcess.execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=s=1080x1920:r=30', '-t', '1.1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'ultrafast', motionPath]);
+  const assetManifest = JSON.parse(fs.readFileSync(f.spec.composition.asset_manifest.path)); assetManifest.assets[0] = { asset_id: 'visual', role: 'DETERMINISTIC_MOTION_GRAPHIC', path: motionPath, sha256: await renderer.sha256File(motionPath), media_kind: 'VIDEO', width: 1080, height: 1920, duration_ms: 1100, provenance: { producer: 'test-real-visual-draft-canary' }, status: 'ACCEPTED', policy: 'REQUIRED', intended_beat_ids: f.spec.composition.beats.filter((_, index) => index !== 4).map((beat) => beat.beat_id) }; writeJson(f.spec.composition.asset_manifest.path, assetManifest); f.spec.composition.asset_manifest.sha256 = await renderer.sha256File(f.spec.composition.asset_manifest.path);
+  f.spec.composition.beats.forEach((beat, index) => { if (index !== 4) { beat.layers[0].duration_policy = 'TRIM'; beat.layers[0].asset_in_ms = index * 100; } });
+  const typographyBeat = f.spec.composition.beats[4]; const content = 'THE SCRIPT DEFINES THE BEAT'; typographyBeat.primary_owner = 'TYPOGRAPHY'; typographyBeat.layers = [{ layer_id: 'headline', type: 'TYPOGRAPHY', primary: true, z: 1, typography: { content, content_sha256: sha(JSON.stringify(content)), preset: 'HEADLINE', region: { x: 80, y: 600, width: 920, height: 600, anchor: 'CENTER' }, alignment: 'CENTER', safe_margin_px: 80, render_mode: 'DRAW_TEXT' } }];
+  const musicPath = path.join(f.root, 'music.wav'); childProcess.execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=220:sample_rate=48000', '-t', '1.1', '-ac', '2', musicPath]); const musicSha = await renderer.sha256File(musicPath); setHumanMusic(f.spec, 'FULL_PROGRAMME', musicSha, { path: musicPath, gain_db: -22 }); f.packet.music_policy = { sha256: musicSha, option: 'FULL_PROGRAMME' };
+  f.save(); const result = await renderer.renderFromSpec(f.specPath, { quiet: true }); const probe = renderer.probeMedia(result.paths.output);
+  assert.equal(result.status, 'COMPLETE'); assert.equal(result.manifest.draft_class, 'VISUAL_DRAFT'); assert.equal(result.manifest.presenter_visual_present, false); assert.equal(result.manifest.presenter_authority, 'NOT_APPLICABLE'); assert.equal(probe.video.width, 1080); assert.equal(probe.video.height, 1920); assert.equal(probe.video.avg_frame_rate, '30/1'); assert.ok(probe.audio); assert.ok(fs.existsSync(result.paths.completion));
+});
+
+test('PAR-54 real PRESENTER_VALIDATION_DRAFT canary completes visual-presenter-visual with conditional human authority', async () => {
+  if (childProcess.spawnSync('ffmpeg', ['-version']).status !== 0) return;
+  const f = await fixture();
+  for (const [index, id] of ['A', 'T', 'C'].entries()) { childProcess.execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `color=c=${['blue','green','purple'][index]}:s=640x360:r=30`, '-f', 'lavfi', '-i', `sine=frequency=${400 + index * 100}:sample_rate=48000`, '-t', '1', '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', '-ac', '2', f.masters[id].path]); f.masters[id].sha256 = await renderer.sha256File(f.masters[id].path); }
+  for (const segment of f.review.segments) segment.master_sha256 = f.masters[segment.master_id].sha256; f.review.masters.forEach((master) => { master.media_sha256 = f.masters[master.master_id].sha256; }); f.review.binding_digest_sha256 = boundary.successorDigest(f.review); f.packet.presenter_sources.forEach((source) => { source.master_media_sha256 = f.masters[source.master_id].sha256; });
+  await addComposition(f); const visualPath = path.join(f.root, 'visual.png'); childProcess.execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=0x18243a:s=1080x1920', '-frames:v', '1', visualPath]); const assetManifest = JSON.parse(fs.readFileSync(f.spec.composition.asset_manifest.path)); assetManifest.assets[0].sha256 = await renderer.sha256File(visualPath); assetManifest.assets[0].width = 1080; assetManifest.assets[0].height = 1920; writeJson(f.spec.composition.asset_manifest.path, assetManifest); f.spec.composition.asset_manifest.sha256 = await renderer.sha256File(f.spec.composition.asset_manifest.path);
+  f.spec.crops = ['A', 'T', 'C'].map((id) => ({ master_id: id, x: 210, y: 0, width: 203, height: 360 })); const presenterBeat = f.spec.composition.beats[5]; presenterBeat.layers.push({ layer_id: 'presenter', type: 'PRESENTER', primary: false, z: 2, visible: true, geometry: { x: 700, y: 1200, width: 360, height: 640, anchor: 'BOTTOM_RIGHT', bleed: ['BOTTOM'], edge_treatment: { type: 'NONE' } } }); f.save();
+  const result = await renderer.renderFromSpec(f.specPath, { quiet: true }); const probe = renderer.probeMedia(result.paths.output); assert.equal(result.status, 'COMPLETE'); assert.equal(result.manifest.draft_class, 'PRESENTER_VALIDATION_DRAFT'); assert.equal(result.manifest.presenter_visual_present, true); assert.equal(result.manifest.presenter_authority, 'BOUND_HUMAN_PERFORMANCE'); assert.equal(probe.video.avg_frame_rate, '30/1'); assert.ok(probe.audio); assert.ok(fs.existsSync(result.paths.completion));
 });

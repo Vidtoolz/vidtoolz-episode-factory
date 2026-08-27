@@ -109,6 +109,7 @@ function validateComposition(composition, timeline, output, assetManifest) {
     if (beat.start_ms !== cursor || beat.end_ms <= beat.start_ms) fail('COMPOSITION_TIMELINE_COVERAGE_INVALID', beat.beat_id);
     const section = sections.get(beat.section_id);
     if (!section || beat.start_ms < section.programme_in_ms || beat.end_ms > section.programme_out_ms) fail('COMPOSITION_BEAT_OUTSIDE_HUMAN_SECTION', beat.beat_id);
+    if (section.script_beat_ids && !section.script_beat_ids.includes(beat.beat_id)) fail('COMPOSITION_SCRIPT_BEAT_BINDING_INVALID', beat.beat_id);
     if (!OWNERS.has(beat.primary_owner) || !Array.isArray(beat.layers)) fail('COMPOSITION_PRIMARY_OWNER_INVALID', beat.beat_id);
     const layerIds = new Set(); const zValues = new Set(); const layers = [];
     for (const layer of beat.layers) {
@@ -131,6 +132,7 @@ function validateComposition(composition, timeline, output, assetManifest) {
       if (layer.type === 'PRESENTER') {
         if (layer.visible === false) { if (layer.primary) fail('COMPOSITION_PRIMARY_PRESENTER_HIDDEN', beat.beat_id); }
         else {
+          if (section.presenter_authority === 'NOT_APPLICABLE') fail('COMPOSITION_PRESENTER_AUTHORITY_REQUIRED', beat.beat_id);
           validateGeometry(layer.geometry, output, `${beat.beat_id}.${layer.layer_id}.geometry`);
           if (asset) {
             const mapping = asset.provenance?.time_mapping;

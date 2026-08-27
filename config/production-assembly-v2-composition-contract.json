@@ -7,8 +7,8 @@
   "timeline": {
     "unit": "integer milliseconds",
     "coverage": "FULL_PROGRAMME",
-    "beat_rule": "each beat is wholly inside one HUMAN_CONFIRMED or CAPTURE_EVENT_BOUND section; beats are contiguous and non-overlapping",
-    "audio_rule": "confirmed section audio is assembled once; visual beats never restart or redefine human performance"
+    "beat_rule": "each beat is wholly inside one declared timing section: script-beat narration alignment for VISUAL_DRAFT or mode-appropriate human-performance boundaries for presenter/final paths; beats are contiguous and non-overlapping",
+    "audio_rule": "the declared narration or human-performance audio spine is assembled once; visual beats never restart or redefine it"
   },
   "primary_owners": ["GENERATED_VISUAL", "PRESENTER", "TYPOGRAPHY"],
   "layer_types": ["FULL_CANVAS_VISUAL", "PRESENTER", "TYPOGRAPHY"],
@@ -16,6 +16,9 @@
     "exactly one primary owner per beat",
     "z-order is explicit and unique",
     "presenter absence is first-class",
+    "a visible presenter layer conditionally requires mode-appropriate presenter authority",
+    "zero PRESENTER_ONLY assets is legal for VISUAL_DRAFT and no dummy presenter is accepted",
+    "absence of presenter makes the full 1080x1920 canvas available; a future-presenter safe region is optional metadata, not a global constraint",
     "no raw ffmpeg filter text is accepted",
     "duplicate full-frame assets and duplicate semantic typography are rejected",
     "all assets are path-confined and SHA-256 bound",
