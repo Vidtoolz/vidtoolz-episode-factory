@@ -245,3 +245,33 @@ test('PAR-41 human-authorized FULL_PROGRAMME music must span the semantic ending
   f.spec.music.path = path.join(f.root, 'short.wav'); fs.writeFileSync(f.spec.music.path, 'short'); f.spec.music.sha256 = sha('short'); f.spec.music.policy_history[0].music_sha256 = f.spec.music.sha256; f.spec.music.policy_history[0].binding_digest_sha256 = renderer.musicDecisionDigest(f.spec.music.policy_history[0]); f.packet.music_policy.sha256 = f.spec.music.sha256; f.save();
   await throwsCode(() => renderer.validateInputs(f.spec, { probeMedia: (filePath) => filePath === f.spec.music.path ? { duration_ms: 500, video: null, audio: { codec: 'pcm_s16le', sample_rate: 48000, channels: 2 } } : f.fakeProbe(filePath) }), 'MUSIC_FULL_PROGRAMME_TOO_SHORT');
 });
+
+function alphaAsset(overrides = {}) {
+  return { asset_id: 'presenter-A', path: '/tmp/presenter.webm', duration_ms: 1000, alpha: { required: true, format: 'VP9_ALPHA', codec: 'vp9', decoder: 'libvpx-vp9' }, ...overrides };
+}
+test('PAR-42 alpha-required VP9 validates only with available explicit decoder and nontrivial alpha', () => {
+  const media = { video: { codec: 'vp9' } }; const options = { ffmpegDecoders: () => ' V....D libvpx-vp9 libvpx VP9', inspectAlpha: () => ({ sample_count: 3, alpha_min: 0, alpha_max: 255 }) };
+  const result = renderer.validatePresenterAlphaAsset(alphaAsset(), media, options); assert.equal(result.selected_decoder, 'libvpx-vp9'); assert.equal(result.alpha_nontrivial, true);
+});
+test('PAR-43 missing alpha decoder fails before render', () => { assert.throws(() => renderer.validatePresenterAlphaAsset(alphaAsset(), { video: { codec: 'vp9' } }, { ffmpegDecoders: () => ' V....D vp9 native' }), (error) => error.code === 'PA_ALPHA_DECODER_UNAVAILABLE'); });
+test('PAR-44 opaque and fully transparent alpha-required inputs fail closed', () => {
+  const base = { ffmpegDecoders: () => ' V....D libvpx-vp9' };
+  assert.throws(() => renderer.validatePresenterAlphaAsset(alphaAsset(), { video: { codec: 'vp9' } }, { ...base, inspectAlpha: () => ({ sample_count: 3, alpha_min: 255, alpha_max: 255 }) }), (error) => error.code === 'PA_REQUIRED_ALPHA_MISSING');
+  assert.throws(() => renderer.validatePresenterAlphaAsset(alphaAsset(), { video: { codec: 'vp9' } }, { ...base, inspectAlpha: () => ({ sample_count: 3, alpha_min: 0, alpha_max: 0 }) }), (error) => error.code === 'PA_REQUIRED_ALPHA_MISSING');
+});
+test('PAR-45 corrupt alpha video and wrong codec fail closed', () => {
+  const base = { ffmpegDecoders: () => ' V....D libvpx-vp9' };
+  assert.throws(() => renderer.validatePresenterAlphaAsset(alphaAsset(), { video: { codec: 'vp9' } }, { ...base, inspectAlpha: () => { const error = new Error('corrupt'); error.code = 'PA_REQUIRED_ALPHA_MISSING'; throw error; } }), (error) => error.code === 'PA_REQUIRED_ALPHA_MISSING');
+  assert.throws(() => renderer.validatePresenterAlphaAsset(alphaAsset(), { video: { codec: 'h264' } }, base), (error) => error.code === 'PA_ALPHA_CODEC_MISMATCH');
+  assert.throws(() => renderer.validatePresenterAlphaAsset(alphaAsset({ alpha: { required: true, format: 'UNKNOWN', codec: 'vp9', decoder: 'libvpx-vp9' } }), { video: { codec: 'vp9' } }, base), (error) => error.code === 'PA_ALPHA_FORMAT_UNKNOWN');
+});
+test('PAR-46 real VP9-alpha reproduces opaque default decode and preserves alpha with canonical libvpx-vp9', () => {
+  if (childProcess.spawnSync('ffmpeg', ['-version']).status !== 0) return;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'production-alpha-fixture-')); const rgba = path.join(root, 'frames.rgba'); const webm = path.join(root, 'matte.webm');
+  const frame = Buffer.alloc(64 * 64 * 4); for (let y = 0; y < 64; y += 1) for (let x = 0; x < 64; x += 1) { const offset = (y * 64 + x) * 4; frame[offset] = 255; frame[offset + 3] = x >= 16 && x < 48 && y >= 16 && y < 48 ? 255 : 0; }
+  fs.writeFileSync(rgba, Buffer.concat(Array(30).fill(frame)));
+  childProcess.execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'rawvideo', '-pixel_format', 'rgba', '-video_size', '64x64', '-framerate', '30', '-i', rgba, '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', webm]);
+  function range(decoder) { const args = ['-v', 'error']; if (decoder) args.push('-c:v', decoder); args.push('-i', webm, '-frames:v', '1', '-vf', 'format=rgba,alphaextract', '-pix_fmt', 'gray', '-f', 'rawvideo', 'pipe:1'); const values = childProcess.execFileSync('ffmpeg', args); return { min: Math.min(...values), max: Math.max(...values) }; }
+  assert.deepEqual(range(null), { min: 255, max: 255 }); assert.deepEqual(range('libvpx-vp9'), { min: 0, max: 255 });
+  const result = renderer.validatePresenterAlphaAsset(alphaAsset({ path: webm }), renderer.probeMedia(webm)); assert.equal(result.alpha_nontrivial, true);
+});

@@ -32,7 +32,10 @@
     "roles": ["GENERATED_VIDEO", "DETERMINISTIC_MOTION_GRAPHIC", "TYPOGRAPHIC", "STATIC_GENERATED_IMAGE_WITH_MOTION", "PRESENTER_ONLY", "EXISTING_APPROVED_ASSET"],
     "fit": ["COVER", "CONTAIN"],
     "duration_policy": ["TRIM", "LOOP_EXPLICIT", "STILL"],
-    "still_motion": ["STATIC", "SLOW_SCALE", "PAN", "ZOOM"]
+    "still_motion": ["STATIC", "SLOW_SCALE", "PAN", "ZOOM"],
+    "presenter_matte_format_for_current_run": "VP9-alpha WebM decoded explicitly with libvpx-vp9",
+    "presenter_matte_alternative": "ProRes 4444 remains supported where already available but is not required for the current run",
+    "presenter_matte_rule": "PRESENTER_ONLY derivatives require explicit alpha semantics, meaningful-alpha validation, a bounded derivative visual crop, immutable source-master lineage, and explicit source-time mapping; automatic decoder selection and extension-only dispatch are forbidden"
   },
   "fallback_policies": ["REQUIRED", "FALLBACK_ALLOWED", "OPTIONAL"],
   "music_policies": ["FADE_EARLY", "LOOP_WITH_CROSSFADE", "FULL_PROGRAMME", "NONE"],
@@ -45,6 +48,8 @@
     "width",
     "height",
     "duration_ms where applicable",
+    "alpha for PRESENTER_ONLY derivatives",
+    "visual_crop for PRESENTER_ONLY derivatives",
     "provenance",
     "status",
     "policy",

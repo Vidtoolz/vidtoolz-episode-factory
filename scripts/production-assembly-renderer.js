@@ -105,6 +105,29 @@ function assertExactKeys(value, allowed, label) {
 }
 function ffmpegVersion() { return execFile('ffmpeg', ['-version']).split('\n')[0].trim(); }
 function ffprobeVersion() { return execFile('ffprobe', ['-version']).split('\n')[0].trim(); }
+function ffmpegDecoders() { return execFile('ffmpeg', ['-hide_banner', '-decoders'], { code: 'PA_ALPHA_DECODER_UNAVAILABLE' }); }
+function inspectAlpha(filePath, asset) {
+  const durationSeconds = asset.duration_ms / 1000;
+  const times = [...new Set([0, Math.max(0, durationSeconds / 2), Math.max(0, durationSeconds - 1 / 30)].map((value) => value.toFixed(6)))];
+  let minimum = 255; let maximum = 0; let samples = 0;
+  for (const timestamp of times) {
+    const result = childProcess.spawnSync('ffmpeg', ['-nostdin', '-v', 'error', '-c:v', asset.alpha.decoder, '-ss', timestamp, '-i', filePath, '-map', '0:v:0', '-frames:v', '1', '-vf', 'alphaextract,scale=64:64:flags=area', '-pix_fmt', 'gray', '-f', 'rawvideo', 'pipe:1'], { maxBuffer: 4 * 1024 * 1024 });
+    if (result.error || result.status !== 0 || !Buffer.isBuffer(result.stdout) || result.stdout.length === 0) fail('PA_REQUIRED_ALPHA_MISSING', `${asset.asset_id}: alpha decode failed`);
+    for (const value of result.stdout) { minimum = Math.min(minimum, value); maximum = Math.max(maximum, value); }
+    samples += 1;
+  }
+  return { sample_count: samples, alpha_min: minimum, alpha_max: maximum };
+}
+function validatePresenterAlphaAsset(asset, media, options = {}) {
+  if (asset.alpha?.required !== true) return null;
+  if (asset.alpha.format !== compositionEngine.PRESENTER_ALPHA_FORMAT) fail('PA_ALPHA_FORMAT_UNKNOWN', asset.alpha.format || 'missing');
+  if (media.video?.codec !== asset.alpha.codec) fail('PA_ALPHA_CODEC_MISMATCH', `${asset.asset_id}: ${media.video?.codec || 'missing'} != ${asset.alpha.codec}`);
+  const decoders = (options.ffmpegDecoders || ffmpegDecoders)();
+  if (!new RegExp(`\\b${asset.alpha.decoder.replaceAll('-', '\\-')}\\b`).test(decoders)) fail('PA_ALPHA_DECODER_UNAVAILABLE', asset.alpha.decoder);
+  const measured = (options.inspectAlpha || inspectAlpha)(asset.path, asset);
+  if (!measured || !Number.isFinite(measured.alpha_min) || !Number.isFinite(measured.alpha_max) || measured.alpha_min >= 250 || measured.alpha_max <= 5) fail('PA_REQUIRED_ALPHA_MISSING', `${asset.asset_id}: nontrivial alpha required (${measured?.alpha_min}/${measured?.alpha_max})`);
+  return { alpha_required: true, alpha_present: true, alpha_nontrivial: true, format: asset.alpha.format, input_codec: media.video.codec, selected_decoder: asset.alpha.decoder, sample_count: measured.sample_count, alpha_min: measured.alpha_min, alpha_max: measured.alpha_max };
+}
 function processStartIdentity(pid = process.pid) {
   try {
     const stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8');
@@ -314,6 +337,7 @@ async function validateInputs(spec, options = {}) {
     const approved = readJson(visualPlanPath, 'COMPOSITION_VISUAL_PLAN_INVALID');
     if (approved.plan_id !== spec.composition.approved_visual_plan.plan_id || (spec.composition.approved_visual_plan.digest_sha256 && approved.digest_sha256 !== spec.composition.approved_visual_plan.digest_sha256)) fail('COMPOSITION_VISUAL_PLAN_DRIFT', 'approved visual-plan identity mismatch');
     const assetManifest = readJson(assetManifestPath, 'COMPOSITION_ASSET_MANIFEST_INVALID');
+    const alphaEvidence = new Map();
     for (const asset of assetManifest.assets || []) if (asset.status === 'ACCEPTED') {
       asset.path = requireInputPath(asset.path, spec.input_roots, `composition asset ${asset.asset_id}`);
       if (await hashFile(asset.path) !== asset.sha256) fail('COMPOSITION_ASSET_DRIFT', asset.asset_id);
@@ -321,8 +345,11 @@ async function validateInputs(spec, options = {}) {
       const stream = asset.media_kind === 'IMAGE' ? media.video : media.video;
       if (!stream || stream.width !== asset.width || stream.height !== asset.height) fail('COMPOSITION_ASSET_METADATA_DRIFT', asset.asset_id);
       if (asset.media_kind === 'VIDEO' && Number.isInteger(asset.duration_ms) && Math.abs(media.duration_ms - asset.duration_ms) > 100) fail('COMPOSITION_ASSET_METADATA_DRIFT', asset.asset_id);
+      const evidence = validatePresenterAlphaAsset(asset, media, options);
+      if (evidence) alphaEvidence.set(asset.asset_id, evidence);
     }
     composition = compositionEngine.validateComposition(spec.composition, timeline, spec.output, assetManifest);
+    for (const beat of composition.beats) for (const layer of beat.layers) if (layer.resolved_asset && alphaEvidence.has(layer.resolved_asset.asset_id)) layer.resolved_asset.alpha_validation = alphaEvidence.get(layer.resolved_asset.asset_id);
   }
   const programmeDuration = timeline.at(-1)?.programme_out_ms || 0;
   if (music?.policy === 'FULL_PROGRAMME' && music.media_duration_ms + 50 < programmeDuration) fail('MUSIC_FULL_PROGRAMME_TOO_SHORT', `${music.media_duration_ms} < ${programmeDuration}`);
@@ -363,7 +390,7 @@ function buildPlan(spec, validated) {
     story: validated.packet.story, visual_plan: validated.packet.visual_plan,
     timeline, inserts, composition: validated.composition, music: validated.music ? { ...validated.music, media: undefined } : { ...spec.music, active_decision: validated.musicDecision },
     output: spec.output, programme_duration_ms: cursor,
-    toolchain: { node: process.version, ffmpeg: ffmpegVersion(), ffprobe: ffprobeVersion(), renderer: SPEC_SCHEMA },
+    toolchain: { node: process.version, ffmpeg: ffmpegVersion(), ffprobe: ffprobeVersion(), renderer: SPEC_SCHEMA, alpha_decoders: [...new Set((validated.composition?.beats || []).flatMap((beat) => beat.layers.map((layer) => layer.resolved_asset?.alpha_validation?.selected_decoder).filter(Boolean)))] },
   };
   const planDigest = digest(semantic);
   const plan = { ...semantic, plan_digest_sha256: planDigest };
@@ -445,6 +472,7 @@ function qcCandidate(filePath, plan, options = {}) {
       presenter_absent_beats: plan.composition.beats.filter((beat) => !beat.layers.some((layer) => layer.type === 'PRESENTER' && layer.visible !== false)).map((beat) => beat.beat_id),
       operation_digests: plan.composition.beats.map((beat) => ({ beat_id: beat.beat_id, sha256: beat.operation_digest_sha256 })),
       music_branch: plan.music.policy === 'FULL_PROGRAMME' ? { policy: 'FULL_PROGRAMME', source_sha256: plan.music.sha256, start_ms: 0, end_ms: plan.programme_duration_ms } : null,
+      presenter_alpha_inputs: [...new Map(plan.composition.beats.flatMap((beat) => beat.layers).filter((layer) => layer.resolved_asset?.alpha_validation).map((layer) => [layer.resolved_asset.asset_id, { asset_id: layer.resolved_asset.asset_id, derivative_sha256: layer.resolved_asset.sha256, source_master_id: layer.resolved_asset.provenance.source_master_id, source_master_sha256: layer.resolved_asset.provenance.source_master_sha256, time_mapping: layer.resolved_asset.provenance.time_mapping, ...layer.resolved_asset.alpha_validation }])).values()],
     } : null,
   };
 }
@@ -597,6 +625,6 @@ if (require.main === module) {
 
 module.exports = {
   SPEC_SCHEMA, PACKET_SCHEMA, PLAN_SCHEMA, MANIFEST_SCHEMA, EVIDENCE_SCHEMA, COMPLETION_SCHEMA, LOCK_SCHEMA,
-  canonicalize, digest, sha256File, probeMedia, musicDecisionDigest, activeMusicDecision, processStartIdentity,
+  canonicalize, digest, sha256File, probeMedia, ffmpegDecoders, inspectAlpha, validatePresenterAlphaAsset, musicDecisionDigest, activeMusicDecision, processStartIdentity,
   lockHolderState, acquireRenderLock, releaseRenderLock, validateInputs, buildTimeline, buildPlan, buildFfmpegCommand, qcCandidate, renderFromSpec, renderPreviewFromSpec,
 };

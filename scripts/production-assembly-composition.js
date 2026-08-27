@@ -14,6 +14,9 @@ const ANCHORS = new Set(['TOP_LEFT', 'TOP_RIGHT', 'BOTTOM_LEFT', 'BOTTOM_RIGHT',
 const CURVES = new Set(['LINEAR', 'SMOOTH']);
 const TRANSITIONS = new Set(['CUT', 'HARD_CUT', 'CONTINUOUS', 'DISSOLVE_200MS', 'DISSOLVE_300MS', 'SCALE_DOWN']);
 const SHA_RE = /^[a-f0-9]{64}$/;
+const PRESENTER_ALPHA_FORMAT = 'VP9_ALPHA';
+const PRESENTER_ALPHA_DECODER = 'libvpx-vp9';
+const TIME_MAPPING_BASES = new Set(['MASTER_ZERO', 'SOURCE_INTERVAL_ZERO']);
 
 function fail(code, message) { const error = new Error(message); error.code = code; throw error; }
 function canonicalize(value) {
@@ -75,11 +78,23 @@ function validateComposition(composition, timeline, output, assetManifest) {
   if (assetManifest?.schema !== ASSET_MANIFEST_SCHEMA || !Array.isArray(assetManifest.assets)) fail('COMPOSITION_ASSET_MANIFEST_INVALID', 'exact asset manifest required');
   const assets = new Map();
   for (const item of assetManifest.assets) {
-    exact(item, ['asset_id', 'role', 'path', 'sha256', 'media_kind', 'width', 'height', 'duration_ms', 'provenance', 'status', 'policy', 'fallback_asset_id', 'intended_beat_ids'], `asset.${item?.asset_id}`);
+    exact(item, ['asset_id', 'role', 'path', 'sha256', 'media_kind', 'width', 'height', 'duration_ms', 'alpha', 'visual_crop', 'provenance', 'status', 'policy', 'fallback_asset_id', 'intended_beat_ids'], `asset.${item?.asset_id}`);
     if (!item.asset_id || assets.has(item.asset_id) || !ASSET_ROLES.has(item.role) || !['VIDEO', 'IMAGE'].includes(item.media_kind) || !['ACCEPTED', 'ABSENT', 'REJECTED'].includes(item.status) || !POLICIES.has(item.policy) || !item.provenance || typeof item.provenance !== 'object' || Array.isArray(item.provenance)) fail('COMPOSITION_ASSET_MANIFEST_INVALID', String(item.asset_id));
     if (item.status === 'ACCEPTED') {
       sha(item.sha256, item.asset_id); integer(item.width, `${item.asset_id}.width`); integer(item.height, `${item.asset_id}.height`);
       if (item.width <= 0 || item.height <= 0 || (item.media_kind === 'VIDEO' && (!Number.isInteger(item.duration_ms) || item.duration_ms <= 0)) || (item.role === 'GENERATED_VIDEO' && item.media_kind !== 'VIDEO') || (item.role === 'STATIC_GENERATED_IMAGE_WITH_MOTION' && item.media_kind !== 'IMAGE') || (item.role === 'PRESENTER_ONLY' && item.media_kind !== 'VIDEO')) fail('COMPOSITION_ASSET_MANIFEST_INVALID', item.asset_id);
+      if (item.role === 'PRESENTER_ONLY') {
+        exact(item.alpha, ['required', 'format', 'codec', 'decoder'], `${item.asset_id}.alpha`);
+        if (item.alpha?.required !== true || item.alpha.format !== PRESENTER_ALPHA_FORMAT || item.alpha.codec !== 'vp9' || item.alpha.decoder !== PRESENTER_ALPHA_DECODER) fail('COMPOSITION_PRESENTER_ALPHA_INVALID', item.asset_id);
+        exact(item.visual_crop, ['x', 'y', 'width', 'height'], `${item.asset_id}.visual_crop`);
+        const visualCrop = item.visual_crop;
+        if (!['x', 'y', 'width', 'height'].every((key) => Number.isInteger(visualCrop?.[key])) || visualCrop.x < 0 || visualCrop.y < 0 || visualCrop.width <= 0 || visualCrop.height <= 0 || visualCrop.x + visualCrop.width > item.width || visualCrop.y + visualCrop.height > item.height) fail('COMPOSITION_PRESENTER_VISUAL_CROP_INVALID', item.asset_id);
+        const mapping = item.provenance?.time_mapping;
+        exact(mapping, ['basis', 'source_in_ms', 'source_out_ms', 'derivative_in_ms', 'authority'], `${item.asset_id}.provenance.time_mapping`);
+        if (!TIME_MAPPING_BASES.has(mapping?.basis) || !Number.isInteger(mapping?.source_in_ms) || !Number.isInteger(mapping?.source_out_ms) || mapping.source_out_ms <= mapping.source_in_ms || mapping.derivative_in_ms !== 0 || mapping.source_out_ms - mapping.source_in_ms !== item.duration_ms) fail('COMPOSITION_PRESENTER_TIME_MAPPING_INVALID', item.asset_id);
+        if (mapping.basis === 'MASTER_ZERO' && (mapping.source_in_ms !== 0 || mapping.authority !== 'PRODUCTION')) fail('COMPOSITION_PRESENTER_TIME_MAPPING_INVALID', item.asset_id);
+        if (mapping.basis === 'SOURCE_INTERVAL_ZERO' && mapping.authority !== 'NON_AUTHORITATIVE_CANARY') fail('COMPOSITION_PRESENTER_TIME_MAPPING_INVALID', item.asset_id);
+      }
     }
     assets.set(item.asset_id, item);
   }
@@ -117,7 +132,11 @@ function validateComposition(composition, timeline, output, assetManifest) {
         if (layer.visible === false) { if (layer.primary) fail('COMPOSITION_PRIMARY_PRESENTER_HIDDEN', beat.beat_id); }
         else {
           validateGeometry(layer.geometry, output, `${beat.beat_id}.${layer.layer_id}.geometry`);
-          if (asset && (asset.role !== 'PRESENTER_ONLY' || asset.provenance?.source_master_id !== section.master_id || asset.provenance?.source_master_sha256 !== section.master_sha256 || asset.provenance?.timeline_basis !== 'MASTER_ZERO')) fail('COMPOSITION_PRESENTER_DERIVATIVE_INVALID', beat.beat_id);
+          if (asset) {
+            const mapping = asset.provenance?.time_mapping;
+            const sectionOffset = section.in_ms + beat.start_ms - section.programme_in_ms;
+            if (asset.role !== 'PRESENTER_ONLY' || asset.provenance?.source_master_id !== section.master_id || asset.provenance?.source_master_sha256 !== section.master_sha256 || sectionOffset < mapping.source_in_ms || sectionOffset + beat.end_ms - beat.start_ms > mapping.source_out_ms) fail('COMPOSITION_PRESENTER_DERIVATIVE_INVALID', beat.beat_id);
+          }
         }
       }
       if (layer.type === 'TYPOGRAPHY') {
@@ -131,7 +150,7 @@ function validateComposition(composition, timeline, output, assetManifest) {
         if (!['STATIC', 'SLOW_SCALE', 'PAN', 'ZOOM'].includes(layer.motion.type) || (layer.motion.type !== 'STATIC' && asset?.media_kind !== 'IMAGE')) fail('COMPOSITION_MOTION_INVALID', beat.beat_id);
         for (const key of Object.keys(layer.motion).filter((key) => key !== 'type')) integer(layer.motion[key], `${beat.beat_id}.${key}`);
       }
-      layers.push({ ...layer, resolved_asset: asset ? { asset_id: asset.asset_id, role: asset.role, path: asset.path, sha256: asset.sha256, media_kind: asset.media_kind, width: asset.width, height: asset.height, duration_ms: asset.duration_ms } : undefined });
+      layers.push({ ...layer, resolved_asset: asset ? { asset_id: asset.asset_id, role: asset.role, path: asset.path, sha256: asset.sha256, media_kind: asset.media_kind, width: asset.width, height: asset.height, duration_ms: asset.duration_ms, alpha: asset.alpha, visual_crop: asset.visual_crop, provenance: asset.provenance } : undefined });
     }
     const primaries = layers.filter((layer) => layer.primary === true);
     const ownerType = { GENERATED_VISUAL: 'FULL_CANVAS_VISUAL', PRESENTER: 'PRESENTER', TYPOGRAPHY: 'TYPOGRAPHY' }[beat.primary_owner];
@@ -170,6 +189,7 @@ function buildVideoGraph(plan, command, filters) {
     else {
       const looping = plan.composition.beats.some((item) => item.layers.some((candidate) => candidate.resolved_asset?.asset_id === asset.asset_id && candidate.duration_policy === 'LOOP_EXPLICIT'));
       if (looping) command.push('-stream_loop', '-1');
+      if (asset.alpha?.required === true) command.push('-c:v', asset.alpha.decoder);
       command.push('-i', asset.path);
     }
     inputByAsset.set(asset.asset_id, index);
@@ -198,9 +218,11 @@ function buildVideoGraph(plan, command, filters) {
         const width = interpolate(geometry.width, end.width, p); const height = interpolate(geometry.height, end.height, p);
         const crop = plan.timeline[sectionIndex].crop; const presenterAsset = layer.resolved_asset;
         const presenterInput = presenterAsset ? inputByAsset.get(presenterAsset.asset_id) : sectionIndex;
-        const sourceOffset = ((presenterAsset ? beat.section_source_offset_ms : beat.start_ms - plan.timeline[sectionIndex].programme_in_ms) / 1000).toFixed(6);
+        const sourceOffsetMs = presenterAsset ? beat.section_source_offset_ms - presenterAsset.provenance.time_mapping.source_in_ms : beat.start_ms - plan.timeline[sectionIndex].programme_in_ms;
+        const sourceOffset = (sourceOffsetMs / 1000).toFixed(6);
         let source = `p${beatIndex}raw`;
-        const cropFilter = presenterAsset ? '' : `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},`;
+        const presenterCrop = presenterAsset?.visual_crop || crop;
+        const cropFilter = `crop=${presenterCrop.width}:${presenterCrop.height}:${presenterCrop.x}:${presenterCrop.y},`;
         filters.push(`[${presenterInput}:v]trim=start=${sourceOffset}:duration=${duration},setpts=PTS-STARTPTS,${cropFilter}scale=w='${width}':h='${height}':eval=frame:flags=lanczos,format=rgba[${source}]`);
         if (geometry.edge_treatment?.type === 'FEATHER_INNER') {
           const n = geometry.edge_treatment.feather_px; const expression = geometry.edge_treatment.edge === 'LEFT' ? `alpha(X,Y)*min(1,X/${n})` : `alpha(X,Y)*min(1,(W-X)/${n})`;
@@ -239,4 +261,4 @@ function buildVideoGraph(plan, command, filters) {
   return inputByAsset;
 }
 
-module.exports = { SCHEMA, ASSET_MANIFEST_SCHEMA, canonicalize, digest, validateComposition, buildVideoGraph };
+module.exports = { SCHEMA, ASSET_MANIFEST_SCHEMA, PRESENTER_ALPHA_FORMAT, PRESENTER_ALPHA_DECODER, canonicalize, digest, validateComposition, buildVideoGraph };
