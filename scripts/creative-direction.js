@@ -3,28 +3,38 @@
 /*
  * creative-direction.js
  *
- * Deterministic validation library for vidtoolz.creativeDirection.v1 — the
- * Creative Director's single output artifact (episode-specific creative
- * strategy: RECOMMENDATION ONLY, never execution).
+ * Deterministic validation library for vidtoolz.creativeDirection.v2 — the
+ * Creative Director's single output artifact. RECOMMENDATION ONLY.
  *
- * Authority model (config/creative-direction-contract.json):
- *   - The direction says WHY / WHAT EXPERIENCE at section/movement altitude.
- *     Specialists decide HOW. The schema therefore has NO per-beat shot
- *     fields, and forbidden-key validation rejects shot/asset/timing/
- *     script-text vocabulary outright.
- *   - Human directions are HARD LOCAL CONSTRAINTS: every task constraint must
- *     be echoed with a compliance statement, and typed constraints are
- *     checked deterministically — contradiction is CONSTRAINT_CONTRADICTION,
- *     a validation FAILURE, never a warning.
- *   - Identity bindings (script, style reference) are read-only and exact;
- *     drift voids the direction.
+ * v2 (2026-08-28 authority repair, closes the Codex-proven escapes):
+ *   - ACKNOWLEDGEMENT IS NOT COMPLIANCE. Human constraints derive typed
+ *     PROTECTED DOMAINS (module-side, never model-side); every
+ *     production-affecting recommendation must appear as a structured
+ *     ACTION CLAIM; claims are checked deterministically against protected
+ *     domains; and ALL model-authored prose is scanned with bounded
+ *     verb/object proximity guards for contradictions of protected domains.
+ *   - PROSE IS NEVER EXECUTABLE. The artifact carries an execution contract:
+ *     downstream agents may act only on the structured surface; every prose
+ *     field is NON_EXECUTABLE_CREATIVE_RATIONALE.
+ *   - SPECIALIST BOUNDARY IS SEMANTIC. Content-shape detectors (paths,
+ *     filenames, asset ids, coordinates, timestamps, frame numbers, render
+ *     parameters, exact geometry) reject specialist execution details hidden
+ *     in any model prose — not just forbidden key names.
+ *   - NO SELF-APPROVAL, ANYWHERE. Approval-claim language in any model string
+ *     is rejected; requires_human stays structurally forced.
+ *   - CUSTOM constraints must carry a machine-verifiable protected scope; an
+ *     unstructured CUSTOM is HUMAN_CONSTRAINT_REQUIRES_SEMANTIC_VALIDATION
+ *     and must fail safely before any downstream consumption.
+ *   - A bounded semantic adjudicator hook may REJECT or ESCALATE ambiguity
+ *     (HUMAN_CONSTRAINT_AMBIGUITY); it can never approve past a
+ *     deterministic failure.
  *
- * Library only: no CLI, no AGENT_ID, no side effects.
+ * Library only: no CLI, no AGENT_ID, no side effects, no network.
  */
 
 const crypto = require('node:crypto');
 
-const SCHEMA = 'vidtoolz.creativeDirection.v1';
+const SCHEMA = 'vidtoolz.creativeDirection.v2';
 const ARTIFACT_TYPE = 'creative-direction';
 
 const HUMOR_MODES = Object.freeze(['NONE', 'DRY', 'LIGHT', 'COMIC']);
@@ -34,7 +44,7 @@ const ENDING_MODES = Object.freeze(['SYNTHESIS_CARD', 'JOKE_PUNCTUATION', 'EXPLI
 const VISUAL_FUNCTIONS = Object.freeze(['EXPLANATION', 'PROOF', 'COMPARISON', 'MOOD', 'HUMOR', 'PUNCTUATION']);
 const MODE_WEIGHTS = Object.freeze(['DOMINANT', 'PRESENT', 'MINIMAL', 'ABSENT']);
 const CARD_PATTERNS = Object.freeze(['COMPARISON_TWO_COLUMN', 'NUMBERED_LIST', 'LABELLED_CONCEPT', 'TAKEAWAY_FOOTER', 'SYNTHESIS_CARD']);
-const ESCALATION_TYPES = Object.freeze(['HUMAN_TASTE_REQUIRED', 'HUMOR_DIRECTION_AMBIGUOUS', 'HOUSE_STYLE_DEVIATION_REQUIRES_HUMAN', 'ENDING_TONE_REQUIRES_HUMAN']);
+const ESCALATION_TYPES = Object.freeze(['HUMAN_TASTE_REQUIRED', 'HUMOR_DIRECTION_AMBIGUOUS', 'HOUSE_STYLE_DEVIATION_REQUIRES_HUMAN', 'ENDING_TONE_REQUIRES_HUMAN', 'HUMAN_CONSTRAINT_AMBIGUITY']);
 const CONSTRAINT_TYPES = Object.freeze(['KEEP_MEDIA', 'MUSIC_LOCK', 'PRESENTER_FREE_DRAFT', 'PRESENTER_REQUIRED', 'TONE_SERIOUS', 'TONE_MORE_HUMOR', 'NO_CARDS_SECTION', 'CUSTOM']);
 const PROVENANCES = Object.freeze(['HUMAN_DIRECTION', 'SCRIPT_EVIDENCE', 'STYLE_REFERENCE', 'CD_JUDGMENT']);
 const CONFIDENCE_LEVELS = Object.freeze(['HIGH', 'MEDIUM', 'LOW']);
@@ -43,8 +53,29 @@ const LIFECYCLE_STATES = Object.freeze(['AWAITING_HUMAN_REVIEW', 'PREVIEW_ONLY']
 const MAX_ESCALATIONS = 4;
 const MAX_PROSE_CHARS = 2000;
 
-// Vocabulary the Creative Director may never emit: shot geometry, asset
-// selection, script text, timing, infrastructure, approvals.
+/* ---- semantic contract vocabularies (v2) --------------------------------- */
+
+const PROTECTED_DOMAIN_NAMES = Object.freeze(['MEDIA', 'MUSIC', 'PRESENTER', 'CARDS', 'HUMOR', 'TONE', 'ENDING', 'SECTION_CONTENT', 'TYPOGRAPHY', 'MOTION', 'DENSITY', 'VISUAL_MODE']);
+const OPERATIONS = Object.freeze(['KEEP', 'ADD', 'REMOVE', 'REPLACE', 'REGENERATE', 'SWAP', 'RESELECT', 'MATERIALLY_ALTER', 'CHANGE', 'CHANGE_TRACK', 'CHANGE_DIRECTION', 'CHANGE_SELECTION', 'INCREASE', 'SUPPRESS', 'ADJUST_STRATEGY', 'EMPHASIZE', 'REDUCE']);
+// Operations that never conflict with anything: pure preservation/strategy.
+const ALWAYS_LEGAL_OPERATIONS = Object.freeze(['KEEP']);
+
+const VIOLATION_CODES = Object.freeze({
+  KEEP_MEDIA: 'HUMAN_KEEP_MEDIA_CONTRADICTION',
+  MUSIC_LOCK: 'HUMAN_MUSIC_LOCK_CONTRADICTION',
+  CUSTOM: 'HUMAN_CUSTOM_CONSTRAINT_CONTRADICTION',
+  PRESENTER_FREE_DRAFT: 'HUMAN_PRESENTER_CONSTRAINT_CONTRADICTION',
+  PRESENTER_REQUIRED: 'HUMAN_PRESENTER_CONSTRAINT_CONTRADICTION',
+  TONE_SERIOUS: 'HUMAN_TONE_CONSTRAINT_CONTRADICTION',
+  TONE_MORE_HUMOR: 'HUMAN_TONE_CONSTRAINT_CONTRADICTION',
+  NO_CARDS_SECTION: 'HUMAN_CARDS_CONSTRAINT_CONTRADICTION',
+  SPECIALIST: 'SPECIALIST_EXECUTION_BOUNDARY_VIOLATION',
+  SELF_APPROVAL: 'HOUSE_STYLE_SELF_APPROVAL_FORBIDDEN',
+  STORY: 'STORY_AUTHORITY_INVALID',
+  CUSTOM_UNENFORCEABLE: 'HUMAN_CONSTRAINT_REQUIRES_SEMANTIC_VALIDATION',
+});
+
+// Vocabulary the Creative Director may never emit as KEYS (kept from v1).
 const FORBIDDEN_KEYS = new Set([
   'shot_brief', 'camera_intent', 'media_type', 'generation_mode', 'subject', 'shots', 'shot_id',
   'plan_id', 'prompt_id', 'prompt', 'selected', 'selected_asset_id', 'final_asset', 'approved_asset',
@@ -59,6 +90,11 @@ const DIRECTION_ID_RE = /^creative-direction-[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$/;
 const SHA256_RE = /^[a-f0-9]{64}$/;
 
 const norm = (v) => String(v ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
+// Model output is hostile: an array-typed field returned as a scalar or object
+// must produce a rejection, never a thrown iterator error (a crash could be a
+// bypass). asArr coerces for iteration; the paired schema check records the
+// type violation so the artifact is rejected, not silently tolerated.
+const asArr = (v) => (Array.isArray(v) ? v : []);
 
 function sha256(value) {
   return crypto.createHash('sha256').update(String(value)).digest('hex');
@@ -104,12 +140,220 @@ function proseTooLong(value, pathName = '$', hits = []) {
   return hits;
 }
 
+/* ---- protected-domain derivation (module authority, never model) ---------- */
+
+function deriveProtectedDomains(constraints) {
+  const domains = [];
+  const unenforceable = [];
+  for (const c of constraints || []) {
+    switch (c.type) {
+      case 'KEEP_MEDIA':
+        domains.push({ constraint_id: c.constraint_id, domain: 'MEDIA', scope: c.scope || 'GLOBAL', forbidden_operations: ['REPLACE', 'REGENERATE', 'SWAP', 'RESELECT', 'REMOVE', 'MATERIALLY_ALTER', 'CHANGE', 'CHANGE_SELECTION'], violation: VIOLATION_CODES.KEEP_MEDIA });
+        break;
+      case 'MUSIC_LOCK':
+        domains.push({ constraint_id: c.constraint_id, domain: 'MUSIC', scope: c.scope || 'GLOBAL', forbidden_operations: ['REPLACE', 'REGENERATE', 'SWAP', 'RESELECT', 'REMOVE', 'CHANGE', 'CHANGE_TRACK', 'CHANGE_DIRECTION', 'CHANGE_SELECTION', 'MATERIALLY_ALTER'], violation: VIOLATION_CODES.MUSIC_LOCK });
+        break;
+      case 'PRESENTER_FREE_DRAFT':
+        domains.push({ constraint_id: c.constraint_id, domain: 'PRESENTER', scope: 'GLOBAL', forbidden_operations: ['ADD', 'REPLACE', 'CHANGE'], violation: VIOLATION_CODES.PRESENTER_FREE_DRAFT });
+        break;
+      case 'PRESENTER_REQUIRED':
+        domains.push({ constraint_id: c.constraint_id, domain: 'PRESENTER', scope: 'GLOBAL', forbidden_operations: ['REMOVE', 'SUPPRESS'], violation: VIOLATION_CODES.PRESENTER_REQUIRED });
+        break;
+      case 'TONE_SERIOUS':
+        domains.push({ constraint_id: c.constraint_id, domain: 'HUMOR', scope: 'GLOBAL', forbidden_operations: ['ADD', 'INCREASE'], violation: VIOLATION_CODES.TONE_SERIOUS });
+        break;
+      case 'TONE_MORE_HUMOR':
+        domains.push({ constraint_id: c.constraint_id, domain: 'HUMOR', scope: 'GLOBAL', forbidden_operations: ['REMOVE', 'SUPPRESS'], violation: VIOLATION_CODES.TONE_MORE_HUMOR });
+        break;
+      case 'NO_CARDS_SECTION':
+        domains.push({ constraint_id: c.constraint_id, domain: 'CARDS', scope: c.scope, forbidden_operations: ['ADD', 'INCREASE'], violation: VIOLATION_CODES.NO_CARDS_SECTION });
+        break;
+      case 'CUSTOM': {
+        const p = c.protected;
+        const structured = p && typeof p === 'object' && PROTECTED_DOMAIN_NAMES.includes(p.domain)
+          && (Array.isArray(p.forbidden_operations) || Array.isArray(p.required_field_values))
+          && (p.forbidden_operations || []).every((op) => OPERATIONS.includes(op))
+          && (p.required_field_values || []).every((r) => r && typeof r.path === 'string' && Array.isArray(r.one_of) && r.one_of.length > 0);
+        if (!structured) {
+          unenforceable.push({ constraint_id: c.constraint_id, code: VIOLATION_CODES.CUSTOM_UNENFORCEABLE, detail: 'CUSTOM constraint carries no machine-verifiable protected scope; it must fail safely before downstream consumption' });
+          break;
+        }
+        domains.push({ constraint_id: c.constraint_id, domain: p.domain, scope: p.scope || 'GLOBAL', forbidden_operations: [...(p.forbidden_operations || [])], required_field_values: structuredClone(p.required_field_values || []), violation: VIOLATION_CODES.CUSTOM });
+        break;
+      }
+      default:
+        unenforceable.push({ constraint_id: c.constraint_id, code: VIOLATION_CODES.CUSTOM_UNENFORCEABLE, detail: `unknown constraint type ${c.type}` });
+    }
+  }
+  return { domains, unenforceable };
+}
+
+function scopesIntersect(a, b) {
+  if (!a || !b) return true;
+  if (a === 'GLOBAL' || b === 'GLOBAL') return true;
+  return norm(a) === norm(b);
+}
+
+/* ---- prose collection (model-authored strings only) ------------------------ */
+
+const PROSE_SKIP_PATHS = [
+  /^\$\.human_directions_received\[\d+\]\.text$/, // human echo, not model prose
+  /^\$\.human_directions_received\[\d+\]\.scope$/, // human-supplied scope reference
+  /^\$\.script_identity\./,
+  /^\$\.style_reference_binding\./,
+  /^\$\.episode\.title$/, // carried from the bound script source
+  /^\$\.episode\.package_run_id$/,
+  // Artifact identity/metadata written by the MODULE, never by the model:
+  /^\$\.(?:schema|artifact_type|direction_id|revision|supersedes|created_at|created_by|lifecycle_state|direction_digest_sha256)$/,
+  /^\$\.execution_contract\./,
+  // Structural REFERENCE surfaces (section ids, scopes, citation ids): these
+  // are enum/ref fields validated by their own rules, not prose — canonical
+  // Story section ids are ULIDs and must not trip the id-shape detector.
+  /\.section_ref$/,
+  /\.constraint_id$/,
+  /\.claim_id$/,
+  /\.pattern_ref$/,
+  /^\$\.card_strategy\.argument_sections_needing_cards\[\d+\]$/,
+  /^\$\.action_claims\[\d+\]\.scope$/,
+  /^\$\.protected_domains\[\d+\]\./,
+  /^\$\.style_patterns_cited\[\d+\]$/,
+];
+
+function collectModelProse(value, pathName = '$', out = []) {
+  if (typeof value === 'string') {
+    if (!PROSE_SKIP_PATHS.some((re) => re.test(pathName)) && norm(value)) out.push({ path: pathName, text: value });
+    return out;
+  }
+  if (Array.isArray(value)) { value.forEach((child, i) => collectModelProse(child, `${pathName}[${i}]`, out)); return out; }
+  if (value && typeof value === 'object') {
+    for (const [key, child] of Object.entries(value)) collectModelProse(child, `${pathName}.${key}`, out);
+  }
+  return out;
+}
+
+/* ---- layered prose guards --------------------------------------------------
+ * Layer 3 of the enforcement stack: bounded verb/object PROXIMITY families per
+ * protected domain (never bare keyword bans — "music" or "cut" alone is legal).
+ */
+
+const MUTATION_VERBS = '(?:replace|replaces|replacing|swap|swaps|swapping|regenerat\\w*|re-?generat\\w*|re-?select\\w*|reselect\\w*|remove|removes|removing|discard\\w*|redo|re-?shoot\\w*|re-?score|re-?scoring|substitut\\w*|change|changes|changing|switch\\w*|update|updating|new|different|another|fresh|produce|producing|source|sourcing)';
+// Proximity is evaluated WITHIN one sentence (guards split on sentence
+// boundaries), so the window can be generous without crossing statements.
+const NEAR = '\\W+(?:[\\w,;:\'"-]+\\W+){0,14}?';
+const DOMAIN_OBJECTS = Object.freeze({
+  MEDIA: '(?:image|images|imagery|media|plate|plates|footage|asset|assets|still|stills|visual|visuals|picture|pictures|graphic|graphics|photo|photos|clip|clips)',
+  MUSIC: '(?:music|track|soundtrack|score|scoring|bed|cue|cues|audio\\s+bed|composition)',
+  PRESENTER: '(?:presenter|talking\\s*head|host|face|on-?camera)',
+  CARDS: '(?:card|cards|infographic|infographics)',
+  ENDING: '(?:ending|outro|close|closing|finale)',
+});
+
+// A negator IMMEDIATELY before the mutation verb marks compliance language
+// ("without changing it", "never replace"). Only direct negation skips —
+// "not afraid to replace the music" keeps at least one non-negator word
+// between the negator and the verb and is still caught.
+const IMMEDIATE_NEGATION_RE = /(?:\bwithout|\bnever|\bnot|\bno|\bavoid(?:ing)?|don'?t|do\s+not)\s+(?:\w+\s+)?$/i;
+
+function negatedAt(text, index) {
+  return IMMEDIATE_NEGATION_RE.test(text.slice(Math.max(0, index - 24), index));
+}
+
+function splitSentences(text) {
+  return String(text).split(/(?<=[.!?])\s+/);
+}
+
+function proseGuardHits(prose, protectedDomains) {
+  const hits = [];
+  for (const domain of protectedDomains) {
+    const object = DOMAIN_OBJECTS[domain.domain];
+    if (!object) continue; // structural/claims/semantic layers cover the rest
+    const forward = new RegExp(`\\b(${MUTATION_VERBS})${NEAR}${object}\\b`, 'ig');
+    const backward = new RegExp(`\\b${object}${NEAR}(${MUTATION_VERBS})\\b`, 'ig');
+    for (const item of prose) {
+      let found = null;
+      for (const sentence of splitSentences(item.text)) {
+        let match;
+        forward.lastIndex = 0;
+        while (!found && (match = forward.exec(sentence)) !== null) {
+          if (negatedAt(sentence, match.index)) continue;
+          found = match[0];
+        }
+        backward.lastIndex = 0;
+        while (!found && (match = backward.exec(sentence)) !== null) {
+          const verbOffset = match[0].search(new RegExp(MUTATION_VERBS, 'i'));
+          if (verbOffset > 0 && negatedAt(sentence, match.index + verbOffset)) continue;
+          found = match[0];
+        }
+        if (found) break;
+      }
+      if (found) hits.push({ code: domain.violation, constraint_id: domain.constraint_id, domain: domain.domain, path: item.path, excerpt: found.slice(0, 120) });
+    }
+  }
+  return hits;
+}
+
+/* ---- specialist execution boundary (content shapes, not key names) --------- */
+
+const SPECIALIST_DETECTORS = Object.freeze([
+  { name: 'filesystem_path', re: /(?:^|[\s"'(])\/(?:[\w.-]+\/)+[\w.-]+/ },
+  { name: 'media_filename', re: /\b[\w-]{2,}\.(?:png|jpe?g|mp4|mov|wav|webm|gif|tiff?|exr|svg|onnx|gguf)\b/i },
+  { name: 'asset_id_shape', re: /\b(?:img|asset|plate|shot|clip|take|cue)[-_][\w-]*\d[\w-]*\b/i },
+  { name: 'ulid_or_hash', re: /\b(?:[0-9A-HJKMNP-TV-Z]{26}|[a-f0-9]{16,64})\b/ },
+  { name: 'degree_coordinates', re: /-?\d{1,3}(?:\.\d+)?\s*°/ },
+  { name: 'latlon_pair', re: /\b-?\d{1,3}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}\b/ },
+  { name: 'camera_parameter', re: /\b(?:lat|latitude|lon|longitude|heading|pitch|yaw|tilt|fov|focal)\s*[:=]\s*-?\d/i },
+  { name: 'timestamp_seconds', re: /\b(?:at|from|until|to|around)\s+\d+(?:\.\d+)?\s*s(?:ec(?:ond)?s?)?\b/i },
+  // minutes:seconds timecodes; common aspect-ratio idioms (9:16, 16:9, 4:3,
+  // 21:9, 1:1, 3:4) are legal conceptual language, not execution timing.
+  { name: 'timecode', re: /\b(?!(?:16:9|9:16|4:3|3:4|21:9|1:1)\b)\d{1,2}:\d{2}(?:\.\d+)?\b/ },
+  { name: 'frame_number', re: /\bframe\s*#?\s*\d+\b/i },
+  { name: 'millisecond_value', re: /\b\d+(?:\.\d+)?\s*(?:ms|millisecond)/i },
+  { name: 'pixel_value', re: /\b\d+\s*px\b|\b[xy]\s*=\s*\d+\b/i },
+  { name: 'scale_percent', re: /\b(?:scale|zoom|crop|resize|enlarge|shrink|opacity)\w*\s+(?:\w+\s+){0,3}?(?:to|by|at)?\s*\d+(?:\.\d+)?\s*%/i },
+  { name: 'render_parameter', re: /\b(?:crf\s*\d+|\d+\s*fps\b|fps\s*\d+|f\/\d+(?:\.\d+)?|\d+\s*mm\b|iso\s*\d+)/i },
+  { name: 'seconds_duration_execution', re: /\b(?:cut|hold|dissolve|transition|push(?:-|\s)?in|pan|zoom)\w*\s+(?:\w+\s+){0,4}?(?:of|for|at|lasting)\s+\d+(?:\.\d+)?\s*s(?:ec(?:ond)?s?)?\b/i },
+  // Spelled-out execution timing: "at thirty-seven seconds" is as executable
+  // as "at 37s".
+  { name: 'spelled_timestamp', re: /\b(?:at|around|by|near|for|lasting)\s+(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-\s](?:one|two|three|four|five|six|seven|eight|nine))?|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|one|two|three|four|five|six|seven|eight|nine|half\s+a|a\s+quarter)\s+(?:of\s+a\s+)?second(?:s)?\b/i },
+  // Spelled-out media filenames: "final dash plate dot png".
+  { name: 'spelled_filename', re: /\bdot\s+(?:png|jpe?g|mp4|mov|wav|webm|gif|svg)\b/i },
+]);
+
+function specialistBoundaryHits(prose) {
+  const hits = [];
+  for (const item of prose) {
+    for (const detector of SPECIALIST_DETECTORS) {
+      const match = detector.re.exec(item.text);
+      if (match) hits.push({ code: VIOLATION_CODES.SPECIALIST, detector: detector.name, path: item.path, excerpt: match[0].slice(0, 120) });
+    }
+  }
+  return hits;
+}
+
+/* ---- self-approval guard ---------------------------------------------------- */
+
+const SELF_APPROVAL_RE = /\b(?:human[-\s]?approved|approved\s+by\s+(?:the\s+)?(?:human|mikko|operator)|i\s+(?:hereby\s+)?approve|approval\s+(?:granted|given|recorded|obtained)|pre[-\s]?approved|approved\s+(?:house[-\s]?style\s+)?(?:exception|deviation)|consider(?:\s+\w+){0,2}\s+approved|treat(?:\s+\w+){0,3}\s+as\s+approved)\b/i;
+
+function selfApprovalHits(prose) {
+  const hits = [];
+  for (const item of prose) {
+    const match = SELF_APPROVAL_RE.exec(item.text);
+    if (match) hits.push({ code: VIOLATION_CODES.SELF_APPROVAL, path: item.path, excerpt: match[0].slice(0, 120) });
+  }
+  return hits;
+}
+
+/* ---- structural helpers ------------------------------------------------------ */
+
 function validateScriptIdentity(identity, errors, label = 'script_identity') {
   if (!identity || typeof identity !== 'object') { errors.push(`${label} required`); return; }
   if (!SCRIPT_IDENTITY_KINDS.includes(identity.kind)) { errors.push(`${label}.kind invalid`); return; }
   if (identity.kind === 'CANONICAL_STORY') {
     if (!norm(identity.project_id) || !norm(identity.version_id) || !SHA256_RE.test(identity.content_hash || '')) {
       errors.push(`${label} canonical Story identity incomplete`);
+    }
+    if (identity.authority_verified !== true) {
+      errors.push(`${VIOLATION_CODES.STORY}: canonical Story identity was not resolved through the canonical Script Builder authority (caller-supplied identity carries no authority)`);
     }
   } else {
     if (identity.source !== 'DISCOVERY_PACKAGE') errors.push(`${label}.source unsupported`);
@@ -118,10 +362,18 @@ function validateScriptIdentity(identity, errors, label = 'script_identity') {
       || !SHA256_RE.test(identity.script_sha256 || '')) {
       errors.push(`${label} candidate-script identity incomplete`);
     }
+    if (identity.authority_verified !== true) {
+      errors.push(`${VIOLATION_CODES.STORY}: candidate script was not resolved under the canonical Discovery store authority`);
+    }
   }
 }
 
-function constraintCompliance(direction, constraint, errors) {
+function readPath(value, dotted) {
+  return dotted.split('.').reduce((acc, key) => (acc && typeof acc === 'object' ? acc[key] : undefined), value);
+}
+
+function structuralConstraintErrors(direction, constraint) {
+  const errors = [];
   const id = constraint.constraint_id;
   const fail = (msg) => errors.push(`CONSTRAINT_CONTRADICTION ${id}: ${msg}`);
   const humorMode = direction.humor?.mode;
@@ -156,20 +408,27 @@ function constraintCompliance(direction, constraint, errors) {
       if (direction.coherence?.music_locked !== true) fail('coherence.music_locked must be true');
       break;
     case 'CUSTOM':
-      break; // echo + compliance text mandatory (checked below); human-auditable
+      break; // handled through the derived protected domain
     default:
       errors.push(`constraint ${id} has unknown type ${constraint.type}`);
   }
+  return errors;
 }
 
-/*
- * Validate a full direction artifact against its originating task.
- * task: { script_identity, style_reference (binding|null), human_constraints[], section_refs[] }
+/* ---- the layered validator ---------------------------------------------------
+ * Layer 1: structural fields + action-claim validation against protected domains.
+ * Layer 2: required-field-values from structured CUSTOM constraints.
+ * Layer 3: deterministic prose guards (constraint contradiction, specialist
+ *          boundary, self-approval).
+ * Layer 4: optional bounded semantic adjudicator — REJECT/AMBIGUOUS only; a
+ *          PASS is advisory and can never override layers 1-3.
+ * Violations are returned typed so callers can escalate without retry roulette.
  */
 function validateDirection(direction, context = {}) {
   const errors = [];
+  const violations = [];
   const task = context.task || {};
-  if (!direction || typeof direction !== 'object') return { ok: false, errors: ['direction required'] };
+  if (!direction || typeof direction !== 'object') return { ok: false, errors: ['direction required'], violations };
 
   if (direction.schema !== SCHEMA) errors.push('schema invalid');
   if (direction.artifact_type !== ARTIFACT_TYPE) errors.push('artifact_type invalid');
@@ -179,7 +438,6 @@ function validateDirection(direction, context = {}) {
   if (!LIFECYCLE_STATES.includes(direction.lifecycle_state)) errors.push('lifecycle_state invalid');
   if (!norm(direction.episode?.title)) errors.push('episode.title required');
 
-  // Identity bindings: exact, read-only.
   validateScriptIdentity(direction.script_identity, errors);
   if (task.script_identity && canonicalize(direction.script_identity) !== canonicalize(task.script_identity)) {
     errors.push('SCRIPT_IDENTITY_DRIFT: direction does not bind the task script identity exactly');
@@ -196,8 +454,20 @@ function validateDirection(direction, context = {}) {
     if (task.style_reference) errors.push('style reference active in task but direction declares ABSENT');
   } else errors.push('style_reference_binding.status invalid');
 
-  // Human constraints: all echoed, none contradicted.
-  const echoed = new Map((direction.human_directions_received || []).map((c) => [c.constraint_id, c]));
+  // Protected domains: derived here, deterministically, from the task's human
+  // constraints — the artifact's own protected_domains must match exactly so a
+  // model cannot narrow them.
+  const derived = deriveProtectedDomains(task.human_constraints || []);
+  for (const item of derived.unenforceable) {
+    violations.push(item);
+    errors.push(`${item.code}: ${item.constraint_id} — ${item.detail}`);
+  }
+  if (task.human_constraints && canonicalize(direction.protected_domains || []) !== canonicalize(derived.domains)) {
+    errors.push('protected_domains must equal the module-derived domains for the task constraints (model may not narrow human protection)');
+  }
+
+  // Echo integrity + structural per-constraint checks (kept from v1).
+  const echoed = new Map(asArr(direction.human_directions_received).map((c) => [c.constraint_id, c]));
   for (const constraint of task.human_constraints || []) {
     const echo = echoed.get(constraint.constraint_id);
     if (!echo) { errors.push(`human constraint ${constraint.constraint_id} not echoed`); continue; }
@@ -205,16 +475,85 @@ function validateDirection(direction, context = {}) {
       errors.push(`human constraint ${constraint.constraint_id} echo altered`);
     }
     if (!norm(echo.compliance)) errors.push(`human constraint ${constraint.constraint_id} lacks a compliance statement`);
-    constraintCompliance(direction, constraint, errors);
+    for (const err of structuralConstraintErrors(direction, constraint)) {
+      errors.push(err);
+      const code = VIOLATION_CODES[constraint.type];
+      if (code) violations.push({ code, constraint_id: constraint.constraint_id, path: 'structural', excerpt: err.slice(0, 120) });
+    }
   }
 
-  // Taste fields.
+  // Layer 1: action claims. Every production-affecting recommendation must be
+  // a typed claim; claims are checked against protected domains.
+  const claims = direction.action_claims;
+  if (!Array.isArray(claims)) errors.push('action_claims must be an array (the ONLY executable recommendation surface)');
+  const claimIds = new Set();
+  for (const [i, claim] of asArr(claims).entries()) {
+    if (!norm(claim?.claim_id) || claimIds.has(claim.claim_id)) errors.push(`action_claims[${i}] claim_id missing or duplicate`);
+    claimIds.add(claim?.claim_id);
+    if (!PROTECTED_DOMAIN_NAMES.includes(claim?.domain)) errors.push(`action_claims[${i}] domain invalid`);
+    if (!OPERATIONS.includes(claim?.operation)) errors.push(`action_claims[${i}] operation invalid`);
+    if (!norm(claim?.summary)) errors.push(`action_claims[${i}] summary required`);
+    for (const domain of derived.domains) {
+      if (claim?.domain !== domain.domain) continue;
+      if (!scopesIntersect(claim?.scope || 'GLOBAL', domain.scope)) continue;
+      if (ALWAYS_LEGAL_OPERATIONS.includes(claim?.operation)) continue;
+      if ((domain.forbidden_operations || []).includes(claim?.operation)) {
+        errors.push(`${domain.violation}: action claim ${claim.claim_id} recommends ${claim.operation} on protected ${domain.domain} (${domain.constraint_id})`);
+        violations.push({ code: domain.violation, constraint_id: domain.constraint_id, path: `$.action_claims[${i}]`, excerpt: `${claim.operation} ${claim.domain} ${claim.scope || 'GLOBAL'}` });
+      }
+    }
+  }
+
+  // Layer 2: required field values from structured CUSTOM constraints.
+  // A structured CUSTOM whose domain has NO deterministic prose coverage and
+  // NO required field values cannot be verified deterministically: without a
+  // configured semantic adjudicator it must escalate, never silently pass.
+  for (const domain of derived.domains) {
+    if (domain.violation === VIOLATION_CODES.CUSTOM
+      && !DOMAIN_OBJECTS[domain.domain]
+      && !(domain.required_field_values || []).length
+      && typeof context.semanticAdjudicator !== 'function') {
+      errors.push(`${VIOLATION_CODES.CUSTOM_UNENFORCEABLE}: ${domain.constraint_id} protects ${domain.domain} with no deterministic prose coverage, no required field values, and no semantic adjudicator — compliance cannot be verified`);
+      violations.push({ code: VIOLATION_CODES.CUSTOM_UNENFORCEABLE, constraint_id: domain.constraint_id, path: 'semantic', excerpt: domain.domain });
+    }
+    for (const requirement of domain.required_field_values || []) {
+      const actual = readPath(direction, requirement.path);
+      if (!requirement.one_of.includes(actual)) {
+        errors.push(`${domain.violation}: ${requirement.path} is ${JSON.stringify(actual)} but the human constraint ${domain.constraint_id} requires one of ${JSON.stringify(requirement.one_of)}`);
+        violations.push({ code: domain.violation, constraint_id: domain.constraint_id, path: requirement.path, excerpt: String(actual).slice(0, 120) });
+      }
+    }
+  }
+
+  // Layer 3: deterministic prose guards over model-authored strings.
+  const prose = collectModelProse(direction);
+  for (const hit of proseGuardHits(prose, derived.domains)) {
+    errors.push(`${hit.code}: prose at ${hit.path} contradicts protected ${hit.domain} (${hit.constraint_id}): "${hit.excerpt}"`);
+    violations.push(hit);
+  }
+  for (const hit of specialistBoundaryHits(prose)) {
+    errors.push(`${hit.code}: ${hit.detector} in prose at ${hit.path}: "${hit.excerpt}" — specialist execution detail may not appear in creative direction`);
+    violations.push(hit);
+  }
+  for (const hit of selfApprovalHits(prose)) {
+    errors.push(`${hit.code}: approval claim in prose at ${hit.path}: "${hit.excerpt}" — model text can never carry approval authority`);
+    violations.push(hit);
+  }
+
+  // Execution contract: prose is never executable.
+  const contract = direction.execution_contract;
+  if (!contract || contract.executable_surface !== 'action_claims'
+    || contract.prose_classification !== 'NON_EXECUTABLE_CREATIVE_RATIONALE') {
+    errors.push('execution_contract must declare action_claims as the sole executable surface and all prose as NON_EXECUTABLE_CREATIVE_RATIONALE');
+  }
+
+  // Taste fields (kept from v1).
   if (!norm(direction.creative_thesis?.statement) || !norm(direction.creative_thesis?.experience_goal)) errors.push('creative_thesis incomplete');
   if (!norm(direction.tone?.register) || !norm(direction.tone?.energy_arc)) errors.push('tone incomplete');
   if (!HUMOR_MODES.includes(direction.humor?.mode)) errors.push('humor.mode invalid');
   if (direction.humor && !PROVENANCES.includes(direction.humor.provenance)) errors.push('humor.provenance invalid');
 
-  const mix = direction.visual_mode_mix || [];
+  const mix = asArr(direction.visual_mode_mix);
   const mixModes = mix.map((m) => m.mode);
   if (mixModes.length !== VISUAL_FUNCTIONS.length || VISUAL_FUNCTIONS.some((f) => !mixModes.includes(f))) {
     errors.push('visual_mode_mix must weigh all six visual functions exactly once');
@@ -224,7 +563,7 @@ function validateDirection(direction, context = {}) {
     if (m.weight !== 'ABSENT' && !norm(m.rationale)) errors.push(`visual_mode_mix ${m.mode} rationale required`);
   }
 
-  const movements = direction.density_arc?.movements || [];
+  const movements = asArr(direction.density_arc?.movements);
   if (!norm(direction.density_arc?.shape) || movements.length === 0) errors.push('density_arc incomplete');
   const sectionRefs = new Set(task.section_refs || []);
   for (const mv of movements) {
@@ -245,8 +584,8 @@ function validateDirection(direction, context = {}) {
 
   const cs = direction.card_strategy || {};
   if (!norm(cs.role)) errors.push('card_strategy.role required');
-  for (const pat of cs.patterns_suggested || []) if (!CARD_PATTERNS.includes(pat)) errors.push(`card pattern invalid: ${pat}`);
-  for (const ref of cs.argument_sections_needing_cards || []) {
+  for (const pat of asArr(cs.patterns_suggested)) if (!CARD_PATTERNS.includes(pat)) errors.push(`card pattern invalid: ${pat}`);
+  for (const ref of asArr(cs.argument_sections_needing_cards)) {
     if (sectionRefs.size && !sectionRefs.has(ref)) errors.push(`card_strategy references unknown section ${ref}`);
   }
 
@@ -258,33 +597,52 @@ function validateDirection(direction, context = {}) {
   }
   if (!norm(direction.coherence?.sound_music_intent) || !norm(direction.coherence?.packaging_intent)) errors.push('coherence intent incomplete');
 
-  for (const d of direction.intentional_deviations || []) {
+  for (const d of asArr(direction.intentional_deviations)) {
     if (!PATTERN_REF_RE.test(d.pattern_ref || '')) errors.push(`deviation pattern_ref invalid: ${d.pattern_ref}`);
     if (!norm(d.deviation) || !norm(d.creative_reason)) errors.push('deviation requires statement and creative_reason');
     if (d.requires_human !== true) errors.push('deviations always require human approval (requires_human must be true)');
   }
 
-  const escalations = direction.human_decisions_required || [];
+  const escalations = asArr(direction.human_decisions_required);
   if (escalations.length > MAX_ESCALATIONS) errors.push(`over-escalation: at most ${MAX_ESCALATIONS} consequential human decisions`);
   for (const e of escalations) {
     if (!ESCALATION_TYPES.includes(e.type)) errors.push(`escalation type invalid: ${e.type}`);
     if (!norm(e.question) || !norm(e.why_consequential)) errors.push('escalation requires question and why_consequential');
   }
 
-  for (const c of direction.confidence || []) {
+  for (const c of asArr(direction.confidence)) {
     if (!CONFIDENCE_LEVELS.includes(c.level) || !PROVENANCES.includes(c.basis) || !norm(c.aspect)) errors.push('confidence entry invalid');
   }
-  for (const ref of direction.style_patterns_cited || []) {
+  for (const ref of asArr(direction.style_patterns_cited)) {
     if (!PATTERN_REF_RE.test(ref)) errors.push(`style pattern citation invalid: ${ref}`);
   }
 
+  for (const arrField of ['visual_mode_mix', 'intentional_deviations', 'human_decisions_required', 'confidence', 'style_patterns_cited', 'action_claims', 'human_directions_received']) {
+    if (direction[arrField] !== undefined && !Array.isArray(direction[arrField])) errors.push(`${arrField} must be an array`);
+  }
+  if (direction.density_arc && direction.density_arc.movements !== undefined && !Array.isArray(direction.density_arc.movements)) errors.push('density_arc.movements must be an array');
+  if (direction.card_strategy && direction.card_strategy.argument_sections_needing_cards !== undefined && !Array.isArray(direction.card_strategy.argument_sections_needing_cards)) errors.push('card_strategy.argument_sections_needing_cards must be an array');
   errors.push(...forbiddenKeyHits(direction).map((p) => `forbidden key ${p} (specialist/human domain)`));
   errors.push(...proseTooLong(direction).map((p) => `prose too long at ${p}`));
 
   if (!SHA256_RE.test(direction.direction_digest_sha256 || '')) errors.push('direction_digest_sha256 missing');
   else if (directionDigest(direction) !== direction.direction_digest_sha256) errors.push('direction digest mismatch');
 
-  return { ok: errors.length === 0, errors };
+  // Layer 4: bounded semantic adjudicator — consulted ONLY when layers 1-3
+  // passed; it may reject or declare ambiguity, never approve past a failure.
+  if (errors.length === 0 && typeof context.semanticAdjudicator === 'function') {
+    const verdict = context.semanticAdjudicator({ direction, protected_domains: derived.domains, prose });
+    if (verdict?.verdict === 'REJECT') {
+      const code = verdict.code && String(verdict.code).startsWith('HUMAN_') ? verdict.code : VIOLATION_CODES.CUSTOM;
+      errors.push(`${code}: semantic adjudicator rejected: ${norm(verdict.reason) || 'no reason given'}`);
+      violations.push({ code, path: 'semantic', excerpt: norm(verdict.reason).slice(0, 120) });
+    } else if (verdict?.verdict === 'AMBIGUOUS' || (verdict && verdict.verdict !== 'PASS')) {
+      errors.push(`HUMAN_CONSTRAINT_AMBIGUITY: semantic adjudicator could not establish compliance: ${norm(verdict.reason) || 'unspecified'}`);
+      violations.push({ code: 'HUMAN_CONSTRAINT_AMBIGUITY', path: 'semantic', excerpt: norm(verdict.reason).slice(0, 120) });
+    }
+  }
+
+  return { ok: errors.length === 0, errors, violations };
 }
 
 module.exports = {
@@ -292,5 +650,8 @@ module.exports = {
   HUMOR_MODES, DENSITY_GROUPS, PRESENTER_MODES, ENDING_MODES, VISUAL_FUNCTIONS, MODE_WEIGHTS,
   CARD_PATTERNS, ESCALATION_TYPES, CONSTRAINT_TYPES, PROVENANCES, CONFIDENCE_LEVELS,
   SCRIPT_IDENTITY_KINDS, LIFECYCLE_STATES, MAX_ESCALATIONS, FORBIDDEN_KEYS,
-  sha256, newDirectionId, canonicalize, directionDigest, forbiddenKeyHits, validateDirection,
+  PROTECTED_DOMAIN_NAMES, OPERATIONS, VIOLATION_CODES, SPECIALIST_DETECTORS,
+  sha256, newDirectionId, canonicalize, directionDigest, forbiddenKeyHits,
+  deriveProtectedDomains, collectModelProse, proseGuardHits, specialistBoundaryHits, selfApprovalHits,
+  validateDirection,
 };

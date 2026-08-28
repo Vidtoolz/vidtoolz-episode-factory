@@ -1,7 +1,7 @@
 {
-  "schema_version": "vidtoolz.creativeDirectionContract.v1",
+  "schema_version": "vidtoolz.creativeDirectionContract.v2",
   "artifact_type": "creative-direction",
-  "artifact_schema": "vidtoolz.creativeDirection.v1",
+  "artifact_schema": "vidtoolz.creativeDirection.v2",
   "purpose": "One episode-specific creative strategy per episode, produced by creative_director as a RECOMMENDATION for human review. The direction says WHY / WHAT EXPERIENCE at section/movement altitude; specialists decide HOW inside their domains; QC independently tests whether the draft satisfies the declared intent.",
   "authority": {
     "structural_validator": "scripts/creative-direction.js#validateDirection",
@@ -14,29 +14,43 @@
     "director_may_record_human_approval": false,
     "director_may_select_assets": false,
     "director_may_author_shots": false,
-    "director_may_edit_script": false
+    "director_may_edit_script": false,
+    "semantic_enforcement": {
+      "protected_domains": "module-derived from human constraints (scripts/creative-direction.js#deriveProtectedDomains); the model can never author or narrow them",
+      "action_claims": "the ONLY executable recommendation surface; deterministic conflict validation against protected domains",
+      "prose_classification": "NON_EXECUTABLE_CREATIVE_RATIONALE \u2014 bounded verb/object proximity guards reject constraint contradictions; content-shape detectors reject specialist execution details (paths, filenames, ids, coordinates, timestamps, frames, render parameters); approval-claim language is rejected anywhere",
+      "semantic_adjudicator": "optional bounded hook \u2014 may REJECT or declare HUMAN_CONSTRAINT_AMBIGUITY; a PASS can never override a deterministic failure",
+      "custom_constraints": "must carry machine-verifiable protected scope (domain + forbidden_operations and/or required_field_values); unstructured CUSTOM fails closed as HUMAN_CONSTRAINT_REQUIRES_SEMANTIC_VALIDATION before any model call",
+      "retry_policy": "authority violations (HUMAN_*, SPECIALIST_EXECUTION_BOUNDARY_VIOLATION, HOUSE_STYLE_SELF_APPROVAL_FORBIDDEN, STORY_AUTHORITY_INVALID) escalate immediately with the offending output preserved; only schema noise may retry within the bounded budget"
+    },
+    "story_authority": "canonical Story identity is RESOLVED via agent-task-visual-planning.loadCanonicalStory (store resolution, current-head, hash recomputation, approver verification) \u2014 caller-supplied identity is only an expectation cross-checked against the resolved authority; Discovery candidates are realpath-confined to the canonical claim-packages store with internal fingerprint consistency"
   },
   "identity_formats": {
     "direction_id": "creative-direction-<26-char Crockford ULID-style>",
-    "script_identity_kinds": ["CANONICAL_STORY (project_id + version_id + content_hash + approval)", "CANDIDATE_SCRIPT (DISCOVERY_PACKAGE: canonical_idea_id + source_fingerprint + datasheet_fingerprint + script_variant + script_sha256)"]
+    "script_identity_kinds": [
+      "CANONICAL_STORY (project_id + version_id + content_hash + approval)",
+      "CANDIDATE_SCRIPT (DISCOVERY_PACKAGE: canonical_idea_id + source_fingerprint + datasheet_fingerprint + script_variant + script_sha256)"
+    ]
   },
   "consistency_rules": [
     "script identity is bound exactly; any drift voids the direction (SCRIPT_IDENTITY_DRIFT)",
     "style reference binding is sha-pinned via the style-reference adapter; ACTIVE_ADVISORY requires human-approval evidence; absence is declared, never fabricated (STYLE_AUTHORITY_FABRICATED)",
-    "every human constraint in the task is echoed verbatim with a compliance statement; typed constraints are deterministically checked; contradiction is CONSTRAINT_CONTRADICTION — validation failure, never a warning",
+    "every human constraint in the task is echoed verbatim with a compliance statement; typed constraints are deterministically checked; contradiction is CONSTRAINT_CONTRADICTION \u2014 validation failure, never a warning",
     "conflicting human constraints (e.g. TONE_SERIOUS vs TONE_MORE_HUMOR) ESCALATE with both positions preserved; the director never resolves them by synthetic consensus",
     "PRESENTER_FREE draft policy requires a concrete compensation_directive (P-02 continuous-visual-life equivalence)",
     "visual_mode_mix weighs all six visual functions exactly once",
-    "intentional deviations always cite a pattern/principle id, carry a creative reason, and require human approval — the director never self-approves a deviation",
-    "human_decisions_required is capped at 4 consequential typed escalations — over-escalation is as invalid as over-deciding",
+    "intentional deviations always cite a pattern/principle id, carry a creative reason, and require human approval \u2014 the director never self-approves a deviation",
+    "human_decisions_required is capped at 4 consequential typed escalations \u2014 over-escalation is as invalid as over-deciding",
     "forbidden vocabulary (shot geometry, asset selection, script text, timing values, infrastructure, approvals) is rejected recursively",
-    "stored direction digest matches canonical serialization; direction revisions are immutable and strictly monotonic"
+    "stored direction digest matches canonical serialization; direction revisions are immutable and strictly monotonic",
+    "acknowledging a human constraint is not compliance: compliance is enforced structurally, through action claims, and through prose guards",
+    "script identity must carry authority_verified=true set by canonical resolution; unverified identity is STORY_AUTHORITY_INVALID"
   ],
   "downstream_consumers": {
-    "visual_planning_director": "specialistProjection: full strategy fields — decides beats/shots/cards/treatments itself",
-    "editor": "pace character, density arc, emphasis moments, relief, ending energy — decides cuts/holds/transitions itself",
-    "sound_music_director": "sound_music_intent + music lock — decides cues/mix itself",
-    "audience_packaging_director": "packaging_intent + tone — decides titles/thumbnails itself",
+    "visual_planning_director": "specialistProjection: full strategy fields \u2014 decides beats/shots/cards/treatments itself",
+    "editor": "pace character, density arc, emphasis moments, relief, ending energy \u2014 decides cuts/holds/transitions itself",
+    "sound_music_director": "sound_music_intent + music lock \u2014 decides cues/mix itself",
+    "audience_packaging_director": "packaging_intent + tone \u2014 decides titles/thumbnails itself",
     "qc_director": "the approved direction as sha-bound intent evidence; QC verdicts never route through the director"
   },
   "lifecycle_note": "Module existence is not an authority claim. creative_director stays DEFINED / NOT_PROVEN / DISABLED until the registry enablement prerequisites are met and Mikko records an enablement decision (governance/creative-director-enablement.json, imitating the presenter_director record)."

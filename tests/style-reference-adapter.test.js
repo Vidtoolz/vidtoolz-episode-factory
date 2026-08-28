@@ -274,3 +274,98 @@ test('SRA20: adapter exports no AGENT_ID and the module is not CLI-invokable', (
   const source = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'style-reference-adapter.js'), 'utf8');
   assert.equal(source.includes('require.main'), false, 'no CLI entrypoint');
 });
+
+// ── LEVEL-B EVENT CONTRACT (2026-08-28 authority repair) ────────────────────
+// LEVEL B = MEANINGFUL VISUAL EVENT. Never frame difference, never a bare cut,
+// never codec noise. Measurement signal proposes; semantic authority admits.
+
+test('SRA21: cut-only programme admits ZERO Level-B events (Codex case: hard cuts without semantic change)', () => {
+  const cuts = Array.from({ length: 10 }, (_, i) => ({ t_s: i * 2 + 1, kind: 'cut' }));
+  const admission = adapter.admitSemanticEvents(cuts);
+  assert.equal(admission.admitted.length, 0);
+  assert.equal(admission.errors.length, 0, 'a cut is silently non-meaningful, not an error');
+  const programme = { duration_s: 20, spans: [{ start_s: 0, end_s: 20, presenter: 'ABSENT', level_c: { class: 'DRIFT' }, density: 'D1', text_bearing: false }], b_events: cuts };
+  const report = adapter.evaluateAdvisory(load(), programme, {});
+  const b = report.findings.find((f) => f.metric === 'LEVEL_B_EVENT_DENSITY');
+  assert.equal(b.measured, 0, 'ten meaningless cuts contribute zero meaningful events per minute');
+  assert.equal(b.warning_id, 'W-02');
+});
+
+test('SRA22: encoder/compression noise is NEVER Level B — claimed-meaningful noise fails closed', () => {
+  const silent = adapter.admitSemanticEvents([{ t_s: 1, kind: 'ENCODER_NOISE' }, { t_s: 2, kind: 'COMPRESSION_NOISE' }]);
+  assert.equal(silent.admitted.length, 0);
+  assert.equal(silent.errors.length, 0);
+  const claimed = adapter.admitSemanticEvents([{ t_s: 1, kind: 'ENCODER_DRIFT', meaningful: true }]);
+  assert.equal(claimed.errors.length, 1);
+  assert.match(claimed.errors[0], /STYLE_EVENT_CLASS_INADMISSIBLE/);
+  assert.throws(
+    () => adapter.evaluateAdvisory(load(), { duration_s: 30, spans: [{ start_s: 0, end_s: 30, presenter: 'ABSENT', level_c: { class: 'DRIFT' }, density: 'D1', text_bearing: false }], b_events: [{ t_s: 1, kind: 'FRAME_NOISE', meaningful: true }] }, {}),
+    (e) => e.code === 'STYLE_EVENT_CONTRACT_VIOLATION'
+  );
+});
+
+test('SRA23: slow continuous pan is Level C, not Level B — unless it crosses a semantic boundary', () => {
+  const admission = adapter.admitSemanticEvents([{ t_s: 3, kind: 'PAN' }, { t_s: 9, kind: 'DRIFT' }]);
+  assert.equal(admission.admitted.length, 0);
+  const boundary = adapter.admitSemanticEvents([{ t_s: 3, kind: 'PAN', semantic_change: true }]);
+  assert.equal(boundary.admitted.length, 1);
+  assert.equal(boundary.admitted[0].kind, 'SEMANTIC_TRANSITION');
+});
+
+test('SRA24: regression matrix — 20s card + 5 meaningful reveals + slow drift = 5 Level-B events, no W-01, C continuous', () => {
+  const reveals = [3, 6.5, 10, 13.5, 17].map((t) => ({ t_s: t, kind: 'LABEL_REVEAL' }));
+  const programme = { duration_s: 20, spans: [{ start_s: 0, end_s: 20, presenter: 'ABSENT', level_c: { class: 'SLOW_SCALE' }, density: 'D4', text_bearing: true }], b_events: reveals };
+  const report = adapter.evaluateAdvisory(load(), programme, {});
+  assert.equal(report.findings.filter((f) => f.warning_id === 'W-01').length, 0);
+  const b = report.findings.find((f) => f.metric === 'LEVEL_B_EVENT_DENSITY');
+  assert.equal(b.measured, 15, '5 events / 20s = 15 per min, all admitted');
+});
+
+test('SRA25: a hard cut IS Level B when it declares a meaningful visual-state change', () => {
+  const admission = adapter.admitSemanticEvents([{ t_s: 5, kind: 'HARD_CUT', semantic_change: true }, { t_s: 8, kind: 'cut', semantic_change: true }]);
+  assert.equal(admission.admitted.length, 2);
+});
+
+test('SRA26: a new comparison-column reveal is exactly one Level-B event', () => {
+  const admission = adapter.admitSemanticEvents([{ t_s: 12, kind: 'LABEL_REVEAL', reason: 'second comparison column arrives' }]);
+  assert.equal(admission.admitted.length, 1);
+});
+
+test('SRA27: unknown event kinds fail closed instead of counting', () => {
+  const admission = adapter.admitSemanticEvents([{ t_s: 1, kind: 'vibes' }]);
+  assert.equal(admission.admitted.length, 0);
+  assert.match(admission.errors[0], /STYLE_EVENT_CLASS_UNKNOWN/);
+});
+
+test('SRA28: presenter PRESENCE alone no longer proves Level-C adequacy (Codex escape closed)', () => {
+  const base = { duration_s: 30, b_events: [] };
+  const presenceOnly = { ...base, spans: [{ start_s: 0, end_s: 30, presenter: 'LIVE', level_c: { class: 'STATIC' }, density: 'D1', text_bearing: false }] };
+  const report = adapter.evaluateAdvisory(load(), presenceOnly, {});
+  assert.equal(report.findings.filter((f) => f.warning_id === 'W-01').length, 1, 'a static LIVE-presenter span cannot justify a 30s no-event gap by presence alone');
+  const claimedMotion = { ...base, spans: [{ start_s: 0, end_s: 30, presenter: 'LIVE', level_c: { class: 'LIVE_PRESENTER' }, density: 'D1', text_bearing: false }] };
+  const report2 = adapter.evaluateAdvisory(load(), claimedMotion, {});
+  assert.equal(report2.findings.filter((f) => f.warning_id === 'W-01').length, 0, 'explicitly claimed presenter motion is a legitimate Level-C source');
+});
+
+test('SRA29: measurement candidates become meaningful ONLY through planned-event correspondence', () => {
+  const planned = [{ t_s: 5, kind: 'CARD_STATE_CHANGE' }, { t_s: 12, kind: 'REFRAME' }];
+  const candidates = [{ t_s: 5.2, signal: 9.1 }, { t_s: 20.0, signal: 44.0 }];
+  const bridge = adapter.admitMeasuredEvents(candidates, planned, { toleranceS: 0.5 });
+  assert.equal(bridge.confirmed.length, 1);
+  assert.equal(bridge.confirmed[0].authority, 'PLANNED_SEMANTIC_CONFIRMED');
+  assert.equal(bridge.unmatched_candidates.length, 1);
+  assert.equal(bridge.unmatched_candidates[0].authority, 'MEASUREMENT_CANDIDATE');
+  assert.equal(bridge.unmatched_candidates[0].meaningful, false, 'signal magnitude alone never declares MEANINGFUL_VISUAL_EVENT');
+  assert.equal(bridge.unconfirmed_planned.length, 1);
+});
+
+test('SRA30: advisory firewall regression — style findings never carry production-blocking fields, even at maximum severity', () => {
+  const programme = { duration_s: 60, spans: [{ start_s: 0, end_s: 60, presenter: 'ABSENT', level_c: { class: 'STATIC' }, density: 'D0', text_bearing: false }], b_events: [] };
+  const report = adapter.evaluateAdvisory(load(), programme, {});
+  assert.ok(report.findings.length >= 2, 'worst-case programme produces findings');
+  assert.equal(report.tier, 'ADVISORY_ONLY');
+  for (const key of ['disposition', 'blockers', 'next_gate_allowed', 'gate', 'score', 'pass', 'fail', 'block', 'authority']) {
+    assert.equal(key in report, false, key);
+  }
+  for (const f of report.findings) assert.ok(['none', 'review'].includes(f.action));
+});

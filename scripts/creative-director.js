@@ -93,7 +93,11 @@ function preflight(task, options = {}) {
   const identity = task.script_identity;
   if (!identity || typeof identity !== 'object') errors.push('script_identity required');
   else if (!cd.SCRIPT_IDENTITY_KINDS.includes(identity.kind)) errors.push('script_identity.kind invalid');
-  else if (identity.kind === 'CANONICAL_STORY') {
+  else if (identity.authority_verified !== true) {
+    // Caller-supplied identity carries no authority: the assembler must have
+    // resolved it through the canonical Script Builder / Discovery store.
+    errors.push('STORY_AUTHORITY_INVALID: script identity was not resolved through its canonical authority');
+  } else if (identity.kind === 'CANONICAL_STORY') {
     if (!norm(identity.project_id) || !norm(identity.version_id) || !/^[a-f0-9]{64}$/.test(identity.content_hash || '')) errors.push('canonical Story identity incomplete');
   } else if (identity.source !== 'DISCOVERY_PACKAGE' || !norm(identity.canonical_idea_id) || !/^[a-f0-9]{64}$/.test(identity.script_sha256 || '')) {
     errors.push('candidate script identity incomplete');
@@ -127,11 +131,22 @@ function preflight(task, options = {}) {
     if (!norm(c.constraint_id) || !cd.CONSTRAINT_TYPES.includes(c.type) || !norm(c.text)) errors.push(`human_constraints[${i}] invalid`);
   }
   const conflicts = constraintConflicts(task.human_constraints);
+  // Unenforceable CUSTOM constraints fail safely BEFORE any model call: the
+  // module never produces a direction under a human constraint it cannot
+  // verify compliance with.
+  const derived = cd.deriveProtectedDomains(task.human_constraints || []);
+  for (const item of derived.unenforceable) conflicts.push(`${item.code}: ${item.constraint_id} — ${item.detail}`);
   void options;
-  return { ok: errors.length === 0, errors, conflicts, sectionRefs: [...refs] };
+  return { ok: errors.length === 0, errors, conflicts, sectionRefs: [...refs], protectedDomains: derived.domains };
 }
 
-const SEMANTIC_ROOT = Object.freeze(['creative_thesis', 'tone', 'humor', 'visual_mode_mix', 'density_arc', 'level_a_strategy', 'level_b_strategy', 'level_c_strategy', 'presenter_policy', 'card_strategy', 'media_strategy', 'motion_character', 'typography_mode', 'ending_strategy', 'coherence', 'intentional_deviations', 'human_decisions_required', 'confidence', 'style_patterns_cited', 'constraint_compliance']);
+const SEMANTIC_ROOT = Object.freeze(['creative_thesis', 'tone', 'humor', 'visual_mode_mix', 'density_arc', 'level_a_strategy', 'level_b_strategy', 'level_c_strategy', 'presenter_policy', 'card_strategy', 'media_strategy', 'motion_character', 'typography_mode', 'ending_strategy', 'coherence', 'intentional_deviations', 'human_decisions_required', 'confidence', 'style_patterns_cited', 'constraint_compliance', 'action_claims']);
+
+// Violation codes that terminate the attempt immediately: a model repeatedly
+// contradicting HUMAN authority must never pass by rewording (no validator
+// roulette). Schema noise may retry inside the budget; authority violations
+// escalate with the offending output preserved.
+const AUTHORITY_VIOLATION_RE = /^(HUMAN_|SPECIALIST_EXECUTION|HOUSE_STYLE_SELF_APPROVAL|STORY_AUTHORITY)/;
 
 function assembleDirection(task, semantic, options = {}) {
   const compliance = new Map((semantic.constraint_compliance || []).map((c) => [c.constraint_id, norm(c.compliance)]));
@@ -172,6 +187,12 @@ function assembleDirection(task, semantic, options = {}) {
     // can never be self-approved, so it is set structurally here (the
     // validator still checks it as defense in depth for hand-edited artifacts).
     intentional_deviations: (semantic.intentional_deviations || []).map((d) => ({ ...clone(d), requires_human: true })),
+    // Protected domains are MODULE-derived from the human constraints, never
+    // model-authored; action claims are the model's exhaustive typed list of
+    // production-affecting recommendations — the ONLY executable surface.
+    protected_domains: cd.deriveProtectedDomains(task.human_constraints || []).domains,
+    action_claims: clone(semantic.action_claims || []),
+    execution_contract: { executable_surface: 'action_claims', prose_classification: 'NON_EXECUTABLE_CREATIVE_RATIONALE' },
     human_decisions_required: clone(semantic.human_decisions_required || []),
     confidence: clone(semantic.confidence || []),
     style_patterns_cited: clone(semantic.style_patterns_cited || []),
@@ -181,18 +202,27 @@ function assembleDirection(task, semantic, options = {}) {
   return direction;
 }
 
-function validateSemanticOutput(raw, task) {
+function validateSemanticOutput(raw, task, options = {}) {
   let value;
-  try { value = typeof raw === 'string' ? JSON.parse(raw) : clone(raw); } catch { return { ok: false, errors: ['invalid JSON'] }; }
+  try { value = typeof raw === 'string' ? JSON.parse(raw) : clone(raw); } catch { return { ok: false, errors: ['invalid JSON'], violations: [] }; }
   const errors = [];
   for (const key of Object.keys(value || {})) if (!SEMANTIC_ROOT.includes(key)) errors.push(`unknown root field ${key}`);
   errors.push(...cd.forbiddenKeyHits(value).map((p) => `forbidden field ${p}`));
-  if (errors.length) return { ok: false, errors };
+  if (errors.length) return { ok: false, errors, violations: [] };
   // Assemble with a placeholder id purely to reuse the library's full
   // validation against the semantic proposal before the real write.
-  const direction = assembleDirection(task, value, { newDirectionId: () => `creative-direction-${'0'.repeat(26)}` });
-  const check = cd.validateDirection(direction, { task: { script_identity: task.script_identity, style_reference: task.style_reference ? task.style_reference.binding : null, human_constraints: task.human_constraints || [], section_refs: (task.script_content?.sections || []).map((s) => s.section_ref) } });
-  return { ok: check.ok, errors: check.errors, value };
+  // Defense in depth: hostile model output must fail closed, never crash. Any
+  // unexpected throw from assembly/validation becomes a rejection.
+  try {
+    const direction = assembleDirection(task, value, { newDirectionId: () => `creative-direction-${'0'.repeat(26)}` });
+    const check = cd.validateDirection(direction, {
+      task: { script_identity: task.script_identity, style_reference: task.style_reference ? task.style_reference.binding : null, human_constraints: task.human_constraints || [], section_refs: (task.script_content?.sections || []).map((s) => s.section_ref) },
+      semanticAdjudicator: options.semanticAdjudicator,
+    });
+    return { ok: check.ok, errors: check.errors, violations: check.violations || [], value };
+  } catch (error) {
+    return { ok: false, errors: [`MALFORMED_OUTPUT: ${error.message}`], violations: [], value };
+  }
 }
 
 function buildPrompt(task) {
@@ -218,10 +248,14 @@ function buildPrompt(task) {
     confidence: [{ aspect: 'text', level: 'HIGH|MEDIUM|LOW', basis: cd.PROVENANCES.join('|') }],
     style_patterns_cited: ['PAT-xx / P-xx actually leaned on'],
     constraint_compliance: [{ constraint_id: 'copy', compliance: 'how the direction honors it' }],
+    action_claims: [{ claim_id: 'ac-01', domain: cd.PROTECTED_DOMAIN_NAMES.join('|'), operation: cd.OPERATIONS.join('|'), scope: 'GLOBAL or a section ref', summary: 'one sentence naming the production-affecting recommendation' }],
   };
+  const protectedDomains = cd.deriveProtectedDomains(task.human_constraints || []).domains;
   return [
     'You are the VIDTOOLZ Creative Director. Produce ONE episode-specific creative direction as a recommendation for human review. You say WHY and WHAT EXPERIENCE at section/movement altitude; specialists decide HOW. Never author shots, cards, assets, cuts, timing, script text, or approvals.',
     'HARD RULES: (1) Human constraints below are absolute — comply, never argue; note consequences only under human_decisions_required. (2) The style reference is an ENVELOPE, not a template: STRONG patterns shape defaults, LIKELY patterns are suggestions, video-specific devices are never rules; deviation is legal with a stated creative reason under intentional_deviations. (3) Escalate only consequential ambiguity (max 4). (4) If presenter_policy.draft_mode is PRESENTER_FREE you MUST supply a concrete compensation_directive for continuous visual life. (5) visual_mode_mix must weigh all six functions exactly once. (6) density movements must cover the argument using ONLY the given section refs.',
+    'EXECUTION CONTRACT: every production-affecting recommendation MUST appear as a typed entry in action_claims (domain + operation + scope + one-sentence summary); prose is NON-EXECUTABLE rationale and may not carry instructions. NEVER include in any text: file names, file paths, asset ids, hashes, coordinates, degrees, timestamps, timecodes, frame numbers, pixel values, percentages of scale/crop/zoom, millisecond durations, fps/crf/lens values, or any specialist implementation command. NEVER claim that anything is approved — approval exists only as a recorded human decision.',
+    `PROTECTED DOMAINS (from the human constraints; recommending any forbidden operation on them, in claims OR prose, is an automatic rejection): ${JSON.stringify(protectedDomains.map((d) => ({ domain: d.domain, scope: d.scope, forbidden: d.forbidden_operations })))}`,
     `Output JSON schema (exact keys): ${JSON.stringify(schema)}`,
     `Episode title: ${task.script_content.title}`,
     `Script sections: ${JSON.stringify(task.script_content.sections)}`,
@@ -232,7 +266,19 @@ function buildPrompt(task) {
 }
 
 function specialistProjection(direction, role) {
-  const base = { direction_id: direction.direction_id, direction_digest_sha256: direction.direction_digest_sha256, creative_thesis: direction.creative_thesis, tone: direction.tone, context_only: true };
+  // Downstream execution safety: consumers act ONLY on action_claims and the
+  // typed enum fields; every prose field in a projection is
+  // NON_EXECUTABLE_CREATIVE_RATIONALE and carries no instruction authority.
+  const base = {
+    direction_id: direction.direction_id,
+    direction_digest_sha256: direction.direction_digest_sha256,
+    execution_contract: { executable_surface: 'action_claims', prose_classification: 'NON_EXECUTABLE_CREATIVE_RATIONALE' },
+    action_claims: structuredClone(direction.action_claims || []),
+    protected_domains: structuredClone(direction.protected_domains || []),
+    creative_thesis: direction.creative_thesis,
+    tone: direction.tone,
+    context_only: true,
+  };
   switch (role) {
     case 'visual_planning_director':
       return { ...base, context_only: false, visual_mode_mix: direction.visual_mode_mix, density_arc: direction.density_arc, level_a_strategy: direction.level_a_strategy, level_b_strategy: direction.level_b_strategy, level_c_strategy: direction.level_c_strategy, presenter_policy: direction.presenter_policy, card_strategy: direction.card_strategy, media_strategy: direction.media_strategy, motion_character: direction.motion_character, typography_mode: direction.typography_mode, ending_strategy: direction.ending_strategy, intentional_deviations: direction.intentional_deviations, human_directions_received: direction.human_directions_received };
@@ -278,6 +324,7 @@ async function run(task, options = {}) {
   out.route = { lane: route.lane, host: route.host, model: route.model };
 
   let semantic; let failures = []; let latency = 0;
+  out.rejected_attempts = [];
   for (let attempt = 1; attempt <= out.max_attempts; attempt += 1) {
     out.attempts = attempt;
     const started = Date.now();
@@ -285,9 +332,20 @@ async function run(task, options = {}) {
       const raw = await invokeModel(buildPrompt(task), route, options);
       latency += Date.now() - started;
       out.raw_response_sha256 = hash(typeof raw === 'string' ? raw : JSON.stringify(raw));
-      const parsed = validateSemanticOutput(raw, task);
+      const parsed = validateSemanticOutput(raw, task, options);
       if (parsed.ok) { semantic = parsed.value; break; }
       failures = parsed.errors;
+      // Preserve the offending output as typed evidence: silent retry
+      // laundering is forbidden.
+      out.rejected_attempts.push({ attempt, violations: parsed.violations, errors: parsed.errors.slice(0, 16), rejected_semantic: parsed.value ?? null, raw_sha256: out.raw_response_sha256 });
+      const authorityViolations = (parsed.violations || []).filter((v) => AUTHORITY_VIOLATION_RE.test(v.code || ''));
+      if (authorityViolations.length) {
+        // No validator roulette: a HUMAN-authority / specialist-boundary /
+        // self-approval / story-authority violation ends the attempt series
+        // immediately and goes to the human with the evidence.
+        out.route.latency_ms = latency;
+        return finish(out, 'ESCALATED', `HUMAN_AUTHORITY_VIOLATION [${[...new Set(authorityViolations.map((v) => v.code))].join(', ')}]: ${parsed.errors.slice(0, 8).join('; ')}`, 'mikko');
+      }
     } catch (error) { latency += Date.now() - started; failures = [`MODEL_FAILED: ${error.message}`]; }
   }
   out.route.latency_ms = latency;
@@ -296,7 +354,7 @@ async function run(task, options = {}) {
 
   if (typeof options.beforeWrite === 'function') await options.beforeWrite();
   const direction = assembleDirection(task, semantic, options);
-  const validation = cd.validateDirection(direction, { task: { script_identity: task.script_identity, style_reference: task.style_reference ? task.style_reference.binding : null, human_constraints: task.human_constraints || [], section_refs: (task.script_content?.sections || []).map((s) => s.section_ref) } });
+  const validation = cd.validateDirection(direction, { task: { script_identity: task.script_identity, style_reference: task.style_reference ? task.style_reference.binding : null, human_constraints: task.human_constraints || [], section_refs: (task.script_content?.sections || []).map((s) => s.section_ref) }, semanticAdjudicator: options.semanticAdjudicator });
   out.creative_direction = direction;
   out.validation = validation;
   if (!validation.ok) return finish(out, 'BLOCKED', validation.errors.join('; '), 'creative_director');

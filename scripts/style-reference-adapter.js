@@ -50,6 +50,99 @@ const ACTIVE_LEVEL_C_CLASSES = Object.freeze([
   'SLOW_SCALE', 'SLOW_PAN', 'PUSH_IN', 'DRIFT', 'PROXY_MOTION', 'GRAPHIC_EVOLUTION', 'LIVE_PRESENTER',
 ]);
 
+/*
+ * LEVEL-B EVENT CONTRACT (2026-08-28 authority repair).
+ * LEVEL B means MEANINGFUL VISUAL EVENT — a semantic state change — never a
+ * bare frame difference, never a cut for its own sake, never codec noise.
+ * Events are admitted ONLY through these classes; a HARD_CUT is meaningful
+ * ONLY when it declares semantic_change: true; measurement noise classes are
+ * NEVER admissible; an unknown kind fails closed instead of counting.
+ */
+const MEANINGFUL_EVENT_CLASSES = Object.freeze([
+  'NEW_EXPLANATORY_ELEMENT', 'COMPOSITION_CHANGE', 'CARD_STATE_CHANGE', 'LABEL_REVEAL',
+  'REFRAME', 'PUSH_IN_ONSET', 'NEW_VISUAL_RELATIONSHIP', 'GRAPHIC_ACCUMULATION',
+  'SEMANTIC_TRANSITION', 'PRESENTER_TIER_CHANGE', 'HARD_CUT',
+]);
+const EVENT_KIND_ALIASES = Object.freeze({
+  card_evolution: 'CARD_STATE_CHANGE',
+  reframe: 'REFRAME',
+  push_in: 'PUSH_IN_ONSET',
+  push_in_onset: 'PUSH_IN_ONSET',
+  beat_transition: 'SEMANTIC_TRANSITION',
+  cut: 'HARD_CUT',
+  hard_cut: 'HARD_CUT',
+  label_reveal: 'LABEL_REVEAL',
+  presenter_tier_change: 'PRESENTER_TIER_CHANGE',
+});
+const NEVER_MEANINGFUL_EVENT_CLASSES = Object.freeze([
+  'ENCODER_DRIFT', 'ENCODER_NOISE', 'COMPRESSION_NOISE', 'FRAME_NOISE', 'CODEC_NOISE', 'MEASUREMENT_CANDIDATE',
+]);
+// Legitimate declarations of continuous motion: these belong to LEVEL C and
+// are silently non-counting as Level-B events (not an error — the caller is
+// stating a fact about motion, not claiming a meaningful event).
+const CONTINUOUS_MOTION_NON_EVENT_CLASSES = Object.freeze([
+  'DRIFT', 'CONTINUOUS_MOTION', 'SLOW_PAN', 'SLOW_SCALE', 'PAN', 'ZOOM', 'PUSH_IN_CONTINUATION',
+]);
+
+function normalizeEventKind(kind) {
+  const upper = String(kind || '').toUpperCase();
+  if (MEANINGFUL_EVENT_CLASSES.includes(upper)) return upper;
+  const alias = EVENT_KIND_ALIASES[String(kind || '').toLowerCase()];
+  return alias || null;
+}
+
+/*
+ * Admit semantic Level-B events from a caller-supplied list. Fail-closed:
+ * unknown kinds and never-meaningful classes are ERRORS, not silent counts;
+ * HARD_CUT admits only with semantic_change === true; an explicit
+ * meaningful:false demotes any event to non-counting.
+ */
+function admitSemanticEvents(events) {
+  const admitted = [];
+  const errors = [];
+  for (const [index, event] of (events || []).entries()) {
+    const rawKind = String(event?.kind ?? '');
+    if (NEVER_MEANINGFUL_EVENT_CLASSES.includes(rawKind.toUpperCase())) {
+      if (event?.meaningful === true) errors.push(`STYLE_EVENT_CLASS_INADMISSIBLE: b_events[${index}] claims ${rawKind} as meaningful — measurement noise is never a Level-B event`);
+      continue; // never counted, with or without the claim
+    }
+    if (CONTINUOUS_MOTION_NON_EVENT_CLASSES.includes(rawKind.toUpperCase())) {
+      if (event?.semantic_change === true) { admitted.push({ ...event, kind: 'SEMANTIC_TRANSITION' }); }
+      continue; // continuous motion is Level C unless it crosses a semantic boundary
+    }
+    const kind = normalizeEventKind(rawKind);
+    if (!kind) { errors.push(`STYLE_EVENT_CLASS_UNKNOWN: b_events[${index}] kind ${rawKind || '(missing)'} is not an admissible meaningful-event class`); continue; }
+    if (event?.meaningful === false) continue;
+    if (kind === 'HARD_CUT' && event?.semantic_change !== true) continue; // a cut is only Level B when it changes the visual state meaningfully
+    admitted.push({ ...event, kind });
+  }
+  return { admitted, errors };
+}
+
+/*
+ * Bridge from MEASUREMENT SIGNAL to SEMANTIC EVENT AUTHORITY: frame-difference
+ * tooling proposes candidates; a candidate becomes a meaningful Level-B event
+ * ONLY by corresponding to a planned semantic event (time tolerance) — never
+ * by signal magnitude alone. Unmatched candidates stay MEASUREMENT_CANDIDATE.
+ */
+function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
+  const tolerance = options.toleranceS ?? 0.5;
+  const planned = admitSemanticEvents(plannedEvents);
+  const remaining = [...planned.admitted];
+  const confirmed = [];
+  const unmatched = [];
+  for (const candidate of candidates || []) {
+    const index = remaining.findIndex((p) => Math.abs((p.t_s ?? NaN) - (candidate.t_s ?? NaN)) <= tolerance);
+    if (index >= 0) {
+      const plan = remaining.splice(index, 1)[0];
+      confirmed.push({ t_s: plan.t_s, kind: plan.kind, authority: 'PLANNED_SEMANTIC_CONFIRMED', measured_t_s: candidate.t_s });
+    } else {
+      unmatched.push({ ...candidate, authority: 'MEASUREMENT_CANDIDATE', meaningful: false });
+    }
+  }
+  return { confirmed, unmatched_candidates: unmatched, unconfirmed_planned: remaining, errors: planned.errors };
+}
+
 const DENSITY_GROUPS = Object.freeze({
   D0: 'QUIET', D1: 'QUIET', D2: 'READABLE', D3: 'READABLE', D4: 'DENSE', D5: 'DENSE',
   QUIET: 'QUIET', READABLE: 'READABLE', DENSE: 'DENSE',
@@ -236,7 +329,9 @@ function densityGroup(density) {
 }
 
 function spanIsAlive(span) {
-  if (span.presenter === 'LIVE' || span.presenter === 'PROXY') return true;
+  // Presenter PRESENCE alone never proves Level-C adequacy (Codex escape):
+  // presenter motion counts only when explicitly claimed as the span's
+  // Level-C treatment (LIVE_PRESENTER / PROXY_MOTION class).
   const levelC = span.level_c || {};
   if (ACTIVE_LEVEL_C_CLASSES.includes(levelC.class)) return true;
   return false;
@@ -315,10 +410,13 @@ function evaluateAdvisory(loaded, programme, context, params) {
   }
 
   const spans = (programme.spans || []).slice().sort((a, b) => a.start_s - b.start_s);
-  const meaningfulEvents = (programme.b_events || [])
-    .filter((e) => e && e.meaningful !== false)
-    .slice()
-    .sort((a, b) => a.t_s - b.t_s);
+  // LEVEL-B CONTRACT: only admissible semantic event classes count; noise
+  // classes and unknown kinds fail closed rather than inflating density.
+  const admission = admitSemanticEvents(programme.b_events || []);
+  if (admission.errors.length) {
+    throw new StyleReferenceError('STYLE_EVENT_CONTRACT_VIOLATION', admission.errors.join('; '));
+  }
+  const meaningfulEvents = admission.admitted.slice().sort((a, b) => a.t_s - b.t_s);
 
   const findings = [];
 
@@ -427,6 +525,13 @@ module.exports = {
   VERDICTS,
   FINDING_STATUSES,
   ACTIVE_LEVEL_C_CLASSES,
+  MEANINGFUL_EVENT_CLASSES,
+  NEVER_MEANINGFUL_EVENT_CLASSES,
+  CONTINUOUS_MOTION_NON_EVENT_CLASSES,
+  EVENT_KIND_ALIASES,
+  normalizeEventKind,
+  admitSemanticEvents,
+  admitMeasuredEvents,
   StyleReferenceError,
   sha256,
   loadContract,
