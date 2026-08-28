@@ -60,20 +60,60 @@ const ACTIVE_LEVEL_C_CLASSES = Object.freeze([
  */
 const MEANINGFUL_EVENT_CLASSES = Object.freeze([
   'NEW_EXPLANATORY_ELEMENT', 'COMPOSITION_CHANGE', 'CARD_STATE_CHANGE', 'LABEL_REVEAL',
-  'REFRAME', 'PUSH_IN_ONSET', 'NEW_VISUAL_RELATIONSHIP', 'GRAPHIC_ACCUMULATION',
+  'REFRAME', 'MEANINGFUL_REFRAME', 'PUSH_IN_ONSET', 'NEW_VISUAL_RELATIONSHIP', 'GRAPHIC_ACCUMULATION',
   'SEMANTIC_TRANSITION', 'PRESENTER_TIER_CHANGE', 'HARD_CUT',
+  'COMPARISON_COLUMN_REVEAL', 'NUMBERED_ITEM_REVEAL',
 ]);
 const EVENT_KIND_ALIASES = Object.freeze({
   card_evolution: 'CARD_STATE_CHANGE',
   reframe: 'REFRAME',
+  meaningful_reframe: 'MEANINGFUL_REFRAME',
   push_in: 'PUSH_IN_ONSET',
   push_in_onset: 'PUSH_IN_ONSET',
   beat_transition: 'SEMANTIC_TRANSITION',
   cut: 'HARD_CUT',
   hard_cut: 'HARD_CUT',
   label_reveal: 'LABEL_REVEAL',
+  comparison_column_reveal: 'COMPARISON_COLUMN_REVEAL',
+  numbered_item_reveal: 'NUMBERED_ITEM_REVEAL',
   presenter_tier_change: 'PRESENTER_TIER_CHANGE',
 });
+
+/*
+ * BOUNDARY REDESIGN (mission §15-18) — LEVEL-B EVENT TYPE → EVIDENCE CONTRACT.
+ * A planned Level-B event is a SEMANTIC claim; confirming it requires evidence
+ * of the EXPECTED SEMANTIC MANIFESTATION, never mere pixel activity near its
+ * timestamp. Each type declares the manifestation kind that would prove it, and
+ * whether that manifestation is targeted (must name the same label/column/item).
+ */
+const LEVEL_B_EVENT_TYPES = Object.freeze({
+  LABEL_REVEAL: { expected_manifestation: 'LABEL_PRESENT', targeted: true, target_key: 'label' },
+  COMPARISON_COLUMN_REVEAL: { expected_manifestation: 'COLUMN_PRESENT', targeted: true, target_key: 'column' },
+  NUMBERED_ITEM_REVEAL: { expected_manifestation: 'ITEM_PRESENT', targeted: true, target_key: 'item' },
+  CARD_STATE_CHANGE: { expected_manifestation: 'CARD_STATE_PRESENT', targeted: true, target_key: 'state' },
+  NEW_EXPLANATORY_ELEMENT: { expected_manifestation: 'ELEMENT_PRESENT', targeted: true, target_key: 'element' },
+  GRAPHIC_ACCUMULATION: { expected_manifestation: 'ELEMENT_PRESENT', targeted: false },
+  NEW_VISUAL_RELATIONSHIP: { expected_manifestation: 'RELATIONSHIP_PRESENT', targeted: false },
+  REFRAME: { expected_manifestation: 'REFRAMED_TARGET_VISIBLE', targeted: true, target_key: 'target' },
+  MEANINGFUL_REFRAME: { expected_manifestation: 'REFRAMED_TARGET_VISIBLE', targeted: true, target_key: 'target' },
+  PUSH_IN_ONSET: { expected_manifestation: 'PUSH_IN_ONSET_VISIBLE', targeted: false },
+  COMPOSITION_CHANGE: { expected_manifestation: 'COMPOSITION_CHANGED', targeted: false },
+  SEMANTIC_TRANSITION: { expected_manifestation: 'SEMANTIC_STATE_CHANGED', targeted: false },
+  PRESENTER_TIER_CHANGE: { expected_manifestation: 'PRESENTER_TIER_CHANGED', targeted: false },
+  HARD_CUT: { expected_manifestation: 'SEMANTIC_STATE_CHANGED', targeted: false },
+});
+
+function manifestationMatches(plan, manifestation) {
+  const type = LEVEL_B_EVENT_TYPES[plan.kind];
+  if (!type || !manifestation || typeof manifestation !== 'object') return false;
+  if (String(manifestation.kind || '').toUpperCase() !== type.expected_manifestation) return false;
+  if (type.targeted) {
+    const want = plan[type.target_key] ?? plan.target ?? null;
+    const got = manifestation.target ?? manifestation[type.target_key] ?? null;
+    if (want != null && String(got) !== String(want)) return false;
+  }
+  return true;
+}
 const NEVER_MEANINGFUL_EVENT_CLASSES = Object.freeze([
   'ENCODER_DRIFT', 'ENCODER_NOISE', 'COMPRESSION_NOISE', 'FRAME_NOISE', 'CODEC_NOISE', 'MEASUREMENT_CANDIDATE',
 ]);
@@ -149,30 +189,68 @@ function isConfirmingSignal(candidate) {
  */
 function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   const tolerance = options.toleranceS ?? 0.5;
+  const rendererEvents = options.rendererEvents || [];
+  const classifier = typeof options.semanticClassifier === 'function' ? options.semanticClassifier : null;
   const planned = admitSemanticEvents(plannedEvents);
   const remaining = planned.admitted.map((p, i) => ({ ...p, event_id: p.event_id ?? `planned-${i + 1}` }));
   const confirmed = [];
   const unplanned = [];
   const discarded_noise = [];
+  const unverified = [];
+
+  // (1) Renderer semantic manifestation records — the strongest authority for
+  // deterministic graphics (§17). A planned event is confirmed only by a record
+  // naming the SAME event_id, manifested:true, whose manifestation matches the
+  // expected evidence for the event's TYPE. Timestamp is not consulted here —
+  // the renderer identity is exact.
+  for (const rec of rendererEvents) {
+    const idx = remaining.findIndex((p) => p.event_id === rec.event_id);
+    if (idx < 0) continue;
+    const plan = remaining[idx];
+    const manifestation = rec.manifestation
+      || (rec.manifested === true ? { kind: LEVEL_B_EVENT_TYPES[plan.kind]?.expected_manifestation, target: rec.target } : null);
+    if (rec.manifested === true && manifestationMatches(plan, manifestation)) {
+      remaining.splice(idx, 1);
+      confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'RENDERER_MANIFESTATION_CONFIRMED', manifestation });
+    }
+  }
+
+  // (2) Pixel signals. A confirming (non-noise) signal near a planned event
+  // confirms it ONLY when it carries — or an approved semantic classifier
+  // supplies — a manifestation MATCHING the expected evidence. Timestamp
+  // proximity is necessary, never sufficient: a generic FRAME_CHANGE or a
+  // HARD_CUT with no semantic manifestation carries no semantic identity and can
+  // never manufacture one. Such a signal leaves the planned event UNVERIFIED
+  // (semantic adjudication required), never confirmed.
   (candidates || []).forEach((candidate, i) => {
     const candidateId = candidate?.candidate_id ?? `signal-${i + 1}`;
     if (!isConfirmingSignal(candidate)) {
-      // Noise / continuous-motion / unusable signal: can never confirm a
-      // semantic event and never becomes an unplanned candidate.
       discarded_noise.push({ candidate_id: candidateId, t_s: candidate?.t_s, kind: candidate?.kind, reason: 'non-confirming signal class (noise or continuous motion)' });
       return;
     }
-    const index = remaining.findIndex((p) => Math.abs((p.t_s ?? NaN) - (candidate?.t_s ?? NaN)) <= tolerance);
-    if (index >= 0) {
-      const plan = remaining.splice(index, 1)[0];
-      confirmed.push({ event_id: plan.event_id, candidate_id: candidateId, t_s: plan.t_s, kind: plan.kind, authority: 'PLANNED_SEMANTIC_CONFIRMED', measured_t_s: candidate?.t_s, supporting_signal_kind: candidate?.kind });
-    } else {
-      // A real change with no planned counterpart: adjudication required, never
-      // auto-counted as meaningful.
+    const idx = remaining.findIndex((p) => Math.abs((p.t_s ?? NaN) - (candidate?.t_s ?? NaN)) <= tolerance);
+    if (idx < 0) {
       unplanned.push({ candidate_id: candidateId, t_s: candidate?.t_s, kind: candidate?.kind, authority: 'UNPLANNED_EVENT_CANDIDATE', meaningful: false, requires_semantic_adjudication: true });
+      return;
+    }
+    const plan = remaining[idx];
+    let manifestation = candidate?.manifestation || null;
+    if (!manifestation && classifier) {
+      const verdict = classifier({ planned: plan, candidate, expected: LEVEL_B_EVENT_TYPES[plan.kind] });
+      if (verdict && verdict.confirmed === true) {
+        manifestation = verdict.manifestation || { kind: LEVEL_B_EVENT_TYPES[plan.kind]?.expected_manifestation, target: verdict.target };
+      }
+    }
+    remaining.splice(idx, 1);
+    if (manifestation && manifestationMatches(plan, manifestation)) {
+      confirmed.push({ event_id: plan.event_id, candidate_id: candidateId, t_s: plan.t_s, kind: plan.kind, authority: 'PIXEL_PLUS_SEMANTIC_MANIFESTATION_CONFIRMED', measured_t_s: candidate?.t_s, manifestation, supporting_signal_kind: candidate?.kind });
+    } else {
+      unverified.push({ event_id: plan.event_id, candidate_id: candidateId, t_s: plan.t_s, kind: plan.kind, authority: 'LEVEL_B_SEMANTIC_ADJUDICATION_REQUIRED', measured_t_s: candidate?.t_s, supporting_signal_kind: candidate?.kind, reason: 'pixel signal near the planned time but no matching semantic manifestation' });
     }
   });
-  return { confirmed, unplanned_candidates: unplanned, discarded_noise, unconfirmed_planned: remaining, errors: planned.errors };
+
+  const unconfirmed_planned = remaining.map((p) => ({ event_id: p.event_id, t_s: p.t_s, kind: p.kind, authority: 'LEVEL_B_UNVERIFIED', reason: 'no semantic manifestation evidence (renderer record or classifier)' }));
+  return { confirmed, unverified, unplanned_candidates: unplanned, discarded_noise, unconfirmed_planned, errors: planned.errors };
 }
 
 /*
@@ -595,6 +673,8 @@ module.exports = {
   NEVER_MEANINGFUL_EVENT_CLASSES,
   CONTINUOUS_MOTION_NON_EVENT_CLASSES,
   EVENT_KIND_ALIASES,
+  LEVEL_B_EVENT_TYPES,
+  manifestationMatches,
   normalizeEventKind,
   admitSemanticEvents,
   admitMeasuredEvents,

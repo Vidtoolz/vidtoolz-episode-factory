@@ -105,10 +105,18 @@ function assembleCreativeDirectionTask(options) {
   if (!norm(taskId) || !norm(requestedBy) || !norm(projectId)) throw new CreativeDirectionTaskError('TASK_IDENTITY_INCOMPLETE', 'taskId, requestedBy, projectId required');
   // Roots are the pinned deployment authority, never caller-selectable: only a
   // canonical_idea_id (Discovery) or a project/version (Story) is honored.
+  // Resolve once at assembly for fail-fast, then DISCARD the resolved content:
+  // the task carries only a STABLE STORY REFERENCE (opaque ids). Content, hash,
+  // approval, and lineage are never task fields — they are re-resolved from the
+  // pinned store at preflight/run so ordinary task data can never shape Story
+  // authority (boundary redesign, mission §4).
   let bound;
   if (script?.canonicalIdeaId) bound = candidateScriptFromDiscoveryPackage(script.canonicalIdeaId, script.variant || 'structure_a');
   else if (script?.story) bound = canonicalStoryScript(script.story);
   else throw new CreativeDirectionTaskError('SCRIPT_SOURCE_REQUIRED', 'script.canonicalIdeaId or script.story required');
+  let reference;
+  try { reference = storyAuthority.storyReferenceOf(bound.script_identity); }
+  catch (error) { throw new CreativeDirectionTaskError(error.code || 'STORY_AUTHORITY_INVALID', error.message.replace(/^[A-Z_]+:\s*/, '')); }
   const task = {
     task_id: taskId,
     requested_by: requestedBy,
@@ -118,8 +126,7 @@ function assembleCreativeDirectionTask(options) {
     agent_id: 'creative_director',
     privacy: { local_only: true },
     risk_level: riskLevel || 'LOCAL_AUTO',
-    script_identity: bound.script_identity,
-    script_content: bound.script_content,
+    script_identity: reference,
     style_reference: loadStyleReferenceInput(styleReference),
     human_constraints: validateConstraints(humanConstraints),
   };

@@ -37,6 +37,64 @@ const norm = (v) => String(v ?? '').normalize('NFC').replace(/\s+/g, ' ').trim()
 // is a member of this WeakSet, which the caller cannot reach or reconstruct.
 const RESOLVED_IDENTITIES = new WeakSet();
 
+// BOUNDARY REDESIGN (2026-08-28): a TRUSTED STORY SNAPSHOT is the ONLY object
+// that carries Story authority downstream. Its trusted status originates INSIDE
+// the canonical resolver (module-private WeakSet membership). A plain JSON copy
+// of every field is NOT a member and is therefore NOT trusted; there is no
+// public constructor that can mint one. Callers pass a STABLE STORY REFERENCE
+// (opaque ids); the module resolves the snapshot from the pinned store.
+const TRUSTED_SNAPSHOTS = new WeakSet();
+
+// A Story REFERENCE is the only Story authority a caller may supply: opaque
+// identifiers, never content/hash/approval/lineage/flags. Any extra key is a
+// caller attempt to inject authority and is refused before resolution.
+const CANONICAL_STORY_REF_KEYS = Object.freeze(['kind', 'project_id', 'version_id']);
+const CANDIDATE_REF_KEYS = Object.freeze(['kind', 'source', 'canonical_idea_id', 'script_variant']);
+
+function assertReferenceShape(reference) {
+  if (!reference || typeof reference !== 'object') fail('a Story reference object is required');
+  const keys = Object.keys(reference);
+  if (reference.kind === 'CANONICAL_STORY') {
+    const extra = keys.filter((k) => !CANONICAL_STORY_REF_KEYS.includes(k));
+    if (extra.length) fail(`Story reference over-specified: caller may not supply [${extra.join(', ')}] — content, hash, approval, lineage, and canonical/authority flags are resolved internally, never accepted from the task`);
+  } else if (reference.kind === 'CANDIDATE_SCRIPT') {
+    const extra = keys.filter((k) => !CANDIDATE_REF_KEYS.includes(k));
+    if (extra.length) fail(`Candidate reference over-specified: caller may not supply [${extra.join(', ')}] — fingerprints, hashes, and validation state are resolved internally`);
+    if (reference.source !== 'DISCOVERY_PACKAGE') fail('candidate reference.source must be DISCOVERY_PACKAGE');
+  } else {
+    fail(`unknown Story reference kind ${reference.kind}`);
+  }
+}
+
+// The minimal reference derivable from a resolved snapshot — what a task may
+// legally carry. Everything authoritative stays inside the snapshot.
+function storyReferenceOf(identity) {
+  if (identity?.kind === 'CANONICAL_STORY') {
+    return { kind: 'CANONICAL_STORY', project_id: identity.project_id, version_id: identity.version_id };
+  }
+  if (identity?.kind === 'CANDIDATE_SCRIPT') {
+    return { kind: 'CANDIDATE_SCRIPT', source: 'DISCOVERY_PACKAGE', canonical_idea_id: identity.canonical_idea_id, script_variant: identity.script_variant };
+  }
+  fail(`cannot derive a reference from identity kind ${identity?.kind}`);
+  return null;
+}
+
+function sectionsSha(sections) {
+  return sha256((sections || []).map((s) => norm(s.text)).join('\n\n'));
+}
+
+// Register a freshly-resolved snapshot as trusted. The snapshot object (and its
+// identity) become WeakSet members; a serialized copy loses this membership.
+function makeTrustedSnapshot(snapshot) {
+  RESOLVED_IDENTITIES.add(snapshot.script_identity);
+  TRUSTED_SNAPSHOTS.add(snapshot);
+  return snapshot;
+}
+
+function isTrustedSnapshot(value) {
+  return TRUSTED_SNAPSHOTS.has(value);
+}
+
 class StoryAuthorityError extends Error {
   constructor(code, message) { super(`${code}: ${message}`); this.code = code; }
 }
@@ -106,8 +164,7 @@ function candidateIdentityFromPackage(pkg, variant) {
 function resolveDiscoveryCandidate({ canonicalIdeaId, variant = 'structure_a' }) {
   const { pkg } = readStorePackage(canonicalIdeaId);
   const { identity, sections, title } = candidateIdentityFromPackage(pkg, variant);
-  RESOLVED_IDENTITIES.add(identity);
-  return { script_identity: identity, script_content: { title, sections } };
+  return makeTrustedSnapshot({ script_identity: identity, script_content: { title, sections } });
 }
 
 /*
@@ -132,50 +189,52 @@ function resolveCanonicalStory({ projectId, versionId, expectedContentHash }) {
     content_hash: story.content_hash, approval: structuredClone(story.approval),
     authority_source: 'pinned Script Builder store (current head, hash recomputed)',
   };
-  RESOLVED_IDENTITIES.add(identity);
-  return { script_identity: identity, script_content: { title: norm(loaded.project.title || story.central_claim || story.project_id), sections } };
+  return makeTrustedSnapshot({ script_identity: identity, script_content: { title: norm(loaded.project.title || story.central_claim || story.project_id), sections } });
 }
 
 // In-process capability check: is THIS identity object one this module resolved?
 function isResolvedIdentity(identity) { return RESOLVED_IDENTITIES.has(identity); }
 
 /*
- * Cross-process re-verification: a deserialized identity (from task.json) has
- * lost its capability membership, so RE-DERIVE from the pinned store and confirm
- * the deserialized identity matches exactly. Never trusts task fields.
- * Returns the trusted (freshly resolved) identity; throws on any mismatch.
+ * Resolve a TRUSTED STORY SNAPSHOT from a caller-supplied STABLE REFERENCE.
+ * This is the ONLY way a downstream module obtains Story authority. The
+ * reference carries opaque ids only (assertReferenceShape refuses any
+ * authoritative field); resolution re-derives content, hash, approval, and
+ * lineage from the pinned store. The returned snapshot is a WeakSet member;
+ * a serialized copy of it is not trusted.
  */
-function reverifyIdentity(identity, scriptContent) {
-  if (!identity || typeof identity !== 'object') fail('script identity required for re-verification');
-  if (identity.kind === 'CANONICAL_STORY') {
-    const resolved = resolveCanonicalStory({ projectId: identity.project_id, versionId: identity.version_id, expectedContentHash: identity.content_hash });
-    const r = resolved.script_identity;
-    if (r.project_id !== identity.project_id || r.version_id !== identity.version_id || r.content_hash !== identity.content_hash) {
-      fail('canonical Story re-resolution does not match the task identity (forged or stale)');
-    }
-    return resolved;
+function resolveTrustedSnapshotFromReference(reference) {
+  assertReferenceShape(reference);
+  if (reference.kind === 'CANONICAL_STORY') {
+    return resolveCanonicalStory({ projectId: reference.project_id, versionId: reference.version_id });
   }
-  if (identity.kind === 'CANDIDATE_SCRIPT') {
-    const resolved = resolveDiscoveryCandidate({ canonicalIdeaId: identity.canonical_idea_id, variant: identity.script_variant });
-    const r = resolved.script_identity;
-    if (r.canonical_idea_id !== identity.canonical_idea_id || r.script_sha256 !== identity.script_sha256
-      || r.source_fingerprint !== identity.source_fingerprint || r.datasheet_fingerprint !== identity.datasheet_fingerprint) {
-      fail('candidate re-resolution does not match the task identity (forged or altered)');
+  return resolveDiscoveryCandidate({ canonicalIdeaId: reference.canonical_idea_id, variant: reference.script_variant });
+}
+
+/*
+ * Cross-process re-verification, now snapshot-producing. A deserialized
+ * reference (from task.json) has no capability, so RE-DERIVE the trusted
+ * snapshot from the pinned store. Any caller-supplied script_content is treated
+ * as UNTRUSTED: it must hash-equal the canonical resolved content or the whole
+ * request is refused. The RETURNED snapshot (never the caller's content) is the
+ * authoritative object callers must use downstream.
+ */
+function reverifyIdentity(reference, scriptContent) {
+  const snapshot = resolveTrustedSnapshotFromReference(reference);
+  if (scriptContent && Array.isArray(scriptContent.sections)) {
+    const deliveredSha = sectionsSha(scriptContent.sections);
+    const canonicalSha = sectionsSha(snapshot.script_content.sections);
+    if (deliveredSha !== canonicalSha) {
+      fail('delivered script_content does not match the canonical resolved Story/candidate — caller-supplied content is never authoritative');
     }
-    // Bind the delivered script_content to the store-derived identity.
-    if (scriptContent && Array.isArray(scriptContent.sections)) {
-      const deliveredSha = sha256(scriptContent.sections.map((s) => norm(s.text)).join('\n\n'));
-      if (deliveredSha !== r.script_sha256) fail('delivered script_content does not hash to the store-verified candidate identity');
-    }
-    return resolved;
   }
-  fail(`unknown script identity kind ${identity.kind}`);
-  return null;
+  return snapshot;
 }
 
 module.exports = {
   PINNED_DISCOVERY_ROOT, StoryAuthorityError,
   pinnedDiscoveryRoot, pinnedScriptBuilderRoot,
   resolveCanonicalStory, resolveDiscoveryCandidate, isResolvedIdentity, reverifyIdentity,
+  resolveTrustedSnapshotFromReference, isTrustedSnapshot, storyReferenceOf, assertReferenceShape,
   sha256,
 };

@@ -496,19 +496,28 @@ test('CDPF3: numeric/id specialist content is caught across randomized variants'
 
 /* ══ DOWNSTREAM EXECUTION SAFETY ════════════════════════════════════════════ */
 
-test('CDD1: specialist projections carry the execution contract; prose stays non-executable rationale', async () => {
+test('CDD1: the safe projection is enum-only (no prose); rationale is human-only and never projected to specialists', async () => {
   const out = await runDirector(makeTask(), makeSemantic({ action_claims: [{ claim_id: 'ac-01', domain: 'CARDS', operation: 'ADD', scope: 'beat-02', summary: 'a labelled concept card carries the mechanism' }] }));
   for (const role of ['visual_planning_director', 'editor', 'sound_music_director', 'audience_packaging_director']) {
     const projection = director.specialistProjection(out.creative_direction, role);
     assert.equal(projection.receipt.validated_artifact, true, role);
     assert.equal(projection.executable.execution_contract.consume_rationale_for_actions, false, role);
+    assert.equal(projection.executable.execution_contract.raw_creative_prose_included, false, role);
     assert.ok(Array.isArray(projection.executable.action_claims), role);
-    assert.equal(projection.non_executable_rationale.classification, 'NON_EXECUTABLE_CREATIVE_RATIONALE', role);
-    // No rationale prose field leaks into the executable surface (action-claim
-    // summaries are part of the typed, validated executable contract).
+    assert.ok(Array.isArray(projection.executable.capability_denials), role);
+    // BOUNDARY REDESIGN: the safe projection carries NO rationale object at all,
+    // and NO free-prose field. A specialist prompt built from it cannot contain
+    // raw Creative Director prose even if a detector misses a phrase.
+    assert.equal(projection.non_executable_rationale, undefined, `${role} projection must not carry a rationale object`);
     const executableStr = JSON.stringify(projection.executable);
-    assert.equal(/energy_arc|sound_music_intent|packaging_intent|creative_thesis|ending_description|"statement"/.test(executableStr), false, `${role} executable must be rationale-prose-free`);
+    assert.equal(/energy_arc|sound_music_intent|packaging_intent|creative_thesis|ending_description|motion_character|"statement"|"register"|"description"/.test(executableStr), false, `${role} executable must be rationale-prose-free`);
   }
+  // Human rationale is available for HUMAN review only, clearly classified, and
+  // never handed to a specialist.
+  const human = director.humanRationaleView(out.creative_direction);
+  assert.equal(human.audience, 'HUMAN_REVIEW_ONLY');
+  assert.equal(human.classification, 'NON_EXECUTABLE_CREATIVE_RATIONALE_HUMAN_ONLY');
+  assert.ok(human.creative_thesis && human.motion_character);
   // Projecting an unvalidated (hand-built) object is refused.
   assert.throws(() => director.specialistProjection({ direction_id: 'x', action_claims: [] }, 'editor'),
     (e) => e.code === 'CREATIVE_DIRECTION_NOT_VALIDATED');
@@ -665,16 +674,25 @@ for (const [id, text] of [
   });
 }
 
-test('CDN6 (CODX-EVENT-01): an encoder-noise signal cannot confirm a planned Level-B event; ids preserved', () => {
+test('CDN6 (CODX-EVENT-01 + CODX-LB-08/09): a pixel signal never confirms Level-B by timestamp; a semantic manifestation is required', () => {
   const adapter = require('../scripts/style-reference-adapter.js');
-  const noise = adapter.admitMeasuredEvents([{ candidate_id: 'signal-noise-1', t_s: 5, kind: 'ENCODER_NOISE' }], [{ event_id: 'planned-label-1', t_s: 5, kind: 'LABEL_REVEAL' }]);
+  const planned = [{ event_id: 'planned-label-1', t_s: 5, kind: 'LABEL_REVEAL', label: 'X' }];
+  // encoder noise: discarded, never confirms
+  const noise = adapter.admitMeasuredEvents([{ candidate_id: 'signal-noise-1', t_s: 5, kind: 'ENCODER_NOISE' }], planned);
   assert.equal(noise.confirmed.length, 0);
   assert.equal(noise.discarded_noise.length, 1);
   assert.equal(noise.unconfirmed_planned.length, 1);
-  const real = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], [{ event_id: 'planned-label-1', t_s: 5, kind: 'LABEL_REVEAL' }]);
-  assert.equal(real.confirmed.length, 1);
-  assert.equal(real.confirmed[0].event_id, 'planned-label-1');
-  assert.equal(real.confirmed[0].candidate_id, 'signal-vc-1');
+  // generic real pixel change near the planned time but NO manifestation: NOT confirmed
+  const generic = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], planned);
+  assert.equal(generic.confirmed.length, 0, 'pixel signal + timestamp is never sufficient');
+  assert.equal(generic.unverified.length, 1);
+  // a renderer manifestation record naming the expected label CONFIRMS; ids preserved
+  const confirmed = adapter.admitMeasuredEvents(
+    [{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE', manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }],
+    planned,
+    { rendererEvents: [{ event_id: 'planned-label-1', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }] });
+  assert.equal(confirmed.confirmed.length, 1);
+  assert.equal(confirmed.confirmed[0].event_id, 'planned-label-1');
 });
 
 test('CDN7: explicit Level-A macro-state counter (no conflation with B/C)', () => {
@@ -686,13 +704,17 @@ test('CDN7: explicit Level-A macro-state counter (no conflation with B/C)', () =
   assert.equal(levels.level_c_active, true);
 });
 
-test('CDN8: downstream projection separates executable structured fields from non-executable rationale, and requires a validated receipt', async () => {
+test('CDN8: the safe projection is enum-only, capability-bearing, and receipt-gated; specialists never receive raw prose', async () => {
   const out = await runDirector(makeTask(), makeSemantic({ action_claims: [{ claim_id: 'ac-1', domain: 'CARDS', operation: 'ADD', scope: 'beat-02', summary: 'labelled concept card' }] }));
   const vp = director.specialistProjection(out.creative_direction, 'visual_planning_director');
   assert.equal(vp.receipt.validated_artifact, true);
   assert.equal(vp.executable.execution_contract.consume_rationale_for_actions, false);
-  // rationale prose (e.g. media_strategy generation philosophy) is under non_executable_rationale only
-  assert.ok('media_strategy' in vp.non_executable_rationale);
+  assert.equal(vp.executable.execution_contract.raw_creative_prose_included, false);
+  // BOUNDARY REDESIGN: no rationale object is projected at all, and no prose
+  // field (media_strategy is prose rationale — human-only) appears in the safe
+  // surface; the capability ledger IS present.
+  assert.equal(vp.non_executable_rationale, undefined);
   assert.equal('media_strategy' in vp.executable, false);
+  assert.ok(Array.isArray(vp.executable.capability_denials));
   assert.throws(() => director.specialistProjection({ action_claims: [] }, 'visual_planning_director'), (e) => e.code === 'CREATIVE_DIRECTION_NOT_VALIDATED');
 });

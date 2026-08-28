@@ -33,6 +33,7 @@
  */
 
 const crypto = require('node:crypto');
+const storyAuthority = require('./creative-story-authority.js');
 
 const SCHEMA = 'vidtoolz.creativeDirection.v2';
 const ARTIFACT_TYPE = 'creative-direction';
@@ -126,6 +127,11 @@ function directionDigest(direction) {
 function forbiddenKeyHits(value, pathName = '$', hits = []) {
   if (!value || typeof value !== 'object') return hits;
   for (const [key, child] of Object.entries(value)) {
+    // script_identity is module-resolved authority metadata (it legitimately
+    // carries approval provenance such as approved_by); it is bound and verified
+    // separately (re-resolution + SCRIPT_IDENTITY_DRIFT) and is never model
+    // prose, so it is not scanned for model-forbidden keys.
+    if (pathName === '$' && key === 'script_identity') continue;
     if (FORBIDDEN_KEYS.has(key)) hits.push(`${pathName}.${key}`);
     forbiddenKeyHits(child, `${pathName}.${key}`, hits);
   }
@@ -192,6 +198,34 @@ function scopesIntersect(a, b) {
   if (!a || !b) return true;
   if (a === 'GLOBAL' || b === 'GLOBAL') return true;
   return norm(a) === norm(b);
+}
+
+/* ---- capability reduction (mission §7-8, §28) -------------------------------
+ * Human locks REMOVE capabilities from the executable surface BEFORE the model
+ * runs. The executable vocabulary itself cannot represent a forbidden mutation,
+ * so a locked domain stays safe even if a prose paraphrase is never recognized.
+ * This is the PRIMARY human-authority boundary; prose detection is only
+ * defense-in-depth. The ledger is also projected to specialists so they can see,
+ * structurally, which operations are denied.
+ */
+function deriveCapabilityLedger(constraints) {
+  const { domains, unenforceable } = deriveProtectedDomains(constraints);
+  const denials = domains.map((d) => ({
+    constraint_id: d.constraint_id, domain: d.domain, scope: d.scope || 'GLOBAL',
+    denied_operations: [...(d.forbidden_operations || [])], violation: d.violation,
+    required_field_values: structuredClone(d.required_field_values || []),
+  }));
+  // An operation is DENIED on a domain/scope iff some lock removes it.
+  const denialFor = (domain, operation, scope = 'GLOBAL') => {
+    if (ALWAYS_LEGAL_OPERATIONS.includes(operation)) return null;
+    for (const d of denials) {
+      if (d.domain !== domain) continue;
+      if (!scopesIntersect(scope, d.scope)) continue;
+      if ((d.denied_operations || []).includes(operation)) return d;
+    }
+    return null;
+  };
+  return { denials, unenforceable, locked_domains: [...new Set(denials.map((d) => d.domain))], denialFor };
 }
 
 /* ---- prose collection (model-authored strings only) ------------------------ */
@@ -691,17 +725,56 @@ function validateDirection(direction, context = {}) {
   }
 
   const ok = errors.length === 0;
-  // Capability receipt: a fully-validated direction object is registered in a
-  // module-private WeakSet. Downstream projection requires this membership, so
-  // an arbitrary hand-built object (not produced by successful validation)
-  // cannot be projected. Non-forgeable: the WeakSet is unreachable to callers.
-  if (ok) VALIDATED_ARTIFACTS.add(direction);
+  // BOUNDARY REDESIGN: validation is NOT authority minting. This function is a
+  // PURE validator — it returns a verdict and NEVER grants downstream trust.
+  // Only mintProjectionReceipt (which requires an unforgeable trusted Story
+  // snapshot) can register an artifact for projection. A caller that passes a
+  // forged direction with a self-built context therefore gets ok=true at most,
+  // but no receipt, and specialistProjection still refuses it.
   return { ok, errors, violations };
 }
 
-// Non-forgeable validated-artifact registry (see validateDirection).
+// Non-forgeable validated-artifact registry: membership is granted ONLY by
+// mintProjectionReceipt, never by the public validator.
 const VALIDATED_ARTIFACTS = new WeakSet();
 function isValidated(direction) { return VALIDATED_ARTIFACTS.has(direction); }
+
+/*
+ * BOUNDARY REDESIGN (mission §12-13) — the ONLY authority-minting function.
+ * validateDirection() checks shape; it cannot grant trust. A trusted projection
+ * receipt is minted here and requires:
+ *   - a TRUSTED STORY SNAPSHOT (WeakSet member from the canonical resolver —
+ *     unforgeable; caller-built context is powerless),
+ *   - the direction binding that snapshot's identity exactly,
+ *   - full validation against a context DERIVED FROM THE SNAPSHOT, not the caller.
+ * The receipt is a WeakSet membership, never a serialized boolean.
+ */
+function mintProjectionReceipt(direction, trustedStorySnapshot, options = {}) {
+  if (!storyAuthority.isTrustedSnapshot(trustedStorySnapshot)) {
+    const e = new Error('PROJECTION_AUTHORITY_REQUIRED: a trusted Story snapshot from the canonical resolver is required; caller-supplied context can never mint downstream trust');
+    e.code = 'PROJECTION_AUTHORITY_REQUIRED'; throw e;
+  }
+  if (canonicalize(direction?.script_identity) !== canonicalize(trustedStorySnapshot.script_identity)) {
+    const e = new Error('PROJECTION_IDENTITY_MISMATCH: direction does not bind the trusted Story snapshot identity');
+    e.code = 'PROJECTION_IDENTITY_MISMATCH'; throw e;
+  }
+  const context = {
+    task: {
+      script_identity: trustedStorySnapshot.script_identity,
+      style_reference: options.styleReferenceBinding || null,
+      human_constraints: options.humanConstraints || [],
+      section_refs: (trustedStorySnapshot.script_content?.sections || []).map((s) => s.section_ref),
+    },
+    semanticAdjudicator: options.semanticAdjudicator,
+  };
+  const check = validateDirection(direction, context);
+  if (!check.ok) {
+    const e = new Error(`PROJECTION_VALIDATION_FAILED: ${check.errors.slice(0, 8).join('; ')}`);
+    e.code = 'PROJECTION_VALIDATION_FAILED'; e.validation = check; throw e;
+  }
+  VALIDATED_ARTIFACTS.add(direction);
+  return { receipt: { validated_artifact: true, direction_id: direction.direction_id, direction_digest_sha256: direction.direction_digest_sha256 }, validation: check };
+}
 
 module.exports = {
   SCHEMA, ARTIFACT_TYPE,
@@ -710,6 +783,6 @@ module.exports = {
   SCRIPT_IDENTITY_KINDS, LIFECYCLE_STATES, MAX_ESCALATIONS, FORBIDDEN_KEYS,
   PROTECTED_DOMAIN_NAMES, OPERATIONS, VIOLATION_CODES, SPECIALIST_DETECTORS,
   sha256, newDirectionId, canonicalize, directionDigest, forbiddenKeyHits,
-  deriveProtectedDomains, collectModelProse, proseGuardHits, specialistBoundaryHits, selfApprovalHits,
-  validateDirection, isValidated,
+  deriveProtectedDomains, deriveCapabilityLedger, collectModelProse, proseGuardHits, specialistBoundaryHits, selfApprovalHits,
+  validateDirection, mintProjectionReceipt, isValidated,
 };

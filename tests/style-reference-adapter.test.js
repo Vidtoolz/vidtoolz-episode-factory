@@ -347,21 +347,23 @@ test('SRA28: presenter PRESENCE alone no longer proves Level-C adequacy (Codex e
   assert.equal(report2.findings.filter((f) => f.warning_id === 'W-01').length, 0, 'explicitly claimed presenter motion is a legitimate Level-C source');
 });
 
-test('SRA29: measurement candidates become meaningful ONLY through planned-event correspondence, and only from a real change signal', () => {
-  const planned = [{ event_id: 'p1', t_s: 5, kind: 'CARD_STATE_CHANGE' }, { event_id: 'p2', t_s: 12, kind: 'REFRAME' }];
+test('SRA29: measured candidates confirm a planned Level-B event ONLY with a matching semantic manifestation, never by timestamp alone', () => {
+  const planned = [{ event_id: 'p1', t_s: 5, kind: 'CARD_STATE_CHANGE', state: 'expanded' }, { event_id: 'p2', t_s: 12, kind: 'REFRAME', target: 'chart' }];
   const candidates = [
-    { candidate_id: 'c-real', t_s: 5.2, kind: 'VISUAL_CHANGE' }, // real change near a planned event -> confirms
+    { candidate_id: 'c-real', t_s: 5.2, kind: 'VISUAL_CHANGE', manifestation: { kind: 'CARD_STATE_PRESENT', target: 'expanded' } }, // matching manifestation -> confirms
+    { candidate_id: 'c-generic', t_s: 12.1, kind: 'VISUAL_CHANGE' }, // near p2 but NO manifestation -> adjudication, not confirmed
     { candidate_id: 'c-unplanned', t_s: 20.0, kind: 'VISUAL_CHANGE' }, // real change, no plan -> adjudication
-    { candidate_id: 'c-noise', t_s: 12.0, kind: 'ENCODER_NOISE' }, // noise near a planned event -> never confirms
+    { candidate_id: 'c-noise', t_s: 5.0, kind: 'ENCODER_NOISE' }, // noise -> never confirms/considered
   ];
   const bridge = adapter.admitMeasuredEvents(candidates, planned, { toleranceS: 0.5 });
   assert.equal(bridge.confirmed.length, 1);
   assert.equal(bridge.confirmed[0].event_id, 'p1');
   assert.equal(bridge.confirmed[0].candidate_id, 'c-real');
   assert.equal(bridge.discarded_noise.length, 1, 'noise never confirms even at a planned timestamp');
+  assert.equal(bridge.unverified.length, 1, 'p2 had a pixel signal near its time but no semantic manifestation — adjudication required, not confirmation');
   assert.equal(bridge.unplanned_candidates.length, 1);
   assert.equal(bridge.unplanned_candidates[0].requires_semantic_adjudication, true);
-  assert.equal(bridge.unconfirmed_planned.length, 1, 'p2 unconfirmed — the only near-timestamp candidate was noise');
+  assert.equal(bridge.unconfirmed_planned.length, 0, 'both planned events resolved (one confirmed, one to adjudication)');
 });
 
 test('SRA30: advisory firewall regression — style findings never carry production-blocking fields, even at maximum severity', () => {
