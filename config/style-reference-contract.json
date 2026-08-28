@@ -1,0 +1,43 @@
+{
+  "schema_version": "vidtoolz.styleReferenceContract.v1",
+  "artifact_type": "STYLE_REFERENCE_CONSUMPTION_CONTRACT",
+  "purpose": "Single source of taste: agents consume the human-approved style reference ONLY through scripts/style-reference-adapter.js. No agent prompt, config, or code may restate envelope numbers or pattern statements (defect class STYLE_CONSTANT_DUPLICATION).",
+  "authority": {
+    "reference_schema": "vidtoolz.styleReference.v1",
+    "active_reference": {
+      "reference_id": "VIDTOOLZ_STYLE_REFERENCE_V1",
+      "sha256": "b357d23956bc3fd7a956372347e59cae4b10bb0064d3e9b19ec2819207fa8e41",
+      "approved_by": "Mikko",
+      "approved_at": "2026-08-28",
+      "decision_record": "VIDTOOLZ_STYLE_REFERENCE_V1-HUMAN-DECISION.json (sha256 edc2bfd494bce13b6bb95375e2dd8e418b1ecc22b138ef6b1e54ae13f354f4ba)",
+      "canonical_location": "/home/vidtoolz/outputs/vidtoolz-human-reference-set-v1-2026-08-28/VIDTOOLZ_STYLE_REFERENCE_V1.json",
+      "hermetic_fixture": "tests/fixtures/style-reference/VIDTOOLZ_STYLE_REFERENCE_V1.json (byte-identical copy)"
+    },
+    "authority_tier": "HUMAN_STYLE_REFERENCE (rank 3): below live human decisions (rank 1) and episode-specific direction (rank 2); above agent recommendation, QC advisory, technical validation",
+    "loader": "scripts/style-reference-adapter.js#loadStyleReference",
+    "role_projector": "scripts/style-reference-adapter.js#projectForRole",
+    "advisory_evaluator": "scripts/style-reference-adapter.js#evaluateAdvisory",
+    "pattern_confidence_gate": "scripts/style-reference-adapter.js#patternPowers",
+    "stale_rule": "sha256 mismatch or non-ACTIVE status => NO authority, fail closed (STYLE_REFERENCE_BINDING_MISMATCH / STYLE_REFERENCE_STALE_BINDING); missing human-approval fields => STYLE_REFERENCE_NOT_HUMAN_APPROVED; succession is append-only — in-flight runs keep their frozen binding, new runs bind the successor explicitly",
+    "advisory_firewall": "Adapter output is evidence only: no disposition, no gate verdict, no aggregate score, no blocking field. No production code path may branch generation, plan mutation, or gate advancement on a style comparison result. Promotion of any style metric beyond advisory is a per-metric HUMAN decision after ~5-10 productions (decision record s22).",
+    "adapter_is_not_an_agent": true,
+    "adapter_may_record_human_approval": false
+  },
+  "evaluator_parameters": {
+    "no_event_review_s": 10,
+    "no_event_review_s_provenance": "VIDTOOLZ_STYLE_REFERENCE_V1 P-17 / QC-ADVISORY W-01: NO_MEANINGFUL_VISUAL_EVOLUTION_OVER_10S (review, not failure)",
+    "dense_min_read_s": 4,
+    "dense_min_read_s_provenance": "VIDTOOLZ-STYLE-ENVELOPE.json visual_hold_median_s envelope lower bound (4.0s); parameterized here rather than hard-coded so recalibration is a config change with provenance"
+  },
+  "consumers_current": [],
+  "consumers_planned_post_review": [
+    "scripts/agent-task-visual-planning.js (task.creative_doctrine_ref population — requires AVP13 contract change + Mikko review)",
+    "qc-evidence-policy.js STYLE_REFERENCE_ADVISORY kind under APPLICABILITY class OPTIONAL_ADVISORY (never blocking)"
+  ],
+  "consistency_rules": [
+    "the adapter reads all envelope numbers from the reference artifact at load time; this contract carries only evaluator tuning parameters, each with provenance",
+    "role projections gate content by pattern confidence class: STRONG may shape defaults and warn on envelope exit; LIKELY suggests; OPTIONAL/SINGLE_VIDEO/UNCERTAIN never warn, never bind",
+    "absence of a non-required pattern is never a finding",
+    "findings against recorded human KEEP decisions resolve to INFORMATIONAL_ONLY; findings against declared episode deviations resolve to DEVIATION_ACKNOWLEDGED"
+  ]
+}

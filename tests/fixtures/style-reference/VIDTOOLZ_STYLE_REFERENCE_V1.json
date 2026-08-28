@@ -1,0 +1,56 @@
+{
+  "schema": "vidtoolz.styleReference.v1",
+  "id": "VIDTOOLZ_STYLE_REFERENCE_V1",
+  "status": "ACTIVE",
+  "activation": "VIDTOOLZ_STYLE_REFERENCE_V1 HUMAN-APPROVED — ADVISORY ACTIVATION AUTHORIZED",
+  "approved_by": "Mikko",
+  "approved_at": "2026-08-28",
+  "decision_record": "VIDTOOLZ_STYLE_REFERENCE_V1-HUMAN-DECISION.json",
+  "nature": "HUMAN-APPROVED HOUSE-STYLE ENVELOPE — not a rigid production template. Future videos may deviate when the creative reason is explicit.",
+  "authority_scope": {
+    "is": ["house-style reference", "advisory QC guidance"],
+    "is_not": ["rigid template", "mandatory shot list", "mandatory presenter in draft mode", "automatic creative approval", "hard QC threshold authority"]
+  },
+  "predecessor": {"file": "PROPOSED-VIDTOOLZ-STYLE-REFERENCE-V1.json", "status": "preserved as historical predecessor, not overwritten"},
+  "source_basis": {
+    "set": "VIDTOOLZ_HUMAN_REFERENCE_SET_V1 (three human-created published videos)",
+    "canonical_masters": "CANONICAL_HUMAN_REFERENCE_MASTER (notoolsBETA1.mp4, replacingeditors2.mp4, Hermes2.mp4 under 08_SYSTEM_EXPORTS/KESKEN/)",
+    "published_derivatives": "PUBLISHED_DERIVATIVE_REFERENCE (the three registered webms)",
+    "pixel_exact_work": "future typography/safe-area analysis should use masters; temporal measurements may use either where editorial equivalence is proven (it is, per SOURCE-PROVENANCE-RECONCILIATION.json)",
+    "succession": "append-only; future human-made/published videos may expand or revise the envelope; this reference is strong evidence of current house practice, not a permanent definition of what VIDTOOLZ may ever become"
+  },
+  "event_model": {
+    "doctrine": "Three levels; do NOT collapse into one metric; do NOT average A and B; macro cadence alone is not enough — QC must evaluate A AND B AND C.",
+    "LEVEL_A_MACRO_BACKDROP_STATE": {"observed_per_min": [8.94, 11.1, 9.49], "advisory_band_per_min": [8.5, 11.5]},
+    "LEVEL_B_MEANINGFUL_VISUAL_EVENT": {"observed_per_min": [21.2, 32.09, 26.47], "advisory_band_per_min": [21, 32], "median_interval_s": {"observed": [1.59, 2.73, 1.77], "advisory": [1.6, 2.7]}, "p90_s": {"observed_max": 5.93, "advisory_max": 5.9}, "longest_no_event_s": {"observed": [5.88, 6.25, 7.58], "reference_max": [6, 8]}},
+    "LEVEL_C_CONTINUOUS_VISUAL_MOTION": {"observed_active_frame_pct": [15.0, 43.5, 28.5], "note": "reference-informed, not a hard requirement; STATIC BACKDROP != STATIC SCREEN"}
+  },
+  "principles": [
+    {"id": "P-01", "name": "ENVELOPE_NOT_TEMPLATE", "text": "Acceptable ranges and tendencies; deviation permitted with explicit creative reason."},
+    {"id": "P-02", "name": "PRESENTER_OR_CONTINUOUS_VISUAL_LIFE", "text": "Presenter presence is a STRONG FINAL-STYLE PATTERN but NOT mandatory for VISUAL_DRAFT. If absent, compensate via proxy/avatar motion, subtle plate motion, push-ins, reframing, evolving graphics, or more frequent Level-B events. No single implementation mandated.", "supersedes": "Gate-10 divergence resolved by this equivalence principle."},
+    {"id": "P-03", "name": "MACRO_CADENCE_ALONE_IS_NOT_ENOUGH", "text": "A draft can pass Level A and still be a slideshow; evaluate B and C too."},
+    {"id": "P-04", "name": "PRESENTER_SCALE_COMMUNICATES_ATTENTION_PRIORITY", "text": "Larger on sparse/atmospheric screens, smaller when dense cards are primary (LIKELY pattern). On D4/D5 screens important information must not be occluded by the presenter; observed reference occlusion is not doctrine."},
+    {"id": "P-05", "name": "MIRRORED_PLATE_IS_PRODUCTION_ARTIFACT", "text": "Reference artifact, not house-style doctrine. Reusable principle: persistent unboxed presenter + density-aware placement + graphic/backdrop interaction."},
+    {"id": "P-06", "name": "DESIGNED_INFORMATION_CARD_FIRST_CLASS", "text": "Approved visual type. Reusable patterns (not mandatory templates): two-column comparison, numbered/list card, labelled concept card, footer/takeaway band, dense synthesis card. Production system should become capable of constructing them deliberately."},
+    {"id": "P-07", "name": "GRAPHICS_OFTEN_CARRY_ARGUMENT_BUT_NOT_ALWAYS", "text": "Graphics should often carry part of the argument; EVERY VISUAL MUST EXPLAIN is REJECTED. Balance: EXPLANATION, PROOF, COMPARISON, MOOD, HUMOR, PUNCTUATION."},
+    {"id": "P-08", "name": "READ_LOOK_RHYTHM", "text": "Card <-> photoreal/atmospheric alternation as a visual-variety heuristic; strict alternation not required."},
+    {"id": "P-09", "name": "ONE_ASSET_MULTIPLE_BEATS", "text": "Strong production principle: push-ins, reframing, crop changes, graphic evolution, treatment changes; a meaningful event does not require a new generated asset. Major efficiency principle."},
+    {"id": "P-10", "name": "RESTRAINED_PURPOSEFUL_MOTION", "text": "Slow single-vector motion, subtle drift, natural presenter movement, controlled graphic evolution. No shake/aggressive ramps/constant motion as requirement. Goal: visual life, not motion for its own sake."},
+    {"id": "P-11", "name": "TYPOGRAPHY_TENDENCIES", "text": "Hierarchical, short structured text, designed cards, 2-3 line headlines where practical, accent on the rhetorical turn, one primary accent hue per video, full-frame type at thesis/comparison/closing. Long free-floating prose = ATYPICAL, not forbidden. Portrait-readable and safe-area compliant always."},
+    {"id": "P-12", "name": "ENDINGS_TEND_MORE_DESIGNED", "text": "Strong tendency: dense synthesis/conclusion card -> hard stop, over generic CTA/outro/decorative close. CTA absence is NOT an absolute rule."},
+    {"id": "P-13", "name": "HUMOR_PER_VIDEO", "text": "Per-video creative setting (funny/dry/serious/technical all fit)."},
+    {"id": "P-14", "name": "RESOLUTION_PRODUCTION_RULE", "text": "1080x1920 minimum canonical portrait delivery; 2160x3840 allowed when useful/available. Production-quality rule, not creative identity rule."},
+    {"id": "P-15", "name": "DENSITY_GOVERNS_PACE", "text": "Denser graphics receive more reading time; do not combine high density with rapid replacement without deliberate creative reason. D0-D5 retained as analysis vocabulary; observed ceiling not mandatory."},
+    {"id": "P-16", "name": "HARD_CUT_DEFAULT", "text": "Hard cut is the default house transition; dissolves available but uncommon; no transition variety for energy. Energy from content change, motion, presenter, graphic evolution."},
+    {"id": "P-17", "name": "NO_MEANINGFUL_VISUAL_EVOLUTION_OVER_10S", "text": "Advisory warning, triggers review not failure. A >10 s macro backdrop state is permitted when Level-B events or Level-C motion justify it; >10 s with no meaningful evolution is the concern."},
+    {"id": "P-18", "name": "GENERATION_PRIORITY", "text": "Do not prioritize indiscriminate generated video. Generated video remains useful when the visual function genuinely requires motion footage."},
+    {"id": "P-19", "name": "DRAFT_DIAGNOSIS_ACCEPTED", "text": "Current automated draft is Level-A correct but Level-B/C weak. The fix is MAKE EACH STATE MORE ALIVE AND INFORMATION-BEARING, not more cuts."},
+    {"id": "P-20", "name": "QC_ADVISORY_FIRST", "text": "Measured bands activate as REFERENCE_WARNING only; no blocking gates; normal variation is not failure; promotion only after 5-10 productions of evidence."},
+    {"id": "P-21", "name": "APPEND_ONLY_SUCCESSION", "text": "Reference succession append-only; three videos are strong evidence of current practice, not a permanent definition."}
+  ],
+  "qc": "VIDTOOLZ_STYLE_REFERENCE_V1-QC-ADVISORY.json",
+  "roadmap": "VIDTOOLZ_STYLE_REFERENCE_V1-ROADMAP-PRIORITIES.json",
+  "agent_consumption": "VIDTOOLZ_STYLE_REFERENCE_V1-AGENT-CONSUMPTION-PLAN.json",
+  "provenance": "VIDTOOLZ_STYLE_REFERENCE_V1-PROVENANCE.json",
+  "doctrine": "Learn the rhythm of the human VIDTOOLZ videos without turning them into a cage: continuous visual life, argument-bearing graphics, density-aware pacing, restrained hard cuts, hierarchical typography, enough meaningful visual evolution that the programme never becomes inert."
+}

@@ -140,6 +140,7 @@ require("./story-takeover-canary.test.js");
 require("./story-edit-contract.test.js");
 require("./story-workspace.test.js");
 require("./visual-plan.test.js");
+require("./style-reference-adapter.test.js");
 require("./visual-planning-director.test.js");
 require("./agent-task-visual-planning.test.js");
 require("./visual-planning-workspace.test.js");
