@@ -375,16 +375,26 @@ function scopesIntersectLocal(a, b) {
   return String(a).trim() === String(b).trim();
 }
 
-// ENUM-ONLY action claims for the safe projection (mission §16), RE-FILTERED by
-// the current capability set (mission §8): the free-text `summary` is stripped,
-// AND any claim whose (domain, operation, scope) is forbidden by the direction's
-// protected domains is EXCLUDED from the projection — so a forbidden operation
-// can never reach a specialist even if it somehow survived into the artifact.
-function enumActionClaims(direction) {
-  const domains = direction.protected_domains || [];
-  const forbidden = (c) => c.operation !== 'KEEP' && domains.some((d) => d.domain === c.domain && scopesIntersectLocal(c.scope || 'GLOBAL', d.scope || 'GLOBAL') && (d.forbidden_operations || []).includes(c.operation));
-  return (direction.action_claims || []).filter((c) => !forbidden(c)).map((c) => ({ claim_id: c.claim_id, domain: c.domain, operation: c.operation, scope: c.scope || 'GLOBAL' }));
+// Classify action claims into admitted/suppressed by the effective capability set
+// = union of the direction's own protected domains AND the CURRENT human locks
+// resolved at projection time. A claim is suppressed if forbidden by EITHER, so
+// a newer human lock removes a stale operation and a caller passing fewer
+// constraints can never un-suppress one (union only adds restrictions). The
+// free-text `summary` is always stripped (mission §16, §8, and current-lock §5).
+function classifyActionClaims(direction, extraDomains = []) {
+  const domains = [...(direction.protected_domains || []), ...extraDomains];
+  const forbiddenBy = (c) => (c.operation === 'KEEP' ? null : domains.find((d) => d.domain === c.domain && scopesIntersectLocal(c.scope || 'GLOBAL', d.scope || 'GLOBAL') && (d.forbidden_operations || []).includes(c.operation)) || null);
+  const admitted = [];
+  const suppressed = [];
+  for (const c of (direction.action_claims || [])) {
+    const hit = forbiddenBy(c);
+    const enumClaim = { claim_id: c.claim_id, domain: c.domain, operation: c.operation, scope: c.scope || 'GLOBAL' };
+    if (hit) suppressed.push({ ...enumClaim, suppressed_due_to: hit.violation || `${hit.domain}_LOCK`, constraint_id: hit.constraint_id || null });
+    else admitted.push(enumClaim);
+  }
+  return { admitted, suppressed };
 }
+function enumActionClaims(direction, extraDomains = []) { return classifyActionClaims(direction, extraDomains).admitted; }
 
 const SAFE_PROJECTION_SCHEMA = 'vidtoolz.creativeDirectionSafeProjection.v1';
 
@@ -400,21 +410,25 @@ const SAFE_PROJECTION_SCHEMA = 'vidtoolz.creativeDirectionSafeProjection.v1';
  * id (projectForSpecialistById); passing an object is accepted only if that
  * object is itself canonical.
  */
-function specialistProjection(direction, role) {
+function specialistProjection(direction, role, currentAuthority = null) {
   if (!isCanonicalDirection(direction)) {
     const error = new Error('CREATIVE_DIRECTION_NOT_CANONICAL: specialistProjection requires a Creative Direction produced by the pipeline (registered in the canonical store); arbitrary, mutated, or hand-built objects are refused');
     error.code = 'CREATIVE_DIRECTION_NOT_CANONICAL';
     throw error;
   }
   if (!SPECIALIST_ROLES.includes(role)) return null;
+  const extraDomains = currentAuthority?.domains || [];
+  const classified = classifyActionClaims(direction, extraDomains);
   const receipt = { canonical_direction_id: direction.direction_id, direction_digest_sha256: direction.direction_digest_sha256 };
   const executable = {
     schema: SAFE_PROJECTION_SCHEMA,
-    action_claims: enumActionClaims(direction),
+    action_claims: classified.admitted,
     protected_domains: structuredClone(direction.protected_domains || []),
     capability_denials: capabilityDenials(direction),
+    current_human_authority: currentAuthority ? { authority_id: currentAuthority.authority_id || null, version: currentAuthority.version || null, sources: currentAuthority.sources || [], denials: currentAuthority.denials || [] } : { authority_id: null, version: null, sources: ['DIRECTION_INHERENT'], denials: [] },
+    capability_suppressions: classified.suppressed,
     human_directions_received: structuredDirections(direction),
-    execution_contract: { executable_surface: 'enum_action_claims_plus_enum_fields', consume_rationale_for_actions: false, raw_creative_prose_included: false, free_text_action_summary_included: false },
+    execution_contract: { executable_surface: 'enum_action_claims_plus_enum_fields', consume_rationale_for_actions: false, raw_creative_prose_included: false, free_text_action_summary_included: false, reauthorized_against_current_human_authority: true },
   };
   switch (role) {
     case 'visual_planning_director':
@@ -486,15 +500,65 @@ function humanRationaleView(direction) {
   };
 }
 
+// Canonical CURRENT human-authority store (reference-only): the current locks in
+// effect for an episode/project, resolved at projection time. Keyed by an opaque
+// authority id; the store owns "what is current", so a caller cannot downgrade a
+// lock by passing an older/no-lock object.
+const PINNED_HUMAN_AUTHORITY_STORE = '/home/vidtoolz/vidtoolz-episode-factory/human-authority-store';
+const AUTHORITY_ID_RE = /^[A-Za-z0-9_.:-]{3,200}$/;
+function resolveCurrentHumanAuthority(authorityId) {
+  const id = norm(authorityId);
+  if (!AUTHORITY_ID_RE.test(id)) { const e = new Error('CURRENT_HUMAN_AUTHORITY_INVALID_ID: malformed current-human-authority id'); e.code = 'CURRENT_HUMAN_AUTHORITY_INVALID_ID'; throw e; }
+  const rootRaw = (process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE && process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE.trim()) ? process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE.trim() : PINNED_HUMAN_AUTHORITY_STORE;
+  const root = path.resolve(rootRaw);
+  const file = path.join(root, `${id}.json`);
+  if (path.dirname(path.resolve(file)) !== root || !fs.existsSync(file)) { const e = new Error(`CURRENT_HUMAN_AUTHORITY_UNAVAILABLE: no current human authority for ${id}`); e.code = 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE'; throw e; }
+  let realRoot; let realFile;
+  try { realRoot = fs.realpathSync(root); realFile = fs.realpathSync(file); } catch (error) { const e = new Error(`CURRENT_HUMAN_AUTHORITY_UNAVAILABLE: ${error.message}`); e.code = 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE'; throw e; }
+  if (path.dirname(realFile) !== realRoot) { const e = new Error('CURRENT_HUMAN_AUTHORITY_UNAVAILABLE: authority resolves outside the pinned store'); e.code = 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE'; throw e; }
+  let doc;
+  try { doc = JSON.parse(fs.readFileSync(realFile, 'utf8')); } catch (error) { const e = new Error(`CURRENT_HUMAN_AUTHORITY_UNAVAILABLE: ${error.message}`); e.code = 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE'; throw e; }
+  const domains = cd.deriveProtectedDomains(doc.human_constraints || []).domains;
+  return storyAuthority.deepFreeze({ authority_id: id, version: doc.version ?? null, human_constraints: doc.human_constraints || [], domains });
+}
+
+// Resolve the CURRENT human authority to apply at projection time. Combines the
+// direction's own creation-time locks with (a) any current locks passed in the
+// projection request and (b) the canonical current-authority store (which a
+// caller cannot downgrade). Fail-closed: a requested store authority that cannot
+// resolve refuses the projection rather than falling back to no-locks.
+function currentHumanAuthority(currentContext) {
+  const ctx = currentContext || {};
+  const sources = [];
+  let domains = [];
+  let authorityId = null;
+  let version = null;
+  if (Array.isArray(ctx.human_constraints) && ctx.human_constraints.length) {
+    domains = domains.concat(cd.deriveProtectedDomains(ctx.human_constraints).domains);
+    sources.push('PROJECTION_REQUEST_CONSTRAINTS');
+  }
+  if (norm(ctx.currentHumanAuthorityId)) {
+    const resolved = resolveCurrentHumanAuthority(ctx.currentHumanAuthorityId); // throws CURRENT_HUMAN_AUTHORITY_UNAVAILABLE if missing
+    domains = domains.concat(resolved.domains);
+    authorityId = resolved.authority_id; version = resolved.version;
+    sources.push('CANONICAL_CURRENT_AUTHORITY_STORE');
+  }
+  const denials = domains.map((d) => ({ domain: d.domain, scope: d.scope || 'GLOBAL', denied_operations: structuredClone(d.forbidden_operations || []), constraint_id: d.constraint_id || null }));
+  return { domains, denials, sources, authority_id: authorityId, version };
+}
+
 /*
- * ID-ONLY DOWNSTREAM CONSUMPTION (mission §19). Downstream specialists resolve
- * the canonical Creative Direction by id from the append-only registry and
- * project it themselves — they never receive a caller-provided projection,
- * receipt, rationale, or raw direction object. A caller cannot inject an
- * alternate direction because only the pipeline writes the registry.
+ * ID-ONLY DOWNSTREAM CONSUMPTION (mission §19) with CURRENT-LOCK REAUTHORIZATION
+ * (mission §4-9). Downstream specialists resolve the canonical Creative Direction
+ * by id and project it; the projection is re-filtered against the CURRENT human
+ * authority resolved at USE time, so a stale operation authorized at creation is
+ * suppressed once a newer human lock exists. A caller cannot suppress a current
+ * lock (union-only), and a requested-but-unresolvable current authority refuses.
  */
-function projectForSpecialistById(creativeDirectionId, role) {
-  return specialistProjection(resolveCanonicalDirectionById(creativeDirectionId), role);
+function projectForSpecialistById(creativeDirectionId, role, currentContext = {}) {
+  const direction = resolveCanonicalDirectionById(creativeDirectionId);
+  const authority = currentHumanAuthority(currentContext);
+  return specialistProjection(direction, role, authority);
 }
 function humanRationaleById(creativeDirectionId) {
   return humanRationaleView(resolveCanonicalDirectionById(creativeDirectionId));
@@ -619,6 +683,6 @@ function controlRoomView(out) {
   };
 }
 
-module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, projectForSpecialistById, humanRationaleById, resolveCanonicalDirectionById, isCanonicalDirection, run, controlRoomView };
+module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, projectForSpecialistById, humanRationaleById, resolveCanonicalDirectionById, resolveCurrentHumanAuthority, isCanonicalDirection, run, controlRoomView };
 
 if (require.main === module && guardExecutableLifecycle(AGENT_ID)) (async () => { const i = process.argv.indexOf('--task'); if (i < 0) process.exit(2); const out = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...out, control_room: controlRoomView(out) }, null, 2)); process.exit(['COMPLETE', 'AWAITING_HUMAN_REVIEW', 'PREVIEW_ONLY'].includes(out.state) ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });

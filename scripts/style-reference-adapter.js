@@ -187,13 +187,20 @@ const PINNED_CLASSIFIER_EVIDENCE_STORE = '/home/vidtoolz/vidtoolz-episode-factor
 const RUN_ID_RE = /^[A-Za-z0-9_.-]{3,120}$/;
 const HEX64_RE = /^[a-f0-9]{64}$/i;
 
-// GAP REPAIR (Codex LB-STORE-ID-MUTABLE-TOCTOU): a stable run id must bind
-// IMMUTABLE semantic content. On the first resolution of a run id we bind the
-// content digest; every later resolution returns that ORIGINAL bound content, so
-// rewriting the file beneath the same id can never change the resolved authority.
-// A detected mismatch is recorded so authoritative consumers refuse the run.
-const RUN_BINDINGS = new Map(); // `${kind}:${id}` -> { digest, doc }
-const RUN_INTEGRITY_VIOLATED = new Set(); // `${kind}:${id}` seen with changed bytes
+// GAP REPAIR (Codex EVIDENCE-WRITE-AUTHORITY + RUN-ID-CROSS-PROCESS):
+// Semantic-evidence authority is created ONLY by a trusted writer, and is bound
+// DURABLY on disk (cross-process) — not by a self-asserted identity string and
+// not by whatever a process happened to read first.
+//   - The trusted writer (recordRendererEvidence / recordClassifierEvidence) is
+//     the only path that creates a run's authority. It writes the evidence AND an
+//     append-only <run_id>.manifest.json binding run_id -> evidence_digest at
+//     WRITE time, refusing to rebind an existing run id.
+//   - A reader REQUIRES the durable manifest (a caller-written raw file has none
+//     -> no authority), and on EVERY read recomputes the evidence digest and
+//     requires exact equality with the manifest (a rewrite under the same id, in
+//     any process, is rejected). Producer identity/media are taken from the
+//     manifest, so copying an approved name into a raw file grants nothing.
+const EVIDENCE_MANIFEST_SCHEMA = 'vidtoolz.semanticEvidenceManifest.v1';
 
 function canonicalizeJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalizeJson).join(',')}]`;
@@ -203,38 +210,80 @@ function canonicalizeJson(value) {
 function evidenceDigest(doc) {
   return sha256(canonicalizeJson({ identity: doc?.renderer_identity ?? doc?.classifier_identity ?? null, media_sha256: doc?.media_sha256 ?? null, records: doc?.records ?? [] }));
 }
+function atomicWriteJson(filePath, obj) {
+  const tmp = `${filePath}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+  fs.writeFileSync(tmp, JSON.stringify(obj));
+  fs.renameSync(tmp, filePath);
+}
+function evidenceRoot(envVar, pinnedDefault) {
+  const raw = (process.env[envVar] && process.env[envVar].trim()) ? process.env[envVar].trim() : pinnedDefault;
+  return path.resolve(raw);
+}
+
+/*
+ * TRUSTED EVIDENCE WRITER — the renderer/classifier execution component's write
+ * boundary. NOT a task/API/request path: production request data cannot reach it
+ * (no route/handler invokes it). It stamps producer identity + media binding and
+ * records a durable append-only manifest. A second write to the same run id is
+ * refused (RUN_ID_ALREADY_BOUND) — authority history is append-only.
+ */
+function writeEvidence(kind, envVar, pinnedDefault, runId, payload) {
+  const id = String(runId || '').trim();
+  if (!RUN_ID_RE.test(id)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_ID_INVALID', `${kind} run id is malformed: ${id}`);
+  const identity = String(payload?.producer_execution_identity || '').trim();
+  if (!identity) throw new StyleReferenceError('SEMANTIC_EVIDENCE_WRITER_IDENTITY_REQUIRED', `${kind} evidence writer must supply producer_execution_identity`);
+  const media = String(payload?.media_sha256 || '').trim().toLowerCase();
+  if (!HEX64_RE.test(media)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_WRITER_MEDIA_REQUIRED', `${kind} evidence writer must bind a media_sha256`);
+  const records = Array.isArray(payload?.records) ? payload.records : null;
+  if (!records || !records.length) throw new StyleReferenceError('SEMANTIC_EVIDENCE_WRITER_RECORDS_REQUIRED', `${kind} evidence writer must supply records`);
+  const root = evidenceRoot(envVar, pinnedDefault);
+  fs.mkdirSync(root, { recursive: true });
+  const realRoot = fs.realpathSync(root);
+  const file = path.join(realRoot, `${id}.json`);
+  const manifestFile = path.join(realRoot, `${id}.manifest.json`);
+  if (path.dirname(file) !== realRoot) throw new StyleReferenceError('SEMANTIC_EVIDENCE_PATH_ESCAPE', `${kind} evidence path escapes the pinned store`);
+  if (fs.existsSync(manifestFile)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_RUN_ID_ALREADY_BOUND', `${kind} run ${id} is already bound; authority evidence is append-only (use a new run id)`);
+  const idKey = kind === 'renderer' ? 'renderer_identity' : 'classifier_identity';
+  const doc = { [idKey]: identity, media_sha256: media, records };
+  const digest = evidenceDigest(doc);
+  // Evidence first (no authority without the manifest), then the manifest gate.
+  atomicWriteJson(file, doc);
+  atomicWriteJson(manifestFile, { schema: EVIDENCE_MANIFEST_SCHEMA, kind, run_id: id, evidence_digest: digest, media_sha256: media, producer_execution_identity: identity, created_at: new Date().toISOString() });
+  return { run_id: id, evidence_digest: digest, manifest_path: manifestFile };
+}
+function recordRendererEvidence(runId, payload) { return writeEvidence('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, runId, payload); }
+function recordClassifierEvidence(runId, payload) { return writeEvidence('classifier', 'VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE', PINNED_CLASSIFIER_EVIDENCE_STORE, runId, payload); }
 
 function readEvidenceStore(kind, envVar, pinnedDefault, runId) {
   const id = String(runId || '').trim();
   if (!RUN_ID_RE.test(id)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_ID_INVALID', `${kind} run id is malformed: ${id}`);
-  const rootRaw = (process.env[envVar] && process.env[envVar].trim()) ? process.env[envVar].trim() : pinnedDefault;
-  const root = path.resolve(rootRaw);
+  const root = evidenceRoot(envVar, pinnedDefault);
   const file = path.join(root, `${id}.json`);
+  const manifestFile = path.join(root, `${id}.manifest.json`);
   if (path.dirname(path.resolve(file)) !== root) throw new StyleReferenceError('SEMANTIC_EVIDENCE_PATH_ESCAPE', `${kind} evidence path escapes the pinned store`);
-  if (!fs.existsSync(file)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_NOT_FOUND', `${kind} run ${id} is not present in the pinned store`);
-  // Symlink-confined: the real path must remain directly inside the real store.
-  let realRoot; let realFile;
+  // Durable authority: without a manifest written by the trusted writer there is
+  // NO authority (a caller-written raw file is inert).
+  if (!fs.existsSync(manifestFile)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_UNAUTHORIZED_WRITE', `${kind} run ${id} has no trusted-writer manifest; a self-created evidence file carries no authority`);
+  if (!fs.existsSync(file)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_NOT_FOUND', `${kind} run ${id} evidence file is missing`);
+  // Symlink-confined: real paths must remain directly inside the real store.
+  let realRoot; let realFile; let realManifest;
   try { realRoot = fs.realpathSync(root); } catch (e) { throw new StyleReferenceError('SEMANTIC_EVIDENCE_STORE_UNRESOLVABLE', e.message); }
   try { realFile = fs.realpathSync(file); } catch (e) { throw new StyleReferenceError('SEMANTIC_EVIDENCE_UNRESOLVABLE', e.message); }
-  if (path.dirname(realFile) !== realRoot || path.basename(realFile) !== `${id}.json`) {
+  try { realManifest = fs.realpathSync(manifestFile); } catch (e) { throw new StyleReferenceError('SEMANTIC_EVIDENCE_UNRESOLVABLE', e.message); }
+  if (path.dirname(realFile) !== realRoot || path.basename(realFile) !== `${id}.json`
+    || path.dirname(realManifest) !== realRoot || path.basename(realManifest) !== `${id}.manifest.json`) {
     throw new StyleReferenceError('SEMANTIC_EVIDENCE_SYMLINK_ESCAPE', `${kind} evidence resolves (via symlink) outside the pinned store`);
   }
-  let doc;
+  let doc; let manifest;
+  try { manifest = JSON.parse(fs.readFileSync(realManifest, 'utf8')); } catch (e) { throw new StyleReferenceError('SEMANTIC_EVIDENCE_UNREADABLE', e.message); }
   try { doc = JSON.parse(fs.readFileSync(realFile, 'utf8')); } catch (e) { throw new StyleReferenceError('SEMANTIC_EVIDENCE_UNREADABLE', e.message); }
-  // Run-id → immutable-content binding (append-only, in process). The FIRST read
-  // binds the digest and content; later reads return the bound content and, if
-  // the bytes changed, flag an integrity violation so consumers refuse the run.
-  // Keyed by the resolved real path so distinct stores never collide.
-  const key = `${kind}:${realFile}`;
-  const digest = evidenceDigest(doc);
-  const bound = RUN_BINDINGS.get(key);
-  if (bound) {
-    if (bound.digest !== digest) RUN_INTEGRITY_VIOLATED.add(key);
-    doc = bound.doc; // authority always resolves to the immutable first-bound record
-  } else {
-    RUN_BINDINGS.set(key, { digest, doc });
+  // Durable integrity: recompute the digest every read (cross-process) and
+  // require exact equality with the manifest bound at trusted-write time.
+  if (evidenceDigest(doc) !== manifest.evidence_digest) {
+    throw new StyleReferenceError('SEMANTIC_EVIDENCE_INTEGRITY', `${kind} run ${id} bytes changed beneath the bound run id`);
   }
-  return { key, records: Array.isArray(doc?.records) ? doc.records : [], identity: doc?.renderer_identity || doc?.classifier_identity || null, media_sha256: doc?.media_sha256 || null, integrity_ok: !RUN_INTEGRITY_VIOLATED.has(key) };
+  // Provenance/media come from the MANIFEST (trusted), not from the record text.
+  return { records: Array.isArray(doc?.records) ? doc.records : [], identity: manifest.producer_execution_identity || null, media_sha256: manifest.media_sha256 || null, integrity_ok: true };
 }
 function resolveRendererRun(renderRunId) { const r = readEvidenceStore('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, renderRunId); return { records: r.records, identity: r.identity, media_sha256: r.media_sha256 }; }
 function resolveClassifierRun(classifierRunId) { const r = readEvidenceStore('classifier', 'VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE', PINNED_CLASSIFIER_EVIDENCE_STORE, classifierRunId); return { records: r.records, identity: r.identity, media_sha256: r.media_sha256 }; }
@@ -777,6 +826,8 @@ module.exports = {
   normalizeEventKind,
   admitSemanticEvents,
   admitMeasuredEvents,
+  recordRendererEvidence,
+  recordClassifierEvidence,
   resolveRendererRun,
   resolveClassifierRun,
   countMacroStates,

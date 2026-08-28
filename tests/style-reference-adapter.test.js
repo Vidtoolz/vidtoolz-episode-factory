@@ -363,9 +363,9 @@ test('SRA29: confirmation comes ONLY from a trusted renderer/classifier record r
   assert.equal(noStore.unplanned_candidates.length, 1);
   // With a renderer record resolved from the pinned store by id, p1 confirms.
   const store = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-renderer-store-'));
-  fs.writeFileSync(path.join(store, 'run-sra29.json'), JSON.stringify({ renderer_identity: 'r@test', media_sha256: 'a'.repeat(64), records: [{ event_id: 'p1', event_type: 'CARD_STATE_CHANGE', manifested: true, manifestation: { kind: 'CARD_STATE_PRESENT', target: 'expanded' } }] }));
   const prev = process.env.VIDTOOLZ_RENDERER_EVENT_STORE;
   process.env.VIDTOOLZ_RENDERER_EVENT_STORE = store;
+  adapter.recordRendererEvidence('run-sra29', { producer_execution_identity: 'r@test', media_sha256: 'a'.repeat(64), records: [{ event_id: 'p1', event_type: 'CARD_STATE_CHANGE', manifested: true, manifestation: { kind: 'CARD_STATE_PRESENT', target: 'expanded' } }] });
   try {
     const bridge = adapter.admitMeasuredEvents(candidates, planned, { toleranceS: 0.5, renderRunId: 'run-sra29' });
     assert.equal(bridge.confirmed.length, 1);
@@ -397,46 +397,72 @@ test('SRA31: renderer evidence must bind producer identity, media hash, and the 
   const prev = process.env.VIDTOOLZ_RENDERER_EVENT_STORE;
   process.env.VIDTOOLZ_RENDERER_EVENT_STORE = store;
   try {
-    // provenance-free (no renderer_identity, wrong event_type) -> not authoritative
-    fs.writeFileSync(path.join(store, 'bare.json'), JSON.stringify({ records: [{ event_id: 'label-1', event_type: 'WRONG', manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
-    assert.equal(adapter.admitMeasuredEvents([], planned, { renderRunId: 'bare' }).confirmed.length, 0);
-    // identity present but no media hash -> not authoritative
-    fs.writeFileSync(path.join(store, 'nomedia.json'), JSON.stringify({ renderer_identity: 'r', records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
-    assert.equal(adapter.admitMeasuredEvents([], planned, { renderRunId: 'nomedia' }).confirmed.length, 0);
-    // wrong media (caller supplies expected media hash that differs) -> not authoritative
-    fs.writeFileSync(path.join(store, 'wmr.json'), JSON.stringify({ renderer_identity: 'r', media_sha256: 'b'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    // GAP REPAIR: a caller-written RAW file (no trusted-writer manifest) has no
+    // authority, whatever identity string it carries.
+    fs.writeFileSync(path.join(store, 'rawfile.json'), JSON.stringify({ renderer_identity: 'trusted-renderer-v1', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    const raw = adapter.admitMeasuredEvents([], planned, { renderRunId: 'rawfile' });
+    assert.equal(raw.confirmed.length, 0);
+    assert.ok(raw.errors.some((e) => e.includes('UNAUTHORIZED_WRITE')));
+    // wrong media (via the trusted writer) -> rejected
+    adapter.recordRendererEvidence('wmr', { producer_execution_identity: 'r', media_sha256: 'b'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] });
     const wrong = adapter.admitMeasuredEvents([], planned, { renderRunId: 'wmr', mediaSha256: 'a'.repeat(64) });
     assert.equal(wrong.confirmed.length, 0);
     assert.ok(wrong.errors.some((e) => e.includes('WRONG_MEDIA')));
-    // fully bound record with matching media -> confirms
-    fs.writeFileSync(path.join(store, 'okr.json'), JSON.stringify({ renderer_identity: 'trusted-renderer-v1', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    // wrong event type (via the trusted writer) -> rejected
+    adapter.recordRendererEvidence('wer', { producer_execution_identity: 'r', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'CARD_STATE_CHANGE', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] });
+    const wev = adapter.admitMeasuredEvents([], planned, { renderRunId: 'wer', mediaSha256: 'a'.repeat(64) });
+    assert.equal(wev.confirmed.length, 0);
+    assert.ok(wev.errors.some((e) => e.includes('EVENT_TYPE_MISMATCH')));
+    // fully bound trusted-writer record with matching media -> confirms
+    adapter.recordRendererEvidence('okr', { producer_execution_identity: 'trusted-renderer-v1', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] });
     const ok = adapter.admitMeasuredEvents([], planned, { renderRunId: 'okr', mediaSha256: 'a'.repeat(64) });
     assert.equal(ok.confirmed.length, 1);
     assert.equal(ok.confirmed[0].authority, 'RENDERER_MANIFESTATION_CONFIRMED');
-    // TOCTOU: rewriting the file beneath the same id is detected; the run is refused
-    const p = path.join(store, 'mut.json');
-    fs.writeFileSync(p, JSON.stringify({ renderer_identity: 'r', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
-    const first = adapter.resolveRendererRun('mut');
-    fs.writeFileSync(p, JSON.stringify({ renderer_identity: 'attacker', media_sha256: '0'.repeat(64), records: [{ event_id: 'other', event_type: 'X', manifestation: { kind: 'LABEL_PRESENT', target: 'OTHER' } }] }));
-    const second = adapter.resolveRendererRun('mut');
-    assert.equal(JSON.stringify(first), JSON.stringify(second), 'same run id binds immutable content');
-    const tampered = adapter.admitMeasuredEvents([], planned, { renderRunId: 'mut', mediaSha256: 'a'.repeat(64) });
+    // durable TOCTOU: rewrite the evidence bytes beneath the trusted run id -> rejected
+    adapter.recordRendererEvidence('mutr', { producer_execution_identity: 'r', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] });
+    fs.writeFileSync(path.join(store, 'mutr.json'), JSON.stringify({ renderer_identity: 'attacker', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'OTHER' } }] }));
+    const tampered = adapter.admitMeasuredEvents([], planned, { renderRunId: 'mutr', mediaSha256: 'a'.repeat(64) });
     assert.equal(tampered.confirmed.length, 0);
     assert.ok(tampered.errors.some((e) => e.includes('INTEGRITY')));
+    // the trusted writer refuses to rebind a run id (append-only)
+    assert.throws(() => adapter.recordRendererEvidence('okr', { producer_execution_identity: 'r', media_sha256: 'a'.repeat(64), records: [{ event_id: 'x', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'Z' } }] }), (e) => e.code === 'SEMANTIC_EVIDENCE_RUN_ID_ALREADY_BOUND');
   } finally { if (prev === undefined) delete process.env.VIDTOOLZ_RENDERER_EVENT_STORE; else process.env.VIDTOOLZ_RENDERER_EVENT_STORE = prev; }
 });
 
-test('SRA32: classifier evidence must bind classifier identity and media; identity-free records are not authoritative', () => {
+test('SRA32: classifier evidence must be trusted-written and identity/media-bound; raw files and identity-free records are not authoritative', () => {
   const planned = [{ event_id: 'label-1', t_s: 5, kind: 'LABEL_REVEAL', label: 'TRUST' }];
   const store = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-clf-'));
   const prev = process.env.VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE;
   process.env.VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE = store;
   try {
-    fs.writeFileSync(path.join(store, 'bare.json'), JSON.stringify({ records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', confirmed: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
-    assert.equal(adapter.admitMeasuredEvents([], planned, { classifierRunId: 'bare' }).confirmed.length, 0);
-    fs.writeFileSync(path.join(store, 'okr.json'), JSON.stringify({ classifier_identity: 'approved-classifier-v1', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', confirmed: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    // raw caller-written file (even with a classifier name) -> no authority
+    fs.writeFileSync(path.join(store, 'rawclf.json'), JSON.stringify({ classifier_identity: 'approved-classifier-v1', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', confirmed: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    assert.equal(adapter.admitMeasuredEvents([], planned, { classifierRunId: 'rawclf' }).confirmed.length, 0);
+    // trusted-written classifier evidence -> confirms
+    adapter.recordClassifierEvidence('okr', { producer_execution_identity: 'approved-classifier-v1', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', confirmed: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] });
     const ok = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'okr', mediaSha256: 'a'.repeat(64) });
     assert.equal(ok.confirmed.length, 1);
     assert.equal(ok.confirmed[0].authority, 'APPROVED_CLASSIFIER_CONFIRMED');
   } finally { if (prev === undefined) delete process.env.VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE; else process.env.VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE = prev; }
+});
+
+test('SRA33: semantic-evidence integrity is DURABLE across processes — a fresh process rejects bytes rewritten beneath a bound run id', () => {
+  const cp = require('child_process');
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-xproc-'));
+  const prev = process.env.VIDTOOLZ_RENDERER_EVENT_STORE;
+  process.env.VIDTOOLZ_RENDERER_EVENT_STORE = store;
+  const media = 'a'.repeat(64);
+  try {
+    adapter.recordRendererEvidence('xproc', { producer_execution_identity: 'trusted-renderer-v1', media_sha256: media, records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] });
+    const adapterPath = path.join(__dirname, '..', 'scripts', 'style-reference-adapter.js');
+    const fresh = (target) => JSON.parse(cp.execFileSync(process.execPath, ['-e', `const a=require(${JSON.stringify(adapterPath)});const r=a.admitMeasuredEvents([],[{event_id:'label-1',t_s:5,kind:'LABEL_REVEAL',label:${JSON.stringify(target)}}],{renderRunId:'xproc',mediaSha256:'${media}'});process.stdout.write(JSON.stringify({c:r.confirmed.length,e:r.errors}))`], { encoding: 'utf8', env: { ...process.env, VIDTOOLZ_RENDERER_EVENT_STORE: store, VIDTOOLZ_APPROVED_RENDERER_IDENTITIES: 'trusted-renderer-v1' } }));
+    // fresh process confirms the untampered durable record
+    assert.equal(fresh('TRUST').c, 1);
+    // rewrite the evidence bytes beneath the same run id (manifest unchanged)
+    fs.writeFileSync(path.join(store, 'xproc.json'), JSON.stringify({ renderer_identity: 'trusted-renderer-v1', media_sha256: media, records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'OTHER' } }] }));
+    // a genuinely fresh process must reject the changed meaning (durable digest)
+    const after = fresh('OTHER');
+    assert.equal(after.c, 0);
+    assert.ok(after.e.some((e) => e.includes('INTEGRITY')));
+  } finally { if (prev === undefined) delete process.env.VIDTOOLZ_RENDERER_EVENT_STORE; else process.env.VIDTOOLZ_RENDERER_EVENT_STORE = prev; }
 });

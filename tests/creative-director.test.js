@@ -693,12 +693,12 @@ test('CDN6 (CODX-EVENT-01 + CODX-LB-08/09): a pixel signal never confirms Level-
   // caller-supplied manifestation on a candidate carries NO authority
   const forged = adapter.admitMeasuredEvents([{ candidate_id: 'f', t_s: 5, kind: 'VISUAL_CHANGE', manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }], planned);
   assert.equal(forged.confirmed.length, 0, 'caller-supplied manifestation object cannot mint confirmation');
-  // a renderer record resolved from the PINNED store by id CONFIRMS; ids preserved
+  // a renderer record written by the TRUSTED WRITER and resolved by id CONFIRMS
   const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-renderer-store-'));
-  fs.writeFileSync(path.join(store, 'run-cd6.json'), JSON.stringify({ renderer_identity: 'renderer@test', media_sha256: 'a'.repeat(64), records: [{ event_id: 'planned-label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }] }));
   const prev = process.env.VIDTOOLZ_RENDERER_EVENT_STORE;
   process.env.VIDTOOLZ_RENDERER_EVENT_STORE = store;
   try {
+    adapter.recordRendererEvidence('run-cd6', { producer_execution_identity: 'renderer@test', media_sha256: 'a'.repeat(64), records: [{ event_id: 'planned-label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }] });
     const confirmed = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], planned, { renderRunId: 'run-cd6' });
     assert.equal(confirmed.confirmed.length, 1);
     assert.equal(confirmed.confirmed[0].event_id, 'planned-label-1');
@@ -776,4 +776,34 @@ test('CDG4: review_coherence is non-authoritative — a caller-built object cann
   assert.equal(director.isCanonicalDirection(built), false);
   assert.throws(() => director.projectForSpecialistById(built.direction_id, 'editor'), (e) => e.code === 'CREATIVE_DIRECTION_NOT_FOUND');
   assert.equal(out.review_only, true);
+});
+
+/* ══ THREE-DEFECT CLOSURE (Codex 12f14b2) — current-lock reauthorization ══ */
+
+test('CDT1: a newer human KEEP S03 lock removes a stale MEDIA/ADD/S03 from an older canonical direction at projection time', async () => {
+  const out = await runDirector(makeTask(), makeSemantic({ action_claims: [{ claim_id: 'stale', domain: 'MEDIA', operation: 'ADD', scope: 'S03', summary: 'add before lock' }, { claim_id: 's05', domain: 'MEDIA', operation: 'ADD', scope: 'S05', summary: 'unlocked' }] }));
+  // no current lock: the legally-created ADD S03 projects
+  const noLock = director.projectForSpecialistById(out.creative_direction_id, 'editor');
+  assert.ok(noLock.executable.action_claims.some((c) => c.scope === 'S03' && c.operation === 'ADD'));
+  // newer KEEP S03: ADD S03 suppressed (with evidence), ADD S05 preserved (target-scoped)
+  const keep = { constraint_id: 'k', type: 'KEEP_MEDIA', scope: 'S03', text: 'Keep S03.' };
+  const relocked = director.projectForSpecialistById(out.creative_direction_id, 'editor', { human_constraints: [keep] });
+  assert.equal(relocked.executable.action_claims.some((c) => c.scope === 'S03' && c.operation === 'ADD'), false);
+  assert.ok(relocked.executable.action_claims.some((c) => c.scope === 'S05' && c.operation === 'ADD'));
+  assert.ok(relocked.executable.capability_suppressions.some((s) => s.scope === 'S03' && s.operation === 'ADD'));
+});
+
+test('CDT2: the canonical current-human-authority store dominates; a caller cannot downgrade it by passing empty constraints', async () => {
+  const out = await runDirector(makeTask(), makeSemantic({ action_claims: [{ claim_id: 'stale', domain: 'MEDIA', operation: 'ADD', scope: 'S03', summary: 'x' }] }));
+  const authStore = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-humanauth-'));
+  const prev = process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE;
+  process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = authStore;
+  try {
+    fs.writeFileSync(path.join(authStore, 'ep-7.json'), JSON.stringify({ authority_id: 'ep-7', version: 2, human_constraints: [{ constraint_id: 'k', type: 'KEEP_MEDIA', scope: 'S03', text: 'Keep S03.' }] }));
+    const proj = director.projectForSpecialistById(out.creative_direction_id, 'editor', { currentHumanAuthorityId: 'ep-7', human_constraints: [] });
+    assert.equal(proj.executable.action_claims.some((c) => c.scope === 'S03' && c.operation === 'ADD'), false);
+    assert.equal(proj.executable.current_human_authority.authority_id, 'ep-7');
+    // fail-closed: an unresolvable current authority refuses the projection
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor', { currentHumanAuthorityId: 'ep-missing' }), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE');
+  } finally { if (prev === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = prev; }
 });
