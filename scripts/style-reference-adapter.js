@@ -185,6 +185,24 @@ function isConfirmingSignal(candidate) {
 const PINNED_RENDERER_EVENT_STORE = '/home/vidtoolz/vidtoolz-episode-factory/renderer-event-store';
 const PINNED_CLASSIFIER_EVIDENCE_STORE = '/home/vidtoolz/vidtoolz-episode-factory/classifier-evidence-store';
 const RUN_ID_RE = /^[A-Za-z0-9_.-]{3,120}$/;
+const HEX64_RE = /^[a-f0-9]{64}$/i;
+
+// GAP REPAIR (Codex LB-STORE-ID-MUTABLE-TOCTOU): a stable run id must bind
+// IMMUTABLE semantic content. On the first resolution of a run id we bind the
+// content digest; every later resolution returns that ORIGINAL bound content, so
+// rewriting the file beneath the same id can never change the resolved authority.
+// A detected mismatch is recorded so authoritative consumers refuse the run.
+const RUN_BINDINGS = new Map(); // `${kind}:${id}` -> { digest, doc }
+const RUN_INTEGRITY_VIOLATED = new Set(); // `${kind}:${id}` seen with changed bytes
+
+function canonicalizeJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalizeJson).join(',')}]`;
+  if (value && typeof value === 'object') return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${canonicalizeJson(value[k])}`).join(',')}}`;
+  return JSON.stringify(value);
+}
+function evidenceDigest(doc) {
+  return sha256(canonicalizeJson({ identity: doc?.renderer_identity ?? doc?.classifier_identity ?? null, media_sha256: doc?.media_sha256 ?? null, records: doc?.records ?? [] }));
+}
 
 function readEvidenceStore(kind, envVar, pinnedDefault, runId) {
   const id = String(runId || '').trim();
@@ -203,10 +221,43 @@ function readEvidenceStore(kind, envVar, pinnedDefault, runId) {
   }
   let doc;
   try { doc = JSON.parse(fs.readFileSync(realFile, 'utf8')); } catch (e) { throw new StyleReferenceError('SEMANTIC_EVIDENCE_UNREADABLE', e.message); }
-  return { records: Array.isArray(doc?.records) ? doc.records : [], identity: doc?.renderer_identity || doc?.classifier_identity || null, media_sha256: doc?.media_sha256 || null };
+  // Run-id → immutable-content binding (append-only, in process). The FIRST read
+  // binds the digest and content; later reads return the bound content and, if
+  // the bytes changed, flag an integrity violation so consumers refuse the run.
+  // Keyed by the resolved real path so distinct stores never collide.
+  const key = `${kind}:${realFile}`;
+  const digest = evidenceDigest(doc);
+  const bound = RUN_BINDINGS.get(key);
+  if (bound) {
+    if (bound.digest !== digest) RUN_INTEGRITY_VIOLATED.add(key);
+    doc = bound.doc; // authority always resolves to the immutable first-bound record
+  } else {
+    RUN_BINDINGS.set(key, { digest, doc });
+  }
+  return { key, records: Array.isArray(doc?.records) ? doc.records : [], identity: doc?.renderer_identity || doc?.classifier_identity || null, media_sha256: doc?.media_sha256 || null, integrity_ok: !RUN_INTEGRITY_VIOLATED.has(key) };
 }
-function resolveRendererRun(renderRunId) { return readEvidenceStore('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, renderRunId); }
-function resolveClassifierRun(classifierRunId) { return readEvidenceStore('classifier', 'VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE', PINNED_CLASSIFIER_EVIDENCE_STORE, classifierRunId); }
+function resolveRendererRun(renderRunId) { const r = readEvidenceStore('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, renderRunId); return { records: r.records, identity: r.identity, media_sha256: r.media_sha256 }; }
+function resolveClassifierRun(classifierRunId) { const r = readEvidenceStore('classifier', 'VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE', PINNED_CLASSIFIER_EVIDENCE_STORE, classifierRunId); return { records: r.records, identity: r.identity, media_sha256: r.media_sha256 }; }
+
+// Approved-producer allowlist (deployment authority, never caller input). When
+// configured, an evidence record's producer identity must be on the list.
+function approvedIdentities(envVar) {
+  const raw = process.env[envVar];
+  if (!raw || !raw.trim()) return null; // not configured -> a present identity is sufficient
+  return new Set(raw.split(',').map((s) => s.trim()).filter(Boolean));
+}
+
+// Provenance/media/integrity gate for an evidence store document. Returns a typed
+// error string when the document is not authoritative, else null.
+function evidenceAuthorityError(kind, store, allowlistEnv, options) {
+  if (!store.integrity_ok) return `SEMANTIC_EVIDENCE_INTEGRITY: ${kind} evidence content changed beneath the run id`;
+  if (!store.identity || !String(store.identity).trim()) return `SEMANTIC_EVIDENCE_NO_PROVENANCE: ${kind} record has no producer identity`;
+  const allow = approvedIdentities(allowlistEnv);
+  if (allow && !allow.has(String(store.identity))) return `SEMANTIC_EVIDENCE_UNAPPROVED_PRODUCER: ${kind} identity ${store.identity} is not approved`;
+  if (!HEX64_RE.test(String(store.media_sha256 || ''))) return `SEMANTIC_EVIDENCE_NO_MEDIA_BINDING: ${kind} record does not bind an output media hash`;
+  if (options.mediaSha256 && String(store.media_sha256).toLowerCase() !== String(options.mediaSha256).toLowerCase()) return `SEMANTIC_EVIDENCE_WRONG_MEDIA: ${kind} evidence is bound to a different media`;
+  return null;
+}
 
 /*
  * EVENT AUTHORITY PIPELINE (reference-only). Confirmation of a planned Level-B
@@ -230,30 +281,51 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   const unverified = [];
   const errors = [...planned.errors];
 
-  // Resolve TRUSTED semantic evidence from the pinned stores by id.
-  let rendererStore = { records: [] };
-  if (options.renderRunId) { try { rendererStore = resolveRendererRun(options.renderRunId); } catch (e) { errors.push(`RENDERER_EVIDENCE_UNRESOLVED: ${e.message}`); } }
-  let classifierStore = { records: [] };
-  if (options.classifierRunId) { try { classifierStore = resolveClassifierRun(options.classifierRunId); } catch (e) { errors.push(`CLASSIFIER_EVIDENCE_UNRESOLVED: ${e.message}`); } }
+  // Resolve TRUSTED semantic evidence from the pinned stores by id, then enforce
+  // PROVENANCE + MEDIA BINDING + INTEGRITY before any record may confirm.
+  let rendererStore = { records: [], integrity_ok: true };
+  if (options.renderRunId) {
+    try { rendererStore = readEvidenceStore('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, options.renderRunId); } catch (e) { errors.push(`RENDERER_EVIDENCE_UNRESOLVED: ${e.message}`); }
+  }
+  let classifierStore = { records: [], integrity_ok: true };
+  if (options.classifierRunId) {
+    try { classifierStore = readEvidenceStore('classifier', 'VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE', PINNED_CLASSIFIER_EVIDENCE_STORE, options.classifierRunId); } catch (e) { errors.push(`CLASSIFIER_EVIDENCE_UNRESOLVED: ${e.message}`); }
+  }
 
   // (1) Renderer manifestation — strongest authority, resolved from the store.
-  for (const rec of rendererStore.records) {
-    const idx = remaining.findIndex((p) => p.event_id === rec.event_id);
-    if (idx < 0) continue;
-    const plan = remaining[idx];
-    if (rec.manifested !== false && manifestationMatches(plan, rec.manifestation)) {
-      remaining.splice(idx, 1);
-      confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'RENDERER_MANIFESTATION_CONFIRMED', manifestation: rec.manifestation, evidence_source: `renderer-run:${options.renderRunId}`, renderer_identity: rendererStore.identity || null });
+  // The store document must carry producer provenance, an output-media hash
+  // (matching the evaluated media when supplied), and unchanged bytes; each
+  // record must declare the SAME event type as the planned event.
+  if (options.renderRunId) {
+    const provError = evidenceAuthorityError('renderer', rendererStore, 'VIDTOOLZ_APPROVED_RENDERER_IDENTITIES', options);
+    if (provError) { errors.push(provError); } else {
+      for (const rec of rendererStore.records) {
+        const idx = remaining.findIndex((p) => p.event_id === rec.event_id);
+        if (idx < 0) continue;
+        const plan = remaining[idx];
+        if (String(rec.event_type || '').toUpperCase() !== String(plan.kind).toUpperCase()) { errors.push(`SEMANTIC_EVIDENCE_EVENT_TYPE_MISMATCH: renderer record for ${plan.event_id} declares ${rec.event_type || '(none)'} not ${plan.kind}`); continue; }
+        if (rec.manifested !== false && manifestationMatches(plan, rec.manifestation)) {
+          remaining.splice(idx, 1);
+          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'RENDERER_MANIFESTATION_CONFIRMED', manifestation: rec.manifestation, evidence_source: `renderer-run:${options.renderRunId}`, renderer_identity: rendererStore.identity, media_sha256: rendererStore.media_sha256 });
+        }
+      }
     }
   }
-  // (2) Approved classifier verdict — resolved from the store, bound to its run.
-  for (const rec of classifierStore.records) {
-    const idx = remaining.findIndex((p) => p.event_id === rec.event_id);
-    if (idx < 0) continue;
-    const plan = remaining[idx];
-    if (rec.confirmed === true && manifestationMatches(plan, rec.manifestation)) {
-      remaining.splice(idx, 1);
-      confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'APPROVED_CLASSIFIER_CONFIRMED', manifestation: rec.manifestation, evidence_source: `classifier-run:${options.classifierRunId}`, classifier_identity: classifierStore.identity || null });
+  // (2) Approved classifier verdict — resolved from the store, provenance/media/
+  // integrity bound, event-type matched.
+  if (options.classifierRunId) {
+    const provError = evidenceAuthorityError('classifier', classifierStore, 'VIDTOOLZ_APPROVED_CLASSIFIER_IDENTITIES', options);
+    if (provError) { errors.push(provError); } else {
+      for (const rec of classifierStore.records) {
+        const idx = remaining.findIndex((p) => p.event_id === rec.event_id);
+        if (idx < 0) continue;
+        const plan = remaining[idx];
+        if (String(rec.event_type || '').toUpperCase() !== String(plan.kind).toUpperCase()) { errors.push(`SEMANTIC_EVIDENCE_EVENT_TYPE_MISMATCH: classifier record for ${plan.event_id} declares ${rec.event_type || '(none)'} not ${plan.kind}`); continue; }
+        if (rec.confirmed === true && manifestationMatches(plan, rec.manifestation)) {
+          remaining.splice(idx, 1);
+          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'APPROVED_CLASSIFIER_CONFIRMED', manifestation: rec.manifestation, evidence_source: `classifier-run:${options.classifierRunId}`, classifier_identity: classifierStore.identity, media_sha256: classifierStore.media_sha256 });
+        }
+      }
     }
   }
 

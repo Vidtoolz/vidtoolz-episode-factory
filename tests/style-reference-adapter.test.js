@@ -363,7 +363,7 @@ test('SRA29: confirmation comes ONLY from a trusted renderer/classifier record r
   assert.equal(noStore.unplanned_candidates.length, 1);
   // With a renderer record resolved from the pinned store by id, p1 confirms.
   const store = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-renderer-store-'));
-  fs.writeFileSync(path.join(store, 'run-sra29.json'), JSON.stringify({ renderer_identity: 'r@test', records: [{ event_id: 'p1', event_type: 'CARD_STATE_CHANGE', manifested: true, manifestation: { kind: 'CARD_STATE_PRESENT', target: 'expanded' } }] }));
+  fs.writeFileSync(path.join(store, 'run-sra29.json'), JSON.stringify({ renderer_identity: 'r@test', media_sha256: 'a'.repeat(64), records: [{ event_id: 'p1', event_type: 'CARD_STATE_CHANGE', manifested: true, manifestation: { kind: 'CARD_STATE_PRESENT', target: 'expanded' } }] }));
   const prev = process.env.VIDTOOLZ_RENDERER_EVENT_STORE;
   process.env.VIDTOOLZ_RENDERER_EVENT_STORE = store;
   try {
@@ -387,4 +387,56 @@ test('SRA30: advisory firewall regression — style findings never carry product
     assert.equal(key in report, false, key);
   }
   for (const f of report.findings) assert.ok(['none', 'review'].includes(f.action));
+});
+
+/* ══ FINAL GAP REPAIR (Codex f91d302) — Level-B evidence provenance + integrity ══ */
+
+test('SRA31: renderer evidence must bind producer identity, media hash, and the right event type; TOCTOU is detected', () => {
+  const planned = [{ event_id: 'label-1', t_s: 5, kind: 'LABEL_REVEAL', label: 'TRUST' }];
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-prov-'));
+  const prev = process.env.VIDTOOLZ_RENDERER_EVENT_STORE;
+  process.env.VIDTOOLZ_RENDERER_EVENT_STORE = store;
+  try {
+    // provenance-free (no renderer_identity, wrong event_type) -> not authoritative
+    fs.writeFileSync(path.join(store, 'bare.json'), JSON.stringify({ records: [{ event_id: 'label-1', event_type: 'WRONG', manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    assert.equal(adapter.admitMeasuredEvents([], planned, { renderRunId: 'bare' }).confirmed.length, 0);
+    // identity present but no media hash -> not authoritative
+    fs.writeFileSync(path.join(store, 'nomedia.json'), JSON.stringify({ renderer_identity: 'r', records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    assert.equal(adapter.admitMeasuredEvents([], planned, { renderRunId: 'nomedia' }).confirmed.length, 0);
+    // wrong media (caller supplies expected media hash that differs) -> not authoritative
+    fs.writeFileSync(path.join(store, 'wmr.json'), JSON.stringify({ renderer_identity: 'r', media_sha256: 'b'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    const wrong = adapter.admitMeasuredEvents([], planned, { renderRunId: 'wmr', mediaSha256: 'a'.repeat(64) });
+    assert.equal(wrong.confirmed.length, 0);
+    assert.ok(wrong.errors.some((e) => e.includes('WRONG_MEDIA')));
+    // fully bound record with matching media -> confirms
+    fs.writeFileSync(path.join(store, 'okr.json'), JSON.stringify({ renderer_identity: 'trusted-renderer-v1', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    const ok = adapter.admitMeasuredEvents([], planned, { renderRunId: 'okr', mediaSha256: 'a'.repeat(64) });
+    assert.equal(ok.confirmed.length, 1);
+    assert.equal(ok.confirmed[0].authority, 'RENDERER_MANIFESTATION_CONFIRMED');
+    // TOCTOU: rewriting the file beneath the same id is detected; the run is refused
+    const p = path.join(store, 'mut.json');
+    fs.writeFileSync(p, JSON.stringify({ renderer_identity: 'r', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    const first = adapter.resolveRendererRun('mut');
+    fs.writeFileSync(p, JSON.stringify({ renderer_identity: 'attacker', media_sha256: '0'.repeat(64), records: [{ event_id: 'other', event_type: 'X', manifestation: { kind: 'LABEL_PRESENT', target: 'OTHER' } }] }));
+    const second = adapter.resolveRendererRun('mut');
+    assert.equal(JSON.stringify(first), JSON.stringify(second), 'same run id binds immutable content');
+    const tampered = adapter.admitMeasuredEvents([], planned, { renderRunId: 'mut', mediaSha256: 'a'.repeat(64) });
+    assert.equal(tampered.confirmed.length, 0);
+    assert.ok(tampered.errors.some((e) => e.includes('INTEGRITY')));
+  } finally { if (prev === undefined) delete process.env.VIDTOOLZ_RENDERER_EVENT_STORE; else process.env.VIDTOOLZ_RENDERER_EVENT_STORE = prev; }
+});
+
+test('SRA32: classifier evidence must bind classifier identity and media; identity-free records are not authoritative', () => {
+  const planned = [{ event_id: 'label-1', t_s: 5, kind: 'LABEL_REVEAL', label: 'TRUST' }];
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-clf-'));
+  const prev = process.env.VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE;
+  process.env.VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE = store;
+  try {
+    fs.writeFileSync(path.join(store, 'bare.json'), JSON.stringify({ records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', confirmed: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    assert.equal(adapter.admitMeasuredEvents([], planned, { classifierRunId: 'bare' }).confirmed.length, 0);
+    fs.writeFileSync(path.join(store, 'okr.json'), JSON.stringify({ classifier_identity: 'approved-classifier-v1', media_sha256: 'a'.repeat(64), records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', confirmed: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
+    const ok = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'okr', mediaSha256: 'a'.repeat(64) });
+    assert.equal(ok.confirmed.length, 1);
+    assert.equal(ok.confirmed[0].authority, 'APPROVED_CLASSIFIER_CONFIRMED');
+  } finally { if (prev === undefined) delete process.env.VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE; else process.env.VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE = prev; }
 });

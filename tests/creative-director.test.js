@@ -695,7 +695,7 @@ test('CDN6 (CODX-EVENT-01 + CODX-LB-08/09): a pixel signal never confirms Level-
   assert.equal(forged.confirmed.length, 0, 'caller-supplied manifestation object cannot mint confirmation');
   // a renderer record resolved from the PINNED store by id CONFIRMS; ids preserved
   const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-renderer-store-'));
-  fs.writeFileSync(path.join(store, 'run-cd6.json'), JSON.stringify({ renderer_identity: 'renderer@test', records: [{ event_id: 'planned-label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }] }));
+  fs.writeFileSync(path.join(store, 'run-cd6.json'), JSON.stringify({ renderer_identity: 'renderer@test', media_sha256: 'a'.repeat(64), records: [{ event_id: 'planned-label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }] }));
   const prev = process.env.VIDTOOLZ_RENDERER_EVENT_STORE;
   process.env.VIDTOOLZ_RENDERER_EVENT_STORE = store;
   try {
@@ -728,4 +728,52 @@ test('CDN8: the safe projection is enum-only, capability-bearing, and canonical-
   assert.ok(Array.isArray(vp.executable.capability_denials));
   assert.equal(/"summary"|labelled concept card/.test(JSON.stringify(vp.executable.action_claims)), false);
   assert.throws(() => director.specialistProjection({ action_claims: [] }, 'visual_planning_director'), (e) => e.code === 'CREATIVE_DIRECTION_NOT_CANONICAL');
+});
+
+/* ══ FINAL GAP REPAIR (Codex f91d302) — locks by construction, ID-only, evidence provenance ══ */
+
+test('CDG1: KEEP_MEDIA / KEEP S03 / MUSIC_LOCK make ADD and REMOVE not representable on the protected estate', () => {
+  const keepGlobal = cd.deriveProtectedDomains([{ constraint_id: 'k', type: 'KEEP_MEDIA', scope: 'GLOBAL', text: 'keep' }]).domains[0];
+  const keepS03 = cd.deriveProtectedDomains([{ constraint_id: 'k', type: 'KEEP_MEDIA', scope: 'S03', text: 'keep' }]).domains[0];
+  const music = cd.deriveProtectedDomains([{ constraint_id: 'm', type: 'MUSIC_LOCK', scope: 'GLOBAL', text: 'lock' }]).domains[0];
+  // REMOVE is not an emittable operation at all; ADD is forbidden per locked domain.
+  assert.equal(cd.OPERATIONS.includes('REMOVE'), false);
+  for (const d of [keepGlobal, keepS03, music]) {
+    for (const op of ['ADD', 'REMOVE', 'REPLACE', 'REGENERATE', 'RESELECT', 'SWAP', 'MATERIALLY_ALTER']) {
+      assert.ok(d.forbidden_operations.includes(op), `${d.domain} must forbid ${op}`);
+    }
+    // the only allowed emittable operation on a protected estate is KEEP
+    const allowed = cd.OPERATIONS.filter((o) => !d.forbidden_operations.includes(o));
+    assert.deepEqual(allowed, ['KEEP'], `${d.domain} allowlist must be [KEEP]`);
+  }
+});
+
+test('CDG2: ADD MEDIA/MUSIC under active locks is rejected and never reaches a specialist projection', async () => {
+  const out = await runDirector(makeTask({ humanConstraints: [{ constraint_id: 'k', type: 'KEEP_MEDIA', scope: 'S03', text: 'keep' }, { constraint_id: 'm', type: 'MUSIC_LOCK', scope: 'GLOBAL', text: 'lock' }] }),
+    makeSemantic({ media_strategy: { generation_philosophy: 'x', reuse_directive: 'x', locked_scopes: ['S03'], replacement_requests: [] }, coherence: { sound_music_intent: 'x', music_locked: true, packaging_intent: 'x' }, constraint_compliance: [{ constraint_id: 'k', compliance: 'kept' }, { constraint_id: 'm', compliance: 'kept' }], action_claims: [{ claim_id: 'a1', domain: 'MEDIA', operation: 'ADD', scope: 'S03', summary: 'add analogue' }, { claim_id: 'a2', domain: 'MUSIC', operation: 'ADD', scope: 'GLOBAL', summary: 'extend layer' }] }));
+  assert.ok(['BLOCKED', 'ESCALATED'].includes(out.state), `ADD under locks must be rejected (state=${out.state})`);
+  const projected = JSON.stringify(out.specialist_projections || []);
+  assert.equal(/"operation":"ADD"/.test(projected), false);
+});
+
+test('CDG3: an exact JSON copy of a canonical Creative Direction is not canonical and cannot project (ID-only)', async () => {
+  const out = await runDirector(makeTask(), makeSemantic());
+  const canonical = director.resolveCanonicalDirectionById(out.creative_direction_id);
+  const copy = JSON.parse(JSON.stringify(canonical));
+  assert.equal(director.isCanonicalDirection(copy), false);
+  assert.throws(() => director.specialistProjection(copy, 'editor'), (e) => e.code === 'CREATIVE_DIRECTION_NOT_CANONICAL');
+  // the exact stored instance IS canonical and projects by id
+  assert.equal(director.isCanonicalDirection(canonical), true);
+  assert.ok(director.projectForSpecialistById(out.creative_direction_id, 'editor'));
+});
+
+test('CDG4: review_coherence is non-authoritative — a caller-built object cannot become canonical', async () => {
+  const task = makeTask();
+  const pre = director.preflight(task);
+  const built = director.assembleDirection(task, makeSemantic(), { resolved: pre.resolvedRecord, newDirectionId: () => `creative-direction-${'9'.repeat(26)}` });
+  assert.equal(director.isCanonicalDirection(built), false);
+  const out = await director.run({ ...task, action: 'review_coherence', existing_direction: built }, {});
+  assert.equal(director.isCanonicalDirection(built), false);
+  assert.throws(() => director.projectForSpecialistById(built.direction_id, 'editor'), (e) => e.code === 'CREATIVE_DIRECTION_NOT_FOUND');
+  assert.equal(out.review_only, true);
 });

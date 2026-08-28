@@ -51,25 +51,32 @@ const hash = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
  * digest is not registered. Trust is "membership of the canonical store", never
  * "the caller holds a magic object".
  */
-const CANONICAL_DIRECTIONS = new Map(); // direction_id -> frozen direction
-const CANONICAL_DIGESTS = new Set(); // content-address of every canonical direction
+const CANONICAL_DIRECTIONS = new Map(); // direction_id -> frozen canonical instance
+const CANONICAL_INSTANCES = new WeakSet(); // non-forgeable object-IDENTITY membership
 
 function registerCanonicalDirection(direction) {
   const digest = cd.directionDigest(direction);
   if (digest !== direction.direction_digest_sha256) {
     const e = new Error('CANONICAL_DIGEST_MISMATCH: direction digest does not match its content'); e.code = 'CANONICAL_DIGEST_MISMATCH'; throw e;
   }
-  const frozen = storyAuthority.deepFreeze(clone(direction));
-  CANONICAL_DIRECTIONS.set(frozen.direction_id, frozen);
-  CANONICAL_DIGESTS.add(digest);
-  return frozen;
+  // GAP REPAIR (Codex CREATIVE-DIRECTION-EXACT-JSON-COPY): canonicality is object
+  // IDENTITY, never content equality. Freeze the ORIGINAL instance in place and
+  // register THAT exact object. An exact JSON copy is a different object, is not a
+  // WeakSet member, and can never project. Downstream must resolve BY ID (which
+  // returns this exact stored instance); callers never pass a direction object.
+  storyAuthority.deepFreeze(direction);
+  if (CANONICAL_DIRECTIONS.has(direction.direction_id) && CANONICAL_DIRECTIONS.get(direction.direction_id) !== direction) {
+    const e = new Error('CANONICAL_ID_COLLISION: a different direction is already registered under this id'); e.code = 'CANONICAL_ID_COLLISION'; throw e;
+  }
+  CANONICAL_DIRECTIONS.set(direction.direction_id, direction);
+  CANONICAL_INSTANCES.add(direction);
+  return direction;
 }
 
-// Content-addressed canonical membership: a mutated or hand-built direction has a
-// different digest (or none) and is therefore not canonical.
+// Canonicality is object identity: only the exact stored instance is canonical.
+// A JSON copy, a mutated object, or a hand-built object is not a member.
 function isCanonicalDirection(direction) {
-  if (!direction || typeof direction !== 'object') return false;
-  try { return CANONICAL_DIGESTS.has(cd.directionDigest(direction)); } catch { return false; }
+  return !!direction && typeof direction === 'object' && CANONICAL_INSTANCES.has(direction);
 }
 
 function resolveCanonicalDirectionById(id) {
@@ -326,7 +333,7 @@ function buildPrompt(task, resolvedContent) {
     'You are the VIDTOOLZ Creative Director. Produce ONE episode-specific creative direction as a recommendation for human review. You say WHY and WHAT EXPERIENCE at section/movement altitude; specialists decide HOW. Never author shots, cards, assets, cuts, timing, script text, or approvals.',
     'HARD RULES: (1) Human constraints below are absolute — comply, never argue; note consequences only under human_decisions_required. (2) The style reference is an ENVELOPE, not a template: STRONG patterns shape defaults, LIKELY patterns are suggestions, video-specific devices are never rules; deviation is legal with a stated creative reason under intentional_deviations. (3) Escalate only consequential ambiguity (max 4). (4) If presenter_policy.draft_mode is PRESENTER_FREE you MUST supply a concrete compensation_directive for continuous visual life. (5) visual_mode_mix must weigh all six functions exactly once. (6) density movements must cover the argument using ONLY the given section refs.',
     'EXECUTION CONTRACT: every production-affecting recommendation MUST appear as a typed entry in action_claims (domain + operation + scope + one-sentence summary); prose is NON-EXECUTABLE rationale and may not carry instructions. NEVER include in any text: file names, file paths, asset ids, hashes, coordinates, degrees, timestamps, timecodes, frame numbers, pixel values, percentages of scale/crop/zoom, millisecond durations, fps/crf/lens values, or any specialist implementation command. NEVER claim that anything is approved — approval exists only as a recorded human decision.',
-    `PROTECTED DOMAINS (from the human constraints; recommending any forbidden operation on them, in claims OR prose, is an automatic rejection): ${JSON.stringify(protectedDomains.map((d) => ({ domain: d.domain, scope: d.scope, forbidden: d.forbidden_operations })))}`,
+    `PROTECTED DOMAINS (from the human constraints): on each of these, the ONLY operations you may propose are the allowed set shown — everything else is unrepresentable and an automatic rejection: ${JSON.stringify(protectedDomains.map((d) => ({ domain: d.domain, scope: d.scope, allowed_operations: cd.OPERATIONS.filter((op) => !(d.forbidden_operations || []).includes(op)) })))}`,
     `Output JSON schema (exact keys): ${JSON.stringify(schema)}`,
     `Episode title: ${content.title}`,
     `Script sections: ${JSON.stringify(content.sections)}`,
@@ -362,13 +369,21 @@ function structuredDirections(direction) {
   return (direction.human_directions_received || []).map((c) => ({ constraint_id: c.constraint_id, type: c.type, scope: c.scope || null }));
 }
 
-// ENUM-ONLY action claims for the safe projection (mission §16). The model's
-// free-text `summary` is arbitrary prose and is STRIPPED here — it never reaches
-// a specialist. Only the bounded enum fields (domain, operation, scope) survive,
-// which cannot carry an asset id, path, timestamp, or camera value. The summary
-// remains available only in the HUMAN_REVIEW_ONLY rationale.
+function scopesIntersectLocal(a, b) {
+  if (!a || !b) return true;
+  if (a === 'GLOBAL' || b === 'GLOBAL') return true;
+  return String(a).trim() === String(b).trim();
+}
+
+// ENUM-ONLY action claims for the safe projection (mission §16), RE-FILTERED by
+// the current capability set (mission §8): the free-text `summary` is stripped,
+// AND any claim whose (domain, operation, scope) is forbidden by the direction's
+// protected domains is EXCLUDED from the projection — so a forbidden operation
+// can never reach a specialist even if it somehow survived into the artifact.
 function enumActionClaims(direction) {
-  return (direction.action_claims || []).map((c) => ({ claim_id: c.claim_id, domain: c.domain, operation: c.operation, scope: c.scope || 'GLOBAL' }));
+  const domains = direction.protected_domains || [];
+  const forbidden = (c) => c.operation !== 'KEEP' && domains.some((d) => d.domain === c.domain && scopesIntersectLocal(c.scope || 'GLOBAL', d.scope || 'GLOBAL') && (d.forbidden_operations || []).includes(c.operation));
+  return (direction.action_claims || []).filter((c) => !forbidden(c)).map((c) => ({ claim_id: c.claim_id, domain: c.domain, operation: c.operation, scope: c.scope || 'GLOBAL' }));
 }
 
 const SAFE_PROJECTION_SCHEMA = 'vidtoolz.creativeDirectionSafeProjection.v1';
@@ -507,13 +522,17 @@ async function run(task, options = {}) {
   const resolvedContent = check.resolvedContent;
   const styleBinding = task.style_reference ? task.style_reference.binding : null;
   const validationContext = () => ({ script_identity: record.script_identity, style_reference: styleBinding, human_constraints: task.human_constraints || [], section_refs: check.sectionRefs });
-  out.capability_ledger = { locked_domains: check.capabilityLedger.locked_domains, denials: check.capabilityLedger.denials };
+  if (check.capabilityLedger) out.capability_ledger = { locked_domains: check.capabilityLedger.locked_domains, denials: check.capabilityLedger.denials };
 
   if (task.action === 'review_coherence') {
+    // NON-AUTHORITATIVE by contract: review validates an existing direction for
+    // HUMAN inspection only. It NEVER registers a caller-supplied object as
+    // canonical and NEVER projects — a caller-built object cannot become
+    // canonical through this path (Codex PUBLIC-REVIEW-COHERENCE-MINT-COMPOSITION).
     const validation = cd.validateDirection(task.existing_direction, { task: validationContext() });
     out.creative_direction = task.existing_direction;
     out.validation = validation;
-    if (validation.ok) { try { certifyAndRegister(task.existing_direction, reference); } catch { /* review path: registration best-effort */ } }
+    out.review_only = true;
     return finish(out, validation.ok ? 'AWAITING_HUMAN_REVIEW' : 'BLOCKED', validation.ok ? null : validation.errors.join('; '), validation.ok ? 'mikko' : 'creative_director');
   }
 

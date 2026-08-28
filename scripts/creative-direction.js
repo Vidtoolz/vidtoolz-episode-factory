@@ -62,12 +62,18 @@ const PROTECTED_DOMAIN_NAMES = Object.freeze(['MEDIA', 'MUSIC', 'PRESENTER', 'CA
 // are NOT representable — they belong to specialist departments. A locked media
 // or music mutation is therefore not merely denied; it cannot be expressed at
 // all (an action_claim with such an operation fails as an invalid operation).
-const OPERATIONS = Object.freeze(['KEEP', 'ADD', 'REMOVE', 'INCREASE', 'SUPPRESS', 'ADJUST_STRATEGY', 'EMPHASIZE', 'REDUCE']);
+// GAP REPAIR (Codex f91d302): the emittable vocabulary is creative-strategy only.
+// Asset/selection MUTATION and asset REMOVAL/CREATION on protected estates
+// (REMOVE and, under a lock, ADD) are not part of the general vocabulary — REMOVE
+// is dropped entirely (a REMOVE claim is an invalid operation), and ADD is
+// removed per-domain by media/music locks (see deriveProtectedDomains).
+const OPERATIONS = Object.freeze(['KEEP', 'ADD', 'INCREASE', 'SUPPRESS', 'ADJUST_STRATEGY', 'EMPHASIZE', 'REDUCE']);
 // Operations that may appear in a protected domain's forbidden_operations list
 // (documentation of what a lock protects, and the capability-denial projection).
-// A superset of OPERATIONS that also NAMES the specialist mutations the CD can
-// never emit — so a lock can still declare "media replacement is forbidden here".
-const PROTECTED_OPERATIONS = Object.freeze([...OPERATIONS, 'REPLACE', 'REGENERATE', 'SWAP', 'RESELECT', 'MATERIALLY_ALTER', 'CHANGE', 'CHANGE_TRACK', 'CHANGE_DIRECTION', 'CHANGE_SELECTION']);
+// A superset of OPERATIONS that also NAMES the mutation/removal operations the CD
+// can never emit — so a lock can still declare "media replacement/removal is
+// forbidden here" even though those operations are not representable.
+const PROTECTED_OPERATIONS = Object.freeze([...OPERATIONS, 'REMOVE', 'REPLACE', 'REGENERATE', 'SWAP', 'RESELECT', 'MATERIALLY_ALTER', 'CHANGE', 'CHANGE_TRACK', 'CHANGE_DIRECTION', 'CHANGE_SELECTION']);
 // Operations that never conflict with anything: pure preservation/strategy.
 const ALWAYS_LEGAL_OPERATIONS = Object.freeze(['KEEP']);
 
@@ -164,10 +170,13 @@ function deriveProtectedDomains(constraints) {
   for (const c of constraints || []) {
     switch (c.type) {
       case 'KEEP_MEDIA':
-        domains.push({ constraint_id: c.constraint_id, domain: 'MEDIA', scope: c.scope || 'GLOBAL', forbidden_operations: ['REPLACE', 'REGENERATE', 'SWAP', 'RESELECT', 'REMOVE', 'MATERIALLY_ALTER', 'CHANGE', 'CHANGE_SELECTION'], violation: VIOLATION_CODES.KEEP_MEDIA });
+        // A frozen media estate forbids EVERY operation that alters it, including
+        // ADD (creation of replacement-like media) and REMOVE — only KEEP remains
+        // legal on the protected scope (target-scoped by c.scope).
+        domains.push({ constraint_id: c.constraint_id, domain: 'MEDIA', scope: c.scope || 'GLOBAL', forbidden_operations: ['ADD', 'REPLACE', 'REGENERATE', 'SWAP', 'RESELECT', 'REMOVE', 'MATERIALLY_ALTER', 'CHANGE', 'CHANGE_SELECTION', 'INCREASE', 'REDUCE', 'ADJUST_STRATEGY', 'EMPHASIZE', 'SUPPRESS'], violation: VIOLATION_CODES.KEEP_MEDIA });
         break;
       case 'MUSIC_LOCK':
-        domains.push({ constraint_id: c.constraint_id, domain: 'MUSIC', scope: c.scope || 'GLOBAL', forbidden_operations: ['REPLACE', 'REGENERATE', 'SWAP', 'RESELECT', 'REMOVE', 'CHANGE', 'CHANGE_TRACK', 'CHANGE_DIRECTION', 'CHANGE_SELECTION', 'MATERIALLY_ALTER'], violation: VIOLATION_CODES.MUSIC_LOCK });
+        domains.push({ constraint_id: c.constraint_id, domain: 'MUSIC', scope: c.scope || 'GLOBAL', forbidden_operations: ['ADD', 'REPLACE', 'REGENERATE', 'SWAP', 'RESELECT', 'REMOVE', 'CHANGE', 'CHANGE_TRACK', 'CHANGE_DIRECTION', 'CHANGE_SELECTION', 'MATERIALLY_ALTER', 'INCREASE', 'REDUCE', 'ADJUST_STRATEGY', 'EMPHASIZE', 'SUPPRESS'], violation: VIOLATION_CODES.MUSIC_LOCK });
         break;
       case 'PRESENTER_FREE_DRAFT':
         domains.push({ constraint_id: c.constraint_id, domain: 'PRESENTER', scope: 'GLOBAL', forbidden_operations: ['ADD', 'REPLACE', 'CHANGE'], violation: VIOLATION_CODES.PRESENTER_FREE_DRAFT });
