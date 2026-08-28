@@ -116,7 +116,11 @@ function validateSemanticOutput(raw, task) {
     if (beat.coverage_decision === 'INTENTIONAL_NO_VISUAL' && (!norm(beat.no_visual_reason) || (beat.shots || []).length)) errors.push(`beats[${i}] intentional-none invalid`);
     if (beat.coverage_decision === 'PLAN_SHOTS' && (!Array.isArray(beat.shots) || !beat.shots.length || beat.no_visual_reason != null)) errors.push(`beats[${i}] shots required`);
     for (const [j, shot] of (beat.shots || []).entries()) {
-      const allowedShot = ['visual_purpose', 'narrative_function', 'media_type', 'generation_mode', 'subject', 'shot_brief', 'why_it_serves_story', 'presenter_relation', 'duration_target_s', 'research_sensitive', 'research_binding_ids', 'required_constraint_ids', 'visual_assertion', 'camera_required', 'camera_intent', 'continuity_notes', 'alternatives', 'priority', 'input_artifact_refs', 'quality_constraints', 'candidate_count_request'];
+      // 'demonstration' is advertised in the buildPrompt schema and consumed by
+      // writePlan; omitting it here rejected every model echo of the advertised
+      // schema as "unknown" (prompt/validator drift found by the 2026-08-28
+      // autonomous draft run).
+      const allowedShot = ['visual_purpose', 'narrative_function', 'media_type', 'generation_mode', 'subject', 'shot_brief', 'why_it_serves_story', 'presenter_relation', 'duration_target_s', 'research_sensitive', 'research_binding_ids', 'required_constraint_ids', 'visual_assertion', 'camera_required', 'camera_intent', 'continuity_notes', 'alternatives', 'priority', 'demonstration', 'input_artifact_refs', 'quality_constraints', 'candidate_count_request'];
       for (const key of Object.keys(shot)) if (!allowedShot.includes(key)) errors.push(`beats[${i}].shots[${j}].${key} unknown`);
       if (!vp.MEDIA_TYPES.includes(shot.media_type) || !vp.GENERATION_MODES.includes(shot.generation_mode) || !vp.PRESENTER_RELATIONS.includes(shot.presenter_relation)) errors.push(`beats[${i}].shots[${j}] enum invalid`);
       const expectedModes = { GENERATED_STILL: ['STILL'], GENERATED_VIDEO: ['DIRECT_VIDEO', 'IMAGE_TO_VIDEO'], INFOGRAPHIC: ['NOT_APPLICABLE'], MAP_ANIMATION: ['NOT_APPLICABLE'], SCREEN_CAPTURE: ['NOT_APPLICABLE'], ARCHIVAL_EXTERNAL: ['NOT_APPLICABLE'], PRESENTER_A_ROLL: ['NOT_APPLICABLE'], TEXT_GRAPHIC: ['NOT_APPLICABLE'] };
