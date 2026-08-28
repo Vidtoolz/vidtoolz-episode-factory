@@ -26,6 +26,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const { guardExecutableLifecycle } = require('./agent-executable-boundary.js');
 const cd = require('./creative-direction.js');
+const storyAuthority = require('./creative-story-authority.js');
 
 const AGENT_ID = 'creative_director';
 const LANE = 'large_text';
@@ -38,6 +39,56 @@ const norm = (v) => String(v ?? '').normalize('NFC').replace(/\s+/g, ' ').trim()
 const clone = (v) => structuredClone(v);
 const nowIso = () => new Date().toISOString();
 const hash = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
+
+/*
+ * CANONICAL CREATIVE DIRECTION REGISTRY (mission §13-14, §19).
+ * A validated Creative Direction is persisted here append-only, keyed by its
+ * direction_id, DEEP-FROZEN and content-addressed by its digest. Membership is
+ * granted ONLY by the single pipeline entry (run) via registerCanonicalDirection,
+ * which is module-private — there is NO exported authority-minting function.
+ * Downstream specialists resolve BY ID (projectForSpecialistById); a caller
+ * cannot inject an alternate direction object because a forged/mutated object's
+ * digest is not registered. Trust is "membership of the canonical store", never
+ * "the caller holds a magic object".
+ */
+const CANONICAL_DIRECTIONS = new Map(); // direction_id -> frozen direction
+const CANONICAL_DIGESTS = new Set(); // content-address of every canonical direction
+
+function registerCanonicalDirection(direction) {
+  const digest = cd.directionDigest(direction);
+  if (digest !== direction.direction_digest_sha256) {
+    const e = new Error('CANONICAL_DIGEST_MISMATCH: direction digest does not match its content'); e.code = 'CANONICAL_DIGEST_MISMATCH'; throw e;
+  }
+  const frozen = storyAuthority.deepFreeze(clone(direction));
+  CANONICAL_DIRECTIONS.set(frozen.direction_id, frozen);
+  CANONICAL_DIGESTS.add(digest);
+  return frozen;
+}
+
+// Content-addressed canonical membership: a mutated or hand-built direction has a
+// different digest (or none) and is therefore not canonical.
+function isCanonicalDirection(direction) {
+  if (!direction || typeof direction !== 'object') return false;
+  try { return CANONICAL_DIGESTS.has(cd.directionDigest(direction)); } catch { return false; }
+}
+
+function resolveCanonicalDirectionById(id) {
+  const frozen = CANONICAL_DIRECTIONS.get(id);
+  if (!frozen) { const e = new Error(`CREATIVE_DIRECTION_NOT_FOUND: no canonical Creative Direction for id ${id}`); e.code = 'CREATIVE_DIRECTION_NOT_FOUND'; throw e; }
+  return frozen;
+}
+
+// Re-resolve canonical Story bytes BY ID at the point of authoritative use
+// (mission §6, §30 TOCTOU), require the direction to bind the freshly-resolved
+// identity, then register append-only. Module-private: only run calls it.
+function certifyAndRegister(direction, reference) {
+  const canonical = storyAuthority.resolveCanonicalRecordFromReference(reference);
+  if (cd.canonicalize(direction?.script_identity) !== cd.canonicalize(canonical.script_identity)) {
+    const e = new Error('CANONICAL_IDENTITY_MISMATCH: direction does not bind the freshly re-resolved canonical Story identity');
+    e.code = 'CANONICAL_IDENTITY_MISMATCH'; throw e;
+  }
+  return registerCanonicalDirection(direction);
+}
 
 function routeCapability(task) {
   const risk = task.risk_level || 'LOCAL_AUTO';
@@ -110,7 +161,7 @@ function preflight(task, options = {}) {
 
   if (task.action === 'review_coherence') {
     if (!task.existing_direction) errors.push('existing_direction required');
-    return { ok: errors.length === 0, errors, conflicts: [], trustedSnapshot: snapshot, resolvedIdentity: snapshot?.script_identity || null };
+    return { ok: errors.length === 0, errors, conflicts: [], resolvedRecord: snapshot || null, resolvedIdentity: snapshot?.script_identity || null };
   }
 
   const content = snapshot?.script_content;
@@ -138,9 +189,13 @@ function preflight(task, options = {}) {
   const derived = cd.deriveProtectedDomains(task.human_constraints || []);
   for (const item of derived.unenforceable) conflicts.push(`${item.code}: ${item.constraint_id} — ${item.detail}`);
   void options;
+  // REFERENCE-ONLY: preflight returns validation status and the resolved
+  // (immutable) content for the caller's convenience, but NO authority
+  // capability. Authority is never a returned object — run re-resolves canonical
+  // bytes by id at the point of use.
   return {
     ok: errors.length === 0, errors, conflicts, sectionRefs: [...refs], protectedDomains: derived.domains,
-    trustedSnapshot: snapshot, resolvedIdentity: snapshot?.script_identity || null, resolvedContent: content || null,
+    resolvedRecord: snapshot || null, resolvedIdentity: snapshot?.script_identity || null, resolvedContent: content || null,
     capabilityLedger: cd.deriveCapabilityLedger(task.human_constraints || []),
   };
 }
@@ -307,34 +362,44 @@ function structuredDirections(direction) {
   return (direction.human_directions_received || []).map((c) => ({ constraint_id: c.constraint_id, type: c.type, scope: c.scope || null }));
 }
 
+// ENUM-ONLY action claims for the safe projection (mission §16). The model's
+// free-text `summary` is arbitrary prose and is STRIPPED here — it never reaches
+// a specialist. Only the bounded enum fields (domain, operation, scope) survive,
+// which cannot carry an asset id, path, timestamp, or camera value. The summary
+// remains available only in the HUMAN_REVIEW_ONLY rationale.
+function enumActionClaims(direction) {
+  return (direction.action_claims || []).map((c) => ({ claim_id: c.claim_id, domain: c.domain, operation: c.operation, scope: c.scope || 'GLOBAL' }));
+}
+
 const SAFE_PROJECTION_SCHEMA = 'vidtoolz.creativeDirectionSafeProjection.v1';
 
 /*
- * BOUNDARY REDESIGN (mission §10-11, §14, §27) — the CreativeDirectionSafeProjection.
- * A projection is produced ONLY from a MINTED artifact (non-forgeable WeakSet
- * receipt from mintProjectionReceipt). It contains ONLY enumerated/structured
- * creative fields plus the capability ledger — NEVER free prose, rationale,
- * notes, raw model output, or specialist implementation detail. RAW CREATIVE
- * DIRECTOR PROSE NEVER ENTERS A SPECIALIST PROMPT: even if a natural-language
- * detector misses a phrase, there is no field here capable of representing it,
- * so it cannot become execution. Human rationale is exposed separately, for
- * human inspection only, and is never sent to a specialist model.
+ * REFERENCE-ONLY / ENUM-ONLY (mission §10-11, §14, §16, §19) — the
+ * CreativeDirectionSafeProjection. A projection is produced ONLY from a CANONICAL
+ * direction (content-addressed membership of the pipeline's append-only registry;
+ * a forged or mutated object has a different digest and is refused). It contains
+ * ONLY enumerated/structured fields plus the capability ledger — NEVER free
+ * prose, rationale, notes, raw model output, action-claim summaries, or
+ * specialist implementation detail. Raw Creative Director prose can never reach a
+ * specialist: there is no field here capable of carrying it. Prefer resolving by
+ * id (projectForSpecialistById); passing an object is accepted only if that
+ * object is itself canonical.
  */
 function specialistProjection(direction, role) {
-  if (!cd.isValidated(direction)) {
-    const error = new Error('CREATIVE_DIRECTION_NOT_VALIDATED: specialistProjection requires a direction minted via mintProjectionReceipt (trusted Story snapshot); arbitrary or merely shape-valid objects are refused');
-    error.code = 'CREATIVE_DIRECTION_NOT_VALIDATED';
+  if (!isCanonicalDirection(direction)) {
+    const error = new Error('CREATIVE_DIRECTION_NOT_CANONICAL: specialistProjection requires a Creative Direction produced by the pipeline (registered in the canonical store); arbitrary, mutated, or hand-built objects are refused');
+    error.code = 'CREATIVE_DIRECTION_NOT_CANONICAL';
     throw error;
   }
   if (!SPECIALIST_ROLES.includes(role)) return null;
-  const receipt = { validated_artifact: true, direction_id: direction.direction_id, direction_digest_sha256: direction.direction_digest_sha256 };
+  const receipt = { canonical_direction_id: direction.direction_id, direction_digest_sha256: direction.direction_digest_sha256 };
   const executable = {
     schema: SAFE_PROJECTION_SCHEMA,
-    action_claims: structuredClone(direction.action_claims || []),
+    action_claims: enumActionClaims(direction),
     protected_domains: structuredClone(direction.protected_domains || []),
     capability_denials: capabilityDenials(direction),
     human_directions_received: structuredDirections(direction),
-    execution_contract: { executable_surface: 'action_claims_plus_enum_fields', consume_rationale_for_actions: false, raw_creative_prose_included: false },
+    execution_contract: { executable_surface: 'enum_action_claims_plus_enum_fields', consume_rationale_for_actions: false, raw_creative_prose_included: false, free_text_action_summary_included: false },
   };
   switch (role) {
     case 'visual_planning_director':
@@ -383,9 +448,9 @@ function specialistProjection(direction, role) {
  * only for human review and is clearly classified as non-executable.
  */
 function humanRationaleView(direction) {
-  if (!cd.isValidated(direction)) {
-    const error = new Error('CREATIVE_DIRECTION_NOT_VALIDATED: humanRationaleView requires a minted artifact');
-    error.code = 'CREATIVE_DIRECTION_NOT_VALIDATED';
+  if (!isCanonicalDirection(direction)) {
+    const error = new Error('CREATIVE_DIRECTION_NOT_CANONICAL: humanRationaleView requires a canonical Creative Direction');
+    error.code = 'CREATIVE_DIRECTION_NOT_CANONICAL';
     throw error;
   }
   return {
@@ -406,6 +471,20 @@ function humanRationaleView(direction) {
   };
 }
 
+/*
+ * ID-ONLY DOWNSTREAM CONSUMPTION (mission §19). Downstream specialists resolve
+ * the canonical Creative Direction by id from the append-only registry and
+ * project it themselves — they never receive a caller-provided projection,
+ * receipt, rationale, or raw direction object. A caller cannot inject an
+ * alternate direction because only the pipeline writes the registry.
+ */
+function projectForSpecialistById(creativeDirectionId, role) {
+  return specialistProjection(resolveCanonicalDirectionById(creativeDirectionId), role);
+}
+function humanRationaleById(creativeDirectionId) {
+  return humanRationaleView(resolveCanonicalDirectionById(creativeDirectionId));
+}
+
 function finish(base, state, reason, nextOwner) {
   base.state = state; base.reason = reason || null; base.owner = AGENT_ID; base.next_owner = nextOwner;
   base.attention = ['BLOCKED', 'ESCALATED', 'NEEDS_HUMAN_DECISION'].includes(state) ? 'DECISION' : ['AWAITING_HUMAN_REVIEW', 'PREVIEW_ONLY'].includes(state) ? 'REVIEW' : 'INFORMATION';
@@ -420,19 +499,21 @@ async function run(task, options = {}) {
   if (!check.ok) return finish(out, 'BLOCKED', check.errors.join('; '), 'hermes');
   if (check.conflicts?.length) return finish(out, 'ESCALATED', `CONSTRAINT_CONFLICT: ${check.conflicts.join('; ')} — human constraints contradict each other; both positions preserved, no synthetic resolution`, 'mikko');
 
-  // Everything below binds the TRUSTED snapshot resolved by preflight, never
-  // caller task fields.
-  const snapshot = check.trustedSnapshot;
+  // Everything below binds the immutable record resolved by preflight from the
+  // pinned store (reference-only authority), never caller task fields. The task
+  // reference is the stable id used to re-resolve canonical bytes at mint.
+  const reference = task.script_identity;
+  const record = check.resolvedRecord;
   const resolvedContent = check.resolvedContent;
   const styleBinding = task.style_reference ? task.style_reference.binding : null;
-  const validationContext = () => ({ script_identity: snapshot.script_identity, style_reference: styleBinding, human_constraints: task.human_constraints || [], section_refs: check.sectionRefs });
+  const validationContext = () => ({ script_identity: record.script_identity, style_reference: styleBinding, human_constraints: task.human_constraints || [], section_refs: check.sectionRefs });
   out.capability_ledger = { locked_domains: check.capabilityLedger.locked_domains, denials: check.capabilityLedger.denials };
 
   if (task.action === 'review_coherence') {
     const validation = cd.validateDirection(task.existing_direction, { task: validationContext() });
     out.creative_direction = task.existing_direction;
     out.validation = validation;
-    if (validation.ok) { try { cd.mintProjectionReceipt(task.existing_direction, snapshot, { styleReferenceBinding: styleBinding, humanConstraints: task.human_constraints || [] }); } catch { /* review path: projection minting is best-effort */ } }
+    if (validation.ok) { try { certifyAndRegister(task.existing_direction, reference); } catch { /* review path: registration best-effort */ } }
     return finish(out, validation.ok ? 'AWAITING_HUMAN_REVIEW' : 'BLOCKED', validation.ok ? null : validation.errors.join('; '), validation.ok ? 'mikko' : 'creative_director');
   }
 
@@ -452,7 +533,7 @@ async function run(task, options = {}) {
       const raw = await invokeModel(buildPrompt(task, resolvedContent), route, options);
       latency += Date.now() - started;
       out.raw_response_sha256 = hash(typeof raw === 'string' ? raw : JSON.stringify(raw));
-      const parsed = validateSemanticOutput(raw, task, { ...options, resolved: snapshot });
+      const parsed = validateSemanticOutput(raw, task, { ...options, resolved: record });
       if (parsed.ok) { semantic = parsed.value; break; }
       failures = parsed.errors;
       // Preserve the offending output as typed evidence: silent retry
@@ -473,21 +554,22 @@ async function run(task, options = {}) {
   out.semantic = semantic;
 
   if (typeof options.beforeWrite === 'function') await options.beforeWrite();
-  const direction = assembleDirection(task, semantic, { ...options, resolved: snapshot });
+  const direction = assembleDirection(task, semantic, { ...options, resolved: record });
   const validation = cd.validateDirection(direction, { task: validationContext(), semanticAdjudicator: options.semanticAdjudicator });
   out.creative_direction = direction;
   out.validation = validation;
   if (!validation.ok) return finish(out, 'BLOCKED', validation.errors.join('; '), 'creative_director');
-  // Mint the non-forgeable projection receipt from the TRUSTED snapshot — the
-  // only path that grants downstream trust. Then project the safe (prose-free)
-  // surface to specialists and keep the prose rationale for human review only.
+  // REFERENCE-ONLY: re-resolve canonical bytes by id and register the validated
+  // direction in the append-only canonical store. This is the ONLY writer, and
+  // it is module-private — there is no exported mint. Downstream resolves by id.
   try {
-    cd.mintProjectionReceipt(direction, snapshot, { styleReferenceBinding: styleBinding, humanConstraints: task.human_constraints || [], semanticAdjudicator: options.semanticAdjudicator });
+    certifyAndRegister(direction, reference);
   } catch (error) {
-    return finish(out, 'BLOCKED', `${error.code || 'PROJECTION_AUTHORITY_REQUIRED'}: ${error.message}`, 'creative_director');
+    return finish(out, 'BLOCKED', `${error.code || 'CANONICAL_REGISTRATION_FAILED'}: ${error.message}`, 'creative_director');
   }
-  out.specialist_projections = ['visual_planning_director', 'editor', 'sound_music_director', 'audience_packaging_director', 'qc_director'].map((role) => ({ role, projection: specialistProjection(direction, role) }));
-  out.human_review = humanRationaleView(direction);
+  out.creative_direction_id = direction.direction_id;
+  out.specialist_projections = ['visual_planning_director', 'editor', 'sound_music_director', 'audience_packaging_director', 'qc_director'].map((role) => ({ role, projection: projectForSpecialistById(direction.direction_id, role) }));
+  out.human_review = humanRationaleById(direction.direction_id);
   if ((direction.human_decisions_required || []).length > 0) return finish(out, 'NEEDS_HUMAN_DECISION', direction.human_decisions_required.map((d) => d.type).join(', '), 'mikko');
   return finish(out, direction.lifecycle_state === 'AWAITING_HUMAN_REVIEW' ? 'AWAITING_HUMAN_REVIEW' : 'PREVIEW_ONLY', null, 'mikko');
 }
@@ -518,6 +600,6 @@ function controlRoomView(out) {
   };
 }
 
-module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, run, controlRoomView };
+module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, projectForSpecialistById, humanRationaleById, resolveCanonicalDirectionById, isCanonicalDirection, run, controlRoomView };
 
 if (require.main === module && guardExecutableLifecycle(AGENT_ID)) (async () => { const i = process.argv.indexOf('--task'); if (i < 0) process.exit(2); const out = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...out, control_room: controlRoomView(out) }, null, 2)); process.exit(['COMPLETE', 'AWAITING_HUMAN_REVIEW', 'PREVIEW_ONLY'].includes(out.state) ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });

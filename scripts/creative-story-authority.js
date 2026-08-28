@@ -33,17 +33,21 @@ const PINNED_DISCOVERY_ROOT = '/home/vidtoolz/vidtoolz-mindmap/data-gdocs/claim-
 const sha256 = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
 const norm = (v) => String(v ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
 
-// Module-private capability registry: an identity object is trusted ONLY if it
-// is a member of this WeakSet, which the caller cannot reach or reconstruct.
-const RESOLVED_IDENTITIES = new WeakSet();
-
-// BOUNDARY REDESIGN (2026-08-28): a TRUSTED STORY SNAPSHOT is the ONLY object
-// that carries Story authority downstream. Its trusted status originates INSIDE
-// the canonical resolver (module-private WeakSet membership). A plain JSON copy
-// of every field is NOT a member and is therefore NOT trusted; there is no
-// public constructor that can mint one. Callers pass a STABLE STORY REFERENCE
-// (opaque ids); the module resolves the snapshot from the pinned store.
-const TRUSTED_SNAPSHOTS = new WeakSet();
+// REFERENCE-ONLY AUTHORITY (2026-08-28): there is NO trusted Story OBJECT that
+// crosses a module boundary. A caller passes a STABLE STORY REFERENCE (opaque
+// ids); the authoritative consumer RE-RESOLVES canonical bytes from the pinned
+// store at the point of use. The resolver returns a DEEPLY IMMUTABLE record so a
+// mutable snapshot can never be tampered after a check (TOCTOU), but immutability
+// is only defense in depth — authority always comes from store re-resolution,
+// never from holding an object. No WeakSet capability, no isTrustedSnapshot: a
+// caller cannot manufacture authority by possessing or mutating a record.
+function deepFreeze(value) {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const key of Object.keys(value)) deepFreeze(value[key]);
+  }
+  return value;
+}
 
 // A Story REFERENCE is the only Story authority a caller may supply: opaque
 // identifiers, never content/hash/approval/lineage/flags. Any extra key is a
@@ -83,16 +87,11 @@ function sectionsSha(sections) {
   return sha256((sections || []).map((s) => norm(s.text)).join('\n\n'));
 }
 
-// Register a freshly-resolved snapshot as trusted. The snapshot object (and its
-// identity) become WeakSet members; a serialized copy loses this membership.
-function makeTrustedSnapshot(snapshot) {
-  RESOLVED_IDENTITIES.add(snapshot.script_identity);
-  TRUSTED_SNAPSHOTS.add(snapshot);
-  return snapshot;
-}
-
-function isTrustedSnapshot(value) {
-  return TRUSTED_SNAPSHOTS.has(value);
+// A freshly-resolved canonical record is deeply frozen. It carries NO capability
+// and NO membership; possessing or copying it grants nothing. Authoritative
+// consumers re-resolve by id at use.
+function makeCanonicalRecord(record) {
+  return deepFreeze(record);
 }
 
 class StoryAuthorityError extends Error {
@@ -118,16 +117,25 @@ function readStorePackage(canonicalIdeaId) {
   const id = norm(canonicalIdeaId);
   if (!CANON_IDEA_ID_RE.test(id)) fail(`candidate canonical_idea_id is malformed: ${id}`);
   const root = pinnedDiscoveryRoot();
-  // Store-addressable: the package MUST live at <root>/<id>.json inside the
-  // pinned store. A hand-copied package under a caller directory cannot match.
+  // Store-addressable AND symlink-confined: the package MUST live at
+  // <root>/<id>.json AND its REAL path (after following symlinks) must remain
+  // directly inside the REAL pinned store. A lexical prefix check is not enough —
+  // <root>/<id>.json may be a symlink to a file outside the store. We resolve the
+  // realpath of both and require the candidate's real directory to equal the real
+  // root, so a symlink/junction escape is rejected (Codex DISCOVERY-SYMLINK-ESCAPE).
   const file = path.join(root, `${id}.json`);
-  const resolved = path.resolve(file);
-  if (path.dirname(resolved) !== path.resolve(root)) fail('candidate path escapes the pinned Discovery store');
-  if (!fs.existsSync(resolved)) fail(`candidate package ${id} is not present in the pinned Discovery store`);
+  if (path.dirname(path.resolve(file)) !== path.resolve(root)) fail('candidate path escapes the pinned Discovery store');
+  if (!fs.existsSync(file)) fail(`candidate package ${id} is not present in the pinned Discovery store`);
+  let realRoot;
+  let realFile;
+  try { realRoot = fs.realpathSync(root); } catch (error) { fail(`pinned Discovery store is unresolvable: ${error.message}`); }
+  try { realFile = fs.realpathSync(file); } catch (error) { fail(`candidate package unresolvable: ${error.message}`); }
+  if (path.dirname(realFile) !== realRoot) fail('candidate package resolves (via symlink) outside the pinned Discovery store');
+  if (path.basename(realFile) !== `${id}.json`) fail('candidate package real name does not match its canonical id');
   let pkg;
-  try { pkg = JSON.parse(fs.readFileSync(resolved, 'utf8')); }
+  try { pkg = JSON.parse(fs.readFileSync(realFile, 'utf8')); }
   catch (error) { fail(`candidate package unreadable: ${error.message}`); }
-  return { pkg, path: resolved, root };
+  return { pkg, path: realFile, root: realRoot };
 }
 
 function candidateIdentityFromPackage(pkg, variant) {
@@ -159,12 +167,12 @@ function candidateIdentityFromPackage(pkg, variant) {
 
 /*
  * Resolve a Discovery candidate through the PINNED store by canonical_idea_id.
- * Returns a trusted identity registered in the capability WeakSet.
+ * Returns a DEEP-FROZEN immutable canonical record (no capability).
  */
 function resolveDiscoveryCandidate({ canonicalIdeaId, variant = 'structure_a' }) {
   const { pkg } = readStorePackage(canonicalIdeaId);
   const { identity, sections, title } = candidateIdentityFromPackage(pkg, variant);
-  return makeTrustedSnapshot({ script_identity: identity, script_content: { title, sections } });
+  return makeCanonicalRecord({ script_identity: identity, script_content: { title, sections } });
 }
 
 /*
@@ -189,52 +197,49 @@ function resolveCanonicalStory({ projectId, versionId, expectedContentHash }) {
     content_hash: story.content_hash, approval: structuredClone(story.approval),
     authority_source: 'pinned Script Builder store (current head, hash recomputed)',
   };
-  return makeTrustedSnapshot({ script_identity: identity, script_content: { title: norm(loaded.project.title || story.central_claim || story.project_id), sections } });
+  return makeCanonicalRecord({ script_identity: identity, script_content: { title: norm(loaded.project.title || story.central_claim || story.project_id), sections } });
 }
 
-// In-process capability check: is THIS identity object one this module resolved?
-function isResolvedIdentity(identity) { return RESOLVED_IDENTITIES.has(identity); }
-
 /*
- * Resolve a TRUSTED STORY SNAPSHOT from a caller-supplied STABLE REFERENCE.
- * This is the ONLY way a downstream module obtains Story authority. The
- * reference carries opaque ids only (assertReferenceShape refuses any
- * authoritative field); resolution re-derives content, hash, approval, and
- * lineage from the pinned store. The returned snapshot is a WeakSet member;
- * a serialized copy of it is not trusted.
+ * Resolve a canonical Story/candidate record from a caller-supplied STABLE
+ * REFERENCE (opaque ids only; assertReferenceShape refuses any authoritative
+ * field). Content, hash, approval, and lineage are re-derived from the pinned
+ * store. The returned record is DEEPLY IMMUTABLE and carries no capability —
+ * possessing or copying it grants nothing; authority comes only from calling
+ * this resolver by id at the point of use.
  */
-function resolveTrustedSnapshotFromReference(reference) {
+function resolveCanonicalRecordFromReference(reference) {
   assertReferenceShape(reference);
   if (reference.kind === 'CANONICAL_STORY') {
     return resolveCanonicalStory({ projectId: reference.project_id, versionId: reference.version_id });
   }
   return resolveDiscoveryCandidate({ canonicalIdeaId: reference.canonical_idea_id, variant: reference.script_variant });
 }
+// Back-compat alias (same reference-only semantics; returns an immutable record).
+const resolveTrustedSnapshotFromReference = resolveCanonicalRecordFromReference;
 
 /*
- * Cross-process re-verification, now snapshot-producing. A deserialized
- * reference (from task.json) has no capability, so RE-DERIVE the trusted
- * snapshot from the pinned store. Any caller-supplied script_content is treated
- * as UNTRUSTED: it must hash-equal the canonical resolved content or the whole
- * request is refused. The RETURNED snapshot (never the caller's content) is the
- * authoritative object callers must use downstream.
+ * Re-resolve the canonical record from a reference. Any caller-supplied
+ * script_content is treated as UNTRUSTED: it must hash-equal the canonical
+ * resolved content or the request is refused. The RETURNED (immutable) record is
+ * authoritative; caller content is never used.
  */
 function reverifyIdentity(reference, scriptContent) {
-  const snapshot = resolveTrustedSnapshotFromReference(reference);
+  const record = resolveCanonicalRecordFromReference(reference);
   if (scriptContent && Array.isArray(scriptContent.sections)) {
     const deliveredSha = sectionsSha(scriptContent.sections);
-    const canonicalSha = sectionsSha(snapshot.script_content.sections);
+    const canonicalSha = sectionsSha(record.script_content.sections);
     if (deliveredSha !== canonicalSha) {
       fail('delivered script_content does not match the canonical resolved Story/candidate — caller-supplied content is never authoritative');
     }
   }
-  return snapshot;
+  return record;
 }
 
 module.exports = {
-  PINNED_DISCOVERY_ROOT, StoryAuthorityError,
+  PINNED_DISCOVERY_ROOT, StoryAuthorityError, deepFreeze,
   pinnedDiscoveryRoot, pinnedScriptBuilderRoot,
-  resolveCanonicalStory, resolveDiscoveryCandidate, isResolvedIdentity, reverifyIdentity,
-  resolveTrustedSnapshotFromReference, isTrustedSnapshot, storyReferenceOf, assertReferenceShape,
+  resolveCanonicalStory, resolveDiscoveryCandidate, reverifyIdentity,
+  resolveCanonicalRecordFromReference, resolveTrustedSnapshotFromReference, storyReferenceOf, assertReferenceShape,
   sha256,
 };

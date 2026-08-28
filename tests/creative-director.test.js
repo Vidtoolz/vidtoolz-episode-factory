@@ -157,7 +157,11 @@ test('CDA4: valid canonical head Story passes with a non-forgeable resolver rece
   await withScriptBuilder(sb.root, () => {
     const bound = assembler.canonicalStoryScript({ project_id: sb.projectId, version_id: sb.v2 });
     assert.equal(bound.script_identity.content_hash, sb.v2Hash);
-    assert.equal(require('../scripts/creative-story-authority.js').isResolvedIdentity(bound.script_identity), true);
+    // REFERENCE-ONLY: the resolved record is DEEPLY IMMUTABLE (no capability);
+    // authority comes from re-resolving by id, never from possessing this object.
+    assert.equal(Object.isFrozen(bound.script_identity), true);
+    assert.equal(Object.isFrozen(bound.script_content), true);
+    assert.throws(() => { bound.script_identity.content_hash = 'f'.repeat(64); });
     assert.equal(bound.script_content.sections.length, 2);
   });
 });
@@ -173,7 +177,8 @@ test('CDA5: a caller cannot select the Script Builder or Discovery root (options
 
 test('CDA6: valid Discovery candidate passes; a foreign/hand-copied package is not store-addressable', () => {
   const bound = assembler.candidateScriptFromDiscoveryPackage(CANON_IDEA_ID, 'structure_a');
-  assert.equal(require('../scripts/creative-story-authority.js').isResolvedIdentity(bound.script_identity), true);
+  assert.equal(Object.isFrozen(bound.script_identity), true);
+  assert.equal(Object.isFrozen(bound.script_content), true);
   // A canonical_idea_id not present in the pinned store is refused.
   assert.throws(() => assembler.candidateScriptFromDiscoveryPackage('canon_not_in_store_9999', 'structure_a'),
     (e) => e.code === 'STORY_AUTHORITY_INVALID' && /not present in the pinned Discovery store/.test(e.message));
@@ -496,31 +501,30 @@ test('CDPF3: numeric/id specialist content is caught across randomized variants'
 
 /* ══ DOWNSTREAM EXECUTION SAFETY ════════════════════════════════════════════ */
 
-test('CDD1: the safe projection is enum-only (no prose); rationale is human-only and never projected to specialists', async () => {
+test('CDD1: the safe projection is enum-only (no prose, no action summary); rationale is human-only; downstream resolves by id', async () => {
   const out = await runDirector(makeTask(), makeSemantic({ action_claims: [{ claim_id: 'ac-01', domain: 'CARDS', operation: 'ADD', scope: 'beat-02', summary: 'a labelled concept card carries the mechanism' }] }));
   for (const role of ['visual_planning_director', 'editor', 'sound_music_director', 'audience_packaging_director']) {
-    const projection = director.specialistProjection(out.creative_direction, role);
-    assert.equal(projection.receipt.validated_artifact, true, role);
+    // ID-ONLY: downstream resolves the canonical direction by id and projects.
+    const projection = director.projectForSpecialistById(out.creative_direction_id, role);
+    assert.equal(projection.receipt.canonical_direction_id, out.creative_direction_id, role);
     assert.equal(projection.executable.execution_contract.consume_rationale_for_actions, false, role);
     assert.equal(projection.executable.execution_contract.raw_creative_prose_included, false, role);
+    assert.equal(projection.executable.execution_contract.free_text_action_summary_included, false, role);
     assert.ok(Array.isArray(projection.executable.action_claims), role);
     assert.ok(Array.isArray(projection.executable.capability_denials), role);
-    // BOUNDARY REDESIGN: the safe projection carries NO rationale object at all,
-    // and NO free-prose field. A specialist prompt built from it cannot contain
-    // raw Creative Director prose even if a detector misses a phrase.
+    // No rationale object, no free-prose field, and NO action-claim summary.
     assert.equal(projection.non_executable_rationale, undefined, `${role} projection must not carry a rationale object`);
     const executableStr = JSON.stringify(projection.executable);
-    assert.equal(/energy_arc|sound_music_intent|packaging_intent|creative_thesis|ending_description|motion_character|"statement"|"register"|"description"/.test(executableStr), false, `${role} executable must be rationale-prose-free`);
+    assert.equal(/energy_arc|sound_music_intent|packaging_intent|creative_thesis|ending_description|motion_character|"summary"|"statement"|"register"|"description"|labelled concept card/.test(executableStr), false, `${role} executable must be rationale/summary-free`);
   }
-  // Human rationale is available for HUMAN review only, clearly classified, and
-  // never handed to a specialist.
-  const human = director.humanRationaleView(out.creative_direction);
+  // Human rationale is HUMAN_REVIEW_ONLY and never handed to a specialist.
+  const human = director.humanRationaleById(out.creative_direction_id);
   assert.equal(human.audience, 'HUMAN_REVIEW_ONLY');
   assert.equal(human.classification, 'NON_EXECUTABLE_CREATIVE_RATIONALE_HUMAN_ONLY');
   assert.ok(human.creative_thesis && human.motion_character);
-  // Projecting an unvalidated (hand-built) object is refused.
+  // Projecting a hand-built / non-canonical object is refused.
   assert.throws(() => director.specialistProjection({ direction_id: 'x', action_claims: [] }, 'editor'),
-    (e) => e.code === 'CREATIVE_DIRECTION_NOT_VALIDATED');
+    (e) => e.code === 'CREATIVE_DIRECTION_NOT_CANONICAL');
 });
 
 /* ══ REGRESSIONS KEPT FROM v1 (dispatch fences, envelope, style firewall) ═══ */
@@ -686,13 +690,20 @@ test('CDN6 (CODX-EVENT-01 + CODX-LB-08/09): a pixel signal never confirms Level-
   const generic = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], planned);
   assert.equal(generic.confirmed.length, 0, 'pixel signal + timestamp is never sufficient');
   assert.equal(generic.unverified.length, 1);
-  // a renderer manifestation record naming the expected label CONFIRMS; ids preserved
-  const confirmed = adapter.admitMeasuredEvents(
-    [{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE', manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }],
-    planned,
-    { rendererEvents: [{ event_id: 'planned-label-1', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }] });
-  assert.equal(confirmed.confirmed.length, 1);
-  assert.equal(confirmed.confirmed[0].event_id, 'planned-label-1');
+  // caller-supplied manifestation on a candidate carries NO authority
+  const forged = adapter.admitMeasuredEvents([{ candidate_id: 'f', t_s: 5, kind: 'VISUAL_CHANGE', manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }], planned);
+  assert.equal(forged.confirmed.length, 0, 'caller-supplied manifestation object cannot mint confirmation');
+  // a renderer record resolved from the PINNED store by id CONFIRMS; ids preserved
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-renderer-store-'));
+  fs.writeFileSync(path.join(store, 'run-cd6.json'), JSON.stringify({ renderer_identity: 'renderer@test', records: [{ event_id: 'planned-label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }] }));
+  const prev = process.env.VIDTOOLZ_RENDERER_EVENT_STORE;
+  process.env.VIDTOOLZ_RENDERER_EVENT_STORE = store;
+  try {
+    const confirmed = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], planned, { renderRunId: 'run-cd6' });
+    assert.equal(confirmed.confirmed.length, 1);
+    assert.equal(confirmed.confirmed[0].event_id, 'planned-label-1');
+    assert.equal(confirmed.confirmed[0].authority, 'RENDERER_MANIFESTATION_CONFIRMED');
+  } finally { if (prev === undefined) delete process.env.VIDTOOLZ_RENDERER_EVENT_STORE; else process.env.VIDTOOLZ_RENDERER_EVENT_STORE = prev; }
 });
 
 test('CDN7: explicit Level-A macro-state counter (no conflation with B/C)', () => {
@@ -704,17 +715,17 @@ test('CDN7: explicit Level-A macro-state counter (no conflation with B/C)', () =
   assert.equal(levels.level_c_active, true);
 });
 
-test('CDN8: the safe projection is enum-only, capability-bearing, and receipt-gated; specialists never receive raw prose', async () => {
+test('CDN8: the safe projection is enum-only, capability-bearing, and canonical-id-gated; specialists never receive raw prose', async () => {
   const out = await runDirector(makeTask(), makeSemantic({ action_claims: [{ claim_id: 'ac-1', domain: 'CARDS', operation: 'ADD', scope: 'beat-02', summary: 'labelled concept card' }] }));
-  const vp = director.specialistProjection(out.creative_direction, 'visual_planning_director');
-  assert.equal(vp.receipt.validated_artifact, true);
+  const vp = director.projectForSpecialistById(out.creative_direction_id, 'visual_planning_director');
+  assert.equal(vp.receipt.canonical_direction_id, out.creative_direction_id);
   assert.equal(vp.executable.execution_contract.consume_rationale_for_actions, false);
   assert.equal(vp.executable.execution_contract.raw_creative_prose_included, false);
-  // BOUNDARY REDESIGN: no rationale object is projected at all, and no prose
-  // field (media_strategy is prose rationale — human-only) appears in the safe
-  // surface; the capability ledger IS present.
+  // No rationale object; no prose field (media_strategy is human-only); the
+  // capability ledger IS present; action claims carry no free-text summary.
   assert.equal(vp.non_executable_rationale, undefined);
   assert.equal('media_strategy' in vp.executable, false);
   assert.ok(Array.isArray(vp.executable.capability_denials));
-  assert.throws(() => director.specialistProjection({ action_claims: [] }, 'visual_planning_director'), (e) => e.code === 'CREATIVE_DIRECTION_NOT_VALIDATED');
+  assert.equal(/"summary"|labelled concept card/.test(JSON.stringify(vp.executable.action_claims)), false);
+  assert.throws(() => director.specialistProjection({ action_claims: [] }, 'visual_planning_director'), (e) => e.code === 'CREATIVE_DIRECTION_NOT_CANONICAL');
 });

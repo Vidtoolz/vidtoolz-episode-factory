@@ -33,7 +33,6 @@
  */
 
 const crypto = require('node:crypto');
-const storyAuthority = require('./creative-story-authority.js');
 
 const SCHEMA = 'vidtoolz.creativeDirection.v2';
 const ARTIFACT_TYPE = 'creative-direction';
@@ -57,7 +56,18 @@ const MAX_PROSE_CHARS = 2000;
 /* ---- semantic contract vocabularies (v2) --------------------------------- */
 
 const PROTECTED_DOMAIN_NAMES = Object.freeze(['MEDIA', 'MUSIC', 'PRESENTER', 'CARDS', 'HUMOR', 'TONE', 'ENDING', 'SECTION_CONTENT', 'TYPOGRAPHY', 'MOTION', 'DENSITY', 'VISUAL_MODE']);
-const OPERATIONS = Object.freeze(['KEEP', 'ADD', 'REMOVE', 'REPLACE', 'REGENERATE', 'SWAP', 'RESELECT', 'MATERIALLY_ALTER', 'CHANGE', 'CHANGE_TRACK', 'CHANGE_DIRECTION', 'CHANGE_SELECTION', 'INCREASE', 'SUPPRESS', 'ADJUST_STRATEGY', 'EMPHASIZE', 'REDUCE']);
+// REFERENCE-ONLY / BY-CONSTRUCTION (mission §15-17): the Creative Director's
+// EMITTABLE operation vocabulary is CREATIVE STRATEGY only. Asset/selection
+// MUTATION operations (REPLACE/REGENERATE/RESELECT/SWAP/MATERIALLY_ALTER/CHANGE*)
+// are NOT representable — they belong to specialist departments. A locked media
+// or music mutation is therefore not merely denied; it cannot be expressed at
+// all (an action_claim with such an operation fails as an invalid operation).
+const OPERATIONS = Object.freeze(['KEEP', 'ADD', 'REMOVE', 'INCREASE', 'SUPPRESS', 'ADJUST_STRATEGY', 'EMPHASIZE', 'REDUCE']);
+// Operations that may appear in a protected domain's forbidden_operations list
+// (documentation of what a lock protects, and the capability-denial projection).
+// A superset of OPERATIONS that also NAMES the specialist mutations the CD can
+// never emit — so a lock can still declare "media replacement is forbidden here".
+const PROTECTED_OPERATIONS = Object.freeze([...OPERATIONS, 'REPLACE', 'REGENERATE', 'SWAP', 'RESELECT', 'MATERIALLY_ALTER', 'CHANGE', 'CHANGE_TRACK', 'CHANGE_DIRECTION', 'CHANGE_SELECTION']);
 // Operations that never conflict with anything: pure preservation/strategy.
 const ALWAYS_LEGAL_OPERATIONS = Object.freeze(['KEEP']);
 
@@ -178,7 +188,7 @@ function deriveProtectedDomains(constraints) {
         const p = c.protected;
         const structured = p && typeof p === 'object' && PROTECTED_DOMAIN_NAMES.includes(p.domain)
           && (Array.isArray(p.forbidden_operations) || Array.isArray(p.required_field_values))
-          && (p.forbidden_operations || []).every((op) => OPERATIONS.includes(op))
+          && (p.forbidden_operations || []).every((op) => PROTECTED_OPERATIONS.includes(op))
           && (p.required_field_values || []).every((r) => r && typeof r.path === 'string' && Array.isArray(r.one_of) && r.one_of.length > 0);
         if (!structured) {
           unenforceable.push({ constraint_id: c.constraint_id, code: VIOLATION_CODES.CUSTOM_UNENFORCEABLE, detail: 'CUSTOM constraint carries no machine-verifiable protected scope; it must fail safely before downstream consumption' });
@@ -725,55 +735,13 @@ function validateDirection(direction, context = {}) {
   }
 
   const ok = errors.length === 0;
-  // BOUNDARY REDESIGN: validation is NOT authority minting. This function is a
-  // PURE validator — it returns a verdict and NEVER grants downstream trust.
-  // Only mintProjectionReceipt (which requires an unforgeable trusted Story
-  // snapshot) can register an artifact for projection. A caller that passes a
-  // forged direction with a self-built context therefore gets ok=true at most,
-  // but no receipt, and specialistProjection still refuses it.
+  // REFERENCE-ONLY AUTHORITY: validateDirection is a PURE validator. It returns a
+  // verdict and grants NO trust. There is no exported authority-minting function
+  // in this module — a caller cannot compose exports to manufacture trust. The
+  // canonical Creative Direction registry lives in the pipeline (creative-director),
+  // is written only by the single pipeline entry (director.run), and downstream
+  // projection resolves by canonical id.
   return { ok, errors, violations };
-}
-
-// Non-forgeable validated-artifact registry: membership is granted ONLY by
-// mintProjectionReceipt, never by the public validator.
-const VALIDATED_ARTIFACTS = new WeakSet();
-function isValidated(direction) { return VALIDATED_ARTIFACTS.has(direction); }
-
-/*
- * BOUNDARY REDESIGN (mission §12-13) — the ONLY authority-minting function.
- * validateDirection() checks shape; it cannot grant trust. A trusted projection
- * receipt is minted here and requires:
- *   - a TRUSTED STORY SNAPSHOT (WeakSet member from the canonical resolver —
- *     unforgeable; caller-built context is powerless),
- *   - the direction binding that snapshot's identity exactly,
- *   - full validation against a context DERIVED FROM THE SNAPSHOT, not the caller.
- * The receipt is a WeakSet membership, never a serialized boolean.
- */
-function mintProjectionReceipt(direction, trustedStorySnapshot, options = {}) {
-  if (!storyAuthority.isTrustedSnapshot(trustedStorySnapshot)) {
-    const e = new Error('PROJECTION_AUTHORITY_REQUIRED: a trusted Story snapshot from the canonical resolver is required; caller-supplied context can never mint downstream trust');
-    e.code = 'PROJECTION_AUTHORITY_REQUIRED'; throw e;
-  }
-  if (canonicalize(direction?.script_identity) !== canonicalize(trustedStorySnapshot.script_identity)) {
-    const e = new Error('PROJECTION_IDENTITY_MISMATCH: direction does not bind the trusted Story snapshot identity');
-    e.code = 'PROJECTION_IDENTITY_MISMATCH'; throw e;
-  }
-  const context = {
-    task: {
-      script_identity: trustedStorySnapshot.script_identity,
-      style_reference: options.styleReferenceBinding || null,
-      human_constraints: options.humanConstraints || [],
-      section_refs: (trustedStorySnapshot.script_content?.sections || []).map((s) => s.section_ref),
-    },
-    semanticAdjudicator: options.semanticAdjudicator,
-  };
-  const check = validateDirection(direction, context);
-  if (!check.ok) {
-    const e = new Error(`PROJECTION_VALIDATION_FAILED: ${check.errors.slice(0, 8).join('; ')}`);
-    e.code = 'PROJECTION_VALIDATION_FAILED'; e.validation = check; throw e;
-  }
-  VALIDATED_ARTIFACTS.add(direction);
-  return { receipt: { validated_artifact: true, direction_id: direction.direction_id, direction_digest_sha256: direction.direction_digest_sha256 }, validation: check };
 }
 
 module.exports = {
@@ -781,8 +749,8 @@ module.exports = {
   HUMOR_MODES, DENSITY_GROUPS, PRESENTER_MODES, ENDING_MODES, VISUAL_FUNCTIONS, MODE_WEIGHTS,
   CARD_PATTERNS, ESCALATION_TYPES, CONSTRAINT_TYPES, PROVENANCES, CONFIDENCE_LEVELS,
   SCRIPT_IDENTITY_KINDS, LIFECYCLE_STATES, MAX_ESCALATIONS, FORBIDDEN_KEYS,
-  PROTECTED_DOMAIN_NAMES, OPERATIONS, VIOLATION_CODES, SPECIALIST_DETECTORS,
+  PROTECTED_DOMAIN_NAMES, OPERATIONS, PROTECTED_OPERATIONS, VIOLATION_CODES, SPECIALIST_DETECTORS,
   sha256, newDirectionId, canonicalize, directionDigest, forbiddenKeyHits,
   deriveProtectedDomains, deriveCapabilityLedger, collectModelProse, proseGuardHits, specialistBoundaryHits, selfApprovalHits,
-  validateDirection, mintProjectionReceipt, isValidated,
+  validateDirection,
 };

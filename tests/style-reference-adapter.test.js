@@ -347,23 +347,35 @@ test('SRA28: presenter PRESENCE alone no longer proves Level-C adequacy (Codex e
   assert.equal(report2.findings.filter((f) => f.warning_id === 'W-01').length, 0, 'explicitly claimed presenter motion is a legitimate Level-C source');
 });
 
-test('SRA29: measured candidates confirm a planned Level-B event ONLY with a matching semantic manifestation, never by timestamp alone', () => {
+test('SRA29: confirmation comes ONLY from a trusted renderer/classifier record resolved by id; pixels are measurement only', () => {
   const planned = [{ event_id: 'p1', t_s: 5, kind: 'CARD_STATE_CHANGE', state: 'expanded' }, { event_id: 'p2', t_s: 12, kind: 'REFRAME', target: 'chart' }];
   const candidates = [
-    { candidate_id: 'c-real', t_s: 5.2, kind: 'VISUAL_CHANGE', manifestation: { kind: 'CARD_STATE_PRESENT', target: 'expanded' } }, // matching manifestation -> confirms
-    { candidate_id: 'c-generic', t_s: 12.1, kind: 'VISUAL_CHANGE' }, // near p2 but NO manifestation -> adjudication, not confirmed
+    { candidate_id: 'c-real', t_s: 5.2, kind: 'VISUAL_CHANGE', manifestation: { kind: 'CARD_STATE_PRESENT', target: 'expanded' } }, // caller manifestation object -> IGNORED
+    { candidate_id: 'c-generic', t_s: 12.1, kind: 'VISUAL_CHANGE' }, // near p2 -> adjudication, not confirmed
     { candidate_id: 'c-unplanned', t_s: 20.0, kind: 'VISUAL_CHANGE' }, // real change, no plan -> adjudication
     { candidate_id: 'c-noise', t_s: 5.0, kind: 'ENCODER_NOISE' }, // noise -> never confirms/considered
   ];
-  const bridge = adapter.admitMeasuredEvents(candidates, planned, { toleranceS: 0.5 });
-  assert.equal(bridge.confirmed.length, 1);
-  assert.equal(bridge.confirmed[0].event_id, 'p1');
-  assert.equal(bridge.confirmed[0].candidate_id, 'c-real');
-  assert.equal(bridge.discarded_noise.length, 1, 'noise never confirms even at a planned timestamp');
-  assert.equal(bridge.unverified.length, 1, 'p2 had a pixel signal near its time but no semantic manifestation — adjudication required, not confirmation');
-  assert.equal(bridge.unplanned_candidates.length, 1);
-  assert.equal(bridge.unplanned_candidates[0].requires_semantic_adjudication, true);
-  assert.equal(bridge.unconfirmed_planned.length, 0, 'both planned events resolved (one confirmed, one to adjudication)');
+  // Without a trusted evidence store, NOTHING confirms — the caller-supplied
+  // manifestation on c-real carries no authority.
+  const noStore = adapter.admitMeasuredEvents(candidates, planned, { toleranceS: 0.5 });
+  assert.equal(noStore.confirmed.length, 0, 'a caller-supplied manifestation object cannot mint confirmation');
+  assert.equal(noStore.discarded_noise.length, 1);
+  assert.equal(noStore.unplanned_candidates.length, 1);
+  // With a renderer record resolved from the pinned store by id, p1 confirms.
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-renderer-store-'));
+  fs.writeFileSync(path.join(store, 'run-sra29.json'), JSON.stringify({ renderer_identity: 'r@test', records: [{ event_id: 'p1', event_type: 'CARD_STATE_CHANGE', manifested: true, manifestation: { kind: 'CARD_STATE_PRESENT', target: 'expanded' } }] }));
+  const prev = process.env.VIDTOOLZ_RENDERER_EVENT_STORE;
+  process.env.VIDTOOLZ_RENDERER_EVENT_STORE = store;
+  try {
+    const bridge = adapter.admitMeasuredEvents(candidates, planned, { toleranceS: 0.5, renderRunId: 'run-sra29' });
+    assert.equal(bridge.confirmed.length, 1);
+    assert.equal(bridge.confirmed[0].event_id, 'p1');
+    assert.equal(bridge.confirmed[0].authority, 'RENDERER_MANIFESTATION_CONFIRMED');
+    assert.equal(bridge.unverified.length, 1, 'p2 had a pixel signal near its time but no trusted manifestation');
+    // p1 was confirmed by the renderer record and removed, so the pixel signal
+    // near it (c-real) and the far one (c-unplanned) are both unplanned.
+    assert.equal(bridge.unplanned_candidates.length, 2);
+  } finally { if (prev === undefined) delete process.env.VIDTOOLZ_RENDERER_EVENT_STORE; else process.env.VIDTOOLZ_RENDERER_EVENT_STORE = prev; }
 });
 
 test('SRA30: advisory firewall regression — style findings never carry production-blocking fields, even at maximum severity', () => {

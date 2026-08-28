@@ -175,53 +175,92 @@ function isConfirmingSignal(candidate) {
 }
 
 /*
- * SUCCESSOR REPAIR (fc2c6f0 child) — EVENT AUTHORITY PIPELINE.
- * Four distinct concepts:
- *   PLANNED_EVENT               semantic event authored in the plan (with id)
- *   PIXEL_SIGNAL (candidate)    raw measurement that something changed (with id)
- *   CONFIRMED_MEANINGFUL_EVENT  a planned event whose expected manifestation is
- *                               supported by a NON-NOISE pixel signal near it
- *   UNPLANNED_EVENT_CANDIDATE   a non-noise signal not matching any planned
- *                               event — requires semantic adjudication, never
- *                               auto-counts.
- * A pixel signal NEVER self-certifies. Noise candidates confirm nothing and are
- * discarded. Provenance ids (event_id + candidate_id) are preserved.
+ * REFERENCE-ONLY SEMANTIC EVIDENCE (mission §23-27). Semantic Level-B evidence
+ * is NOT a caller-supplied object. QC passes render_run_id / classifier_run_id
+ * (opaque ids); this module RESOLVES the append-only records from the PINNED
+ * renderer/classifier evidence stores. A caller cannot fabricate a manifestation,
+ * a renderer receipt, or a classifier verdict — pixel candidates are MEASUREMENT
+ * ONLY and can never mint semantic meaning.
+ */
+const PINNED_RENDERER_EVENT_STORE = '/home/vidtoolz/vidtoolz-episode-factory/renderer-event-store';
+const PINNED_CLASSIFIER_EVIDENCE_STORE = '/home/vidtoolz/vidtoolz-episode-factory/classifier-evidence-store';
+const RUN_ID_RE = /^[A-Za-z0-9_.-]{3,120}$/;
+
+function readEvidenceStore(kind, envVar, pinnedDefault, runId) {
+  const id = String(runId || '').trim();
+  if (!RUN_ID_RE.test(id)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_ID_INVALID', `${kind} run id is malformed: ${id}`);
+  const rootRaw = (process.env[envVar] && process.env[envVar].trim()) ? process.env[envVar].trim() : pinnedDefault;
+  const root = path.resolve(rootRaw);
+  const file = path.join(root, `${id}.json`);
+  if (path.dirname(path.resolve(file)) !== root) throw new StyleReferenceError('SEMANTIC_EVIDENCE_PATH_ESCAPE', `${kind} evidence path escapes the pinned store`);
+  if (!fs.existsSync(file)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_NOT_FOUND', `${kind} run ${id} is not present in the pinned store`);
+  // Symlink-confined: the real path must remain directly inside the real store.
+  let realRoot; let realFile;
+  try { realRoot = fs.realpathSync(root); } catch (e) { throw new StyleReferenceError('SEMANTIC_EVIDENCE_STORE_UNRESOLVABLE', e.message); }
+  try { realFile = fs.realpathSync(file); } catch (e) { throw new StyleReferenceError('SEMANTIC_EVIDENCE_UNRESOLVABLE', e.message); }
+  if (path.dirname(realFile) !== realRoot || path.basename(realFile) !== `${id}.json`) {
+    throw new StyleReferenceError('SEMANTIC_EVIDENCE_SYMLINK_ESCAPE', `${kind} evidence resolves (via symlink) outside the pinned store`);
+  }
+  let doc;
+  try { doc = JSON.parse(fs.readFileSync(realFile, 'utf8')); } catch (e) { throw new StyleReferenceError('SEMANTIC_EVIDENCE_UNREADABLE', e.message); }
+  return { records: Array.isArray(doc?.records) ? doc.records : [], identity: doc?.renderer_identity || doc?.classifier_identity || null, media_sha256: doc?.media_sha256 || null };
+}
+function resolveRendererRun(renderRunId) { return readEvidenceStore('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, renderRunId); }
+function resolveClassifierRun(classifierRunId) { return readEvidenceStore('classifier', 'VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE', PINNED_CLASSIFIER_EVIDENCE_STORE, classifierRunId); }
+
+/*
+ * EVENT AUTHORITY PIPELINE (reference-only). Confirmation of a planned Level-B
+ * event requires a matching SEMANTIC MANIFESTATION resolved from a TRUSTED store
+ * by id — either a renderer execution record (deterministic graphics) or an
+ * approved classifier verdict (nondeterministic media). Pixel candidates are
+ * measurement only: they can flag adjudication or an unplanned change, but they
+ * NEVER confirm. Noise/motion is discarded. Provenance ids are preserved.
+ *
+ * options: { renderRunId?, classifierRunId?, toleranceS? }
+ * Caller-supplied evidence objects (candidate.manifestation, inline renderer
+ * records, inline classifier functions) are IGNORED — they carry no authority.
  */
 function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   const tolerance = options.toleranceS ?? 0.5;
-  const rendererEvents = options.rendererEvents || [];
-  const classifier = typeof options.semanticClassifier === 'function' ? options.semanticClassifier : null;
   const planned = admitSemanticEvents(plannedEvents);
   const remaining = planned.admitted.map((p, i) => ({ ...p, event_id: p.event_id ?? `planned-${i + 1}` }));
   const confirmed = [];
   const unplanned = [];
   const discarded_noise = [];
   const unverified = [];
+  const errors = [...planned.errors];
 
-  // (1) Renderer semantic manifestation records — the strongest authority for
-  // deterministic graphics (§17). A planned event is confirmed only by a record
-  // naming the SAME event_id, manifested:true, whose manifestation matches the
-  // expected evidence for the event's TYPE. Timestamp is not consulted here —
-  // the renderer identity is exact.
-  for (const rec of rendererEvents) {
+  // Resolve TRUSTED semantic evidence from the pinned stores by id.
+  let rendererStore = { records: [] };
+  if (options.renderRunId) { try { rendererStore = resolveRendererRun(options.renderRunId); } catch (e) { errors.push(`RENDERER_EVIDENCE_UNRESOLVED: ${e.message}`); } }
+  let classifierStore = { records: [] };
+  if (options.classifierRunId) { try { classifierStore = resolveClassifierRun(options.classifierRunId); } catch (e) { errors.push(`CLASSIFIER_EVIDENCE_UNRESOLVED: ${e.message}`); } }
+
+  // (1) Renderer manifestation — strongest authority, resolved from the store.
+  for (const rec of rendererStore.records) {
     const idx = remaining.findIndex((p) => p.event_id === rec.event_id);
     if (idx < 0) continue;
     const plan = remaining[idx];
-    const manifestation = rec.manifestation
-      || (rec.manifested === true ? { kind: LEVEL_B_EVENT_TYPES[plan.kind]?.expected_manifestation, target: rec.target } : null);
-    if (rec.manifested === true && manifestationMatches(plan, manifestation)) {
+    if (rec.manifested !== false && manifestationMatches(plan, rec.manifestation)) {
       remaining.splice(idx, 1);
-      confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'RENDERER_MANIFESTATION_CONFIRMED', manifestation });
+      confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'RENDERER_MANIFESTATION_CONFIRMED', manifestation: rec.manifestation, evidence_source: `renderer-run:${options.renderRunId}`, renderer_identity: rendererStore.identity || null });
+    }
+  }
+  // (2) Approved classifier verdict — resolved from the store, bound to its run.
+  for (const rec of classifierStore.records) {
+    const idx = remaining.findIndex((p) => p.event_id === rec.event_id);
+    if (idx < 0) continue;
+    const plan = remaining[idx];
+    if (rec.confirmed === true && manifestationMatches(plan, rec.manifestation)) {
+      remaining.splice(idx, 1);
+      confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'APPROVED_CLASSIFIER_CONFIRMED', manifestation: rec.manifestation, evidence_source: `classifier-run:${options.classifierRunId}`, classifier_identity: classifierStore.identity || null });
     }
   }
 
-  // (2) Pixel signals. A confirming (non-noise) signal near a planned event
-  // confirms it ONLY when it carries — or an approved semantic classifier
-  // supplies — a manifestation MATCHING the expected evidence. Timestamp
-  // proximity is necessary, never sufficient: a generic FRAME_CHANGE or a
-  // HARD_CUT with no semantic manifestation carries no semantic identity and can
-  // never manufacture one. Such a signal leaves the planned event UNVERIFIED
-  // (semantic adjudication required), never confirmed.
+  // (3) Pixel candidates: MEASUREMENT ONLY. They never confirm. A confirming
+  // (non-noise) signal near a still-unconfirmed planned event marks it as
+  // requiring semantic adjudication; a signal with no planned counterpart is an
+  // unplanned candidate; noise/motion is discarded.
   (candidates || []).forEach((candidate, i) => {
     const candidateId = candidate?.candidate_id ?? `signal-${i + 1}`;
     if (!isConfirmingSignal(candidate)) {
@@ -233,24 +272,12 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
       unplanned.push({ candidate_id: candidateId, t_s: candidate?.t_s, kind: candidate?.kind, authority: 'UNPLANNED_EVENT_CANDIDATE', meaningful: false, requires_semantic_adjudication: true });
       return;
     }
-    const plan = remaining[idx];
-    let manifestation = candidate?.manifestation || null;
-    if (!manifestation && classifier) {
-      const verdict = classifier({ planned: plan, candidate, expected: LEVEL_B_EVENT_TYPES[plan.kind] });
-      if (verdict && verdict.confirmed === true) {
-        manifestation = verdict.manifestation || { kind: LEVEL_B_EVENT_TYPES[plan.kind]?.expected_manifestation, target: verdict.target };
-      }
-    }
-    remaining.splice(idx, 1);
-    if (manifestation && manifestationMatches(plan, manifestation)) {
-      confirmed.push({ event_id: plan.event_id, candidate_id: candidateId, t_s: plan.t_s, kind: plan.kind, authority: 'PIXEL_PLUS_SEMANTIC_MANIFESTATION_CONFIRMED', measured_t_s: candidate?.t_s, manifestation, supporting_signal_kind: candidate?.kind });
-    } else {
-      unverified.push({ event_id: plan.event_id, candidate_id: candidateId, t_s: plan.t_s, kind: plan.kind, authority: 'LEVEL_B_SEMANTIC_ADJUDICATION_REQUIRED', measured_t_s: candidate?.t_s, supporting_signal_kind: candidate?.kind, reason: 'pixel signal near the planned time but no matching semantic manifestation' });
-    }
+    const plan = remaining.splice(idx, 1)[0];
+    unverified.push({ event_id: plan.event_id, candidate_id: candidateId, t_s: plan.t_s, kind: plan.kind, authority: 'LEVEL_B_SEMANTIC_ADJUDICATION_REQUIRED', measured_t_s: candidate?.t_s, supporting_signal_kind: candidate?.kind, reason: 'pixel signal is measurement only; no trusted semantic manifestation resolved for this event' });
   });
 
-  const unconfirmed_planned = remaining.map((p) => ({ event_id: p.event_id, t_s: p.t_s, kind: p.kind, authority: 'LEVEL_B_UNVERIFIED', reason: 'no semantic manifestation evidence (renderer record or classifier)' }));
-  return { confirmed, unverified, unplanned_candidates: unplanned, discarded_noise, unconfirmed_planned, errors: planned.errors };
+  const unconfirmed_planned = remaining.map((p) => ({ event_id: p.event_id, t_s: p.t_s, kind: p.kind, authority: 'LEVEL_B_UNVERIFIED', reason: 'no trusted semantic manifestation (renderer/classifier store) for this event' }));
+  return { confirmed, unverified, unplanned_candidates: unplanned, discarded_noise, unconfirmed_planned, errors };
 }
 
 /*
@@ -678,6 +705,8 @@ module.exports = {
   normalizeEventKind,
   admitSemanticEvents,
   admitMeasuredEvents,
+  resolveRendererRun,
+  resolveClassifierRun,
   countMacroStates,
   classifyProgrammeLevels,
   CONFIRMING_SIGNAL_CLASSES,
