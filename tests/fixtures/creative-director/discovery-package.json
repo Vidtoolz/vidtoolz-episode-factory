@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "canonical_idea_id": "canon_fixture_cd_0001",
+  "generation_state": "COMPLETE",
+  "source_fingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
+  "claim_snapshot": { "title": "The Compound Interest of Small Publishing Habits" },
+  "datasheet": {
+    "best_title": "The Compound Interest of Small Publishing Habits",
+    "core_claim": "Small, repeated publishing habits compound into durable creative advantage.",
+    "short_joke": "No joke—the point works better straight."
+  },
+  "generation_metadata": {
+    "datasheet_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "structure_a_script": {
+    "spine_label": "Contradiction → Diagnosis → Reframe → Action",
+    "beats": [
+      "You assume the big launch is what grows a channel, yet the accounts that last are built on small weekly publishing habits that nobody notices at first.",
+      "The root issue is that attention compounds: each small piece teaches you something, seeds search surface, and lowers the cost of the next piece. Skipping weeks resets the curve.",
+      "Reframe publishing not as performance but as deposits. A modest piece shipped on schedule beats a perfect piece shipped never, because the interest accrues on consistency, not on peaks.",
+      "Before chasing the next big idea, fix the cadence. Choose a sustainable weekly slot, define a minimum publishable unit, and protect it. Let the compounding do the dramatic work."
+    ],
+    "word_count": 130,
+    "validation": { "status": "PASS" }
+  }
+}

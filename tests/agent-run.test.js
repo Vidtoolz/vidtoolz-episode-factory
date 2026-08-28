@@ -235,7 +235,13 @@ test('AR31: executable boundary distinguishes enabled presenter from disabled do
   const root = path.join(__dirname, '..');
   assert.equal(executableBoundary.executableLifecycle('presenter_director', { repoRoot: root }).allowed, true);
   assert.equal(executableBoundary.executableLifecycle('creative_director', { repoRoot: root }).code, 'BLOCKED_AGENT_NOT_ENABLED');
-  assert.equal(fs.existsSync(path.join(root, 'scripts/creative-director.js')), false, 'Creative has no executable module to bypass its lifecycle');
+  // The Creative Director module now exists (implementation landed ahead of
+  // enablement), so the boundary is proven the STRONG way: the module is
+  // present but direct CLI invocation is refused fail-closed before any work.
+  assert.equal(fs.existsSync(path.join(root, 'scripts/creative-director.js')), true, 'Creative Director module exists but must stay lifecycle-gated');
+  const refusedCli = childProcess.spawnSync(process.execPath, [path.join(root, 'scripts/creative-director.js'), '--task', 'no-such-task.json'], { encoding: 'utf8' });
+  assert.equal(refusedCli.status, 1, 'direct CLI invocation of a disabled role must exit 1');
+  assert.match(refusedCli.stdout, /BLOCKED_AGENT_NOT_ENABLED/);
   const enabled = childProcess.execFileSync(process.execPath, [path.join(root, 'scripts/editor.js'), '--help'], { encoding: 'utf8' });
   assert.match(enabled, /usage: editor\.js/);
 });

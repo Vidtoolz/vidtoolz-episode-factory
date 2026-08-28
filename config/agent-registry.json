@@ -767,17 +767,27 @@
         "required": [
           "task_id",
           "project_id",
-          "assignment.action in review_coherence|recommend_direction|status",
-          "at least two specialist outputs bound to exact canonical artifact identities"
+          "assignment.action in review_coherence|recommend_direction|status"
+        ],
+        "recommend_direction_required": [
+          "exact script identity binding: canonical Story project/version/content_hash, or a real candidate-script identity (canonical idea id + source/datasheet fingerprints + script bytes sha256)",
+          "script content bound byte-exactly to that identity",
+          "typed human constraints carried as hard local constraints (KEEP/locks/tone/presenter/card directions)",
+          "style reference consumed through the sha-pinned style-reference adapter projection, or an explicit ABSENT declaration — active style authority is never fabricated"
+        ],
+        "review_coherence_required": [
+          "an existing creative-direction artifact to revalidate against current canonical identities",
+          "specialist outputs bound to exact canonical artifact identities, where cross-department evidence exists"
         ],
         "canonical_sources": [
           "canonical Story version and Research Result V1",
+          "human-approved style reference (vidtoolz.styleReference.v1 family) via scripts/style-reference-adapter.js creative_director projection",
           "Visual Plan, Camera findings, Sound & Music candidates, Packaging candidates, Presenter records",
           "prior creative-direction recommendations and their human decisions"
         ],
         "missing_input_state": "INPUT_MISSING or INSUFFICIENT_CROSS_DEPARTMENT_EVIDENCE"
       },
-      "output_contract": "creative-director result envelope: state, coherence findings with artifact refs, alternatives compared, single recommended direction with rationale, tradeoffs, unresolved conflicts preserved verbatim, routed revision requests, provenance, control_room projection — recommendations only, never approvals",
+      "output_contract": "creative-director result envelope: state, one vidtoolz.creativeDirection.v1 artifact (episode-specific creative strategy: thesis, tone, humor setting, visual-mode mix, density arc, Level A/B/C strategy, presenter/proxy policy, information-card strategy, media/motion/typography/ending strategy, intentional house-style deviations with provenance, consequential human decisions, confidence) validated by scripts/creative-direction.js, echoed human constraints with compliance, specialist projections, provenance, control_room projection — recommendations only, never approvals",
       "human_gate_type": "VISUAL_IDENTITY_APPROVAL",
       "approval_binding": "canonical verifyApprovalBinding against exact artifact bytes; STALE or INVALID carries no authority; the agent verifies bindings but never records approval",
       "disagreement_behavior": "A specialist retains authority inside its own scope. Creative Director may recommend against a specialist position but must preserve both positions verbatim as NEEDS_SPECIALIST_REVIEW, or NEEDS_HUMAN_DECISION where human authority applies. It must never manufacture consensus, and never resolve a conflict by asserting seniority.",

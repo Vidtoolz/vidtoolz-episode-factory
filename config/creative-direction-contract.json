@@ -1,0 +1,43 @@
+{
+  "schema_version": "vidtoolz.creativeDirectionContract.v1",
+  "artifact_type": "creative-direction",
+  "artifact_schema": "vidtoolz.creativeDirection.v1",
+  "purpose": "One episode-specific creative strategy per episode, produced by creative_director as a RECOMMENDATION for human review. The direction says WHY / WHAT EXPERIENCE at section/movement altitude; specialists decide HOW inside their domains; QC independently tests whether the draft satisfies the declared intent.",
+  "authority": {
+    "structural_validator": "scripts/creative-direction.js#validateDirection",
+    "digest": "scripts/creative-direction.js#directionDigest (canonical serialization, digest field excluded)",
+    "task_assembler": "scripts/agent-task-creative-direction.js#assembleCreativeDirectionTask",
+    "agent_module": "scripts/creative-director.js (AGENT_ID creative_director; dispatch remains fail-closed until Mikko's enablement decision)",
+    "human_gate": "VISUAL_IDENTITY_APPROVAL (scripts/approval-scopes.js); approval recording is human-exclusive",
+    "approval_validator": "scripts/agent-contract-validator.js#verifyApprovalBindingForScope",
+    "recommendation_not_execution": true,
+    "director_may_record_human_approval": false,
+    "director_may_select_assets": false,
+    "director_may_author_shots": false,
+    "director_may_edit_script": false
+  },
+  "identity_formats": {
+    "direction_id": "creative-direction-<26-char Crockford ULID-style>",
+    "script_identity_kinds": ["CANONICAL_STORY (project_id + version_id + content_hash + approval)", "CANDIDATE_SCRIPT (DISCOVERY_PACKAGE: canonical_idea_id + source_fingerprint + datasheet_fingerprint + script_variant + script_sha256)"]
+  },
+  "consistency_rules": [
+    "script identity is bound exactly; any drift voids the direction (SCRIPT_IDENTITY_DRIFT)",
+    "style reference binding is sha-pinned via the style-reference adapter; ACTIVE_ADVISORY requires human-approval evidence; absence is declared, never fabricated (STYLE_AUTHORITY_FABRICATED)",
+    "every human constraint in the task is echoed verbatim with a compliance statement; typed constraints are deterministically checked; contradiction is CONSTRAINT_CONTRADICTION — validation failure, never a warning",
+    "conflicting human constraints (e.g. TONE_SERIOUS vs TONE_MORE_HUMOR) ESCALATE with both positions preserved; the director never resolves them by synthetic consensus",
+    "PRESENTER_FREE draft policy requires a concrete compensation_directive (P-02 continuous-visual-life equivalence)",
+    "visual_mode_mix weighs all six visual functions exactly once",
+    "intentional deviations always cite a pattern/principle id, carry a creative reason, and require human approval — the director never self-approves a deviation",
+    "human_decisions_required is capped at 4 consequential typed escalations — over-escalation is as invalid as over-deciding",
+    "forbidden vocabulary (shot geometry, asset selection, script text, timing values, infrastructure, approvals) is rejected recursively",
+    "stored direction digest matches canonical serialization; direction revisions are immutable and strictly monotonic"
+  ],
+  "downstream_consumers": {
+    "visual_planning_director": "specialistProjection: full strategy fields — decides beats/shots/cards/treatments itself",
+    "editor": "pace character, density arc, emphasis moments, relief, ending energy — decides cuts/holds/transitions itself",
+    "sound_music_director": "sound_music_intent + music lock — decides cues/mix itself",
+    "audience_packaging_director": "packaging_intent + tone — decides titles/thumbnails itself",
+    "qc_director": "the approved direction as sha-bound intent evidence; QC verdicts never route through the director"
+  },
+  "lifecycle_note": "Module existence is not an authority claim. creative_director stays DEFINED / NOT_PROVEN / DISABLED until the registry enablement prerequisites are met and Mikko records an enablement decision (governance/creative-director-enablement.json, imitating the presenter_director record)."
+}
