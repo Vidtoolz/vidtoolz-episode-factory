@@ -347,16 +347,21 @@ test('SRA28: presenter PRESENCE alone no longer proves Level-C adequacy (Codex e
   assert.equal(report2.findings.filter((f) => f.warning_id === 'W-01').length, 0, 'explicitly claimed presenter motion is a legitimate Level-C source');
 });
 
-test('SRA29: measurement candidates become meaningful ONLY through planned-event correspondence', () => {
-  const planned = [{ t_s: 5, kind: 'CARD_STATE_CHANGE' }, { t_s: 12, kind: 'REFRAME' }];
-  const candidates = [{ t_s: 5.2, signal: 9.1 }, { t_s: 20.0, signal: 44.0 }];
+test('SRA29: measurement candidates become meaningful ONLY through planned-event correspondence, and only from a real change signal', () => {
+  const planned = [{ event_id: 'p1', t_s: 5, kind: 'CARD_STATE_CHANGE' }, { event_id: 'p2', t_s: 12, kind: 'REFRAME' }];
+  const candidates = [
+    { candidate_id: 'c-real', t_s: 5.2, kind: 'VISUAL_CHANGE' }, // real change near a planned event -> confirms
+    { candidate_id: 'c-unplanned', t_s: 20.0, kind: 'VISUAL_CHANGE' }, // real change, no plan -> adjudication
+    { candidate_id: 'c-noise', t_s: 12.0, kind: 'ENCODER_NOISE' }, // noise near a planned event -> never confirms
+  ];
   const bridge = adapter.admitMeasuredEvents(candidates, planned, { toleranceS: 0.5 });
   assert.equal(bridge.confirmed.length, 1);
-  assert.equal(bridge.confirmed[0].authority, 'PLANNED_SEMANTIC_CONFIRMED');
-  assert.equal(bridge.unmatched_candidates.length, 1);
-  assert.equal(bridge.unmatched_candidates[0].authority, 'MEASUREMENT_CANDIDATE');
-  assert.equal(bridge.unmatched_candidates[0].meaningful, false, 'signal magnitude alone never declares MEANINGFUL_VISUAL_EVENT');
-  assert.equal(bridge.unconfirmed_planned.length, 1);
+  assert.equal(bridge.confirmed[0].event_id, 'p1');
+  assert.equal(bridge.confirmed[0].candidate_id, 'c-real');
+  assert.equal(bridge.discarded_noise.length, 1, 'noise never confirms even at a planned timestamp');
+  assert.equal(bridge.unplanned_candidates.length, 1);
+  assert.equal(bridge.unplanned_candidates[0].requires_semantic_adjudication, true);
+  assert.equal(bridge.unconfirmed_planned.length, 1, 'p2 unconfirmed — the only near-timestamp candidate was noise');
 });
 
 test('SRA30: advisory firewall regression — style findings never carry production-blocking fields, even at maximum severity', () => {

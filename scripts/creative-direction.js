@@ -236,22 +236,30 @@ function collectModelProse(value, pathName = '$', out = []) {
  * protected domain (never bare keyword bans — "music" or "cut" alone is legal).
  */
 
-const MUTATION_VERBS = '(?:replace|replaces|replacing|swap|swaps|swapping|regenerat\\w*|re-?generat\\w*|re-?select\\w*|reselect\\w*|remove|removes|removing|discard\\w*|redo|re-?shoot\\w*|re-?score|re-?scoring|substitut\\w*|change|changes|changing|switch\\w*|update|updating|new|different|another|fresh|produce|producing|source|sourcing)';
+// Successor repair: two intent tiers.
+//  - MUTATION_VERBS: identity/selection change (replace, regenerate, retire,
+//    substitute, ...) → hard CONTRADICTION of the protected domain.
+//  - ALTERATION_TERMS: softer change/alternative intent (adjust, minimal,
+//    different, selection, pivot, ...) → HUMAN_CONSTRAINT_AMBIGUITY escalation.
+// Both are authority violations that escalate (never silent PREVIEW_ONLY).
+const MUTATION_VERBS = '(?:replace|replaces|replacing|swap|swaps|swapping|regenerat\\w*|re-?generat\\w*|re-?render\\w*|re-?select\\w*|reselect\\w*|remove|removes|removing|delete|deletes|deleting|discard\\w*|drop|drops|dropping|redo|re-?shoot\\w*|re-?score|re-?scoring|re-?arrang\\w*|substitut\\w*|retire|retires|retiring|switch\\w*|produce|producing|source|sourcing|generate|generating|recreat\\w*|remak\\w*|rebuild\\w*)';
+// Deliberately EXCLUDES common creative words (new/another/fresh) so legitimate
+// Level-B language ("a new visual relationship") is not over-escalated; only
+// change-of-identity/selection intent is treated as ambiguous.
+const ALTERATION_TERMS = '(?:change\\w*|alter\\w*|adjust\\w*|modif\\w*|revis\\w*|rework\\w*|tweak\\w*|minimal|minimi[sz]\\w*|strip\\w*|pivot\\w*|different|alternativ\\w*|alternate|reselection|in\\s+favor\\s+of|instead\\s+of)';
 // Proximity is evaluated WITHIN one sentence (guards split on sentence
 // boundaries), so the window can be generous without crossing statements.
 const NEAR = '\\W+(?:[\\w,;:\'"-]+\\W+){0,14}?';
 const DOMAIN_OBJECTS = Object.freeze({
   MEDIA: '(?:image|images|imagery|media|plate|plates|footage|asset|assets|still|stills|visual|visuals|picture|pictures|graphic|graphics|photo|photos|clip|clips)',
-  MUSIC: '(?:music|track|soundtrack|score|scoring|bed|cue|cues|audio\\s+bed|composition)',
+  MUSIC: '(?:music|track|soundtrack|score|scoring|bed|cue|cues|audio\\s+bed|arrangement|composition)',
   PRESENTER: '(?:presenter|talking\\s*head|host|face|on-?camera)',
   CARDS: '(?:card|cards|infographic|infographics)',
   ENDING: '(?:ending|outro|close|closing|finale)',
 });
 
-// A negator IMMEDIATELY before the mutation verb marks compliance language
-// ("without changing it", "never replace"). Only direct negation skips —
-// "not afraid to replace the music" keeps at least one non-negator word
-// between the negator and the verb and is still caught.
+// A negator IMMEDIATELY before the intent term marks compliance language
+// ("without changing it", "never replace").
 const IMMEDIATE_NEGATION_RE = /(?:\bwithout|\bnever|\bnot|\bno|\bavoid(?:ing)?|don'?t|do\s+not)\s+(?:\w+\s+)?$/i;
 
 function negatedAt(text, index) {
@@ -259,35 +267,52 @@ function negatedAt(text, index) {
 }
 
 function splitSentences(text) {
-  return String(text).split(/(?<=[.!?])\s+/);
+  return String(text).split(/(?<=[.!?;])\s+/);
+}
+
+// A domain-specific scope token (e.g. "S03", "beat-03") is also a protected
+// object: "KEEP S03" + "Replace S03" targets the scope, not a media noun.
+function scopeObjectPattern(scope) {
+  const s = String(scope || '').trim();
+  if (!s || s === 'GLOBAL') return null;
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function scanIntent(prose, objectPattern, verbGroup) {
+  const forward = new RegExp(`\\b(${verbGroup})${NEAR}${objectPattern}\\b`, 'ig');
+  const backward = new RegExp(`\\b${objectPattern}${NEAR}(${verbGroup})\\b`, 'ig');
+  for (const item of prose) {
+    for (const sentence of splitSentences(item.text)) {
+      let match;
+      forward.lastIndex = 0;
+      while ((match = forward.exec(sentence)) !== null) {
+        if (!negatedAt(sentence, match.index)) return { path: item.path, excerpt: match[0].slice(0, 120) };
+      }
+      backward.lastIndex = 0;
+      while ((match = backward.exec(sentence)) !== null) {
+        const verbOffset = match[0].search(new RegExp(verbGroup, 'i'));
+        if (!(verbOffset > 0 && negatedAt(sentence, match.index + verbOffset))) return { path: item.path, excerpt: match[0].slice(0, 120) };
+      }
+    }
+  }
+  return null;
 }
 
 function proseGuardHits(prose, protectedDomains) {
   const hits = [];
   for (const domain of protectedDomains) {
-    const object = DOMAIN_OBJECTS[domain.domain];
-    if (!object) continue; // structural/claims/semantic layers cover the rest
-    const forward = new RegExp(`\\b(${MUTATION_VERBS})${NEAR}${object}\\b`, 'ig');
-    const backward = new RegExp(`\\b${object}${NEAR}(${MUTATION_VERBS})\\b`, 'ig');
-    for (const item of prose) {
-      let found = null;
-      for (const sentence of splitSentences(item.text)) {
-        let match;
-        forward.lastIndex = 0;
-        while (!found && (match = forward.exec(sentence)) !== null) {
-          if (negatedAt(sentence, match.index)) continue;
-          found = match[0];
-        }
-        backward.lastIndex = 0;
-        while (!found && (match = backward.exec(sentence)) !== null) {
-          const verbOffset = match[0].search(new RegExp(MUTATION_VERBS, 'i'));
-          if (verbOffset > 0 && negatedAt(sentence, match.index + verbOffset)) continue;
-          found = match[0];
-        }
-        if (found) break;
-      }
-      if (found) hits.push({ code: domain.violation, constraint_id: domain.constraint_id, domain: domain.domain, path: item.path, excerpt: found.slice(0, 120) });
-    }
+    const nounObject = DOMAIN_OBJECTS[domain.domain];
+    const scopeObject = scopeObjectPattern(domain.scope);
+    // Objects for THIS domain: the domain nouns and/or the specific scope token.
+    const objects = [nounObject, scopeObject].filter(Boolean);
+    if (!objects.length) continue; // structural/claims/semantic layers cover the rest
+    const objectPattern = `(?:${objects.join('|')})`;
+    // Tier 1 — mutation intent → hard contradiction.
+    const mutation = scanIntent(prose, objectPattern, MUTATION_VERBS);
+    if (mutation) { hits.push({ code: domain.violation, tier: 'CONTRADICTION', constraint_id: domain.constraint_id, domain: domain.domain, path: mutation.path, excerpt: mutation.excerpt }); continue; }
+    // Tier 2 — softer alteration/alternative intent → ambiguity escalation.
+    const alteration = scanIntent(prose, objectPattern, ALTERATION_TERMS);
+    if (alteration) hits.push({ code: 'HUMAN_CONSTRAINT_AMBIGUITY', tier: 'AMBIGUITY', constraint_id: domain.constraint_id, domain: domain.domain, path: alteration.path, excerpt: alteration.excerpt });
   }
   return hits;
 }
@@ -302,6 +327,10 @@ const SPECIALIST_DETECTORS = Object.freeze([
   { name: 'degree_coordinates', re: /-?\d{1,3}(?:\.\d+)?\s*°/ },
   { name: 'latlon_pair', re: /\b-?\d{1,3}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}\b/ },
   { name: 'camera_parameter', re: /\b(?:lat|latitude|lon|longitude|heading|pitch|yaw|tilt|fov|focal)\s*[:=]\s*-?\d/i },
+  // Worded coordinates: "latitude 61.200 and longitude 24.900".
+  { name: 'worded_coordinate', re: /\b(?:lat(?:itude)?|lon(?:g|gitude)?)\s+(?:of\s+)?-?\d{1,3}(?:\.\d+)?/i },
+  // Render command / codec / encoder parameters.
+  { name: 'render_command_or_codec', re: /\b(?:ffmpeg|ffprobe|libx26[45]|libvpx|x26[45]|h\.?26[45]|hevc|yuv4[0-9]{2}p|prores|nvenc|vaapi|aac|libmp3lame|vcodec|acodec|-c:v|-c:a|pix_fmt|bitrate)\b/i },
   { name: 'timestamp_seconds', re: /\b(?:at|from|until|to|around)\s+\d+(?:\.\d+)?\s*s(?:ec(?:ond)?s?)?\b/i },
   // minutes:seconds timecodes; common aspect-ratio idioms (9:16, 16:9, 4:3,
   // 21:9, 1:1, 3:4) are legal conceptual language, not execution timing.
@@ -317,6 +346,9 @@ const SPECIALIST_DETECTORS = Object.freeze([
   { name: 'spelled_timestamp', re: /\b(?:at|around|by|near|for|lasting)\s+(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-\s](?:one|two|three|four|five|six|seven|eight|nine))?|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|one|two|three|four|five|six|seven|eight|nine|half\s+a|a\s+quarter)\s+(?:of\s+a\s+)?second(?:s)?\b/i },
   // Spelled-out media filenames: "final dash plate dot png".
   { name: 'spelled_filename', re: /\bdot\s+(?:png|jpe?g|mp4|mov|wav|webm|gif|svg)\b/i },
+  // Spelled-out fractional-second transition timing: "a quarter second",
+  // "half a second", "let the dissolve last a quarter second".
+  { name: 'spelled_fraction_second', re: /\b(?:a\s+|one\s+)?(?:quarter|half|third|two[-\s]thirds|three[-\s]quarters)\s+(?:of\s+a\s+)?seconds?\b/i },
 ]);
 
 function specialistBoundaryHits(prose) {
@@ -332,13 +364,31 @@ function specialistBoundaryHits(prose) {
 
 /* ---- self-approval guard ---------------------------------------------------- */
 
-const SELF_APPROVAL_RE = /\b(?:human[-\s]?approved|approved\s+by\s+(?:the\s+)?(?:human|mikko|operator)|i\s+(?:hereby\s+)?approve|approval\s+(?:granted|given|recorded|obtained)|pre[-\s]?approved|approved\s+(?:house[-\s]?style\s+)?(?:exception|deviation)|consider(?:\s+\w+){0,2}\s+approved|treat(?:\s+\w+){0,3}\s+as\s+approved)\b/i;
+// Approval-claim language has NO legitimate place in creative-direction prose:
+// approval exists only as a recorded human decision with provenance, never as
+// something the model asserts. This matches the approval-claim family broadly.
+const SELF_APPROVAL_RES = [
+  // approval nouns/verbs that are out of place in creative prose
+  /\b(?:pre[-\s]?)?approv(?:e|es|ed|al)\b/i,
+  /\bexempt(?:ion|ed|ions)?\b/i,
+  /\bsanction(?:ed|s)?\b/i,
+  /\bsign[-\s]?off\b/i,
+  // "the user/human/... approved", "human approval: true"
+  /\b(?:user|human|mikko|operator|reviewer)\s+(?:approv\w*|granted|authoriz\w*|permitt\w*|clear\w*|sign)/i,
+  /\b(?:human|user)\s+approval\s*[:=]?\s*(?:true|yes|granted)\b/i,
+  // "granted following an exemption/exception/approval/permission"
+  /\bgrant(?:ed|s)?\b(?:\W+\w+){0,6}?\W+(?:exemption|exception|approval|permission|deviation)/i,
+  /\b(?:consider|treat|deem)\w*(?:\W+\w+){0,3}?\W+approv/i,
+  /\bi\s+(?:hereby\s+)?approve\b/i,
+];
 
 function selfApprovalHits(prose) {
   const hits = [];
   for (const item of prose) {
-    const match = SELF_APPROVAL_RE.exec(item.text);
-    if (match) hits.push({ code: VIOLATION_CODES.SELF_APPROVAL, path: item.path, excerpt: match[0].slice(0, 120) });
+    for (const re of SELF_APPROVAL_RES) {
+      const match = re.exec(item.text);
+      if (match) { hits.push({ code: VIOLATION_CODES.SELF_APPROVAL, path: item.path, excerpt: match[0].slice(0, 120) }); break; }
+    }
   }
   return hits;
 }
@@ -348,12 +398,13 @@ function selfApprovalHits(prose) {
 function validateScriptIdentity(identity, errors, label = 'script_identity') {
   if (!identity || typeof identity !== 'object') { errors.push(`${label} required`); return; }
   if (!SCRIPT_IDENTITY_KINDS.includes(identity.kind)) { errors.push(`${label}.kind invalid`); return; }
+  // SHAPE only. Authority is NOT a boolean here: it is guaranteed by (a) the
+  // module preflight re-resolving the task identity through the pinned store,
+  // and (b) SCRIPT_IDENTITY_DRIFT requiring the direction identity to equal the
+  // re-verified task identity. A copied/forged identity fails those, not a flag.
   if (identity.kind === 'CANONICAL_STORY') {
     if (!norm(identity.project_id) || !norm(identity.version_id) || !SHA256_RE.test(identity.content_hash || '')) {
       errors.push(`${label} canonical Story identity incomplete`);
-    }
-    if (identity.authority_verified !== true) {
-      errors.push(`${VIOLATION_CODES.STORY}: canonical Story identity was not resolved through the canonical Script Builder authority (caller-supplied identity carries no authority)`);
     }
   } else {
     if (identity.source !== 'DISCOVERY_PACKAGE') errors.push(`${label}.source unsupported`);
@@ -361,9 +412,6 @@ function validateScriptIdentity(identity, errors, label = 'script_identity') {
       || !SHA256_RE.test(identity.datasheet_fingerprint || '') || !norm(identity.script_variant)
       || !SHA256_RE.test(identity.script_sha256 || '')) {
       errors.push(`${label} candidate-script identity incomplete`);
-    }
-    if (identity.authority_verified !== true) {
-      errors.push(`${VIOLATION_CODES.STORY}: candidate script was not resolved under the canonical Discovery store authority`);
     }
   }
 }
@@ -642,8 +690,18 @@ function validateDirection(direction, context = {}) {
     }
   }
 
-  return { ok: errors.length === 0, errors, violations };
+  const ok = errors.length === 0;
+  // Capability receipt: a fully-validated direction object is registered in a
+  // module-private WeakSet. Downstream projection requires this membership, so
+  // an arbitrary hand-built object (not produced by successful validation)
+  // cannot be projected. Non-forgeable: the WeakSet is unreachable to callers.
+  if (ok) VALIDATED_ARTIFACTS.add(direction);
+  return { ok, errors, violations };
 }
+
+// Non-forgeable validated-artifact registry (see validateDirection).
+const VALIDATED_ARTIFACTS = new WeakSet();
+function isValidated(direction) { return VALIDATED_ARTIFACTS.has(direction); }
 
 module.exports = {
   SCHEMA, ARTIFACT_TYPE,
@@ -653,5 +711,5 @@ module.exports = {
   PROTECTED_DOMAIN_NAMES, OPERATIONS, VIOLATION_CODES, SPECIALIST_DETECTORS,
   sha256, newDirectionId, canonicalize, directionDigest, forbiddenKeyHits,
   deriveProtectedDomains, collectModelProse, proseGuardHits, specialistBoundaryHits, selfApprovalHits,
-  validateDirection,
+  validateDirection, isValidated,
 };

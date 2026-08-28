@@ -93,14 +93,17 @@ function preflight(task, options = {}) {
   const identity = task.script_identity;
   if (!identity || typeof identity !== 'object') errors.push('script_identity required');
   else if (!cd.SCRIPT_IDENTITY_KINDS.includes(identity.kind)) errors.push('script_identity.kind invalid');
-  else if (identity.authority_verified !== true) {
-    // Caller-supplied identity carries no authority: the assembler must have
-    // resolved it through the canonical Script Builder / Discovery store.
-    errors.push('STORY_AUTHORITY_INVALID: script identity was not resolved through its canonical authority');
-  } else if (identity.kind === 'CANONICAL_STORY') {
-    if (!norm(identity.project_id) || !norm(identity.version_id) || !/^[a-f0-9]{64}$/.test(identity.content_hash || '')) errors.push('canonical Story identity incomplete');
-  } else if (identity.source !== 'DISCOVERY_PACKAGE' || !norm(identity.canonical_idea_id) || !/^[a-f0-9]{64}$/.test(identity.script_sha256 || '')) {
-    errors.push('candidate script identity incomplete');
+  else {
+    // SUCCESSOR REPAIR: the `authority_verified` boolean is NEVER trusted (a
+    // hand-built task can set it). Authority is RE-DERIVED here: the identity
+    // is independently re-resolved through the pinned canonical store and must
+    // match exactly, so a forged/copied identity fails regardless of any flag.
+    // No caller-supplied option can skip this.
+    try {
+      require('./creative-story-authority.js').reverifyIdentity(identity, task.script_content);
+    } catch (error) {
+      errors.push(`STORY_AUTHORITY_INVALID: ${String(error.message).replace(/^[A-Z_]+:\s*/, '')}`);
+    }
   }
 
   if (task.action === 'review_coherence') {
@@ -265,34 +268,70 @@ function buildPrompt(task) {
   ].join('\n');
 }
 
+const SPECIALIST_ROLES = Object.freeze(['visual_planning_director', 'editor', 'sound_music_director', 'audience_packaging_director', 'qc_director']);
+
+// Enum/structured density arc — the ONLY executable form of the arc (groups per
+// section, no prose notes/shape). Free-prose fields never enter the executable
+// surface.
+function executableDensityArc(direction) {
+  return (direction.density_arc?.movements || []).map((m) => ({ section_ref: m.section_ref, density_group: m.density_group }));
+}
+
+/*
+ * SUCCESSOR REPAIR: a projection is only produced from a VALIDATED artifact
+ * (non-forgeable WeakSet receipt), and it strictly separates:
+ *   executable  — action_claims + protected_domains + typed ENUM fields only
+ *   non_executable_rationale — all prose; downstream MUST NOT drive any
+ *                              mutation/planning operation from it.
+ * No free prose ever appears in `executable`. Downstream assemblers consume
+ * `executable` exclusively; rationale informs human understanding only.
+ */
 function specialistProjection(direction, role) {
-  // Downstream execution safety: consumers act ONLY on action_claims and the
-  // typed enum fields; every prose field in a projection is
-  // NON_EXECUTABLE_CREATIVE_RATIONALE and carries no instruction authority.
-  const base = {
-    direction_id: direction.direction_id,
-    direction_digest_sha256: direction.direction_digest_sha256,
-    execution_contract: { executable_surface: 'action_claims', prose_classification: 'NON_EXECUTABLE_CREATIVE_RATIONALE' },
+  if (!cd.isValidated(direction)) {
+    const error = new Error('CREATIVE_DIRECTION_NOT_VALIDATED: specialistProjection requires a direction produced by successful validateDirection; arbitrary objects are refused');
+    error.code = 'CREATIVE_DIRECTION_NOT_VALIDATED';
+    throw error;
+  }
+  if (!SPECIALIST_ROLES.includes(role)) return null;
+  const receipt = { validated_artifact: true, direction_id: direction.direction_id, direction_digest_sha256: direction.direction_digest_sha256 };
+  const executable = {
     action_claims: structuredClone(direction.action_claims || []),
     protected_domains: structuredClone(direction.protected_domains || []),
-    creative_thesis: direction.creative_thesis,
-    tone: direction.tone,
-    context_only: true,
+    execution_contract: { executable_surface: 'action_claims_plus_enum_fields', consume_rationale_for_actions: false },
   };
+  const rationale = { classification: 'NON_EXECUTABLE_CREATIVE_RATIONALE', creative_thesis: direction.creative_thesis, tone: direction.tone };
   switch (role) {
     case 'visual_planning_director':
-      return { ...base, context_only: false, visual_mode_mix: direction.visual_mode_mix, density_arc: direction.density_arc, level_a_strategy: direction.level_a_strategy, level_b_strategy: direction.level_b_strategy, level_c_strategy: direction.level_c_strategy, presenter_policy: direction.presenter_policy, card_strategy: direction.card_strategy, media_strategy: direction.media_strategy, motion_character: direction.motion_character, typography_mode: direction.typography_mode, ending_strategy: direction.ending_strategy, intentional_deviations: direction.intentional_deviations, human_directions_received: direction.human_directions_received };
+      Object.assign(executable, {
+        visual_mode_mix: (direction.visual_mode_mix || []).map((m) => ({ mode: m.mode, weight: m.weight })),
+        density_arc: executableDensityArc(direction),
+        presenter_draft_mode: direction.presenter_policy?.draft_mode || null,
+        card_patterns_suggested: structuredClone(direction.card_strategy?.argument_sections_needing_cards || []),
+        card_pattern_types: structuredClone(direction.card_strategy?.patterns_suggested || []),
+        ending_mode: direction.ending_strategy?.mode || null,
+        intentional_deviation_pattern_refs: (direction.intentional_deviations || []).map((d) => d.pattern_ref),
+        human_directions_received: structuredClone(direction.human_directions_received || []),
+      });
+      Object.assign(rationale, { level_a_strategy: direction.level_a_strategy, level_b_strategy: direction.level_b_strategy, level_c_strategy: direction.level_c_strategy, motion_character: direction.motion_character, typography_mode: direction.typography_mode, media_strategy: direction.media_strategy, presenter_compensation: direction.presenter_policy?.compensation_directive });
+      break;
     case 'editor':
-      return { ...base, context_only: false, pace_character: { energy_arc: direction.tone.energy_arc, motion_character: direction.motion_character }, density_arc: direction.density_arc, emphasis_moments: direction.level_b_strategy.emphasis_moments || [], ending_strategy: { mode: direction.ending_strategy.mode, description: direction.ending_strategy.description } };
+      Object.assign(executable, { density_arc: executableDensityArc(direction), ending_mode: direction.ending_strategy?.mode || null });
+      Object.assign(rationale, { pace_character: { energy_arc: direction.tone?.energy_arc, motion_character: direction.motion_character?.description }, emphasis_moments: direction.level_b_strategy?.emphasis_moments || [], ending_description: direction.ending_strategy?.description });
+      break;
     case 'sound_music_director':
-      return { ...base, context_only: false, sound_music_intent: direction.coherence.sound_music_intent, music_locked: direction.coherence.music_locked === true, ending_mode: direction.ending_strategy.mode, humor_mode: direction.humor.mode };
+      Object.assign(executable, { music_locked: direction.coherence?.music_locked === true, humor_mode: direction.humor?.mode || null, ending_mode: direction.ending_strategy?.mode || null });
+      Object.assign(rationale, { sound_music_intent: direction.coherence?.sound_music_intent });
+      break;
     case 'audience_packaging_director':
-      return { ...base, context_only: false, packaging_intent: direction.coherence.packaging_intent, humor_mode: direction.humor.mode };
+      Object.assign(executable, { humor_mode: direction.humor?.mode || null });
+      Object.assign(rationale, { packaging_intent: direction.coherence?.packaging_intent });
+      break;
     case 'qc_director':
-      return { direction_ref: { direction_id: direction.direction_id, direction_digest_sha256: direction.direction_digest_sha256 }, intentional_deviations: direction.intentional_deviations, human_directions_received: direction.human_directions_received, full_artifact_required: true };
+      return { receipt, full_artifact_required: true, intentional_deviations: structuredClone(direction.intentional_deviations || []), human_directions_received: structuredClone(direction.human_directions_received || []) };
     default:
       return null;
   }
+  return { receipt, role, executable, non_executable_rationale: rationale };
 }
 
 function finish(base, state, reason, nextOwner) {

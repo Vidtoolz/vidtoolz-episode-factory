@@ -207,6 +207,7 @@ node --check scripts/story-workspace.js
 node --check scripts/visual-plan.js
 node --check scripts/style-reference-adapter.js
 node --check scripts/creative-direction.js
+node --check scripts/creative-story-authority.js
 node --check scripts/creative-director.js
 node --check scripts/agent-task-creative-direction.js
 node --check scripts/visual-plan-prompt-adapter.js

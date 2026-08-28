@@ -119,28 +119,94 @@ function admitSemanticEvents(events) {
   return { admitted, errors };
 }
 
+// A PIXEL_SIGNAL candidate that represents a real, non-noise visual change and
+// could therefore support a planned semantic manifestation. Noise classes and
+// pure continuous motion can NEVER support a Level-B confirmation.
+const CONFIRMING_SIGNAL_CLASSES = Object.freeze([
+  'VISUAL_CHANGE', 'FRAME_CHANGE', 'COMPOSITION_CHANGE', 'HARD_CUT', 'CONTENT_CHANGE', 'REVEAL', 'STATE_CHANGE',
+]);
+function isConfirmingSignal(candidate) {
+  const kind = String(candidate?.kind || '').toUpperCase();
+  if (NEVER_MEANINGFUL_EVENT_CLASSES.includes(kind)) return false; // encoder/compression/frame noise never confirms
+  if (CONTINUOUS_MOTION_NON_EVENT_CLASSES.includes(kind)) return false; // motion is Level C, cannot alone confirm B
+  if (CONFIRMING_SIGNAL_CLASSES.includes(kind)) return true;
+  // A candidate carrying an admissible semantic class is also a valid support.
+  return normalizeEventKind(kind) !== null;
+}
+
 /*
- * Bridge from MEASUREMENT SIGNAL to SEMANTIC EVENT AUTHORITY: frame-difference
- * tooling proposes candidates; a candidate becomes a meaningful Level-B event
- * ONLY by corresponding to a planned semantic event (time tolerance) — never
- * by signal magnitude alone. Unmatched candidates stay MEASUREMENT_CANDIDATE.
+ * SUCCESSOR REPAIR (fc2c6f0 child) — EVENT AUTHORITY PIPELINE.
+ * Four distinct concepts:
+ *   PLANNED_EVENT               semantic event authored in the plan (with id)
+ *   PIXEL_SIGNAL (candidate)    raw measurement that something changed (with id)
+ *   CONFIRMED_MEANINGFUL_EVENT  a planned event whose expected manifestation is
+ *                               supported by a NON-NOISE pixel signal near it
+ *   UNPLANNED_EVENT_CANDIDATE   a non-noise signal not matching any planned
+ *                               event — requires semantic adjudication, never
+ *                               auto-counts.
+ * A pixel signal NEVER self-certifies. Noise candidates confirm nothing and are
+ * discarded. Provenance ids (event_id + candidate_id) are preserved.
  */
 function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   const tolerance = options.toleranceS ?? 0.5;
   const planned = admitSemanticEvents(plannedEvents);
-  const remaining = [...planned.admitted];
+  const remaining = planned.admitted.map((p, i) => ({ ...p, event_id: p.event_id ?? `planned-${i + 1}` }));
   const confirmed = [];
-  const unmatched = [];
-  for (const candidate of candidates || []) {
-    const index = remaining.findIndex((p) => Math.abs((p.t_s ?? NaN) - (candidate.t_s ?? NaN)) <= tolerance);
+  const unplanned = [];
+  const discarded_noise = [];
+  (candidates || []).forEach((candidate, i) => {
+    const candidateId = candidate?.candidate_id ?? `signal-${i + 1}`;
+    if (!isConfirmingSignal(candidate)) {
+      // Noise / continuous-motion / unusable signal: can never confirm a
+      // semantic event and never becomes an unplanned candidate.
+      discarded_noise.push({ candidate_id: candidateId, t_s: candidate?.t_s, kind: candidate?.kind, reason: 'non-confirming signal class (noise or continuous motion)' });
+      return;
+    }
+    const index = remaining.findIndex((p) => Math.abs((p.t_s ?? NaN) - (candidate?.t_s ?? NaN)) <= tolerance);
     if (index >= 0) {
       const plan = remaining.splice(index, 1)[0];
-      confirmed.push({ t_s: plan.t_s, kind: plan.kind, authority: 'PLANNED_SEMANTIC_CONFIRMED', measured_t_s: candidate.t_s });
+      confirmed.push({ event_id: plan.event_id, candidate_id: candidateId, t_s: plan.t_s, kind: plan.kind, authority: 'PLANNED_SEMANTIC_CONFIRMED', measured_t_s: candidate?.t_s, supporting_signal_kind: candidate?.kind });
     } else {
-      unmatched.push({ ...candidate, authority: 'MEASUREMENT_CANDIDATE', meaningful: false });
+      // A real change with no planned counterpart: adjudication required, never
+      // auto-counted as meaningful.
+      unplanned.push({ candidate_id: candidateId, t_s: candidate?.t_s, kind: candidate?.kind, authority: 'UNPLANNED_EVENT_CANDIDATE', meaningful: false, requires_semantic_adjudication: true });
     }
+  });
+  return { confirmed, unplanned_candidates: unplanned, discarded_noise, unconfirmed_planned: remaining, errors: planned.errors };
+}
+
+/*
+ * Explicit LEVEL-A macro-state counter. A macro state is a backdrop/composition
+ * state; it changes only at declared macro boundaries, NOT at every beat and
+ * NOT from pixel signal. Consecutive spans that declare the same macro_state_id
+ * (or same plate/backdrop identity) are ONE state.
+ */
+function countMacroStates(spans) {
+  let count = 0;
+  let prev = null;
+  for (const span of spans || []) {
+    const id = span.macro_state_id ?? span.backdrop_id ?? span.plate ?? span.state ?? null;
+    const isBoundary = span.macro_boundary === true || id == null || id !== prev;
+    if (isBoundary) count += 1;
+    prev = id;
   }
-  return { confirmed, unmatched_candidates: unmatched, unconfirmed_planned: remaining, errors: planned.errors };
+  return count;
+}
+
+/*
+ * Explicit A/B/C classification for regression certification. Level B counts
+ * ONLY admitted semantic events; Level C is active-motion coverage; Level A is
+ * the macro-state count. The three are never conflated.
+ */
+function classifyProgrammeLevels(programme) {
+  const bAdmission = admitSemanticEvents(programme.b_events || []);
+  const activeC = (programme.spans || []).some((s) => ACTIVE_LEVEL_C_CLASSES.includes((s.level_c || {}).class));
+  return {
+    level_a_macro_states: countMacroStates(programme.spans || []),
+    level_b_meaningful_events: bAdmission.admitted.length,
+    level_b_errors: bAdmission.errors,
+    level_c_active: activeC,
+  };
 }
 
 const DENSITY_GROUPS = Object.freeze({
@@ -532,6 +598,9 @@ module.exports = {
   normalizeEventKind,
   admitSemanticEvents,
   admitMeasuredEvents,
+  countMacroStates,
+  classifyProgrammeLevels,
+  CONFIRMING_SIGNAL_CLASSES,
   StyleReferenceError,
   sha256,
   loadContract,

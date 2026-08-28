@@ -19,6 +19,25 @@ const clone = (v) => structuredClone(v);
 const ROUTE = { ok: true, decision: 'ROUTE', selected_host: 'test', endpoint: 'http://test', model: 'test-model' };
 const routeSelector = () => ({ ...ROUTE });
 
+// SUCCESSOR REPAIR: roots are the pinned DEPLOYMENT authority (env), never a
+// task/caller field. The hermetic Discovery store is set at file load and holds
+// the fixture package STORE-ADDRESSABLE at <root>/<canonical_idea_id>.json.
+const PKG = JSON.parse(fs.readFileSync(PACKAGE_FIXTURE, 'utf8'));
+const CANON_IDEA_ID = PKG.canonical_idea_id;
+const DISCOVERY_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-discovery-'));
+fs.writeFileSync(path.join(DISCOVERY_STORE, `${CANON_IDEA_ID}.json`), JSON.stringify(PKG));
+process.env.VIDTOOLZ_DISCOVERY_ROOT = DISCOVERY_STORE;
+
+// Run a function with the hermetic Script Builder store env active, restoring
+// the suite-wide VIDTOOLZ_SCRIPT_BUILDER_ROOT afterward so other suites are
+// unaffected.
+async function withScriptBuilder(root, fn) {
+  const prev = process.env.VIDTOOLZ_SCRIPT_BUILDER_ROOT;
+  process.env.VIDTOOLZ_SCRIPT_BUILDER_ROOT = root;
+  try { return await fn(); }
+  finally { if (prev === undefined) delete process.env.VIDTOOLZ_SCRIPT_BUILDER_ROOT; else process.env.VIDTOOLZ_SCRIPT_BUILDER_ROOT = prev; }
+}
+
 /* ── hermetic Script Builder authority (pinned clone + two seeded versions) ── */
 let SB = null;
 function hermeticStore() {
@@ -54,7 +73,7 @@ function hermeticStore() {
 function makeTask(overrides = {}) {
   const task = assembler.assembleCreativeDirectionTask({
     taskId: overrides.taskId || 'task-cd-0001', requestedBy: 'mikko', projectId: 'project-cd-0001',
-    script: overrides.script || { discoveryPackagePath: PACKAGE_FIXTURE, discoveryRoot: FIXTURE_DIR },
+    script: overrides.script || { canonicalIdeaId: CANON_IDEA_ID, variant: 'structure_a' },
     styleReference: STYLE_CONFIG,
     humanConstraints: overrides.humanConstraints || [],
   });
@@ -112,72 +131,70 @@ function taskContext(task) {
 
 /* ══ STORY AUTHORITY (Codex defect class A) ═════════════════════════════════ */
 
-test('CDA1: wrong-project Story is refused (STORY_AUTHORITY_INVALID)', () => {
+test('CDA1: wrong-project Story is refused (STORY_AUTHORITY_INVALID)', async () => {
   const sb = hermeticStore();
-  assert.throws(
-    () => assembler.canonicalStoryScript({ project_id: '01M0FAKEPROJECT00000000000', version_id: sb.v2 }, { scriptBuilderRoot: sb.root }),
-    (e) => e.code === 'STORY_AUTHORITY_INVALID' && /No project|not found/i.test(e.message)
-  );
+  await withScriptBuilder(sb.root, () => assert.throws(
+    () => assembler.canonicalStoryScript({ project_id: '01M0FAKEPROJECT00000000000', version_id: sb.v2 }),
+    (e) => e.code === 'STORY_AUTHORITY_INVALID' && /No project|not found/i.test(e.message)));
 });
 
-test('CDA2: stale predecessor Story is refused where current head is required', () => {
+test('CDA2: stale predecessor Story is refused where current head is required', async () => {
   const sb = hermeticStore();
-  assert.throws(
-    () => assembler.canonicalStoryScript({ project_id: sb.projectId, version_id: sb.v1 }, { scriptBuilderRoot: sb.root }),
-    (e) => e.code === 'STORY_AUTHORITY_INVALID' && /stale/.test(e.message)
-  );
+  await withScriptBuilder(sb.root, () => assert.throws(
+    () => assembler.canonicalStoryScript({ project_id: sb.projectId, version_id: sb.v1 }),
+    (e) => e.code === 'STORY_AUTHORITY_INVALID' && /stale/.test(e.message)));
 });
 
-test('CDA3: forged content hash is refused — identity comes FROM the store, never the caller', () => {
+test('CDA3: forged content hash is refused — identity comes FROM the store, never the caller', async () => {
   const sb = hermeticStore();
-  assert.throws(
-    () => assembler.canonicalStoryScript({ project_id: sb.projectId, version_id: sb.v2, content_hash: 'f'.repeat(64) }, { scriptBuilderRoot: sb.root }),
-    (e) => e.code === 'STORY_AUTHORITY_INVALID' && /content hash/.test(e.message)
-  );
+  await withScriptBuilder(sb.root, () => assert.throws(
+    () => assembler.canonicalStoryScript({ project_id: sb.projectId, version_id: sb.v2, content_hash: 'f'.repeat(64) }),
+    (e) => e.code === 'STORY_AUTHORITY_INVALID' && /content hash/.test(e.message)));
 });
 
-test('CDA4: valid canonical head Story passes with store-derived identity + authority_verified', () => {
+test('CDA4: valid canonical head Story passes with a non-forgeable resolver receipt', async () => {
   const sb = hermeticStore();
-  const bound = assembler.canonicalStoryScript({ project_id: sb.projectId, version_id: sb.v2 }, { scriptBuilderRoot: sb.root });
-  assert.equal(bound.script_identity.authority_verified, true);
-  assert.equal(bound.script_identity.content_hash, sb.v2Hash);
-  assert.equal(bound.script_identity.approval.state, 'none');
-  assert.equal(bound.script_content.sections.length, 2);
+  await withScriptBuilder(sb.root, () => {
+    const bound = assembler.canonicalStoryScript({ project_id: sb.projectId, version_id: sb.v2 });
+    assert.equal(bound.script_identity.content_hash, sb.v2Hash);
+    assert.equal(require('../scripts/creative-story-authority.js').isResolvedIdentity(bound.script_identity), true);
+    assert.equal(bound.script_content.sections.length, 2);
+  });
 });
 
-test('CDA5: Discovery package outside the canonical store root is refused', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-outside-'));
-  const rogue = path.join(tmp, 'rogue-package.json');
-  fs.copyFileSync(PACKAGE_FIXTURE, rogue);
-  assert.throws(
-    () => assembler.candidateScriptFromDiscoveryPackage(rogue, 'structure_a', { discoveryRoot: FIXTURE_DIR }),
-    (e) => e.code === 'STORY_AUTHORITY_INVALID' && /escapes the canonical Discovery store/.test(e.message)
-  );
-  fs.rmSync(tmp, { recursive: true, force: true });
+test('CDA5: a caller cannot select the Script Builder or Discovery root (options removed)', () => {
+  // The public API accepts only an id/project-version; there is no root option.
+  assert.equal('discoveryRoot' in Object(assembler), false);
+  const canonSig = assembler.canonicalStoryScript.length;
+  assert.ok(canonSig <= 1, 'canonicalStoryScript takes no options/root argument');
+  const discSig = assembler.candidateScriptFromDiscoveryPackage.length;
+  assert.ok(discSig <= 2, 'candidateScriptFromDiscoveryPackage takes only (id, variant)');
 });
 
-test('CDA6: valid Discovery package passes under its own authority contract (root-confined, fingerprints consistent)', () => {
-  const bound = assembler.candidateScriptFromDiscoveryPackage(PACKAGE_FIXTURE, 'structure_a', { discoveryRoot: FIXTURE_DIR });
-  assert.equal(bound.script_identity.authority_verified, true);
-  assert.equal(bound.script_identity.authority_root, fs.realpathSync(FIXTURE_DIR));
+test('CDA6: valid Discovery candidate passes; a foreign/hand-copied package is not store-addressable', () => {
+  const bound = assembler.candidateScriptFromDiscoveryPackage(CANON_IDEA_ID, 'structure_a');
+  assert.equal(require('../scripts/creative-story-authority.js').isResolvedIdentity(bound.script_identity), true);
+  // A canonical_idea_id not present in the pinned store is refused.
+  assert.throws(() => assembler.candidateScriptFromDiscoveryPackage('canon_not_in_store_9999', 'structure_a'),
+    (e) => e.code === 'STORY_AUTHORITY_INVALID' && /not present in the pinned Discovery store/.test(e.message));
 });
 
 test('CDA7: internally inconsistent Discovery fingerprints are refused', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-fp-'));
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-fp-store-'));
   const pkg = JSON.parse(fs.readFileSync(PACKAGE_FIXTURE, 'utf8'));
   pkg.validation = { datasheet: { status: 'PASS', fingerprint: 'a'.repeat(64) } };
-  const p = path.join(tmp, 'inconsistent.json');
-  fs.writeFileSync(p, JSON.stringify(pkg));
-  assert.throws(
-    () => assembler.candidateScriptFromDiscoveryPackage(p, 'structure_a', { discoveryRoot: tmp }),
-    (e) => e.code === 'STORY_AUTHORITY_INVALID' && /internally inconsistent/.test(e.message)
-  );
-  fs.rmSync(tmp, { recursive: true, force: true });
+  fs.writeFileSync(path.join(store, `${pkg.canonical_idea_id}.json`), JSON.stringify(pkg));
+  const prev = process.env.VIDTOOLZ_DISCOVERY_ROOT;
+  process.env.VIDTOOLZ_DISCOVERY_ROOT = store;
+  try {
+    assert.throws(() => assembler.candidateScriptFromDiscoveryPackage(pkg.canonical_idea_id, 'structure_a'),
+      (e) => e.code === 'STORY_AUTHORITY_INVALID' && /internally inconsistent/.test(e.message));
+  } finally { process.env.VIDTOOLZ_DISCOVERY_ROOT = prev; fs.rmSync(store, { recursive: true, force: true }); }
 });
 
-test('CDA8: a hand-built task with unverified identity is BLOCKED at module preflight', async () => {
+test('CDA8: a hand-built task carrying authority_verified=true + a forged identity is refused by re-resolution', async () => {
   const task = makeTask();
-  task.script_identity = { ...task.script_identity, authority_verified: false };
+  task.script_identity = { kind: 'CANONICAL_STORY', project_id: 'FAKEPROJECT', version_id: 'FAKEVERSION', content_hash: 'f'.repeat(64), approval: { state: 'none' }, authority_verified: true };
   const out = await runDirector(task, makeSemantic());
   assert.equal(out.state, 'BLOCKED');
   assert.match(out.reason, /STORY_AUTHORITY_INVALID/);
@@ -483,10 +500,18 @@ test('CDD1: specialist projections carry the execution contract; prose stays non
   const out = await runDirector(makeTask(), makeSemantic({ action_claims: [{ claim_id: 'ac-01', domain: 'CARDS', operation: 'ADD', scope: 'beat-02', summary: 'a labelled concept card carries the mechanism' }] }));
   for (const role of ['visual_planning_director', 'editor', 'sound_music_director', 'audience_packaging_director']) {
     const projection = director.specialistProjection(out.creative_direction, role);
-    assert.equal(projection.execution_contract.executable_surface, 'action_claims', role);
-    assert.equal(projection.execution_contract.prose_classification, 'NON_EXECUTABLE_CREATIVE_RATIONALE', role);
-    assert.ok(Array.isArray(projection.action_claims), role);
+    assert.equal(projection.receipt.validated_artifact, true, role);
+    assert.equal(projection.executable.execution_contract.consume_rationale_for_actions, false, role);
+    assert.ok(Array.isArray(projection.executable.action_claims), role);
+    assert.equal(projection.non_executable_rationale.classification, 'NON_EXECUTABLE_CREATIVE_RATIONALE', role);
+    // No rationale prose field leaks into the executable surface (action-claim
+    // summaries are part of the typed, validated executable contract).
+    const executableStr = JSON.stringify(projection.executable);
+    assert.equal(/energy_arc|sound_music_intent|packaging_intent|creative_thesis|ending_description|"statement"/.test(executableStr), false, `${role} executable must be rationale-prose-free`);
   }
+  // Projecting an unvalidated (hand-built) object is refused.
+  assert.throws(() => director.specialistProjection({ direction_id: 'x', action_claims: [] }, 'editor'),
+    (e) => e.code === 'CREATIVE_DIRECTION_NOT_VALIDATED');
 });
 
 /* ══ REGRESSIONS KEPT FROM v1 (dispatch fences, envelope, style firewall) ═══ */
@@ -509,12 +534,15 @@ test('CDK2: run envelope still satisfies the canonical runner contract; digest i
 });
 
 test('CDK3: assembler refuses canary/trial packages and fabricated ACTIVE style authority (kept)', async () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-canary2-'));
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-canary2-store-'));
   const pkg = JSON.parse(fs.readFileSync(PACKAGE_FIXTURE, 'utf8'));
   pkg.datasheet.best_title = 'CANARY — trial (NOT FOR PUBLICATION)';
-  fs.writeFileSync(path.join(tmp, 'c.json'), JSON.stringify(pkg));
-  assert.throws(() => assembler.candidateScriptFromDiscoveryPackage(path.join(tmp, 'c.json'), 'structure_a', { discoveryRoot: tmp }), (e) => e.code === 'CANDIDATE_PACKAGE_IS_CANARY');
-  fs.rmSync(tmp, { recursive: true, force: true });
+  fs.writeFileSync(path.join(store, `${pkg.canonical_idea_id}.json`), JSON.stringify(pkg));
+  const prev = process.env.VIDTOOLZ_DISCOVERY_ROOT;
+  process.env.VIDTOOLZ_DISCOVERY_ROOT = store;
+  try {
+    assert.throws(() => assembler.candidateScriptFromDiscoveryPackage(pkg.canonical_idea_id, 'structure_a'), (e) => e.code === 'CANDIDATE_PACKAGE_IS_CANARY');
+  } finally { process.env.VIDTOOLZ_DISCOVERY_ROOT = prev; fs.rmSync(store, { recursive: true, force: true }); }
   const task = makeTask();
   task.style_reference.human_approved = false;
   const out = await runDirector(task, makeSemantic());
@@ -577,4 +605,94 @@ test('CDX4: malformed model output (array fields returned as scalars/objects) fa
     assert.ok(['ESCALATED', 'BLOCKED'].includes(out.state), `${JSON.stringify(shape)} => ${out.state}`);
     assert.equal(out.creative_direction, null, 'no artifact ships from malformed output');
   }
+});
+
+/* ══ SUCCESSOR REPAIR — exact Codex re-audit blocking cases (fc2c6f0 child) ══ */
+
+function withCompliance(constraints, overrides) {
+  const cc = constraints.map((c) => ({ constraint_id: c.constraint_id, compliance: 'noted' }));
+  return makeSemantic({ ...overrides, constraint_compliance: cc });
+}
+
+test('CDN1 (CODX-KEEP-03): KEEP scope-token + "Replace S03." in prose is rejected (scope-token guard)', async () => {
+  const K = { constraint_id: 'k', type: 'KEEP_MEDIA', scope: 'S03', text: 'KEEP all images in S03' };
+  const out = await runDirector(makeTask({ humanConstraints: [K] }), withCompliance([K], { level_a_strategy: { macro_philosophy: 'Replace S03.' }, media_strategy: { generation_philosophy: 'x', reuse_directive: 'x', locked_scopes: ['S03'], replacement_requests: [] } }));
+  assert.equal(out.state, 'ESCALATED');
+  assert.match(out.reason, /HUMAN_KEEP_MEDIA_CONTRADICTION|HUMAN_CONSTRAINT_AMBIGUITY/);
+});
+
+for (const [id, prose] of [
+  ['CDN2a (CODX-MUSIC-02)', 'Keep music locked, but use a more minimal track.'],
+  ['CDN2b (CODX-MUSIC-03)', 'Music is locked; adjust composition and selection.'],
+  ['CDN2c (CODX-MUSIC-04)', 'current audio secured; pivot to an essential arrangement stripped toward silence.'],
+]) {
+  test(`CDN2 ${id}: MUSIC_LOCK euphemistic mutation in prose is rejected/escalated`, async () => {
+    const M = { constraint_id: 'm', type: 'MUSIC_LOCK', text: 'do not change music' };
+    const out = await runDirector(makeTask({ humanConstraints: [M] }), withCompliance([M], { coherence: { sound_music_intent: prose, music_locked: true, packaging_intent: 'x' } }));
+    assert.equal(out.state, 'ESCALATED', prose);
+    assert.match(out.reason, /HUMAN_MUSIC_LOCK_CONTRADICTION|HUMAN_CONSTRAINT_AMBIGUITY/);
+  });
+}
+
+test('CDN3 (CODX-CUSTOM-02): structured CUSTOM MEDIA + "Retire the current visuals in favor of alternatives" rejected', async () => {
+  const C = { constraint_id: 'c', type: 'CUSTOM', text: 'keep media', protected: { domain: 'MEDIA', forbidden_operations: ['REPLACE', 'CHANGE', 'MATERIALLY_ALTER'] } };
+  const out = await runDirector(makeTask({ humanConstraints: [C] }), withCompliance([C], { media_strategy: { generation_philosophy: 'Retire the current visuals in favor of alternatives.', reuse_directive: 'x', locked_scopes: [], replacement_requests: [] } }));
+  assert.equal(out.state, 'ESCALATED');
+  assert.match(out.reason, /HUMAN_CUSTOM_CONSTRAINT_CONTRADICTION|HUMAN_CONSTRAINT_AMBIGUITY/);
+});
+
+for (const [id, text] of [
+  ['CDN4a (CODX-APPROVE-03)', 'The user approved this.'],
+  ['CDN4b (CODX-APPROVE-04)', 'Human approval: true.'],
+  ['CDN4c (CODX-APPROVE-05)', 'The request was granted following a specific exemption.'],
+]) {
+  test(`CDN4 ${id}: approval-claim in prose is rejected`, async () => {
+    const out = await runDirector(makeTask(), makeSemantic({ level_c_strategy: { life_sources: ['DRIFT'], static_policy: text } }));
+    assert.equal(out.state, 'ESCALATED', text);
+    assert.match(out.reason, /HOUSE_STYLE_SELF_APPROVAL_FORBIDDEN/);
+  });
+}
+
+for (const [id, text] of [
+  ['CDN5a (CODX-SPEC-03)', 'anchor everything on latitude 61.200 and longitude 24.900'],
+  ['CDN5b (CODX-SPEC-04)', 'Run ffmpeg with libx264 and yuv420p at the end'],
+  ['CDN5c (CODX-SPEC-05)', 'Let the dissolve last a quarter second'],
+]) {
+  test(`CDN5 ${id}: specialist execution detail in prose is rejected`, async () => {
+    const out = await runDirector(makeTask(), makeSemantic({ motion_character: { description: text } }));
+    assert.equal(out.state, 'ESCALATED', text);
+    assert.match(out.reason, /SPECIALIST_EXECUTION_BOUNDARY_VIOLATION/);
+  });
+}
+
+test('CDN6 (CODX-EVENT-01): an encoder-noise signal cannot confirm a planned Level-B event; ids preserved', () => {
+  const adapter = require('../scripts/style-reference-adapter.js');
+  const noise = adapter.admitMeasuredEvents([{ candidate_id: 'signal-noise-1', t_s: 5, kind: 'ENCODER_NOISE' }], [{ event_id: 'planned-label-1', t_s: 5, kind: 'LABEL_REVEAL' }]);
+  assert.equal(noise.confirmed.length, 0);
+  assert.equal(noise.discarded_noise.length, 1);
+  assert.equal(noise.unconfirmed_planned.length, 1);
+  const real = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], [{ event_id: 'planned-label-1', t_s: 5, kind: 'LABEL_REVEAL' }]);
+  assert.equal(real.confirmed.length, 1);
+  assert.equal(real.confirmed[0].event_id, 'planned-label-1');
+  assert.equal(real.confirmed[0].candidate_id, 'signal-vc-1');
+});
+
+test('CDN7: explicit Level-A macro-state counter (no conflation with B/C)', () => {
+  const adapter = require('../scripts/style-reference-adapter.js');
+  assert.equal(adapter.countMacroStates([{ plate: 'A' }, { plate: 'A' }, { plate: 'B' }, { plate: 'A' }]), 3);
+  const levels = adapter.classifyProgrammeLevels({ spans: [{ plate: 'A', level_c: { class: 'DRIFT' } }, { plate: 'A', level_c: { class: 'DRIFT' } }, { plate: 'B', level_c: { class: 'DRIFT' } }], b_events: [{ kind: 'LABEL_REVEAL' }, { kind: 'cut' }] });
+  assert.equal(levels.level_a_macro_states, 2);
+  assert.equal(levels.level_b_meaningful_events, 1, 'a cut without semantic_change is not Level B');
+  assert.equal(levels.level_c_active, true);
+});
+
+test('CDN8: downstream projection separates executable structured fields from non-executable rationale, and requires a validated receipt', async () => {
+  const out = await runDirector(makeTask(), makeSemantic({ action_claims: [{ claim_id: 'ac-1', domain: 'CARDS', operation: 'ADD', scope: 'beat-02', summary: 'labelled concept card' }] }));
+  const vp = director.specialistProjection(out.creative_direction, 'visual_planning_director');
+  assert.equal(vp.receipt.validated_artifact, true);
+  assert.equal(vp.executable.execution_contract.consume_rationale_for_actions, false);
+  // rationale prose (e.g. media_strategy generation philosophy) is under non_executable_rationale only
+  assert.ok('media_strategy' in vp.non_executable_rationale);
+  assert.equal('media_strategy' in vp.executable, false);
+  assert.throws(() => director.specialistProjection({ action_claims: [] }, 'visual_planning_director'), (e) => e.code === 'CREATIVE_DIRECTION_NOT_VALIDATED');
 });
