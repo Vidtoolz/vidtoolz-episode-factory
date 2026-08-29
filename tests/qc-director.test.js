@@ -768,3 +768,134 @@ test('dispatch authority refuses a candidate implementation even when the module
   assert.equal(readiness.code, 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
   assert.equal(readiness.module_exists, true);
 });
+
+// ── C1 style-reference ADVISORY consumption (Approval C, 2026-08-29) ─────
+// The certified fixture is copied into the hermetic QC repo root so the
+// advisory seam consumes it through the SAME certified adapter + binding
+// machinery production uses. Nothing here may block, score, or mutate.
+
+const STYLE_FIXTURE_SRC = path.join(REPO_ROOT, 'tests', 'fixtures', 'style-reference', 'VIDTOOLZ_STYLE_REFERENCE_V1.json');
+const STYLE_SHA = 'b357d23956bc3fd7a956372347e59cae4b10bb0064d3e9b19ec2819207fa8e41';
+const styleRef = writeArtifact('style/VIDTOOLZ_STYLE_REFERENCE_V1.json', fs.readFileSync(STYLE_FIXTURE_SRC, 'utf8'));
+assert.equal(styleRef.sha256, STYLE_SHA, 'fixture must be the approved V1 reference');
+
+function styleAdvisoryTask(programme, extra = {}) {
+  return baseTask({
+    style_reference: {
+      reference_path: 'style/VIDTOOLZ_STYLE_REFERENCE_V1.json',
+      expected_binding: { reference_id: 'VIDTOOLZ_STYLE_REFERENCE_V1', sha256: STYLE_SHA },
+      programme,
+      ...extra,
+    },
+  });
+}
+
+// Human-reference-like programme: ~26 meaningful events/min, no long dead
+// gaps, presenter-free but visually alive spans, designed ending.
+function referenceLikeProgramme() {
+  const duration_s = 60;
+  const b_events = [];
+  for (let i = 0; i < 26; i += 1) b_events.push({ t_s: Number((1 + i * 2.2).toFixed(2)), kind: 'CARD_STATE_CHANGE', asset_id: `card-${i}` });
+  return {
+    duration_s,
+    spans: [
+      { start_s: 0, end_s: 30, presenter: 'ABSENT', level_c: { class: 'GRAPHIC_EVOLUTION' }, density: 'READABLE', text_bearing: false },
+      { start_s: 30, end_s: 60, presenter: 'ABSENT', level_c: { class: 'DRIFT' }, density: 'QUIET', text_bearing: false },
+    ],
+    b_events,
+    ending: { designed_card: true },
+  };
+}
+
+test('C1-QC1: reference-like programme yields advisory findings and cannot change the disposition', () => {
+  const withStyle = inspect(styleAdvisoryTask(referenceLikeProgramme()));
+  const baseline = inspect(baseTask());
+  assert.equal(withStyle.disposition, baseline.disposition, 'style advisory must never move the disposition');
+  assert.equal(withStyle.blockers.length, baseline.blockers.length, 'style advisory must never add blockers');
+  assert.ok(withStyle.style_advisory, 'advisory context must be attached');
+  assert.equal(withStyle.style_advisory.state, 'ADVISORY_ONLY');
+  assert.equal(withStyle.style_advisory.tier, 'ADVISORY_ONLY');
+  assert.equal(withStyle.style_advisory.advisory_only, true);
+  assert.equal(withStyle.style_advisory.affected_disposition, false);
+  assert.equal(withStyle.style_advisory.no_aggregate_score, true);
+  assert.ok(!Object.keys(withStyle.style_advisory).some((key) => key !== 'no_aggregate_score' && /score/i.test(key)), 'no aggregate style score field may exist');
+  assert.ok(withStyle.style_advisory.findings.every((f) => !('score' in f)), 'findings carry evidence, never a score');
+  // Exact canonical binding surfaces in the advisory evidence.
+  assert.equal(withStyle.style_advisory.style_binding.reference_id, 'VIDTOOLZ_STYLE_REFERENCE_V1');
+  assert.equal(withStyle.style_advisory.style_binding.sha256, STYLE_SHA);
+  assert.equal(withStyle.style_advisory.style_binding.approved_by, 'Mikko');
+  assert.ok(withStyle.style_advisory.findings.some((f) => f.verdict === 'REFERENCE_MATCH'), 'a reference-like programme matches');
+});
+
+test('C1-QC2: Level A/B/C remain separate in the advisory evidence', () => {
+  const result = inspect(styleAdvisoryTask(referenceLikeProgramme()));
+  const sep = result.style_advisory.level_separation;
+  assert.ok(sep && Number.isInteger(sep.level_a) && Number.isInteger(sep.level_b) && Number.isInteger(sep.level_c), 'levels are reported separately, never collapsed');
+  for (const f of result.style_advisory.findings) assert.ok(['A', 'B', 'C', 'GRAMMAR'].includes(f.level), `finding carries its own level: ${f.level}`);
+  const collapsed = JSON.stringify(result.style_advisory);
+  assert.equal(/cut_count|motion_count|single_style_score/.test(collapsed), false, 'no collapsed single-metric reporting');
+});
+
+test('C1-QC3: weak Level-B programme warns but disposition stays unchanged (advisory only)', () => {
+  const weak = {
+    duration_s: 60,
+    spans: [{ start_s: 0, end_s: 60, presenter: 'ABSENT', level_c: { class: 'STATIC', reason: 'explicit_creative_choice' }, density: 'QUIET', text_bearing: false }],
+    b_events: [
+      { t_s: 2, kind: 'CARD_STATE_CHANGE' }, { t_s: 15, kind: 'REFRAME' },
+      { t_s: 40, kind: 'LABEL_REVEAL' }, { t_s: 55, kind: 'COMPOSITION_CHANGE' },
+    ],
+    ending: { designed_card: true },
+  };
+  const withStyle = inspect(styleAdvisoryTask(weak));
+  const baseline = inspect(baseTask());
+  assert.equal(withStyle.disposition, baseline.disposition, 'weak style never blocks, fails, or escalates');
+  assert.equal(withStyle.blockers.length, 0);
+  const verdicts = withStyle.style_advisory.findings.map((f) => f.verdict);
+  assert.ok(verdicts.includes('REFERENCE_WARNING'), 'below-band Level-B density warns');
+  for (const v of verdicts) assert.ok(['REFERENCE_MATCH', 'REFERENCE_WARNING', 'REFERENCE_OUTLIER'].includes(v), `verdict is advisory vocabulary only: ${v}`);
+});
+
+test('C1-QC4: presenter-free but visually alive draft does not warn on presenter absence alone', () => {
+  const alive = referenceLikeProgramme();
+  const result = inspect(styleAdvisoryTask(alive));
+  assert.equal(result.style_advisory.findings.some((f) => f.warning_id === 'W-08'), false, 'presenter absence with continuous visual life is legal');
+  // Same programme with a dead, unexplained presenter-free span: advisory W-08
+  // concern, still never a failure.
+  const dead = referenceLikeProgramme();
+  dead.spans.push({ start_s: 60, end_s: 90, presenter: 'ABSENT', level_c: { class: 'STATIC' }, density: 'QUIET', text_bearing: false });
+  dead.duration_s = 90;
+  dead.b_events.push({ t_s: 75, kind: 'CARD_STATE_CHANGE' });
+  const deadResult = inspect(styleAdvisoryTask(dead));
+  assert.ok(deadResult.style_advisory.findings.some((f) => f.warning_id === 'W-08'), 'uncovered presenter-free span raises an advisory concern');
+  assert.equal(deadResult.blockers.length, 0, 'the concern is advisory only — presenter absence is never a failure');
+});
+
+test('C1-QC5: declared episode deviation resolves to DEVIATION_ACKNOWLEDGED and stays advisory', () => {
+  const weak = {
+    duration_s: 60,
+    spans: [{ start_s: 0, end_s: 60, presenter: 'ABSENT', level_c: { class: 'STATIC', reason: 'explicit_creative_choice' }, density: 'QUIET', text_bearing: false }],
+    b_events: [{ t_s: 2, kind: 'CARD_STATE_CHANGE' }, { t_s: 55, kind: 'REFRAME' }],
+    ending: { designed_card: true },
+  };
+  const result = inspect(styleAdvisoryTask(weak, { deviations: [{ dimension: 'b_density', reason: 'deliberate slow opening approved by Mikko' }] }));
+  const density = result.style_advisory.findings.find((f) => f.dimension === 'b_density');
+  assert.ok(density, 'the warning exists');
+  assert.equal(density.status, 'DEVIATION_ACKNOWLEDGED', 'declared deviation is acknowledged, never enforced');
+});
+
+test('C1-QC6: wrong reference hash degrades to STYLE_REFERENCE_UNAVAILABLE — never a blocker, never silent defaults', () => {
+  const task = styleAdvisoryTask(referenceLikeProgramme());
+  task.style_reference.expected_binding = { reference_id: 'VIDTOOLZ_STYLE_REFERENCE_V1', sha256: '0'.repeat(64) };
+  const result = inspect(task);
+  const baseline = inspect(baseTask());
+  assert.equal(result.style_advisory.state, 'STYLE_REFERENCE_UNAVAILABLE');
+  assert.equal(result.style_advisory.code, 'STYLE_REFERENCE_BINDING_MISMATCH');
+  assert.deepEqual(result.style_advisory.findings, []);
+  assert.equal(result.disposition, baseline.disposition, 'unavailable style never blocks');
+  assert.equal(result.blockers.length, 0);
+});
+
+test('C1-QC7: absent style_reference keeps legacy QC semantics exactly (no advisory field change)', () => {
+  const legacy = inspect(baseTask());
+  assert.equal(legacy.style_advisory, null, 'no style_reference declared => no advisory context');
+});

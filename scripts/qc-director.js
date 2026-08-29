@@ -29,6 +29,7 @@ const { guardExecutableLifecycle } = require('./agent-executable-boundary.js');
 const contractValidator = require('./agent-contract-validator.js');
 const approvalScopes = require('./approval-scopes.js');
 const evidencePolicy = require('./qc-evidence-policy.js');
+const styleAdapter = require('./style-reference-adapter.js');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const AGENT_ID = 'qc_director';
@@ -71,7 +72,7 @@ const AESTHETIC_DIMENSIONS = Object.freeze([
 const TASK_FIELDS = Object.freeze([
   'task_id', 'action', 'assignment', 'package_run_id', 'project_id', 'requested_by',
   'gate', 'subject', 'evidence', 'required_evidence', 'run_mode', 'human_authority',
-  'privacy', 'deadline', 'declared_exceptions', 'previous_qc_result',
+  'privacy', 'deadline', 'declared_exceptions', 'previous_qc_result', 'style_reference',
 ]);
 const SUBJECT_FIELDS = Object.freeze([
   'artifact_id', 'artifact_type', 'producing_agent', 'artifact_path',
@@ -647,6 +648,15 @@ function validateTask(task) {
       && !['DRAFT', 'REVIEW', 'PRODUCTION'].includes(task.run_mode)) {
     throw new QCInputError('QC_TASK_INVALID', `run_mode must be DRAFT|REVIEW|PRODUCTION|MODE_UNSPECIFIED, got ${task.run_mode}`);
   }
+  // C1: style_reference is opt-in advisory context. Shape is validated here;
+  // identity/binding failure degrades to an advisory UNAVAILABLE note at
+  // evaluation time and never fails the task.
+  if (task.style_reference != null) {
+    strictObject(task.style_reference, ['reference_path', 'expected_binding', 'programme', 'deviations', 'human_keeps', 'contract_path'], 'QC style_reference');
+    if (task.style_reference.programme != null) {
+      strictObject(task.style_reference.programme, ['duration_s', 'spans', 'b_events', 'ending'], 'QC style_reference.programme');
+    }
+  }
   return { action };
 }
 
@@ -1126,6 +1136,60 @@ function canonicalBody(result) {
   });
 }
 
+/* ── C1 style-reference ADVISORY consumption (Approval C, 2026-08-29) ──────
+ * One source of truth: canonical style-reference artifact → certified adapter
+ * → advisory projection. QC NEVER copies style constants, NEVER branches
+ * disposition/gating on style, and NEVER scores. The advisory report is
+ * attached as evidence-adjacent context only. Firewall rules:
+ *   - verdicts limited to REFERENCE_MATCH / REFERENCE_WARNING / REFERENCE_OUTLIER
+ *   - no aggregate score, no disposition field, no blocking field
+ *   - style unavailability => STYLE_REFERENCE_UNAVAILABLE advisory note,
+ *     never a BLOCKER, never a technical failure, never a disposition change.
+ */
+const STYLE_ADVISORY_SCHEMA = 'vidtoolz.qcStyleReferenceAdvisory.v1';
+const STYLE_ADVISORY_ALLOWED_VERDICTS = Object.freeze(['REFERENCE_MATCH', 'REFERENCE_WARNING', 'REFERENCE_OUTLIER']);
+
+function evaluateStyleAdvisory(task, options = {}) {
+  const declared = task.style_reference;
+  if (declared === undefined || declared === null) return null; // opt-in only: absence = legacy behavior, no advisory
+  if (!declared || typeof declared !== 'object' || Array.isArray(declared)) {
+    return { schema: STYLE_ADVISORY_SCHEMA, state: 'STYLE_REFERENCE_UNAVAILABLE', reason: 'style_reference must be an object declaring programme + binding', findings: [], advisory_only: true, affected_disposition: false };
+  }
+  try {
+    const referencePath = declared.reference_path != null
+      ? safeRepoPath(declared.reference_path, 'style_reference.reference_path', options.repoRoot || REPO_ROOT)
+      : path.join(REPO_ROOT, 'tests', 'fixtures', 'style-reference', 'VIDTOOLZ_STYLE_REFERENCE_V1.json');
+    const loaded = styleAdapter.loadStyleReference({
+      referencePath,
+      expectedBinding: declared.expected_binding || { reference_id: 'VIDTOOLZ_STYLE_REFERENCE_V1', sha256: 'b357d23956bc3fd7a956372347e59cae4b10bb0064d3e9b19ec2819207fa8e41' },
+    });
+    const programme = declared.programme;
+    const report = styleAdapter.evaluateAdvisory(loaded, programme, {
+      deviations: Array.isArray(declared.deviations) ? declared.deviations : [],
+      human_keeps: Array.isArray(declared.human_keeps) ? declared.human_keeps : [],
+    }, { contractPath: declared.contract_path ? safeRepoPath(declared.contract_path, 'style_reference.contract_path', options.repoRoot || REPO_ROOT) : undefined });
+    // Hard firewall: strip anything outside the certified advisory shape and
+    // refuse verdicts outside the advisory vocabulary (defense in depth —
+    // evaluateAdvisory already guarantees this).
+    const findings = report.findings.filter((f) => STYLE_ADVISORY_ALLOWED_VERDICTS.includes(f.verdict));
+    return {
+      schema: STYLE_ADVISORY_SCHEMA,
+      state: 'ADVISORY_ONLY',
+      tier: 'ADVISORY_ONLY',
+      style_binding: report.style_binding,
+      no_aggregate_score: true,
+      advisory_only: true,
+      affected_disposition: false,
+      level_separation: { level_a: findings.filter((f) => f.level === 'A').length, level_b: findings.filter((f) => f.level === 'B').length, level_c: findings.filter((f) => f.level === 'C').length, grammar_or_other: findings.filter((f) => f.level !== 'A' && f.level !== 'B' && f.level !== 'C').length },
+      findings,
+    };
+  } catch (error) {
+    // Missing/unbound/stale reference is an advisory UNAVAILABLE note, never
+    // a production blocker and never silent substitution.
+    return { schema: STYLE_ADVISORY_SCHEMA, state: 'STYLE_REFERENCE_UNAVAILABLE', reason: error.message, code: error.code || null, findings: [], advisory_only: true, affected_disposition: false };
+  }
+}
+
 function run(task, options = {}) {
   const repoRoot = path.resolve(options.repoRoot || REPO_ROOT);
   const now = options.now || new Date().toISOString();
@@ -1145,6 +1209,7 @@ function run(task, options = {}) {
         subject: null, observed: null, evidence: [], evidence_coverage: { required: [], satisfied: [], missing: [] },
         checks: [], blockers: [], defects: [], warnings: [],
         human_authority: { required_scope: null, present: false, verdict: 'NOT_REQUIRED', decision: null, approver: null, reason: null },
+        style_advisory: null,
         next_gate_allowed: false,
         supported_evidence_kinds: SUPPORTED_EVIDENCE_KINDS,
         canonical_gates: CANONICAL_GATES,
@@ -1171,6 +1236,10 @@ function run(task, options = {}) {
     const evidenceRecords = resolveEvidence(task, subject, observed, blockers, repoRoot);
     const { checks, humanReviewReasons } = applyAdapters(task, subject, evidenceRecords, blockers, defects, warnings, repoRoot);
     const coverage = checkRequiredEvidence(task, subject, evidenceRecords, blockers);
+    // C1: style-reference advisory context. Computed AFTER all evidence and
+    // gating inputs are finalized: it can never contribute a blocker, defect,
+    // warning, or human-review reason, and deriveDisposition never sees it.
+    const styleAdvisory = evaluateStyleAdvisory(task, { repoRoot });
     const humanAuthority = evaluateHumanAuthority(task, subject, observed, blockers, repoRoot);
     const { disposition, reason } = deriveDisposition({ blockers, defects, warnings, humanAuthority, humanReviewReasons });
     event(`QC_${disposition}`, reason);
@@ -1187,6 +1256,7 @@ function run(task, options = {}) {
       checks, blockers, defects, warnings,
       human_authority: humanAuthority,
       human_review_reasons: humanReviewReasons,
+      style_advisory: styleAdvisory,
       next_gate_allowed: NEXT_GATE_ALLOWED.includes(disposition),
       supported_evidence_kinds: SUPPORTED_EVIDENCE_KINDS,
       canonical_gates: CANONICAL_GATES,
@@ -1220,6 +1290,7 @@ function run(task, options = {}) {
       checks: [], blockers: [blocker], defects: [], warnings: [],
       human_authority: { required_scope: null, present: false, verdict: 'NOT_EVALUATED', decision: null, approver: null, reason: null },
       human_review_reasons: [],
+      style_advisory: null,
       next_gate_allowed: false,
       supported_evidence_kinds: SUPPORTED_EVIDENCE_KINDS,
       canonical_gates: CANONICAL_GATES,
@@ -1288,6 +1359,7 @@ module.exports = {
   validateTask, taskAction, inspectSubjectIntegrity, resolveEvidence,
   checkRequiredEvidence, evaluateHumanAuthority, deriveDisposition, deriveAttention,
   deriveHandoff, controlRoomView, canonicalBody, run, parseArgs, main,
+  evaluateStyleAdvisory,
   evidencePolicy,
 };
 

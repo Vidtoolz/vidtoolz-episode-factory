@@ -23,8 +23,8 @@
   },
   "current_module_binding": {
     "path": "scripts/qc-director.js",
-    "module_sha256": "21f5785d8080606ee5452149cbaf4842a1ac30dc227ec47c5678ed77df1fb678",
-    "module_version": "qc-director-v1+applicability+fidelity+draft-assembly"
+    "module_sha256": "dc8b790d54c0879bc4c32e47b9994a4f7e94c85a9da15ce06997251113a60ad2",
+    "module_version": "qc-director-v1+applicability+fidelity+draft-assembly+style-advisory"
   },
   "chain_rule": "QCG2 accepts the current module if and only if its hash equals the promotion record's bound hash, OR the hash chain holds: promotion binding -> evolution.module_sha256_after -> each evolution_chain entry's before/after -> current_module_binding.module_sha256. Governance history is appended, never rewritten.",
   "recorded_at": "2026-08-26",
@@ -67,6 +67,20 @@
       "module_sha256_after": "21f5785d8080606ee5452149cbaf4842a1ac30dc227ec47c5678ed77df1fb678",
       "why_not_a_weakening": "The new kind only ADDS validation where there was none. A verified DRAFT_ASSEMBLY yields human_review_required, so QC defers to Mikko rather than passing gate 9; malformed, unverified, unidentified, decode-failed and source-drifted evidence each raise their own defect. GENERATION_RESULT and every other pre-existing kind are byte-for-byte untouched.",
       "evidence": "6 new QCA tests green (registration, direct consumption, five rejection paths, warning pass-through, unrelated-kind isolation, GENERATION_RESULT unchanged); the full suite is green apart from this record itself."
+    },
+    {
+      "commit": "PENDING_APPROVAL_C_STYLE_ADVISORY_COMMIT",
+      "subject": "feat(qc): wire style-reference advisory context (Approval C, C1)",
+      "scope": "additive advisory-only consumption: opt-in style_reference task field with strict shape validation, evaluateStyleAdvisory() seam over the certified style-reference adapter (exact binding, verdicts limited to REFERENCE_MATCH/WARNING/OUTLIER), style_advisory output field computed after all gating inputs and never supplied to deriveDisposition. Advisory unavailability degrades to STYLE_REFERENCE_UNAVAILABLE (never a blocker). Legacy tasks without style_reference keep byte-identical semantics. No adapter, severity, disposition rule or required-evidence rule modified.",
+      "semantic_effect_on_promotion": "none",
+      "implementation_state_changed": false,
+      "registry_changed": false,
+      "lifecycle_or_gate_authority_added": false,
+      "human_approval_authority_added": false,
+      "qc_weakening_introduced": false,
+      "module_sha256_before": "21f5785d8080606ee5452149cbaf4842a1ac30dc227ec47c5678ed77df1fb678",
+      "module_sha256_after": "dc8b790d54c0879bc4c32e47b9994a4f7e94c85a9da15ce06997251113a60ad2",
+      "evidence": "C1-QC1..C1-QC7 focused tests green (advisory-only firewall, Level A/B/C separation, presenter-free legality, deviation acknowledgement, unavailable-degrade, legacy invariance); full canonical gate re-run green"
     }
   ]
 }
