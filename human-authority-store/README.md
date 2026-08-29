@@ -45,13 +45,34 @@ updated_at, head_digest_sha256 }`. Readers resolve the DECLARED head only:
   directory) resolves to an explicit EMPTY head: the store's answer that no
   human decision was ever recorded.
 
+## Root registry (`vidtoolz.humanAuthorityRegistry.v1`)
+
+`AUTHORITY-REGISTRY.json` at the store root is the canonical, digest-chained,
+append-only ledger of every decision ever recorded: a genesis block plus one
+entry per record `{ seq, subject_id, authority_id, version,
+record_digest_sha256, previous_entry_digest, registered_by, registered_at,
+entry_digest_sha256 }`. It is what makes a record AUTHORITY:
+
+- A record/head estate — however well-formed and correctly hashed — that the
+  trusted writer never registered is `UNREGISTERED_HUMAN_AUTHORITY`. Hashes
+  prove integrity, not provenance.
+- Once a subject has entered the human-authority system, the registry
+  remembers it durably: a registered subject whose per-subject estate is
+  erased is `HUMAN_AUTHORITY_ESTATE_MISSING` (fail closed) — never EMPTY, and
+  lineage can never restart at ha-1. A genuinely never-recorded subject (no
+  registry entries, no estate) still resolves to an explicit EMPTY head.
+- A missing or corrupt registry over a store that contains any estate is
+  `AUTHORITY_STORE_INTEGRITY`. Readers never create or repair the registry;
+  genesis is written only by the trusted writer's first decision in a
+  genuinely empty store. Repairing a damaged store is Mikko's deliberate act.
+
 ## Writing decisions
 
 Only the trusted writer advances the head, and only in a deployment that
 configures `VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY` (Mikko's
 decision-recording tooling). The writer derives id (`ha-<version>`), version
-(strictly head+1), lineage, and digests itself; a caller supplies only the
-`human_constraints` content. There is no delete and no path that moves the
+(strictly head+1), lineage, digests, and the canonical registry entry itself;
+a caller supplies only the `human_constraints` content. There is no delete and no path that moves the
 head backward.
 
 **Returning to an older policy is a NEW decision:** if Mikko wants constraints

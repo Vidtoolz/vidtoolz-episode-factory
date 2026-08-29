@@ -702,12 +702,13 @@ test('CDN6 (CODX-EVENT-01 + CODX-LB-08/09): a pixel signal never confirms Level-
   process.env.VIDTOOLZ_RENDERER_EXECUTION_IDENTITY = 'renderer@test';
   try {
     const receipt = adapter.requestRendererExecution('run-cd6', { events: [{ event_id: 'planned-label-1', kind: 'LABEL_REVEAL', label: 'X' }] });
-    // MANDATORY MEDIA BINDING: confirmation names the exact media being judged
-    // (canonically derived from its bytes); omission never confirms
+    // CANONICAL EVALUATION TARGET: confirmation names the canonical production
+    // object under review (registered by the trusted execution); omission never
+    // confirms and caller media fields cannot choose it
     const omitted = adapter.admitMeasuredEvents([], planned, { renderRunId: 'run-cd6' });
-    assert.equal(omitted.confirmed.length, 0, 'no evaluated-media identity -> no Level-B confirmation');
-    assert.ok(omitted.errors.some((e) => e.includes('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE')));
-    const confirmed = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], planned, { renderRunId: 'run-cd6', evaluatedMediaPath: receipt.artifact_path });
+    assert.equal(omitted.confirmed.length, 0, 'no canonical evaluation target -> no Level-B confirmation');
+    assert.ok(omitted.errors.some((e) => e.includes('EVALUATION_TARGET_UNAVAILABLE')));
+    const confirmed = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], planned, { renderRunId: 'run-cd6', evaluationTargetId: receipt.evaluation_target_id });
     assert.equal(confirmed.confirmed.length, 1);
     assert.equal(confirmed.confirmed[0].event_id, 'planned-label-1');
     assert.equal(confirmed.confirmed[0].authority, 'RENDERER_MANIFESTATION_CONFIRMED');
@@ -979,8 +980,8 @@ test('CDT6: a human-authority record is SUBJECT-BOUND — relocated or relabeled
   fs.copyFileSync(path.join(store, other, 'ha-1.json'), path.join(store, CANON_IDEA_ID, 'ha-1.json'));
   fs.copyFileSync(path.join(store, `${other}.head.json`), path.join(store, `${CANON_IDEA_ID}.head.json`));
   withAuthorityStore(store, () => {
-    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'HUMAN_AUTHORITY_SUBJECT_BINDING_MISMATCH');
-    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'HUMAN_AUTHORITY_SUBJECT_BINDING_MISMATCH');
+    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'UNREGISTERED_HUMAN_AUTHORITY', 'relocated estate has no canonical registration under the new subject');
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'UNREGISTERED_HUMAN_AUTHORITY');
   });
   // 3. head declaration relabeled to the new subject but still declaring the
   // copied record -> the head fails its own digest (subject is digest-covered)
@@ -988,7 +989,7 @@ test('CDT6: a human-authority record is SUBJECT-BOUND — relocated or relabeled
   head.subject_id = CANON_IDEA_ID;
   fs.writeFileSync(path.join(store, `${CANON_IDEA_ID}.head.json`), JSON.stringify(head));
   withAuthorityStore(store, () => {
-    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_INTEGRITY');
+    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'UNREGISTERED_HUMAN_AUTHORITY', 'a relabeled estate is still unregistered for the new subject');
   });
   // 4. record subject field edited without digest update (in its OWN estate)
   const ownRecord = JSON.parse(fs.readFileSync(path.join(store, other, 'ha-1.json'), 'utf8'));
@@ -1090,4 +1091,110 @@ test('CDT8: the trusted human-authority writer is deployment-gated, derives line
     if (prevW2 === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY = prevW2;
     if (prevS2 === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = prevS2;
   }
+});
+
+/* ══ CANONICAL IDENTITY CLOSURE (Codex 4918708) — registration provenance + non-erasable estate existence ══ */
+
+test('CDT9: human authority is trusted-writer REGISTERED and estate existence is durable — rehashed forgeries, whole-estate erasure, and registry erasure all fail closed', async () => {
+  const crypto = require('crypto');
+  const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+  const canon = (v) => Array.isArray(v) ? `[${v.map(canon).join(',')}]` : (v && typeof v === 'object') ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}` : JSON.stringify(v);
+  const out = await runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) }));
+  const dirPath = path.join(ROOT, 'scripts', 'creative-director.js');
+  const freshResolve = (root, subject) => JSON.parse(childProcess.execFileSync(process.execPath, ['-e',
+    `const d=require(${JSON.stringify(dirPath)});try{const r=d.resolveCurrentHumanAuthority(${JSON.stringify(subject)});process.stdout.write(JSON.stringify({threw:false,head:r.head,authority_id:r.authority_id,domains:r.domains.length}));}catch(e){process.stdout.write(JSON.stringify({threw:true,code:e.code}));}`],
+    { encoding: 'utf8', env: { ...process.env, VIDTOOLZ_HUMAN_AUTHORITY_STORE: root, VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY: undefined } }));
+
+  // ── B. registration provenance: the EXACT Codex rehash forgery ──
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-registry-'));
+  appendAuthority(store, 'project-A', [KEEP_S03]);
+  // relabel subject A -> B and recompute BOTH public digests, without the writer
+  const rec = JSON.parse(fs.readFileSync(path.join(store, 'project-A', 'ha-1.json'), 'utf8'));
+  rec.subject_id = 'project-B';
+  rec.record_digest_sha256 = sha(canon({ schema: rec.schema, subject_id: rec.subject_id, authority_id: rec.authority_id, version: rec.version, previous_authority_id: rec.previous_authority_id ?? null, created_at: rec.created_at, created_by: rec.created_by, human_constraints: rec.human_constraints }));
+  const forgedHead = JSON.parse(fs.readFileSync(path.join(store, 'project-A.head.json'), 'utf8'));
+  forgedHead.subject_id = 'project-B';
+  forgedHead.current_record_digest_sha256 = rec.record_digest_sha256;
+  forgedHead.head_digest_sha256 = sha(canon({ schema: forgedHead.schema, subject_id: forgedHead.subject_id, current_authority_id: forgedHead.current_authority_id, current_version: forgedHead.current_version, current_record_digest_sha256: forgedHead.current_record_digest_sha256, previous_authority_id: forgedHead.previous_authority_id ?? null, updated_at: forgedHead.updated_at }));
+  fs.mkdirSync(path.join(store, 'project-B'), { recursive: true });
+  fs.writeFileSync(path.join(store, 'project-B', 'ha-1.json'), JSON.stringify(rec));
+  fs.writeFileSync(path.join(store, 'project-B.head.json'), JSON.stringify(forgedHead));
+  withAuthorityStore(store, () => {
+    assert.equal(director.resolveCurrentHumanAuthority('project-A').authority_id, 'ha-1', 'the legitimately registered subject still resolves');
+    assert.throws(() => director.resolveCurrentHumanAuthority('project-B'), (e) => e.code === 'UNREGISTERED_HUMAN_AUTHORITY', 'hashes prove integrity, not provenance — an unregistered self-consistent estate has no authority');
+  });
+  // forged UNREGISTERED successor under a subject that HAS canonical genesis:
+  // handcraft ha-2 + advance the head with recomputed digests, no writer
+  const rec2 = JSON.parse(fs.readFileSync(path.join(store, 'project-A', 'ha-1.json'), 'utf8'));
+  rec2.authority_id = 'ha-2'; rec2.version = 2; rec2.previous_authority_id = 'ha-1'; rec2.human_constraints = [];
+  rec2.record_digest_sha256 = sha(canon({ schema: rec2.schema, subject_id: rec2.subject_id, authority_id: rec2.authority_id, version: rec2.version, previous_authority_id: rec2.previous_authority_id, created_at: rec2.created_at, created_by: rec2.created_by, human_constraints: rec2.human_constraints }));
+  const head2 = JSON.parse(fs.readFileSync(path.join(store, 'project-A.head.json'), 'utf8'));
+  head2.current_authority_id = 'ha-2'; head2.current_version = 2; head2.previous_authority_id = 'ha-1';
+  head2.current_record_digest_sha256 = rec2.record_digest_sha256;
+  head2.head_digest_sha256 = sha(canon({ schema: head2.schema, subject_id: head2.subject_id, current_authority_id: head2.current_authority_id, current_version: head2.current_version, current_record_digest_sha256: head2.current_record_digest_sha256, previous_authority_id: head2.previous_authority_id, updated_at: head2.updated_at }));
+  fs.writeFileSync(path.join(store, 'project-A', 'ha-2.json'), JSON.stringify(rec2));
+  fs.writeFileSync(path.join(store, 'project-A.head.json'), JSON.stringify(head2));
+  withAuthorityStore(store, () => {
+    assert.throws(() => director.resolveCurrentHumanAuthority('project-A'), (e) => e.code === 'UNREGISTERED_HUMAN_AUTHORITY', 'a caller cannot unlock a subject by forging an unregistered successor — only the trusted writer registers heads');
+  });
+
+  // ── C. whole-estate erasure: the system remembers authority ever existed ──
+  const erase = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-erase-'));
+  appendAuthority(erase, CANON_IDEA_ID, []);
+  appendAuthority(erase, CANON_IDEA_ID, [KEEP_S03]);
+  fs.rmSync(path.join(erase, CANON_IDEA_ID), { recursive: true });
+  fs.rmSync(path.join(erase, `${CANON_IDEA_ID}.head.json`));
+  withAuthorityStore(erase, () => {
+    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'HUMAN_AUTHORITY_ESTATE_MISSING');
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'HUMAN_AUTHORITY_ESTATE_MISSING', 'mutating projection fails closed after erasure');
+  });
+  // a genuinely FRESH process reaches the same fail-closed answer
+  const freshErased = freshResolve(erase, CANON_IDEA_ID);
+  assert.deepEqual(freshErased, { threw: true, code: 'HUMAN_AUTHORITY_ESTATE_MISSING' });
+  // lineage cannot restart at ha-1: the writer refuses over the erased estate
+  assert.throws(() => appendAuthority(erase, CANON_IDEA_ID, []), (e) => e.code === 'HUMAN_AUTHORITY_ESTATE_MISSING', 'total erasure never recreates permission or restarts lineage');
+  // a DIFFERENT never-recorded subject in the same store still resolves EMPTY
+  withAuthorityStore(erase, () => {
+    assert.equal(director.resolveCurrentHumanAuthority('project-never-recorded').head, 'EMPTY', 'never-recorded vs erased are durably distinguished');
+  });
+  assert.equal(freshResolve(erase, 'project-never-recorded').head, 'EMPTY');
+
+  // ── C. root registry erasure/corruption over an initialized store ──
+  const regGone = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-reg-gone-'));
+  appendAuthority(regGone, CANON_IDEA_ID, [KEEP_S03]);
+  fs.rmSync(path.join(regGone, 'AUTHORITY-REGISTRY.json'));
+  withAuthorityStore(regGone, () => {
+    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'AUTHORITY_STORE_INTEGRITY', 'an initialized store never silently resets to a fresh registry');
+  });
+  assert.deepEqual(freshResolve(regGone, CANON_IDEA_ID), { threw: true, code: 'AUTHORITY_STORE_INTEGRITY' });
+  assert.throws(() => appendAuthority(regGone, CANON_IDEA_ID, []), (e) => e.code === 'AUTHORITY_STORE_INTEGRITY', 'the writer never recreates a genesis over existing estates');
+  const regBad = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-reg-bad-'));
+  appendAuthority(regBad, CANON_IDEA_ID, [KEEP_S03]);
+  fs.writeFileSync(path.join(regBad, 'AUTHORITY-REGISTRY.json'), '{not json');
+  withAuthorityStore(regBad, () => {
+    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'AUTHORITY_STORE_INTEGRITY');
+  });
+  // tampering an entry inside the chain breaks the chain digests
+  const regTamper = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-reg-tamper-'));
+  appendAuthority(regTamper, CANON_IDEA_ID, []);
+  appendAuthority(regTamper, CANON_IDEA_ID, [KEEP_S03]);
+  const reg = JSON.parse(fs.readFileSync(path.join(regTamper, 'AUTHORITY-REGISTRY.json'), 'utf8'));
+  reg.entries.pop(); reg.registry_digest_sha256 = reg.entries[reg.entries.length - 1].entry_digest_sha256;
+  fs.writeFileSync(path.join(regTamper, 'AUTHORITY-REGISTRY.json'), JSON.stringify(reg));
+  withAuthorityStore(regTamper, () => {
+    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => ['UNREGISTERED_HUMAN_AUTHORITY', 'AUTHORITY_STORE_INTEGRITY'].includes(e.code), 'truncating the chain cannot roll the registered head back');
+  });
+
+  // ── legitimate first authority for a genuinely new subject (fresh process too) ──
+  const genesis = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-genesis-'));
+  assert.equal(freshResolve(genesis, 'project-C').head, 'EMPTY', 'brand-new store resolves EMPTY before any decision');
+  const first = appendAuthority(genesis, 'project-C', [KEEP_S03]);
+  assert.equal(first.authority_id, 'ha-1');
+  const freshC = freshResolve(genesis, 'project-C');
+  assert.equal(freshC.authority_id, 'ha-1');
+  assert.equal(freshC.domains, 1);
+  const registryDoc = JSON.parse(fs.readFileSync(path.join(genesis, 'AUTHORITY-REGISTRY.json'), 'utf8'));
+  assert.equal(registryDoc.entries.length, 1);
+  assert.equal(registryDoc.entries[0].subject_id, 'project-C');
+  assert.match(registryDoc.genesis.genesis_digest_sha256, /^[a-f0-9]{64}$/);
 });

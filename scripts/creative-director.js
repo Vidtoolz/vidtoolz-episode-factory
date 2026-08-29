@@ -603,6 +603,103 @@ function humanAuthorityHeadDigest(head) {
   }));
 }
 
+/*
+ * ROOT HUMAN-AUTHORITY REGISTRY (Codex 4918708 Findings B and C).
+ *
+ * HASHES DO NOT CREATE HUMAN AUTHORITY. A self-consistent record/head pair a
+ * caller constructs (subject relabeled, public digests recomputed) is bytes,
+ * not provenance. A human-authority record is authoritative ONLY when the
+ * trusted writer has REGISTERED it in the store's root append-only registry —
+ * a digest-chained ledger of every decision ever recorded, per subject.
+ *
+ * THE SYSTEM MUST REMEMBER THAT AUTHORITY EVER EXISTED. The registry lives at
+ * the store ROOT (never inside the subject estate whose deletion it detects),
+ * so once a subject has entered the human-authority system that fact survives
+ * per-subject erasure:
+ *   - subject in registry + estate present and matching -> authoritative head
+ *   - subject in registry + estate missing              -> HUMAN_AUTHORITY_ESTATE_MISSING (fail closed)
+ *   - subject NOT in registry + estate present          -> UNREGISTERED_HUMAN_AUTHORITY (fail closed)
+ *   - subject NOT in registry + no estate               -> explicit EMPTY head (never recorded)
+ *   - registry absent while ANY estate exists           -> AUTHORITY_STORE_INTEGRITY (fail closed)
+ * Readers NEVER create or repair the registry; genesis is written only by the
+ * trusted writer's first decision in a genuinely uninitialized (empty) store.
+ * Lineage can therefore never silently restart at ha-1 after erasure.
+ */
+const HUMAN_AUTHORITY_REGISTRY_SCHEMA = 'vidtoolz.humanAuthorityRegistry.v1';
+const AUTHORITY_REGISTRY_FILENAME = 'AUTHORITY-REGISTRY.json';
+
+function authorityStoreIntegrity(message) {
+  const e = new Error(`AUTHORITY_STORE_INTEGRITY: ${message}`);
+  e.code = 'AUTHORITY_STORE_INTEGRITY';
+  throw e;
+}
+function unregisteredAuthority(message) {
+  const e = new Error(`UNREGISTERED_HUMAN_AUTHORITY: ${message}`);
+  e.code = 'UNREGISTERED_HUMAN_AUTHORITY';
+  throw e;
+}
+function authorityEstateMissing(message) {
+  const e = new Error(`HUMAN_AUTHORITY_ESTATE_MISSING: ${message}`);
+  e.code = 'HUMAN_AUTHORITY_ESTATE_MISSING';
+  throw e;
+}
+
+function registryGenesisDigest(genesis) {
+  return hash(cd.canonicalize({ schema: HUMAN_AUTHORITY_REGISTRY_SCHEMA, store_id: genesis.store_id, created_at: genesis.created_at, created_by: genesis.created_by }));
+}
+function registryEntryDigest(entry) {
+  return hash(cd.canonicalize({
+    seq: entry.seq, subject_id: entry.subject_id, authority_id: entry.authority_id, version: entry.version,
+    record_digest_sha256: entry.record_digest_sha256, previous_entry_digest: entry.previous_entry_digest,
+    registered_by: entry.registered_by, registered_at: entry.registered_at,
+  }));
+}
+
+// Estate artifacts at the store root: any subject directory or head declaration.
+// Used to detect a USED store whose root registry disappeared.
+function scanEstateArtifacts(realRoot) {
+  return fs.readdirSync(realRoot, { withFileTypes: true })
+    .filter((d) => d.isDirectory() || d.isSymbolicLink() || d.name.endsWith('.head.json'))
+    .map((d) => d.name);
+}
+
+/*
+ * Load and fully verify the root registry (digest-chained, append-only).
+ * Absent registry + empty store  -> UNINITIALIZED (a brand-new store).
+ * Absent registry + any estates  -> AUTHORITY_STORE_INTEGRITY (silent reset refused).
+ * Present but corrupt/broken chain -> AUTHORITY_STORE_INTEGRITY.
+ * Readers never (re)create a registry.
+ */
+function loadHumanAuthorityRegistry(realRoot) {
+  const file = path.join(realRoot, AUTHORITY_REGISTRY_FILENAME);
+  if (!fs.existsSync(file)) {
+    const artifacts = scanEstateArtifacts(realRoot);
+    if (artifacts.length) authorityStoreIntegrity(`authority estates exist (${artifacts.slice(0, 5).join(', ')}) but the root registry is missing — an initialized authority store never silently resets; repair the store deliberately`);
+    return { state: 'UNINITIALIZED', genesis: null, entries: [], file };
+  }
+  let realFile;
+  try { realFile = fs.realpathSync(file); } catch (error) { authorityStoreIntegrity(`root registry unresolvable: ${error.message}`); }
+  if (path.dirname(realFile) !== realRoot) authorityStoreIntegrity('root registry resolves (via symlink) outside the pinned store');
+  let doc;
+  try { doc = JSON.parse(fs.readFileSync(realFile, 'utf8')); } catch (error) { authorityStoreIntegrity(`root registry unreadable: ${error.message}`); }
+  if (doc.schema !== HUMAN_AUTHORITY_REGISTRY_SCHEMA) authorityStoreIntegrity(`root registry carries schema ${doc.schema || '(none)'}`);
+  const genesis = doc.genesis;
+  if (!genesis || !norm(genesis.store_id) || !norm(genesis.created_at) || registryGenesisDigest(genesis) !== genesis.genesis_digest_sha256) {
+    authorityStoreIntegrity('root registry genesis is missing or fails its digest');
+  }
+  const entries = Array.isArray(doc.entries) ? doc.entries : null;
+  if (!entries) authorityStoreIntegrity('root registry lacks its entry chain');
+  let previous = genesis.genesis_digest_sha256;
+  for (const [i, entry] of entries.entries()) {
+    if (entry.seq !== i + 1) authorityStoreIntegrity(`root registry entry ${i} carries sequence ${entry.seq}, expected ${i + 1}`);
+    if (entry.previous_entry_digest !== previous) authorityStoreIntegrity(`root registry chain broken at entry ${entry.seq}`);
+    if (registryEntryDigest(entry) !== entry.entry_digest_sha256) authorityStoreIntegrity(`root registry entry ${entry.seq} fails its digest`);
+    previous = entry.entry_digest_sha256;
+  }
+  if (doc.registry_digest_sha256 !== previous) authorityStoreIntegrity('root registry digest does not match its chain head');
+  return { state: 'ACTIVE', genesis, entries, file, realFile };
+}
+
 function assertAuthoritySubjectId(subjectId) {
   const subject = norm(subjectId);
   if (!AUTHORITY_SUBJECT_RE.test(subject) || subject.endsWith('.json') || subject.endsWith('.head')) {
@@ -634,12 +731,26 @@ function humanAuthorityStorePaths(subject) {
 function resolveCurrentHumanAuthority(subjectId) {
   const subject = assertAuthoritySubjectId(subjectId);
   const { realRoot, subjectDir, headFile } = humanAuthorityStorePaths(subject);
+  // ROOT REGISTRY FIRST (Codex 4918708): whether this subject has EVER entered
+  // the human-authority system is a durable root-level fact, never inferred
+  // from which per-subject files happen to survive.
+  const registry = loadHumanAuthorityRegistry(realRoot);
+  const subjectEntries = registry.state === 'ACTIVE' ? registry.entries.filter((e) => norm(e.subject_id) === subject) : [];
   const headExists = fs.existsSync(headFile);
   const dirExists = fs.existsSync(subjectDir);
-  if (!headExists && !dirExists) {
-    // The store's explicit answer: no human decision has ever been recorded for
-    // this subject. This is head resolution, NOT a fallback to "no locks".
+  if (!subjectEntries.length) {
+    if (headExists || dirExists) {
+      // Correctly formatted, correctly hashed bytes that the trusted writer
+      // never registered are NOT authority — hashes prove integrity, not provenance.
+      unregisteredAuthority(`subject ${subject} has authority estate artifacts but no canonical registration in the root registry — caller-created records are not human authority`);
+    }
+    // The store's durable answer: this subject never entered the
+    // human-authority system. NOT a fallback — consistent registry + no estate.
     return storyAuthority.deepFreeze({ subject_id: subject, head: 'EMPTY', authority_id: null, version: null, previous_authority_id: null, human_constraints: [], domains: [], content_sha256: null });
+  }
+  const registered = subjectEntries[subjectEntries.length - 1];
+  if (!headExists && !dirExists) {
+    authorityEstateMissing(`subject ${subject} is canonically registered (through ${registered.authority_id} v${registered.version}) but its authority estate is MISSING — total erasure is authority loss; an older or empty permission is never recreated`);
   }
   if (!headExists) authorityIntegrity(`subject ${subject} has authority records but no durable head declaration — the estate is damaged; authority does not degrade to any surviving record`);
   if (!dirExists) authorityIntegrity(`subject ${subject} declares a current head but its record directory is missing — deletion of authority records is authority loss, never rollback`);
@@ -656,6 +767,13 @@ function resolveCurrentHumanAuthority(subjectId) {
   const authorityId = norm(head.current_authority_id);
   if (!/^[A-Za-z0-9_.-]{1,120}$/.test(authorityId) || authorityId.endsWith('.json')) authorityIntegrity(`head declaration for ${subject} names a malformed current authority id`);
   if (!Number.isInteger(head.current_version) || head.current_version < 1) authorityIntegrity(`head declaration for ${subject} lacks a positive integer current version`);
+  // CANONICAL REGISTRATION (Codex 4918708 Finding B): the declared head must be
+  // the head the trusted writer registered in the root chain — identity,
+  // version, and record digest. A self-consistent caller-built estate has no
+  // registration and is powerless.
+  if (authorityId !== norm(registered.authority_id) || head.current_version !== registered.version || head.current_record_digest_sha256 !== registered.record_digest_sha256) {
+    unregisteredAuthority(`declared head ${authorityId} v${head.current_version} for ${subject} is not the canonically registered head (${registered.authority_id} v${registered.version}) — only trusted-writer-registered authority is accepted`);
+  }
 
   const recordFile = path.join(realDir, `${authorityId}.json`);
   if (path.dirname(recordFile) !== realDir) authorityIntegrity('declared head record path escapes the subject store');
@@ -735,7 +853,11 @@ function recordHumanAuthoritySuccessor(subjectId, payload = {}) {
   const current = resolveCurrentHumanAuthority(subject);
   const version = current.head === 'EMPTY' ? 1 : current.version + 1;
   const authorityId = `ha-${version}`;
-  const { subjectDir, headFile } = humanAuthorityStorePaths(subject);
+  const { realRoot, subjectDir, headFile } = humanAuthorityStorePaths(subject);
+  // Load the root registry BEFORE any estate write. Genesis is created only
+  // here — by the trusted writer, in a genuinely uninitialized store (an
+  // absent registry over existing estates already failed closed above).
+  const registry = loadHumanAuthorityRegistry(realRoot);
   fs.mkdirSync(subjectDir, { recursive: true });
   const recordFile = path.join(subjectDir, `${authorityId}.json`);
   if (fs.existsSync(recordFile)) {
@@ -757,10 +879,28 @@ function recordHumanAuthoritySuccessor(subjectId, payload = {}) {
     head_digest_sha256: '',
   };
   headDoc.head_digest_sha256 = humanAuthorityHeadDigest(headDoc);
+  // Registration entry: the canonical provenance that makes this record
+  // AUTHORITY. Chained to the registry head; derived entirely by the writer.
+  const genesis = registry.state === 'ACTIVE' ? registry.genesis : (() => {
+    const g = { store_id: crypto.randomBytes(16).toString('hex'), created_at: record.created_at, created_by: writer, genesis_digest_sha256: '' };
+    g.genesis_digest_sha256 = registryGenesisDigest(g);
+    return g;
+  })();
+  const previousDigest = registry.entries.length ? registry.entries[registry.entries.length - 1].entry_digest_sha256 : genesis.genesis_digest_sha256;
+  const entry = {
+    seq: registry.entries.length + 1, subject_id: subject, authority_id: authorityId, version,
+    record_digest_sha256: record.record_digest_sha256, previous_entry_digest: previousDigest,
+    registered_by: writer, registered_at: record.created_at, entry_digest_sha256: '',
+  };
+  entry.entry_digest_sha256 = registryEntryDigest(entry);
+  const registryDoc = { schema: HUMAN_AUTHORITY_REGISTRY_SCHEMA, genesis, entries: [...registry.entries, entry], registry_digest_sha256: entry.entry_digest_sha256 };
   // Record first (the head must never declare a record that does not exist),
-  // then advance the durable head declaration.
+  // then the durable head declaration, then the canonical registration — the
+  // registry append is the commit point: any interrupted write leaves an
+  // estate the resolver refuses (fail closed), never one it trusts.
   atomicWriteJsonFile(recordFile, record);
   atomicWriteJsonFile(headFile, headDoc);
+  atomicWriteJsonFile(path.join(realRoot, AUTHORITY_REGISTRY_FILENAME), registryDoc);
   return storyAuthority.deepFreeze({ subject_id: subject, authority_id: authorityId, version, record_digest_sha256: record.record_digest_sha256, previous_authority_id: record.previous_authority_id });
 }
 
@@ -973,6 +1113,6 @@ function controlRoomView(out) {
   };
 }
 
-module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, HUMAN_AUTHORITY_RECORD_SCHEMA, HUMAN_AUTHORITY_HEAD_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, projectForSpecialistById, humanRationaleById, resolveCanonicalDirectionById, resolveCurrentHumanAuthority, recordHumanAuthoritySuccessor, authoritySubjectOf, isCanonicalDirection, run, controlRoomView };
+module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, HUMAN_AUTHORITY_RECORD_SCHEMA, HUMAN_AUTHORITY_HEAD_SCHEMA, HUMAN_AUTHORITY_REGISTRY_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, projectForSpecialistById, humanRationaleById, resolveCanonicalDirectionById, resolveCurrentHumanAuthority, recordHumanAuthoritySuccessor, authoritySubjectOf, isCanonicalDirection, run, controlRoomView };
 
 if (require.main === module && guardExecutableLifecycle(AGENT_ID)) (async () => { const i = process.argv.indexOf('--task'); if (i < 0) process.exit(2); const out = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...out, control_room: controlRoomView(out) }, null, 2)); process.exit(['COMPLETE', 'AWAITING_HUMAN_REVIEW', 'PREVIEW_ONLY'].includes(out.state) ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });

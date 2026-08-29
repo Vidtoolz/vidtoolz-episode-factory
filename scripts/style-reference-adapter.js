@@ -336,8 +336,12 @@ function requestRendererExecution(runId, renderPlan, options = {}) {
   const media = sha256(bytes);
   const records = rendered.map((r) => ({ event_id: r.event_id, event_type: r.event_type, manifested: true, manifestation: r.manifestation }));
   const receipt = writeEvidence('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, runId, { identity, media, records });
+  // CANONICAL EVALUATION TARGET (Codex 4918708 Finding A): the production
+  // object under review is registered HERE, by the trusted execution that
+  // actually produced it — never named by a QC caller later.
+  const target = registerEvaluationTarget(receipt.run_id, { media, mediaPath: artifactPath, identity });
   // Metadata REPORTS the derived identity; the caller never chose it.
-  return { ...receipt, media_sha256: media, artifact_path: artifactPath, producer_execution_identity: identity };
+  return { ...receipt, media_sha256: media, artifact_path: artifactPath, producer_execution_identity: identity, evaluation_target_id: target.evaluation_target_id };
 }
 
 /*
@@ -448,53 +452,88 @@ function evidenceAuthorityError(kind, store, allowlistEnv) {
 }
 
 /*
- * CANONICAL EVALUATED-MEDIA IDENTITY (Codex 8afa2d3: LEVEL-B MEDIA IDENTITY CAN
- * BE OMITTED). Level-B semantic confirmation must ALWAYS bind
- *   semantic evidence media == the exact media being evaluated,
- * and the caller must not control whether that comparison happens. The
- * evaluated identity is DERIVED canonically, never asserted:
- *   - options.evaluatedMediaPath: this module reads and hashes the actual media
- *     bytes being judged
- *   - options.evaluatedRenderRunId: this module resolves the trusted renderer
- *     manifest of the canonical run whose output is being judged
- * options.mediaSha256 remains ONLY an additional consistency cross-check
- * against the derived identity: it can never activate, deactivate, or
- * substitute for the mandatory binding. A bare caller-claimed hash is not
- * canonical evaluated-media identity. When no canonical identity can be
- * resolved, Level-B confirmation fails closed
- * (LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE) — never "skip the media check".
+ * CANONICAL EVALUATION TARGET (Codex 4918708: LEVEL-B MEDIA IDENTITY STILL
+ * OPTIONAL — the CALLER still selected which media was being evaluated).
+ * THE CALLER DOES NOT CHOOSE WHICH MEDIA IS UNDER REVIEW. The evaluation
+ * target is a canonical production object registered by the TRUSTED renderer
+ * execution in the deployment-pinned store at the moment it produces the
+ * output (<store>/<id>.target.json, digest-covered, append-only). Level-B QC
+ * names an evaluation_target_id; the trusted resolver determines the exact
+ * canonical media SHA-256, render run, producer, and artifact under review.
+ * Hashing caller-chosen bytes or reading a caller-chosen run proves what the
+ * caller SELECTED — never what is canonically under review — so those fields
+ * are demoted to non-authoritative cross-checks.
  */
-function resolveEvaluatedMediaIdentity(options) {
-  let sha = null;
-  let source = null;
-  const mediaPath = options.evaluatedMediaPath ? String(options.evaluatedMediaPath).trim() : '';
-  if (mediaPath) {
-    let bytes;
-    try { bytes = fs.readFileSync(mediaPath); } catch (e) {
-      throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE', `evaluated media is unreadable (${e.message}); confirmation is impossible without the exact media being judged`);
-    }
-    sha = sha256(bytes);
-    source = 'EVALUATED_MEDIA_BYTES';
-  } else if (options.evaluatedRenderRunId) {
-    let run;
-    try { run = readEvidenceStore('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, options.evaluatedRenderRunId); } catch (e) {
-      throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE', `canonical evaluated render run is unresolvable (${e.message})`);
-    }
-    sha = String(run.media_sha256 || '').toLowerCase();
-    if (!HEX64_RE.test(sha)) throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE', 'canonical evaluated render run carries no media identity');
-    source = 'CANONICAL_RENDER_RUN_MANIFEST';
+const EVALUATION_TARGET_SCHEMA = 'vidtoolz.evaluationTarget.v1';
+
+function evaluationTargetDigest(target) {
+  return sha256(canonicalizeJson({
+    schema: target.schema, evaluation_target_id: target.evaluation_target_id,
+    media_sha256: target.media_sha256, media_path: target.media_path,
+    render_run_id: target.render_run_id, producer_execution_identity: target.producer_execution_identity,
+    created_at: target.created_at,
+  }));
+}
+
+// Module-private: the canonical renderer execution registers its output as the
+// canonical evaluation target in the SAME trusted operation that writes its
+// evidence. There is no public registration surface.
+function registerEvaluationTarget(runId, details) {
+  const id = String(runId || '').trim();
+  const root = evidenceRoot('VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE);
+  fs.mkdirSync(root, { recursive: true });
+  const realRoot = fs.realpathSync(root);
+  const file = path.join(realRoot, `${id}.target.json`);
+  if (path.dirname(file) !== realRoot) throw new StyleReferenceError('SEMANTIC_EVIDENCE_PATH_ESCAPE', 'evaluation-target path escapes the pinned store');
+  if (fs.existsSync(file)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_RUN_ID_ALREADY_BOUND', `evaluation target ${id} is already registered; targets are append-only`);
+  const target = { schema: EVALUATION_TARGET_SCHEMA, evaluation_target_id: id, media_sha256: details.media, media_path: details.mediaPath, render_run_id: id, producer_execution_identity: details.identity, created_at: new Date().toISOString(), target_digest_sha256: '' };
+  target.target_digest_sha256 = evaluationTargetDigest(target);
+  atomicWriteJson(file, target);
+  return target;
+}
+
+/*
+ * PUBLIC READ — resolveCanonicalEvaluationTarget(evaluationTargetId).
+ * Resolves the canonical production object under review from the
+ * deployment-pinned store: its exact media SHA-256, render run, producer, and
+ * artifact path. No caller-selected root, no caller-selected alternate media.
+ * Unresolvable/corrupt targets fail closed (EVALUATION_TARGET_UNAVAILABLE).
+ */
+function resolveCanonicalEvaluationTarget(evaluationTargetId) {
+  const id = String(evaluationTargetId || '').trim();
+  if (!RUN_ID_RE.test(id)) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', `evaluation target id is malformed: ${id || '(empty)'}`);
+  const root = evidenceRoot('VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE);
+  const file = path.join(root, `${id}.target.json`);
+  if (path.dirname(path.resolve(file)) !== path.resolve(root)) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', 'evaluation-target path escapes the pinned store');
+  if (!fs.existsSync(file)) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', `no canonical evaluation target is registered for ${id}; Level-B confirmation is impossible without the canonical production object under review`);
+  let realRoot; let realFile;
+  try { realRoot = fs.realpathSync(root); realFile = fs.realpathSync(file); } catch (e) { throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', e.message); }
+  if (path.dirname(realFile) !== realRoot || path.basename(realFile) !== `${id}.target.json`) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', 'evaluation target resolves (via symlink) outside the pinned store');
+  let target;
+  try { target = JSON.parse(fs.readFileSync(realFile, 'utf8')); } catch (e) { throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', `evaluation target unreadable: ${e.message}`); }
+  if (target.schema !== EVALUATION_TARGET_SCHEMA || target.evaluation_target_id !== id) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', `evaluation target ${id} does not bind this id/schema`);
+  if (evaluationTargetDigest(target) !== target.target_digest_sha256) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', `evaluation target ${id} fails its registration digest — the canonical registration was altered`);
+  if (!HEX64_RE.test(String(target.media_sha256 || ''))) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', `evaluation target ${id} carries no canonical media identity`);
+  return deepFreeze({ evaluation_target_id: id, media_sha256: String(target.media_sha256).toLowerCase(), media_path: target.media_path || null, render_run_id: target.render_run_id || null, producer_execution_identity: target.producer_execution_identity || null, created_at: target.created_at || null });
+}
+
+// Non-authoritative caller assertions about the evaluation target: verified
+// against the canonical target, never able to choose or redirect it. Any
+// inconsistent assertion fails the whole confirmation closed.
+function evaluationTargetCrossCheckFailures(target, options) {
+  const failures = [];
+  if (options.mediaSha256 && String(options.mediaSha256).trim().toLowerCase() !== target.media_sha256) failures.push('mediaSha256');
+  if (options.evaluatedMediaPath) {
+    try { if (sha256(fs.readFileSync(String(options.evaluatedMediaPath).trim())) !== target.media_sha256) failures.push('evaluatedMediaPath'); }
+    catch { failures.push('evaluatedMediaPath'); }
   }
-  const claimed = options.mediaSha256 ? String(options.mediaSha256).trim().toLowerCase() : '';
-  if (claimed && sha && claimed !== sha) {
-    throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_MISMATCH', 'caller-claimed mediaSha256 does not match the canonically derived evaluated-media identity');
+  if (options.evaluatedRenderRunId) {
+    try {
+      const run = readEvidenceStore('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, options.evaluatedRenderRunId);
+      if (String(run.media_sha256 || '').toLowerCase() !== target.media_sha256) failures.push('evaluatedRenderRunId');
+    } catch { failures.push('evaluatedRenderRunId'); }
   }
-  if (!sha) {
-    if (claimed) {
-      throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE', 'a caller-claimed mediaSha256 is not canonical evaluated-media identity; supply evaluatedMediaPath or evaluatedRenderRunId');
-    }
-    throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE', 'no canonical evaluated-media identity was resolved; Level-B semantic confirmation is impossible without proving exactly which media is being judged');
-  }
-  return { sha, source };
+  return failures;
 }
 
 /*
@@ -505,14 +544,17 @@ function resolveEvaluatedMediaIdentity(options) {
  * measurement only: they can flag adjudication or an unplanned change, but they
  * NEVER confirm. Noise/motion is discarded. Provenance ids are preserved.
  *
- * options: { renderRunId?, classifierRunId?, evaluatedMediaPath?,
- *            evaluatedRenderRunId?, mediaSha256? (cross-check only), toleranceS? }
+ * options: { evaluationTargetId (the canonical production object under review),
+ *            renderRunId?, classifierRunId?, toleranceS?,
+ *            evaluatedMediaPath? / evaluatedRenderRunId? / mediaSha256?
+ *            (NON-AUTHORITATIVE cross-checks only) }
  * Caller-supplied evidence objects (candidate.manifestation, inline renderer
  * records, inline classifier functions) are IGNORED — they carry no authority.
- * MANDATORY MEDIA BINDING: whenever semantic confirmation is requested
- * (renderRunId / classifierRunId), the evaluated-media identity is resolved
- * canonically (resolveEvaluatedMediaIdentity) and every confirming record must
- * bind that exact media. The caller cannot switch this off by omission.
+ * CANONICAL EVALUATION TARGET: whenever semantic confirmation is requested
+ * (renderRunId / classifierRunId), the media under review is resolved from the
+ * trusted evaluation-target registration named by evaluationTargetId — the
+ * caller cannot select, redirect, or omit it: media path/run/hash fields can
+ * never choose the target, and an inconsistent assertion fails closed.
  */
 function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   const tolerance = options.toleranceS ?? 0.5;
@@ -524,13 +566,25 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   const unverified = [];
   const errors = [...planned.errors];
 
-  // CANONICAL EVALUATED-MEDIA IDENTITY — derived, never caller-asserted. It is
-  // REQUIRED for any semantic confirmation; without it nothing confirms
-  // (fail closed), though store/provenance diagnostics below still surface.
+  // CANONICAL EVALUATION TARGET — resolved from the trusted registration, never
+  // chosen by the caller. It is REQUIRED for any semantic confirmation; without
+  // it nothing confirms (fail closed), though store/provenance diagnostics
+  // below still surface. Caller media fields are cross-checked, never honored.
   let evaluatedMedia = null;
-  if (options.renderRunId || options.classifierRunId || options.evaluatedMediaPath || options.evaluatedRenderRunId || options.mediaSha256) {
-    try { evaluatedMedia = resolveEvaluatedMediaIdentity(options); }
-    catch (e) { errors.push(e.message); }
+  if (options.renderRunId || options.classifierRunId || options.evaluationTargetId || options.evaluatedMediaPath || options.evaluatedRenderRunId || options.mediaSha256) {
+    if (!options.evaluationTargetId) {
+      errors.push('EVALUATION_TARGET_UNAVAILABLE: no canonical evaluation target was named — caller-supplied media path/run/hash fields cannot choose what is under review; supply evaluationTargetId');
+    } else {
+      try {
+        const target = resolveCanonicalEvaluationTarget(options.evaluationTargetId);
+        const crossCheckFailures = evaluationTargetCrossCheckFailures(target, options);
+        if (crossCheckFailures.length) {
+          errors.push(`EVALUATION_TARGET_CROSS_CHECK_FAILED: caller assertion(s) [${crossCheckFailures.join(', ')}] do not match the canonical evaluation target ${target.evaluation_target_id} — a caller field can never redirect which media is under review`);
+        } else {
+          evaluatedMedia = { sha: target.media_sha256, source: 'CANONICAL_EVALUATION_TARGET', evaluation_target_id: target.evaluation_target_id };
+        }
+      } catch (e) { errors.push(e.message); }
+    }
   }
 
   // Resolve TRUSTED semantic evidence from the pinned stores by id, then enforce
@@ -561,7 +615,7 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
         if (String(rec.event_type || '').toUpperCase() !== String(plan.kind).toUpperCase()) { errors.push(`SEMANTIC_EVIDENCE_EVENT_TYPE_MISMATCH: renderer record for ${plan.event_id} declares ${rec.event_type || '(none)'} not ${plan.kind}`); continue; }
         if (rec.manifested !== false && manifestationMatches(plan, rec.manifestation)) {
           remaining.splice(idx, 1);
-          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'RENDERER_MANIFESTATION_CONFIRMED', manifestation: rec.manifestation, evidence_source: `renderer-run:${options.renderRunId}`, renderer_identity: rendererStore.identity, media_sha256: rendererStore.media_sha256, evaluated_media_sha256: evaluatedMedia.sha, evaluated_media_source: evaluatedMedia.source });
+          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'RENDERER_MANIFESTATION_CONFIRMED', manifestation: rec.manifestation, evidence_source: `renderer-run:${options.renderRunId}`, renderer_identity: rendererStore.identity, media_sha256: rendererStore.media_sha256, evaluation_target_id: evaluatedMedia.evaluation_target_id, evaluated_media_sha256: evaluatedMedia.sha, evaluated_media_source: evaluatedMedia.source });
         }
       }
     }
@@ -581,7 +635,7 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
         if (String(rec.event_type || '').toUpperCase() !== String(plan.kind).toUpperCase()) { errors.push(`SEMANTIC_EVIDENCE_EVENT_TYPE_MISMATCH: classifier record for ${plan.event_id} declares ${rec.event_type || '(none)'} not ${plan.kind}`); continue; }
         if (rec.confirmed === true && manifestationMatches(plan, rec.manifestation)) {
           remaining.splice(idx, 1);
-          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'APPROVED_CLASSIFIER_CONFIRMED', manifestation: rec.manifestation, evidence_source: `classifier-run:${options.classifierRunId}`, classifier_identity: classifierStore.identity, media_sha256: classifierStore.media_sha256, evaluated_media_sha256: evaluatedMedia.sha, evaluated_media_source: evaluatedMedia.source });
+          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'APPROVED_CLASSIFIER_CONFIRMED', manifestation: rec.manifestation, evidence_source: `classifier-run:${options.classifierRunId}`, classifier_identity: classifierStore.identity, media_sha256: classifierStore.media_sha256, evaluation_target_id: evaluatedMedia.evaluation_target_id, evaluated_media_sha256: evaluatedMedia.sha, evaluated_media_source: evaluatedMedia.source });
         }
       }
     }
@@ -1040,9 +1094,11 @@ module.exports = {
   // recordClassifierEvidence were removed (Codex 58847dc Finding 2) — the
   // trusted writer is module-private and reachable only through these runtimes.
   HERMETIC_ARTIFACT_SCHEMA,
+  EVALUATION_TARGET_SCHEMA,
   requestRendererExecution,
   requestClassifierExecution,
   // PUBLIC READ surface.
+  resolveCanonicalEvaluationTarget,
   resolveRendererRun,
   resolveClassifierRun,
   countMacroStates,
