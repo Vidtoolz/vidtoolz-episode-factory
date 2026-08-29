@@ -9,10 +9,14 @@ const { tests, test } = require('./_helpers');
 const assembler = require('../scripts/agent-task-story-editor');
 const researchValidator = require('../scripts/research-result-validator.js');
 const storySuccessor = require('../scripts/story-successor.js');
+const storyFixture = require('./story-authority-live-fixture.js');
 
+// Project identity is stable; the Story version/head is resolved live through
+// the production authority at test time and is NEVER pinned here — a
+// legitimate human-approved successor moves these tests without breaking
+// them. Exact historical versions belong in hermetic fixtures (ASE18) or the
+// negative predecessor proof (ASE17).
 const REAL_PROJECT = '01M0QR9DGP5RRFTPVDA7WQP2XM';
-const REAL_VERSION = '01M0QR9DGRPW4MK8BMD1RGAYDX';
-const REAL_HASH = 'f6d38d2bc156ab537256ac0d0843a6ca9919e5749c55d581dd98cb36ef457671';
 
 function fakeBuilder(over = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'story-assembler-'));
@@ -26,8 +30,21 @@ function fakeBuilder(over = {}) {
 }
 
 test('ASE1: reads the real canonical Story version live', () => {
-  const out = assembler.assembleStoryEditorTask({ projectId: REAL_PROJECT, versionId: REAL_VERSION, runId: 'run-real', taskId: 'task-real' });
-  assert.equal(out.task.script_content_hash, REAL_HASH); assert.equal(out.task.script_sections.length, 11); assert.equal(out.authority.current, true);
+  // LIVE-CURRENT-HEAD contract: resolve the canonical head through the SAME
+  // authoritative mechanism production uses, assemble through the production
+  // assembler, and assert invariant properties only. No version id or content
+  // hash is pinned, so a legitimate human-approved successor keeps this test
+  // green by design.
+  const live = storyFixture.resolveLiveCanonicalHead(REAL_PROJECT);
+  assert.ok(live.project, 'canonical project must exist in the resolved Script Builder authority');
+  assert.ok(live.head, 'canonical project must have at least one Story version');
+  const out = assembler.assembleStoryEditorTask({ projectId: REAL_PROJECT, versionId: live.head.id, runId: 'run-real', taskId: 'task-real' });
+  assert.equal(out.task.script_version_id, live.head.id);
+  assert.equal(out.task.project_id, REAL_PROJECT);
+  assert.equal(out.task.script_content_hash, live.versions.scriptContentHash(live.head.sections));
+  assert.equal(out.task.script_sections.length, live.head.sections.length);
+  assert.equal(out.authority.current, true);
+  assert.equal(out.authority.content_hash, live.head.content_hash);
 });
 test('ASE2: exact native Story Editor action and identity are assembled', () => {
   const root = fakeBuilder(); const out = assembler.assembleStoryEditorTask({ scriptBuilderRoot: root, projectId: 'p1', versionId: 'v1', runId: 'run-1', taskId: 'task-1' });
@@ -150,6 +167,47 @@ test('ASE16: assembler-produced Research context reaches canonical successor bin
   const corrupted = JSON.parse(fs.readFileSync(resultsPath)); corrupted.results[0].result_digest_sha256 = '0'.repeat(64); fs.writeFileSync(resultsPath, JSON.stringify(corrupted));
   const refused = storySuccessor.validate(context, previous, next);
   assert.equal(refused.valid, false); assert.ok(refused.reason_codes.includes('STORY_RESEARCH_CONTEXT_HASH_CHANGED'));
+});
+
+test('ASE17: stale predecessor Story stays rejected wherever the current head is required (live negative proof)', () => {
+  // Mandatory negative stale-Story proof (§7), resolved dynamically against
+  // the live authority: any known-valid non-head version must be refused by
+  // the production assembler's certified stale refusal. No literal version id
+  // is pinned, so the proof tracks whatever the live canonical chain holds.
+  const live = storyFixture.resolveLiveCanonicalHead(REAL_PROJECT);
+  if (live.list.length < 2) return; // single-version store: covered hermetically by ASE18
+  const predecessor = live.list[0];
+  assert.notEqual(predecessor.id, live.head.id, 'predecessor must be a distinct, older canonical version');
+  assert.throws(
+    () => assembler.assembleStoryEditorTask({ projectId: REAL_PROJECT, versionId: predecessor.id, runId: 'run-ase17', taskId: 'task-ase17' }),
+    /version is stale/
+  );
+});
+
+test('ASE18: hermetic successor anti-rot — the current-head invariant survives a canonical successor and the stale predecessor stays rejected', () => {
+  // Successor anti-rot proof (§10): HEAD V1 → assembly binds V1; a canonical
+  // successor V2 becomes current → the SAME live-current-head code path binds
+  // V2 without any source change; using V1 where the current head is required
+  // stays rejected with the certified stale refusal. Built with the real
+  // pinned Script Builder implementation over an isolated data directory —
+  // one authority, zero test-local head logic.
+  const fixture = storyFixture.canonicalStoryFixture();
+  const project = fixture.store.saveProject(fixture.dataRoot, fixture.store.newProject({ id: 'pfx-ase18', title: 'ASE18 anti-rot fixture', length_class: 'short' }));
+  const sectionsV1 = [{ id: 's1', order: 1, dialogue: 'First canonical words.' }];
+  const v1 = fixture.versions.createVersion(fixture.dataRoot, project, sectionsV1, fixture.config.loadConfig(fixture.dataRoot), {});
+  const asHead = (versionId) => assembler.assembleStoryEditorTask({ scriptBuilderRoot: fixture.root, projectId: project.id, versionId, runId: 'run-ase18', taskId: 'task-ase18' });
+  assert.equal(asHead(v1.id).task.script_version_id, v1.id);
+  // Pace past the ULID millisecond boundary so the successor's creation
+  // timestamp orders strictly after V1 (Script Builder head ordering is ULID
+  // lexicographic; same-millisecond creations have random suffix order).
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3);
+  const sectionsV2 = [{ id: 's1', order: 1, dialogue: 'Amended canonical words.' }];
+  const v2 = fixture.versions.createVersion(fixture.dataRoot, project, sectionsV2, fixture.config.loadConfig(fixture.dataRoot), {});
+  const afterSuccessor = asHead(fixture.versions.listVersions(fixture.dataRoot, project.id).at(-1).id);
+  assert.equal(afterSuccessor.task.script_version_id, v2.id);
+  assert.equal(afterSuccessor.task.script_content_hash, fixture.versions.scriptContentHash(sectionsV2));
+  assert.equal(afterSuccessor.authority.current, true);
+  assert.throws(() => asHead(v1.id), /version is stale/);
 });
 
 if (require.main === module) {

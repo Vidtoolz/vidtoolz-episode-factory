@@ -7,10 +7,14 @@ const path = require('node:path');
 const { tests, test } = require('./_helpers.js');
 const assembler = require('../scripts/agent-task-visual-planning.js');
 const director = require('../scripts/visual-planning-director.js');
+const storyFixture = require('./story-authority-live-fixture.js');
 
+// Project identity is stable (projects do not advance); the version/head is
+// resolved live through the production authority at test time and is NEVER
+// pinned here — a legitimate human-approved successor moves these tests
+// without breaking them. Exact historical versions belong in hermetic
+// fixtures (AVP20) or the negative predecessor proof (AVP21).
 const REAL_PROJECT = '01M0QR9DGP5RRFTPVDA7WQP2XM';
-const REAL_VERSION = '01M0QR9DGRPW4MK8BMD1RGAYDX';
-const REAL_HASH = 'f6d38d2bc156ab537256ac0d0843a6ca9919e5749c55d581dd98cb36ef457671';
 
 function fakeBuilder(overrides = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-planning-assembler-'));
@@ -40,7 +44,24 @@ function assemble(root, overrides = {}) {
   return assembler.assembleVisualPlanningTask({ scriptBuilderRoot: root, projectId: 'p1', versionId: 'v1', runId: 'run-1', taskId: 'visual-plan-v1', ...overrides });
 }
 
-test('AVP1 reads the real current canonical Story live', () => { const out = assembler.assembleVisualPlanningTask({ projectId: REAL_PROJECT, versionId: REAL_VERSION, runId: 'real-vpd-stage1', taskId: 'visual-plan-real-v1' }); assert.equal(out.task.story.content_hash, REAL_HASH); assert.equal(out.task.story.sections.length, 11); assert.deepEqual(out.task.story.sections.map((section) => section.order), [1,2,3,4,5,6,7,8,9,10,11]); });
+test('AVP1 reads the real current canonical Story live', () => {
+  // LIVE-CURRENT-HEAD contract: resolve the canonical head through the SAME
+  // authoritative mechanism production uses (the Script Builder authority's
+  // own listVersions), assemble through the production assembler, and assert
+  // invariant properties only. No version id or content hash is pinned, so a
+  // legitimate human-approved successor keeps this test green by design.
+  const live = storyFixture.resolveLiveCanonicalHead(REAL_PROJECT);
+  assert.ok(live.project, 'canonical project must exist in the resolved Script Builder authority');
+  assert.ok(live.head, 'canonical project must have at least one Story version');
+  const out = assembler.assembleVisualPlanningTask({ projectId: REAL_PROJECT, versionId: live.head.id, runId: 'real-vpd-stage1', taskId: 'visual-plan-real-v1' });
+  assert.equal(out.task.story.version_id, live.head.id);
+  assert.equal(out.task.story.project_id, REAL_PROJECT);
+  assert.equal(out.task.story.content_hash, live.versions.scriptContentHash(live.head.sections));
+  assert.equal(out.task.story.sections.length, live.head.sections.length);
+  assert.deepEqual(out.task.story.sections.map((section) => section.order), live.head.sections.map((section) => section.order));
+  assert.equal(out.authority.current, true);
+  assert.equal(out.authority.section_count, live.head.sections.length);
+});
 test('AVP2 maps exact native VPD task identity', () => { const { root } = fakeBuilder(); const { task } = assemble(root); assert.equal(task.action, 'plan_visuals'); assert.equal(task.project_id, 'p1'); assert.equal(task.package_run_id, 'run-1'); assert.equal(task.story.version_id, 'v1'); });
 test('AVP3 creates one required beat per ordered canonical section', () => { const { root } = fakeBuilder(); const { task } = assemble(root); assert.deepEqual(task.required_beats.map((beat) => beat.section_id), ['s1', 's2']); assert.equal(task.required_beats.length, task.story.sections.length); });
 test('AVP4 derived beats pass the unchanged VPD preflight', () => { const { root } = fakeBuilder(); assert.equal(director.preflight(assemble(root).task).ok, true); });
@@ -59,6 +80,31 @@ test('AVP16 assembler writes only the native task envelope', () => { const { roo
 test('AVP17 assembler does not invoke a model or create a Visual Plan', () => { const { root } = fakeBuilder(); const { task } = assemble(root); assert.equal('visual_plan' in task, false); assert.equal('model' in task, false); assert.equal('approval_binding' in task, false); });
 test('AVP18 exact Script Builder aliases and provenance survive assembly', () => { const { root } = fakeBuilder(); const beat = assemble(root).task.required_beats[0]; assert.deepEqual(beat.aliases, [{ namespace: 'vidtoolz-script-builder/section', id: 's1' }]); assert.deepEqual(beat.source_provenance, { source_system: 'vidtoolz-script-builder', source_id: 'p1/v1/s1' }); });
 test('AVP19 agent-looking PLAN_SCRIPT_APPROVAL approver is rejected', () => { const { root, fixturePath } = fakeBuilder({ approval: 'approved' }); const fixture = JSON.parse(fs.readFileSync(fixturePath)); fixture.version.approval.approved_by = 'story_editor'; fs.writeFileSync(fixturePath, JSON.stringify(fixture)); assert.throws(() => assemble(root), (error) => error.code === 'PLAN_SCRIPT_APPROVER_NOT_HUMAN'); });
+
+test('AVP20 hermetic successor anti-rot — the current-head invariant survives a canonical successor and the stale predecessor stays rejected', () => {
+  // Successor anti-rot proof (§10): HEAD V1 → assembly binds V1; a canonical
+  // successor V2 becomes current → the SAME live-current-head code path binds
+  // V2 without any source change; using V1 where the current head is required
+  // stays rejected with the certified stale refusal. Built with the real
+  // pinned Script Builder implementation over an isolated data directory —
+  // one authority, zero test-local head logic.
+  const fixture = storyFixture.canonicalStoryFixture();
+  const project = fixture.store.saveProject(fixture.dataRoot, fixture.store.newProject({ id: 'pfx-avp20', title: 'AVP20 anti-rot fixture', length_class: 'short' }));
+  const sectionsV1 = [{ id: 's1', order: 1, beat: 'Hook', type: 'composited', background: 'plate', framing_preset: 'right-third', dialogue: 'First canonical words.', visual_notes: '', media_refs: [] }];
+  const v1 = fixture.versions.createVersion(fixture.dataRoot, project, sectionsV1, fixture.config.loadConfig(fixture.dataRoot), {});
+  const asHead = (versionId) => assembler.assembleVisualPlanningTask({ scriptBuilderRoot: fixture.root, projectId: project.id, versionId, runId: 'run-avp20', taskId: 'task-avp20' });
+  assert.equal(asHead(v1.id).task.story.version_id, v1.id);
+  // Pace past the ULID millisecond boundary so the successor's creation
+  // timestamp orders strictly after V1 (Script Builder head ordering is ULID
+  // lexicographic; same-millisecond creations have random suffix order).
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3);
+  const sectionsV2 = [{ id: 's1', order: 1, beat: 'Hook', type: 'composited', background: 'plate', framing_preset: 'right-third', dialogue: 'Amended canonical words.', visual_notes: '', media_refs: [] }];
+  const v2 = fixture.versions.createVersion(fixture.dataRoot, project, sectionsV2, fixture.config.loadConfig(fixture.dataRoot), {});
+  const afterSuccessor = asHead(fixture.versions.listVersions(fixture.dataRoot, project.id).at(-1).id);
+  assert.equal(afterSuccessor.task.story.version_id, v2.id);
+  assert.equal(afterSuccessor.task.story.content_hash, fixture.versions.scriptContentHash(sectionsV2));
+  assert.throws(() => asHead(v1.id), /version is stale/);
+});
 
 if (require.main === module) {
   (async () => { let passed = 0, failed = 0; for (const item of tests) { try { await item.fn(); passed += 1; console.log(`ok ${passed} - ${item.name}`); } catch (error) { failed += 1; console.error(`not ok - ${item.name}`); console.error(error.stack || error.message); } } console.log(`${passed}/${passed + failed} Visual Planning Task Assembler tests passed`); if (failed) process.exitCode = 1; })();
