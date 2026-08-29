@@ -701,8 +701,13 @@ test('CDN6 (CODX-EVENT-01 + CODX-LB-08/09): a pixel signal never confirms Level-
   process.env.VIDTOOLZ_RENDERER_EVENT_STORE = store;
   process.env.VIDTOOLZ_RENDERER_EXECUTION_IDENTITY = 'renderer@test';
   try {
-    adapter.requestRendererExecution('run-cd6', { events: [{ event_id: 'planned-label-1', kind: 'LABEL_REVEAL', label: 'X' }] });
-    const confirmed = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], planned, { renderRunId: 'run-cd6' });
+    const receipt = adapter.requestRendererExecution('run-cd6', { events: [{ event_id: 'planned-label-1', kind: 'LABEL_REVEAL', label: 'X' }] });
+    // MANDATORY MEDIA BINDING: confirmation names the exact media being judged
+    // (canonically derived from its bytes); omission never confirms
+    const omitted = adapter.admitMeasuredEvents([], planned, { renderRunId: 'run-cd6' });
+    assert.equal(omitted.confirmed.length, 0, 'no evaluated-media identity -> no Level-B confirmation');
+    assert.ok(omitted.errors.some((e) => e.includes('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE')));
+    const confirmed = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], planned, { renderRunId: 'run-cd6', evaluatedMediaPath: receipt.artifact_path });
     assert.equal(confirmed.confirmed.length, 1);
     assert.equal(confirmed.confirmed[0].event_id, 'planned-label-1');
     assert.equal(confirmed.confirmed[0].authority, 'RENDERER_MANIFESTATION_CONFIRMED');
@@ -812,10 +817,19 @@ function withAuthorityStore(root, fn) {
     return result;
   } catch (error) { restore(); throw error; }
 }
-function writeAuthorityRecord(root, subject, authorityId, version, humanConstraints) {
-  const dir = path.join(root, subject);
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, `${authorityId}.json`), JSON.stringify({ authority_id: authorityId, version, human_constraints: humanConstraints }));
+// Record a human decision through the TRUSTED writer — the only path that
+// creates subject-bound records and advances a subject's durable current head.
+// The writer identity env stands in for Mikko's decision-recording deployment.
+function appendAuthority(root, subject, humanConstraints) {
+  const prevStore = process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE;
+  const prevWriter = process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY;
+  process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = root;
+  process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY = 'mikko@decision-tooling';
+  try { return director.recordHumanAuthoritySuccessor(subject, { human_constraints: humanConstraints }); }
+  finally {
+    if (prevStore === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = prevStore;
+    if (prevWriter === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY = prevWriter;
+  }
 }
 const KEEP_S03 = { constraint_id: 'keep-s03-canonical', type: 'KEEP_MEDIA', scope: 'S03', text: 'Keep S03.' };
 const THREE_CLAIMS = [
@@ -830,8 +844,8 @@ test('CDT2: the canonical current-authority HEAD binds by the direction\'s own s
   const authStore = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-humanauth-'));
   // T1: a canonical human-authority successor establishes KEEP S03 (head v2);
   // the older v1 record was unlocked.
-  writeAuthorityRecord(authStore, CANON_IDEA_ID, 'ha-1', 1, []);
-  writeAuthorityRecord(authStore, CANON_IDEA_ID, 'ha-2', 2, [KEEP_S03]);
+  appendAuthority(authStore, CANON_IDEA_ID, []);
+  appendAuthority(authStore, CANON_IDEA_ID, [KEEP_S03]);
   withAuthorityStore(authStore, () => {
     // T2: the ordinary projection path, with NO caller authority context at all.
     const omitted = director.projectForSpecialistById(out.creative_direction_id, 'editor');
@@ -870,7 +884,8 @@ test('CDT2: the canonical current-authority HEAD binds by the direction\'s own s
 
 test('CDT3: the MAIN run() projection path itself resolves canonical current authority — its specialist projections suppress a locked stale operation', async () => {
   const authStore = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-mainrun-auth-'));
-  writeAuthorityRecord(authStore, CANON_IDEA_ID, 'ha-2', 2, [KEEP_S03]);
+  appendAuthority(authStore, CANON_IDEA_ID, []);
+  appendAuthority(authStore, CANON_IDEA_ID, [KEEP_S03]);
   const out = await withAuthorityStore(authStore, () => runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) })));
   assert.equal(out.state, 'PREVIEW_ONLY', out.reason || '');
   for (const { role, projection } of out.specialist_projections) {
@@ -884,7 +899,7 @@ test('CDT3: the MAIN run() projection path itself resolves canonical current aut
   }
   // MUSIC head lock reaches the sound specialist through the same path.
   const musicStore = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-mainrun-music-'));
-  writeAuthorityRecord(musicStore, CANON_IDEA_ID, 'ha-3', 3, [{ constraint_id: 'music-current', type: 'MUSIC_LOCK', scope: 'GLOBAL', text: 'Keep music.' }]);
+  appendAuthority(musicStore, CANON_IDEA_ID, [{ constraint_id: 'music-current', type: 'MUSIC_LOCK', scope: 'GLOBAL', text: 'Keep music.' }]);
   const out2 = await withAuthorityStore(musicStore, () => runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) })));
   const sound = out2.specialist_projections.find((p) => p.role === 'sound_music_director').projection;
   assert.equal(sound.executable.action_claims.some((c) => c.domain === 'MUSIC' && c.operation === 'ADD'), false);
@@ -897,19 +912,20 @@ test('CDT4: an unresolvable canonical current authority fails CLOSED — never b
   withAuthorityStore(path.join(os.tmpdir(), 'cd-auth-nonexistent-root'), () => {
     assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE');
   });
-  // corrupt head record
+  // corrupt (unparseable) declared head record
   const corrupt = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-auth-corrupt-'));
-  fs.mkdirSync(path.join(corrupt, CANON_IDEA_ID), { recursive: true });
+  appendAuthority(corrupt, CANON_IDEA_ID, [KEEP_S03]);
   fs.writeFileSync(path.join(corrupt, CANON_IDEA_ID, 'ha-1.json'), '{not json');
   withAuthorityStore(corrupt, () => {
-    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE');
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_INTEGRITY');
   });
-  // ambiguous head (two records share the highest version)
-  const ambiguous = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-auth-ambig-'));
-  writeAuthorityRecord(ambiguous, CANON_IDEA_ID, 'ha-a', 2, []);
-  writeAuthorityRecord(ambiguous, CANON_IDEA_ID, 'ha-b', 2, [KEEP_S03]);
-  withAuthorityStore(ambiguous, () => {
-    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE');
+  // records present but the durable head declaration is missing: the estate is
+  // damaged — authority never degrades to "some surviving record"
+  const headless = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-auth-headless-'));
+  appendAuthority(headless, CANON_IDEA_ID, [KEEP_S03]);
+  fs.rmSync(path.join(headless, `${CANON_IDEA_ID}.head.json`));
+  withAuthorityStore(headless, () => {
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_INTEGRITY');
   });
   // the MAIN run() path blocks (fail closed) rather than projecting without
   // current authority
@@ -921,7 +937,8 @@ test('CDT4: an unresolvable canonical current authority fails CLOSED — never b
 test('CDT5: caller restrictions are monotonic — they can only ADD suppressions on top of the canonical head, and head succession is explicit', async () => {
   const out = await runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) }));
   const authStore = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-monotonic-'));
-  writeAuthorityRecord(authStore, CANON_IDEA_ID, 'ha-2', 2, [KEEP_S03]);
+  appendAuthority(authStore, CANON_IDEA_ID, []);
+  appendAuthority(authStore, CANON_IDEA_ID, [KEEP_S03]);
   withAuthorityStore(authStore, () => {
     const base = director.projectForSpecialistById(out.creative_direction_id, 'editor');
     const tightened = director.projectForSpecialistById(out.creative_direction_id, 'editor', { human_constraints: [{ constraint_id: 'music-extra', type: 'MUSIC_LOCK', scope: 'GLOBAL', text: 'Keep music too.' }] });
@@ -935,11 +952,142 @@ test('CDT5: caller restrictions are monotonic — they can only ADD suppressions
     assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor', { human_constraints: [{ constraint_id: 'x', type: 'CUSTOM', text: 'be nicer' }] }),
       (e) => e.code === 'CURRENT_AUTHORITY_ADDITIONAL_CONSTRAINT_UNENFORCEABLE');
     // head SUCCESSION: a newer head record REPLACES the current constraint set
-    // (append-only history, one current head)
-    writeAuthorityRecord(authStore, CANON_IDEA_ID, 'ha-3', 3, [{ constraint_id: 'music-current', type: 'MUSIC_LOCK', scope: 'GLOBAL', text: 'Keep music.' }]);
+    // (append-only history, one current head advanced by the trusted writer)
+    appendAuthority(authStore, CANON_IDEA_ID, [{ constraint_id: 'music-current', type: 'MUSIC_LOCK', scope: 'GLOBAL', text: 'Keep music.' }]);
     const succeeded = director.projectForSpecialistById(out.creative_direction_id, 'editor');
     assert.equal(succeeded.executable.current_human_authority.authority_id, 'ha-3');
     assert.ok(ids(succeeded).includes('stale-s03'), 'the superseded KEEP S03 is no longer the current human decision');
     assert.equal(ids(succeeded).includes('add-music'), false, 'the successor lock binds');
   });
+});
+
+/* ══ MEDIA + SUBJECT + HEAD CLOSURE (Codex 8afa2d3) — store contract ══ */
+
+test('CDT6: a human-authority record is SUBJECT-BOUND — relocated or relabeled record bytes have no authority under another subject', async () => {
+  const out = await runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) }));
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-subject-'));
+  const other = 'project-elsewhere-0001';
+  appendAuthority(store, other, [KEEP_S03]);
+  // 1. valid under its own subject
+  withAuthorityStore(store, () => {
+    assert.equal(director.resolveCurrentHumanAuthority(other).authority_id, 'ha-1');
+  });
+  // 2. exact estate bytes (record + head declaration) copied under the
+  // direction's subject -> rejected by INTERNAL subject binding, and the
+  // projection consuming it fails closed
+  fs.mkdirSync(path.join(store, CANON_IDEA_ID), { recursive: true });
+  fs.copyFileSync(path.join(store, other, 'ha-1.json'), path.join(store, CANON_IDEA_ID, 'ha-1.json'));
+  fs.copyFileSync(path.join(store, `${other}.head.json`), path.join(store, `${CANON_IDEA_ID}.head.json`));
+  withAuthorityStore(store, () => {
+    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'HUMAN_AUTHORITY_SUBJECT_BINDING_MISMATCH');
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'HUMAN_AUTHORITY_SUBJECT_BINDING_MISMATCH');
+  });
+  // 3. head declaration relabeled to the new subject but still declaring the
+  // copied record -> the head fails its own digest (subject is digest-covered)
+  const head = JSON.parse(fs.readFileSync(path.join(store, `${CANON_IDEA_ID}.head.json`), 'utf8'));
+  head.subject_id = CANON_IDEA_ID;
+  fs.writeFileSync(path.join(store, `${CANON_IDEA_ID}.head.json`), JSON.stringify(head));
+  withAuthorityStore(store, () => {
+    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_INTEGRITY');
+  });
+  // 4. record subject field edited without digest update (in its OWN estate)
+  const ownRecord = JSON.parse(fs.readFileSync(path.join(store, other, 'ha-1.json'), 'utf8'));
+  ownRecord.subject_id = CANON_IDEA_ID;
+  fs.writeFileSync(path.join(store, other, 'ha-1.json'), JSON.stringify(ownRecord));
+  withAuthorityStore(store, () => {
+    assert.throws(() => director.resolveCurrentHumanAuthority(other), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_INTEGRITY');
+  });
+});
+
+test('CDT7: the current head is DURABLE — deleting or corrupting the newest human decision fails closed and never resurrects an older permission', async () => {
+  const out = await runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) }));
+  const setup = () => {
+    const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-norollback-'));
+    appendAuthority(store, CANON_IDEA_ID, []); // HA-1 unlocked
+    appendAuthority(store, CANON_IDEA_ID, [KEEP_S03]); // HA-2 KEEP S03 = current head
+    return store;
+  };
+  const failsClosed = (store, code) => withAuthorityStore(store, () => {
+    const resolved = (() => { try { return { value: director.resolveCurrentHumanAuthority(CANON_IDEA_ID) }; } catch (e) { return { error: e }; } })();
+    assert.ok(resolved.error, 'resolution must fail closed — an older record must never silently regain authority');
+    assert.equal(resolved.error.code, code);
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === code, 'projection must fail closed too');
+  });
+  // delete the newest locked record -> AUTHORITY LOSS, not rollback to HA-1
+  const s1 = setup();
+  fs.rmSync(path.join(s1, CANON_IDEA_ID, 'ha-2.json'));
+  failsClosed(s1, 'CURRENT_HUMAN_AUTHORITY_INTEGRITY');
+  // delete MULTIPLE newest records -> still fail closed (no backward search)
+  const s2 = setup();
+  fs.rmSync(path.join(s2, CANON_IDEA_ID, 'ha-2.json'));
+  fs.rmSync(path.join(s2, CANON_IDEA_ID, 'ha-1.json'));
+  failsClosed(s2, 'CURRENT_HUMAN_AUTHORITY_INTEGRITY');
+  // corrupt the newest record's CONTENT beneath its digest (weaken the lock)
+  const s3 = setup();
+  const rec = JSON.parse(fs.readFileSync(path.join(s3, CANON_IDEA_ID, 'ha-2.json'), 'utf8'));
+  rec.human_constraints = [];
+  fs.writeFileSync(path.join(s3, CANON_IDEA_ID, 'ha-2.json'), JSON.stringify(rec));
+  failsClosed(s3, 'CURRENT_HUMAN_AUTHORITY_INTEGRITY');
+  // corrupt the durable head declaration itself -> fail closed, never inferred
+  // from surviving authority files
+  const s4 = setup();
+  fs.writeFileSync(path.join(s4, `${CANON_IDEA_ID}.head.json`), '{not json');
+  failsClosed(s4, 'CURRENT_HUMAN_AUTHORITY_INTEGRITY');
+  // edit the head declaration (point it back at HA-1) -> its digest breaks
+  const s5 = setup();
+  const head = JSON.parse(fs.readFileSync(path.join(s5, `${CANON_IDEA_ID}.head.json`), 'utf8'));
+  head.current_authority_id = 'ha-1'; head.current_version = 1;
+  fs.writeFileSync(path.join(s5, `${CANON_IDEA_ID}.head.json`), JSON.stringify(head));
+  failsClosed(s5, 'CURRENT_HUMAN_AUTHORITY_INTEGRITY');
+});
+
+test('CDT8: the trusted human-authority writer is deployment-gated, derives lineage itself, and an explicit human return to an older policy is a NEW successor', async () => {
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-writer-'));
+  const subject = 'project-writer-0001';
+  // unconfigured deployment cannot record human decisions at all
+  const prevW = process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY;
+  const prevS = process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE;
+  delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY;
+  process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = store;
+  try {
+    assert.throws(() => director.recordHumanAuthoritySuccessor(subject, { human_constraints: [] }), (e) => e.code === 'HUMAN_AUTHORITY_WRITER_UNCONFIGURED');
+  } finally {
+    if (prevW === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY = prevW;
+    if (prevS === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = prevS;
+  }
+  // legitimate append-only succession: HA-1 -> HA-2 -> HA-3, head advances
+  assert.equal(appendAuthority(store, subject, []).authority_id, 'ha-1');
+  assert.equal(appendAuthority(store, subject, [KEEP_S03]).authority_id, 'ha-2');
+  const third = appendAuthority(store, subject, [KEEP_S03, { constraint_id: 'music-current', type: 'MUSIC_LOCK', scope: 'GLOBAL', text: 'Keep music.' }]);
+  assert.equal(third.version, 3);
+  withAuthorityStore(store, () => {
+    const head = director.resolveCurrentHumanAuthority(subject);
+    assert.equal(head.authority_id, 'ha-3');
+    assert.equal(head.previous_authority_id, 'ha-2');
+    assert.equal(head.domains.length, 2);
+  });
+  // the writer derives id/version/lineage itself; selector-shaped payload keys
+  // are refused loudly
+  const prevW2 = process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY;
+  const prevS2 = process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE;
+  process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY = 'mikko@decision-tooling';
+  process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = store;
+  try {
+    for (const key of ['authority_id', 'version', 'previous_authority_id', 'current_authority_id', 'head', 'record_digest_sha256']) {
+      assert.throws(() => director.recordHumanAuthoritySuccessor(subject, { human_constraints: [], [key]: 'ha-1' }), (e) => e.code === 'HUMAN_AUTHORITY_WRITER_REFUSED', key);
+    }
+    // EXPLICIT HUMAN ROLLBACK: restoring the HA-1 policy is a NEW successor
+    // (HA-4 restating the unlocked content) — new authority, never a
+    // resurrection of a historical record
+    const restore = director.recordHumanAuthoritySuccessor(subject, { human_constraints: [] });
+    assert.equal(restore.authority_id, 'ha-4');
+    assert.equal(restore.version, 4);
+    const head = director.resolveCurrentHumanAuthority(subject);
+    assert.equal(head.authority_id, 'ha-4');
+    assert.equal(head.domains.length, 0, 'the restored-unlocked policy binds as NEW current authority');
+    assert.equal(head.previous_authority_id, 'ha-3');
+  } finally {
+    if (prevW2 === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY = prevW2;
+    if (prevS2 === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = prevS2;
+  }
 });

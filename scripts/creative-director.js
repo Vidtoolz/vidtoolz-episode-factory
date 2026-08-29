@@ -517,7 +517,9 @@ function humanRationaleView(direction) {
  * CURRENT HUMAN AUTHORITY IS NOT CALLER INPUT. The store maps a SUBJECT — the
  * project/episode identity bound INSIDE the canonical Creative Direction — to
  * versioned human-authority records under <root>/<subject_id>/<authority_id>.json;
- * the CURRENT HEAD is the unique highest version. The store root is trusted
+ * the CURRENT HEAD is the record DECLARED by the durable head manifest
+ * <root>/<subject_id>.head.json (never "highest version file present" — see the
+ * non-rollback doctrine below). The store root is trusted
  * deployment configuration (env VIDTOOLZ_HUMAN_AUTHORITY_STORE or the repo-pinned
  * default), never a caller/task field. A projection caller supplies NO authority
  * identity and NO authority version: the subject is derived from the direction
@@ -535,6 +537,23 @@ function authorityUnavailable(message) {
   e.code = 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE';
   throw e;
 }
+// Declared-head integrity failure (Codex 8afa2d3 Finding C): the durable head
+// declaration exists but its record is missing, corrupt, or inconsistent.
+// Deletion/corruption of current authority is AUTHORITY LOSS — it fails closed
+// and NEVER resurrects an older record.
+function authorityIntegrity(message) {
+  const e = new Error(`CURRENT_HUMAN_AUTHORITY_INTEGRITY: ${message}`);
+  e.code = 'CURRENT_HUMAN_AUTHORITY_INTEGRITY';
+  throw e;
+}
+// Subject-binding failure (Codex 8afa2d3 Finding B): a record/head that does
+// not internally govern the requested subject has no authority there, whatever
+// path it sits under.
+function subjectBindingMismatch(message) {
+  const e = new Error(`HUMAN_AUTHORITY_SUBJECT_BINDING_MISMATCH: ${message}`);
+  e.code = 'HUMAN_AUTHORITY_SUBJECT_BINDING_MISMATCH';
+  throw e;
+}
 
 // The authority SUBJECT is the project/episode identity the canonical direction
 // binds (digest-covered, immutable): the Script Builder project for a canonical
@@ -549,55 +568,200 @@ function authoritySubjectOf(direction) {
 }
 
 /*
- * Resolve the CURRENT human-authority head for a project/episode subject from
- * the canonical store. The caller supplies only the subject identity needed to
- * locate the record — never an authority id, version, or constraint set.
+ * SUBJECT-BOUND, DIGEST-COVERED AUTHORITY RECORDS + DURABLE CURRENT HEAD
+ * (Codex 8afa2d3 Findings B and C).
+ *
+ * Every human-authority record internally binds the exact subject it governs
+ * and carries a content digest covering schema, subject, version, constraint
+ * content, and lineage — so moving record bytes between subject namespaces can
+ * never preserve validity (path placement is a locator, not the binding).
+ *
+ * The CURRENT HEAD is a durable declaration (<root>/<subject>.head.json), not
+ * "highest version file present". Readers resolve the DECLARED head only; a
+ * missing or corrupt declared head fails CLOSED. Deleting the newest human
+ * decision therefore never silently resurrects an older permission. If the
+ * human genuinely wants an older policy back, that is a NEW explicit successor
+ * (a new record with a higher version restating the older constraints) written
+ * through the trusted writer — new authority, never historical resurrection.
  */
-function resolveCurrentHumanAuthority(subjectId) {
+const HUMAN_AUTHORITY_RECORD_SCHEMA = 'vidtoolz.humanAuthorityRecord.v1';
+const HUMAN_AUTHORITY_HEAD_SCHEMA = 'vidtoolz.humanAuthorityHead.v1';
+
+function humanAuthorityRecordDigest(record) {
+  return hash(cd.canonicalize({
+    schema: record.schema, subject_id: record.subject_id, authority_id: record.authority_id,
+    version: record.version, previous_authority_id: record.previous_authority_id ?? null,
+    created_at: record.created_at, created_by: record.created_by,
+    human_constraints: record.human_constraints,
+  }));
+}
+function humanAuthorityHeadDigest(head) {
+  return hash(cd.canonicalize({
+    schema: head.schema, subject_id: head.subject_id, current_authority_id: head.current_authority_id,
+    current_version: head.current_version, current_record_digest_sha256: head.current_record_digest_sha256,
+    previous_authority_id: head.previous_authority_id ?? null, updated_at: head.updated_at,
+  }));
+}
+
+function assertAuthoritySubjectId(subjectId) {
   const subject = norm(subjectId);
-  if (!AUTHORITY_SUBJECT_RE.test(subject)) authorityUnavailable(`malformed authority subject id ${subject || '(empty)'}`);
+  if (!AUTHORITY_SUBJECT_RE.test(subject) || subject.endsWith('.json') || subject.endsWith('.head')) {
+    authorityUnavailable(`malformed authority subject id ${subject || '(empty)'}`);
+  }
+  return subject;
+}
+
+function humanAuthorityStorePaths(subject) {
   const rootRaw = (process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE && process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE.trim()) ? process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE.trim() : PINNED_HUMAN_AUTHORITY_STORE;
   let realRoot;
   try { realRoot = fs.realpathSync(path.resolve(rootRaw)); } catch (error) { authorityUnavailable(`canonical current-authority store is unresolvable: ${error.message}`); }
   const subjectDir = path.join(realRoot, subject);
-  if (path.dirname(subjectDir) !== realRoot) authorityUnavailable('authority subject path escapes the pinned store');
-  if (!fs.existsSync(subjectDir)) {
+  const headFile = path.join(realRoot, `${subject}.head.json`);
+  if (path.dirname(subjectDir) !== realRoot || path.dirname(headFile) !== realRoot) authorityUnavailable('authority subject path escapes the pinned store');
+  return { realRoot, subjectDir, headFile };
+}
+
+/*
+ * Resolve the CURRENT human-authority head for a project/episode subject from
+ * the canonical store. The caller supplies only the subject identity needed to
+ * locate the record — never an authority id, version, or constraint set.
+ * Resolution follows the DURABLE head declaration exclusively: there is no
+ * "highest version present" scan and no backward search for a surviving older
+ * record. An EMPTY head exists only when the subject has NO estate at all
+ * (neither head declaration nor record directory) — a half-present estate is
+ * an integrity failure, not an empty answer.
+ */
+function resolveCurrentHumanAuthority(subjectId) {
+  const subject = assertAuthoritySubjectId(subjectId);
+  const { realRoot, subjectDir, headFile } = humanAuthorityStorePaths(subject);
+  const headExists = fs.existsSync(headFile);
+  const dirExists = fs.existsSync(subjectDir);
+  if (!headExists && !dirExists) {
     // The store's explicit answer: no human decision has ever been recorded for
     // this subject. This is head resolution, NOT a fallback to "no locks".
-    return storyAuthority.deepFreeze({ subject_id: subject, head: 'EMPTY', authority_id: null, version: null, human_constraints: [], domains: [], content_sha256: null });
+    return storyAuthority.deepFreeze({ subject_id: subject, head: 'EMPTY', authority_id: null, version: null, previous_authority_id: null, human_constraints: [], domains: [], content_sha256: null });
   }
-  let realDir;
-  try { realDir = fs.realpathSync(subjectDir); } catch (error) { authorityUnavailable(`authority subject unresolvable: ${error.message}`); }
-  if (path.dirname(realDir) !== realRoot) authorityUnavailable('authority subject resolves (via symlink) outside the pinned store');
-  let names;
-  try { names = fs.readdirSync(realDir).filter((n) => n.endsWith('.json')).sort(); } catch (error) { authorityUnavailable(`authority subject unreadable: ${error.message}`); }
-  if (!names.length) {
-    return storyAuthority.deepFreeze({ subject_id: subject, head: 'EMPTY', authority_id: null, version: null, human_constraints: [], domains: [], content_sha256: null });
+  if (!headExists) authorityIntegrity(`subject ${subject} has authority records but no durable head declaration — the estate is damaged; authority does not degrade to any surviving record`);
+  if (!dirExists) authorityIntegrity(`subject ${subject} declares a current head but its record directory is missing — deletion of authority records is authority loss, never rollback`);
+
+  let realHead; let realDir;
+  try { realHead = fs.realpathSync(headFile); realDir = fs.realpathSync(subjectDir); } catch (error) { authorityIntegrity(`authority estate for ${subject} is unresolvable: ${error.message}`); }
+  if (path.dirname(realHead) !== realRoot || path.dirname(realDir) !== realRoot) authorityUnavailable('authority estate resolves (via symlink) outside the pinned store');
+
+  let head;
+  try { head = JSON.parse(fs.readFileSync(realHead, 'utf8')); } catch (error) { authorityIntegrity(`head declaration for ${subject} is unreadable: ${error.message}`); }
+  if (head.schema !== HUMAN_AUTHORITY_HEAD_SCHEMA) authorityIntegrity(`head declaration for ${subject} carries schema ${head.schema || '(none)'}`);
+  if (norm(head.subject_id) !== subject) subjectBindingMismatch(`head declaration under ${subject} internally governs ${head.subject_id || '(none)'}`);
+  if (humanAuthorityHeadDigest(head) !== head.head_digest_sha256) authorityIntegrity(`head declaration for ${subject} fails its own digest`);
+  const authorityId = norm(head.current_authority_id);
+  if (!/^[A-Za-z0-9_.-]{1,120}$/.test(authorityId) || authorityId.endsWith('.json')) authorityIntegrity(`head declaration for ${subject} names a malformed current authority id`);
+  if (!Number.isInteger(head.current_version) || head.current_version < 1) authorityIntegrity(`head declaration for ${subject} lacks a positive integer current version`);
+
+  const recordFile = path.join(realDir, `${authorityId}.json`);
+  if (path.dirname(recordFile) !== realDir) authorityIntegrity('declared head record path escapes the subject store');
+  if (!fs.existsSync(recordFile)) authorityIntegrity(`declared current head ${authorityId} for ${subject} is MISSING — removal of the newest human decision never resurrects an older permission (fail closed)`);
+  let realRecord;
+  try { realRecord = fs.realpathSync(recordFile); } catch (error) { authorityIntegrity(`declared head record unresolvable: ${error.message}`); }
+  if (path.dirname(realRecord) !== realDir) authorityIntegrity('declared head record resolves (via symlink) outside the subject store');
+
+  let record;
+  try { record = JSON.parse(fs.readFileSync(realRecord, 'utf8')); } catch (error) { authorityIntegrity(`declared head record ${authorityId} is unreadable: ${error.message}`); }
+  if (record.schema !== HUMAN_AUTHORITY_RECORD_SCHEMA) authorityIntegrity(`head record ${authorityId} carries schema ${record.schema || '(none)'}`);
+  if (humanAuthorityRecordDigest(record) !== record.record_digest_sha256) authorityIntegrity(`head record ${authorityId} fails its own subject-covering digest — content was altered after trusted creation`);
+  if (record.record_digest_sha256 !== head.current_record_digest_sha256) authorityIntegrity(`head record ${authorityId} does not match the digest the durable head declaration binds`);
+  if (norm(record.subject_id) !== subject) subjectBindingMismatch(`authority record under ${subject} internally governs ${record.subject_id || '(none)'} — record bytes cannot be relocated between subjects`);
+  if (norm(record.authority_id) !== authorityId) authorityIntegrity(`head record file ${authorityId} internally declares authority_id ${record.authority_id || '(none)'}`);
+  if (record.version !== head.current_version) authorityIntegrity(`head record ${authorityId} version ${record.version} does not match the declared current version ${head.current_version}`);
+  if (!Array.isArray(record.human_constraints)) authorityIntegrity(`head record ${authorityId} lacks human_constraints`);
+  for (const [i, c] of record.human_constraints.entries()) {
+    if (!c || !norm(c.constraint_id) || !cd.CONSTRAINT_TYPES.includes(c.type) || !norm(c.text)) authorityIntegrity(`head record ${authorityId} human_constraints[${i}] invalid`);
   }
-  const records = [];
-  for (const name of names) {
-    const file = path.join(realDir, name);
-    let realFile;
-    try { realFile = fs.realpathSync(file); } catch (error) { authorityUnavailable(`authority record unresolvable: ${error.message}`); }
-    if (path.dirname(realFile) !== realDir) authorityUnavailable(`authority record ${name} resolves (via symlink) outside the subject store`);
-    let bytes; let doc;
-    try { bytes = fs.readFileSync(realFile, 'utf8'); doc = JSON.parse(bytes); } catch (error) { authorityUnavailable(`authority record ${name} unreadable: ${error.message}`); }
-    const authorityId = name.slice(0, -'.json'.length);
-    if (doc.authority_id !== undefined && norm(doc.authority_id) !== authorityId) authorityUnavailable(`authority record ${name} declares a different authority_id`);
-    if (!Number.isInteger(doc.version) || doc.version < 1) authorityUnavailable(`authority record ${name} lacks a positive integer version`);
-    if (!Array.isArray(doc.human_constraints)) authorityUnavailable(`authority record ${name} lacks human_constraints`);
-    for (const [i, c] of doc.human_constraints.entries()) {
-      if (!c || !norm(c.constraint_id) || !cd.CONSTRAINT_TYPES.includes(c.type) || !norm(c.text)) authorityUnavailable(`authority record ${name} human_constraints[${i}] invalid`);
+  const derived = cd.deriveProtectedDomains(record.human_constraints);
+  if (derived.unenforceable.length) authorityUnavailable(`authority head ${authorityId} carries unenforceable constraints: ${derived.unenforceable.map((u) => u.constraint_id).join(', ')}`);
+  return storyAuthority.deepFreeze({ subject_id: subject, head: 'RECORD', authority_id: authorityId, version: record.version, previous_authority_id: record.previous_authority_id ?? null, human_constraints: record.human_constraints, domains: derived.domains, content_sha256: record.record_digest_sha256 });
+}
+
+function atomicWriteJsonFile(filePath, obj) {
+  const tmp = `${filePath}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+  fs.writeFileSync(tmp, JSON.stringify(obj, null, 2));
+  fs.renameSync(tmp, filePath);
+}
+
+/*
+ * TRUSTED HUMAN-AUTHORITY WRITER (Codex 8afa2d3 §16-17). The ONLY way a
+ * subject's current head advances. Deployment-gated exactly like the other
+ * trusted writers in this stack: VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY is
+ * trusted deployment configuration for Mikko's decision-recording tooling —
+ * ordinary agent/task/API deployments leave it unset and therefore CANNOT
+ * write human authority at all. The writer derives id, version, lineage, and
+ * digests itself (append-only, strictly forward from the durably declared
+ * head); a caller may supply ONLY the human constraint content. No delete
+ * exists; no path moves the head backward. An explicit human return to an
+ * older policy is a NEW successor restating those constraints (new authority),
+ * never a resurrection of a historical record.
+ */
+function recordHumanAuthoritySuccessor(subjectId, payload = {}) {
+  const writerRaw = process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY;
+  const writer = writerRaw && writerRaw.trim();
+  if (!writer) {
+    const e = new Error('HUMAN_AUTHORITY_WRITER_UNCONFIGURED: this deployment has no human-authority writer identity (VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY); it cannot record human decisions');
+    e.code = 'HUMAN_AUTHORITY_WRITER_UNCONFIGURED'; throw e;
+  }
+  const subject = assertAuthoritySubjectId(subjectId);
+  for (const key of Object.keys(payload || {})) {
+    if (key !== 'human_constraints') {
+      const e = new Error(`HUMAN_AUTHORITY_WRITER_REFUSED: payload key '${key}' is refused — the trusted writer derives authority id, version, lineage, digests, and head advancement itself; a caller supplies only human_constraints`);
+      e.code = 'HUMAN_AUTHORITY_WRITER_REFUSED'; throw e;
     }
-    records.push({ authority_id: authorityId, version: doc.version, human_constraints: doc.human_constraints, content_sha256: hash(bytes) });
   }
-  const maxVersion = Math.max(...records.map((r) => r.version));
-  const heads = records.filter((r) => r.version === maxVersion);
-  if (heads.length !== 1) authorityUnavailable(`authority head for ${subject} is ambiguous: ${heads.length} records share version ${maxVersion}`);
-  const head = heads[0];
-  const derived = cd.deriveProtectedDomains(head.human_constraints);
-  if (derived.unenforceable.length) authorityUnavailable(`authority head ${head.authority_id} carries unenforceable constraints: ${derived.unenforceable.map((u) => u.constraint_id).join(', ')}`);
-  return storyAuthority.deepFreeze({ subject_id: subject, head: 'RECORD', authority_id: head.authority_id, version: head.version, human_constraints: head.human_constraints, domains: derived.domains, content_sha256: head.content_sha256 });
+  const constraints = payload.human_constraints;
+  if (!Array.isArray(constraints)) {
+    const e = new Error('HUMAN_AUTHORITY_WRITER_REFUSED: human_constraints must be an array (empty = an explicit unlocked decision)');
+    e.code = 'HUMAN_AUTHORITY_WRITER_REFUSED'; throw e;
+  }
+  for (const [i, c] of constraints.entries()) {
+    if (!c || !norm(c.constraint_id) || !cd.CONSTRAINT_TYPES.includes(c.type) || !norm(c.text)) {
+      const e = new Error(`HUMAN_AUTHORITY_WRITER_REFUSED: human_constraints[${i}] invalid`);
+      e.code = 'HUMAN_AUTHORITY_WRITER_REFUSED'; throw e;
+    }
+  }
+  const derived = cd.deriveProtectedDomains(constraints);
+  if (derived.unenforceable.length) {
+    const e = new Error(`HUMAN_AUTHORITY_WRITER_REFUSED: unenforceable constraints: ${derived.unenforceable.map((u) => u.constraint_id || u.detail).join('; ')}`);
+    e.code = 'HUMAN_AUTHORITY_WRITER_REFUSED'; throw e;
+  }
+  // Strictly forward from the durably declared head. A damaged estate refuses
+  // (the human repairs the store deliberately); it is never silently rebuilt.
+  const current = resolveCurrentHumanAuthority(subject);
+  const version = current.head === 'EMPTY' ? 1 : current.version + 1;
+  const authorityId = `ha-${version}`;
+  const { subjectDir, headFile } = humanAuthorityStorePaths(subject);
+  fs.mkdirSync(subjectDir, { recursive: true });
+  const recordFile = path.join(subjectDir, `${authorityId}.json`);
+  if (fs.existsSync(recordFile)) {
+    const e = new Error(`HUMAN_AUTHORITY_WRITER_REFUSED: record ${authorityId} already exists for ${subject}; authority history is append-only`);
+    e.code = 'HUMAN_AUTHORITY_WRITER_REFUSED'; throw e;
+  }
+  const record = {
+    schema: HUMAN_AUTHORITY_RECORD_SCHEMA, subject_id: subject, authority_id: authorityId,
+    version, previous_authority_id: current.head === 'EMPTY' ? null : current.authority_id,
+    created_at: nowIso(), created_by: writer, human_constraints: structuredClone(constraints),
+    record_digest_sha256: '',
+  };
+  record.record_digest_sha256 = humanAuthorityRecordDigest(record);
+  const headDoc = {
+    schema: HUMAN_AUTHORITY_HEAD_SCHEMA, subject_id: subject,
+    current_authority_id: authorityId, current_version: version,
+    current_record_digest_sha256: record.record_digest_sha256,
+    previous_authority_id: record.previous_authority_id, updated_at: record.created_at,
+    head_digest_sha256: '',
+  };
+  headDoc.head_digest_sha256 = humanAuthorityHeadDigest(headDoc);
+  // Record first (the head must never declare a record that does not exist),
+  // then advance the durable head declaration.
+  atomicWriteJsonFile(recordFile, record);
+  atomicWriteJsonFile(headFile, headDoc);
+  return storyAuthority.deepFreeze({ subject_id: subject, authority_id: authorityId, version, record_digest_sha256: record.record_digest_sha256, previous_authority_id: record.previous_authority_id });
 }
 
 // Caller-context keys that would let a caller SELECT which human authority is
@@ -809,6 +973,6 @@ function controlRoomView(out) {
   };
 }
 
-module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, projectForSpecialistById, humanRationaleById, resolveCanonicalDirectionById, resolveCurrentHumanAuthority, authoritySubjectOf, isCanonicalDirection, run, controlRoomView };
+module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, HUMAN_AUTHORITY_RECORD_SCHEMA, HUMAN_AUTHORITY_HEAD_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, projectForSpecialistById, humanRationaleById, resolveCanonicalDirectionById, resolveCurrentHumanAuthority, recordHumanAuthoritySuccessor, authoritySubjectOf, isCanonicalDirection, run, controlRoomView };
 
 if (require.main === module && guardExecutableLifecycle(AGENT_ID)) (async () => { const i = process.argv.indexOf('--task'); if (i < 0) process.exit(2); const out = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...out, control_room: controlRoomView(out) }, null, 2)); process.exit(['COMPLETE', 'AWAITING_HUMAN_REVIEW', 'PREVIEW_ONLY'].includes(out.state) ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });

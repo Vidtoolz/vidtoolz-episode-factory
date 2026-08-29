@@ -433,16 +433,68 @@ function approvedIdentities(envVar) {
   return new Set(raw.split(',').map((s) => s.trim()).filter(Boolean));
 }
 
-// Provenance/media/integrity gate for an evidence store document. Returns a typed
-// error string when the document is not authoritative, else null.
-function evidenceAuthorityError(kind, store, allowlistEnv, options) {
+// Provenance/integrity gate for an evidence store document. Returns a typed
+// error string when the document is not authoritative, else null. The
+// MANDATORY evaluated-media comparison is enforced separately in
+// admitMeasuredEvents against the CANONICALLY DERIVED evaluated identity —
+// never against a caller-optional field.
+function evidenceAuthorityError(kind, store, allowlistEnv) {
   if (!store.integrity_ok) return `SEMANTIC_EVIDENCE_INTEGRITY: ${kind} evidence content changed beneath the run id`;
   if (!store.identity || !String(store.identity).trim()) return `SEMANTIC_EVIDENCE_NO_PROVENANCE: ${kind} record has no producer identity`;
   const allow = approvedIdentities(allowlistEnv);
   if (allow && !allow.has(String(store.identity))) return `SEMANTIC_EVIDENCE_UNAPPROVED_PRODUCER: ${kind} identity ${store.identity} is not approved`;
   if (!HEX64_RE.test(String(store.media_sha256 || ''))) return `SEMANTIC_EVIDENCE_NO_MEDIA_BINDING: ${kind} record does not bind an output media hash`;
-  if (options.mediaSha256 && String(store.media_sha256).toLowerCase() !== String(options.mediaSha256).toLowerCase()) return `SEMANTIC_EVIDENCE_WRONG_MEDIA: ${kind} evidence is bound to a different media`;
   return null;
+}
+
+/*
+ * CANONICAL EVALUATED-MEDIA IDENTITY (Codex 8afa2d3: LEVEL-B MEDIA IDENTITY CAN
+ * BE OMITTED). Level-B semantic confirmation must ALWAYS bind
+ *   semantic evidence media == the exact media being evaluated,
+ * and the caller must not control whether that comparison happens. The
+ * evaluated identity is DERIVED canonically, never asserted:
+ *   - options.evaluatedMediaPath: this module reads and hashes the actual media
+ *     bytes being judged
+ *   - options.evaluatedRenderRunId: this module resolves the trusted renderer
+ *     manifest of the canonical run whose output is being judged
+ * options.mediaSha256 remains ONLY an additional consistency cross-check
+ * against the derived identity: it can never activate, deactivate, or
+ * substitute for the mandatory binding. A bare caller-claimed hash is not
+ * canonical evaluated-media identity. When no canonical identity can be
+ * resolved, Level-B confirmation fails closed
+ * (LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE) — never "skip the media check".
+ */
+function resolveEvaluatedMediaIdentity(options) {
+  let sha = null;
+  let source = null;
+  const mediaPath = options.evaluatedMediaPath ? String(options.evaluatedMediaPath).trim() : '';
+  if (mediaPath) {
+    let bytes;
+    try { bytes = fs.readFileSync(mediaPath); } catch (e) {
+      throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE', `evaluated media is unreadable (${e.message}); confirmation is impossible without the exact media being judged`);
+    }
+    sha = sha256(bytes);
+    source = 'EVALUATED_MEDIA_BYTES';
+  } else if (options.evaluatedRenderRunId) {
+    let run;
+    try { run = readEvidenceStore('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, options.evaluatedRenderRunId); } catch (e) {
+      throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE', `canonical evaluated render run is unresolvable (${e.message})`);
+    }
+    sha = String(run.media_sha256 || '').toLowerCase();
+    if (!HEX64_RE.test(sha)) throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE', 'canonical evaluated render run carries no media identity');
+    source = 'CANONICAL_RENDER_RUN_MANIFEST';
+  }
+  const claimed = options.mediaSha256 ? String(options.mediaSha256).trim().toLowerCase() : '';
+  if (claimed && sha && claimed !== sha) {
+    throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_MISMATCH', 'caller-claimed mediaSha256 does not match the canonically derived evaluated-media identity');
+  }
+  if (!sha) {
+    if (claimed) {
+      throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE', 'a caller-claimed mediaSha256 is not canonical evaluated-media identity; supply evaluatedMediaPath or evaluatedRenderRunId');
+    }
+    throw new StyleReferenceError('LEVEL_B_MEDIA_IDENTITY_UNAVAILABLE', 'no canonical evaluated-media identity was resolved; Level-B semantic confirmation is impossible without proving exactly which media is being judged');
+  }
+  return { sha, source };
 }
 
 /*
@@ -453,9 +505,14 @@ function evidenceAuthorityError(kind, store, allowlistEnv, options) {
  * measurement only: they can flag adjudication or an unplanned change, but they
  * NEVER confirm. Noise/motion is discarded. Provenance ids are preserved.
  *
- * options: { renderRunId?, classifierRunId?, toleranceS? }
+ * options: { renderRunId?, classifierRunId?, evaluatedMediaPath?,
+ *            evaluatedRenderRunId?, mediaSha256? (cross-check only), toleranceS? }
  * Caller-supplied evidence objects (candidate.manifestation, inline renderer
  * records, inline classifier functions) are IGNORED — they carry no authority.
+ * MANDATORY MEDIA BINDING: whenever semantic confirmation is requested
+ * (renderRunId / classifierRunId), the evaluated-media identity is resolved
+ * canonically (resolveEvaluatedMediaIdentity) and every confirming record must
+ * bind that exact media. The caller cannot switch this off by omission.
  */
 function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   const tolerance = options.toleranceS ?? 0.5;
@@ -466,6 +523,15 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   const discarded_noise = [];
   const unverified = [];
   const errors = [...planned.errors];
+
+  // CANONICAL EVALUATED-MEDIA IDENTITY — derived, never caller-asserted. It is
+  // REQUIRED for any semantic confirmation; without it nothing confirms
+  // (fail closed), though store/provenance diagnostics below still surface.
+  let evaluatedMedia = null;
+  if (options.renderRunId || options.classifierRunId || options.evaluatedMediaPath || options.evaluatedRenderRunId || options.mediaSha256) {
+    try { evaluatedMedia = resolveEvaluatedMediaIdentity(options); }
+    catch (e) { errors.push(e.message); }
+  }
 
   // Resolve TRUSTED semantic evidence from the pinned stores by id, then enforce
   // PROVENANCE + MEDIA BINDING + INTEGRITY before any record may confirm.
@@ -483,8 +549,11 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   // (matching the evaluated media when supplied), and unchanged bytes; each
   // record must declare the SAME event type as the planned event.
   if (options.renderRunId) {
-    const provError = evidenceAuthorityError('renderer', rendererStore, 'VIDTOOLZ_APPROVED_RENDERER_IDENTITIES', options);
-    if (provError) { errors.push(provError); } else {
+    const provError = evidenceAuthorityError('renderer', rendererStore, 'VIDTOOLZ_APPROVED_RENDERER_IDENTITIES');
+    if (provError) { errors.push(provError); }
+    else if (!evaluatedMedia) { /* mandatory evaluated-media identity missing — typed error already recorded; nothing may confirm */ }
+    else if (String(rendererStore.media_sha256).toLowerCase() !== evaluatedMedia.sha) { errors.push('SEMANTIC_EVIDENCE_WRONG_MEDIA: renderer evidence is bound to a different media than the one being evaluated'); }
+    else {
       for (const rec of rendererStore.records) {
         const idx = remaining.findIndex((p) => p.event_id === rec.event_id);
         if (idx < 0) continue;
@@ -492,7 +561,7 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
         if (String(rec.event_type || '').toUpperCase() !== String(plan.kind).toUpperCase()) { errors.push(`SEMANTIC_EVIDENCE_EVENT_TYPE_MISMATCH: renderer record for ${plan.event_id} declares ${rec.event_type || '(none)'} not ${plan.kind}`); continue; }
         if (rec.manifested !== false && manifestationMatches(plan, rec.manifestation)) {
           remaining.splice(idx, 1);
-          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'RENDERER_MANIFESTATION_CONFIRMED', manifestation: rec.manifestation, evidence_source: `renderer-run:${options.renderRunId}`, renderer_identity: rendererStore.identity, media_sha256: rendererStore.media_sha256 });
+          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'RENDERER_MANIFESTATION_CONFIRMED', manifestation: rec.manifestation, evidence_source: `renderer-run:${options.renderRunId}`, renderer_identity: rendererStore.identity, media_sha256: rendererStore.media_sha256, evaluated_media_sha256: evaluatedMedia.sha, evaluated_media_source: evaluatedMedia.source });
         }
       }
     }
@@ -500,8 +569,11 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   // (2) Approved classifier verdict — resolved from the store, provenance/media/
   // integrity bound, event-type matched.
   if (options.classifierRunId) {
-    const provError = evidenceAuthorityError('classifier', classifierStore, 'VIDTOOLZ_APPROVED_CLASSIFIER_IDENTITIES', options);
-    if (provError) { errors.push(provError); } else {
+    const provError = evidenceAuthorityError('classifier', classifierStore, 'VIDTOOLZ_APPROVED_CLASSIFIER_IDENTITIES');
+    if (provError) { errors.push(provError); }
+    else if (!evaluatedMedia) { /* mandatory evaluated-media identity missing — typed error already recorded; nothing may confirm */ }
+    else if (String(classifierStore.media_sha256).toLowerCase() !== evaluatedMedia.sha) { errors.push('SEMANTIC_EVIDENCE_WRONG_MEDIA: classifier evidence is bound to a different media than the one being evaluated'); }
+    else {
       for (const rec of classifierStore.records) {
         const idx = remaining.findIndex((p) => p.event_id === rec.event_id);
         if (idx < 0) continue;
@@ -509,7 +581,7 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
         if (String(rec.event_type || '').toUpperCase() !== String(plan.kind).toUpperCase()) { errors.push(`SEMANTIC_EVIDENCE_EVENT_TYPE_MISMATCH: classifier record for ${plan.event_id} declares ${rec.event_type || '(none)'} not ${plan.kind}`); continue; }
         if (rec.confirmed === true && manifestationMatches(plan, rec.manifestation)) {
           remaining.splice(idx, 1);
-          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'APPROVED_CLASSIFIER_CONFIRMED', manifestation: rec.manifestation, evidence_source: `classifier-run:${options.classifierRunId}`, classifier_identity: classifierStore.identity, media_sha256: classifierStore.media_sha256 });
+          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'APPROVED_CLASSIFIER_CONFIRMED', manifestation: rec.manifestation, evidence_source: `classifier-run:${options.classifierRunId}`, classifier_identity: classifierStore.identity, media_sha256: classifierStore.media_sha256, evaluated_media_sha256: evaluatedMedia.sha, evaluated_media_source: evaluatedMedia.source });
         }
       }
     }
