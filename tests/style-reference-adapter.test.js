@@ -385,10 +385,10 @@ test('SRA29: confirmation comes ONLY from a trusted renderer/classifier record r
     const receipt29 = adapter.requestRendererExecution('run-sra29', { events: [{ event_id: 'p1', kind: 'CARD_STATE_CHANGE', state: 'expanded' }] });
     // MANDATORY MEDIA BINDING: the evaluated media is canonically derived from
     // the exact bytes being judged; without it nothing confirms.
-    const noTarget = adapter.admitMeasuredEvents(candidates, planned, { toleranceS: 0.5, renderRunId: 'run-sra29' });
-    assert.equal(noTarget.confirmed.length, 0, 'omitting the canonical evaluation target must not confirm');
-    assert.ok(noTarget.errors.some((e) => e.includes('EVALUATION_TARGET_UNAVAILABLE')));
-    const bridge = adapter.admitMeasuredEvents(candidates, planned, { toleranceS: 0.5, renderRunId: 'run-sra29', evaluationTargetId: receipt29.evaluation_target_id });
+    const noReview = adapter.admitMeasuredEvents(candidates, planned, { toleranceS: 0.5, renderRunId: 'run-sra29' });
+    assert.equal(noReview.confirmed.length, 0, 'omitting the canonical review must not confirm');
+    assert.ok(noReview.errors.some((e) => e.includes('CANONICAL_REVIEW_UNAVAILABLE')));
+    const bridge = adapter.admitMeasuredEvents(candidates, planned, { toleranceS: 0.5, renderRunId: 'run-sra29', reviewId: receipt29.review_id });
     assert.equal(bridge.confirmed.length, 1);
     assert.equal(bridge.confirmed[0].event_id, 'p1');
     assert.equal(bridge.confirmed[0].authority, 'RENDERER_MANIFESTATION_CONFIRMED');
@@ -426,26 +426,26 @@ test('SRA31: renderer evidence must bind producer identity, media hash, and the 
     // different media -> rejected
     adapter.requestRendererExecution('wmr', { events: [{ event_id: 'label-1', kind: 'LABEL_REVEAL', label: 'TRUST' }] });
     const otherMedia = adapter.requestRendererExecution('wmr-other', { events: [{ event_id: 'other-1', kind: 'CARD_STATE_CHANGE', state: 'expanded' }] });
-    const wrong = adapter.admitMeasuredEvents([], planned, { renderRunId: 'wmr', evaluationTargetId: otherMedia.evaluation_target_id });
+    const wrong = adapter.admitMeasuredEvents([], planned, { renderRunId: 'wmr', reviewId: otherMedia.review_id });
     assert.equal(wrong.confirmed.length, 0);
     assert.ok(wrong.errors.some((e) => e.includes('WRONG_MEDIA')));
     // wrong event type: the execution rendered a CARD_STATE_CHANGE for this
     // event id, the plan claims LABEL_REVEAL -> rejected
     const wer = adapter.requestRendererExecution('wer', { events: [{ event_id: 'label-1', kind: 'CARD_STATE_CHANGE', state: 'expanded' }] });
-    const wev = adapter.admitMeasuredEvents([], planned, { renderRunId: 'wer', evaluationTargetId: wer.evaluation_target_id });
+    const wev = adapter.admitMeasuredEvents([], planned, { renderRunId: 'wer', reviewId: wer.review_id });
     assert.equal(wev.confirmed.length, 0);
     assert.ok(wev.errors.some((e) => e.includes('EVENT_TYPE_MISMATCH')));
     // genuine execution evidence with matching media -> confirms
     const okr = adapter.requestRendererExecution('okr', { events: [{ event_id: 'label-1', kind: 'LABEL_REVEAL', label: 'TRUST' }] });
-    // caller mediaSha256/evaluatedMediaPath remain ADDITIONAL cross-checks on
-    // top of the canonical evaluation target — never a substitute for it
-    const ok = adapter.admitMeasuredEvents([], planned, { renderRunId: 'okr', evaluationTargetId: okr.evaluation_target_id, evaluatedMediaPath: okr.artifact_path, mediaSha256: okr.media_sha256 });
+    // caller target/media fields remain ADDITIONAL cross-checks on top of the
+    // canonical review binding — never a substitute for it
+    const ok = adapter.admitMeasuredEvents([], planned, { renderRunId: 'okr', reviewId: okr.review_id, evaluationTargetId: okr.evaluation_target_id, evaluatedMediaPath: okr.artifact_path, mediaSha256: okr.media_sha256 });
     assert.equal(ok.confirmed.length, 1);
     assert.equal(ok.confirmed[0].authority, 'RENDERER_MANIFESTATION_CONFIRMED');
     // durable TOCTOU: rewrite the evidence bytes beneath the trusted run id -> rejected
     const mutr = adapter.requestRendererExecution('mutr', { events: [{ event_id: 'label-1', kind: 'LABEL_REVEAL', label: 'TRUST' }] });
     fs.writeFileSync(path.join(store, 'mutr.json'), JSON.stringify({ renderer_identity: 'attacker', media_sha256: mutr.media_sha256, records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'OTHER' } }] }));
-    const tampered = adapter.admitMeasuredEvents([], planned, { renderRunId: 'mutr', evaluationTargetId: mutr.evaluation_target_id });
+    const tampered = adapter.admitMeasuredEvents([], planned, { renderRunId: 'mutr', reviewId: mutr.review_id });
     assert.equal(tampered.confirmed.length, 0);
     assert.ok(tampered.errors.some((e) => e.includes('INTEGRITY')));
     // the trusted writer refuses to rebind a run id (append-only)
@@ -470,7 +470,7 @@ test('SRA32: classifier evidence must be trusted-written and identity/media-boun
     const clf = adapter.requestClassifierExecution('okr', { mediaPath: render.artifact_path, plannedEvents: [{ event_id: 'label-1', kind: 'LABEL_REVEAL', label: 'TRUST' }] });
     assert.equal(clf.confirmed_count, 1);
     assert.equal(clf.media_sha256, render.media_sha256, 'the classifier hashed the bytes it actually examined');
-    const ok = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'okr', evaluationTargetId: render.evaluation_target_id });
+    const ok = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'okr', reviewId: render.review_id });
     assert.equal(ok.confirmed.length, 1);
     assert.equal(ok.confirmed[0].authority, 'APPROVED_CLASSIFIER_CONFIRMED');
     // the classifier refuses to confirm what the media does not contain
@@ -491,7 +491,7 @@ test('SRA33: semantic-evidence integrity is DURABLE across processes — a fresh
     const media = receipt.media_sha256;
     const adapterPath = path.join(__dirname, '..', 'scripts', 'style-reference-adapter.js');
     void media; void receipt;
-    const fresh = (target) => JSON.parse(cp.execFileSync(process.execPath, ['-e', `const a=require(${JSON.stringify(adapterPath)});const r=a.admitMeasuredEvents([],[{event_id:'label-1',t_s:5,kind:'LABEL_REVEAL',label:${JSON.stringify(target)}}],{renderRunId:'xproc',evaluationTargetId:'xproc'});process.stdout.write(JSON.stringify({c:r.confirmed.length,e:r.errors}))`], { encoding: 'utf8', env: { ...process.env, VIDTOOLZ_RENDERER_EVENT_STORE: store, VIDTOOLZ_APPROVED_RENDERER_IDENTITIES: 'trusted-renderer-v1' } }));
+    const fresh = (target) => JSON.parse(cp.execFileSync(process.execPath, ['-e', `const a=require(${JSON.stringify(adapterPath)});const r=a.admitMeasuredEvents([],[{event_id:'label-1',t_s:5,kind:'LABEL_REVEAL',label:${JSON.stringify(target)}}],{renderRunId:'xproc',reviewId:'xproc'});process.stdout.write(JSON.stringify({c:r.confirmed.length,e:r.errors}))`], { encoding: 'utf8', env: { ...process.env, VIDTOOLZ_RENDERER_EVENT_STORE: store, VIDTOOLZ_APPROVED_RENDERER_IDENTITIES: 'trusted-renderer-v1' } }));
     // fresh process confirms the untampered durable record
     assert.equal(fresh('TRUST').c, 1);
     // rewrite the evidence bytes beneath the same run id (manifest unchanged)
@@ -565,14 +565,14 @@ test('SRA36: copying an approved producer identity (all metadata) into caller-cr
     // (1) exact metadata copied into a raw evidence file under a new run id ->
     // no manifest -> no authority
     fs.writeFileSync(path.join(store, 'copied.json'), JSON.stringify({ ...legit, records: [{ event_id: 'label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'TRUST' } }] }));
-    const copied = adapter.admitMeasuredEvents([], planned, { renderRunId: 'copied', evaluationTargetId: receipt.evaluation_target_id });
+    const copied = adapter.admitMeasuredEvents([], planned, { renderRunId: 'copied', reviewId: receipt.review_id });
     assert.equal(copied.confirmed.length, 0);
     assert.ok(copied.errors.some((e) => e.includes('UNAUTHORIZED_WRITE')));
     // (2) copying the legitimate MANIFEST too (under the new run id) still
     // grants nothing: the manifest binds its own run id
     fs.copyFileSync(path.join(store, 'legit.manifest.json'), path.join(store, 'copied.manifest.json'));
     fs.copyFileSync(path.join(store, 'legit.json'), path.join(store, 'copied.json'));
-    const paired = adapter.admitMeasuredEvents([], planned, { renderRunId: 'copied', evaluationTargetId: receipt.evaluation_target_id });
+    const paired = adapter.admitMeasuredEvents([], planned, { renderRunId: 'copied', reviewId: receipt.review_id });
     assert.equal(paired.confirmed.length, 0);
     assert.ok(paired.errors.some((e) => e.includes('MANIFEST_MISMATCH')));
   });
@@ -586,74 +586,82 @@ test('SRA36: copying an approved producer identity (all metadata) into caller-cr
   });
 });
 
-/* ══ CANONICAL IDENTITY CLOSURE (Codex 4918708) — the caller does not choose what is under review ══ */
+/* ══ CANONICAL REVIEW CLOSURE (Codex bb13d66) — a review decides which artifact is being reviewed ══ */
 
-test('SRA37: the renderer evaluation target is CANONICALLY RESOLVED — no caller field can select, redirect, or omit which media is under review', () => {
-  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-target-r-'));
+test('SRA37: the renderer review target is REVIEW-BOUND and TRUSTED-REGISTERED — no caller field selects, substitutes, or forges what is under review', () => {
+  const crypto = require('crypto');
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-review-r-'));
   const planned = [{ event_id: 'label-1', t_s: 5, kind: 'LABEL_REVEAL', label: 'TRUST' }];
+  const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+  const canon = (v) => Array.isArray(v) ? `[${v.map(canon).join(',')}]` : (v && typeof v === 'object') ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}` : JSON.stringify(v);
   withEnv({ VIDTOOLZ_RENDERER_EVENT_STORE: store, VIDTOOLZ_RENDERER_EXECUTION_IDENTITY: 'trusted-renderer-v1' }, () => {
-    // the trusted execution registers ITS output as the canonical evaluation
-    // target the moment it produces it — QC callers only ever NAME a target
-    const mediaA = adapter.requestRendererExecution('media-a', { events: [{ event_id: 'label-1', kind: 'LABEL_REVEAL', label: 'TRUST' }] });
-    const mediaB = adapter.requestRendererExecution('media-b', { events: [{ event_id: 'other', kind: 'CARD_STATE_CHANGE', state: 'expanded' }] });
-    assert.equal(mediaA.evaluation_target_id, 'media-a');
-    const targetB = adapter.resolveCanonicalEvaluationTarget('media-b');
-    assert.equal(targetB.media_sha256, mediaB.media_sha256, 'the resolver derives the canonical media identity');
-    // production target B under review + media-A evidence -> rejected, whatever
-    // the caller does. First: no selector at all.
-    const plainB = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', evaluationTargetId: 'media-b' });
+    // the trusted execution registers target AND review (root-registry chained)
+    // the moment it produces its output — QC callers only ever NAME a review
+    const mediaA = adapter.requestRendererExecution('media-a', { subject: 'project-P', events: [{ event_id: 'label-1', kind: 'LABEL_REVEAL', label: 'TRUST' }] });
+    const mediaB = adapter.requestRendererExecution('media-b', { subject: 'project-P', events: [{ event_id: 'other', kind: 'CARD_STATE_CHANGE', state: 'expanded' }] });
+    assert.equal(mediaA.review_id, 'media-a');
+    const reviewB = adapter.resolveCanonicalReview('media-b');
+    assert.equal(reviewB.evaluation_target_id, 'media-b');
+    assert.equal(reviewB.media_sha256, mediaB.media_sha256, 'the review resolves its own canonical target and media');
+    assert.equal(reviewB.subject_id, 'project-P');
+    // review B under way + media-A evidence -> rejected (canonical WRONG_MEDIA)
+    const plainB = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', reviewId: 'media-b' });
     assert.equal(plainB.confirmed.length, 0);
     assert.ok(plainB.errors.some((e) => e.includes('WRONG_MEDIA')));
-    // every selector path toward A is a NON-AUTHORITATIVE assertion: it cannot
-    // switch the target from B to A — an inconsistent assertion fails closed
+    // THE CODEX CASE: within review B, naming ANOTHER registered target A is a
+    // substitution attempt — refused, the canonical review still points to B
+    const substituted = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', reviewId: 'media-b', evaluationTargetId: 'media-a' });
+    assert.equal(substituted.confirmed.length, 0, 'a registered target cannot be substituted under a review');
+    assert.ok(substituted.errors.some((e) => e.includes('REVIEW_TARGET_MISMATCH')));
+    // every other target-shaped selector toward A also fails closed
     for (const selector of [
       { evaluatedMediaPath: mediaA.artifact_path },
       { evaluatedRenderRunId: 'media-a' },
       { mediaSha256: mediaA.media_sha256 },
     ]) {
-      const redirected = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', evaluationTargetId: 'media-b', ...selector });
-      assert.equal(redirected.confirmed.length, 0, `selector ${Object.keys(selector)[0]} must not redirect the evaluation target`);
+      const redirected = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', reviewId: 'media-b', ...selector });
+      assert.equal(redirected.confirmed.length, 0, `selector ${Object.keys(selector)[0]} must not redirect the review target`);
       assert.ok(redirected.errors.some((e) => e.includes('EVALUATION_TARGET_CROSS_CHECK_FAILED')), Object.keys(selector)[0]);
     }
-    // caller-only media fields with NO target never confirm (no fallback)
-    for (const selector of [
-      { evaluatedMediaPath: mediaA.artifact_path },
-      { evaluatedRenderRunId: 'media-a' },
-      { mediaSha256: mediaA.media_sha256 },
-    ]) {
-      const noTarget = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', ...selector });
-      assert.equal(noTarget.confirmed.length, 0, `selector ${Object.keys(selector)[0]} alone must not enable confirmation`);
-      assert.ok(noTarget.errors.some((e) => e.includes('EVALUATION_TARGET_UNAVAILABLE')));
-    }
-    // canonical positive: target A + evidence A -> confirms, bound to the target
-    const ok = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', evaluationTargetId: 'media-a' });
+    // caller fields with NO review never confirm (no fallback)
+    const noReview = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', evaluationTargetId: 'media-a', evaluatedMediaPath: mediaA.artifact_path, mediaSha256: mediaA.media_sha256 });
+    assert.equal(noReview.confirmed.length, 0);
+    assert.ok(noReview.errors.some((e) => e.includes('CANONICAL_REVIEW_UNAVAILABLE')));
+    // canonical positive: review A + evidence A -> confirms, bound to review+target
+    const ok = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', reviewId: 'media-a' });
     assert.equal(ok.confirmed.length, 1);
+    assert.equal(ok.confirmed[0].review_id, 'media-a');
     assert.equal(ok.confirmed[0].evaluation_target_id, 'media-a');
-    assert.equal(ok.confirmed[0].evaluated_media_sha256, mediaA.media_sha256);
-    assert.equal(ok.confirmed[0].evaluated_media_source, 'CANONICAL_EVALUATION_TARGET');
-    // consistent caller cross-checks remain legal diagnostics
-    const crossChecked = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', evaluationTargetId: 'media-a', evaluatedMediaPath: mediaA.artifact_path, mediaSha256: mediaA.media_sha256, evaluatedRenderRunId: 'media-a' });
+    assert.equal(ok.confirmed[0].review_subject_id, 'project-P');
+    assert.equal(ok.confirmed[0].evaluated_media_source, 'CANONICAL_REVIEW_TARGET');
+    // consistent caller cross-checks stay legal diagnostics
+    const crossChecked = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', reviewId: 'media-a', evaluationTargetId: 'media-a', evaluatedMediaPath: mediaA.artifact_path, mediaSha256: mediaA.media_sha256, evaluatedRenderRunId: 'media-a' });
     assert.equal(crossChecked.confirmed.length, 1);
-    // unknown target -> fail closed, no fallback to caller fields
-    const unknown = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', evaluationTargetId: 'no-such-target', evaluatedMediaPath: mediaA.artifact_path });
-    assert.equal(unknown.confirmed.length, 0);
-    assert.ok(unknown.errors.some((e) => e.includes('EVALUATION_TARGET_UNAVAILABLE')));
-    // a tampered target registration fails its digest -> fail closed
-    const regPath = path.join(store, 'media-a.target.json');
-    const reg = JSON.parse(fs.readFileSync(regPath, 'utf8'));
-    reg.media_sha256 = mediaB.media_sha256;
-    fs.writeFileSync(regPath, JSON.stringify(reg));
-    const tampered = adapter.admitMeasuredEvents([], planned, { renderRunId: 'media-a', evaluationTargetId: 'media-a' });
-    assert.equal(tampered.confirmed.length, 0);
-    assert.ok(tampered.errors.some((e) => e.includes('EVALUATION_TARGET_UNAVAILABLE')));
-    // target registrations are append-only: a second execution cannot rebind one
-    assert.throws(() => adapter.requestRendererExecution('media-a', { events: [{ event_id: 'x', kind: 'LABEL_REVEAL', label: 'Z' }] }), (e) => e.code === 'SEMANTIC_EVIDENCE_RUN_ID_ALREADY_BOUND');
+    // FORGERY (the exact Codex gap): copy a legitimate target, re-ID it,
+    // recompute the public digest, place it in the store WITHOUT the trusted
+    // writer -> unregistered, no authority
+    const legit = JSON.parse(fs.readFileSync(path.join(store, 'media-a.target.json'), 'utf8'));
+    const forged = { ...legit, evaluation_target_id: 'target-x', render_run_id: 'target-x' };
+    forged.target_digest_sha256 = sha(canon({ schema: forged.schema, evaluation_target_id: forged.evaluation_target_id, subject_id: forged.subject_id ?? null, media_sha256: forged.media_sha256, media_path: forged.media_path, render_run_id: forged.render_run_id, producer_execution_identity: forged.producer_execution_identity, created_at: forged.created_at }));
+    fs.writeFileSync(path.join(store, 'target-x.target.json'), JSON.stringify(forged));
+    assert.throws(() => adapter.resolveCanonicalEvaluationTarget('target-x'), (e) => e.code === 'UNREGISTERED_EVALUATION_TARGET', 'hashes prove integrity, registration proves authority');
+    // forged REVIEW pointing at another target -> unregistered too
+    const legitReview = JSON.parse(fs.readFileSync(path.join(store, 'media-b.review.json'), 'utf8'));
+    const forgedReview = { ...legitReview, review_id: 'review-x', evaluation_target_id: 'media-a', media_sha256: mediaA.media_sha256 };
+    forgedReview.review_digest_sha256 = sha(canon({ schema: forgedReview.schema, review_id: forgedReview.review_id, subject_id: forgedReview.subject_id ?? null, evaluation_target_id: forgedReview.evaluation_target_id, media_sha256: forgedReview.media_sha256, created_by: forgedReview.created_by, created_at: forgedReview.created_at }));
+    fs.writeFileSync(path.join(store, 'review-x.review.json'), JSON.stringify(forgedReview));
+    assert.throws(() => adapter.resolveCanonicalReview('review-x'), (e) => e.code === 'CANONICAL_REVIEW_UNAVAILABLE', 'an unregistered review decides nothing');
+    // tampering the root registry chain fails closed
+    const reg = JSON.parse(fs.readFileSync(path.join(store, 'EVALUATION-TARGET-REGISTRY.json'), 'utf8'));
+    reg.entries[0].subject_id = 'project-Q';
+    fs.writeFileSync(path.join(store, 'EVALUATION-TARGET-REGISTRY.json'), JSON.stringify(reg));
+    assert.throws(() => adapter.resolveCanonicalReview('media-a'), (e) => e.code === 'EVALUATION_REGISTRY_INTEGRITY');
   });
 });
 
-test('SRA38: the classifier evaluation target is CANONICALLY RESOLVED — the same closure holds for approved-classifier evidence', () => {
-  const clfStore = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-target-c-'));
-  const renderStore = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-target-cr-'));
+test('SRA38: the classifier admission path is REVIEW-BOUND identically — no identity-, media-, or target-free classifier confirmation exists', () => {
+  const clfStore = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-review-c-'));
+  const renderStore = fs.mkdtempSync(path.join(os.tmpdir(), 'sra-review-cr-'));
   const planned = [{ event_id: 'label-1', t_s: 5, kind: 'LABEL_REVEAL', label: 'TRUST' }];
   withEnv({
     VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE: clfStore, VIDTOOLZ_CLASSIFIER_EXECUTION_IDENTITY: 'approved-classifier-v1',
@@ -661,27 +669,27 @@ test('SRA38: the classifier evaluation target is CANONICALLY RESOLVED — the sa
   }, () => {
     const mediaA = adapter.requestRendererExecution('clf-media-a', { events: [{ event_id: 'label-1', kind: 'LABEL_REVEAL', label: 'TRUST' }] });
     const mediaB = adapter.requestRendererExecution('clf-media-b', { events: [{ event_id: 'other', kind: 'CARD_STATE_CHANGE', state: 'expanded' }] });
+    void mediaB;
     adapter.requestClassifierExecution('clf-run', { mediaPath: mediaA.artifact_path, plannedEvents: [{ event_id: 'label-1', kind: 'LABEL_REVEAL', label: 'TRUST' }] });
-    // target A + classifier evidence about A -> confirms, target-bound
-    const ok = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'clf-run', evaluationTargetId: 'clf-media-a' });
+    // review A + classifier evidence about A -> confirms, review-bound
+    const ok = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'clf-run', reviewId: 'clf-media-a' });
     assert.equal(ok.confirmed.length, 1);
     assert.equal(ok.confirmed[0].authority, 'APPROVED_CLASSIFIER_CONFIRMED');
-    assert.equal(ok.confirmed[0].evaluation_target_id, 'clf-media-a');
-    // production target B under review -> media-A classifier evidence rejected
-    const wrong = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'clf-run', evaluationTargetId: 'clf-media-b' });
+    assert.equal(ok.confirmed[0].review_id, 'clf-media-a');
+    // review B under way -> media-A classifier evidence rejected
+    const wrong = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'clf-run', reviewId: 'clf-media-b' });
     assert.equal(wrong.confirmed.length, 0);
     assert.ok(wrong.errors.some((e) => e.includes('WRONG_MEDIA')));
-    // caller selectors toward A cannot redirect target B
-    const redirected = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'clf-run', evaluationTargetId: 'clf-media-b', evaluatedMediaPath: mediaA.artifact_path });
-    assert.equal(redirected.confirmed.length, 0);
-    assert.ok(redirected.errors.some((e) => e.includes('EVALUATION_TARGET_CROSS_CHECK_FAILED')));
+    // substituting registered target A inside review B is refused
+    const substituted = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'clf-run', reviewId: 'clf-media-b', evaluationTargetId: 'clf-media-a' });
+    assert.equal(substituted.confirmed.length, 0);
+    assert.ok(substituted.errors.some((e) => e.includes('REVIEW_TARGET_MISMATCH')));
     // omission / caller-fields-only never confirm
     const omitted = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'clf-run' });
     assert.equal(omitted.confirmed.length, 0);
-    assert.ok(omitted.errors.some((e) => e.includes('EVALUATION_TARGET_UNAVAILABLE')));
-    const pathOnly = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'clf-run', evaluatedMediaPath: mediaA.artifact_path, mediaSha256: mediaA.media_sha256 });
-    assert.equal(pathOnly.confirmed.length, 0);
-    assert.ok(pathOnly.errors.some((e) => e.includes('EVALUATION_TARGET_UNAVAILABLE')));
-    void mediaB;
+    assert.ok(omitted.errors.some((e) => e.includes('CANONICAL_REVIEW_UNAVAILABLE')));
+    const fieldsOnly = adapter.admitMeasuredEvents([], planned, { classifierRunId: 'clf-run', evaluationTargetId: 'clf-media-a', evaluatedMediaPath: mediaA.artifact_path, mediaSha256: mediaA.media_sha256 });
+    assert.equal(fieldsOnly.confirmed.length, 0);
+    assert.ok(fieldsOnly.errors.some((e) => e.includes('CANONICAL_REVIEW_UNAVAILABLE')));
   });
 });

@@ -664,15 +664,91 @@ function scanEstateArtifacts(realRoot) {
 }
 
 /*
+ * EXTERNAL DEPLOYMENT AUTHORITY-STORE ANCHOR (Codex bb13d66 Finding B).
+ *
+ * AN ESTABLISHED INSTALLATION REMEMBERS WHICH AUTHORITY STORE IT EXPECTS EVEN
+ * IF THAT STORE DISAPPEARS COMPLETELY. The root registry can detect every
+ * partial deletion, but the only proof the store EXISTED lived inside the
+ * store. The anchor is a durable expectation pinned OUTSIDE the deletable
+ * store — trusted deployment configuration, never caller/task/model input:
+ *   - location: env VIDTOOLZ_HUMAN_AUTHORITY_STORE_ANCHOR (deployment config),
+ *     else automatically '<store path>.anchor.json' — a sibling OUTSIDE the
+ *     store directory, independently rooted from the store itself (§31)
+ *   - content: expected store_id + the expected LIVE registry chain head, so a
+ *     replacement empty store, a snapshot-genesis + truncated-chain store, and
+ *     a rolled-back store all fail AUTHORITY_STORE_IDENTITY_MISMATCH, while
+ *     the EXACT original store restored from backup reopens
+ *   - maintained ONLY by the trusted human-authority writer (advanced in the
+ *     same trusted operation as every registry append, when the deployment
+ *     configures an anchor location); read-only for every resolver
+ *   - anchored deployment + missing store -> AUTHORITY_STORE_MISSING (fail
+ *     closed); normal read/startup NEVER re-initializes an established store —
+ *     fresh-store initialization is the trusted writer's explicit first
+ *     decision in a deployment with no prior anchor.
+ */
+const HUMAN_AUTHORITY_ANCHOR_SCHEMA = 'vidtoolz.humanAuthorityStoreAnchor.v1';
+
+// Anchor location: env VIDTOOLZ_HUMAN_AUTHORITY_STORE_ANCHOR (deployment
+// config), else the automatic default '<resolved store path>.anchor.json' — a
+// SIBLING of the store directory, so it is independently rooted and survives
+// deletion of the store itself (§31). Anchoring is therefore automatic for
+// every deployment the moment its first human decision is recorded.
+function humanAuthorityAnchorPath(resolvedRootPath) {
+  const envPath = process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE_ANCHOR;
+  if (envPath && envPath.trim()) return path.resolve(envPath.trim());
+  return `${resolvedRootPath}.anchor.json`;
+}
+function humanAuthorityAnchorDigest(anchor) {
+  return hash(cd.canonicalize({
+    schema: anchor.schema, expected_store_id: anchor.expected_store_id,
+    expected_registry_head_digest: anchor.expected_registry_head_digest,
+    entry_count: anchor.entry_count, updated_at: anchor.updated_at, updated_by: anchor.updated_by,
+  }));
+}
+function authorityStoreMissing(message) {
+  const e = new Error(`AUTHORITY_STORE_MISSING: ${message}`);
+  e.code = 'AUTHORITY_STORE_MISSING';
+  throw e;
+}
+function authorityStoreIdentityMismatch(message) {
+  const e = new Error(`AUTHORITY_STORE_IDENTITY_MISMATCH: ${message}`);
+  e.code = 'AUTHORITY_STORE_IDENTITY_MISMATCH';
+  throw e;
+}
+
+// Read-only anchor load. Absent anchor -> deployment not yet anchored
+// (bootstrap/migration state). Corrupt anchor -> fail closed: deployment
+// identity evidence never degrades silently.
+function loadHumanAuthorityStoreAnchor(anchorPath) {
+  const file = anchorPath;
+  if (!fs.existsSync(file)) return null;
+  let doc;
+  try { doc = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (error) {
+    const e = new Error(`AUTHORITY_STORE_ANCHOR_INTEGRITY: deployment anchor unreadable: ${error.message}`);
+    e.code = 'AUTHORITY_STORE_ANCHOR_INTEGRITY'; throw e;
+  }
+  if (doc.schema !== HUMAN_AUTHORITY_ANCHOR_SCHEMA || humanAuthorityAnchorDigest(doc) !== doc.anchor_digest_sha256
+    || !norm(doc.expected_store_id) || !norm(doc.expected_registry_head_digest)) {
+    const e = new Error('AUTHORITY_STORE_ANCHOR_INTEGRITY: deployment anchor is malformed or fails its digest');
+    e.code = 'AUTHORITY_STORE_ANCHOR_INTEGRITY'; throw e;
+  }
+  return storyAuthority.deepFreeze({ file, expected_store_id: norm(doc.expected_store_id), expected_registry_head_digest: norm(doc.expected_registry_head_digest), entry_count: doc.entry_count ?? null, updated_at: doc.updated_at ?? null });
+}
+
+/*
  * Load and fully verify the root registry (digest-chained, append-only).
  * Absent registry + empty store  -> UNINITIALIZED (a brand-new store).
  * Absent registry + any estates  -> AUTHORITY_STORE_INTEGRITY (silent reset refused).
  * Present but corrupt/broken chain -> AUTHORITY_STORE_INTEGRITY.
  * Readers never (re)create a registry.
  */
-function loadHumanAuthorityRegistry(realRoot) {
+function loadHumanAuthorityRegistry(realRoot, anchorPath) {
+  // DEPLOYMENT ANCHOR FIRST (Codex bb13d66): whether this deployment already
+  // has an authority store is a fact pinned OUTSIDE the store.
+  const anchor = loadHumanAuthorityStoreAnchor(anchorPath);
   const file = path.join(realRoot, AUTHORITY_REGISTRY_FILENAME);
   if (!fs.existsSync(file)) {
+    if (anchor) authorityStoreMissing(`this deployment's anchor expects authority store ${anchor.expected_store_id}, but the store's root registry is missing — complete erasure is authority loss; an established deployment is never re-initialized by reads`);
     const artifacts = scanEstateArtifacts(realRoot);
     if (artifacts.length) authorityStoreIntegrity(`authority estates exist (${artifacts.slice(0, 5).join(', ')}) but the root registry is missing — an initialized authority store never silently resets; repair the store deliberately`);
     return { state: 'UNINITIALIZED', genesis: null, entries: [], file };
@@ -697,7 +773,15 @@ function loadHumanAuthorityRegistry(realRoot) {
     previous = entry.entry_digest_sha256;
   }
   if (doc.registry_digest_sha256 !== previous) authorityStoreIntegrity('root registry digest does not match its chain head');
-  return { state: 'ACTIVE', genesis, entries, file, realFile };
+  // ESTABLISHED DEPLOYMENT: the store present at the pinned path must BE the
+  // anchored store, at its expected live chain head. A replacement store, a
+  // forged/copied genesis over an emptied chain, and a rolled-back chain all
+  // fail here; the exact original (or its exact restore) matches.
+  if (anchor) {
+    if (norm(genesis.store_id) !== anchor.expected_store_id) authorityStoreIdentityMismatch(`the store at the pinned path has identity ${genesis.store_id}, but this deployment's anchor expects store ${anchor.expected_store_id} — a replacement authority store is never accepted`);
+    if (doc.registry_digest_sha256 !== anchor.expected_registry_head_digest) authorityStoreIdentityMismatch(`the store's registry chain head does not match the deployment anchor — a rolled-back, truncated, or reconstructed authority store is never accepted (restore the exact original store, or Mikko re-pins the anchor deliberately)`);
+  }
+  return { state: 'ACTIVE', genesis, entries, file, realFile, anchor };
 }
 
 function assertAuthoritySubjectId(subjectId) {
@@ -710,12 +794,20 @@ function assertAuthoritySubjectId(subjectId) {
 
 function humanAuthorityStorePaths(subject) {
   const rootRaw = (process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE && process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE.trim()) ? process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE.trim() : PINNED_HUMAN_AUTHORITY_STORE;
+  const resolvedRoot = path.resolve(rootRaw);
+  const anchorPath = humanAuthorityAnchorPath(resolvedRoot);
   let realRoot;
-  try { realRoot = fs.realpathSync(path.resolve(rootRaw)); } catch (error) { authorityUnavailable(`canonical current-authority store is unresolvable: ${error.message}`); }
+  try { realRoot = fs.realpathSync(resolvedRoot); } catch (error) {
+    // The store directory itself is gone. An anchored deployment fails closed
+    // as MISSING (erasure is authority loss); an unanchored path is a
+    // configuration problem.
+    if (loadHumanAuthorityStoreAnchor(anchorPath)) authorityStoreMissing(`this deployment's anchor expects an authority store at ${resolvedRoot}, but the store directory itself is missing — complete erasure is authority loss, never re-initialization`);
+    authorityUnavailable(`canonical current-authority store is unresolvable: ${error.message}`);
+  }
   const subjectDir = path.join(realRoot, subject);
   const headFile = path.join(realRoot, `${subject}.head.json`);
   if (path.dirname(subjectDir) !== realRoot || path.dirname(headFile) !== realRoot) authorityUnavailable('authority subject path escapes the pinned store');
-  return { realRoot, subjectDir, headFile };
+  return { realRoot, subjectDir, headFile, anchorPath };
 }
 
 /*
@@ -730,11 +822,11 @@ function humanAuthorityStorePaths(subject) {
  */
 function resolveCurrentHumanAuthority(subjectId) {
   const subject = assertAuthoritySubjectId(subjectId);
-  const { realRoot, subjectDir, headFile } = humanAuthorityStorePaths(subject);
+  const { realRoot, subjectDir, headFile, anchorPath } = humanAuthorityStorePaths(subject);
   // ROOT REGISTRY FIRST (Codex 4918708): whether this subject has EVER entered
   // the human-authority system is a durable root-level fact, never inferred
   // from which per-subject files happen to survive.
-  const registry = loadHumanAuthorityRegistry(realRoot);
+  const registry = loadHumanAuthorityRegistry(realRoot, anchorPath);
   const subjectEntries = registry.state === 'ACTIVE' ? registry.entries.filter((e) => norm(e.subject_id) === subject) : [];
   const headExists = fs.existsSync(headFile);
   const dirExists = fs.existsSync(subjectDir);
@@ -853,11 +945,11 @@ function recordHumanAuthoritySuccessor(subjectId, payload = {}) {
   const current = resolveCurrentHumanAuthority(subject);
   const version = current.head === 'EMPTY' ? 1 : current.version + 1;
   const authorityId = `ha-${version}`;
-  const { realRoot, subjectDir, headFile } = humanAuthorityStorePaths(subject);
+  const { realRoot, subjectDir, headFile, anchorPath } = humanAuthorityStorePaths(subject);
   // Load the root registry BEFORE any estate write. Genesis is created only
   // here — by the trusted writer, in a genuinely uninitialized store (an
   // absent registry over existing estates already failed closed above).
-  const registry = loadHumanAuthorityRegistry(realRoot);
+  const registry = loadHumanAuthorityRegistry(realRoot, anchorPath);
   fs.mkdirSync(subjectDir, { recursive: true });
   const recordFile = path.join(subjectDir, `${authorityId}.json`);
   if (fs.existsSync(recordFile)) {
@@ -901,6 +993,23 @@ function recordHumanAuthoritySuccessor(subjectId, payload = {}) {
   atomicWriteJsonFile(recordFile, record);
   atomicWriteJsonFile(headFile, headDoc);
   atomicWriteJsonFile(path.join(realRoot, AUTHORITY_REGISTRY_FILENAME), registryDoc);
+  // DEPLOYMENT ANCHOR (Codex bb13d66): the SAME trusted operation advances the
+  // deployment's pinned expectation (env-configured location, or the automatic
+  // store-sibling default) to the new chain head. Nothing else ever writes the
+  // anchor; ordinary reads are read-only. Anchoring is automatic from the
+  // first recorded human decision onward.
+  {
+    const anchorFile = anchorPath;
+    fs.mkdirSync(path.dirname(anchorFile), { recursive: true });
+    const anchorDoc = {
+      schema: HUMAN_AUTHORITY_ANCHOR_SCHEMA, expected_store_id: genesis.store_id,
+      expected_registry_head_digest: registryDoc.registry_digest_sha256,
+      entry_count: registryDoc.entries.length, updated_at: record.created_at, updated_by: writer,
+      anchor_digest_sha256: '',
+    };
+    anchorDoc.anchor_digest_sha256 = humanAuthorityAnchorDigest(anchorDoc);
+    atomicWriteJsonFile(anchorFile, anchorDoc);
+  }
   return storyAuthority.deepFreeze({ subject_id: subject, authority_id: authorityId, version, record_digest_sha256: record.record_digest_sha256, previous_authority_id: record.previous_authority_id });
 }
 
@@ -1113,6 +1222,6 @@ function controlRoomView(out) {
   };
 }
 
-module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, HUMAN_AUTHORITY_RECORD_SCHEMA, HUMAN_AUTHORITY_HEAD_SCHEMA, HUMAN_AUTHORITY_REGISTRY_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, projectForSpecialistById, humanRationaleById, resolveCanonicalDirectionById, resolveCurrentHumanAuthority, recordHumanAuthoritySuccessor, authoritySubjectOf, isCanonicalDirection, run, controlRoomView };
+module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, HUMAN_AUTHORITY_RECORD_SCHEMA, HUMAN_AUTHORITY_HEAD_SCHEMA, HUMAN_AUTHORITY_REGISTRY_SCHEMA, HUMAN_AUTHORITY_ANCHOR_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, projectForSpecialistById, humanRationaleById, resolveCanonicalDirectionById, resolveCurrentHumanAuthority, recordHumanAuthoritySuccessor, authoritySubjectOf, isCanonicalDirection, run, controlRoomView };
 
 if (require.main === module && guardExecutableLifecycle(AGENT_ID)) (async () => { const i = process.argv.indexOf('--task'); if (i < 0) process.exit(2); const out = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...out, control_room: controlRoomView(out) }, null, 2)); process.exit(['COMPLETE', 'AWAITING_HUMAN_REVIEW', 'PREVIEW_ONLY'].includes(out.state) ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });

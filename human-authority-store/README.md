@@ -66,6 +66,30 @@ entry_digest_sha256 }`. It is what makes a record AUTHORITY:
   genesis is written only by the trusted writer's first decision in a
   genuinely empty store. Repairing a damaged store is Mikko's deliberate act.
 
+## External deployment anchor (`vidtoolz.humanAuthorityStoreAnchor.v1`)
+
+An established installation remembers which authority store it expects even if
+that store disappears completely. The anchor is a durable expectation pinned
+OUTSIDE the store: at `VIDTOOLZ_HUMAN_AUTHORITY_STORE_ANCHOR` (deployment
+config — recommended for production, e.g. a git-tracked path independent of
+the store volume), else automatically at `<store path>.anchor.json` (a sibling
+of the store directory). It pins the expected `store_id` AND the expected LIVE
+registry chain head, and is advanced only by the trusted writer in the same
+operation as every registry append. Consequences:
+
+- Complete store erasure (contents or the directory itself) on an anchored
+  deployment is `AUTHORITY_STORE_MISSING` — fail closed in readers, projection,
+  and the writer. No empty store is accepted, no new `ha-1` lineage begins.
+- A replacement store, a copied-genesis store with an emptied/truncated chain,
+  or any rolled-back chain is `AUTHORITY_STORE_IDENTITY_MISMATCH`.
+- The EXACT original store (e.g. restored from backup at the anchored head)
+  reopens normally — the anchor supports recovery, not lockout.
+- A tampered anchor fails its own digest (`AUTHORITY_STORE_ANCHOR_INTEGRITY`).
+- A genuinely fresh deployment (no anchor, empty store) bootstraps normally;
+  the first recorded decision pins the anchor.
+- Deliberately re-pointing a deployment at a different store is Mikko's act:
+  update/remove the anchor file consciously, never from request/task input.
+
 ## Writing decisions
 
 Only the trusted writer advances the head, and only in a deployment that

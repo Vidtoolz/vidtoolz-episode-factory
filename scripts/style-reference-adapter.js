@@ -336,12 +336,19 @@ function requestRendererExecution(runId, renderPlan, options = {}) {
   const media = sha256(bytes);
   const records = rendered.map((r) => ({ event_id: r.event_id, event_type: r.event_type, manifested: true, manifestation: r.manifestation }));
   const receipt = writeEvidence('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, runId, { identity, media, records });
-  // CANONICAL EVALUATION TARGET (Codex 4918708 Finding A): the production
-  // object under review is registered HERE, by the trusted execution that
-  // actually produced it — never named by a QC caller later.
-  const target = registerEvaluationTarget(receipt.run_id, { media, mediaPath: artifactPath, identity });
+  // CANONICAL REVIEW MATERIALIZATION (Codex 4918708 + bb13d66): the trusted
+  // execution that produced this output registers, in the same trusted
+  // operation, the evaluation target AND the canonical review that decides
+  // which artifact is under review — with root-registry provenance. A QC
+  // caller only ever NAMES the review; it never selects or substitutes targets.
+  const subject = renderPlan.subject == null ? null : (() => {
+    const s = String(renderPlan.subject).trim();
+    if (!REVIEW_SUBJECT_RE.test(s)) throw new StyleReferenceError('HERMETIC_RENDER_PLAN_INVALID', `renderPlan.subject is malformed: ${s || '(empty)'}`);
+    return s;
+  })();
+  const { target, review } = registerCanonicalReviewMaterialization(receipt.run_id, { media, mediaPath: artifactPath, identity, subject });
   // Metadata REPORTS the derived identity; the caller never chose it.
-  return { ...receipt, media_sha256: media, artifact_path: artifactPath, producer_execution_identity: identity, evaluation_target_id: target.evaluation_target_id };
+  return { ...receipt, media_sha256: media, artifact_path: artifactPath, producer_execution_identity: identity, evaluation_target_id: target.evaluation_target_id, review_id: review.review_id, subject_id: subject };
 }
 
 /*
@@ -452,52 +459,151 @@ function evidenceAuthorityError(kind, store, allowlistEnv) {
 }
 
 /*
- * CANONICAL EVALUATION TARGET (Codex 4918708: LEVEL-B MEDIA IDENTITY STILL
- * OPTIONAL — the CALLER still selected which media was being evaluated).
- * THE CALLER DOES NOT CHOOSE WHICH MEDIA IS UNDER REVIEW. The evaluation
- * target is a canonical production object registered by the TRUSTED renderer
- * execution in the deployment-pinned store at the moment it produces the
- * output (<store>/<id>.target.json, digest-covered, append-only). Level-B QC
- * names an evaluation_target_id; the trusted resolver determines the exact
- * canonical media SHA-256, render run, producer, and artifact under review.
- * Hashing caller-chosen bytes or reading a caller-chosen run proves what the
- * caller SELECTED — never what is canonically under review — so those fields
- * are demoted to non-authoritative cross-checks.
+ * CANONICAL REVIEW + EVALUATION-TARGET REGISTRY (Codex 4918708 + bb13d66).
+ *
+ * A REVIEW DECIDES WHICH ARTIFACT IS BEING REVIEWED — THE CALLER DOES NOT.
+ * The canonical reviewable object in this authority stack is the trusted
+ * renderer materialization: when the canonical execution produces an output it
+ * registers, in ONE trusted operation, (a) the evaluation target (the exact
+ * media identity of that output) and (b) the canonical REVIEW record that
+ * permanently binds review_id -> evaluation_target_id -> media. Level-B QC
+ * names a review_id; the review resolves its own target. A caller field can
+ * cross-check but can never select, substitute, or redirect the target —
+ * naming another registered target under a review is REVIEW_TARGET_MISMATCH.
+ * (The wider cockpit's package-run review pages are operator state outside
+ * this authority stack; the stack's canonical review object is this registered
+ * materialization — no parallel review concept was invented.)
+ *
+ * A TARGET IS CANONICAL BECAUSE TRUSTED PRODUCTION REGISTERED IT. Target and
+ * review records are authoritative ONLY when registered in the store's root
+ * EVALUATION-TARGET-REGISTRY.json — an append-only, digest-chained ledger
+ * written only by the trusted execution (same pattern as the human-authority
+ * registry). A copied/re-IDed/rehashed record file — however self-consistent —
+ * is UNREGISTERED and powerless: hashes prove integrity, registration proves
+ * authority.
  */
 const EVALUATION_TARGET_SCHEMA = 'vidtoolz.evaluationTarget.v1';
+const CANONICAL_REVIEW_SCHEMA = 'vidtoolz.canonicalReview.v1';
+const EVALUATION_REGISTRY_SCHEMA = 'vidtoolz.evaluationTargetRegistry.v1';
+const EVALUATION_REGISTRY_FILENAME = 'EVALUATION-TARGET-REGISTRY.json';
+const REVIEW_SUBJECT_RE = /^[A-Za-z0-9_.:-]{3,200}$/;
 
 function evaluationTargetDigest(target) {
   return sha256(canonicalizeJson({
-    schema: target.schema, evaluation_target_id: target.evaluation_target_id,
+    schema: target.schema, evaluation_target_id: target.evaluation_target_id, subject_id: target.subject_id ?? null,
     media_sha256: target.media_sha256, media_path: target.media_path,
     render_run_id: target.render_run_id, producer_execution_identity: target.producer_execution_identity,
     created_at: target.created_at,
   }));
 }
+function canonicalReviewDigest(review) {
+  return sha256(canonicalizeJson({
+    schema: review.schema, review_id: review.review_id, subject_id: review.subject_id ?? null,
+    evaluation_target_id: review.evaluation_target_id, media_sha256: review.media_sha256,
+    created_by: review.created_by, created_at: review.created_at,
+  }));
+}
+function evaluationRegistryGenesisDigest(genesis) {
+  return sha256(canonicalizeJson({ schema: EVALUATION_REGISTRY_SCHEMA, store_id: genesis.store_id, created_at: genesis.created_at, created_by: genesis.created_by }));
+}
+function evaluationRegistryEntryDigest(entry) {
+  return sha256(canonicalizeJson({
+    seq: entry.seq, kind: entry.kind, id: entry.id, subject_id: entry.subject_id ?? null,
+    record_digest_sha256: entry.record_digest_sha256, previous_entry_digest: entry.previous_entry_digest,
+    registered_by: entry.registered_by, registered_at: entry.registered_at,
+  }));
+}
+
+/*
+ * Load and fully verify the evaluation-target root registry. Absent -> the
+ * store has no registered targets/reviews (nothing resolves as canonical);
+ * present but corrupt/broken chain -> EVALUATION_REGISTRY_INTEGRITY. Readers
+ * never create or repair it; the trusted execution creates genesis on its
+ * first registration in the store.
+ */
+function loadEvaluationRegistry(realRoot) {
+  const file = path.join(realRoot, EVALUATION_REGISTRY_FILENAME);
+  if (!fs.existsSync(file)) return { state: 'UNINITIALIZED', genesis: null, entries: [], file };
+  let realFile;
+  try { realFile = fs.realpathSync(file); } catch (e) { throw new StyleReferenceError('EVALUATION_REGISTRY_INTEGRITY', `evaluation-target registry unresolvable: ${e.message}`); }
+  if (path.dirname(realFile) !== realRoot) throw new StyleReferenceError('EVALUATION_REGISTRY_INTEGRITY', 'evaluation-target registry resolves (via symlink) outside the pinned store');
+  let doc;
+  try { doc = JSON.parse(fs.readFileSync(realFile, 'utf8')); } catch (e) { throw new StyleReferenceError('EVALUATION_REGISTRY_INTEGRITY', `evaluation-target registry unreadable: ${e.message}`); }
+  if (doc.schema !== EVALUATION_REGISTRY_SCHEMA) throw new StyleReferenceError('EVALUATION_REGISTRY_INTEGRITY', `evaluation-target registry carries schema ${doc.schema || '(none)'}`);
+  const genesis = doc.genesis;
+  if (!genesis || !String(genesis.store_id || '').trim() || evaluationRegistryGenesisDigest(genesis) !== genesis.genesis_digest_sha256) {
+    throw new StyleReferenceError('EVALUATION_REGISTRY_INTEGRITY', 'evaluation-target registry genesis is missing or fails its digest');
+  }
+  const entries = Array.isArray(doc.entries) ? doc.entries : null;
+  if (!entries) throw new StyleReferenceError('EVALUATION_REGISTRY_INTEGRITY', 'evaluation-target registry lacks its entry chain');
+  let previous = genesis.genesis_digest_sha256;
+  for (const [i, entry] of entries.entries()) {
+    if (entry.seq !== i + 1) throw new StyleReferenceError('EVALUATION_REGISTRY_INTEGRITY', `registry entry ${i} carries sequence ${entry.seq}, expected ${i + 1}`);
+    if (entry.previous_entry_digest !== previous) throw new StyleReferenceError('EVALUATION_REGISTRY_INTEGRITY', `registry chain broken at entry ${entry.seq}`);
+    if (evaluationRegistryEntryDigest(entry) !== entry.entry_digest_sha256) throw new StyleReferenceError('EVALUATION_REGISTRY_INTEGRITY', `registry entry ${entry.seq} fails its digest`);
+    previous = entry.entry_digest_sha256;
+  }
+  if (doc.registry_digest_sha256 !== previous) throw new StyleReferenceError('EVALUATION_REGISTRY_INTEGRITY', 'evaluation-target registry digest does not match its chain head');
+  return { state: 'ACTIVE', genesis, entries, file, realFile };
+}
 
 // Module-private: the canonical renderer execution registers its output as the
-// canonical evaluation target in the SAME trusted operation that writes its
-// evidence. There is no public registration surface.
-function registerEvaluationTarget(runId, details) {
+// canonical evaluation target AND the canonical review of that output in the
+// SAME trusted operation that writes its evidence. There is no public
+// registration surface, and the root registry append is the commit point: an
+// interrupted write leaves record files the resolver refuses as unregistered.
+function registerCanonicalReviewMaterialization(runId, details) {
   const id = String(runId || '').trim();
   const root = evidenceRoot('VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE);
   fs.mkdirSync(root, { recursive: true });
   const realRoot = fs.realpathSync(root);
-  const file = path.join(realRoot, `${id}.target.json`);
-  if (path.dirname(file) !== realRoot) throw new StyleReferenceError('SEMANTIC_EVIDENCE_PATH_ESCAPE', 'evaluation-target path escapes the pinned store');
-  if (fs.existsSync(file)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_RUN_ID_ALREADY_BOUND', `evaluation target ${id} is already registered; targets are append-only`);
-  const target = { schema: EVALUATION_TARGET_SCHEMA, evaluation_target_id: id, media_sha256: details.media, media_path: details.mediaPath, render_run_id: id, producer_execution_identity: details.identity, created_at: new Date().toISOString(), target_digest_sha256: '' };
+  const targetFile = path.join(realRoot, `${id}.target.json`);
+  const reviewFile = path.join(realRoot, `${id}.review.json`);
+  if (path.dirname(targetFile) !== realRoot || path.dirname(reviewFile) !== realRoot) throw new StyleReferenceError('SEMANTIC_EVIDENCE_PATH_ESCAPE', 'evaluation-target path escapes the pinned store');
+  if (fs.existsSync(targetFile) || fs.existsSync(reviewFile)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_RUN_ID_ALREADY_BOUND', `evaluation target/review ${id} is already registered; registrations are append-only`);
+  const registry = loadEvaluationRegistry(realRoot);
+  const createdAt = new Date().toISOString();
+  const subject = details.subject ?? null;
+  const target = { schema: EVALUATION_TARGET_SCHEMA, evaluation_target_id: id, subject_id: subject, media_sha256: details.media, media_path: details.mediaPath, render_run_id: id, producer_execution_identity: details.identity, created_at: createdAt, target_digest_sha256: '' };
   target.target_digest_sha256 = evaluationTargetDigest(target);
-  atomicWriteJson(file, target);
-  return target;
+  const review = { schema: CANONICAL_REVIEW_SCHEMA, review_id: id, subject_id: subject, evaluation_target_id: id, media_sha256: details.media, created_by: details.identity, created_at: createdAt, review_digest_sha256: '' };
+  review.review_digest_sha256 = canonicalReviewDigest(review);
+  const genesis = registry.state === 'ACTIVE' ? registry.genesis : (() => {
+    const g = { store_id: crypto.randomBytes(16).toString('hex'), created_at: createdAt, created_by: details.identity, genesis_digest_sha256: '' };
+    g.genesis_digest_sha256 = evaluationRegistryGenesisDigest(g);
+    return g;
+  })();
+  const entries = [...registry.entries];
+  let previous = entries.length ? entries[entries.length - 1].entry_digest_sha256 : genesis.genesis_digest_sha256;
+  for (const [kind, recordDigest] of [['EVALUATION_TARGET', target.target_digest_sha256], ['REVIEW', review.review_digest_sha256]]) {
+    const entry = { seq: entries.length + 1, kind, id, subject_id: subject, record_digest_sha256: recordDigest, previous_entry_digest: previous, registered_by: details.identity, registered_at: createdAt, entry_digest_sha256: '' };
+    entry.entry_digest_sha256 = evaluationRegistryEntryDigest(entry);
+    entries.push(entry);
+    previous = entry.entry_digest_sha256;
+  }
+  const registryDoc = { schema: EVALUATION_REGISTRY_SCHEMA, genesis, entries, registry_digest_sha256: previous };
+  atomicWriteJson(targetFile, target);
+  atomicWriteJson(reviewFile, review);
+  atomicWriteJson(path.join(realRoot, EVALUATION_REGISTRY_FILENAME), registryDoc);
+  return { target, review };
+}
+
+// Registration lookup: the LATEST registry entry of this kind/id must bind the
+// record digest. Unregistered or digest-divergent records are refused.
+function requireRegistration(registry, kind, id, recordDigest, errorCode, label) {
+  if (registry.state !== 'ACTIVE') throw new StyleReferenceError(errorCode, `${label} ${id} has no canonical registration (the evaluation-target registry does not exist) — caller-created records are not authority`);
+  const matches = registry.entries.filter((e) => e.kind === kind && e.id === id);
+  if (!matches.length) throw new StyleReferenceError(errorCode, `${label} ${id} is not registered in the canonical evaluation-target registry — hashes prove integrity, registration proves authority`);
+  const latest = matches[matches.length - 1];
+  if (latest.record_digest_sha256 !== recordDigest) throw new StyleReferenceError(errorCode, `${label} ${id} does not match its canonical registration digest`);
+  return latest;
 }
 
 /*
  * PUBLIC READ — resolveCanonicalEvaluationTarget(evaluationTargetId).
- * Resolves the canonical production object under review from the
- * deployment-pinned store: its exact media SHA-256, render run, producer, and
- * artifact path. No caller-selected root, no caller-selected alternate media.
- * Unresolvable/corrupt targets fail closed (EVALUATION_TARGET_UNAVAILABLE).
+ * Resolves the canonical production object: exact media SHA-256, render run,
+ * producer, artifact path — REQUIRING trusted registration in the root
+ * registry. No caller-selected root, no caller-selected alternate media.
  */
 function resolveCanonicalEvaluationTarget(evaluationTargetId) {
   const id = String(evaluationTargetId || '').trim();
@@ -505,7 +611,7 @@ function resolveCanonicalEvaluationTarget(evaluationTargetId) {
   const root = evidenceRoot('VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE);
   const file = path.join(root, `${id}.target.json`);
   if (path.dirname(path.resolve(file)) !== path.resolve(root)) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', 'evaluation-target path escapes the pinned store');
-  if (!fs.existsSync(file)) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', `no canonical evaluation target is registered for ${id}; Level-B confirmation is impossible without the canonical production object under review`);
+  if (!fs.existsSync(file)) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', `no canonical evaluation target exists for ${id}`);
   let realRoot; let realFile;
   try { realRoot = fs.realpathSync(root); realFile = fs.realpathSync(file); } catch (e) { throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', e.message); }
   if (path.dirname(realFile) !== realRoot || path.basename(realFile) !== `${id}.target.json`) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', 'evaluation target resolves (via symlink) outside the pinned store');
@@ -514,11 +620,45 @@ function resolveCanonicalEvaluationTarget(evaluationTargetId) {
   if (target.schema !== EVALUATION_TARGET_SCHEMA || target.evaluation_target_id !== id) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', `evaluation target ${id} does not bind this id/schema`);
   if (evaluationTargetDigest(target) !== target.target_digest_sha256) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', `evaluation target ${id} fails its registration digest — the canonical registration was altered`);
   if (!HEX64_RE.test(String(target.media_sha256 || ''))) throw new StyleReferenceError('EVALUATION_TARGET_UNAVAILABLE', `evaluation target ${id} carries no canonical media identity`);
-  return deepFreeze({ evaluation_target_id: id, media_sha256: String(target.media_sha256).toLowerCase(), media_path: target.media_path || null, render_run_id: target.render_run_id || null, producer_execution_identity: target.producer_execution_identity || null, created_at: target.created_at || null });
+  // TRUSTED REGISTRATION (Codex bb13d66): a self-consistent target file that the
+  // trusted execution never registered is NOT authority.
+  const registry = loadEvaluationRegistry(realRoot);
+  requireRegistration(registry, 'EVALUATION_TARGET', id, target.target_digest_sha256, 'UNREGISTERED_EVALUATION_TARGET', 'evaluation target');
+  return deepFreeze({ evaluation_target_id: id, subject_id: target.subject_id ?? null, media_sha256: String(target.media_sha256).toLowerCase(), media_path: target.media_path || null, render_run_id: target.render_run_id || null, producer_execution_identity: target.producer_execution_identity || null, created_at: target.created_at || null });
 }
 
-// Non-authoritative caller assertions about the evaluation target: verified
-// against the canonical target, never able to choose or redirect it. Any
+/*
+ * PUBLIC READ — resolveCanonicalReview(reviewId). The review record is the
+ * authority for WHICH artifact is under review: it permanently binds
+ * review_id -> evaluation_target_id -> exact media (and subject). Registered
+ * by the trusted materialization only; unregistered/forged reviews are
+ * refused; the bound target must itself resolve as registered, with matching
+ * media and subject (no cross-project target reuse).
+ */
+function resolveCanonicalReview(reviewId) {
+  const id = String(reviewId || '').trim();
+  if (!RUN_ID_RE.test(id)) throw new StyleReferenceError('CANONICAL_REVIEW_UNAVAILABLE', `review id is malformed: ${id || '(empty)'}`);
+  const root = evidenceRoot('VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE);
+  const file = path.join(root, `${id}.review.json`);
+  if (path.dirname(path.resolve(file)) !== path.resolve(root)) throw new StyleReferenceError('CANONICAL_REVIEW_UNAVAILABLE', 'review path escapes the pinned store');
+  if (!fs.existsSync(file)) throw new StyleReferenceError('CANONICAL_REVIEW_UNAVAILABLE', `no canonical review exists for ${id}; Level-B confirmation is impossible without the canonical review that decides which artifact is under review`);
+  let realRoot; let realFile;
+  try { realRoot = fs.realpathSync(root); realFile = fs.realpathSync(file); } catch (e) { throw new StyleReferenceError('CANONICAL_REVIEW_UNAVAILABLE', e.message); }
+  if (path.dirname(realFile) !== realRoot || path.basename(realFile) !== `${id}.review.json`) throw new StyleReferenceError('CANONICAL_REVIEW_UNAVAILABLE', 'review resolves (via symlink) outside the pinned store');
+  let review;
+  try { review = JSON.parse(fs.readFileSync(realFile, 'utf8')); } catch (e) { throw new StyleReferenceError('CANONICAL_REVIEW_UNAVAILABLE', `review unreadable: ${e.message}`); }
+  if (review.schema !== CANONICAL_REVIEW_SCHEMA || review.review_id !== id) throw new StyleReferenceError('CANONICAL_REVIEW_UNAVAILABLE', `review ${id} does not bind this id/schema`);
+  if (canonicalReviewDigest(review) !== review.review_digest_sha256) throw new StyleReferenceError('CANONICAL_REVIEW_UNAVAILABLE', `review ${id} fails its registration digest`);
+  const registry = loadEvaluationRegistry(realRoot);
+  requireRegistration(registry, 'REVIEW', id, review.review_digest_sha256, 'CANONICAL_REVIEW_UNAVAILABLE', 'review');
+  const target = resolveCanonicalEvaluationTarget(review.evaluation_target_id);
+  if (target.media_sha256 !== String(review.media_sha256 || '').toLowerCase()) throw new StyleReferenceError('CANONICAL_REVIEW_UNAVAILABLE', `review ${id} and its bound target disagree on the media under review`);
+  if ((review.subject_id ?? null) !== (target.subject_id ?? null)) throw new StyleReferenceError('CANONICAL_REVIEW_UNAVAILABLE', `review ${id} subject does not match its bound target's subject — a review may not reference another project's target`);
+  return deepFreeze({ review_id: id, subject_id: review.subject_id ?? null, evaluation_target_id: target.evaluation_target_id, media_sha256: target.media_sha256, target });
+}
+
+// Non-authoritative caller assertions about the review's target: verified
+// against the canonical binding, never able to choose or redirect it. Any
 // inconsistent assertion fails the whole confirmation closed.
 function evaluationTargetCrossCheckFailures(target, options) {
   const failures = [];
@@ -535,7 +675,6 @@ function evaluationTargetCrossCheckFailures(target, options) {
   }
   return failures;
 }
-
 /*
  * EVENT AUTHORITY PIPELINE (reference-only). Confirmation of a planned Level-B
  * event requires a matching SEMANTIC MANIFESTATION resolved from a TRUSTED store
@@ -544,17 +683,19 @@ function evaluationTargetCrossCheckFailures(target, options) {
  * measurement only: they can flag adjudication or an unplanned change, but they
  * NEVER confirm. Noise/motion is discarded. Provenance ids are preserved.
  *
- * options: { evaluationTargetId (the canonical production object under review),
- *            renderRunId?, classifierRunId?, toleranceS?,
- *            evaluatedMediaPath? / evaluatedRenderRunId? / mediaSha256?
- *            (NON-AUTHORITATIVE cross-checks only) }
+ * options: { reviewId (the canonical review operation — the ONLY authority
+ *            input), renderRunId?, classifierRunId?, toleranceS?,
+ *            evaluationTargetId? / evaluatedMediaPath? / evaluatedRenderRunId?
+ *            / mediaSha256? (NON-AUTHORITATIVE cross-checks only) }
  * Caller-supplied evidence objects (candidate.manifestation, inline renderer
  * records, inline classifier functions) are IGNORED — they carry no authority.
- * CANONICAL EVALUATION TARGET: whenever semantic confirmation is requested
+ * CANONICAL REVIEW TARGET: whenever semantic confirmation is requested
  * (renderRunId / classifierRunId), the media under review is resolved from the
- * trusted evaluation-target registration named by evaluationTargetId — the
- * caller cannot select, redirect, or omit it: media path/run/hash fields can
- * never choose the target, and an inconsistent assertion fails closed.
+ * canonical review named by reviewId — the review itself binds the evaluation
+ * target. The caller identifies the review operation; it cannot select,
+ * substitute, redirect, or omit the target: a different registered target
+ * named via evaluationTargetId is REVIEW_TARGET_MISMATCH, and media
+ * path/run/hash assertions that disagree fail closed.
  */
 function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   const tolerance = options.toleranceS ?? 0.5;
@@ -566,22 +707,27 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
   const unverified = [];
   const errors = [...planned.errors];
 
-  // CANONICAL EVALUATION TARGET — resolved from the trusted registration, never
-  // chosen by the caller. It is REQUIRED for any semantic confirmation; without
-  // it nothing confirms (fail closed), though store/provenance diagnostics
-  // below still surface. Caller media fields are cross-checked, never honored.
+  // CANONICAL REVIEW TARGET — the review decides which artifact is under
+  // review; the caller does not. REQUIRED for any semantic confirmation;
+  // without it nothing confirms (fail closed), though store/provenance
+  // diagnostics below still surface. Caller target/media fields are
+  // cross-checked, never honored.
   let evaluatedMedia = null;
-  if (options.renderRunId || options.classifierRunId || options.evaluationTargetId || options.evaluatedMediaPath || options.evaluatedRenderRunId || options.mediaSha256) {
-    if (!options.evaluationTargetId) {
-      errors.push('EVALUATION_TARGET_UNAVAILABLE: no canonical evaluation target was named — caller-supplied media path/run/hash fields cannot choose what is under review; supply evaluationTargetId');
+  if (options.reviewId || options.renderRunId || options.classifierRunId || options.evaluationTargetId || options.evaluatedMediaPath || options.evaluatedRenderRunId || options.mediaSha256) {
+    if (!options.reviewId) {
+      errors.push('CANONICAL_REVIEW_UNAVAILABLE: no canonical review was named — caller-supplied target/media fields cannot choose what is under review; supply reviewId');
     } else {
       try {
-        const target = resolveCanonicalEvaluationTarget(options.evaluationTargetId);
-        const crossCheckFailures = evaluationTargetCrossCheckFailures(target, options);
-        if (crossCheckFailures.length) {
-          errors.push(`EVALUATION_TARGET_CROSS_CHECK_FAILED: caller assertion(s) [${crossCheckFailures.join(', ')}] do not match the canonical evaluation target ${target.evaluation_target_id} — a caller field can never redirect which media is under review`);
+        const review = resolveCanonicalReview(options.reviewId);
+        if (options.evaluationTargetId && String(options.evaluationTargetId).trim() !== review.evaluation_target_id) {
+          errors.push(`REVIEW_TARGET_MISMATCH: review ${review.review_id} canonically binds evaluation target ${review.evaluation_target_id}; the caller-named target ${String(options.evaluationTargetId).trim()} cannot be substituted — a review decides which artifact is being reviewed, the caller does not`);
         } else {
-          evaluatedMedia = { sha: target.media_sha256, source: 'CANONICAL_EVALUATION_TARGET', evaluation_target_id: target.evaluation_target_id };
+          const crossCheckFailures = evaluationTargetCrossCheckFailures(review.target, options);
+          if (crossCheckFailures.length) {
+            errors.push(`EVALUATION_TARGET_CROSS_CHECK_FAILED: caller assertion(s) [${crossCheckFailures.join(', ')}] do not match review ${review.review_id}'s canonical target ${review.evaluation_target_id} — a caller field can never redirect which media is under review`);
+          } else {
+            evaluatedMedia = { sha: review.media_sha256, source: 'CANONICAL_REVIEW_TARGET', evaluation_target_id: review.evaluation_target_id, review_id: review.review_id, subject_id: review.subject_id };
+          }
         }
       } catch (e) { errors.push(e.message); }
     }
@@ -615,7 +761,7 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
         if (String(rec.event_type || '').toUpperCase() !== String(plan.kind).toUpperCase()) { errors.push(`SEMANTIC_EVIDENCE_EVENT_TYPE_MISMATCH: renderer record for ${plan.event_id} declares ${rec.event_type || '(none)'} not ${plan.kind}`); continue; }
         if (rec.manifested !== false && manifestationMatches(plan, rec.manifestation)) {
           remaining.splice(idx, 1);
-          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'RENDERER_MANIFESTATION_CONFIRMED', manifestation: rec.manifestation, evidence_source: `renderer-run:${options.renderRunId}`, renderer_identity: rendererStore.identity, media_sha256: rendererStore.media_sha256, evaluation_target_id: evaluatedMedia.evaluation_target_id, evaluated_media_sha256: evaluatedMedia.sha, evaluated_media_source: evaluatedMedia.source });
+          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'RENDERER_MANIFESTATION_CONFIRMED', manifestation: rec.manifestation, evidence_source: `renderer-run:${options.renderRunId}`, renderer_identity: rendererStore.identity, media_sha256: rendererStore.media_sha256, review_id: evaluatedMedia.review_id, review_subject_id: evaluatedMedia.subject_id, evaluation_target_id: evaluatedMedia.evaluation_target_id, evaluated_media_sha256: evaluatedMedia.sha, evaluated_media_source: evaluatedMedia.source });
         }
       }
     }
@@ -635,7 +781,7 @@ function admitMeasuredEvents(candidates, plannedEvents, options = {}) {
         if (String(rec.event_type || '').toUpperCase() !== String(plan.kind).toUpperCase()) { errors.push(`SEMANTIC_EVIDENCE_EVENT_TYPE_MISMATCH: classifier record for ${plan.event_id} declares ${rec.event_type || '(none)'} not ${plan.kind}`); continue; }
         if (rec.confirmed === true && manifestationMatches(plan, rec.manifestation)) {
           remaining.splice(idx, 1);
-          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'APPROVED_CLASSIFIER_CONFIRMED', manifestation: rec.manifestation, evidence_source: `classifier-run:${options.classifierRunId}`, classifier_identity: classifierStore.identity, media_sha256: classifierStore.media_sha256, evaluation_target_id: evaluatedMedia.evaluation_target_id, evaluated_media_sha256: evaluatedMedia.sha, evaluated_media_source: evaluatedMedia.source });
+          confirmed.push({ event_id: plan.event_id, t_s: plan.t_s, kind: plan.kind, authority: 'APPROVED_CLASSIFIER_CONFIRMED', manifestation: rec.manifestation, evidence_source: `classifier-run:${options.classifierRunId}`, classifier_identity: classifierStore.identity, media_sha256: classifierStore.media_sha256, review_id: evaluatedMedia.review_id, review_subject_id: evaluatedMedia.subject_id, evaluation_target_id: evaluatedMedia.evaluation_target_id, evaluated_media_sha256: evaluatedMedia.sha, evaluated_media_source: evaluatedMedia.source });
         }
       }
     }
@@ -1095,9 +1241,12 @@ module.exports = {
   // trusted writer is module-private and reachable only through these runtimes.
   HERMETIC_ARTIFACT_SCHEMA,
   EVALUATION_TARGET_SCHEMA,
+  CANONICAL_REVIEW_SCHEMA,
+  EVALUATION_REGISTRY_SCHEMA,
   requestRendererExecution,
   requestClassifierExecution,
   // PUBLIC READ surface.
+  resolveCanonicalReview,
   resolveCanonicalEvaluationTarget,
   resolveRendererRun,
   resolveClassifierRun,

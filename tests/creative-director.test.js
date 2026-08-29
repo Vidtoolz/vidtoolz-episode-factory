@@ -702,13 +702,13 @@ test('CDN6 (CODX-EVENT-01 + CODX-LB-08/09): a pixel signal never confirms Level-
   process.env.VIDTOOLZ_RENDERER_EXECUTION_IDENTITY = 'renderer@test';
   try {
     const receipt = adapter.requestRendererExecution('run-cd6', { events: [{ event_id: 'planned-label-1', kind: 'LABEL_REVEAL', label: 'X' }] });
-    // CANONICAL EVALUATION TARGET: confirmation names the canonical production
-    // object under review (registered by the trusted execution); omission never
-    // confirms and caller media fields cannot choose it
+    // CANONICAL REVIEW: confirmation names the canonical review operation
+    // (registered by the trusted execution, binding its own target); omission
+    // never confirms and caller target/media fields cannot choose it
     const omitted = adapter.admitMeasuredEvents([], planned, { renderRunId: 'run-cd6' });
-    assert.equal(omitted.confirmed.length, 0, 'no canonical evaluation target -> no Level-B confirmation');
-    assert.ok(omitted.errors.some((e) => e.includes('EVALUATION_TARGET_UNAVAILABLE')));
-    const confirmed = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], planned, { renderRunId: 'run-cd6', evaluationTargetId: receipt.evaluation_target_id });
+    assert.equal(omitted.confirmed.length, 0, 'no canonical review -> no Level-B confirmation');
+    assert.ok(omitted.errors.some((e) => e.includes('CANONICAL_REVIEW_UNAVAILABLE')));
+    const confirmed = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], planned, { renderRunId: 'run-cd6', reviewId: receipt.review_id });
     assert.equal(confirmed.confirmed.length, 1);
     assert.equal(confirmed.confirmed[0].event_id, 'planned-label-1');
     assert.equal(confirmed.confirmed[0].authority, 'RENDERER_MANIFESTATION_CONFIRMED');
@@ -1164,10 +1164,10 @@ test('CDT9: human authority is trusted-writer REGISTERED and estate existence is
   appendAuthority(regGone, CANON_IDEA_ID, [KEEP_S03]);
   fs.rmSync(path.join(regGone, 'AUTHORITY-REGISTRY.json'));
   withAuthorityStore(regGone, () => {
-    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'AUTHORITY_STORE_INTEGRITY', 'an initialized store never silently resets to a fresh registry');
+    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'AUTHORITY_STORE_MISSING', 'the deployment anchor remembers the store; an initialized store never silently resets');
   });
-  assert.deepEqual(freshResolve(regGone, CANON_IDEA_ID), { threw: true, code: 'AUTHORITY_STORE_INTEGRITY' });
-  assert.throws(() => appendAuthority(regGone, CANON_IDEA_ID, []), (e) => e.code === 'AUTHORITY_STORE_INTEGRITY', 'the writer never recreates a genesis over existing estates');
+  assert.deepEqual(freshResolve(regGone, CANON_IDEA_ID), { threw: true, code: 'AUTHORITY_STORE_MISSING' });
+  assert.throws(() => appendAuthority(regGone, CANON_IDEA_ID, []), (e) => e.code === 'AUTHORITY_STORE_MISSING', 'the writer never recreates a genesis over an anchored deployment');
   const regBad = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-reg-bad-'));
   appendAuthority(regBad, CANON_IDEA_ID, [KEEP_S03]);
   fs.writeFileSync(path.join(regBad, 'AUTHORITY-REGISTRY.json'), '{not json');
@@ -1182,7 +1182,7 @@ test('CDT9: human authority is trusted-writer REGISTERED and estate existence is
   reg.entries.pop(); reg.registry_digest_sha256 = reg.entries[reg.entries.length - 1].entry_digest_sha256;
   fs.writeFileSync(path.join(regTamper, 'AUTHORITY-REGISTRY.json'), JSON.stringify(reg));
   withAuthorityStore(regTamper, () => {
-    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => ['UNREGISTERED_HUMAN_AUTHORITY', 'AUTHORITY_STORE_INTEGRITY'].includes(e.code), 'truncating the chain cannot roll the registered head back');
+    assert.throws(() => director.resolveCurrentHumanAuthority(CANON_IDEA_ID), (e) => e.code === 'AUTHORITY_STORE_IDENTITY_MISMATCH', 'a truncated/rolled-back chain no longer matches the deployment anchor');
   });
 
   // ── legitimate first authority for a genuinely new subject (fresh process too) ──
@@ -1197,4 +1197,94 @@ test('CDT9: human authority is trusted-writer REGISTERED and estate existence is
   assert.equal(registryDoc.entries.length, 1);
   assert.equal(registryDoc.entries[0].subject_id, 'project-C');
   assert.match(registryDoc.genesis.genesis_digest_sha256, /^[a-f0-9]{64}$/);
+});
+
+/* ══ DEPLOYMENT-ANCHOR CLOSURE (Codex bb13d66) — an installation remembers which authority store it expects ══ */
+
+test('CDT10: the external deployment anchor makes COMPLETE store erasure fail closed — replacement, forged-identity, and rolled-back stores are rejected; exact restore and fresh deployments work', async () => {
+  const out = await runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) }));
+  const dirPath = path.join(ROOT, 'scripts', 'creative-director.js');
+  const freshResolve = (root, subject, extraEnv = {}) => JSON.parse(childProcess.execFileSync(process.execPath, ['-e',
+    `const d=require(${JSON.stringify(dirPath)});try{const r=d.resolveCurrentHumanAuthority(${JSON.stringify(subject)});process.stdout.write(JSON.stringify({threw:false,head:r.head,authority_id:r.authority_id,domains:r.domains.length}));}catch(e){process.stdout.write(JSON.stringify({threw:true,code:e.code}));}`],
+    { encoding: 'utf8', env: { ...process.env, VIDTOOLZ_HUMAN_AUTHORITY_STORE: root, VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY: undefined, ...extraEnv } }));
+  const wipeContents = (root) => { for (const entry of fs.readdirSync(root)) fs.rmSync(path.join(root, entry), { recursive: true, force: true }); };
+
+  // ── established deployment: STORE-1 with restrictive authority for P ──
+  const holder = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-anchor-'));
+  const store = path.join(holder, 'authority-store');
+  fs.mkdirSync(store);
+  appendAuthority(store, 'existing-project-P', []);
+  appendAuthority(store, 'existing-project-P', [KEEP_S03]);
+  const anchorPath = `${path.resolve(store)}.anchor.json`;
+  assert.ok(fs.existsSync(anchorPath), 'the trusted writer automatically pins the deployment anchor OUTSIDE the store');
+  const anchorDoc = JSON.parse(fs.readFileSync(anchorPath, 'utf8'));
+  assert.match(anchorDoc.expected_store_id, /^[a-f0-9]{32}$/);
+  const originalRegistry = fs.readFileSync(path.join(store, 'AUTHORITY-REGISTRY.json'), 'utf8');
+  // keep an exact copy of the whole store for the restore case
+  const backup = path.join(holder, 'backup');
+  fs.cpSync(store, backup, { recursive: true });
+
+  // ── COMPLETE STORE ERASURE (anchor kept): fail closed, fresh process, no ha-1 ──
+  wipeContents(store);
+  withAuthorityStore(store, () => {
+    assert.throws(() => director.resolveCurrentHumanAuthority('existing-project-P'), (e) => e.code === 'AUTHORITY_STORE_MISSING');
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'AUTHORITY_STORE_MISSING', 'mutating projection fails closed after total erasure');
+  });
+  assert.deepEqual(freshResolve(store, 'existing-project-P'), { threw: true, code: 'AUTHORITY_STORE_MISSING' });
+  assert.throws(() => appendAuthority(store, 'existing-project-P', []), (e) => e.code === 'AUTHORITY_STORE_MISSING', 'no unrestricted ha-1 under a new store identity');
+  // deleting the store DIRECTORY itself is equally fail-closed
+  fs.rmSync(store, { recursive: true });
+  assert.deepEqual(freshResolve(store, 'existing-project-P'), { threw: true, code: 'AUTHORITY_STORE_MISSING' });
+  fs.mkdirSync(store);
+
+  // ── REPLACEMENT STORE: a brand-new store at the same path is rejected ──
+  const replacement = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-replacement-'));
+  appendAuthority(replacement, 'existing-project-P', []); // fresh unlocked store built elsewhere
+  fs.cpSync(replacement, store, { recursive: true });
+  assert.deepEqual(freshResolve(store, 'existing-project-P'), { threw: true, code: 'AUTHORITY_STORE_IDENTITY_MISMATCH' }, 'a replacement authority store never impersonates the anchored one');
+
+  // ── FORGED IDENTITY: copy the ORIGINAL genesis over an emptied chain ──
+  const orig = JSON.parse(originalRegistry);
+  const forgedReg = { schema: orig.schema, genesis: orig.genesis, entries: [], registry_digest_sha256: orig.genesis.genesis_digest_sha256 };
+  wipeContents(store);
+  fs.writeFileSync(path.join(store, 'AUTHORITY-REGISTRY.json'), JSON.stringify(forgedReg));
+  assert.deepEqual(freshResolve(store, 'existing-project-P'), { threw: true, code: 'AUTHORITY_STORE_IDENTITY_MISMATCH' }, 'copied genesis fields cannot forge the anchored store: the anchor pins the LIVE chain head, not just the genesis');
+
+  // ── EXACT RESTORE: the original store reopens under the same anchor ──
+  wipeContents(store);
+  fs.cpSync(backup, store, { recursive: true });
+  const restored = freshResolve(store, 'existing-project-P');
+  assert.deepEqual(restored, { threw: false, head: 'RECORD', authority_id: 'ha-2', domains: 1 }, 'the external anchor supports recovery of the exact original store, not permanent lockout');
+  // and a NEW never-recorded project on the valid anchored store stays EMPTY
+  assert.equal(freshResolve(store, 'project-brand-new').head, 'EMPTY');
+
+  // ── anchor integrity + write authority ──
+  const anchorBytes = fs.readFileSync(anchorPath, 'utf8');
+  const tamperedAnchor = JSON.parse(anchorBytes);
+  tamperedAnchor.expected_registry_head_digest = 'f'.repeat(64);
+  fs.writeFileSync(anchorPath, JSON.stringify(tamperedAnchor));
+  assert.deepEqual(freshResolve(store, 'existing-project-P'), { threw: true, code: 'AUTHORITY_STORE_ANCHOR_INTEGRITY' }, 'an edited anchor fails its digest — deployment identity evidence never degrades silently');
+  fs.writeFileSync(anchorPath, anchorBytes);
+  // env-configured anchor location is honored (deployment config, not caller input)
+  const envAnchor = path.join(holder, 'deployment', 'anchor.json');
+  const envStore = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-envanchor-'));
+  const prevA = process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE_ANCHOR;
+  process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE_ANCHOR = envAnchor;
+  try {
+    appendAuthority(envStore, 'project-env', [KEEP_S03]);
+    assert.ok(fs.existsSync(envAnchor), 'the writer pins the anchor at the deployment-configured location');
+    for (const entry of fs.readdirSync(envStore)) fs.rmSync(path.join(envStore, entry), { recursive: true, force: true });
+    assert.deepEqual(freshResolve(envStore, 'project-env', { VIDTOOLZ_HUMAN_AUTHORITY_STORE_ANCHOR: envAnchor }), { threw: true, code: 'AUTHORITY_STORE_MISSING' });
+  } finally {
+    if (prevA === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE_ANCHOR; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE_ANCHOR = prevA;
+  }
+
+  // ── FRESH DEPLOYMENT: no prior anchor, clean installation works ──
+  const fresh = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-freshdep-'));
+  assert.equal(freshResolve(fresh, 'project-new').head, 'EMPTY', 'a genuinely fresh deployment bootstraps normally');
+  const first = appendAuthority(fresh, 'project-new', [KEEP_S03]);
+  assert.equal(first.authority_id, 'ha-1');
+  assert.ok(fs.existsSync(`${path.resolve(fresh)}.anchor.json`), 'first decision pins the anchor');
+  const afterFirst = freshResolve(fresh, 'project-new');
+  assert.deepEqual(afterFirst, { threw: false, head: 'RECORD', authority_id: 'ha-1', domains: 1 });
 });
