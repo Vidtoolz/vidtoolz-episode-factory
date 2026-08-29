@@ -410,25 +410,35 @@ const SAFE_PROJECTION_SCHEMA = 'vidtoolz.creativeDirectionSafeProjection.v1';
  * id (projectForSpecialistById); passing an object is accepted only if that
  * object is itself canonical.
  */
-function specialistProjection(direction, role, currentAuthority = null) {
+function specialistProjection(direction, role, currentContext = {}) {
   if (!isCanonicalDirection(direction)) {
     const error = new Error('CREATIVE_DIRECTION_NOT_CANONICAL: specialistProjection requires a Creative Direction produced by the pipeline (registered in the canonical store); arbitrary, mutated, or hand-built objects are refused');
     error.code = 'CREATIVE_DIRECTION_NOT_CANONICAL';
     throw error;
   }
   if (!SPECIALIST_ROLES.includes(role)) return null;
-  const extraDomains = currentAuthority?.domains || [];
-  const classified = classifyActionClaims(direction, extraDomains);
+  // CURRENT-AUTHORITY BINDING (Codex 58847dc Finding 1): every authoritative
+  // projection resolves the canonical current human authority ITSELF, from the
+  // direction's own subject — the caller cannot supply, select, version, or
+  // omit it. The context may only ADD restrictions (monotonic union).
+  const currentAuthority = currentHumanAuthorityFor(direction, currentContext);
+  const classified = classifyActionClaims(direction, currentAuthority.domains);
   const receipt = { canonical_direction_id: direction.direction_id, direction_digest_sha256: direction.direction_digest_sha256 };
   const executable = {
     schema: SAFE_PROJECTION_SCHEMA,
     action_claims: classified.admitted,
     protected_domains: structuredClone(direction.protected_domains || []),
     capability_denials: capabilityDenials(direction),
-    current_human_authority: currentAuthority ? { authority_id: currentAuthority.authority_id || null, version: currentAuthority.version || null, sources: currentAuthority.sources || [], denials: currentAuthority.denials || [] } : { authority_id: null, version: null, sources: ['DIRECTION_INHERENT'], denials: [] },
+    current_human_authority: {
+      subject_id: currentAuthority.subject_id, head: currentAuthority.head,
+      authority_id: currentAuthority.authority_id, version: currentAuthority.version,
+      content_sha256: currentAuthority.content_sha256, sources: currentAuthority.sources,
+      denials: currentAuthority.denials,
+    },
+    effective_capability_digest: hash(cd.canonicalize({ direction_domains: direction.protected_domains || [], current_domains: currentAuthority.domains })),
     capability_suppressions: classified.suppressed,
     human_directions_received: structuredDirections(direction),
-    execution_contract: { executable_surface: 'enum_action_claims_plus_enum_fields', consume_rationale_for_actions: false, raw_creative_prose_included: false, free_text_action_summary_included: false, reauthorized_against_current_human_authority: true },
+    execution_contract: { executable_surface: 'enum_action_claims_plus_enum_fields', consume_rationale_for_actions: false, raw_creative_prose_included: false, free_text_action_summary_included: false, reauthorized_against_current_human_authority: true, current_authority_caller_selectable: false },
   };
   switch (role) {
     case 'visual_planning_director':
@@ -462,6 +472,8 @@ function specialistProjection(direction, role, currentAuthority = null) {
       return {
         receipt, role, full_artifact_required: true,
         capability_denials: capabilityDenials(direction),
+        current_human_authority: executable.current_human_authority,
+        current_capability_denials: currentAuthority.denials,
         intentional_deviation_pattern_refs: (direction.intentional_deviations || []).map((d) => d.pattern_ref),
         human_directions_received: structuredDirections(direction),
       };
@@ -500,65 +512,168 @@ function humanRationaleView(direction) {
   };
 }
 
-// Canonical CURRENT human-authority store (reference-only): the current locks in
-// effect for an episode/project, resolved at projection time. Keyed by an opaque
-// authority id; the store owns "what is current", so a caller cannot downgrade a
-// lock by passing an older/no-lock object.
-const PINNED_HUMAN_AUTHORITY_STORE = '/home/vidtoolz/vidtoolz-episode-factory/human-authority-store';
-const AUTHORITY_ID_RE = /^[A-Za-z0-9_.:-]{3,200}$/;
-function resolveCurrentHumanAuthority(authorityId) {
-  const id = norm(authorityId);
-  if (!AUTHORITY_ID_RE.test(id)) { const e = new Error('CURRENT_HUMAN_AUTHORITY_INVALID_ID: malformed current-human-authority id'); e.code = 'CURRENT_HUMAN_AUTHORITY_INVALID_ID'; throw e; }
-  const rootRaw = (process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE && process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE.trim()) ? process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE.trim() : PINNED_HUMAN_AUTHORITY_STORE;
-  const root = path.resolve(rootRaw);
-  const file = path.join(root, `${id}.json`);
-  if (path.dirname(path.resolve(file)) !== root || !fs.existsSync(file)) { const e = new Error(`CURRENT_HUMAN_AUTHORITY_UNAVAILABLE: no current human authority for ${id}`); e.code = 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE'; throw e; }
-  let realRoot; let realFile;
-  try { realRoot = fs.realpathSync(root); realFile = fs.realpathSync(file); } catch (error) { const e = new Error(`CURRENT_HUMAN_AUTHORITY_UNAVAILABLE: ${error.message}`); e.code = 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE'; throw e; }
-  if (path.dirname(realFile) !== realRoot) { const e = new Error('CURRENT_HUMAN_AUTHORITY_UNAVAILABLE: authority resolves outside the pinned store'); e.code = 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE'; throw e; }
-  let doc;
-  try { doc = JSON.parse(fs.readFileSync(realFile, 'utf8')); } catch (error) { const e = new Error(`CURRENT_HUMAN_AUTHORITY_UNAVAILABLE: ${error.message}`); e.code = 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE'; throw e; }
-  const domains = cd.deriveProtectedDomains(doc.human_constraints || []).domains;
-  return storyAuthority.deepFreeze({ authority_id: id, version: doc.version ?? null, human_constraints: doc.human_constraints || [], domains });
+/*
+ * CANONICAL CURRENT HUMAN AUTHORITY (Codex 58847dc Finding 1 closure).
+ * CURRENT HUMAN AUTHORITY IS NOT CALLER INPUT. The store maps a SUBJECT — the
+ * project/episode identity bound INSIDE the canonical Creative Direction — to
+ * versioned human-authority records under <root>/<subject_id>/<authority_id>.json;
+ * the CURRENT HEAD is the unique highest version. The store root is trusted
+ * deployment configuration (env VIDTOOLZ_HUMAN_AUTHORITY_STORE or the repo-pinned
+ * default), never a caller/task field. A projection caller supplies NO authority
+ * identity and NO authority version: the subject is derived from the direction
+ * itself, so omitting context cannot mean "no locks" and an older authority
+ * record can never be selected. Resolution failures fail CLOSED
+ * (CURRENT_HUMAN_AUTHORITY_UNAVAILABLE) — never back to historical or empty
+ * authority. A subject the store has never recorded a decision for resolves to
+ * an explicit EMPTY head (that is the store's answer, not a fallback).
+ */
+const PINNED_HUMAN_AUTHORITY_STORE = path.join(__dirname, '..', 'human-authority-store');
+const AUTHORITY_SUBJECT_RE = /^[A-Za-z0-9_.:-]{3,200}$/;
+
+function authorityUnavailable(message) {
+  const e = new Error(`CURRENT_HUMAN_AUTHORITY_UNAVAILABLE: ${message}`);
+  e.code = 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE';
+  throw e;
 }
 
-// Resolve the CURRENT human authority to apply at projection time. Combines the
-// direction's own creation-time locks with (a) any current locks passed in the
-// projection request and (b) the canonical current-authority store (which a
-// caller cannot downgrade). Fail-closed: a requested store authority that cannot
-// resolve refuses the projection rather than falling back to no-locks.
-function currentHumanAuthority(currentContext) {
-  const ctx = currentContext || {};
-  const sources = [];
-  let domains = [];
-  let authorityId = null;
-  let version = null;
-  if (Array.isArray(ctx.human_constraints) && ctx.human_constraints.length) {
-    domains = domains.concat(cd.deriveProtectedDomains(ctx.human_constraints).domains);
-    sources.push('PROJECTION_REQUEST_CONSTRAINTS');
-  }
-  if (norm(ctx.currentHumanAuthorityId)) {
-    const resolved = resolveCurrentHumanAuthority(ctx.currentHumanAuthorityId); // throws CURRENT_HUMAN_AUTHORITY_UNAVAILABLE if missing
-    domains = domains.concat(resolved.domains);
-    authorityId = resolved.authority_id; version = resolved.version;
-    sources.push('CANONICAL_CURRENT_AUTHORITY_STORE');
-  }
-  const denials = domains.map((d) => ({ domain: d.domain, scope: d.scope || 'GLOBAL', denied_operations: structuredClone(d.forbidden_operations || []), constraint_id: d.constraint_id || null }));
-  return { domains, denials, sources, authority_id: authorityId, version };
+// The authority SUBJECT is the project/episode identity the canonical direction
+// binds (digest-covered, immutable): the Script Builder project for a canonical
+// Story, the Discovery canonical idea for a candidate script.
+function authoritySubjectOf(direction) {
+  const identity = direction?.script_identity || {};
+  const subject = identity.kind === 'CANONICAL_STORY' ? identity.project_id
+    : identity.kind === 'CANDIDATE_SCRIPT' ? identity.canonical_idea_id : null;
+  const id = norm(subject);
+  if (!AUTHORITY_SUBJECT_RE.test(id)) authorityUnavailable(`canonical direction binds no resolvable project/episode identity (kind ${identity.kind || '(none)'})`);
+  return id;
 }
 
 /*
- * ID-ONLY DOWNSTREAM CONSUMPTION (mission §19) with CURRENT-LOCK REAUTHORIZATION
- * (mission §4-9). Downstream specialists resolve the canonical Creative Direction
- * by id and project it; the projection is re-filtered against the CURRENT human
- * authority resolved at USE time, so a stale operation authorized at creation is
- * suppressed once a newer human lock exists. A caller cannot suppress a current
- * lock (union-only), and a requested-but-unresolvable current authority refuses.
+ * Resolve the CURRENT human-authority head for a project/episode subject from
+ * the canonical store. The caller supplies only the subject identity needed to
+ * locate the record — never an authority id, version, or constraint set.
+ */
+function resolveCurrentHumanAuthority(subjectId) {
+  const subject = norm(subjectId);
+  if (!AUTHORITY_SUBJECT_RE.test(subject)) authorityUnavailable(`malformed authority subject id ${subject || '(empty)'}`);
+  const rootRaw = (process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE && process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE.trim()) ? process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE.trim() : PINNED_HUMAN_AUTHORITY_STORE;
+  let realRoot;
+  try { realRoot = fs.realpathSync(path.resolve(rootRaw)); } catch (error) { authorityUnavailable(`canonical current-authority store is unresolvable: ${error.message}`); }
+  const subjectDir = path.join(realRoot, subject);
+  if (path.dirname(subjectDir) !== realRoot) authorityUnavailable('authority subject path escapes the pinned store');
+  if (!fs.existsSync(subjectDir)) {
+    // The store's explicit answer: no human decision has ever been recorded for
+    // this subject. This is head resolution, NOT a fallback to "no locks".
+    return storyAuthority.deepFreeze({ subject_id: subject, head: 'EMPTY', authority_id: null, version: null, human_constraints: [], domains: [], content_sha256: null });
+  }
+  let realDir;
+  try { realDir = fs.realpathSync(subjectDir); } catch (error) { authorityUnavailable(`authority subject unresolvable: ${error.message}`); }
+  if (path.dirname(realDir) !== realRoot) authorityUnavailable('authority subject resolves (via symlink) outside the pinned store');
+  let names;
+  try { names = fs.readdirSync(realDir).filter((n) => n.endsWith('.json')).sort(); } catch (error) { authorityUnavailable(`authority subject unreadable: ${error.message}`); }
+  if (!names.length) {
+    return storyAuthority.deepFreeze({ subject_id: subject, head: 'EMPTY', authority_id: null, version: null, human_constraints: [], domains: [], content_sha256: null });
+  }
+  const records = [];
+  for (const name of names) {
+    const file = path.join(realDir, name);
+    let realFile;
+    try { realFile = fs.realpathSync(file); } catch (error) { authorityUnavailable(`authority record unresolvable: ${error.message}`); }
+    if (path.dirname(realFile) !== realDir) authorityUnavailable(`authority record ${name} resolves (via symlink) outside the subject store`);
+    let bytes; let doc;
+    try { bytes = fs.readFileSync(realFile, 'utf8'); doc = JSON.parse(bytes); } catch (error) { authorityUnavailable(`authority record ${name} unreadable: ${error.message}`); }
+    const authorityId = name.slice(0, -'.json'.length);
+    if (doc.authority_id !== undefined && norm(doc.authority_id) !== authorityId) authorityUnavailable(`authority record ${name} declares a different authority_id`);
+    if (!Number.isInteger(doc.version) || doc.version < 1) authorityUnavailable(`authority record ${name} lacks a positive integer version`);
+    if (!Array.isArray(doc.human_constraints)) authorityUnavailable(`authority record ${name} lacks human_constraints`);
+    for (const [i, c] of doc.human_constraints.entries()) {
+      if (!c || !norm(c.constraint_id) || !cd.CONSTRAINT_TYPES.includes(c.type) || !norm(c.text)) authorityUnavailable(`authority record ${name} human_constraints[${i}] invalid`);
+    }
+    records.push({ authority_id: authorityId, version: doc.version, human_constraints: doc.human_constraints, content_sha256: hash(bytes) });
+  }
+  const maxVersion = Math.max(...records.map((r) => r.version));
+  const heads = records.filter((r) => r.version === maxVersion);
+  if (heads.length !== 1) authorityUnavailable(`authority head for ${subject} is ambiguous: ${heads.length} records share version ${maxVersion}`);
+  const head = heads[0];
+  const derived = cd.deriveProtectedDomains(head.human_constraints);
+  if (derived.unenforceable.length) authorityUnavailable(`authority head ${head.authority_id} carries unenforceable constraints: ${derived.unenforceable.map((u) => u.constraint_id).join(', ')}`);
+  return storyAuthority.deepFreeze({ subject_id: subject, head: 'RECORD', authority_id: head.authority_id, version: head.version, human_constraints: head.human_constraints, domains: derived.domains, content_sha256: head.content_sha256 });
+}
+
+// Caller-context keys that would let a caller SELECT which human authority is
+// current. They are refused loudly (typed error), never ignored or honored —
+// silence must not look like consent.
+const FORBIDDEN_AUTHORITY_CONTEXT_KEYS = Object.freeze([
+  'currentHumanAuthorityId', 'current_human_authority_id', 'humanAuthorityId', 'human_authority_id',
+  'authorityId', 'authority_id', 'authorityVersion', 'authority_version', 'version',
+  'currentConstraints', 'current_constraints', 'capabilitySet', 'capability_set', 'locks',
+  'currentHumanAuthority', 'current_human_authority', 'protected_domains', 'domains',
+]);
+const ALLOWED_AUTHORITY_CONTEXT_KEYS = Object.freeze(['human_constraints', 'project_id']);
+
+/*
+ * Resolve the CURRENT human authority applied to a projection. The authority
+ * BASELINE is always the canonical store head for the direction's own subject —
+ * resolved HERE, at use time, never supplied by the caller. Caller-provided
+ * human_constraints are ADDITIONAL restrictions only (monotonic union): they can
+ * add suppressions, never remove, replace, or downgrade canonical ones. An
+ * optional caller project_id is a cross-check against the canonical direction,
+ * not a selector. Everything else in the context is refused.
+ */
+function currentHumanAuthorityFor(direction, currentContext) {
+  const ctx = currentContext || {};
+  if (typeof ctx !== 'object' || Array.isArray(ctx)) {
+    const e = new Error('CURRENT_AUTHORITY_CONTEXT_INVALID: projection context must be a plain object'); e.code = 'CURRENT_AUTHORITY_CONTEXT_INVALID'; throw e;
+  }
+  for (const key of Object.keys(ctx)) {
+    if (FORBIDDEN_AUTHORITY_CONTEXT_KEYS.includes(key) || !ALLOWED_AUTHORITY_CONTEXT_KEYS.includes(key)) {
+      const e = new Error(`CURRENT_AUTHORITY_CALLER_SELECTION_FORBIDDEN: projection context key '${key}' is refused — current human authority is resolved canonically from the direction's own project/episode identity, never selected, versioned, or supplied by a caller`);
+      e.code = 'CURRENT_AUTHORITY_CALLER_SELECTION_FORBIDDEN'; throw e;
+    }
+  }
+  const subject = authoritySubjectOf(direction);
+  if (ctx.project_id !== undefined && norm(ctx.project_id) !== subject) {
+    const e = new Error(`CURRENT_AUTHORITY_SUBJECT_MISMATCH: caller project_id ${norm(ctx.project_id)} does not match the canonical direction's subject ${subject}`);
+    e.code = 'CURRENT_AUTHORITY_SUBJECT_MISMATCH'; throw e;
+  }
+  const headAuthority = resolveCurrentHumanAuthority(subject); // fail-closed inside
+  let domains = [...headAuthority.domains];
+  const sources = ['CANONICAL_CURRENT_AUTHORITY_STORE'];
+  if (ctx.human_constraints !== undefined) {
+    if (!Array.isArray(ctx.human_constraints)) { const e = new Error('CURRENT_AUTHORITY_CONTEXT_INVALID: human_constraints must be an array'); e.code = 'CURRENT_AUTHORITY_CONTEXT_INVALID'; throw e; }
+    if (ctx.human_constraints.length) {
+      const derived = cd.deriveProtectedDomains(ctx.human_constraints);
+      if (derived.unenforceable.length) {
+        const e = new Error(`CURRENT_AUTHORITY_ADDITIONAL_CONSTRAINT_UNENFORCEABLE: ${derived.unenforceable.map((u) => u.constraint_id || u.detail).join('; ')}`);
+        e.code = 'CURRENT_AUTHORITY_ADDITIONAL_CONSTRAINT_UNENFORCEABLE'; throw e;
+      }
+      domains = domains.concat(derived.domains); // union only — restrictions can only be ADDED
+      sources.push('PROJECTION_REQUEST_ADDITIONAL_CONSTRAINTS');
+    }
+  }
+  const denials = domains.map((d) => ({ domain: d.domain, scope: d.scope || 'GLOBAL', denied_operations: structuredClone(d.forbidden_operations || []), constraint_id: d.constraint_id || null }));
+  return {
+    subject_id: subject, head: headAuthority.head, authority_id: headAuthority.authority_id,
+    version: headAuthority.version, content_sha256: headAuthority.content_sha256,
+    domains, denials, sources,
+  };
+}
+
+/*
+ * ID-ONLY DOWNSTREAM CONSUMPTION (mission §19) with CANONICAL CURRENT-AUTHORITY
+ * REAUTHORIZATION (Codex 58847dc Finding 1). Downstream specialists resolve the
+ * canonical Creative Direction by id and project it; the projection is
+ * re-filtered against the CURRENT human-authority head resolved at USE time from
+ * the direction's OWN subject, so a stale operation authorized at creation is
+ * suppressed once a newer human lock exists — whether or not the caller supplies
+ * any context. A caller cannot suppress a current lock (omission changes
+ * nothing), cannot select an older authority (there is no selector), and can
+ * only ADD restrictions via human_constraints (monotonic union). An
+ * unresolvable canonical head refuses the projection (fail closed).
  */
 function projectForSpecialistById(creativeDirectionId, role, currentContext = {}) {
   const direction = resolveCanonicalDirectionById(creativeDirectionId);
-  const authority = currentHumanAuthority(currentContext);
-  return specialistProjection(direction, role, authority);
+  return specialistProjection(direction, role, currentContext);
 }
 function humanRationaleById(creativeDirectionId) {
   return humanRationaleView(resolveCanonicalDirectionById(creativeDirectionId));
@@ -651,7 +766,18 @@ async function run(task, options = {}) {
     return finish(out, 'BLOCKED', `${error.code || 'CANONICAL_REGISTRATION_FAILED'}: ${error.message}`, 'creative_director');
   }
   out.creative_direction_id = direction.direction_id;
-  out.specialist_projections = ['visual_planning_director', 'editor', 'sound_music_director', 'audience_packaging_director', 'qc_director'].map((role) => ({ role, projection: projectForSpecialistById(direction.direction_id, role) }));
+  // MAIN-RUN CURRENT-AUTHORITY BINDING (Codex 58847dc Finding 1): every
+  // specialist projection built by the production run() path goes through
+  // projectForSpecialistById -> specialistProjection -> currentHumanAuthorityFor,
+  // which resolves the canonical current human-authority head for the
+  // direction's own subject at use time. run() supplies no authority context —
+  // there is nothing for it to supply. Fail closed: an unresolvable canonical
+  // head BLOCKS the run instead of projecting without current authority.
+  try {
+    out.specialist_projections = ['visual_planning_director', 'editor', 'sound_music_director', 'audience_packaging_director', 'qc_director'].map((role) => ({ role, projection: projectForSpecialistById(direction.direction_id, role) }));
+  } catch (error) {
+    return finish(out, 'BLOCKED', `${error.code || 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE'}: ${error.message}`, 'hermes');
+  }
   out.human_review = humanRationaleById(direction.direction_id);
   if ((direction.human_decisions_required || []).length > 0) return finish(out, 'NEEDS_HUMAN_DECISION', direction.human_decisions_required.map((d) => d.type).join(', '), 'mikko');
   return finish(out, direction.lifecycle_state === 'AWAITING_HUMAN_REVIEW' ? 'AWAITING_HUMAN_REVIEW' : 'PREVIEW_ONLY', null, 'mikko');
@@ -683,6 +809,6 @@ function controlRoomView(out) {
   };
 }
 
-module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, projectForSpecialistById, humanRationaleById, resolveCanonicalDirectionById, resolveCurrentHumanAuthority, isCanonicalDirection, run, controlRoomView };
+module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, SAFE_PROJECTION_SCHEMA, routeCapability, selectComputeRoute, invokeModel, preflight, buildPrompt, validateSemanticOutput, assembleDirection, specialistProjection, humanRationaleView, projectForSpecialistById, humanRationaleById, resolveCanonicalDirectionById, resolveCurrentHumanAuthority, authoritySubjectOf, isCanonicalDirection, run, controlRoomView };
 
 if (require.main === module && guardExecutableLifecycle(AGENT_ID)) (async () => { const i = process.argv.indexOf('--task'); if (i < 0) process.exit(2); const out = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...out, control_room: controlRoomView(out) }, null, 2)); process.exit(['COMPLETE', 'AWAITING_HUMAN_REVIEW', 'PREVIEW_ONLY'].includes(out.state) ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });

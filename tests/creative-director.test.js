@@ -693,17 +693,23 @@ test('CDN6 (CODX-EVENT-01 + CODX-LB-08/09): a pixel signal never confirms Level-
   // caller-supplied manifestation on a candidate carries NO authority
   const forged = adapter.admitMeasuredEvents([{ candidate_id: 'f', t_s: 5, kind: 'VISUAL_CHANGE', manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }], planned);
   assert.equal(forged.confirmed.length, 0, 'caller-supplied manifestation object cannot mint confirmation');
-  // a renderer record written by the TRUSTED WRITER and resolved by id CONFIRMS
+  // a renderer record created by the CANONICAL RENDERER EXECUTION (identity
+  // from ITS deployment config, never a caller argument) and resolved by id CONFIRMS
   const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-renderer-store-'));
   const prev = process.env.VIDTOOLZ_RENDERER_EVENT_STORE;
+  const prevIdent = process.env.VIDTOOLZ_RENDERER_EXECUTION_IDENTITY;
   process.env.VIDTOOLZ_RENDERER_EVENT_STORE = store;
+  process.env.VIDTOOLZ_RENDERER_EXECUTION_IDENTITY = 'renderer@test';
   try {
-    adapter.recordRendererEvidence('run-cd6', { producer_execution_identity: 'renderer@test', media_sha256: 'a'.repeat(64), records: [{ event_id: 'planned-label-1', event_type: 'LABEL_REVEAL', manifested: true, manifestation: { kind: 'LABEL_PRESENT', target: 'X' } }] });
+    adapter.requestRendererExecution('run-cd6', { events: [{ event_id: 'planned-label-1', kind: 'LABEL_REVEAL', label: 'X' }] });
     const confirmed = adapter.admitMeasuredEvents([{ candidate_id: 'signal-vc-1', t_s: 5, kind: 'VISUAL_CHANGE' }], planned, { renderRunId: 'run-cd6' });
     assert.equal(confirmed.confirmed.length, 1);
     assert.equal(confirmed.confirmed[0].event_id, 'planned-label-1');
     assert.equal(confirmed.confirmed[0].authority, 'RENDERER_MANIFESTATION_CONFIRMED');
-  } finally { if (prev === undefined) delete process.env.VIDTOOLZ_RENDERER_EVENT_STORE; else process.env.VIDTOOLZ_RENDERER_EVENT_STORE = prev; }
+  } finally {
+    if (prev === undefined) delete process.env.VIDTOOLZ_RENDERER_EVENT_STORE; else process.env.VIDTOOLZ_RENDERER_EVENT_STORE = prev;
+    if (prevIdent === undefined) delete process.env.VIDTOOLZ_RENDERER_EXECUTION_IDENTITY; else process.env.VIDTOOLZ_RENDERER_EXECUTION_IDENTITY = prevIdent;
+  }
 });
 
 test('CDN7: explicit Level-A macro-state counter (no conflation with B/C)', () => {
@@ -793,17 +799,147 @@ test('CDT1: a newer human KEEP S03 lock removes a stale MEDIA/ADD/S03 from an ol
   assert.ok(relocked.executable.capability_suppressions.some((s) => s.scope === 'S03' && s.operation === 'ADD'));
 });
 
-test('CDT2: the canonical current-human-authority store dominates; a caller cannot downgrade it by passing empty constraints', async () => {
-  const out = await runDirector(makeTask(), makeSemantic({ action_claims: [{ claim_id: 'stale', domain: 'MEDIA', operation: 'ADD', scope: 'S03', summary: 'x' }] }));
-  const authStore = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-humanauth-'));
+// Run fn (sync or async) with the canonical current-authority store env
+// pinned, restoring only after fn fully settles.
+function withAuthorityStore(root, fn) {
   const prev = process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE;
-  process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = authStore;
+  process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = root;
+  const restore = () => { if (prev === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = prev; };
   try {
-    fs.writeFileSync(path.join(authStore, 'ep-7.json'), JSON.stringify({ authority_id: 'ep-7', version: 2, human_constraints: [{ constraint_id: 'k', type: 'KEEP_MEDIA', scope: 'S03', text: 'Keep S03.' }] }));
-    const proj = director.projectForSpecialistById(out.creative_direction_id, 'editor', { currentHumanAuthorityId: 'ep-7', human_constraints: [] });
-    assert.equal(proj.executable.action_claims.some((c) => c.scope === 'S03' && c.operation === 'ADD'), false);
-    assert.equal(proj.executable.current_human_authority.authority_id, 'ep-7');
-    // fail-closed: an unresolvable current authority refuses the projection
-    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor', { currentHumanAuthorityId: 'ep-missing' }), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE');
-  } finally { if (prev === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = prev; }
+    const result = fn();
+    if (result && typeof result.then === 'function') return result.finally(restore);
+    restore();
+    return result;
+  } catch (error) { restore(); throw error; }
+}
+function writeAuthorityRecord(root, subject, authorityId, version, humanConstraints) {
+  const dir = path.join(root, subject);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, `${authorityId}.json`), JSON.stringify({ authority_id: authorityId, version, human_constraints: humanConstraints }));
+}
+const KEEP_S03 = { constraint_id: 'keep-s03-canonical', type: 'KEEP_MEDIA', scope: 'S03', text: 'Keep S03.' };
+const THREE_CLAIMS = [
+  { claim_id: 'stale-s03', domain: 'MEDIA', operation: 'ADD', scope: 'S03', summary: 'add before lock' },
+  { claim_id: 'add-s05', domain: 'MEDIA', operation: 'ADD', scope: 'S05', summary: 'unlocked' },
+  { claim_id: 'add-music', domain: 'MUSIC', operation: 'ADD', scope: 'GLOBAL', summary: 'extend music' },
+];
+
+test('CDT2: the canonical current-authority HEAD binds by the direction\'s own subject — caller omission cannot suppress it and an older record cannot be selected', async () => {
+  // T0: the historical direction (created while unlocked) carries MEDIA/ADD/S03.
+  const out = await runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) }));
+  const authStore = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-humanauth-'));
+  // T1: a canonical human-authority successor establishes KEEP S03 (head v2);
+  // the older v1 record was unlocked.
+  writeAuthorityRecord(authStore, CANON_IDEA_ID, 'ha-1', 1, []);
+  writeAuthorityRecord(authStore, CANON_IDEA_ID, 'ha-2', 2, [KEEP_S03]);
+  withAuthorityStore(authStore, () => {
+    // T2: the ordinary projection path, with NO caller authority context at all.
+    const omitted = director.projectForSpecialistById(out.creative_direction_id, 'editor');
+    assert.equal(omitted.executable.action_claims.some((c) => c.scope === 'S03' && c.operation === 'ADD'), false, 'omission must not suppress the canonical current lock');
+    assert.ok(omitted.executable.action_claims.some((c) => c.scope === 'S05' && c.operation === 'ADD'), 'target-scoped: S05 stays legal');
+    assert.ok(omitted.executable.capability_suppressions.some((s) => s.claim_id === 'stale-s03'));
+    // Projection evidence records the RESOLVED head, never a caller selection.
+    const authority = omitted.executable.current_human_authority;
+    assert.equal(authority.subject_id, CANON_IDEA_ID);
+    assert.equal(authority.authority_id, 'ha-2');
+    assert.equal(authority.version, 2);
+    assert.equal(authority.head, 'RECORD');
+    assert.match(authority.content_sha256, /^[a-f0-9]{64}$/);
+    assert.ok(authority.sources.includes('CANONICAL_CURRENT_AUTHORITY_STORE'));
+    assert.match(omitted.executable.effective_capability_digest, /^[a-f0-9]{64}$/);
+    // Passing empty additional constraints changes nothing (no downgrade).
+    const empty = director.projectForSpecialistById(out.creative_direction_id, 'editor', { human_constraints: [] });
+    assert.equal(empty.executable.action_claims.some((c) => c.scope === 'S03' && c.operation === 'ADD'), false);
+    // EVERY caller attempt to name/select/version the current authority is
+    // refused loudly — there is no selector parameter left to abuse.
+    for (const key of ['currentHumanAuthorityId', 'current_human_authority_id', 'humanAuthorityId', 'authorityId', 'authority_id', 'authorityVersion', 'version', 'currentConstraints', 'capabilitySet', 'locks', 'currentHumanAuthority', 'current_human_authority', 'protected_domains', 'domains', 'anything_unknown']) {
+      assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor', { [key]: 'ha-1' }),
+        (e) => e.code === 'CURRENT_AUTHORITY_CALLER_SELECTION_FORBIDDEN', `context key ${key} must be refused`);
+    }
+    // Optional project identity is a CROSS-CHECK against the canonical
+    // direction's own subject, never a selector.
+    const crossChecked = director.projectForSpecialistById(out.creative_direction_id, 'editor', { project_id: CANON_IDEA_ID });
+    assert.equal(crossChecked.executable.action_claims.some((c) => c.scope === 'S03' && c.operation === 'ADD'), false);
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor', { project_id: 'some-other-project' }),
+      (e) => e.code === 'CURRENT_AUTHORITY_SUBJECT_MISMATCH');
+    // The historical canonical direction itself is never mutated by any of this.
+    const historical = director.resolveCanonicalDirectionById(out.creative_direction_id);
+    assert.ok(historical.action_claims.some((c) => c.claim_id === 'stale-s03'), 'history is immutable; only the projection is re-authorized');
+  });
+});
+
+test('CDT3: the MAIN run() projection path itself resolves canonical current authority — its specialist projections suppress a locked stale operation', async () => {
+  const authStore = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-mainrun-auth-'));
+  writeAuthorityRecord(authStore, CANON_IDEA_ID, 'ha-2', 2, [KEEP_S03]);
+  const out = await withAuthorityStore(authStore, () => runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) })));
+  assert.equal(out.state, 'PREVIEW_ONLY', out.reason || '');
+  for (const { role, projection } of out.specialist_projections) {
+    const authority = role === 'qc_director' ? projection.current_human_authority : projection.executable.current_human_authority;
+    assert.equal(authority.authority_id, 'ha-2', `${role} projection is bound to the canonical current head`);
+    assert.equal(authority.subject_id, CANON_IDEA_ID);
+    if (projection.executable) {
+      assert.equal(projection.executable.action_claims.some((c) => c.scope === 'S03' && c.operation === 'ADD'), false, `${role}: main-run projection suppresses the locked ADD S03`);
+      assert.ok(projection.executable.action_claims.some((c) => c.scope === 'S05' && c.operation === 'ADD'), `${role}: unlocked S05 survives`);
+    }
+  }
+  // MUSIC head lock reaches the sound specialist through the same path.
+  const musicStore = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-mainrun-music-'));
+  writeAuthorityRecord(musicStore, CANON_IDEA_ID, 'ha-3', 3, [{ constraint_id: 'music-current', type: 'MUSIC_LOCK', scope: 'GLOBAL', text: 'Keep music.' }]);
+  const out2 = await withAuthorityStore(musicStore, () => runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) })));
+  const sound = out2.specialist_projections.find((p) => p.role === 'sound_music_director').projection;
+  assert.equal(sound.executable.action_claims.some((c) => c.domain === 'MUSIC' && c.operation === 'ADD'), false);
+  assert.ok(sound.executable.capability_suppressions.some((s) => s.claim_id === 'add-music'));
+});
+
+test('CDT4: an unresolvable canonical current authority fails CLOSED — never back to historical, caller, or empty authority', async () => {
+  const out = await runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) }));
+  // store root unresolvable
+  withAuthorityStore(path.join(os.tmpdir(), 'cd-auth-nonexistent-root'), () => {
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE');
+  });
+  // corrupt head record
+  const corrupt = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-auth-corrupt-'));
+  fs.mkdirSync(path.join(corrupt, CANON_IDEA_ID), { recursive: true });
+  fs.writeFileSync(path.join(corrupt, CANON_IDEA_ID, 'ha-1.json'), '{not json');
+  withAuthorityStore(corrupt, () => {
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE');
+  });
+  // ambiguous head (two records share the highest version)
+  const ambiguous = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-auth-ambig-'));
+  writeAuthorityRecord(ambiguous, CANON_IDEA_ID, 'ha-a', 2, []);
+  writeAuthorityRecord(ambiguous, CANON_IDEA_ID, 'ha-b', 2, [KEEP_S03]);
+  withAuthorityStore(ambiguous, () => {
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor'), (e) => e.code === 'CURRENT_HUMAN_AUTHORITY_UNAVAILABLE');
+  });
+  // the MAIN run() path blocks (fail closed) rather than projecting without
+  // current authority
+  const blocked = await withAuthorityStore(path.join(os.tmpdir(), 'cd-auth-nonexistent-root'), () => runDirector(makeTask(), makeSemantic()));
+  assert.equal(blocked.state, 'BLOCKED');
+  assert.match(blocked.reason, /CURRENT_HUMAN_AUTHORITY_UNAVAILABLE/);
+});
+
+test('CDT5: caller restrictions are monotonic — they can only ADD suppressions on top of the canonical head, and head succession is explicit', async () => {
+  const out = await runDirector(makeTask(), makeSemantic({ action_claims: clone(THREE_CLAIMS) }));
+  const authStore = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-monotonic-'));
+  writeAuthorityRecord(authStore, CANON_IDEA_ID, 'ha-2', 2, [KEEP_S03]);
+  withAuthorityStore(authStore, () => {
+    const base = director.projectForSpecialistById(out.creative_direction_id, 'editor');
+    const tightened = director.projectForSpecialistById(out.creative_direction_id, 'editor', { human_constraints: [{ constraint_id: 'music-extra', type: 'MUSIC_LOCK', scope: 'GLOBAL', text: 'Keep music too.' }] });
+    const ids = (p) => p.executable.action_claims.map((c) => c.claim_id).sort();
+    // UNION-only: everything admitted with extra restrictions is a subset of the baseline
+    assert.ok(ids(tightened).every((id) => ids(base).includes(id)), 'additional caller constraints can only shrink the admitted set');
+    assert.equal(ids(tightened).includes('add-music'), false, 'the additional restriction takes effect');
+    assert.equal(ids(base).includes('stale-s03'), false, 'the canonical head restriction holds in both');
+    assert.equal(ids(tightened).includes('stale-s03'), false);
+    // an unenforceable additional restriction fails closed, never silently drops
+    assert.throws(() => director.projectForSpecialistById(out.creative_direction_id, 'editor', { human_constraints: [{ constraint_id: 'x', type: 'CUSTOM', text: 'be nicer' }] }),
+      (e) => e.code === 'CURRENT_AUTHORITY_ADDITIONAL_CONSTRAINT_UNENFORCEABLE');
+    // head SUCCESSION: a newer head record REPLACES the current constraint set
+    // (append-only history, one current head)
+    writeAuthorityRecord(authStore, CANON_IDEA_ID, 'ha-3', 3, [{ constraint_id: 'music-current', type: 'MUSIC_LOCK', scope: 'GLOBAL', text: 'Keep music.' }]);
+    const succeeded = director.projectForSpecialistById(out.creative_direction_id, 'editor');
+    assert.equal(succeeded.executable.current_human_authority.authority_id, 'ha-3');
+    assert.ok(ids(succeeded).includes('stale-s03'), 'the superseded KEEP S03 is no longer the current human decision');
+    assert.equal(ids(succeeded).includes('add-music'), false, 'the successor lock binds');
+  });
 });

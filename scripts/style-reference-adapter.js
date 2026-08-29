@@ -26,6 +26,7 @@
 
 const crypto = require('crypto');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const ADAPTER_SCHEMA = 'vidtoolz.styleReferenceContext.v1';
@@ -221,21 +222,25 @@ function evidenceRoot(envVar, pinnedDefault) {
 }
 
 /*
- * TRUSTED EVIDENCE WRITER — the renderer/classifier execution component's write
- * boundary. NOT a task/API/request path: production request data cannot reach it
- * (no route/handler invokes it). It stamps producer identity + media binding and
+ * INTERNAL TRUSTED EVIDENCE WRITER (Codex 58847dc Finding 2 closure).
+ * MODULE-PRIVATE and NOT EXPORTED: there is no public function that accepts a
+ * caller-selected producer identity (or caller-composed records) and writes
+ * canonical semantic evidence. The ONLY invokers are the canonical execution
+ * runtimes below (requestRendererExecution / requestClassifierExecution), which
+ * derive identity, media hash, and records from the execution THEY perform —
+ * never from caller assertions. It stamps producer identity + media binding and
  * records a durable append-only manifest. A second write to the same run id is
  * refused (RUN_ID_ALREADY_BOUND) — authority history is append-only.
  */
-function writeEvidence(kind, envVar, pinnedDefault, runId, payload) {
+function writeEvidence(kind, envVar, pinnedDefault, runId, execution) {
   const id = String(runId || '').trim();
   if (!RUN_ID_RE.test(id)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_ID_INVALID', `${kind} run id is malformed: ${id}`);
-  const identity = String(payload?.producer_execution_identity || '').trim();
-  if (!identity) throw new StyleReferenceError('SEMANTIC_EVIDENCE_WRITER_IDENTITY_REQUIRED', `${kind} evidence writer must supply producer_execution_identity`);
-  const media = String(payload?.media_sha256 || '').trim().toLowerCase();
-  if (!HEX64_RE.test(media)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_WRITER_MEDIA_REQUIRED', `${kind} evidence writer must bind a media_sha256`);
-  const records = Array.isArray(payload?.records) ? payload.records : null;
-  if (!records || !records.length) throw new StyleReferenceError('SEMANTIC_EVIDENCE_WRITER_RECORDS_REQUIRED', `${kind} evidence writer must supply records`);
+  const identity = String(execution?.identity || '').trim();
+  if (!identity) throw new StyleReferenceError('SEMANTIC_EVIDENCE_WRITER_IDENTITY_REQUIRED', `${kind} internal writer invariant: execution identity missing`);
+  const media = String(execution?.media || '').trim().toLowerCase();
+  if (!HEX64_RE.test(media)) throw new StyleReferenceError('SEMANTIC_EVIDENCE_WRITER_MEDIA_REQUIRED', `${kind} internal writer invariant: media digest missing`);
+  const records = Array.isArray(execution?.records) ? execution.records : null;
+  if (!records || !records.length) throw new StyleReferenceError('SEMANTIC_EVIDENCE_WRITER_RECORDS_REQUIRED', `${kind} internal writer invariant: execution records missing`);
   const root = evidenceRoot(envVar, pinnedDefault);
   fs.mkdirSync(root, { recursive: true });
   const realRoot = fs.realpathSync(root);
@@ -251,8 +256,135 @@ function writeEvidence(kind, envVar, pinnedDefault, runId, payload) {
   atomicWriteJson(manifestFile, { schema: EVIDENCE_MANIFEST_SCHEMA, kind, run_id: id, evidence_digest: digest, media_sha256: media, producer_execution_identity: identity, created_at: new Date().toISOString() });
   return { run_id: id, evidence_digest: digest, manifest_path: manifestFile };
 }
-function recordRendererEvidence(runId, payload) { return writeEvidence('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, runId, payload); }
-function recordClassifierEvidence(runId, payload) { return writeEvidence('classifier', 'VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE', PINNED_CLASSIFIER_EVIDENCE_STORE, runId, payload); }
+
+/*
+ * TRUSTED PRODUCER IDENTITY (mission §18): producer/classifier identity is
+ * DERIVED from the execution runtime's own trusted deployment configuration —
+ * NEVER accepted as a caller argument. A deployment that hosts no renderer or
+ * classifier execution leaves the identity unconfigured, and that deployment
+ * therefore CANNOT create semantic evidence authority at all (fail closed).
+ */
+function executionIdentity(kind, envVar) {
+  const raw = process.env[envVar];
+  if (!raw || !raw.trim()) {
+    throw new StyleReferenceError('SEMANTIC_EVIDENCE_EXECUTION_IDENTITY_UNCONFIGURED',
+      `${kind} execution identity is not configured in this deployment (${envVar}); this process hosts no trusted ${kind} execution and cannot create ${kind} evidence authority`);
+  }
+  return raw.trim();
+}
+
+// Caller-supplied authority assertions are refused loudly, never absorbed: a
+// request may name WHAT to execute, never what the execution's evidence says.
+const AUTHORITY_ASSERTION_KEYS = Object.freeze([
+  'producer_execution_identity', 'renderer_identity', 'classifier_identity', 'producer', 'identity',
+  'media_sha256', 'records', 'manifested', 'confirmed', 'manifestation', 'evidence_digest',
+]);
+function rejectAuthorityAssertions(kind, label, value) {
+  if (!value || typeof value !== 'object') return;
+  for (const key of Object.keys(value)) {
+    if (AUTHORITY_ASSERTION_KEYS.includes(key)) {
+      throw new StyleReferenceError('SEMANTIC_EVIDENCE_AUTHORITY_FIELD_REJECTED',
+        `${kind} execution request ${label} carries authority field '${key}' — producer identity, media hashes, verdicts, and evidence records are derived by the trusted execution, never accepted from a caller`);
+    }
+  }
+}
+
+const HERMETIC_ARTIFACT_SCHEMA = 'vidtoolz.hermeticRenderArtifact.v1';
+
+/*
+ * PUBLIC REQUEST — requestRendererExecution(runId, renderPlan, options).
+ * The canonical (hermetic, bounded) renderer runtime. The caller REQUESTS a
+ * render of typed semantic events; the runtime EXECUTES it: renders the
+ * deterministic artifact itself, hashes the bytes IT produced, derives the
+ * semantic event records from what IT rendered, stamps its OWN configured
+ * execution identity (VIDTOOLZ_RENDERER_EXECUTION_IDENTITY), and writes
+ * evidence through the module-private trusted writer. The caller cannot pass a
+ * producer identity, a media hash, a manifested flag, or an evidence record —
+ * such fields are rejected, not ignored. Evidence created here binds ONLY the
+ * artifact this runtime actually produced (its media_sha256), so it can never
+ * confirm events on any other media.
+ */
+function requestRendererExecution(runId, renderPlan, options = {}) {
+  const identity = executionIdentity('renderer', 'VIDTOOLZ_RENDERER_EXECUTION_IDENTITY');
+  rejectAuthorityAssertions('renderer', 'plan', renderPlan);
+  const events = Array.isArray(renderPlan?.events) ? renderPlan.events : null;
+  if (!events || !events.length) throw new StyleReferenceError('HERMETIC_RENDER_PLAN_INVALID', 'renderPlan.events must be a non-empty array of typed semantic events');
+  const rendered = [];
+  for (const [index, event] of events.entries()) {
+    rejectAuthorityAssertions('renderer', `plan.events[${index}]`, event);
+    const eventId = String(event?.event_id || '').trim();
+    if (!eventId) throw new StyleReferenceError('HERMETIC_RENDER_PLAN_INVALID', `plan.events[${index}] lacks event_id`);
+    const kind = normalizeEventKind(event?.kind);
+    const type = kind ? LEVEL_B_EVENT_TYPES[kind] : null;
+    if (!type) throw new StyleReferenceError('HERMETIC_RENDER_UNSUPPORTED_EVENT', `plan.events[${index}] kind ${event?.kind || '(missing)'} is not a renderable semantic event type`);
+    const manifestation = { kind: type.expected_manifestation };
+    if (type.targeted) {
+      const target = event[type.target_key] ?? event.target ?? null;
+      if (target == null || String(target).trim() === '') throw new StyleReferenceError('HERMETIC_RENDER_UNSUPPORTED_EVENT', `plan.events[${index}] (${kind}) is targeted but names no ${type.target_key}`);
+      manifestation.target = String(target);
+    }
+    rendered.push({ event_id: eventId, event_type: kind, manifestation });
+  }
+  // EXECUTE: the runtime renders the deterministic artifact and hashes the
+  // bytes it wrote — the media binding is a fact about ITS output.
+  const artifact = { schema: HERMETIC_ARTIFACT_SCHEMA, run_id: String(runId || '').trim(), rendered_events: rendered };
+  const bytes = Buffer.from(canonicalizeJson(artifact));
+  const workDir = options.workDir ? path.resolve(options.workDir) : fs.mkdtempSync(path.join(os.tmpdir(), 'vidtoolz-hermetic-render-'));
+  fs.mkdirSync(workDir, { recursive: true });
+  const artifactPath = path.join(workDir, `${artifact.run_id || 'render'}.render.json`);
+  fs.writeFileSync(artifactPath, bytes);
+  const media = sha256(bytes);
+  const records = rendered.map((r) => ({ event_id: r.event_id, event_type: r.event_type, manifested: true, manifestation: r.manifestation }));
+  const receipt = writeEvidence('renderer', 'VIDTOOLZ_RENDERER_EVENT_STORE', PINNED_RENDERER_EVENT_STORE, runId, { identity, media, records });
+  // Metadata REPORTS the derived identity; the caller never chose it.
+  return { ...receipt, media_sha256: media, artifact_path: artifactPath, producer_execution_identity: identity };
+}
+
+/*
+ * PUBLIC REQUEST — requestClassifierExecution(runId, request, options).
+ * The approved (hermetic, bounded) classifier runtime. The caller REQUESTS a
+ * classification of planned semantic events against a media file; the runtime
+ * EXAMINES the media itself: reads and hashes the bytes, and confirms a planned
+ * event ONLY when the media (a hermetic render artifact it can actually
+ * understand) contains the expected semantic manifestation. Verdicts, identity
+ * (VIDTOOLZ_CLASSIFIER_EXECUTION_IDENTITY), and the media hash are all derived
+ * by the runtime; caller-supplied verdict/identity/hash fields are rejected.
+ * Media this bounded classifier cannot understand fails closed — it never
+ * guesses and it never takes the caller's word.
+ */
+function requestClassifierExecution(runId, request, options = {}) {
+  void options;
+  const identity = executionIdentity('classifier', 'VIDTOOLZ_CLASSIFIER_EXECUTION_IDENTITY');
+  rejectAuthorityAssertions('classifier', 'request', request);
+  const mediaPath = String(request?.mediaPath || '').trim();
+  if (!mediaPath) throw new StyleReferenceError('HERMETIC_CLASSIFIER_MEDIA_REQUIRED', 'classifier execution requires request.mediaPath (the media to examine)');
+  let bytes;
+  try { bytes = fs.readFileSync(mediaPath); } catch (e) { throw new StyleReferenceError('HERMETIC_CLASSIFIER_MEDIA_UNREADABLE', e.message); }
+  const media = sha256(bytes);
+  const plannedEvents = Array.isArray(request?.plannedEvents) ? request.plannedEvents : null;
+  if (!plannedEvents || !plannedEvents.length) throw new StyleReferenceError('HERMETIC_CLASSIFIER_PLAN_INVALID', 'classifier execution requires request.plannedEvents (the semantic claims to examine)');
+  let artifact = null;
+  try { artifact = JSON.parse(bytes.toString('utf8')); } catch { artifact = null; }
+  if (!artifact || artifact.schema !== HERMETIC_ARTIFACT_SCHEMA || !Array.isArray(artifact.rendered_events)) {
+    throw new StyleReferenceError('HERMETIC_CLASSIFIER_UNSUPPORTED_MEDIA',
+      'this bounded classifier can only classify hermetic render artifacts; classifying arbitrary media requires an approved classifier integration with its own trusted execution — it never confirms what it cannot examine');
+  }
+  const records = plannedEvents.map((planned, index) => {
+    rejectAuthorityAssertions('classifier', `request.plannedEvents[${index}]`, planned);
+    const eventId = String(planned?.event_id || '').trim();
+    if (!eventId) throw new StyleReferenceError('HERMETIC_CLASSIFIER_PLAN_INVALID', `request.plannedEvents[${index}] lacks event_id`);
+    const kind = normalizeEventKind(planned?.kind);
+    if (!kind || !LEVEL_B_EVENT_TYPES[kind]) throw new StyleReferenceError('HERMETIC_CLASSIFIER_PLAN_INVALID', `request.plannedEvents[${index}] kind ${planned?.kind || '(missing)'} is not a classifiable semantic event type`);
+    const plan = { ...planned, kind };
+    const found = artifact.rendered_events.find((r) => r && r.event_id === eventId
+      && String(r.event_type || '').toUpperCase() === kind && manifestationMatches(plan, r.manifestation));
+    return found
+      ? { event_id: eventId, event_type: kind, confirmed: true, manifestation: structuredClone(found.manifestation) }
+      : { event_id: eventId, event_type: kind, confirmed: false };
+  });
+  const receipt = writeEvidence('classifier', 'VIDTOOLZ_CLASSIFIER_EVIDENCE_STORE', PINNED_CLASSIFIER_EVIDENCE_STORE, runId, { identity, media, records });
+  return { ...receipt, media_sha256: media, producer_execution_identity: identity, confirmed_count: records.filter((r) => r.confirmed).length };
+}
 
 function readEvidenceStore(kind, envVar, pinnedDefault, runId) {
   const id = String(runId || '').trim();
@@ -277,6 +409,11 @@ function readEvidenceStore(kind, envVar, pinnedDefault, runId) {
   let doc; let manifest;
   try { manifest = JSON.parse(fs.readFileSync(realManifest, 'utf8')); } catch (e) { throw new StyleReferenceError('SEMANTIC_EVIDENCE_UNREADABLE', e.message); }
   try { doc = JSON.parse(fs.readFileSync(realFile, 'utf8')); } catch (e) { throw new StyleReferenceError('SEMANTIC_EVIDENCE_UNREADABLE', e.message); }
+  // The manifest must be the one the trusted writer bound to THIS run id and
+  // kind — a manifest file copied under another run's name grants nothing.
+  if (manifest.schema !== EVIDENCE_MANIFEST_SCHEMA || manifest.run_id !== id || manifest.kind !== kind) {
+    throw new StyleReferenceError('SEMANTIC_EVIDENCE_MANIFEST_MISMATCH', `${kind} run ${id} manifest does not bind this run id/kind`);
+  }
   // Durable integrity: recompute the digest every read (cross-process) and
   // require exact equality with the manifest bound at trusted-write time.
   if (evidenceDigest(doc) !== manifest.evidence_digest) {
@@ -826,8 +963,14 @@ module.exports = {
   normalizeEventKind,
   admitSemanticEvents,
   admitMeasuredEvents,
-  recordRendererEvidence,
-  recordClassifierEvidence,
+  // PUBLIC REQUEST surface (start an execution; the runtime writes its own
+  // evidence). There is NO public authority writer: recordRendererEvidence /
+  // recordClassifierEvidence were removed (Codex 58847dc Finding 2) — the
+  // trusted writer is module-private and reachable only through these runtimes.
+  HERMETIC_ARTIFACT_SCHEMA,
+  requestRendererExecution,
+  requestClassifierExecution,
+  // PUBLIC READ surface.
   resolveRendererRun,
   resolveClassifierRun,
   countMacroStates,
