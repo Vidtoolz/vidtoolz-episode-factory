@@ -8,6 +8,13 @@ const visualPlan = require('./visual-plan.js');
 const humanIdentity = require('./human-approval-identity.js');
 const scriptBuilderAuthority = require('./script-builder-authority.js');
 
+// Lazy require: creative-director.js -> creative-story-authority.js already
+// requires THIS module (loadCanonicalStory), so a top-level require here would
+// create a load cycle. Resolving at call time keeps one clean direction.
+function creativeDirector() {
+  return require('./creative-director.js');
+}
+
 const DEFAULT_SCRIPT_BUILDER_ROOT = scriptBuilderAuthority.defaultCandidates()[0].root;
 
 function canonicalApproval(project, version) {
@@ -101,6 +108,47 @@ function resolveStoryOptionsForRun(options) {
   };
 }
 
+/*
+ * C2 — safe Creative Direction context for VPD (Approval C, 2026-08-29).
+ *
+ * VPD consumes Creative Direction ONLY through an explicit canonical
+ * creative_direction_id:
+ *
+ *   creative_direction_id
+ *     → canonical Creative Direction registry (resolveCanonicalDirectionById)
+ *     → certified projectForSpecialistById / safe projection
+ *     → CURRENT canonical human authority re-resolved at use time
+ *     → VPD-safe structured projection (enum-only, zero prose)
+ *
+ * No caller-provided direction objects, no caller-provided projection
+ * objects, no raw model output, and NO Creative Director dispatch (the
+ * canonical registry holds only directions minted by the pipeline's trusted
+ * entry, and dispatch remains DISABLED). With no explicit id, assembly keeps
+ * its exact legacy behavior (NO_CREATIVE_DIRECTION_CONTEXT) — never a new
+ * blocker, never an inferred "latest" direction.
+ */
+function resolveCreativeDirectionContext(options) {
+  const id = options.creativeDirectionId;
+  if (id === undefined || id === null) return { state: 'NO_CREATIVE_DIRECTION_CONTEXT', taskField: null };
+  if (typeof id !== 'string' || !id.trim()) {
+    const e = new Error('CREATIVE_DIRECTION_CONTEXT_REJECTED: creative_direction_id must be a non-empty canonical id');
+    e.code = 'CREATIVE_DIRECTION_CONTEXT_REJECTED';
+    throw e;
+  }
+  let projection;
+  try {
+    // Canonical resolution + current-human-authority reauthorization happen
+    // INSIDE the certified seam; the caller supplies only the id.
+    projection = creativeDirector().projectForSpecialistById(id.trim(), 'visual_planning_director', {});
+  } catch (error) {
+    const e = new Error(`CREATIVE_DIRECTION_CONTEXT_REJECTED: ${error.message}`);
+    e.code = 'CREATIVE_DIRECTION_CONTEXT_REJECTED';
+    e.cause_code = error.code || null;
+    throw e;
+  }
+  return { state: 'CANONICAL_SAFE_PROJECTION', taskField: projection };
+}
+
 function assembleVisualPlanningTask(inputOptions) {
   const options = resolveStoryOptionsForRun(inputOptions);
   const loaded = loadCanonicalStory(options);
@@ -129,7 +177,13 @@ function assembleVisualPlanningTask(inputOptions) {
     },
   };
   if (options.operatorInstructions !== undefined) task.operator_instructions = options.operatorInstructions;
-  return { task, authority: loaded.authority };
+  // C2: explicit canonical Creative Direction context only. Without a
+  // supplied canonical id the task is byte-identical to the pre-C shape.
+  const creativeDirection = resolveCreativeDirectionContext(options);
+  if (creativeDirection.state === 'CANONICAL_SAFE_PROJECTION') {
+    task.creative_direction = creativeDirection.taskField;
+  }
+  return { task, authority: loaded.authority, creative_direction_state: creativeDirection.state };
 }
 
 function writeTask(outPath, task) {
@@ -149,6 +203,7 @@ function parseArgs(argv) {
     else if (arg === '--task-id') out.taskId = argv[++i];
     else if (arg === '--requested-by') out.requestedBy = argv[++i];
     else if (arg === '--operator-instructions') out.operatorInstructions = argv[++i];
+    else if (arg === '--creative-direction-id') out.creativeDirectionId = argv[++i];
     else if (arg === '--script-builder-root') out.scriptBuilderRoot = argv[++i];
     else if (arg === '--out') out.outPath = argv[++i];
     else throw new Error(`unknown argument: ${arg}`);

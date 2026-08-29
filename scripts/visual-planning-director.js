@@ -143,7 +143,24 @@ function buildPrompt(task) {
     beats: [{ canonical_beat_id: 'copy from required beats', coverage_decision: 'PLAN_SHOTS or INTENTIONAL_NO_VISUAL', no_visual_reason: null, shots: [{ visual_purpose: 'text', narrative_function: 'text', media_type: vp.MEDIA_TYPES.join('|'), generation_mode: vp.GENERATION_MODES.join('|'), subject: 'text', shot_brief: 'text', why_it_serves_story: 'text', presenter_relation: vp.PRESENTER_RELATIONS.join('|'), duration_target_s: 4, research_sensitive: false, research_binding_ids: [], required_constraint_ids: [], visual_assertion: null, camera_required: false, camera_intent: null, continuity_notes: [], alternatives: [], priority: 'HIGH|NORMAL|LOW', demonstration: null, input_artifact_refs: [], quality_constraints: [], candidate_count_request: 1 }] }],
     coverage_findings: [], continuity_findings: [], redundancy_findings: [], human_attention: [], recommendation: RECOMMENDATIONS.join('|'),
   };
-  return ['Plan visual coverage for the bounded Story. Local shot choices only; do not invent global style, factual authority, IDs, infrastructure, approvals, or Camera mechanics.', 'Return JSON only, using exactly the keys shown. Assess every required beat exactly once. For INTENTIONAL_NO_VISUAL use a nonempty reason and shots:[]. For PLAN_SHOTS use no_visual_reason:null and one or more shots.', 'Set demonstration only when the shot IS a demonstration the viewer must be walked through, as {start_state, action, expected_result}; otherwise leave it null.', 'Use exact media/mode pairs: GENERATED_STILL/STILL; GENERATED_VIDEO/DIRECT_VIDEO or IMAGE_TO_VIDEO; INFOGRAPHIC, MAP_ANIMATION, SCREEN_CAPTURE, ARCHIVAL_EXTERNAL, PRESENTER_A_ROLL, and TEXT_GRAPHIC with NOT_APPLICABLE. MAP_ANIMATION is Camera-only: set camera_required:true and supply bounded camera_intent with at least subject and purpose.', `Output schema: ${JSON.stringify(schema)}`, `Central claim: ${task.story.central_claim || ''}`, `Narrative spine: ${task.story.narrative_spine || ''}`, `Output target: ${JSON.stringify(task.output_target || {})}`, `Sections: ${JSON.stringify(task.story.sections)}`, `Required beats: ${JSON.stringify(task.required_beats)}`, `Research constraints: ${JSON.stringify(task.research?.required_constraint_ids || [])}`, `Operator instructions: ${task.operator_instructions || ''}`].join('\n');
+  return ['Plan visual coverage for the bounded Story. Local shot choices only; do not invent global style, factual authority, IDs, infrastructure, approvals, or Camera mechanics.', 'Return JSON only, using exactly the keys shown. Assess every required beat exactly once. For INTENTIONAL_NO_VISUAL use a nonempty reason and shots:[]. For PLAN_SHOTS use no_visual_reason:null and one or more shots.', 'Set demonstration only when the shot IS a demonstration the viewer must be walked through, as {start_state, action, expected_result}; otherwise leave it null.', 'Use exact media/mode pairs: GENERATED_STILL/STILL; GENERATED_VIDEO/DIRECT_VIDEO or IMAGE_TO_VIDEO; INFOGRAPHIC, MAP_ANIMATION, SCREEN_CAPTURE, ARCHIVAL_EXTERNAL, PRESENTER_A_ROLL, and TEXT_GRAPHIC with NOT_APPLICABLE. MAP_ANIMATION is Camera-only: set camera_required:true and supply bounded camera_intent with at least subject and purpose.', `Output schema: ${JSON.stringify(schema)}`, `Central claim: ${task.story.central_claim || ''}`, `Narrative spine: ${task.story.narrative_spine || ''}`, `Output target: ${JSON.stringify(task.output_target || {})}`, `Sections: ${JSON.stringify(task.story.sections)}`, `Required beats: ${JSON.stringify(task.required_beats)}`, `Research constraints: ${JSON.stringify(task.research?.required_constraint_ids || [])}`, `Operator instructions: ${task.operator_instructions || ''}`, ...creativeDirectionPromptLines(task)].join('\n');
+}
+
+/*
+ * C2: structured Creative Direction context reaches the VPD prompt ONLY as
+ * the certified enum-only safe projection, and ONLY when its execution
+ * contract explicitly declares zero prose and current-authority
+ * reauthorization. Any other shape is refused at assembly time and cannot
+ * reach this point; this guard is defense in depth (raw-prose-zero gate).
+ */
+function creativeDirectionPromptLines(task) {
+  const cd = task.creative_direction;
+  if (!cd) return [];
+  const contract = cd.executable?.execution_contract;
+  if (!contract || contract.raw_creative_prose_included !== false || contract.free_text_action_summary_included !== false || contract.consume_rationale_for_actions !== false || contract.reauthorized_against_current_human_authority !== true) {
+    return [];
+  }
+  return [`Creative direction (canonical safe projection, enum-only, reauthorized against current human authority): ${JSON.stringify(cd.executable)}`];
 }
 
 function researchRef(task, bindingId, requiredIds) {

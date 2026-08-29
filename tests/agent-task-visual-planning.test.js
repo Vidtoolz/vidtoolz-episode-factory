@@ -106,6 +106,224 @@ test('AVP20 hermetic successor anti-rot — the current-head invariant survives 
   assert.throws(() => asHead(v1.id), /version is stale/);
 });
 
+// ── C2 safe Creative Direction consumption for VPD (Approval C, 2026-08-29) ─
+// Consumption is explicit-canonical-id only: canonical registry →
+// certified projectForSpecialistById → CURRENT human authority at use time →
+// enum-only VPD projection. No caller objects, no raw prose, no dispatch.
+
+const cdDirector = require('../scripts/creative-director.js');
+const cdAssembler = require('../scripts/agent-task-creative-direction.js');
+const cdContract = require('../scripts/creative-direction.js');
+const osNode = require('node:os');
+
+const CD_FIXTURE = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'creative-director', 'discovery-package.json'), 'utf8'));
+const CD_CANON_ID = CD_FIXTURE.canonical_idea_id;
+const STYLE_FIXTURE_C2 = path.join(__dirname, 'fixtures', 'style-reference', 'VIDTOOLZ_STYLE_REFERENCE_V1.json');
+const STYLE_SHA_C2 = 'b357d23956bc3fd7a956372347e59cae4b10bb0064d3e9b19ec2819207fa8e41';
+const CD_DISCOVERY = fs.mkdtempSync(path.join(osNode.tmpdir(), 'avp-c2-discovery-'));
+fs.writeFileSync(path.join(CD_DISCOVERY, `${CD_CANON_ID}.json`), JSON.stringify(CD_FIXTURE));
+
+function withEnv(env, fn) {
+  const saved = {};
+  for (const [k, v] of Object.entries(env)) { saved[k] = process.env[k]; if (v === null) delete process.env[k]; else process.env[k] = v; }
+  const restore = () => { for (const k of Object.keys(saved)) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; } };
+  let result;
+  try { result = fn(); } catch (error) { restore(); throw error; }
+  if (result && typeof result.then === 'function') return result.finally(restore);
+  restore();
+  return result;
+}
+
+function cdHermeticStoryBuilder() {
+  const lock = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'script-builder-authority.json'), 'utf8'));
+  const out = fs.mkdtempSync(path.join(osNode.tmpdir(), 'avp-c2-sb-'));
+  const root = path.join(out, 'authority');
+  require('node:child_process').execFileSync('git', ['clone', '--quiet', '--shared', '/home/vidtoolz/vidtoolz-script-builder', root], { stdio: 'ignore' });
+  require('node:child_process').execFileSync('git', ['-C', root, 'checkout', '--quiet', lock.ref], { stdio: 'ignore' });
+  const store = require(path.join(root, 'lib', 'store.js'));
+  const versions = require(path.join(root, 'lib', 'versions.js'));
+  const config = require(path.join(root, 'lib', 'config.js'));
+  const dataRoot = path.join(root, 'data');
+  store.ensureLayout(dataRoot);
+  const project = store.newProject({ id: 'c2-vpd-project', title: 'C2 VPD wiring fixture', length_class: 'short' });
+  store.saveProject(dataRoot, project);
+  const sections = [
+    { id: 's-c2-01', order: 1, beat: 'Hook', type: 'composited', background: 'plate', framing_preset: 'right-third', dialogue: 'C2 fixture opening.', visual_notes: '', media_refs: [] },
+    { id: 's-c2-02', order: 2, beat: 'Proof', type: 'composited', background: 'plate', framing_preset: 'right-third', dialogue: 'C2 fixture support.', visual_notes: '', media_refs: [] },
+  ];
+  versions.createVersion(dataRoot, project, sections, config.loadConfig(dataRoot), {});
+  const head = versions.listVersions(dataRoot, project.id).at(-1);
+  return { root, projectId: project.id, versionId: head.id };
+}
+
+function cdSemantic(overrides = {}) {
+  return Object.assign({
+    creative_thesis: { statement: 'C2 wiring thesis.', experience_goal: 'Goal.' },
+    tone: { register: 'serious', energy_arc: 'steady' },
+    humor: { mode: 'NONE', placement_guidance: null, provenance: 'SCRIPT_EVIDENCE' },
+    visual_mode_mix: [
+      { mode: 'EXPLANATION', weight: 'DOMINANT', rationale: 'x' },
+      { mode: 'COMPARISON', weight: 'PRESENT', rationale: 'x' },
+      { mode: 'PROOF', weight: 'MINIMAL', rationale: 'x' },
+      { mode: 'MOOD', weight: 'PRESENT', rationale: 'x' },
+      { mode: 'HUMOR', weight: 'ABSENT', rationale: '' },
+      { mode: 'PUNCTUATION', weight: 'MINIMAL', rationale: 'x' },
+    ],
+    density_arc: { shape: 'QUIET', movements: [{ section_ref: 'beat-01', density_group: 'QUIET', note: 'x' }], relief_points: 'end' },
+    level_a_strategy: { macro_philosophy: 'x' },
+    level_b_strategy: { evolution_philosophy: 'x', emphasis_moments: ['x'] },
+    level_c_strategy: { life_sources: ['GRAPHIC_EVOLUTION'], static_policy: 'x' },
+    presenter_policy: { draft_mode: 'PRESENTER_FREE', final_intent: 'x', compensation_directive: 'x', provenance: 'CD_JUDGMENT' },
+    card_strategy: { role: 'x', argument_sections_needing_cards: [], patterns_suggested: [], restraint: 'x' },
+    media_strategy: { generation_philosophy: 'x', reuse_directive: 'x', locked_scopes: [], replacement_requests: [] },
+    motion_character: { description: 'x' },
+    typography_mode: { register: 'x', full_frame_moments: [] },
+    ending_strategy: { mode: 'SYNTHESIS_CARD', description: 'x', footer_takeaway_seed: 'x' },
+    coherence: { sound_music_intent: 'x', music_locked: false, packaging_intent: 'x' },
+    intentional_deviations: [],
+    human_decisions_required: [],
+    confidence: [{ aspect: 'x', level: 'HIGH', basis: 'SCRIPT_EVIDENCE' }],
+    style_patterns_cited: [],
+    constraint_compliance: [],
+    action_claims: [],
+  }, structuredClone(overrides));
+}
+
+const CD_ROUTE = { ok: true, decision: 'ROUTE', selected_host: 'test', endpoint: 'http://test', model: 'test-model' };
+async function mintCanonicalDirection(sb, overrides = {}) {
+  return withEnv({ VIDTOOLZ_DISCOVERY_ROOT: CD_DISCOVERY, VIDTOOLZ_SCRIPT_BUILDER_ROOT: sb.root }, async () => {
+    const task = cdAssembler.assembleCreativeDirectionTask({
+      taskId: 'task-c2-vpd', requestedBy: 'mikko', projectId: 'project-c2-vpd',
+      script: { canonicalIdeaId: CD_CANON_ID, variant: 'structure_a' },
+      styleReference: { referencePath: STYLE_FIXTURE_C2, expectedBinding: { reference_id: 'VIDTOOLZ_STYLE_REFERENCE_V1', sha256: STYLE_SHA_C2 } },
+      humanConstraints: [],
+    });
+    const out = await cdDirector.run(task, { routeSelector: () => ({ ...CD_ROUTE }), modelAdapter: async () => JSON.stringify(cdSemantic(overrides.semantic || {})) });
+    assert.ok(out.creative_direction_id, `canonical direction must be minted (state=${out.state} reason=${out.reason})`);
+    return { directionId: out.creative_direction_id, sb, task };
+  });
+}
+
+function assembleVpd(sb, extra = {}) {
+  return withEnv({ VIDTOOLZ_SCRIPT_BUILDER_ROOT: sb.root }, () => assembler.assembleVisualPlanningTask({
+    scriptBuilderRoot: sb.root, projectId: sb.projectId, versionId: sb.versionId, runId: 'run-c2-vpd', taskId: 'task-c2-vpd', ...extra,
+  }));
+}
+
+test('C2-VPD1: no creative_direction_id preserves exact pre-C behavior (NO_CREATIVE_DIRECTION_CONTEXT)', () => {
+  const sb = cdHermeticStoryBuilder();
+  const out = assembleVpd(sb);
+  assert.equal(out.creative_direction_state, 'NO_CREATIVE_DIRECTION_CONTEXT');
+  assert.equal('creative_direction' in out.task, false, 'no context field without an explicit canonical id');
+  assert.equal(director.preflight(out.task).ok, true, 'legacy task remains preflight-valid');
+});
+
+test('C2-VPD2: explicit canonical id resolves to the certified safe projection with receipt', async () => {
+  const sb = cdHermeticStoryBuilder();
+  const minted = await mintCanonicalDirection(sb);
+  const out = assembleVpd(sb, { creativeDirectionId: minted.directionId });
+  assert.equal(out.creative_direction_state, 'CANONICAL_SAFE_PROJECTION');
+  assert.equal(out.task.creative_direction.receipt.canonical_direction_id, minted.directionId);
+  assert.equal(out.task.creative_direction.role, 'visual_planning_director');
+  assert.ok(out.task.creative_direction.executable);
+  assert.equal(out.task.creative_direction.executable.execution_contract.executable_surface, 'enum_action_claims_plus_enum_fields');
+  assert.equal(director.preflight(out.task).ok, true, 'projection-bearing task remains preflight-valid');
+});
+
+test('C2-VPD3: RAW CREATIVE PROSE TO VPD = 0 — prompt carries the enum-only projection only', async () => {
+  const sb = cdHermeticStoryBuilder();
+  const minted = await mintCanonicalDirection(sb, { semantic: { action_claims: [{ claim_id: 'c2-1', domain: 'CARDS', operation: 'ADD', scope: 's-c2-01', summary: 'a labelled concept card' }] } });
+  const out = assembleVpd(sb, { creativeDirectionId: minted.directionId });
+  const prompt = director.buildPrompt(out.task);
+  assert.match(prompt, /canonical safe projection/, 'structured context present');
+  const prohibited = /creative_thesis|statement|sound_music_intent|packaging_intent|energy_arc|motion_character|non_executable_rationale|HUMAN_REVIEW_ONLY/;
+  assert.equal(prohibited.test(prompt), false, 'no raw rationale/prose field may reach VPD');
+  assert.equal(/"summary"/.test(JSON.stringify(out.task.creative_direction.executable)), false, 'action claims carry no free-text summary');
+  assert.equal(out.task.creative_direction.executable.execution_contract.raw_creative_prose_included, false);
+  assert.equal(out.task.creative_direction.executable.execution_contract.free_text_action_summary_included, false);
+  assert.equal(out.task.creative_direction.executable.execution_contract.consume_rationale_for_actions, false);
+});
+
+test('C2-VPD4: nonexistent / noncanonical id is rejected — no fallback, no latest, no dispatch', () => {
+  const sb = cdHermeticStoryBuilder();
+  assert.throws(() => assembleVpd(sb, { creativeDirectionId: 'creative-direction-nonexistent-000' }), (e) => e.code === 'CREATIVE_DIRECTION_CONTEXT_REJECTED' && e.cause_code === 'CREATIVE_DIRECTION_NOT_FOUND');
+  const handBuilt = { direction_id: 'hand-built', action_claims: [] };
+  assert.throws(() => assembleVpd(sb, { creativeDirectionId: handBuilt }), (e) => e.code === 'CREATIVE_DIRECTION_CONTEXT_REJECTED');
+  assert.throws(() => assembleVpd(sb, { creativeDirectionId: '   ' }), (e) => e.code === 'CREATIVE_DIRECTION_CONTEXT_REJECTED');
+});
+
+test('C2-VPD5: production authority store EMPTY — a genuinely never-recorded subject yields explicit EMPTY authority, no record created', async () => {
+  const sb = cdHermeticStoryBuilder();
+  const minted = await mintCanonicalDirection(sb);
+  const before = JSON.stringify(require('node:fs').readdirSync(path.join(__dirname, '..', 'human-authority-store')).sort());
+  const out = assembleVpd(sb, { creativeDirectionId: minted.directionId });
+  const auth = out.task.creative_direction.executable.current_human_authority;
+  assert.equal(auth.head, 'EMPTY');
+  assert.equal(auth.authority_id, null);
+  assert.deepEqual(auth.denials, [], 'an EMPTY head denies nothing and mints nothing');
+  assert.ok(auth.sources.includes('CANONICAL_CURRENT_AUTHORITY_STORE'));
+  const after = JSON.stringify(require('node:fs').readdirSync(path.join(__dirname, '..', 'human-authority-store')).sort());
+  assert.equal(before, after, 'VPD consumption must never create human authority (read-only)');
+});
+
+test('C2-VPD6: CURRENT human authority wins — a later KEEP lock suppresses the historical direction operation at projection time', async () => {
+  const sb = cdHermeticStoryBuilder();
+  const minted = await mintCanonicalDirection(sb, { semantic: { action_claims: [
+    { claim_id: 'stale-add', domain: 'MEDIA', operation: 'ADD', scope: 'S03', summary: 'historical add' },
+    { claim_id: 'ok-add', domain: 'MEDIA', operation: 'ADD', scope: 'S05', summary: 'unlocked add' },
+  ] } });
+  // Historical projection with no lock: ADD S03 projects.
+  const unlocked = assembleVpd(sb, { creativeDirectionId: minted.directionId });
+  assert.ok(unlocked.task.creative_direction.executable.action_claims.some((c) => c.scope === 'S03' && c.operation === 'ADD'));
+  // A human KEEP_MEDIA S03 recorded in an isolated authority store after the
+  // direction existed: assembly must re-resolve current authority and suppress
+  // the stale operation while preserving target-scoped unrelated ones.
+  const authStore = fs.mkdtempSync(path.join(osNode.tmpdir(), 'avp-c2-auth-'));
+  await withEnv({ VIDTOOLZ_HUMAN_AUTHORITY_STORE: authStore, VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY: 'mikko@decision-tooling' }, async () => {
+    cdDirector.recordHumanAuthoritySuccessor(CD_CANON_ID, { human_constraints: [] });
+    cdDirector.recordHumanAuthoritySuccessor(CD_CANON_ID, { human_constraints: [{ constraint_id: 'keep-s03', type: 'KEEP_MEDIA', scope: 'S03', text: 'Keep S03.' }] });
+  });
+  const locked = withEnv({ VIDTOOLZ_HUMAN_AUTHORITY_STORE: authStore }, () => assembleVpd(sb, { creativeDirectionId: minted.directionId }));
+  const exec = locked.task.creative_direction.executable;
+  assert.equal(exec.action_claims.some((c) => c.scope === 'S03' && c.operation === 'ADD'), false, 'stale ADD S03 suppressed by current human authority');
+  assert.ok(exec.action_claims.some((c) => c.scope === 'S05' && c.operation === 'ADD'), 'target-scoped S05 remains legal');
+  assert.ok(exec.capability_suppressions.some((s) => s.claim_id === 'stale-add'));
+  assert.equal(exec.current_human_authority.authority_id, 'ha-2', 'projection binds the RESOLVED current head, never direction-time state');
+  assert.equal(exec.current_human_authority.version, 2);
+});
+
+test('C2-VPD7: unresolvable current authority fails safely — never falls back to historical or caller authority', async () => {
+  const sb = cdHermeticStoryBuilder();
+  const minted = await mintCanonicalDirection(sb);
+  assert.throws(
+    () => withEnv({ VIDTOOLZ_HUMAN_AUTHORITY_STORE: '/tmp/avp-c2-missing-store-root' }, () => assembleVpd(sb, { creativeDirectionId: minted.directionId })),
+    (e) => e.code === 'CREATIVE_DIRECTION_CONTEXT_REJECTED'
+  );
+});
+
+test('C2-VPD8: writer gate — runtime without trusted writer identity cannot mint human authority through the VPD path', async () => {
+  const sb = cdHermeticStoryBuilder();
+  const minted = await mintCanonicalDirection(sb);
+  const authStore = fs.mkdtempSync(path.join(osNode.tmpdir(), 'avp-c2-writer-'));
+  await withEnv({ VIDTOOLZ_HUMAN_AUTHORITY_STORE: authStore }, async () => {
+    assert.throws(() => cdDirector.recordHumanAuthoritySuccessor(CD_CANON_ID, { human_constraints: [] }), (e) => e.code === 'HUMAN_AUTHORITY_WRITER_UNCONFIGURED');
+  });
+  // ordinary assembly under that store still succeeds with EMPTY authority
+  const out = withEnv({ VIDTOOLZ_HUMAN_AUTHORITY_STORE: authStore }, () => assembleVpd(sb, { creativeDirectionId: minted.directionId }));
+  assert.equal(out.task.creative_direction.executable.current_human_authority.head, 'EMPTY');
+});
+
+test('C2-VPD9: the projection survives writeTask as the native task envelope (bounded plumbing only)', async () => {
+  const sb = cdHermeticStoryBuilder();
+  const minted = await mintCanonicalDirection(sb);
+  const out = assembleVpd(sb, { creativeDirectionId: minted.directionId });
+  const target = path.join(fs.mkdtempSync(path.join(osNode.tmpdir(), 'avp-c2-out-')), 'task.json');
+  assembler.writeTask(target, out.task);
+  const persisted = JSON.parse(fs.readFileSync(target, 'utf8'));
+  assert.equal(persisted.creative_direction.receipt.canonical_direction_id, minted.directionId);
+  assert.deepEqual(persisted, out.task);
+});
+
 if (require.main === module) {
   (async () => { let passed = 0, failed = 0; for (const item of tests) { try { await item.fn(); passed += 1; console.log(`ok ${passed} - ${item.name}`); } catch (error) { failed += 1; console.error(`not ok - ${item.name}`); console.error(error.stack || error.message); } } console.log(`${passed}/${passed + failed} Visual Planning Task Assembler tests passed`); if (failed) process.exitCode = 1; })();
 }
