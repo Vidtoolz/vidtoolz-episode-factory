@@ -873,7 +873,9 @@ test('canonical cockpit separates dispatch-enabled agents from registered doctri
   const output = await controlRoom.buildAgentControlRoom({ root: path.join(__dirname, '..') });
   const registry = require('../config/agent-registry.json');
   const refused = registry.agents.filter((a) => a.lifecycle?.autonomous_dispatch !== 'ENABLED').map((a) => a.agent_id);
-  assert.deepEqual(refused, ['creative_director']);
+  // Approval D (2026-08-29): creative_director is human-enabled, so no
+  // registered role remains doctrine-only in the canonical registry.
+  assert.deepEqual(refused, []);
   for (const id of refused) {
     const row = output.agents.find((a) => a.agent_id === id);
     assert.equal(row.state, 'PLANNED_NOT_ENABLED');
@@ -882,6 +884,13 @@ test('canonical cockpit separates dispatch-enabled agents from registered doctri
   assert.equal(output.summary.doctrine_only, refused.length);
   assert.equal(output.summary.lifecycle_enabled, registry.agents.length - refused.length);
   assert.equal(output.summary.dispatch_enabled, registry.agents.filter((agent) => agent.implementation_state === 'IMPLEMENTATION_PROVEN').length);
+  // The newly enabled Creative Director row is dispatch-ready, not doctrine-only.
+  const cd = output.agents.find((a) => a.agent_id === 'creative_director');
+  assert.notEqual(cd.state, 'PLANNED_NOT_ENABLED');
+  assert.equal(cd.lifecycle.autonomous_dispatch, 'ENABLED');
+  assert.equal(cd.lifecycle.proven, 'PROVEN');
+  assert.equal(cd.implementation.implementation_state, 'IMPLEMENTATION_PROVEN');
+  assert.equal(cd.implementation.module_exists, true);
 });
 
 test('canonical cockpit exposes all registered agents and truthful implementation drift', async () => {

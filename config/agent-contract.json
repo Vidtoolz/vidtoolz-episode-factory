@@ -311,7 +311,7 @@
     {
       "role_id": "creative_director",
       "role_name": "Creative Director",
-      "status": "PLANNED_LAST",
+      "status": "BUILT",
       "build_order": 8,
       "owns": [
         "episode creative identity",
@@ -328,7 +328,8 @@
         "generation routing"
       ],
       "boundaries": [
-        "Deliberately narrow. Built last because the more subjective and cross-domain a role is, the greater the risk it becomes a vague Mikko-replacement or super-agent."
+        "Deliberately narrow. Built last because the more subjective and cross-domain a role is, the greater the risk it becomes a vague Mikko-replacement or super-agent.",
+        "Enablement (Approval D, 2026-08-29) grants recommendation-only bounded dispatch. It grants no human decision authority, no production chaining, and no authority over human locks or style reference."
       ]
     },
     {
@@ -474,7 +475,7 @@
     "rule": "Operator/UI trackers must never become a competing source of truth. Projection loss must degrade display, never authority.",
     "run_state": {
       "invariant": "Every active package run has one machine-readable canonical workflow state derived from the 14-gate engine.",
-      "marker": "package-run-state.md is an optional local marker (active/parked/superseded) read by package-runs-index.js — it classifies lifecycle, it does not override gate evidence.",
+      "marker": "package-run-state.md is an optional local marker (active/parked/superseded) read by package-runs-index.js \u2014 it classifies lifecycle, it does not override gate evidence.",
       "ambiguity": "If evidence is incomplete, state is AMBIGUOUS. Guessing is prohibited. Cockpit surfaces must never infer a more confident state than the evidence supports.",
       "owner": "Production Operations owns run-state maintenance; Hermes reads and routes from it."
     }
@@ -485,7 +486,7 @@
       "agent name",
       "state",
       "current task",
-      "owner → next owner",
+      "owner \u2192 next owner",
       "attention level",
       "one-line blocker",
       "unresolved disagreement",
@@ -531,7 +532,7 @@
         "autonomous_dispatch": "DISABLED"
       }
     },
-    "doctrine_completeness_invariant": "Every role_roster role_id has exactly one registry agent entry, whether BUILT or PLANNED. A validator PASS therefore means the canonical 12-role authority architecture is structurally complete — not merely that today's proven agents are represented.",
+    "doctrine_completeness_invariant": "Every role_roster role_id has exactly one registry agent entry, whether BUILT or PLANNED. A validator PASS therefore means the canonical 12-role authority architecture is structurally complete \u2014 not merely that today's proven agents are represented.",
     "enablement_authority": "Mikko. A PLANNED role with complete doctrine is still refused at dispatch (BLOCKED_AGENT_NOT_ENABLED); doctrine never self-promotes into autonomy.",
     "registry_exclusivity": "The registry contains role_roster roles and nothing else. Hermes and Knowledge Steward are non-specialist roles defined only in this contract and must never be registered as agents."
   },

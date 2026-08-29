@@ -86,20 +86,32 @@ test('HB5: INFORMATION cannot be escalated — REVIEW/DECISION only', () => {
 });
 
 test('HB6: disabled role cannot become a route target', () => {
-  assert.throws(() => bridge.assertRouteTargetAuthorized(registryAgents(), 'creative_director'),
+  // Approval D (2026-08-29) enabled creative_director, so the canonical
+  // registry carries no disabled roles; the refusal mechanism is exercised
+  // with a demoted registration instead.
+  const agents = registryAgents().map((a) => structuredClone(a));
+  const cd = agents.find((a) => a.agent_id === 'creative_director');
+  cd.lifecycle = { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED', dispatch_blocked_reason: 'regression demotion' };
+  assert.throws(() => bridge.assertRouteTargetAuthorized(agents, 'creative_director'),
     (error) => error.code === 'HERMES_ROUTE_TARGET_DISABLED');
   assert.throws(() => bridge.assertRouteTargetAuthorized(registryAgents(), 'nonexistent_role'),
     (error) => error.code === 'HERMES_ROUTE_TARGET_UNKNOWN');
-  // Enabled target passes
+  // Enabled targets pass
   bridge.assertRouteTargetAuthorized(registryAgents(), 'story_editor');
+  bridge.assertRouteTargetAuthorized(registryAgents(), 'creative_director');
 });
 
 test('HB7: ROUTE action to a disabled target is refused at receipt creation', () => {
   const repo = tempRepo();
   try {
+    // Approval D (2026-08-29) enabled creative_director; the refusal path is
+    // exercised with a demoted registration so the invariant stays proven.
+    const agents = registryAgents().map((a) => structuredClone(a));
+    const cd = agents.find((a) => a.agent_id === 'creative_director');
+    cd.lifecycle = { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED', dispatch_blocked_reason: 'regression demotion' };
     assert.throws(() => bridge.createReceipt(repo, 'run-x', baseEscalation({
       action: 'ROUTE', routing_category: 'INFRASTRUCTURE_RESOURCE', route_target_agent_id: 'creative_director',
-    }), { registryAgents: registryAgents() }),
+    }), { registryAgents: agents }),
       (error) => error.code === 'HERMES_ROUTE_TARGET_DISABLED');
   } finally { fs.rmSync(repo, { recursive: true, force: true }); }
 });

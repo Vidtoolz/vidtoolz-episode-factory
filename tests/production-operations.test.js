@@ -126,14 +126,34 @@ test('PO8: task carrying forbidden approval metadata is rejected at preflight', 
   assert.match(result.reason, /preflight failed/);
 });
 
-test('PO9: prepare_route refuses disabled targets — Creative Director cannot be routed through Production Operations', async () => {
+test('PO9: prepare_route refuses disabled targets — refusal invariant holds after Approval D enablement', async () => {
+  const root = path.resolve(__dirname, '..');
+  // Approval D (2026-08-29) enabled creative_director, so a route to it is
+  // now lifecycle-permitted (preparation only — never dispatch).
+  const enabled = await po.run(baseTask({
+    assignment: { action: 'prepare_route' },
+    route_target_agent_id: 'creative_director',
+    blocker_evidence: { reason: 'resource lane unavailable', source_invocation_id: 'gs:t:1' },
+  }), { root });
+  assert.ok(enabled.route_preparation);
+  assert.equal(enabled.route_preparation.dispatched, false);
+  // The disabled-target refusal is exercised against a temporary registry with
+  // creative_director demoted — the invariant itself stays proven.
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'po9-disabled-'));
+  fs.mkdirSync(path.join(tmpRoot, 'config'), { recursive: true });
+  fs.mkdirSync(path.join(tmpRoot, 'scripts'), { recursive: true });
+  const reg = JSON.parse(fs.readFileSync(path.join(root, 'config', 'agent-registry.json'), 'utf8'));
+  const cd = reg.agents.find((agent) => agent.agent_id === 'creative_director');
+  cd.lifecycle = { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED', dispatch_blocked_reason: 'regression demotion' };
+  fs.writeFileSync(path.join(tmpRoot, 'config', 'agent-registry.json'), JSON.stringify(reg, null, 2));
   const result = await po.run(baseTask({
     assignment: { action: 'prepare_route' },
     route_target_agent_id: 'creative_director',
     blocker_evidence: { reason: 'resource lane unavailable', source_invocation_id: 'gs:t:1' },
-  }), { root: path.resolve(__dirname, '..') });
+  }), { root: tmpRoot });
   assert.equal(result.route_preparation, null);
   assert.match(result.reason, /not lifecycle-enabled/);
+  fs.rmSync(tmpRoot, { recursive: true, force: true });
 });
 
 test('PO10: production operations cannot route itself recursively', async () => {
@@ -194,16 +214,17 @@ test('PO14: lifecycle/readiness remain fail-closed if registry block vanishes', 
 
 test('PO15: promotion changes no other lifecycle or implementation-readiness boundary', () => {
   const agents = registryAgents();
-  for (const id of ['creative_director']) {
-    assert.throws(() => runner.resolveAgent(path.resolve(__dirname, '..'), id),
-      (error) => error.code === 'BLOCKED_AGENT_NOT_ENABLED');
-  }
+  // Approval D (2026-08-29) enabled creative_director: it now resolves.
+  const resolved = runner.resolveAgent(path.resolve(__dirname, '..'), 'creative_director');
+  assert.match(resolved.modulePath, /creative-director\.js$/);
+  assert.equal(agents.find((agent) => agent.agent_id === 'creative_director').implementation_state, 'IMPLEMENTATION_PROVEN');
   for (const id of ['camera_director']) {
     assert.throws(() => runner.resolveAgent(path.resolve(__dirname, '..'), id),
       (error) => error.code === 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
     assert.equal(agents.find((agent) => agent.agent_id === id).implementation_state, 'CANDIDATE');
   }
   // qc_director was promoted separately and independently; its promotion must
-  // not have moved any other role's readiness or lifecycle.
+  // not have moved any other role's readiness or lifecycle — and creative
+  // director's enablement must not have moved camera_director either.
   assert.equal(agents.find((agent) => agent.agent_id === 'qc_director').implementation_state, 'IMPLEMENTATION_PROVEN');
 });

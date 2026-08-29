@@ -84,9 +84,28 @@ test('PV6: adversarial — creative blocker disguised as resource language stays
 test('PV7: adversarial — self-route and disabled-role routing are refused', async () => {
   const self = await resultFor({ ...infraTask(), assignment: { action: 'prepare_route' }, route_target_agent_id: 'production_operations' });
   assert.ok(!self.route_preparation || self.route_preparation.dispatched === false, 'self route must not dispatch');
-  const disabled = await resultFor({ ...infraTask(), assignment: { action: 'prepare_route' }, route_target_agent_id: 'creative_director' });
+  // Approval D (2026-08-29) enabled creative_director, so a route to it is
+  // now lifecycle-permitted; the disabled-role refusal is exercised against a
+  // temporary registry with creative_director demoted.
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'pv7-disabled-'));
+  fs.mkdirSync(path.join(tmpRoot, 'config'), { recursive: true });
+  fs.mkdirSync(path.join(tmpRoot, 'scripts'), { recursive: true });
+  const reg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'agent-registry.json'), 'utf8'));
+  const cd = reg.agents.find((a) => a.agent_id === 'creative_director');
+  cd.lifecycle = { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED', dispatch_blocked_reason: 'regression demotion' };
+  fs.writeFileSync(path.join(tmpRoot, 'config', 'agent-registry.json'), JSON.stringify(reg, null, 2));
+  for (const f of ['production-operations.js', 'agent-run.js', 'agent-dispatch-authority.js', 'agent-executable-boundary.js', 'agent-controls.js', 'operator-action-ledger.js', 'agent-cancellation-adapters.js', 'execution-ownership.js']) {
+    const src = path.join(ROOT, 'scripts', f);
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(tmpRoot, 'scripts', f));
+  }
+  const disabled = await resultFor({ ...infraTask(), assignment: { action: 'prepare_route' }, route_target_agent_id: 'creative_director' }, tmpRoot);
   assert.equal(disabled.route_preparation, null);
   assert.match(disabled.reason, /not lifecycle-enabled/);
+  fs.rmSync(tmpRoot, { recursive: true, force: true });
+  // Enabled route target still prepares (preparation only, never dispatch).
+  const enabled = await resultFor({ ...infraTask(), assignment: { action: 'prepare_route' }, route_target_agent_id: 'creative_director' });
+  assert.ok(enabled.route_preparation);
+  assert.equal(enabled.route_preparation.dispatched, false);
 });
 
 test('PV8: adversarial — operator action fields in a task cannot become executions', async () => {

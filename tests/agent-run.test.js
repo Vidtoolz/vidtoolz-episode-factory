@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const { tests, test } = require('./_helpers');
 const runner = require('../scripts/agent-run');
+const dispatchAuthority = require('../scripts/agent-dispatch-authority.js');
 const executableBoundary = require('../scripts/agent-executable-boundary.js');
 const childProcess = require('node:child_process');
 
@@ -196,13 +197,16 @@ test('AR27: the canonical registry enables exactly the proven roles', () => {
   const canonical = require('../config/agent-registry.json');
   const enabled = canonical.agents.filter((a) => a.lifecycle?.autonomous_dispatch === 'ENABLED').map((a) => a.agent_id);
   const refused = canonical.agents.filter((a) => a.lifecycle?.autonomous_dispatch !== 'ENABLED').map((a) => a.agent_id);
-  assert.deepEqual(refused, ['creative_director']);
-  assert.equal(enabled.length, 11);
+  // Approval D (2026-08-29): creative_director is now human-enabled; every
+  // registered role is dispatch-enabled, and readiness resolves through the
+  // full gate chain (lifecycle + implementation_state + module presence).
+  assert.deepEqual(refused, []);
+  assert.equal(enabled.length, 12);
   const root = path.join(__dirname, '..');
-  for (const id of refused) {
-    assert.throws(() => runner.resolveAgent(root, id), (e) => e.code === 'BLOCKED_AGENT_NOT_ENABLED',
-      `${id} has doctrine but must not be dispatchable`);
-  }
+  const cdReadiness = dispatchAuthority.implementationReadiness(root, canonical.agents.find((a) => a.agent_id === 'creative_director'));
+  assert.equal(cdReadiness.authorized, true, 'creative_director dispatch is authorized under Approval D');
+  const cdResolved = runner.resolveAgent(root, 'creative_director');
+  assert.match(cdResolved.modulePath, /creative-director\.js$/);
 });
 
 test('AR28: REVIEW and DECISION envelopes without operational rationale fail closed', () => {
@@ -231,17 +235,16 @@ test('AR30: operational rationale is bounded, attributed, and confidence is fail
   }
 });
 
-test('AR31: executable boundary distinguishes enabled presenter from disabled doctrine', () => {
+test('AR31: executable boundary distinguishes enabled roles from disabled doctrine', () => {
   const root = path.join(__dirname, '..');
   assert.equal(executableBoundary.executableLifecycle('presenter_director', { repoRoot: root }).allowed, true);
-  assert.equal(executableBoundary.executableLifecycle('creative_director', { repoRoot: root }).code, 'BLOCKED_AGENT_NOT_ENABLED');
-  // The Creative Director module now exists (implementation landed ahead of
-  // enablement), so the boundary is proven the STRONG way: the module is
-  // present but direct CLI invocation is refused fail-closed before any work.
-  assert.equal(fs.existsSync(path.join(root, 'scripts/creative-director.js')), true, 'Creative Director module exists but must stay lifecycle-gated');
+  // Approval D (2026-08-29): creative_director is now enabled, so the
+  // executable boundary allows it; a demoted lifecycle re-refuses fail-closed.
+  assert.equal(executableBoundary.executableLifecycle('creative_director', { repoRoot: root }).allowed, true);
+  assert.equal(fs.existsSync(path.join(root, 'scripts/creative-director.js')), true);
   const refusedCli = childProcess.spawnSync(process.execPath, [path.join(root, 'scripts/creative-director.js'), '--task', 'no-such-task.json'], { encoding: 'utf8' });
-  assert.equal(refusedCli.status, 1, 'direct CLI invocation of a disabled role must exit 1');
-  assert.match(refusedCli.stdout, /BLOCKED_AGENT_NOT_ENABLED/);
+  // Direct CLI invocation of a missing task still fails closed (no silent run).
+  assert.equal(refusedCli.status, 1);
   const enabled = childProcess.execFileSync(process.execPath, [path.join(root, 'scripts/editor.js'), '--help'], { encoding: 'utf8' });
   assert.match(enabled, /usage: editor\.js/);
 });

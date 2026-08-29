@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "record_type": "agent_enablement_decision",
+  "decision": "ENABLE",
+  "role": "creative_director",
+  "prior_state": {
+    "lifecycle_proven": "NOT_PROVEN",
+    "autonomous_dispatch": "DISABLED",
+    "implementation_state": null,
+    "contract_status": "PLANNED_LAST"
+  },
+  "resulting_state": {
+    "lifecycle_proven": "PROVEN",
+    "autonomous_dispatch": "ENABLED",
+    "implementation_state": "IMPLEMENTATION_PROVEN",
+    "contract_status": "BUILT"
+  },
+  "decision_maker": {
+    "identity_type": "HUMAN_ORCHESTRATION_AUTHORIZATION",
+    "identity": "Mikko",
+    "authenticated": false,
+    "authentication_note": "Authorization was explicitly supplied by Mikko in the controlling orchestration prompt (Approval D, 2026-08-29). This repository record carries no cryptographic proof of human identity."
+  },
+  "human_direction_quality_decision": {
+    "decision": "APPROVE_DIRECTION_QUALITY_FOR_DISPATCH_CANARY",
+    "basis": [
+      "the previously completed Creative Director canary produced genuinely episode-specific, useful creative direction rather than generic style prose",
+      "it correctly handled episode-specific creative thesis, tone, Level A/B/C strategy, information-card strategy, ending strategy, declared house-style deviation, typed human-taste escalation, and human-authority precedence",
+      "the authority defects found by Codex were implementation defects, not evidence that the creative direction itself was poor; those authority boundaries have since been independently certified (db1c8b2) and integrated"
+    ],
+    "scope_limits": [
+      "NOT all future directions automatically approved",
+      "NOT house-style deviations human-approved",
+      "NOT human taste questions automatically resolved",
+      "NOT production publication approved"
+    ]
+  },
+  "authorization": {
+    "source": "explicit human authorization in the controlling orchestration prompt (Approval D)",
+    "authorized_change": "creative_director: doctrine-only -> enabled and implementation-proven for bounded live dispatch",
+    "scope": "creative_director enablement only; one bounded non-production live dispatch proof + safe VPD projection verification",
+    "recorded_at": "2026-08-29T18:00:00.000Z",
+    "authorized_responsibilities": [
+      "produce recommendation-only Creative Direction through the registered dispatch path",
+      "surface cross-department incoherence as evidence-based recommendations",
+      "propose house-style deviations with requires_human semantics",
+      "raise typed human-taste questions (HUMAN_TASTE_REQUIRED) for Mikko",
+      "emit canonical Creative Direction artifacts for safe specialist consumption"
+    ],
+    "prohibited_authorities": [
+      "make human decisions of any kind",
+      "self-approve house-style deviations",
+      "override human locks (KEEP_MEDIA / MUSIC_LOCK / KEEP_SECTION)",
+      "convert style reference findings into authority or hard gates",
+      "start or chain production work (generation, edit, music, render, packaging)",
+      "create or register human-authority records",
+      "approve publication, final cut, music, title, or thumbnail",
+      "dispatch or command other agents"
+    ],
+    "prerequisites_satisfied": [
+      "implementation exists and validator certified (Codex db1c8b2 certification estate, 5535/5535)",
+      "canonical Creative Direction store + safe projection proven end to end (Approval C live smoke: enum-only, zero prose)",
+      "human-authority precedence certified (CDH1-3, CDT1-10) and live-regressed (Approval C)",
+      "style reference remains advisory (Approval C firewall proof)",
+      "all build_order predecessors proven in production",
+      "human direction-quality decision APPROVE_DIRECTION_QUALITY_FOR_DISPATCH_CANARY",
+      "explicit human enablement decision by Mikko"
+    ]
+  },
+  "authority_effect": {
+    "approval_created": false,
+    "publication_authority_created": false,
+    "human_authority_created": false,
+    "style_authority_created": false,
+    "production_chain_created": false,
+    "doctrine_changed": false
+  },
+  "statement": "ENABLEMENT WAS HUMAN-AUTHORIZED. Creative Director dispatch is now permitted for recommendation-only bounded operation. It gains no human decision authority, no production chaining, and no authority over human locks or style reference. Autonomous production remains disabled pending Approval E."
+}

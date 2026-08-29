@@ -529,13 +529,23 @@ test('CDD1: the safe projection is enum-only (no prose, no action summary); rati
 
 /* ══ REGRESSIONS KEPT FROM v1 (dispatch fences, envelope, style firewall) ═══ */
 
-test('CDK1: live dispatch remains refused fail-closed; module exists but lifecycle gates hold', () => {
+test('CDK1: dispatch authorization follows the human enablement decision — and demotion re-refuses fail-closed', () => {
   const registry = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'agent-registry.json'), 'utf8'));
   const registration = registry.agents.find((a) => a.agent_id === 'creative_director');
+  // Approval D (2026-08-29): Mikko approved direction quality for dispatch
+  // canary and enabled bounded live dispatch. Authorization now holds.
+  assert.equal(registration.lifecycle.enablement_decision?.human_direction_quality_decision, 'APPROVE_DIRECTION_QUALITY_FOR_DISPATCH_CANARY');
+  assert.equal(registration.lifecycle.enablement_decision?.governance_record, 'governance/creative-director-enablement.json');
+  assert.equal(registration.implementation_state, 'IMPLEMENTATION_PROVEN');
   const readiness = dispatchAuthority.implementationReadiness(ROOT, registration);
-  assert.equal(readiness.authorized, false);
-  assert.equal(readiness.code, 'BLOCKED_AGENT_NOT_ENABLED');
-  assert.throws(() => runner.resolveAgent(ROOT, 'creative_director'), (e) => e.code === 'BLOCKED_AGENT_NOT_ENABLED');
+  assert.equal(readiness.authorized, true);
+  assert.equal(readiness.code, null);
+  assert.ok(fs.existsSync(readiness.module_path));
+  // The fail-closed doctrine is unchanged: demoting ANY gate re-refuses.
+  const demotedLifecycle = { ...registration, lifecycle: { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED', dispatch_blocked_reason: 'demoted for regression' } };
+  assert.equal(dispatchAuthority.implementationReadiness(ROOT, demotedLifecycle).code, 'BLOCKED_AGENT_NOT_ENABLED');
+  const demotedImpl = { ...registration, implementation_state: 'CANDIDATE' };
+  assert.equal(dispatchAuthority.implementationReadiness(ROOT, demotedImpl).code, 'BLOCKED_IMPLEMENTATION_NOT_PROVEN');
 });
 
 test('CDK2: run envelope still satisfies the canonical runner contract; digest is canonical', async () => {
@@ -1287,4 +1297,75 @@ test('CDT10: the external deployment anchor makes COMPLETE store erasure fail cl
   assert.ok(fs.existsSync(`${path.resolve(fresh)}.anchor.json`), 'first decision pins the anchor');
   const afterFirst = freshResolve(fresh, 'project-new');
   assert.deepEqual(afterFirst, { threw: false, head: 'RECORD', authority_id: 'ha-1', domains: 1 });
+});
+
+/* ══ APPROVAL D ENABLEMENT REGRESSIONS (2026-08-29) ════════════════════════ */
+
+test('CDD1: dispatch is authorized under Approval D — and dispatch with an invalid source is rejected', async () => {
+  const registry = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'agent-registry.json'), 'utf8'));
+  const registration = registry.agents.find((a) => a.agent_id === 'creative_director');
+  assert.equal(dispatchAuthority.implementationReadiness(ROOT, registration).authorized, true);
+  assert.equal(registration.lifecycle.enablement_decision.human_direction_quality_decision, 'APPROVE_DIRECTION_QUALITY_FOR_DISPATCH_CANARY');
+  // Dispatch with an unresolvable Discovery source is rejected fail-closed at
+  // task assembly — enablement never relaxes Story/Discovery authority.
+  assert.throws(
+    () => assembler.assembleCreativeDirectionTask({
+      taskId: 'task-cd-d1-bad', requestedBy: 'mikko', projectId: 'project-cd-d1',
+      script: { canonicalIdeaId: 'canon_nonexistent_source_id', variant: 'structure_a' },
+      styleReference: STYLE_CONFIG, humanConstraints: [],
+    }),
+    (e) => /STORY_AUTHORITY_INVALID/.test(e.code || '') || /not present in the pinned Discovery store/.test(e.message)
+  );
+  // A valid source still assembles (the authorized path works end to end).
+  const good = makeTask();
+  assert.equal(good.agent_id, 'creative_director');
+});
+
+test('CDD2: a completed dispatch does not auto-chain production — output is recommendation-only with human handoff', async () => {
+  const out = await runDirector(makeTask(), makeSemantic());
+  const envelope = { ...out, control_room: director.controlRoomView(out) };
+  // Recommendation-only terminal states hand off to a HUMAN reviewer, never to
+  // a production department; nothing downstream is launched.
+  assert.ok(['AWAITING_HUMAN_REVIEW', 'PREVIEW_ONLY'].includes(out.state), `unexpected state ${out.state}`);
+  assert.ok(['mikko', 'hermes'].includes(out.next_owner), `handoff must go to a human orchestrator, got ${out.next_owner}`);
+  assert.equal(out.automatic_chain_count ?? 0, 0);
+  const serialized = JSON.stringify(envelope);
+  assert.equal(/dispatch_next|auto_chain|launch_generation|start_render/.test(serialized), false, 'no chaining verbs may appear');
+  assert.equal(runner.validateEnvelope(envelope, 'creative_director', 'task-cd-0001'), null);
+});
+
+test('CDD3: Creative Director cannot mint human authority — writer gate and public surface', async () => {
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-d-writer-'));
+  const prevStore = process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE;
+  const prevWriter = process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY;
+  process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = store;
+  delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY;
+  try {
+    // Cockpit-equivalent runtime (no writer identity) cannot mint.
+    assert.throws(() => director.recordHumanAuthoritySuccessor('some-project', { human_constraints: [] }), (e) => e.code === 'HUMAN_AUTHORITY_WRITER_UNCONFIGURED');
+    // Model output cannot create authority: the run() surface never exposes a
+    // writer; only human_constraints reach the record, ids/versions are derived.
+    assert.equal(typeof director.recordHumanAuthoritySuccessor, 'function');
+    const out = await runDirector(makeTask(), makeSemantic({ action_claims: [{ claim_id: 'x', domain: 'MEDIA', operation: 'ADD', scope: 'GLOBAL', summary: 'attempt' }] }));
+    assert.equal(fs.existsSync(path.join(store, 'AUTHORITY-REGISTRY.json')), false, 'a dispatch must never create human authority');
+    assert.ok(out);
+  } finally {
+    if (prevStore === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_STORE = prevStore;
+    if (prevWriter === undefined) delete process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY; else process.env.VIDTOOLZ_HUMAN_AUTHORITY_WRITER_IDENTITY = prevWriter;
+    fs.rmSync(store, { recursive: true, force: true });
+  }
+});
+
+test('CDD4: retry safety — authority violations never retry; formatting errors retry boundedly', async () => {
+  // Authority violation: one attempt, typed escalation, no validator roulette.
+  const violating = makeSemantic({ action_claims: [{ claim_id: 'v', domain: 'MEDIA', operation: 'REMOVE', scope: 'S02', summary: 'remove' }] });
+  const vOut = await runDirector(makeTask({ humanConstraints: [KEEP] }), violating);
+  assert.ok(['ESCALATED', 'BLOCKED'].includes(vOut.state), `authority violation must not pass (state=${vOut.state})`);
+  assert.ok(vOut.attempts <= 1, `authority violation must not retry (attempts=${vOut.attempts})`);
+  // Formatting error: bounded retry then escalation (never infinite).
+  let calls = 0;
+  const badAdapter = async () => { calls += 1; return '{ not json'; };
+  const fOut = await director.run(makeTask(), { routeSelector: () => ({ ...ROUTE }), modelAdapter: badAdapter });
+  assert.equal(fOut.state, 'ESCALATED');
+  assert.ok(calls <= 3, `formatting retries bounded (calls=${calls})`);
 });

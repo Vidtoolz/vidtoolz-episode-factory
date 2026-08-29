@@ -307,7 +307,7 @@
       },
       "implementation_state": "IMPLEMENTATION_PROVEN",
       "role": "creative_specialist",
-      "mission": "Turn an approved musical direction (Scorecraft approved cue sheet / MusicRenderBrief) into technically valid, provenance-bound music candidates through the authorized music_generation lane; judge musical craft within bounded authority; present evidence for Mikko final decision. Scorecraft remains the engine — this role is the judgment and orchestration layer over it.",
+      "mission": "Turn an approved musical direction (Scorecraft approved cue sheet / MusicRenderBrief) into technically valid, provenance-bound music candidates through the authorized music_generation lane; judge musical craft within bounded authority; present evidence for Mikko final decision. Scorecraft remains the engine \u2014 this role is the judgment and orchestration layer over it.",
       "reports_to": "hermes",
       "collaborates_with": [
         "production_operations",
@@ -443,7 +443,7 @@
         "REVIEW": "unresolved contradiction or recommendation boundaries",
         "DECISION": "controversial claim or NEEDS_HUMAN_DECISION"
       },
-      "disagreement_behavior": "Unresolved evidentiary conflict is preserved as NEEDS_SPECIALIST_REVIEW or NEEDS_HUMAN_DECISION — never fabricated consensus"
+      "disagreement_behavior": "Unresolved evidentiary conflict is preserved as NEEDS_SPECIALIST_REVIEW or NEEDS_HUMAN_DECISION \u2014 never fabricated consensus"
     },
     {
       "agent_id": "story_editor",
@@ -580,7 +580,7 @@
         "AUTONOMOUS": "deterministic Story-identity preflight and bounded candidate proposal against the exact canonical Story version",
         "INFORMATION": "packaging candidates and advisory ranking produced; ranking confers no selection authority",
         "REVIEW": "misleading absolute framing returns to Research (RETURN_TO_RESEARCH), or a packaged promise exceeding source content returns to Story (RETURN_TO_STORY)",
-        "DECISION": "provocative framing, episode-concept change, or any final title/thumbnail/pair selection — NEEDS_HUMAN_DECISION"
+        "DECISION": "provocative framing, episode-concept change, or any final title/thumbnail/pair selection \u2014 NEEDS_HUMAN_DECISION"
       },
       "disagreement_behavior": "Packaging vs Story or Packaging vs Research conflicts surface as RETURN_TO_STORY / RETURN_TO_RESEARCH / NEEDS_HUMAN_DECISION with both positions preserved; publish-gate approval is never derived from semantic success."
     },
@@ -604,7 +604,7 @@
         }
       },
       "role": "creative_specialist",
-      "mission": "Prepare an approved script for delivery and judge presenter performance craft — pacing, emphasis, pauses, pronunciation, line delivery, continuity — proposing takes, retakes, and alternate delivery without ever changing what the episode says or approving anything.",
+      "mission": "Prepare an approved script for delivery and judge presenter performance craft \u2014 pacing, emphasis, pauses, pronunciation, line delivery, continuity \u2014 proposing takes, retakes, and alternate delivery without ever changing what the episode says or approving anything.",
       "reports_to": "hermes",
       "collaborates_with": [
         "story_editor",
@@ -696,18 +696,42 @@
       "name": "Creative Director",
       "lifecycle": {
         "doctrine": "DEFINED",
-        "proven": "NOT_PROVEN",
-        "autonomous_dispatch": "DISABLED",
-        "dispatch_blocked_reason": "Creative Director is contract status PLANNED_LAST (build_order 8, intentionally last). It is the highest super-agent risk role: defining doctrine now bounds it before implementation, and execution stays refused until every surrounding specialist boundary is proven and Mikko authorizes enablement.",
+        "proven": "PROVEN",
+        "autonomous_dispatch": "ENABLED",
+        "enablement_decision": {
+          "decision": "ENABLE",
+          "authority": "Mikko (explicit human creative authority \u2014 Approval D, 2026-08-29)",
+          "decided_on": "2026-08-29",
+          "human_direction_quality_decision": "APPROVE_DIRECTION_QUALITY_FOR_DISPATCH_CANARY",
+          "decision_scope": [
+            "Creative Director direction quality is sufficient to permit bounded live dispatch",
+            "NOT all future directions automatically approved",
+            "NOT house-style deviations human-approved",
+            "NOT human taste questions automatically resolved",
+            "NOT production publication approved"
+          ],
+          "prerequisites_satisfied": [
+            "implementation exists and validator certified (Codex db1c8b2 certification estate)",
+            "canonical Creative Direction store + safe projection proven end to end (Approval C live smoke)",
+            "human-authority precedence certified (CDH/CDT regression suite)",
+            "style reference remains advisory (Approval C firewall proof)",
+            "all build_order predecessors proven in production",
+            "explicit human enablement decision by Mikko (Approval D)"
+          ],
+          "governance_record": "governance/creative-director-enablement.json"
+        },
         "enablement_prerequisites": [
           "all specialist roles ahead of it in build_order proven in production",
           "cross-department synthesis demonstrated as recommendation-only against real run evidence",
-          "explicit human enablement decision by Mikko"
+          "explicit human enablement decision by Mikko",
+          "human direction-quality decision APPROVE_DIRECTION_QUALITY_FOR_DISPATCH_CANARY (Approval D, 2026-08-29)"
         ],
-        "super_agent_risk": "HIGH"
+        "enablement_prerequisites_note": "All prerequisites satisfied as of Approval D (2026-08-29); evidence in governance/creative-director-enablement.json. Retained for audit provenance; the enablement_decision block is the operative record.",
+        "super_agent_risk": "HIGH",
+        "super_agent_risk_note": "Unchanged by enablement: dispatch is recommendation-only, bounded, and may not create human authority, chain production, or self-approve style deviations."
       },
       "role": "creative_specialist",
-      "mission": "Act as a cross-disciplinary synthesis and recommendation layer: inspect specialist outputs, find cross-department incoherence, compare alternatives, and recommend one coherent creative direction — surfacing tradeoffs and unresolved conflicts to Mikko rather than resolving them by executive fiat.",
+      "mission": "Act as a cross-disciplinary synthesis and recommendation layer: inspect specialist outputs, find cross-department incoherence, compare alternatives, and recommend one coherent creative direction \u2014 surfacing tradeoffs and unresolved conflicts to Mikko rather than resolving them by executive fiat.",
       "reports_to": "hermes",
       "collaborates_with": [
         "story_editor",
@@ -773,7 +797,7 @@
           "exact script identity binding: canonical Story project/version/content_hash, or a real candidate-script identity (canonical idea id + source/datasheet fingerprints + script bytes sha256)",
           "script content bound byte-exactly to that identity",
           "typed human constraints carried as hard local constraints (KEEP/locks/tone/presenter/card directions)",
-          "style reference consumed through the sha-pinned style-reference adapter projection, or an explicit ABSENT declaration — active style authority is never fabricated"
+          "style reference consumed through the sha-pinned style-reference adapter projection, or an explicit ABSENT declaration \u2014 active style authority is never fabricated"
         ],
         "review_coherence_required": [
           "an existing creative-direction artifact to revalidate against current canonical identities",
@@ -787,7 +811,7 @@
         ],
         "missing_input_state": "INPUT_MISSING or INSUFFICIENT_CROSS_DEPARTMENT_EVIDENCE"
       },
-      "output_contract": "creative-director result envelope: state, one vidtoolz.creativeDirection.v1 artifact (episode-specific creative strategy: thesis, tone, humor setting, visual-mode mix, density arc, Level A/B/C strategy, presenter/proxy policy, information-card strategy, media/motion/typography/ending strategy, intentional house-style deviations with provenance, consequential human decisions, confidence) validated by scripts/creative-direction.js, echoed human constraints with compliance, specialist projections, provenance, control_room projection — recommendations only, never approvals",
+      "output_contract": "creative-director result envelope: state, one vidtoolz.creativeDirection.v1 artifact (episode-specific creative strategy: thesis, tone, humor setting, visual-mode mix, density arc, Level A/B/C strategy, presenter/proxy policy, information-card strategy, media/motion/typography/ending strategy, intentional house-style deviations with provenance, consequential human decisions, confidence) validated by scripts/creative-direction.js, echoed human constraints with compliance, specialist projections, provenance, control_room projection \u2014 recommendations only, never approvals",
       "human_gate_type": "VISUAL_IDENTITY_APPROVAL",
       "approval_binding": "canonical verifyApprovalBinding against exact artifact bytes; STALE or INVALID carries no authority; the agent verifies bindings but never records approval",
       "disagreement_behavior": "A specialist retains authority inside its own scope. Creative Director may recommend against a specialist position but must preserve both positions verbatim as NEEDS_SPECIALIST_REVIEW, or NEEDS_HUMAN_DECISION where human authority applies. It must never manufacture consensus, and never resolve a conflict by asserting seniority.",
@@ -804,7 +828,9 @@
         "no_specialist_absorption": "Cross-department visibility is not cross-department ownership. Seeing every department's output never transfers any department's authority.",
         "conflict_is_signal": "Unresolved conflict is surfaced, not smoothed. Manufacturing coherence that the departments do not actually share is the primary failure mode of this role.",
         "built_last": "This role exists last by design: the more subjective and cross-domain a role is, the greater the risk it becomes a vague Mikko-replacement or super-agent."
-      }
+      },
+      "implementation_state": "IMPLEMENTATION_PROVEN",
+      "implementation_state_note": "Promoted under Approval D (2026-08-29) on the Codex-certified db1c8b2 authority implementation + Approval C live safe-projection proof. Dispatch enablement is bounded: recommendation-only output, no autonomous production chain, no human-authority write capability."
     }
   ]
 }

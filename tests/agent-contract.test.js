@@ -233,12 +233,15 @@ test('AC19: every canonical roster role has a registry doctrine entry', () => {
   assert.equal(result.summary.registered_doctrine, 12);
 });
 
-test('AC20: a PLANNED role missing its doctrine entry is rejected', () => {
+test('AC20: a roster role missing its doctrine entry is rejected', () => {
+  // Approval D (2026-08-29) enabled creative_director, so the doctrine-entry
+  // gate is exercised on the now-proven role: removing its doctrine entry must
+  // fail as a PROVEN roster role missing doctrine.
   const tampered = baseRegistry();
   tampered.agents = tampered.agents.filter((a) => a.agent_id !== 'creative_director');
   const r = validator.validateContract(contract, tampered);
   assert.equal(r.ok, false);
-  assert.ok(r.errors.some((e) => /planned roster role "creative_director".*no registry doctrine entry/.test(e)));
+  assert.ok(r.errors.some((e) => /proven roster role "creative_director".*no registry doctrine entry/.test(e)));
   assert.equal(r.summary.doctrine_complete, false);
 });
 
@@ -250,55 +253,65 @@ test('AC21: a PROVEN role missing its doctrine entry is rejected', () => {
   assert.ok(r.errors.some((e) => /proven roster role "audience_packaging_director".*no registry doctrine entry/.test(e)));
 });
 
-test('AC22: complete doctrine never implies autonomous enablement', () => {
-  for (const id of ['creative_director']) {
-    const agent = registered(registry, id);
-    assert.equal(agent.lifecycle.doctrine, 'DEFINED', `${id} doctrine must be DEFINED`);
-    assert.equal(agent.lifecycle.proven, 'NOT_PROVEN');
-    assert.equal(agent.lifecycle.autonomous_dispatch, 'DISABLED');
-    assert.ok(agent.lifecycle.dispatch_blocked_reason, `${id} must say why dispatch is refused`);
-    assert.equal(validator.isEnabled(agent), false);
-    // Doctrine completeness is real: the entry is a full operating doctrine.
-    assert.ok(agent.mission && agent.allowed_actions.length && agent.prohibited_actions.length);
-  }
+test('AC22: complete doctrine never implies autonomous enablement — even after Approval D enablement', () => {
+  // Approval D (2026-08-29) enabled creative_director via explicit human
+  // decision; the invariant survives: doctrine completeness alone still never
+  // implies enablement, and demoting the decision re-refuses.
+  const agent = registered(registry, 'creative_director');
+  assert.equal(agent.lifecycle.doctrine, 'DEFINED', 'creative_director doctrine must be DEFINED');
+  assert.equal(agent.lifecycle.proven, 'PROVEN');
+  assert.equal(agent.lifecycle.autonomous_dispatch, 'ENABLED');
+  assert.equal(agent.lifecycle.enablement_decision?.human_direction_quality_decision, 'APPROVE_DIRECTION_QUALITY_FOR_DISPATCH_CANARY');
+  assert.equal(validator.isEnabled(agent), true);
+  assert.ok(agent.mission && agent.allowed_actions.length && agent.prohibited_actions.length);
+  // Doctrine completeness without enablement still never implies dispatch:
+  // demoting the lifecycle re-refuses immediately.
+  const demoted = structuredClone(agent);
+  demoted.lifecycle = { doctrine: 'DEFINED', proven: 'NOT_PROVEN', autonomous_dispatch: 'DISABLED', dispatch_blocked_reason: 'regression demotion' };
+  assert.equal(validator.isEnabled(demoted), false);
   const s = validator.validateContract(contract, registry).summary;
-  const doctrineOnly = registry.agents.filter((agent) => agent.lifecycle.autonomous_dispatch === 'DISABLED').map((agent) => agent.agent_id);
-  const lifecycleEnabled = registry.agents.filter((agent) => agent.lifecycle.autonomous_dispatch === 'ENABLED').map((agent) => agent.agent_id);
-  const implementationProven = registry.agents.filter((agent) => agent.implementation_state === 'IMPLEMENTATION_PROVEN').map((agent) => agent.agent_id);
-  const implementationCandidates = registry.agents.filter((agent) => agent.implementation_state === 'CANDIDATE').map((agent) => agent.agent_id);
+  const doctrineOnly = registry.agents.filter((a) => a.lifecycle.autonomous_dispatch === 'DISABLED').map((a) => a.agent_id);
+  const lifecycleEnabled = registry.agents.filter((a) => a.lifecycle.autonomous_dispatch === 'ENABLED').map((a) => a.agent_id);
+  const implementationProven = registry.agents.filter((a) => a.implementation_state === 'IMPLEMENTATION_PROVEN').map((a) => a.agent_id);
+  const implementationCandidates = registry.agents.filter((a) => a.implementation_state === 'CANDIDATE').map((a) => a.agent_id);
   assert.deepEqual(s.doctrine_only, doctrineOnly);
   assert.deepEqual(s.enabled_for_dispatch, lifecycleEnabled);
   assert.deepEqual(s.implementation_dispatchable, implementationProven);
   assert.deepEqual(s.implementation_candidates, implementationCandidates);
   assert.equal(registry.agents.length, 12);
-  assert.equal(s.enabled_for_dispatch.length, 11);
-  assert.equal(s.implementation_dispatchable.length, 10);
+  assert.equal(s.enabled_for_dispatch.length, 12);
+  assert.equal(s.implementation_dispatchable.length, 11);
   assert.equal(s.implementation_candidates.length, 1);
-  assert.equal(s.doctrine_only.length, 1);
+  assert.equal(s.doctrine_only.length, 0);
   // qc_director was promoted to IMPLEMENTATION_PROVEN (see
-  // governance/qc-director-implementation-promotion.json); camera_director is
-  // still the one unproven implementation.
+  // governance/qc-director-implementation-promotion.json); creative_director
+  // was promoted under Approval D (governance/creative-director-enablement.json);
+  // camera_director remains the one unproven implementation.
   assert.deepEqual(s.implementation_candidates, ['camera_director']);
   assert.ok(s.implementation_dispatchable.includes('qc_director'));
+  assert.ok(s.implementation_dispatchable.includes('creative_director'));
   assert.ok(s.enabled_for_dispatch.includes('presenter_director'));
-  for (const id of ['creative_director']) {
-    assert.ok(!s.enabled_for_dispatch.includes(id), `${id} must not be dispatch-enabled`);
-  }
-  // Self-promotion to ENABLED while NOT_PROVEN is rejected
+  assert.ok(s.enabled_for_dispatch.includes('creative_director'));
+  // Self-promotion to ENABLED while NOT_PROVEN is still rejected
   const tampered = baseRegistry();
   registered(tampered, 'creative_director').lifecycle.autonomous_dispatch = 'ENABLED';
+  registered(tampered, 'creative_director').lifecycle.proven = 'NOT_PROVEN';
   const r = validator.validateContract(contract, tampered);
   assert.equal(r.ok, false);
   assert.ok(r.errors.some((e) => /NOT_PROVEN but autonomous_dispatch is not DISABLED/.test(e)));
 });
 
 test('AC23: registry lifecycle must agree with contract lifecycle status', () => {
-  // Claiming PROVEN/ENABLED for a contract-PLANNED role is rejected
-  const promoted = baseRegistry();
-  registered(promoted, 'creative_director').lifecycle = {
-    doctrine: 'DEFINED', proven: 'PROVEN', autonomous_dispatch: 'ENABLED',
-  };
-  const r1 = validator.validateContract(contract, promoted);
+  // After Approval D (2026-08-29) creative_director is contract-BUILT and the
+  // registry mirrors PROVEN/ENABLED — agreement holds in the positive direction.
+  const agreed = validator.validateContract(contract, baseRegistry());
+  const cdErrors = agreed.errors.filter((e) => /creative_director/.test(e));
+  assert.deepEqual(cdErrors, [], 'creative_director registry lifecycle must agree with contract BUILT');
+  // The agreement invariant is still enforced: a contract demoted back to
+  // PLANNED_LAST while the registry claims PROVEN/ENABLED is rejected.
+  const demotedContract = structuredClone(contract);
+  demotedContract.role_roster.find((r) => r.role_id === 'creative_director').status = 'PLANNED_LAST';
+  const r1 = validator.validateContract(demotedContract, baseRegistry());
   assert.equal(r1.ok, false);
   assert.ok(r1.errors.some((e) => /contract status PLANNED_LAST requires NOT_PROVEN/.test(e)));
   // A registration with no lifecycle block at all is rejected
