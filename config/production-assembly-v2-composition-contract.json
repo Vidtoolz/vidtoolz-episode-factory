@@ -30,9 +30,23 @@
     "absence of presenter makes the full 1080x1920 canvas available; a future-presenter safe region is optional metadata, not a global constraint",
     "no raw ffmpeg filter text is accepted",
     "duplicate full-frame assets and duplicate semantic typography are rejected",
+    "optional ADDITIVE_PERSIST reveal layers are absent before their explicit licensing onset and persist through the exclusive end of their owning beat",
+    "staged reveal order, intervals, licensing anchors, and required-layer census are explicit composition data compiled to deterministic beat-local frame indices; the renderer infers no timing",
     "all assets are path-confined and SHA-256 bound",
     "composition data participates in the frozen render-plan digest"
   ],
+  "additive_reveal": {
+    "mode": "ADDITIVE_PERSIST",
+    "unrevealed_state": "ABSENT",
+    "authored_timebase": "programme-global integer milliseconds",
+    "render_timebase": "beat-local frame index at output.fps",
+    "frame_mapping": "ceil((programme_event_ms - beat.start_ms) * fps / 1000)",
+    "layer_required_fields": ["mode", "order", "start_ms", "end_ms", "licensing_anchor_id", "licensing_phrase_onset_ms"],
+    "beat_required_fields": ["mode", "unrevealed_state", "required_layer_ids"],
+    "render_plan_schema": "vidtoolz.compositionRevealPlan.v1",
+    "persistence": "every required layer is absent before its first-visible frame, becomes visible on that frame, and remains visible through the final renderable beat frame",
+    "legacy_behavior": "layers and beats without reveal metadata retain their existing whole-beat behavior"
+  },
   "presenter_geometry": {
     "required": [
       "x",

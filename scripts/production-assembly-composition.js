@@ -15,6 +15,8 @@ const POLICIES = new Set(['REQUIRED', 'FALLBACK_ALLOWED', 'OPTIONAL']);
 const ANCHORS = new Set(['TOP_LEFT', 'TOP_RIGHT', 'BOTTOM_LEFT', 'BOTTOM_RIGHT', 'CENTER']);
 const CURVES = new Set(['LINEAR', 'SMOOTH']);
 const TRANSITIONS = new Set(['CUT', 'HARD_CUT', 'CONTINUOUS', 'DISSOLVE_200MS', 'DISSOLVE_300MS', 'SCALE_DOWN']);
+const REVEAL_MODES = new Set(['ADDITIVE_PERSIST']);
+const REVEAL_PLAN_SCHEMA = 'vidtoolz.compositionRevealPlan.v1';
 const SHA_RE = /^[a-f0-9]{64}$/;
 const PRESENTER_ALPHA_FORMAT = 'VP9_ALPHA';
 const PRESENTER_ALPHA_DECODER = 'libvpx-vp9';
@@ -41,6 +43,110 @@ function digest(value) { return crypto.createHash('sha256').update(canonicalize(
 function exact(value, allowed, label) { for (const key of Object.keys(value || {})) if (!allowed.includes(key)) fail('COMPOSITION_UNKNOWN_FIELD', `${label}.${key}`); }
 function integer(value, label) { if (!Number.isInteger(value)) fail('COMPOSITION_INTEGER_REQUIRED', label); }
 function sha(value, label) { if (!SHA_RE.test(value || '')) fail('COMPOSITION_SHA_INVALID', label); }
+
+function frameIndexAtOrAfterMs(relativeMs, fps, label = 'reveal time') {
+  integer(relativeMs, label);
+  integer(fps, 'output.fps');
+  if (relativeMs < 0 || fps <= 0) fail('COMPOSITION_REVEAL_FRAME_MAPPING_INVALID', label);
+  return Math.ceil((relativeMs * fps) / 1000);
+}
+
+function validateReveal(reveal, beat, label) {
+  exact(reveal, ['mode', 'order', 'start_ms', 'end_ms', 'licensing_anchor_id', 'licensing_phrase_onset_ms'], label);
+  if (!REVEAL_MODES.has(reveal?.mode)) fail('COMPOSITION_REVEAL_MODE_INVALID', label);
+  for (const key of ['order', 'start_ms', 'end_ms', 'licensing_phrase_onset_ms']) integer(reveal?.[key], `${label}.${key}`);
+  if (reveal.order < 1 || typeof reveal.licensing_anchor_id !== 'string' || reveal.licensing_anchor_id.trim() === '') fail('COMPOSITION_REVEAL_IDENTITY_INVALID', label);
+  if (reveal.start_ms < beat.start_ms || reveal.start_ms >= beat.end_ms || reveal.end_ms <= reveal.start_ms || reveal.end_ms > beat.end_ms) fail('COMPOSITION_REVEAL_INTERVAL_INVALID', label);
+  if (reveal.end_ms !== beat.end_ms) fail('COMPOSITION_REVEAL_PERSISTENCE_INVALID', `${label}: ADDITIVE_PERSIST must end at the exclusive beat boundary`);
+  if (reveal.licensing_phrase_onset_ms < beat.start_ms || reveal.licensing_phrase_onset_ms >= beat.end_ms || reveal.start_ms < reveal.licensing_phrase_onset_ms) fail('COMPOSITION_REVEAL_BEFORE_LICENSE', label);
+}
+
+function compileRevealPlan(beat, layers, fps) {
+  const revealLayers = layers.filter((layer) => layer.reveal !== undefined);
+  if (!beat.reveal_contract && revealLayers.length === 0) return null;
+  if (!beat.reveal_contract) fail('COMPOSITION_REVEAL_CONTRACT_REQUIRED', beat.beat_id);
+  exact(beat.reveal_contract, ['mode', 'unrevealed_state', 'required_layer_ids'], `${beat.beat_id}.reveal_contract`);
+  const contract = beat.reveal_contract;
+  if (contract.mode !== 'ADDITIVE_PERSIST' || contract.unrevealed_state !== 'ABSENT' || !Array.isArray(contract.required_layer_ids) || contract.required_layer_ids.length === 0) fail('COMPOSITION_REVEAL_CONTRACT_INVALID', beat.beat_id);
+  if (contract.required_layer_ids.some((id) => typeof id !== 'string' || id === '') || new Set(contract.required_layer_ids).size !== contract.required_layer_ids.length) fail('COMPOSITION_REVEAL_CONTRACT_INVALID', beat.beat_id);
+  const layerById = new Map(layers.map((layer) => [layer.layer_id, layer]));
+  for (const id of contract.required_layer_ids) if (!layerById.has(id)) fail('COMPOSITION_REVEAL_LAYER_UNKNOWN', `${beat.beat_id}:${id}`);
+  for (const layer of revealLayers) {
+    if (layer.visible === false) fail('COMPOSITION_REVEAL_VISIBILITY_CONFLICT', `${beat.beat_id}:${layer.layer_id}`);
+    if (layer.type === 'PRESENTER_PROXY') fail('COMPOSITION_REVEAL_TYPE_UNSUPPORTED', `${beat.beat_id}:${layer.layer_id}`);
+    if (layer.reveal.mode !== contract.mode) fail('COMPOSITION_REVEAL_CONTRACT_MISMATCH', `${beat.beat_id}:${layer.layer_id}`);
+  }
+  const required = new Set(contract.required_layer_ids);
+  const revealed = new Set(revealLayers.map((layer) => layer.layer_id));
+  if (required.size !== revealed.size || [...required].some((id) => !revealed.has(id))) fail('COMPOSITION_REVEAL_REPRESENTATION_INCOMPLETE', beat.beat_id);
+  const byOrder = revealLayers.slice().sort((a, b) => a.reveal.order - b.reveal.order);
+  const orderIds = byOrder.map((layer) => layer.layer_id);
+  if (byOrder.some((layer, index) => layer.reveal.order !== index + 1) || canonicalize(orderIds) !== canonicalize(contract.required_layer_ids)) fail('COMPOSITION_REVEAL_SEQUENCE_INVALID', beat.beat_id);
+  if (byOrder.some((layer, index) => index > 0 && layer.reveal.start_ms <= byOrder[index - 1].reveal.start_ms)) fail('COMPOSITION_REVEAL_SEQUENCE_INVALID', beat.beat_id);
+  if (new Set(byOrder.map((layer) => layer.reveal.licensing_anchor_id)).size !== byOrder.length) fail('COMPOSITION_REVEAL_IDENTITY_INVALID', `${beat.beat_id}: duplicate licensing anchor`);
+
+  const durationFrames = frameIndexAtOrAfterMs(beat.end_ms - beat.start_ms, fps, `${beat.beat_id}.duration_ms`);
+  const staticLayerIds = layers.filter((layer) => layer.visible !== false && !layer.reveal).map((layer) => layer.layer_id);
+  const visible = staticLayerIds.slice();
+  const events = [];
+  let previousFrame = -1;
+  for (const layer of byOrder) {
+    const firstVisibleFrame = frameIndexAtOrAfterMs(layer.reveal.start_ms - beat.start_ms, fps, `${beat.beat_id}.${layer.layer_id}.start_ms`);
+    const endFrameExclusive = frameIndexAtOrAfterMs(layer.reveal.end_ms - beat.start_ms, fps, `${beat.beat_id}.${layer.layer_id}.end_ms`);
+    if (firstVisibleFrame <= previousFrame) fail('COMPOSITION_REVEAL_FRAME_COLLISION', `${beat.beat_id}:${layer.layer_id}`);
+    if (firstVisibleFrame < 0 || firstVisibleFrame >= durationFrames || endFrameExclusive !== durationFrames) fail('COMPOSITION_REVEAL_FRAME_MAPPING_INVALID', `${beat.beat_id}:${layer.layer_id}`);
+    visible.push(layer.layer_id);
+    events.push({
+      order: layer.reveal.order,
+      layer_id: layer.layer_id,
+      licensing_anchor_id: layer.reveal.licensing_anchor_id,
+      licensing_phrase_onset_ms: layer.reveal.licensing_phrase_onset_ms,
+      programme_start_ms: layer.reveal.start_ms,
+      programme_end_ms: layer.reveal.end_ms,
+      first_visible_frame: firstVisibleFrame,
+      end_frame_exclusive: endFrameExclusive,
+      visible_layer_ids_after: visible.slice(),
+    });
+    previousFrame = firstVisibleFrame;
+  }
+  const intervals = [];
+  let startFrame = 0;
+  let intervalVisible = staticLayerIds.slice();
+  for (const event of events) {
+    if (event.first_visible_frame > startFrame) intervals.push({ start_frame: startFrame, end_frame_exclusive: event.first_visible_frame, visible_layer_ids: intervalVisible.slice() });
+    intervalVisible.push(event.layer_id);
+    startFrame = event.first_visible_frame;
+  }
+  if (startFrame < durationFrames) intervals.push({ start_frame: startFrame, end_frame_exclusive: durationFrames, visible_layer_ids: intervalVisible.slice() });
+  const core = {
+    schema: REVEAL_PLAN_SCHEMA,
+    mode: contract.mode,
+    unrevealed_state: contract.unrevealed_state,
+    timebase: { unit: 'BEAT_LOCAL_FRAME_INDEX', fps, mapping: 'CEIL_EVENT_MS_TO_FIRST_FRAME_AT_OR_AFTER' },
+    beat_start_ms: beat.start_ms,
+    beat_end_ms: beat.end_ms,
+    duration_frames: durationFrames,
+    required_layer_ids: contract.required_layer_ids.slice(),
+    initial_visible_layer_ids: staticLayerIds,
+    events,
+    intervals,
+    final_visible_layer_ids: intervalVisible,
+  };
+  return { ...core, reveal_plan_digest_sha256: digest(core) };
+}
+
+function layerVisibleAt(layer, programmeMs) {
+  if (layer.visible === false) return false;
+  if (!layer.reveal) return true;
+  return programmeMs >= layer.reveal.start_ms && programmeMs < layer.reveal.end_ms;
+}
+
+function revealEnable(layer, beat) {
+  if (!layer.reveal) return '';
+  const event = beat.reveal_plan?.events?.find((item) => item.layer_id === layer.layer_id);
+  if (!event) fail('COMPOSITION_REVEAL_PLAN_MISSING', `${beat.beat_id}:${layer.layer_id}`);
+  return `:enable='gte(n,${event.first_visible_frame})*lt(n,${event.end_frame_exclusive})'`;
+}
 
 function resolveAsset(assetId, assets, usedFallbacks) {
   const asset = assets.get(assetId);
@@ -138,7 +244,7 @@ function validateComposition(composition, timeline, output, assetManifest, optio
   let cursor = 0;
   const proxyPlacements = []; const intervalGroups = new Map();
   for (const beat of composition.beats) {
-    exact(beat, ['beat_id', 'section_id', 'start_ms', 'end_ms', 'primary_owner', 'layers', 'transition_in', 'transition_out', 'interval_id', 'standalone_graphic_justification'], `beat.${beat?.beat_id}`);
+    exact(beat, ['beat_id', 'section_id', 'start_ms', 'end_ms', 'primary_owner', 'layers', 'transition_in', 'transition_out', 'interval_id', 'standalone_graphic_justification', 'reveal_contract'], `beat.${beat?.beat_id}`);
     if (!grammar && (beat.interval_id !== undefined || beat.standalone_graphic_justification !== undefined)) fail('COMPOSITION_GRAMMAR_INVALID', `${beat?.beat_id}: interval fields require the V2 grammar`);
     if (!beat.beat_id || beatIds.has(beat.beat_id)) fail('COMPOSITION_BEAT_ID_INVALID', String(beat.beat_id)); beatIds.add(beat.beat_id);
     if (!TRANSITIONS.has(beat.transition_in) || !TRANSITIONS.has(beat.transition_out)) fail('COMPOSITION_TRANSITION_INVALID', beat.beat_id);
@@ -150,9 +256,10 @@ function validateComposition(composition, timeline, output, assetManifest, optio
     if (!OWNERS.has(beat.primary_owner) || !Array.isArray(beat.layers)) fail('COMPOSITION_PRIMARY_OWNER_INVALID', beat.beat_id);
     const layerIds = new Set(); const zValues = new Set(); const layers = [];
     for (const layer of beat.layers) {
-      exact(layer, ['layer_id', 'type', 'primary', 'z', 'visible', 'asset_id', 'fit', 'duration_policy', 'asset_in_ms', 'geometry', 'motion', 'typography', 'replaces_insert_ids'], `${beat.beat_id}.layer`);
+      exact(layer, ['layer_id', 'type', 'primary', 'z', 'visible', 'asset_id', 'fit', 'duration_policy', 'asset_in_ms', 'geometry', 'motion', 'typography', 'replaces_insert_ids', 'reveal'], `${beat.beat_id}.layer`);
       if (!layer.layer_id || layerIds.has(layer.layer_id) || !TYPES.has(layer.type)) fail('COMPOSITION_LAYER_INVALID', beat.beat_id); layerIds.add(layer.layer_id);
       integer(layer.z, `${beat.beat_id}.${layer.layer_id}.z`); if (zValues.has(layer.z)) fail('COMPOSITION_Z_ORDER_INVALID', beat.beat_id); zValues.add(layer.z);
+      if (layer.reveal !== undefined) validateReveal(layer.reveal, beat, `${beat.beat_id}.${layer.layer_id}.reveal`);
       let asset = null;
       let canonicalTypographyLayout = null;
       if (layer.asset_id) {
@@ -265,7 +372,9 @@ function validateComposition(composition, timeline, output, assetManifest, optio
       intervalGroups.set(beat.interval_id, group);
     }
     const ordered = layers.slice().sort((a, b) => a.z - b.z);
-    resolved.push({ ...beat, duration_ms: beat.end_ms - beat.start_ms, section_source_offset_ms: section.in_ms + beat.start_ms - section.programme_in_ms, layers: ordered, operation_digest_sha256: digest({ ...beat, layers: ordered }) });
+    const revealPlan = compileRevealPlan(beat, ordered, output.fps);
+    const resolvedBeat = { ...beat, duration_ms: beat.end_ms - beat.start_ms, section_source_offset_ms: section.in_ms + beat.start_ms - section.programme_in_ms, layers: ordered, ...(revealPlan ? { reveal_plan: revealPlan } : {}) };
+    resolved.push({ ...resolvedBeat, operation_digest_sha256: digest(resolvedBeat) });
     cursor = beat.end_ms;
   }
   const programmeDuration = timeline.at(-1)?.programme_out_ms || 0;
@@ -416,7 +525,12 @@ function buildVideoGraph(plan, command, filters) {
           const y = layer.motion.type === 'PAN' ? `${layer.motion.start_y || 0}+${(layer.motion.end_y || 0) - (layer.motion.start_y || 0)}*${p}` : '(ih-ih/zoom)/2';
           motion = `,zoompan=z='${zoom}':x='${x}':y='${y}':d=1:s=${plan.output.width}x${plan.output.height}:fps=${plan.output.fps}`;
         }
-        filters.push(`[${index}:v]trim=start=${assetIn}:duration=${duration},setpts=PTS-STARTPTS,${sizing}${motion},fps=${plan.output.fps},tpad=stop_mode=clone:stop_duration=1,trim=duration=${duration},setpts=PTS-STARTPTS,format=rgba[b${beatIndex}l${layer.z}]`); current = `b${beatIndex}l${layer.z}`;
+        const source = `b${beatIndex}l${layer.z}`;
+        filters.push(`[${index}:v]trim=start=${assetIn}:duration=${duration},setpts=PTS-STARTPTS,${sizing}${motion},fps=${plan.output.fps},tpad=stop_mode=clone:stop_duration=1,trim=duration=${duration},setpts=PTS-STARTPTS,format=rgba[${source}]`);
+        if (layer.reveal) {
+          if (!current) { filters.push(`color=c=black:s=${plan.output.width}x${plan.output.height}:r=${plan.output.fps}:d=${duration}[b${beatIndex}base]`); current = `b${beatIndex}base`; }
+          filters.push(`[${current}][${source}]overlay=x=0:y=0:eval=frame:eof_action=pass${revealEnable(layer, beat)}[beat${beatIndex}v${layer.z}]`); current = `beat${beatIndex}v${layer.z}`;
+        } else current = source;
       } else if (layer.type === 'PRESENTER' && layer.visible !== false) {
         const geometry = layer.geometry; const end = geometry.ramp?.end || geometry; const p = progressExpression(geometry.ramp?.curve || 'LINEAR', beat.duration_ms / 1000);
         const width = interpolate(geometry.width, end.width, p); const height = interpolate(geometry.height, end.height, p);
@@ -434,7 +548,7 @@ function buildVideoGraph(plan, command, filters) {
         }
         if (!current) { filters.push(`color=c=black:s=${plan.output.width}x${plan.output.height}:r=${plan.output.fps}:d=${duration}[b${beatIndex}base]`); current = `b${beatIndex}base`; }
         const x = interpolate(geometry.x, end.x, p); const y = interpolate(geometry.y, end.y, p);
-        filters.push(`[${current}][${source}]overlay=x='${x}':y='${y}':eval=frame:eof_action=pass[beat${beatIndex}p${layer.z}]`); current = `beat${beatIndex}p${layer.z}`;
+        filters.push(`[${current}][${source}]overlay=x='${x}':y='${y}':eval=frame:eof_action=pass${revealEnable(layer, beat)}[beat${beatIndex}p${layer.z}]`); current = `beat${beatIndex}p${layer.z}`;
       } else if (layer.type === 'TYPOGRAPHY') {
         const type = layer.typography; const region = type.region;
         if (plan.composition.grammar === V2_GRAMMAR) typographyLayoutModule.assertCanonicalLayout(type, layer.typography_layout);
@@ -442,10 +556,15 @@ function buildVideoGraph(plan, command, filters) {
           const asset = layer.resolved_asset; const index = inputByAsset.get(asset.asset_id);
           if (!current) { filters.push(`color=c=black:s=${plan.output.width}x${plan.output.height}:r=${plan.output.fps}:d=${duration}[b${beatIndex}base]`); current = `b${beatIndex}base`; }
           filters.push(`[${index}:v]scale=${region.width}:${region.height}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${region.width}:${region.height}:(ow-iw)/2:(oh-ih)/2:color=0x00000000,format=rgba,fps=${plan.output.fps},tpad=stop_mode=clone:stop_duration=1,trim=duration=${duration},setpts=PTS-STARTPTS[beat${beatIndex}ti${layer.z}]`);
-          filters.push(`[${current}][beat${beatIndex}ti${layer.z}]overlay=x=${region.x}:y=${region.y}:format=rgb:eof_action=pass[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
+          filters.push(`[${current}][beat${beatIndex}ti${layer.z}]overlay=x=${region.x}:y=${region.y}:format=rgb:eof_action=pass${revealEnable(layer, beat)}[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
         } else if (type.render_mode === 'PRE_RENDERED') {
           const asset = layer.resolved_asset; const index = inputByAsset.get(asset.asset_id);
-          filters.push(`[${index}:v]scale=${plan.output.width}:${plan.output.height}:force_original_aspect_ratio=increase:flags=lanczos,crop=${plan.output.width}:${plan.output.height},fps=${plan.output.fps},trim=duration=${duration},setpts=PTS-STARTPTS,format=rgba[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
+          const source = `beat${beatIndex}traw${layer.z}`;
+          filters.push(`[${index}:v]scale=${plan.output.width}:${plan.output.height}:force_original_aspect_ratio=increase:flags=lanczos,crop=${plan.output.width}:${plan.output.height},fps=${plan.output.fps},trim=duration=${duration},setpts=PTS-STARTPTS,format=rgba[${source}]`);
+          if (layer.reveal) {
+            if (!current) { filters.push(`color=c=black:s=${plan.output.width}x${plan.output.height}:r=${plan.output.fps}:d=${duration}[b${beatIndex}base]`); current = `b${beatIndex}base`; }
+            filters.push(`[${current}][${source}]overlay=x=0:y=0:eval=frame:eof_action=pass${revealEnable(layer, beat)}[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
+          } else current = source;
         } else {
           if (!current) { filters.push(`color=c=black:s=${plan.output.width}x${plan.output.height}:r=${plan.output.fps}:d=${duration}[b${beatIndex}base]`); current = `b${beatIndex}base`; }
           const layout = layer.typography_layout;
@@ -457,7 +576,7 @@ function buildVideoGraph(plan, command, filters) {
           // V2 text treatment: the translucent grey panel follows the text
           // footprint (drawtext box), keeping the background visibly present.
           const backing = type.backing ? `:box=1:boxcolor=0x${BACKING_COLOR_HEX[type.backing.color]}@${Number(type.backing.opacity).toFixed(2)}:boxborderw=${type.backing.padding_px ?? 18}` : '';
-          filters.push(`[${current}]drawtext=fontfile=${typographyLayoutModule.FONT_FILE}:text='${escapeDrawtext(renderedText)}':fontcolor=white:fontsize=${fontSize}:expansion=none:x='${x}':y='${y}'${lineSpacing}${backing}[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
+          filters.push(`[${current}]drawtext=fontfile=${typographyLayoutModule.FONT_FILE}:text='${escapeDrawtext(renderedText)}':fontcolor=white:fontsize=${fontSize}:expansion=none:x='${x}':y='${y}'${lineSpacing}${backing}${revealEnable(layer, beat)}[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
         }
       } else if (layer.type === 'PRESENTER_PROXY') {
         // The proxy is the FINAL overlay: by validated z-order it composites
@@ -494,4 +613,4 @@ function buildVideoGraph(plan, command, filters) {
   return inputByAsset;
 }
 
-module.exports = { SCHEMA, ASSET_MANIFEST_SCHEMA, PRESENTER_ALPHA_FORMAT, PRESENTER_ALPHA_DECODER, V2_GRAMMAR, PROXY_ALPHA_FORMAT, BACKING_COLOR_HEX, canonicalize, digest, backgroundIdentity, validateComposition, buildVideoGraph };
+module.exports = { SCHEMA, ASSET_MANIFEST_SCHEMA, PRESENTER_ALPHA_FORMAT, PRESENTER_ALPHA_DECODER, V2_GRAMMAR, PROXY_ALPHA_FORMAT, BACKING_COLOR_HEX, REVEAL_PLAN_SCHEMA, canonicalize, digest, frameIndexAtOrAfterMs, compileRevealPlan, layerVisibleAt, backgroundIdentity, validateComposition, buildVideoGraph };
