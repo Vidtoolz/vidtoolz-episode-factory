@@ -55,6 +55,7 @@ require("./paused-narration.test.js");
 require("./visual-draft-interval-scheduler.test.js");
 require("./visual-draft-binding.test.js");
 require("./production-assembly-v2-grammar.test.js");
+require("./visual-draft-proxy-successor.test.js");
 require("./lifecycle-authority-invariant.test.js");
 require("./package-lifecycle-integration.test.js");
 require("./video-prompts.test.js");

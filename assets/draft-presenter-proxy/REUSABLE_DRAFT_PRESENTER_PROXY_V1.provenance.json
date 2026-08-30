@@ -1,0 +1,47 @@
+{
+  "schema": "vidtoolz.draftPresenterProxyAsset.v1",
+  "asset_id": "REUSABLE_DRAFT_PRESENTER_PROXY_V1",
+  "classification": "GENERIC_HUMAN_PRESENTER_PROXY",
+  "not_classes": ["MIKKO_LIKENESS", "HUMAN_DRAFT_PERFORMANCE", "FINAL_HUMAN_PERFORMANCE", "FINAL_PRESENTER_ASSET"],
+  "statement": "One reusable generic synthetic human figure for VISUAL_DRAFT V2 final-overlay compositing. It is not Mikko, does not claim to be Mikko, is not a human performance, and carries zero layout authority over the primary composition.",
+  "file": "REUSABLE_DRAFT_PRESENTER_PROXY_V1.png",
+  "sha256": "0fb4dc269a689d477f6ee79acb735a13ee55344b4b08436665d4af7278d7b342",
+  "bytes": 2259194,
+  "width": 1080,
+  "height": 1920,
+  "pixel_format": "rgba",
+  "alpha": {
+    "required": true,
+    "format": "PNG_ALPHA",
+    "measured_alpha_min": 0,
+    "measured_alpha_max": 255,
+    "measured_alpha_avg": 65.81,
+    "subject_coverage_note": "transparent surroundings, opaque subject; clean u2net cutout"
+  },
+  "doctrine": {
+    "doctrine_id": "VISUAL_DRAFT_PRODUCTION_DOCTRINE",
+    "rule": "presenter_proxy",
+    "default_position": "LOWER_RIGHT",
+    "area_ratio_hard_ceiling": 0.25,
+    "initial_visual_test_band": [0.1, 0.18]
+  },
+  "generation": {
+    "date": "2026-08-30",
+    "producer": "FLUX text_to_image generation lane (vidnux) + hyperframes remove-background (u2net, CPU)",
+    "model": "FLUX.1-dev GGUF Q8_0 (flux1-dev-Q8_0.gguf)",
+    "workflow": "flux-gguf-1080x1920.v1.json (API-format translation, same models/sampler/steps/guidance/geometry)",
+    "sampler": "euler",
+    "steps": 20,
+    "guidance": 3.5,
+    "seed": 71234,
+    "comfy_prompt_id": "8caae612-53de-4128-910c-34d077c31850",
+    "prompt": "photorealistic vertical studio portrait, one generic adult presenter standing, three-quarter body framing, facing camera, relaxed friendly neutral expression, plain neutral charcoal-grey crew-neck sweater and dark trousers, hands loosely gesturing at waist height as if explaining, soft even key light, seamless plain light-grey studio backdrop with strong subject-background separation, sharp focus on the person, generic everyday person, no text, no letters, no words, no logo, no props, no scenery",
+    "source_image_sha256": "ce987f2f2440e3cb3171889d7459842626922aaa0f2617aa3119d1c26a7a8566",
+    "background_removal": "hyperframes remove-background v0.8.15, provider CPU"
+  },
+  "reuse": {
+    "reusable_across_drafts": true,
+    "script_specific": false,
+    "counts_as_background_reuse": false
+  }
+}
