@@ -23,6 +23,7 @@ const MAX_FONT_SIZE_PX = 128;
 const DEFAULT_BACKING_PADDING_PX = 18;
 const FINAL_OUTPUT_GUARD_PX = 2;
 const MEASUREMENT_DOMAIN = 'VIDTOOLZ_FFMPEG_DRAWTEXT_METRICS_V1';
+const V4_LAYOUT_KEYS = Object.freeze(['max_font_size', 'min_font_size', 'max_lines', 'line_spacing_px']);
 const measurementCache = new Map();
 const renderedBoundsCache = new Map();
 const baseFrameCache = new Map();
@@ -186,18 +187,45 @@ function wrapParagraph(paragraph, fontSizePx, spacingPx, maximumWidthPx) {
   return lines;
 }
 
-function layoutAtFontSize(text, region, alignment, safeMarginPx, paddingPx, fontSizePx) {
-  const spacingPx = lineSpacing(fontSizePx);
-  const insetPx = Math.max(safeMarginPx, paddingPx);
-  const maximumWidthPx = region.width - insetPx * 2;
-  const maximumHeightPx = region.height - insetPx * 2;
-  if (maximumWidthPx <= 0 || maximumHeightPx <= 0) return null;
+function normalizeV4LayoutContract(value) {
+  if (value === undefined) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_INVALID', 'typography.layout must be an object');
+  const keys = Object.keys(value);
+  const unknown = keys.find((key) => !V4_LAYOUT_KEYS.includes(key));
+  if (unknown) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_UNKNOWN_FIELD', `typography.layout.${unknown}`);
+  const missing = V4_LAYOUT_KEYS.find((key) => !Object.hasOwn(value, key));
+  if (missing) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_INVALID', `typography.layout.${missing} required`);
+  for (const key of V4_LAYOUT_KEYS) if (!Number.isInteger(value[key])) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_INVALID', `typography.layout.${key} must be an integer`);
+  if (value.min_font_size < MIN_FONT_SIZE_PX || value.min_font_size > MAX_FONT_SIZE_PX) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_MINIMUM_INVALID', `min_font_size must be within ${MIN_FONT_SIZE_PX}..${MAX_FONT_SIZE_PX}`);
+  if (value.max_font_size < value.min_font_size || value.max_font_size > MAX_FONT_SIZE_PX) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_RANGE_INVALID', 'max_font_size must be >= min_font_size and <= canonical maximum');
+  if (value.max_lines < 1) fail('COMPOSITION_TYPOGRAPHY_MAX_LINES_INVALID', 'max_lines must be at least one');
+  if (value.line_spacing_px < 0) fail('COMPOSITION_TYPOGRAPHY_LINE_SPACING_INVALID', 'line_spacing_px must be non-negative');
+  return Object.freeze({
+    max_font_size: value.max_font_size,
+    min_font_size: value.min_font_size,
+    max_lines: value.max_lines,
+    line_spacing_px: value.line_spacing_px,
+  });
+}
+
+function wrappedLinesAtFontSize(text, fontSizePx, spacingPx, maximumWidthPx) {
   const lines = [];
   for (const paragraph of text.split('\n')) {
     const wrapped = wrapParagraph(paragraph, fontSizePx, spacingPx, maximumWidthPx);
     if (!wrapped) return null;
     lines.push(...wrapped);
   }
+  return lines;
+}
+
+function layoutAtFontSize(text, region, alignment, safeMarginPx, paddingPx, fontSizePx, controls = null, includeBacking = false) {
+  const spacingPx = controls?.line_spacing_px ?? lineSpacing(fontSizePx);
+  const insetPx = Math.max(safeMarginPx, paddingPx);
+  const maximumWidthPx = region.width - insetPx * 2;
+  const maximumHeightPx = region.height - insetPx * 2;
+  if (maximumWidthPx <= 0 || maximumHeightPx <= 0) return null;
+  const lines = wrappedLinesAtFontSize(text, fontSizePx, spacingPx, maximumWidthPx);
+  if (!lines || (controls && lines.length > controls.max_lines)) return null;
   const renderedText = lines.join('\n');
   const metrics = measureTextBatch([renderedText], fontSizePx, spacingPx)[0];
   if (metrics.width > maximumWidthPx || metrics.height > maximumHeightPx) return null;
@@ -208,7 +236,7 @@ function layoutAtFontSize(text, region, alignment, safeMarginPx, paddingPx, font
       : region.x + Math.floor((region.width - metrics.width) / 2);
   let y = region.y + Math.floor((region.height - metrics.height) / 2);
   const localRegion = { width: region.width, height: region.height };
-  let paintedLocal = measureRenderedBounds(renderedText, fontSizePx, spacingPx, x - region.x, y - region.y, localRegion, alignment, paddingPx, true);
+  let paintedLocal = measureRenderedBounds(renderedText, fontSizePx, spacingPx, x - region.x, y - region.y, localRegion, alignment, paddingPx, includeBacking);
   if (!paintedLocal || paintedLocal.width > region.width - FINAL_OUTPUT_GUARD_PX * 2 || paintedLocal.height > region.height - FINAL_OUTPUT_GUARD_PX * 2) return null;
   let correctionX = 0; let correctionY = 0;
   if (paintedLocal.x < FINAL_OUTPUT_GUARD_PX) correctionX += FINAL_OUTPUT_GUARD_PX - paintedLocal.x;
@@ -216,7 +244,7 @@ function layoutAtFontSize(text, region, alignment, safeMarginPx, paddingPx, font
   if (paintedLocal.y < FINAL_OUTPUT_GUARD_PX) correctionY += FINAL_OUTPUT_GUARD_PX - paintedLocal.y;
   if (paintedLocal.y + paintedLocal.height > region.height - FINAL_OUTPUT_GUARD_PX) correctionY -= paintedLocal.y + paintedLocal.height - (region.height - FINAL_OUTPUT_GUARD_PX);
   x += correctionX; y += correctionY;
-  if (correctionX || correctionY) paintedLocal = measureRenderedBounds(renderedText, fontSizePx, spacingPx, x - region.x, y - region.y, localRegion, alignment, paddingPx, true);
+  if (correctionX || correctionY) paintedLocal = measureRenderedBounds(renderedText, fontSizePx, spacingPx, x - region.x, y - region.y, localRegion, alignment, paddingPx, includeBacking);
   const glyphLocal = measureRenderedBounds(renderedText, fontSizePx, spacingPx, x - region.x, y - region.y, localRegion, alignment, paddingPx, false);
   if (!paintedLocal || !glyphLocal || paintedLocal.x < FINAL_OUTPUT_GUARD_PX || paintedLocal.y < FINAL_OUTPUT_GUARD_PX || paintedLocal.x + paintedLocal.width > region.width - FINAL_OUTPUT_GUARD_PX || paintedLocal.y + paintedLocal.height > region.height - FINAL_OUTPUT_GUARD_PX) return null;
   const glyphBounds = { x: region.x + glyphLocal.x, y: region.y + glyphLocal.y, width: glyphLocal.width, height: glyphLocal.height };
@@ -231,18 +259,26 @@ function layoutTypography(typography) {
   if (!region || !Number.isInteger(region.width) || !Number.isInteger(region.height)) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_INVALID', 'integer region required');
   const safeMarginPx = typography.safe_margin_px;
   if (!Number.isInteger(safeMarginPx) || safeMarginPx < 0) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_INVALID', 'non-negative safe_margin_px required');
-  const paddingPx = typography.backing?.padding_px ?? DEFAULT_BACKING_PADDING_PX;
-  const preferredFontSizePx = Math.max(MIN_FONT_SIZE_PX, Math.min(MAX_FONT_SIZE_PX, Math.floor(region.height / 4)));
-  let low = MIN_FONT_SIZE_PX;
+  const controls = normalizeV4LayoutContract(typography.layout);
+  const paddingPx = typography.backing ? (typography.backing.padding_px ?? DEFAULT_BACKING_PADDING_PX) : 0;
+  const preferredFontSizePx = controls?.max_font_size ?? Math.max(MIN_FONT_SIZE_PX, Math.min(MAX_FONT_SIZE_PX, Math.floor(region.height / 4)));
+  let low = controls?.min_font_size ?? MIN_FONT_SIZE_PX;
   let high = preferredFontSizePx;
   let best = null;
   while (low <= high) {
     const candidateSize = Math.floor((low + high) / 2);
-    const candidate = layoutAtFontSize(text, region, typography.alignment, safeMarginPx, paddingPx, candidateSize);
+    const candidate = layoutAtFontSize(text, region, typography.alignment, safeMarginPx, paddingPx, candidateSize, controls, Boolean(typography.backing));
     if (candidate) { best = candidate; low = candidateSize + 1; }
     else high = candidateSize - 1;
   }
-  if (!best) fail('COMPOSITION_TYPOGRAPHY_OVERFLOW', `content cannot fit ${region.width}x${region.height} region at minimum readable ${MIN_FONT_SIZE_PX}px`);
+  if (!best) {
+    if (controls) {
+      const maximumWidthPx = region.width - Math.max(safeMarginPx, paddingPx) * 2;
+      const floorLines = maximumWidthPx > 0 ? wrappedLinesAtFontSize(text, controls.min_font_size, controls.line_spacing_px, maximumWidthPx) : null;
+      if (floorLines && floorLines.length > controls.max_lines) fail('COMPOSITION_TYPOGRAPHY_MAX_LINES_EXCEEDED', `content requires ${floorLines.length} lines at ${controls.min_font_size}px; maximum is ${controls.max_lines}`);
+    }
+    fail('COMPOSITION_TYPOGRAPHY_OVERFLOW', `content cannot fit ${region.width}x${region.height} region at minimum readable ${controls?.min_font_size ?? MIN_FONT_SIZE_PX}px`);
+  }
   const fontSha256 = fileDigest(FONT_FILE);
   const layout = {
     schema: LAYOUT_SCHEMA,
@@ -250,8 +286,8 @@ function layoutTypography(typography) {
     font_file: FONT_FILE,
     font_file_sha256: fontSha256,
     font_size_px: best.fontSizePx,
-    minimum_font_size_px: MIN_FONT_SIZE_PX,
-    maximum_font_size_px: MAX_FONT_SIZE_PX,
+    minimum_font_size_px: controls?.min_font_size ?? MIN_FONT_SIZE_PX,
+    maximum_font_size_px: controls?.max_font_size ?? MAX_FONT_SIZE_PX,
     line_spacing_px: best.spacingPx,
     line_count: best.lines.length,
     lines: best.lines,
@@ -265,6 +301,11 @@ function layoutTypography(typography) {
     drawtext_origin: best.drawtextOrigin,
     glyph_bounds: best.glyphBounds,
     painted_bounds: best.paintedBounds,
+    ...(controls ? {
+      v4_layout_contract: controls,
+      v4_layout_contract_sha256: digest(controls),
+      maximum_line_count: controls.max_lines,
+    } : {}),
   };
   layout.layout_digest_sha256 = digest(layout);
   return Object.freeze(layout);
@@ -289,7 +330,11 @@ function assertCanonicalLayout(typography, layout) {
   delete copy.layout_digest_sha256;
   if (digest(copy) !== layout.layout_digest_sha256 || layout.normalized_content_sha256 !== digest(normalizeText(typography.content))) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_INVALID', 'layout digest/content binding mismatch');
   if (layout.mode !== 'PRE_RENDERED_CONFINED') {
-    if (layout.font_file !== FONT_FILE || layout.font_file_sha256 !== fileDigest(FONT_FILE) || layout.minimum_font_size_px !== MIN_FONT_SIZE_PX || layout.font_size_px < MIN_FONT_SIZE_PX || layout.font_size_px > MAX_FONT_SIZE_PX) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_INVALID', 'canonical font authority mismatch');
+    const controls = normalizeV4LayoutContract(typography.layout);
+    const minimum = controls?.min_font_size ?? MIN_FONT_SIZE_PX;
+    const maximum = controls?.max_font_size ?? MAX_FONT_SIZE_PX;
+    if (layout.font_file !== FONT_FILE || layout.font_file_sha256 !== fileDigest(FONT_FILE) || layout.minimum_font_size_px !== minimum || layout.maximum_font_size_px !== maximum || layout.font_size_px < minimum || layout.font_size_px > maximum) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_INVALID', 'canonical font authority mismatch');
+    if (controls && (layout.v4_layout_contract_sha256 !== digest(controls) || canonicalize(layout.v4_layout_contract) !== canonicalize(controls) || layout.maximum_line_count !== controls.max_lines || layout.line_spacing_px !== controls.line_spacing_px || layout.line_count > controls.max_lines)) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_INVALID', 'V4 layout contract binding mismatch');
   }
   return true;
 }
@@ -302,9 +347,11 @@ module.exports = {
   DEFAULT_BACKING_PADDING_PX,
   FINAL_OUTPUT_GUARD_PX,
   MEASUREMENT_DOMAIN,
+  V4_LAYOUT_KEYS,
   TypographyLayoutError,
   normalizeText,
   lineSpacing,
+  normalizeV4LayoutContract,
   measureTextBatch,
   measureRenderedBounds,
   layoutTypography,

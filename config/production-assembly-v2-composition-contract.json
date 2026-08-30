@@ -47,6 +47,16 @@
     "persistence": "every required layer is absent before its first-visible frame, becomes visible on that frame, and remains visible through the final renderable beat frame",
     "legacy_behavior": "layers and beats without reveal metadata retain their existing whole-beat behavior"
   },
+  "v4_typography_layout": {
+    "fields": ["max_font_size", "min_font_size", "max_lines", "line_spacing_px"],
+    "shape_rule": "when typography.layout is present all four integer fields are required and unknown fields are rejected",
+    "font_policy": "the selected integer size is the largest fitting value between the approved min_font_size and max_font_size; min_font_size may raise but never lower the canonical 24px readability floor and max_font_size may not exceed 128px",
+    "line_policy": "canonical whitespace and emergency grapheme wrapping must fit at or below max_lines; authored newlines count; no truncation is permitted",
+    "spacing_policy": "line_spacing_px is the exact non-negative integer used by both FFmpeg measurement and final drawtext execution",
+    "safety_authority": "scripts/canonical-typography-layout.js remains the single FFmpeg-measured width, height, glyph-bound and final YUV-domain safety authority",
+    "failure_policy": "malformed, contradictory, max-line-exceeding or geometrically impossible layouts fail closed before rendering",
+    "legacy_behavior": "typography without layout retains its existing V1/V2/static behavior"
+  },
   "presenter_geometry": {
     "required": [
       "x",

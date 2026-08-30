@@ -288,8 +288,13 @@ function validateComposition(composition, timeline, output, assetManifest, optio
         }
       }
       if (layer.type === 'TYPOGRAPHY') {
-        exact(layer.typography, ['content', 'content_sha256', 'preset', 'region', 'alignment', 'safe_margin_px', 'render_mode', 'color', 'backing'], `${beat.beat_id}.${layer.layer_id}.typography`);
+        exact(layer.typography, ['content', 'content_sha256', 'preset', 'region', 'alignment', 'safe_margin_px', 'render_mode', 'color', 'backing', 'layout'], `${beat.beat_id}.${layer.layer_id}.typography`);
         sha(layer.typography?.content_sha256, `${beat.beat_id} typography`);
+        if (layer.typography.layout !== undefined) {
+          if (!layer.typography.layout || typeof layer.typography.layout !== 'object' || Array.isArray(layer.typography.layout)) fail('COMPOSITION_TYPOGRAPHY_LAYOUT_INVALID', `${beat.beat_id}.${layer.layer_id}.typography.layout`);
+          exact(layer.typography.layout, typographyLayoutModule.V4_LAYOUT_KEYS, `${beat.beat_id}.${layer.layer_id}.typography.layout`);
+          if ((layer.typography.render_mode || 'DRAW_TEXT') !== 'DRAW_TEXT') fail('COMPOSITION_TYPOGRAPHY_LAYOUT_RENDER_MODE_INVALID', `${beat.beat_id}.${layer.layer_id}: layout applies only to DRAW_TEXT`);
+        }
         if (digest(layer.typography?.content || '') !== layer.typography.content_sha256 || !['EDITORIAL', 'QUOTE', 'HEADLINE'].includes(layer.typography.preset) || !['LEFT', 'CENTER', 'RIGHT'].includes(layer.typography.alignment) || !Number.isInteger(layer.typography.safe_margin_px) || !['DRAW_TEXT', 'PRE_RENDERED'].includes(layer.typography.render_mode || 'DRAW_TEXT') || (layer.typography.render_mode === 'PRE_RENDERED' && !asset)) fail('COMPOSITION_TYPOGRAPHY_INVALID', beat.beat_id);
         validateGeometry(layer.typography.region, output, `${beat.beat_id}.${layer.layer_id}.region`);
         if (layer.typography.color !== undefined && layer.typography.color !== '#FFFFFF') fail('COMPOSITION_TYPOGRAPHY_COLOR_INVALID', `${beat.beat_id}: V2 text is white`);
@@ -310,7 +315,7 @@ function validateComposition(composition, timeline, output, assetManifest, optio
             if (!asset || asset.media_kind !== 'IMAGE' || asset.role !== 'TYPOGRAPHIC') fail('COMPOSITION_TYPOGRAPHY_PRE_RENDERED_INVALID', `${beat.beat_id}: V2 pre-rendered text must be one typographic image confined to its declared region`);
             canonicalTypographyLayout = typographyLayoutModule.confinedPreRenderedTypography(layer.typography);
           } else canonicalTypographyLayout = typographyLayoutModule.layoutTypography(layer.typography);
-        }
+        } else if (layer.typography.layout !== undefined) canonicalTypographyLayout = typographyLayoutModule.layoutTypography(layer.typography);
       }
       if (layer.type === 'PRESENTER_PROXY') {
         // Doctrine presenter_proxy: a generic transparent overlay laid over the
@@ -551,7 +556,7 @@ function buildVideoGraph(plan, command, filters) {
         filters.push(`[${current}][${source}]overlay=x='${x}':y='${y}':eval=frame:eof_action=pass${revealEnable(layer, beat)}[beat${beatIndex}p${layer.z}]`); current = `beat${beatIndex}p${layer.z}`;
       } else if (layer.type === 'TYPOGRAPHY') {
         const type = layer.typography; const region = type.region;
-        if (plan.composition.grammar === V2_GRAMMAR) typographyLayoutModule.assertCanonicalLayout(type, layer.typography_layout);
+        if (plan.composition.grammar === V2_GRAMMAR || type.layout !== undefined) typographyLayoutModule.assertCanonicalLayout(type, layer.typography_layout);
         if (type.render_mode === 'PRE_RENDERED' && plan.composition.grammar === V2_GRAMMAR) {
           const asset = layer.resolved_asset; const index = inputByAsset.get(asset.asset_id);
           if (!current) { filters.push(`color=c=black:s=${plan.output.width}x${plan.output.height}:r=${plan.output.fps}:d=${duration}[b${beatIndex}base]`); current = `b${beatIndex}base`; }
