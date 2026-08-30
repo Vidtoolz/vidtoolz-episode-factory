@@ -130,12 +130,28 @@
     "timing_authority": "FINAL PAUSED NARRATION (vidtoolz.finalPausedNarration.v1) \u2014 the renderer recomputes the four-second interval schedule from the paused sections and rejects any drift",
     "invariants": [
       "every beat carries interval_id; intervals are contiguous, never span a narration section, and obey 119..121 frames (section-final 1..121)",
-      "one unique one-use background asset per interval; identical bytes or shared provenance source identity under any filename/treatment are reuse and rejected",
+      "one unique one-use background asset per interval; uniqueness authority is the canonical background identity (vidtoolz.backgroundIdentity.v1) \u2014 a content-addressed root lineage plus a canonical decoded-pixel fingerprint \u2014 never the caller's provenance wrapper: identical decoded pixels under any filename/encoding/metadata are the same background, canonical derivatives (crop/zoom/reframe/mirror/recolor/blur/treatment) inherit their parent's root, missing or stripped lineage fails closed, roots cannot be caller-minted (public content formula), and the renderer re-derives the fingerprint from the actual bytes (scripts/visual-draft-background-identity.js)",
       "every V2 state keeps a full-frame background; a standalone graphic state is a justified typographic/deterministic background asset",
       "V2 typography is white with a translucent GREY backing inside the doctrine opacity band and frame-safe margins; presenter overlap is legal, frame-edge violations are not",
       "the PRESENTER_PROXY layer is a static, lower-right, <25%-area, alpha-validated final overlay above the complete primary frame, stable across all beats; primary_composition_digest_sha256 excludes it and must be identical with and without the proxy",
       "the interval binding manifest (vidtoolz.visualDraftIntervalBinding.v1) is hash-pinned and validated: 100% coverage, exact spoken text per interval, zero generic filler, bound assets equal composed backgrounds"
     ],
-    "validators": "scripts/production-assembly-composition.js#validateComposition (options.doctrineRules) + scripts/production-assembly-renderer.js#validateV2Closure"
+    "validators": "scripts/production-assembly-composition.js#validateComposition (options.doctrineRules) + scripts/production-assembly-renderer.js#validateV2Closure",
+    "background_identity": {
+      "schema": "vidtoolz.backgroundIdentity.v1 (required on every V2 script-background manifest asset; forbidden on V1 manifests)",
+      "source_classes": [
+        "ROOT_GENERATED_ASSET",
+        "ROOT_DETERMINISTIC_ASSET",
+        "REGISTERED_IMPORT",
+        "DERIVED_ASSET"
+      ],
+      "root_identity": "sha256('VIDTOOLZ_BACKGROUND_ROOT_V1|' + pixel_fingerprint) for root classes; inherited from the verified parent for DERIVED_ASSET",
+      "pixel_fingerprint": "sha256('VIDTOOLZ_PIXELS_V1|w=<w>|h=<h>|fmt=rgba8_straight|' + first decoded frame as straight-alpha RGBA rawvideo, row-major top-down, no metadata/container)",
+      "registration": "scripts/visual-draft-background-identity.js#registerRootBackground / #registerDerivedBackground \u2014 identity derived from canonical content, never accepted from the caller",
+      "resolution": "scripts/production-assembly-renderer.js#validateV2Closure resolves every interval background from bytes (#resolveBackgroundIdentity); composition validation enforces shape/formula/uniqueness purely",
+      "uniqueness_domain": "one VISUAL_DRAFT programme (a single FULL_PROGRAMME composition): one root and one decoded-pixel identity per timed interval; no global cross-project ban",
+      "trust_boundary": "an externally transformed, lineage-destroyed import beyond exact decoded-pixel equality would require perceptual similarity to relate \u2014 deliberately out of scope; the canonical pipeline's own paths cannot strip lineage and exact decoded duplicates are caught regardless of wrapper",
+      "repair_provenance": "closes Codex defect LOSSLESS_REENCODE_STRIPPED_SOURCE_IDENTITY (BACKGROUND-PROVENANCE-ATTACK.json, certification rerun 2026-08-30)"
+    }
   }
 }

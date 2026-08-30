@@ -3,6 +3,7 @@
 /* Pure, fail-closed validation and ffmpeg graph construction for the one
  * canonical Production assembler. This module deliberately has no CLI. */
 const crypto = require('node:crypto');
+const backgroundIdentityModule = require('./visual-draft-background-identity.js');
 
 const SCHEMA = 'vidtoolz.productionAssemblyComposition.v1';
 const ASSET_MANIFEST_SCHEMA = 'vidtoolz.productionAssemblyAssetManifest.v1';
@@ -101,7 +102,8 @@ function validateComposition(composition, timeline, output, assetManifest, optio
   if (assetManifest?.schema !== ASSET_MANIFEST_SCHEMA || !Array.isArray(assetManifest.assets)) fail('COMPOSITION_ASSET_MANIFEST_INVALID', 'exact asset manifest required');
   const assets = new Map();
   for (const item of assetManifest.assets) {
-    exact(item, ['asset_id', 'role', 'path', 'sha256', 'media_kind', 'width', 'height', 'duration_ms', 'alpha', 'visual_crop', 'provenance', 'status', 'policy', 'fallback_asset_id', 'intended_beat_ids'], `asset.${item?.asset_id}`);
+    exact(item, ['asset_id', 'role', 'path', 'sha256', 'media_kind', 'width', 'height', 'duration_ms', 'alpha', 'visual_crop', 'provenance', 'background_identity', 'status', 'policy', 'fallback_asset_id', 'intended_beat_ids'], `asset.${item?.asset_id}`);
+    if (!grammar && item.background_identity !== undefined) fail('COMPOSITION_GRAMMAR_INVALID', `${item?.asset_id}: background_identity requires the V2 grammar`);
     if (!item.asset_id || assets.has(item.asset_id) || !ASSET_ROLES.has(item.role) || !['VIDEO', 'IMAGE'].includes(item.media_kind) || !['ACCEPTED', 'ABSENT', 'REJECTED'].includes(item.status) || !POLICIES.has(item.policy) || !item.provenance || typeof item.provenance !== 'object' || Array.isArray(item.provenance)) fail('COMPOSITION_ASSET_MANIFEST_INVALID', String(item.asset_id));
     if (item.status === 'ACCEPTED') {
       sha(item.sha256, item.asset_id); integer(item.width, `${item.asset_id}.width`); integer(item.height, `${item.asset_id}.height`);
@@ -298,6 +300,8 @@ function validateV2Grammar({ intervalGroups, proxyPlacements, resolved, sections
   const [low, high] = cadence.tolerance_frames;
   const [finalLow, finalHigh] = cadence.final_interval_frames;
   const assetToInterval = new Map();
+  const rootToInterval = new Map();
+  const fingerprintToInterval = new Map();
   const intervals = [];
   let cursor = null;
   for (const group of intervalGroups.values()) {
@@ -312,13 +316,29 @@ function validateV2Grammar({ intervalGroups, proxyPlacements, resolved, sections
     } else if (frames < low - 1e-9 || frames > high + 1e-9) fail('COMPOSITION_INTERVAL_CADENCE_INVALID', `${group.interval_id}: ${frames.toFixed(2)} frames outside ${low}..${high}`);
     if (group.background_asset_ids.size > 1) fail('COMPOSITION_INTERVAL_BACKGROUND_UNSTABLE', `${group.interval_id}: one interval carries one background identity`);
     const backgroundAssetId = [...group.background_asset_ids][0] || null;
+    let identityRecord = null;
     if (backgroundAssetId) {
       if (assetToInterval.has(backgroundAssetId)) fail('COMPOSITION_BACKGROUND_REUSE', `${backgroundAssetId}: already used by ${assetToInterval.get(backgroundAssetId)}`);
       assetToInterval.set(backgroundAssetId, group.interval_id);
+      // Canonical background identity (defect repair, Codex 2026-08-30):
+      // uniqueness authority is the canonical identity record — content-bound
+      // root lineage + decoded-pixel fingerprint — never the caller's loose
+      // provenance wrapper. Missing/stripped lineage fails closed; the root
+      // formula makes caller-minted roots unrepresentable; the renderer
+      // additionally re-derives the fingerprint from the actual bytes.
+      const backgroundManifestItem = assets.get(backgroundAssetId);
+      backgroundIdentityModule.validateBackgroundIdentityShape(backgroundManifestItem?.background_identity, backgroundAssetId);
+      identityRecord = backgroundManifestItem.background_identity;
+      const root = identityRecord.root_background_identity;
+      const fingerprint = identityRecord.pixel_fingerprint_sha256;
+      if (rootToInterval.has(root)) fail('COMPOSITION_BACKGROUND_IDENTITY_REUSE', `${backgroundAssetId}: same root background identity as ${rootToInterval.get(root)} — a canonical derivative or re-wrapped copy is the same background`);
+      rootToInterval.set(root, group.interval_id);
+      if (fingerprintToInterval.has(fingerprint)) fail('COMPOSITION_BACKGROUND_VISUAL_REUSE', `${backgroundAssetId}: identical decoded pixels already used by ${fingerprintToInterval.get(fingerprint)} — re-encoding is not a new background`);
+      fingerprintToInterval.set(fingerprint, group.interval_id);
       if (group.background_motions.length !== group.beat_ids.length) fail('COMPOSITION_INTERVAL_BACKGROUND_UNSTABLE', `${group.interval_id}: every overlay state keeps the interval background`);
       if (group.beat_ids.length > 1 && group.background_motions.some((motion) => motion !== 'STATIC')) fail('COMPOSITION_INTERVAL_MOTION_INVALID', `${group.interval_id}: multi-state intervals hold the background still`);
     }
-    intervals.push({ interval_id: group.interval_id, section_id: group.section_id, start_ms: group.start_ms, end_ms: group.end_ms, duration_frames: Number(frames.toFixed(4)), section_final: isSectionFinal, background_asset_id: backgroundAssetId, beat_ids: group.beat_ids });
+    intervals.push({ interval_id: group.interval_id, section_id: group.section_id, start_ms: group.start_ms, end_ms: group.end_ms, duration_frames: Number(frames.toFixed(4)), section_final: isSectionFinal, background_asset_id: backgroundAssetId, root_background_identity: identityRecord?.root_background_identity || null, pixel_fingerprint_sha256: identityRecord?.pixel_fingerprint_sha256 || null, source_class: identityRecord?.source_class || null, beat_ids: group.beat_ids });
   }
   // Actual reuse detection beyond ids: identical bytes or a shared upstream
   // source under a different filename/treatment are still the same background.

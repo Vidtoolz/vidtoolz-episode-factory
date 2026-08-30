@@ -13,6 +13,7 @@ const { assert, test, fs, os, path } = require('./_helpers.js');
 const engine = require('../scripts/production-assembly-composition.js');
 const renderer = require('../scripts/production-assembly-renderer.js');
 const doctrineModule = require('../scripts/visual-draft-doctrine.js');
+const backgroundIdentityModule = require('../scripts/visual-draft-background-identity.js');
 const scheduler = require('../scripts/visual-draft-interval-scheduler.js');
 const bindingModule = require('../scripts/visual-draft-binding.js');
 
@@ -20,8 +21,20 @@ const RULES = doctrineModule.activeDoctrine().rules;
 const OUTPUT = { width: 1080, height: 1920, fps: 30 };
 const TIMELINE = [{ section_id: 'S1', story_order: 1, in_ms: 0, out_ms: 8000, duration_ms: 8000, programme_in_ms: 0, programme_out_ms: 8000, script_beat_ids: ['B01', 'B02', 'B03'], presenter_authority: 'NOT_APPLICABLE', audio_path: '/dev/null', audio_sha256: 'c'.repeat(64) }];
 
+/* Canonical root identity record over a (fixture) pixel fingerprint: the
+ * root MUST satisfy the public content formula or validation refuses it. */
+function rootIdentityRecord(pixelFingerprint) {
+  return {
+    schema: backgroundIdentityModule.IDENTITY_SCHEMA,
+    source_class: 'ROOT_GENERATED_ASSET',
+    root_background_identity: backgroundIdentityModule.deriveRootIdentity(pixelFingerprint),
+    pixel_fingerprint_sha256: pixelFingerprint,
+    fingerprint_algorithm: backgroundIdentityModule.PIXEL_FINGERPRINT_ALGORITHM,
+    width: 1080, height: 1920, parent: null, materialization: null,
+  };
+}
 function backgroundAsset(id, sha, beats, provenance = {}) {
-  return { asset_id: id, role: 'STATIC_GENERATED_IMAGE_WITH_MOTION', path: `/assets/${id}.png`, sha256: sha, media_kind: 'IMAGE', width: 1080, height: 1920, provenance: { producer: 'FLUX lane', generation: { prompt: `unique concept ${id}`, ...provenance } }, status: 'ACCEPTED', policy: 'REQUIRED', intended_beat_ids: beats };
+  return { asset_id: id, role: 'STATIC_GENERATED_IMAGE_WITH_MOTION', path: `/assets/${id}.png`, sha256: sha, media_kind: 'IMAGE', width: 1080, height: 1920, provenance: { producer: 'FLUX lane', generation: { prompt: `unique concept ${id}`, ...provenance } }, background_identity: rootIdentityRecord(sha), status: 'ACCEPTED', policy: 'REQUIRED', intended_beat_ids: beats };
 }
 function proxyAsset(overrides = {}) {
   return { asset_id: 'REUSABLE_DRAFT_PRESENTER_PROXY_V1', role: 'GENERIC_PRESENTER_PROXY', path: '/assets/proxy.png', sha256: 'e'.repeat(64), media_kind: 'IMAGE', width: 900, height: 1920, alpha: { required: true, format: 'PNG_ALPHA' }, provenance: { producer: 'generic presenter proxy lane' }, status: 'ACCEPTED', policy: 'REQUIRED', intended_beat_ids: ['B01', 'B02', 'B03'], ...overrides };
@@ -92,7 +105,9 @@ test('V2G3 V1 compositions are untouched: grammar fields absent means no V2 outp
   delete composition.grammar; delete composition.doctrine; delete composition.interval_binding;
   for (const item of composition.beats) delete item.interval_id;
   for (const item of composition.beats) for (const layer of item.layers) if (layer.typography) delete layer.typography.backing;
-  const result = engine.validateComposition(composition, TIMELINE, OUTPUT, v2Manifest({ includeProxy: false }));
+  const v1Manifest = v2Manifest({ includeProxy: false });
+  for (const item of v1Manifest.assets) delete item.background_identity;
+  const result = engine.validateComposition(composition, TIMELINE, OUTPUT, v1Manifest);
   assert.equal(result.grammar, undefined);
   assert.equal(result.intervals, undefined);
   assert.equal(result.primary_composition_digest_sha256, undefined);
@@ -250,7 +265,9 @@ test('V2G24 the proxy is V2-only: a V1 composition may not carry it', () => {
   const composition = v2Composition();
   delete composition.grammar; delete composition.doctrine; delete composition.interval_binding;
   for (const item of composition.beats) { delete item.interval_id; for (const layer of item.layers) if (layer.typography) delete layer.typography.backing; }
-  assert.throws(() => engine.validateComposition(composition, TIMELINE, OUTPUT, v2Manifest()), { code: 'COMPOSITION_PROXY_GRAMMAR_REQUIRED' });
+  const v1Manifest = v2Manifest();
+  for (const item of v1Manifest.assets) delete item.background_identity;
+  assert.throws(() => engine.validateComposition(composition, TIMELINE, OUTPUT, v1Manifest), { code: 'COMPOSITION_PROXY_GRAMMAR_REQUIRED' });
 });
 
 test('V2G25 the proxy can never be the primary layer', () => {
@@ -323,32 +340,35 @@ function closureFixture(mutate = {}) {
     composition: { interval_binding: { path: bindingPath, sha256: shaOf(bindingPath) }, ...mutate.specComposition },
   };
   const timeline = mutate.timeline || TIMELINE;
-  return { spec, context: { composition: mutate.composition ? mutate.composition(composition) : composition, timeline, assetManifest: v2Manifest({ includeProxy: false }), doctrineRules: RULES, narration: { source_class: 'SYNTHETIC_DRAFT_NARRATION' } } };
+  const assetManifest = v2Manifest({ includeProxy: false });
+  const fingerprintByPath = new Map(assetManifest.assets.filter((a) => a.background_identity).map((a) => [a.path, a.background_identity.pixel_fingerprint_sha256]));
+  const computePixelFingerprint = (file) => ({ pixel_fingerprint_sha256: fingerprintByPath.get(file), width: 1080, height: 1920 });
+  return { spec, options: { computePixelFingerprint }, context: { composition: mutate.composition ? mutate.composition(composition) : composition, timeline, assetManifest, doctrineRules: RULES, narration: { source_class: 'SYNTHETIC_DRAFT_NARRATION' } } };
 }
 
 test('V2G29 the closure accepts a spec whose narration IS the final paused narration', async () => {
-  const { spec, context } = closureFixture();
-  await renderer.validateV2Closure(spec, context);
+  const { spec, context, options } = closureFixture();
+  await renderer.validateV2Closure(spec, context, options);
 });
 
 test('V2G30 scheduling against the pre-pause narration bytes fails closed', async () => {
-  const { spec, context } = closureFixture({ narrationSha: 'f'.repeat(64) });
-  await assert.rejects(renderer.validateV2Closure(spec, context), { code: 'V2_TIMING_AUTHORITY_VIOLATION' });
+  const { spec, context, options } = closureFixture({ narrationSha: 'f'.repeat(64) });
+  await assert.rejects(renderer.validateV2Closure(spec, context, options), { code: 'V2_TIMING_AUTHORITY_VIOLATION' });
 });
 
 test('V2G31 alignment sections that ignore the paused timeline fail closed', async () => {
-  const { spec, context } = closureFixture({ timeline: [{ ...TIMELINE[0], out_ms: 7500, programme_out_ms: 7500 }] });
-  await assert.rejects(renderer.validateV2Closure(spec, context), { code: 'V2_TIMING_AUTHORITY_VIOLATION' });
+  const { spec, context, options } = closureFixture({ timeline: [{ ...TIMELINE[0], out_ms: 7500, programme_out_ms: 7500 }] });
+  await assert.rejects(renderer.validateV2Closure(spec, context, options), { code: 'V2_TIMING_AUTHORITY_VIOLATION' });
 });
 
 test('V2G32 composed intervals must equal the schedule recomputed from the timing authority', async () => {
-  const { spec, context } = closureFixture({ composition: (composition) => ({ ...composition, intervals: [{ ...composition.intervals[0], end_ms: 4100 }, composition.intervals[1]] }) });
-  await assert.rejects(renderer.validateV2Closure(spec, context), { code: 'V2_INTERVAL_SCHEDULE_DRIFT' });
+  const { spec, context, options } = closureFixture({ composition: (composition) => ({ ...composition, intervals: [{ ...composition.intervals[0], end_ms: 4100 }, composition.intervals[1]] }) });
+  await assert.rejects(renderer.validateV2Closure(spec, context, options), { code: 'V2_INTERVAL_SCHEDULE_DRIFT' });
 });
 
 test('V2G33 a bound asset that is not that interval\'s composed background fails closed', async () => {
-  const { spec, context } = closureFixture({ composition: (composition) => ({ ...composition, intervals: [{ ...composition.intervals[0], background_asset_id: 'bg-two' }, { ...composition.intervals[1], background_asset_id: 'bg-one' }] }) });
-  await assert.rejects(renderer.validateV2Closure(spec, context), { code: 'V2_BINDING_COMPOSITION_MISMATCH' });
+  const { spec, context, options } = closureFixture({ composition: (composition) => ({ ...composition, intervals: [{ ...composition.intervals[0], background_asset_id: 'bg-two' }, { ...composition.intervals[1], background_asset_id: 'bg-one' }] }) });
+  await assert.rejects(renderer.validateV2Closure(spec, context, options), { code: 'V2_BINDING_COMPOSITION_MISMATCH' });
 });
 
 test('V2G34 proxy alpha bytes are really validated: an opaque image is not a proxy', () => {

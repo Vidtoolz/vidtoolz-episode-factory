@@ -18,6 +18,7 @@ const compositionEngine = require('./production-assembly-composition.js');
 const doctrineModule = require('./visual-draft-doctrine.js');
 const intervalScheduler = require('./visual-draft-interval-scheduler.js');
 const intervalBinding = require('./visual-draft-binding.js');
+const backgroundIdentityModule = require('./visual-draft-background-identity.js');
 
 const PAUSED_NARRATION_SCHEMA = 'vidtoolz.finalPausedNarration.v1';
 
@@ -287,6 +288,17 @@ async function validateV2Closure(spec, context, options = {}) {
   const backgroundByInterval = new Map(composition.intervals.map((interval) => [interval.interval_id, interval.background_asset_id]));
   for (const entry of binding.intervals) {
     if (backgroundByInterval.get(entry.interval_id) !== entry.asset_id) fail('V2_BINDING_COMPOSITION_MISMATCH', `${entry.interval_id}: bound asset is not this interval's background`);
+  }
+  // Canonical background identity is RESOLVED from the actual bytes here —
+  // the trusted resolver — never trusted from the manifest wrapper (Codex
+  // provenance-laundering repair). A claimed fingerprint that does not match
+  // the decoded pixels fails closed before any render.
+  const manifestByAssetId = new Map((assetManifest.assets || []).map((item) => [item.asset_id, item]));
+  for (const interval of composition.intervals) {
+    if (!interval.background_asset_id) continue;
+    const item = manifestByAssetId.get(interval.background_asset_id);
+    const resolved = backgroundIdentityModule.resolveBackgroundIdentity(item, { computePixelFingerprint: options.computePixelFingerprint });
+    if (resolved.root_background_identity !== interval.root_background_identity || resolved.pixel_fingerprint_sha256 !== interval.pixel_fingerprint_sha256) fail('BACKGROUND_FINGERPRINT_MISMATCH', `${interval.interval_id}: composed identity does not match the resolved canonical identity`);
   }
 }
 
