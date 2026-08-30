@@ -217,6 +217,28 @@ function validateSemanticHandoff(handoff) {
   if (handoff.music.required && (!handoff.music.asset?.sha256 || !handoff.music.asset?.path)) fail('MUSIC_ASSET_REQUIRED', handoff.run_id);
   return true;
 }
+function projectNarrationForRenderer(handoff, runDir, roots) {
+  const narration = handoff?.narration;
+  const packet = narration?.packet_binding;
+  if (!narration?.required || !packet) fail('NARRATION_REQUIRED', handoff?.run_id || 'unknown');
+  if (packet.source_class !== narration.source_class || packet.sha256 !== narration.sha256
+    || packet.alignment?.sha256 !== narration.alignment?.sha256
+    || packet.alignment?.digest !== narration.alignment?.digest) fail('NARRATION_PACKET_DRIFT', handoff.run_id);
+  if (handoff.timeline?.duration_ms !== narration.duration_ms) fail('NARRATION_TIMELINE_DRIFT', `${handoff.timeline?.duration_ms} != ${narration.duration_ms}`);
+  if (!path.isAbsolute(narration.path)) fail('NARRATION_CANONICAL_PATH_REQUIRED', narration.path);
+  if (!path.isAbsolute(narration.alignment.path)) fail('NARRATION_ALIGNMENT_CANONICAL_PATH_REQUIRED', narration.alignment.path);
+  const narrationPath = resolveAuthorityPath(runDir, narration.path, roots, 'narration');
+  const alignmentPath = resolveAuthorityPath(runDir, narration.alignment.path, roots, 'narration alignment');
+  if (narrationPath !== narration.path) fail('NARRATION_CANONICAL_PATH_REQUIRED', narration.path);
+  if (alignmentPath !== narration.alignment.path) fail('NARRATION_ALIGNMENT_CANONICAL_PATH_REQUIRED', narration.alignment.path);
+  if (sha256FileSync(narrationPath) !== narration.sha256) fail('NARRATION_SHA_DRIFT', narrationPath);
+  if (sha256FileSync(alignmentPath) !== narration.alignment.sha256) fail('NARRATION_ALIGNMENT_DRIFT', alignmentPath);
+  return {
+    ...packet,
+    resolved_path: narrationPath,
+    alignment: { ...packet.alignment, resolved_path: alignmentPath },
+  };
+}
 function buildAssetRecord(asset, manifestPin, resolvedPath) {
   return {
     asset_id: asset.asset_id,
@@ -491,7 +513,7 @@ function rendererSpecFromHandoff(handoff, runDir, roots) {
     input_roots: roots,
     output_root: runDir,
     release_packet: { path: handoff.production.release_packet.path, sha256: handoff.production.release_packet.sha256 },
-    narration: { ...handoff.narration.packet_binding },
+    narration: projectNarrationForRenderer(handoff, runDir, roots),
     story: handoff.production.story,
     visual_plan: handoff.production.visual_plan,
     forbidden_media_sha256: forbidden,
@@ -625,7 +647,7 @@ module.exports = {
   REVIEW_EVIDENCE_SCHEMA, LEGACY_INTAKE_SCHEMA, ASSEMBLY_DIR, STATE_FILE,
   DirectedDraftAssemblyError, canonicalize, digest, jsonBytesSha, sha256FileSync, defaultAllowedRoots,
   resolveAuthorityPath, resolveRunDir, discoverActiveIntake, flattenArtifacts,
-  validateTimelineModel, validateSemanticHandoff, materialize, validateRegisteredHandoff,
+  validateTimelineModel, validateSemanticHandoff, projectNarrationForRenderer, materialize, validateRegisteredHandoff,
   rendererSpecFromHandoff, consume, buildReviewEvidence, execute, parseArgs, main,
 };
 

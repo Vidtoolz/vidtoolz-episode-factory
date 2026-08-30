@@ -116,6 +116,13 @@ function narrationAlignmentDigest(value) {
   const copy = { ...value }; delete copy.alignment_digest_sha256;
   return digest(copy);
 }
+function narrationPacketDeclaration(value) {
+  if (!value || typeof value !== 'object') return value;
+  const declaration = structuredClone(value);
+  delete declaration.resolved_path;
+  if (declaration.alignment && typeof declaration.alignment === 'object') delete declaration.alignment.resolved_path;
+  return declaration;
+}
 function visiblePresenterRequested(spec) {
   return (spec.composition?.beats || []).some((beat) => (beat.layers || []).some((layer) => layer.type === 'PRESENTER' && layer.visible !== false));
 }
@@ -381,11 +388,11 @@ async function validateInputs(spec, options = {}) {
     }
   } else {
     if (spec.human_review != null || packet.human_review_binding_sha256 != null || (packet.presenter_sources || []).length !== 0 || (spec.crops || []).length !== 0) fail('VISUAL_DRAFT_PRESENTER_PLACEHOLDER_FORBIDDEN', 'presenter authority/crops must be absent when no presenter is requested');
-    if (!spec.narration || canonicalize(spec.narration) !== canonicalize(packet.narration)) fail('NARRATION_PACKET_DRIFT', 'exact narration binding required in spec and release packet');
+    if (!spec.narration || canonicalize(narrationPacketDeclaration(spec.narration)) !== canonicalize(packet.narration)) fail('NARRATION_PACKET_DRIFT', 'exact narration binding required in spec and release packet');
     if (!NARRATION_SOURCE_CLASSES.has(spec.narration.source_class)) fail('NARRATION_SOURCE_CLASS_INVALID', String(spec.narration.source_class));
     assertSha(spec.narration.sha256, 'narration sha256'); assertSha(spec.narration.alignment?.sha256, 'narration alignment sha256');
-    const narrationPath = requireInputPath(spec.narration.path, spec.input_roots, 'narration');
-    const alignmentPath = requireInputPath(spec.narration.alignment.path, spec.input_roots, 'narration alignment');
+    const narrationPath = requireInputPath(spec.narration.resolved_path || spec.narration.path, spec.input_roots, 'narration');
+    const alignmentPath = requireInputPath(spec.narration.alignment.resolved_path || spec.narration.alignment.path, spec.input_roots, 'narration alignment');
     const hashFile = options.hashFile || sha256File;
     const narrationSha = await hashFile(narrationPath); const alignmentSha = await hashFile(alignmentPath);
     if (narrationSha !== spec.narration.sha256) fail('NARRATION_SHA_DRIFT', 'narration bytes changed');
@@ -817,6 +824,6 @@ if (require.main === module) {
 module.exports = {
   SPEC_SCHEMA, PACKET_SCHEMA, PLAN_SCHEMA, MANIFEST_SCHEMA, EVIDENCE_SCHEMA, COMPLETION_SCHEMA, LOCK_SCHEMA, NARRATION_ALIGNMENT_SCHEMA,
   PAUSED_NARRATION_SCHEMA,
-  canonicalize, digest, narrationAlignmentDigest, sha256File, probeMedia, ffmpegDecoders, inspectAlpha, inspectImageAlpha, validatePresenterAlphaAsset, validateProxyAlphaAsset, musicDecisionDigest, activeMusicDecision, processStartIdentity,
+  canonicalize, digest, narrationAlignmentDigest, narrationPacketDeclaration, sha256File, probeMedia, ffmpegDecoders, inspectAlpha, inspectImageAlpha, validatePresenterAlphaAsset, validateProxyAlphaAsset, musicDecisionDigest, activeMusicDecision, processStartIdentity,
   lockHolderState, acquireRenderLock, releaseRenderLock, validateV2Closure, validateInputs, buildTimeline, buildPlan, buildFfmpegCommand, qcCandidate, renderFromSpec, renderPreviewFromSpec,
 };
