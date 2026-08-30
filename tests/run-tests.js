@@ -49,6 +49,7 @@ require("./tier3-human-performance-authority.test.js");
 require("./presenter-boundary-review.test.js");
 require("./production-assembly-renderer.test.js");
 require("./production-assembly-composition.test.js");
+require("./visual-draft-doctrine.test.js");
 require("./lifecycle-authority-invariant.test.js");
 require("./package-lifecycle-integration.test.js");
 require("./video-prompts.test.js");

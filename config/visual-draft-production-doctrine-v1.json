@@ -1,0 +1,263 @@
+{
+  "schema": "vidtoolz.visualDraftProductionDoctrine.v1",
+  "artifact_type": "VISUAL_DRAFT_PRODUCTION_DOCTRINE",
+  "doctrine_id": "VISUAL_DRAFT_PRODUCTION_DOCTRINE",
+  "purpose": "Single append-only owner of the hard human production rules for normal VISUAL_DRAFT runs. Consumers pin doctrine_id + version + binding digest; they do not copy rule constants (defect class: DOCTRINE_CONSTANT_DUPLICATION). VIDTOOLZ_STYLE_REFERENCE_V1 remains advisory, evidence-derived, and may reference but never own or duplicate these rules.",
+  "authority_tier": "HUMAN_PRODUCTION_DOCTRINE (rank 2): below live human decisions for a specific run (rank 1); above style reference (rank 3), agent recommendation, QC advisory, and technical validation",
+  "temporal_semantics": "Chronological history is preserved. A run is governed by the doctrine version that was ACTIVE when its render spec was frozen. Historical runs are never regoverned retroactively. The V1 canary run 2026-08-30-authorship-is-not-manual-execution-post-integration-autonomous-visual-draft-canary predates version 1 and remains governed by its own run-local RUN-CONTRACT.md doctrine (still-first, asset economy); that history is preserved, not amended.",
+  "succession_rule": "append-only versions[]; every non-last entry status SUPERSEDED; exactly one ACTIVE entry which must be last; predecessor_version links the chain; binding_digest_sha256 = sha256 of the canonicalized entry minus that field; digest mismatch or non-ACTIVE consumption fails closed (DOCTRINE_BINDING_MISMATCH / DOCTRINE_STALE_BINDING); in-flight runs keep their frozen binding, new runs bind the ACTIVE version explicitly",
+  "loader": "scripts/visual-draft-doctrine.js#loadDoctrine / #activeDoctrine / #doctrineBinding",
+  "versions": [
+    {
+      "version": 1,
+      "status": "ACTIVE",
+      "predecessor_version": null,
+      "effective_from": "2026-08-30",
+      "authority": {
+        "type": "HUMAN",
+        "id": "Mikko Pakkala",
+        "decided_at": "2026-08-30",
+        "decision_record": "/home/vidtoolz/outputs/hermes-post-e-human-creative-amendment-plan-2026-08-30/FINAL-HUMAN-CREATIVE-AMENDMENT-PLAN.md (human-approved V2 implementation contract)"
+      },
+      "applies_to": "normal VISUAL_DRAFT production from V2 onward; explicit run-level human direction outranks any rule here",
+      "rules": {
+        "voiceover_pauses": {
+          "required": true,
+          "target_seconds": 0.5,
+          "target_frames_30fps": 15,
+          "occasional": true,
+          "after_every_sentence_forbidden": true,
+          "placement": [
+            "complete idea",
+            "before contrast",
+            "rhetorical turn",
+            "argument boundary",
+            "before conclusion",
+            "after dense sentence",
+            "natural breath"
+          ],
+          "canonical_words_immutable": true,
+          "allowed_change": "TIMING_ONLY"
+        },
+        "timing_authority": {
+          "authority": "FINAL_PAUSED_NARRATION",
+          "binds": [
+            "visual intervals",
+            "backgrounds",
+            "overlays",
+            "music duration",
+            "assembly"
+          ],
+          "pre_pause_duration_consumption_forbidden": true
+        },
+        "background_cadence": {
+          "target_seconds": 4,
+          "target_frames": 120,
+          "tolerance_frames": [
+            119,
+            121
+          ],
+          "final_interval_frames": [
+            1,
+            121
+          ],
+          "intervals_never_span_narration_sections": true,
+          "hard_cuts_dominate": true,
+          "cut_is_automatic_level_b": false
+        },
+        "background_uniqueness": {
+          "scope": "SCRIPT_MATCHED_BACKGROUND_IMAGERY",
+          "reuse": 0,
+          "one_asset_one_interval": true,
+          "transform_of_same_source_is_reuse": [
+            "crop",
+            "zoom",
+            "pan",
+            "reframe",
+            "recolor",
+            "blur",
+            "mirror",
+            "alternate treatment",
+            "copy under new filename"
+          ],
+          "identity_basis": [
+            "sha256 bytes",
+            "provenance source identity"
+          ],
+          "exempt_reusable_system_assets": [
+            "presenter proxy",
+            "fonts",
+            "icons",
+            "primitives",
+            "templates",
+            "overlay components",
+            "layout logic"
+          ]
+        },
+        "script_binding": {
+          "coverage_percent": 100,
+          "orphan_intervals": 0,
+          "generic_filler": 0,
+          "required_fields": [
+            "interval_id",
+            "start",
+            "end",
+            "spoken_text",
+            "semantic_summary",
+            "visual_objective",
+            "visualization_type",
+            "image_concept",
+            "prompt_or_deterministic_spec",
+            "asset_id",
+            "asset_hash"
+          ],
+          "visualization_types": [
+            "LITERAL",
+            "METAPHORICAL",
+            "CONTRAST",
+            "EXPLANATORY",
+            "DIAGRAMMATIC",
+            "EMOTIONAL_ATMOSPHERIC",
+            "CONCEPTUAL"
+          ]
+        },
+        "background_asset_classes": {
+          "legal_methods": [
+            "GENERATED_STILL",
+            "DETERMINISTIC_GRAPHIC_BACKGROUND",
+            "DIAGRAMMATIC_VISUAL_WORLD",
+            "ABSTRACT_EXPLANATORY_COMPOSITION",
+            "PHOTO_LIKE_GENERATED_IMAGE",
+            "INFOGRAPHIC_BACKGROUND",
+            "TYPOGRAPHIC_VISUAL_COMPOSITION"
+          ],
+          "must": [
+            "UNIQUE",
+            "ONE_USE",
+            "FULL_FRAME",
+            "SCRIPT_MATCHED"
+          ],
+          "generated_video": "OPTIONAL_NOT_REQUIRED"
+        },
+        "full_frame_composition": {
+          "authority_class": "HARD_PRODUCTION_DOCTRINE_NOT_STYLE_ADVISORY",
+          "canvas": "complete 1080x1920",
+          "presenter_influence": 0,
+          "presenter_exclusion_zone": null,
+          "forbidden": [
+            "reserve lower-right",
+            "leave blank presenter space",
+            "shift content for presenter",
+            "shrink cards for presenter",
+            "crop for presenter",
+            "presenter-aware prompt"
+          ]
+        },
+        "overlay_grammar": {
+          "normal": [
+            "FULL_FRAME_SCRIPT_BACKGROUND",
+            "TEXT_OR_GRAPHIC_OVERLAY"
+          ],
+          "background_identity_separate_from_overlay_state": true,
+          "text_change_requires_new_background": false,
+          "standalone_full_frame_graphic": "legal only with explicit per-beat justification",
+          "read_states_retain_background": true
+        },
+        "text_treatment": {
+          "text_color": "#FFFFFF",
+          "backing_color": "#3C3C3C",
+          "backing_opacity_validation_range": [
+            0.42,
+            0.68
+          ],
+          "backing_opacity_initial": 0.56,
+          "backing_scope": "information unit, not automatic full-frame veil",
+          "frame_safe_margins_px": {
+            "left": 72,
+            "right": 72,
+            "top": 96,
+            "bottom": 96
+          },
+          "presenter_margin_px": 0,
+          "clipping": 0,
+          "overflow": 0
+        },
+        "presenter_proxy": {
+          "normal_default": true,
+          "classification": "GENERIC_HUMAN_PRESENTER_PROXY",
+          "asset_id": "REUSABLE_DRAFT_PRESENTER_PROXY_V1",
+          "not_classes": [
+            "MIKKO_LIKENESS",
+            "HUMAN_DRAFT_PERFORMANCE",
+            "FINAL_HUMAN_PERFORMANCE",
+            "FINAL_PRESENTER_ASSET"
+          ],
+          "format": "transparent PNG with clean nontrivial alpha",
+          "position": "LOWER_RIGHT",
+          "stable_position": true,
+          "area_ratio_hard_ceiling": 0.25,
+          "initial_visual_test_band": [
+            0.1,
+            0.18
+          ],
+          "layer_order": "FINAL_FOREGROUND_AFTER_PRIMARY_COMPOSITION",
+          "may_overlap_primary_content": true,
+          "collision_avoidance_forbidden": true,
+          "primary_composition_influence": 0,
+          "reuse_across_drafts": true,
+          "counts_as_background_reuse": false,
+          "presenter_free_exceptions": [
+            "explicit Mikko instruction",
+            "technical diagnostic",
+            "special episode direction",
+            "intentional omission"
+          ],
+          "visible_to_primary_visual_reasoning": false
+        },
+        "music": {
+          "normal": "ORIGINAL_DRAFT_MUSIC",
+          "fallback": "DRAFT_MUSIC_PLACEHOLDER",
+          "fallback_is_degraded": true,
+          "original_music_acceptance_on_fallback": "FAIL_DEGRADED",
+          "duration_authority": "FINAL_PAUSED_NARRATION",
+          "duration_tolerance_seconds": 0.05,
+          "reuse_of_prior_video_music_forbidden": true,
+          "route": "Scorecraft score-lane -> cue-planner -> MusicRenderBrief v1 -> music-dispatch -> MiniMax Music 3 (vidlap2)",
+          "music_theory_questions_to_human": false
+        },
+        "autonomy": {
+          "ordinary_human_intervention_target": 0,
+          "system_decides": [
+            "pause positions",
+            "segmentation",
+            "concepts",
+            "prompts",
+            "materialization methods",
+            "overlays/timing",
+            "hierarchy/backing",
+            "music direction/generation",
+            "proxy",
+            "render"
+          ]
+        },
+        "level_semantics": {
+          "level_a": "macro authored state; may span several backgrounds",
+          "level_b": "confirmed meaningful semantic event; cuts and background changes are not automatic Level B",
+          "level_c": "perceptible life; no noise/grain/flicker inflation",
+          "style_reference": "ADVISORY_ONLY"
+        }
+      },
+      "binding_digest_sha256": "9605f382052d214bf97063c5ac6a94132a620ba8cb78f59d9d35dd89d6a1786b"
+    }
+  ],
+  "consumers_planned": [
+    "scripts/natural-pause-planner.js (pause target and placement bounds)",
+    "scripts/paused-narration.js (final paused narration assembly)",
+    "scripts/visual-draft-interval-scheduler.js (cadence frames and tolerance)",
+    "scripts/visual-draft-binding.js (script-visual binding contract)",
+    "scripts/production-assembly-composition.js#validateComposition (V2 grammar branch via composition.doctrine pin)",
+    "scripts/visual-plan-prompt-adapter.js (V2 full-frame prompt mode)",
+    "scripts/visual-draft-original-music.js (original music duration/fallback semantics)"
+  ],
+  "style_reference_boundary": "VIDTOOLZ_STYLE_REFERENCE_V1 (config/style-reference-contract.json) stays advisory and evidence-derived; it must not restate, own, or override any rule in this file"
+}
