@@ -1,0 +1,32 @@
+{
+  "schema": "vidtoolz.productionAssemblyExecutionSuccessorContract.v1",
+  "semantic_authority": {
+    "identity": "productionAssemblyRenderPlan.plan_digest_sha256",
+    "projection": "the render plan excluding plan_digest_sha256 and execution-derived ffmpeg_invocation",
+    "rule": "semantic projection and digest must remain exactly unchanged across an execution successor"
+  },
+  "execution_authority": {
+    "attempt_schema": "vidtoolz.productionAssemblyExecutionAttempt.v1",
+    "head_schema": "vidtoolz.productionAssemblyExecutionHead.v1",
+    "failure_schema": "vidtoolz.productionAssemblyExecutionFailure.v1",
+    "permitted_drift": ["ffmpeg_invocation"],
+    "retry_reason": "EXECUTION_SERIALIZATION_REPAIR",
+    "caller_authored_invocation": false
+  },
+  "eligibility": [
+    "predecessor is canonically incomplete/failed and not active",
+    "predecessor has no valid completion",
+    "semantic projection and digest are unchanged",
+    "all changed paths are under the explicit execution allowlist",
+    "predecessor plan bytes and lineage identity verify"
+  ],
+  "immutability": {
+    "predecessor_plan": "never rewritten or deleted",
+    "successor_attempt_descriptor": "write-once",
+    "successor_render_plan": "write-once",
+    "failure_receipt": "write-once",
+    "active_head": "canonical pointer updated atomically under the render lock"
+  },
+  "idempotence": "the same predecessor, semantic digest, invocation digest and renderer implementation digest produce the same attempt ID and reuse its existing result",
+  "output_policy": "each successor has attempt-scoped staging and sidecars; the final production output path remains reserved and completion binds the successful attempt"
+}

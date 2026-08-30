@@ -608,6 +608,7 @@ function buildReviewEvidence(consumed, renderResult) {
     },
     technical_validation: { ok: qc.full_decode === 'PASS', failures: [], decode_pass: qc.full_decode === 'PASS' },
     source_binding: { ok: true, drift: [], handoff_digest_sha256: consumed.handoff.handoff_digest_sha256 },
+    execution_attempt: manifest.execution_attempt || null,
     warnings: [], state: 'VERIFIED',
   };
 }
@@ -622,6 +623,7 @@ async function execute(runDirInput, options = {}) {
     handoff_id: consumed.handoff.handoff_id, handoff_digest_sha256: consumed.handoff.handoff_digest_sha256,
     editor_intake_digest_sha256: consumed.intake.intake_digest_sha256,
     renderer_plan_digest_sha256: result.plan.plan_digest_sha256,
+    renderer_execution_attempt: result.completion.execution_attempt || null,
     output_path: result.paths.output, output_sha256: result.completion.output_sha256,
     renderer_completion_path: result.paths.completion, review_evidence_path: reviewEvidencePath,
   };

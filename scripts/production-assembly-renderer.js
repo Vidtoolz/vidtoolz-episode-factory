@@ -19,6 +19,7 @@ const doctrineModule = require('./visual-draft-doctrine.js');
 const intervalScheduler = require('./visual-draft-interval-scheduler.js');
 const intervalBinding = require('./visual-draft-binding.js');
 const backgroundIdentityModule = require('./visual-draft-background-identity.js');
+const executionSuccessor = require('./production-assembly-execution-successor.js');
 
 const PAUSED_NARRATION_SCHEMA = 'vidtoolz.finalPausedNarration.v1';
 
@@ -192,7 +193,7 @@ function fileFingerprint(filePath) {
   catch (_) { return 'MISSING'; }
 }
 function sleepMs(milliseconds) { if (milliseconds > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds); }
-function lockObservedFiles(paths) { return [paths.lock, paths.output, paths.staged, paths.state, paths.manifest, paths.evidence, paths.completion]; }
+function lockObservedFiles(paths) { return [paths.lock, paths.output, paths.staged, paths.state, paths.manifest, paths.evidence, paths.completion, paths.head, paths.attemptsRoot].filter(Boolean); }
 function lockHolderState(lock, options = {}) {
   if (!lock || lock.schema !== LOCK_SCHEMA || !lock.owner_token || !lock.hostname || !Number.isInteger(lock.pid) || !lock.process_start_identity) return 'MALFORMED';
   const hostname = options.hostname || os.hostname();
@@ -672,29 +673,40 @@ async function renderFromSpec(specPath, options = {}) {
   const validated = await validateInputs(spec, options);
   const plan = buildPlan(spec, validated);
   const output = validated.output.target;
-  const base = output.replace(/\.mp4$/i, '');
-  const workRoot = path.join(path.dirname(output), '_work', plan.plan_digest_sha256.slice(0, 24));
-  const paths = {
-    output, plan: `${base}.render-plan.json`, state: `${base}.state.json`, manifest: `${base}.manifest.json`,
-    evidence: `${base}.evidence.json`, completion: `${base}.complete.json`, lock: `${base}.render.lock.json`,
-    staged: path.join(workRoot, 'candidate.partial.mp4'),
-  };
+  const basePaths = executionSuccessor.basePaths(output, plan);
   const hashFile = options.hashFile || sha256File;
-  if (fs.existsSync(paths.completion)) {
-    const completion = readJson(paths.completion, 'COMPLETION_INVALID');
+  if (fs.existsSync(basePaths.completion) && !fs.existsSync(basePaths.head)) {
+    const completion = readJson(basePaths.completion, 'COMPLETION_INVALID');
     if (completion.schema !== COMPLETION_SCHEMA || completion.plan_digest_sha256 !== plan.plan_digest_sha256 || !fs.existsSync(output) || await hashFile(output) !== completion.output_sha256) fail('EXISTING_OUTPUT_CONFLICT', 'completion does not match exact plan/output');
-    return { status: 'REUSED', plan, paths, completion };
+    return { status: 'REUSED', plan, paths: basePaths, completion, executionAttempt: null };
   }
   if (options.failAt === 'before-lock') fail('INJECTED_INTERRUPTION', 'before lock');
-  const ownedLock = acquireRenderLock(paths, plan, options);
+  const ownedLock = acquireRenderLock(basePaths, plan, options);
+  let context = null; let paths = null;
   try {
     if (options.failAt === 'after-lock') fail('INJECTED_INTERRUPTION', 'after lock');
-    if (fs.existsSync(paths.completion)) fail('EXISTING_OUTPUT_CONFLICT', 'candidate completed while acquiring lock');
+    const implementation = options.executionImplementation || executionSuccessor.runtimeIdentity({
+      renderer: __filename,
+      composition: require.resolve('./production-assembly-composition.js'),
+      typography: require.resolve('./canonical-typography-layout.js'),
+      successor: require.resolve('./production-assembly-execution-successor.js'),
+    }, { drawtext_serializer: compositionEngine.DRAWTEXT_SERIALIZER_VERSION });
+    context = executionSuccessor.bindCurrentPlan(executionSuccessor.resolveContext(basePaths, plan, implementation, { now: options.now }), plan);
+    executionSuccessor.activateContext(context, basePaths);
+    paths = { ...context.paths, lock: basePaths.lock, head: basePaths.head };
+    const executionAttempt = executionSuccessor.completionBinding(context);
+    if (fs.existsSync(paths.completion)) {
+      const completion = readJson(paths.completion, 'COMPLETION_INVALID');
+      if (completion.schema !== COMPLETION_SCHEMA || completion.plan_digest_sha256 !== plan.plan_digest_sha256 || !fs.existsSync(output) || await hashFile(output) !== completion.output_sha256) fail('EXISTING_OUTPUT_CONFLICT', 'completion does not match exact plan/output');
+      if (executionAttempt && completion.execution_attempt?.attempt_id !== executionAttempt.attempt_id) fail('EXECUTION_COMPLETION_BINDING_INVALID', 'completion is not bound to the active execution attempt');
+      releaseRenderLock(basePaths.lock, ownedLock);
+      return { status: 'REUSED', plan, paths, completion, executionAttempt };
+    }
     if (fs.existsSync(paths.plan)) {
       const frozen = readJson(paths.plan, 'RENDER_PLAN_INVALID');
       if (frozen.plan_digest_sha256 !== plan.plan_digest_sha256 || canonicalize(frozen) !== canonicalize(plan)) fail('RENDER_PLAN_CONFLICT', 'frozen plan differs from requested authority');
     } else writeJsonAtomic(paths.plan, plan);
-    writeJsonAtomic(paths.state, { schema: STATE_SCHEMA, state: 'INCOMPLETE', plan_digest_sha256: plan.plan_digest_sha256, phase: 'PLAN_FROZEN' });
+    writeJsonAtomic(paths.state, { schema: STATE_SCHEMA, state: 'INCOMPLETE', plan_digest_sha256: plan.plan_digest_sha256, ...(executionAttempt ? { execution_attempt_id: executionAttempt.attempt_id } : {}), phase: 'PLAN_FROZEN' });
     if (options.failAt === 'after-plan' || options.failAt === 'before-render') fail('INJECTED_INTERRUPTION', 'after plan freeze');
 
     let candidatePath = paths.staged;
@@ -711,13 +723,13 @@ async function renderFromSpec(specPath, options = {}) {
       catch (_) { fs.renameSync(paths.staged, `${paths.staged}.rejected-${Date.now()}`); }
     }
     if (!reusedRenderedBytes) {
-      fs.mkdirSync(workRoot, { recursive: true });
+      fs.mkdirSync(path.dirname(paths.staged), { recursive: true });
       const command = buildFfmpegCommand(plan, paths.staged);
       if (typeof options.render === 'function') await options.render(command, paths.staged, plan);
       else execFile(command[0], command.slice(1), { stdio: options.quiet ? 'ignore' : 'inherit', code: 'RENDER_FAILED' });
       if (options.failAt === 'during-render') fail('INJECTED_INTERRUPTION', 'during render');
     }
-    writeJsonAtomic(paths.state, { schema: STATE_SCHEMA, state: 'INCOMPLETE', plan_digest_sha256: plan.plan_digest_sha256, phase: 'RENDERED_PENDING_QC', reused_rendered_bytes: reusedRenderedBytes });
+    writeJsonAtomic(paths.state, { schema: STATE_SCHEMA, state: 'INCOMPLETE', plan_digest_sha256: plan.plan_digest_sha256, ...(executionAttempt ? { execution_attempt_id: executionAttempt.attempt_id } : {}), phase: 'RENDERED_PENDING_QC', reused_rendered_bytes: reusedRenderedBytes });
     if (options.failAt === 'after-render') fail('INJECTED_INTERRUPTION', 'after render');
     if (!fs.existsSync(candidatePath)) fail('RENDER_OUTPUT_MISSING', candidatePath);
     const qc = qcCandidate(candidatePath, plan, options);
@@ -733,6 +745,7 @@ async function renderFromSpec(specPath, options = {}) {
       programme_duration_ms: plan.programme_duration_ms, story: plan.story, visual_plan: plan.visual_plan,
       human_review_binding_sha256: plan.human_review?.binding_digest_sha256 || null, narration: plan.narration, timeline: plan.timeline, inserts: plan.inserts, composition: plan.composition,
       music: plan.music, ffmpeg_invocation: buildFfmpegCommand(plan, '<STAGING>'), toolchain: plan.toolchain, qc,
+      ...(executionAttempt ? { execution_attempt: executionAttempt } : {}),
     };
     const manifest = { ...semanticManifest, semantic_digest_sha256: digest(semanticManifest) };
     const evidenceCore = {
@@ -741,7 +754,7 @@ async function renderFromSpec(specPath, options = {}) {
       plan_digest_sha256: plan.plan_digest_sha256, manifest_digest_sha256: manifest.semantic_digest_sha256,
       output_sha256: outputSha, draft_class: plan.draft_class, narration_source_class: plan.narration_source_class,
       presenter_visual_present: plan.presenter_visual_present, presenter_authority: plan.presenter_authority,
-      performance_role: spec.performance_role || null, qc, toolchain: plan.toolchain,
+      performance_role: spec.performance_role || null, qc, toolchain: plan.toolchain, ...(executionAttempt ? { execution_attempt: executionAttempt } : {}),
       positive_claims: [
         plan.human_review ? 'exact selected HUMAN intervals consumed in explicit Story order' : 'exact script-derived narration alignment consumed in explicit Story order',
         'output bytes passed deterministic stream, duration, coverage and full-decode QC',
@@ -752,20 +765,27 @@ async function renderFromSpec(specPath, options = {}) {
     };
     const evidence = { ...evidenceCore, evidence_digest_sha256: digest(evidenceCore) };
     if (options.failAt === 'manifest') fail('INJECTED_MANIFEST_FAILURE', 'manifest phase');
-    writeJsonAtomic(paths.manifest, manifest);
+    if (context.attempt) executionSuccessor.writeImmutableJson(paths.manifest, manifest, 'EXECUTION_MANIFEST_IMMUTABLE');
+    else writeJsonAtomic(paths.manifest, manifest);
     if (options.failAt === 'evidence') fail('INJECTED_EVIDENCE_FAILURE', 'evidence phase');
-    writeJsonAtomic(paths.evidence, evidence);
+    if (context.attempt) executionSuccessor.writeImmutableJson(paths.evidence, evidence, 'EXECUTION_EVIDENCE_IMMUTABLE');
+    else writeJsonAtomic(paths.evidence, evidence);
     if (candidatePath !== output) fs.renameSync(candidatePath, output);
     if (options.failAt === 'after-finalize') fail('INJECTED_INTERRUPTION', 'after candidate rename, before COMPLETE');
-    const completionCore = { schema: COMPLETION_SCHEMA, state: 'COMPLETE', plan_digest_sha256: plan.plan_digest_sha256, output_sha256: outputSha, manifest_digest_sha256: manifest.semantic_digest_sha256, evidence_digest_sha256: evidence.evidence_digest_sha256 };
+    const completionCore = { schema: COMPLETION_SCHEMA, state: 'COMPLETE', plan_digest_sha256: plan.plan_digest_sha256, output_sha256: outputSha, manifest_digest_sha256: manifest.semantic_digest_sha256, evidence_digest_sha256: evidence.evidence_digest_sha256, ...(executionAttempt ? { execution_attempt: executionAttempt } : {}) };
     if (options.failAt === 'completion') fail('INJECTED_COMPLETION_FAILURE', 'completion phase');
-    writeJsonAtomic(paths.completion, { ...completionCore, completion_digest_sha256: digest(completionCore) });
-    writeJsonAtomic(paths.state, { schema: STATE_SCHEMA, state: 'COMPLETE', plan_digest_sha256: plan.plan_digest_sha256, output_sha256: outputSha });
-    releaseRenderLock(paths.lock, ownedLock);
-    return { status: reusedRenderedBytes ? 'RECOVERED_COMPLETE' : 'COMPLETE', plan, paths, manifest, evidence, completion: readJson(paths.completion) };
+    const completed = { ...completionCore, completion_digest_sha256: digest(completionCore) };
+    if (context.attempt) executionSuccessor.writeImmutableJson(paths.completion, completed, 'EXECUTION_COMPLETION_IMMUTABLE');
+    else writeJsonAtomic(paths.completion, completed);
+    writeJsonAtomic(paths.state, { schema: STATE_SCHEMA, state: 'COMPLETE', plan_digest_sha256: plan.plan_digest_sha256, ...(executionAttempt ? { execution_attempt_id: executionAttempt.attempt_id } : {}), output_sha256: outputSha });
+    releaseRenderLock(basePaths.lock, ownedLock);
+    return { status: reusedRenderedBytes ? 'RECOVERED_COMPLETE' : 'COMPLETE', plan, paths, manifest, evidence, completion: readJson(paths.completion), executionAttempt };
   } catch (error) {
-    try { writeJsonAtomic(paths.state, { schema: STATE_SCHEMA, state: 'INCOMPLETE', plan_digest_sha256: plan.plan_digest_sha256, phase: error.code || 'FAILED' }); } catch (_) { /* preserve the primary failure */ }
-    if (!options.keepLockOnError) releaseRenderLock(paths.lock, ownedLock);
+    if (context && paths) {
+      try { writeJsonAtomic(paths.state, { schema: STATE_SCHEMA, state: 'INCOMPLETE', plan_digest_sha256: plan.plan_digest_sha256, ...(context.attempt ? { execution_attempt_id: context.attempt.attempt_id } : {}), phase: error.code || 'FAILED' }); } catch (_) { /* preserve the primary failure */ }
+      try { executionSuccessor.writeFailure(paths, context.attempt, plan, error, options.now); } catch (_) { /* preserve the primary failure */ }
+    }
+    if (!options.keepLockOnError) releaseRenderLock(basePaths.lock, ownedLock);
     throw error;
   }
 }
@@ -826,4 +846,5 @@ module.exports = {
   PAUSED_NARRATION_SCHEMA,
   canonicalize, digest, narrationAlignmentDigest, narrationPacketDeclaration, sha256File, probeMedia, ffmpegDecoders, inspectAlpha, inspectImageAlpha, validatePresenterAlphaAsset, validateProxyAlphaAsset, musicDecisionDigest, activeMusicDecision, processStartIdentity,
   lockHolderState, acquireRenderLock, releaseRenderLock, validateV2Closure, validateInputs, buildTimeline, buildPlan, buildFfmpegCommand, qcCandidate, renderFromSpec, renderPreviewFromSpec,
+  executionSuccessor,
 };

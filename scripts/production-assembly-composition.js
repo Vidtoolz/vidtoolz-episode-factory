@@ -17,6 +17,7 @@ const CURVES = new Set(['LINEAR', 'SMOOTH']);
 const TRANSITIONS = new Set(['CUT', 'HARD_CUT', 'CONTINUOUS', 'DISSOLVE_200MS', 'DISSOLVE_300MS', 'SCALE_DOWN']);
 const REVEAL_MODES = new Set(['ADDITIVE_PERSIST']);
 const REVEAL_PLAN_SCHEMA = 'vidtoolz.compositionRevealPlan.v1';
+const DRAWTEXT_SERIALIZER_VERSION = 'VIDTOOLZ_DRAWTEXT_TEXT_V2';
 const SHA_RE = /^[a-f0-9]{64}$/;
 const PRESENTER_ALPHA_FORMAT = 'VP9_ALPHA';
 const PRESENTER_ALPHA_DECODER = 'libvpx-vp9';
@@ -630,4 +631,4 @@ function buildVideoGraph(plan, command, filters) {
   return inputByAsset;
 }
 
-module.exports = { SCHEMA, ASSET_MANIFEST_SCHEMA, PRESENTER_ALPHA_FORMAT, PRESENTER_ALPHA_DECODER, V2_GRAMMAR, PROXY_ALPHA_FORMAT, BACKING_COLOR_HEX, REVEAL_PLAN_SCHEMA, canonicalize, digest, frameIndexAtOrAfterMs, compileRevealPlan, layerVisibleAt, backgroundIdentity, serializeDrawtextText, validateComposition, buildVideoGraph };
+module.exports = { SCHEMA, ASSET_MANIFEST_SCHEMA, PRESENTER_ALPHA_FORMAT, PRESENTER_ALPHA_DECODER, V2_GRAMMAR, PROXY_ALPHA_FORMAT, BACKING_COLOR_HEX, REVEAL_PLAN_SCHEMA, DRAWTEXT_SERIALIZER_VERSION, canonicalize, digest, frameIndexAtOrAfterMs, compileRevealPlan, layerVisibleAt, backgroundIdentity, serializeDrawtextText, validateComposition, buildVideoGraph };

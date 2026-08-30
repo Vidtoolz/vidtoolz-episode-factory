@@ -345,3 +345,18 @@ test('PAR-54 real PRESENTER_VALIDATION_DRAFT canary completes visual-presenter-v
   f.spec.crops = ['A', 'T', 'C'].map((id) => ({ master_id: id, x: 210, y: 0, width: 203, height: 360 })); const presenterBeat = f.spec.composition.beats[5]; presenterBeat.layers.push({ layer_id: 'presenter', type: 'PRESENTER', primary: false, z: 2, visible: true, geometry: { x: 700, y: 1200, width: 360, height: 640, anchor: 'BOTTOM_RIGHT', bleed: ['BOTTOM'], edge_treatment: { type: 'NONE' } } }); f.save();
   const result = await renderer.renderFromSpec(f.specPath, { quiet: true }); const probe = renderer.probeMedia(result.paths.output); assert.equal(result.status, 'COMPLETE'); assert.equal(result.manifest.draft_class, 'PRESENTER_VALIDATION_DRAFT'); assert.equal(result.manifest.presenter_visual_present, true); assert.equal(result.manifest.presenter_authority, 'BOUND_HUMAN_PERFORMANCE'); assert.equal(probe.video.avg_frame_rate, '30/1'); assert.ok(probe.audio); assert.ok(fs.existsSync(result.paths.completion));
 });
+
+test('PAR-55 failed frozen invocation receives an immutable successful execution successor', async () => {
+  const f = await fixture(); const current = renderer.buildPlan(f.spec, await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe })); const frozen = clone(current); frozen.ffmpeg_invocation[0] = 'ffmpeg-pre-repair';
+  const base = path.join(f.out, 'candidate'); writeJson(`${base}.render-plan.json`, frozen); writeJson(`${base}.state.json`, { schema: 'vidtoolz.productionAssemblyRenderState.v1', state: 'INCOMPLETE', phase: 'RENDER_FAILED', plan_digest_sha256: frozen.plan_digest_sha256 });
+  const predecessorBytes = fs.readFileSync(`${base}.render-plan.json`); const result = await renderer.renderFromSpec(f.specPath, { probeMedia: f.fakeProbe, decode: false, render: async (_, staged) => { fs.mkdirSync(path.dirname(staged), { recursive: true }); fs.writeFileSync(staged, 'candidate'); }, now: '2026-08-30T10:00:00.000Z' });
+  assert.equal(result.status, 'COMPLETE'); assert.ok(result.executionAttempt); assert.equal(result.completion.execution_attempt.attempt_id, result.executionAttempt.attempt_id); assert.deepEqual(fs.readFileSync(`${base}.render-plan.json`), predecessorBytes); assert.ok(result.paths.plan.includes('.execution-attempts'));
+  const reused = await renderer.renderFromSpec(f.specPath, { probeMedia: f.fakeProbe, decode: false, now: '2026-08-30T10:00:00.000Z' }); assert.equal(reused.status, 'REUSED'); assert.equal(reused.executionAttempt.attempt_id, result.executionAttempt.attempt_id);
+});
+
+test('PAR-56 failed successor is idempotently preserved and not rerun without new execution authority', async () => {
+  const f = await fixture(); const current = renderer.buildPlan(f.spec, await renderer.validateInputs(f.spec, { probeMedia: f.fakeProbe })); const frozen = clone(current); frozen.ffmpeg_invocation[0] = 'ffmpeg-pre-repair';
+  const base = path.join(f.out, 'candidate'); writeJson(`${base}.render-plan.json`, frozen); writeJson(`${base}.state.json`, { schema: 'vidtoolz.productionAssemblyRenderState.v1', state: 'INCOMPLETE', phase: 'RENDER_FAILED', plan_digest_sha256: frozen.plan_digest_sha256 });
+  let renders = 0; await assert.rejects(() => renderer.renderFromSpec(f.specPath, { probeMedia: f.fakeProbe, render: async () => { renders += 1; const error = new Error('execution failed'); error.code = 'RENDER_FAILED'; throw error; }, now: '2026-08-30T10:00:00.000Z' }));
+  await throwsCode(() => renderer.renderFromSpec(f.specPath, { probeMedia: f.fakeProbe, render: async () => { renders += 1; }, now: '2026-08-30T10:00:00.000Z' }), 'EXECUTION_ATTEMPT_FAILED'); assert.equal(renders, 1);
+});
