@@ -47,6 +47,7 @@ node --check scripts/agent-task-story-editor.js
 node --check scripts/human-approval-identity.js
 node --check scripts/production-assembly-renderer.js
 node --check scripts/production-assembly-composition.js
+node --check scripts/visual-draft-original-music.js
 node --check scripts/draft-presenter-proxy-asset.js
 node --check scripts/visual-draft-successor.js
 node --check scripts/visual-draft-interval-scheduler.js
