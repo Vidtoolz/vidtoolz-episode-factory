@@ -151,6 +151,7 @@ require("./visual-plan.test.js");
 require("./style-reference-adapter.test.js");
 require("./creative-director.test.js");
 require("./visual-planning-director.test.js");
+require("./visual-plan-prompt-adapter-v2.test.js");
 require("./agent-task-visual-planning.test.js");
 require("./visual-planning-workspace.test.js");
 require("./visual-planning-workspace-ui.test.js");

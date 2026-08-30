@@ -8,6 +8,17 @@ const PROMPT_MEDIA = new Set(['GENERATED_STILL', 'GENERATED_VIDEO', 'INFOGRAPHIC
 const PRESENTER_AWARE = new Set(['BROLL_OVERLAY', 'PICTURE_IN_PICTURE']);
 const FIELD_LIMITS = Object.freeze({ subject: 1000, shot_brief: 4000, narrative_function: 2000, visual_assertion: 2000 });
 
+/*
+ * V2 VISUAL_DRAFT full-frame grammar (doctrine full_frame_composition):
+ * primary composition uses the COMPLETE 9:16 frame and completely ignores the
+ * presenter. On this route presenter-safe composition language is disabled and
+ * forbidden — the proxy exists only downstream, in final compositing metadata,
+ * never in primary visual reasoning. The FINAL_PERFORMANCE workflow keeps the
+ * presenter-aware capability untouched on the default route.
+ */
+const FULL_FRAME_GRAMMAR = 'V2_FULL_FRAME';
+const FULL_FRAME_SPECIFICATION = 'Full-frame composition requirement: design the complete 9:16 frame edge to edge as the sole primary composition; do not reserve blank space for any overlay, person, or future element; no region of the frame is off-limits; place subjects and details wherever the composition is strongest.';
+
 class PromptCompositionError extends Error {
   constructor(code, message) {
     super(message);
@@ -27,12 +38,23 @@ function requiredText(value, field, minimum = 3) {
   return text;
 }
 
-function promptTypeFor(shot) {
+function promptTypeFor(shot, grammar) {
   if (shot.media_type === 'MAP_ANIMATION') return 'MAP';
   if (shot.media_type === 'INFOGRAPHIC') return 'INFOGRAPHIC';
   if (shot.media_type === 'GENERATED_VIDEO') return 'VIDEO';
   if (shot.media_type === 'TEXT_GRAPHIC') return 'TEXT_GRAPHIC';
+  if (grammar === FULL_FRAME_GRAMMAR) return 'FULL_FRAME';
   return PRESENTER_AWARE.has(shot.presenter_relation) ? 'PRESENTER_AWARE' : 'FULL_FRAME';
+}
+
+/* V2 route: no canonical field may smuggle presenter-space reservation into a
+ * generation prompt. Primary design ignores the presenter entirely. */
+function assertNoPresenterLanguage(shot) {
+  for (const field of ['subject', 'shot_brief', 'narrative_function', 'visual_assertion']) {
+    if (typeof shot[field] === 'string' && /presenter/i.test(shot[field])) {
+      throw new PromptCompositionError('V2_PRESENTER_AWARE_PROMPT_FORBIDDEN', `${field} carries presenter-aware composition language; V2 primary design completely ignores the presenter`);
+    }
+  }
 }
 
 function modeSpecification(shot) {
@@ -76,8 +98,9 @@ function researchSpecification(shot) {
   return specification;
 }
 
-function promptTextFor(shot) {
+function promptTextFor(shot, grammar) {
   if (shot.media_type === 'SCREEN_CAPTURE' || shot.media_type === 'PRESENTER_A_ROLL' || shot.media_type === 'ARCHIVAL_EXTERNAL') return null;
+  if (grammar === FULL_FRAME_GRAMMAR) assertNoPresenterLanguage(shot);
   const subject = requiredText(shot.subject, 'subject');
   const brief = requiredText(shot.shot_brief, 'shot_brief', 12);
   const purpose = requiredText(shot.narrative_function, 'narrative_function');
@@ -88,8 +111,8 @@ function promptTextFor(shot) {
       `Story purpose: ${purpose}`,
       'Execution mode: MAP_ANIMATION. Preserve geographic and reveal intent; this is not a generic image/video generation prompt and contains no Camera mechanics.',
     ];
-    const presenter = presenterSpecification(shot);
-    if (presenter) parts.push(presenter);
+    if (grammar === FULL_FRAME_GRAMMAR) parts.push(FULL_FRAME_SPECIFICATION);
+    else { const presenter = presenterSpecification(shot); if (presenter) parts.push(presenter); }
     parts.push(...researchSpecification(shot));
     return parts.join('\n');
   }
@@ -99,8 +122,8 @@ function promptTextFor(shot) {
     `Story purpose: ${purpose}`,
     modeSpecification(shot),
   ];
-  const presenter = presenterSpecification(shot);
-  if (presenter) parts.push(presenter);
+  if (grammar === FULL_FRAME_GRAMMAR) parts.push(FULL_FRAME_SPECIFICATION);
+  else { const presenter = presenterSpecification(shot); if (presenter) parts.push(presenter); }
   parts.push(...researchSpecification(shot));
   const quality = shot.generation_requirements?.quality_constraints || [];
   if (quality.length) parts.push(`Quality constraints: ${quality.join('; ')}.`);
@@ -108,7 +131,7 @@ function promptTextFor(shot) {
   return parts.join('\n');
 }
 
-function validatePromptFidelity(shot, promptText) {
+function validatePromptFidelity(shot, promptText, grammar) {
   const errors = [];
   if (typeof promptText !== 'string' || !promptText.trim()) return { ok: false, errors: ['PROMPT_TEXT_MISSING'] };
   const requiredComponents = [shot.subject, shot.shot_brief, shot.narrative_function];
@@ -126,17 +149,22 @@ function validatePromptFidelity(shot, promptText) {
     NOT_APPLICABLE: shot.media_type,
   }[shot.generation_mode];
   if (!expectedMode || !promptText.includes(`Execution mode: ${expectedMode}`)) errors.push('GENERATION_MODE_DROPPED');
-  if (PRESENTER_AWARE.has(shot.presenter_relation) && !promptText.includes('Presenter-composite requirement:')) errors.push('PRESENTER_SAFE_COMPOSITION_DROPPED');
+  if (grammar === FULL_FRAME_GRAMMAR) {
+    if (/presenter/i.test(promptText)) errors.push('V2_PRESENTER_LANGUAGE_FORBIDDEN');
+    if (!promptText.includes('Full-frame composition requirement:') && !['SCREEN_CAPTURE', 'PRESENTER_A_ROLL', 'ARCHIVAL_EXTERNAL'].includes(shot.media_type)) errors.push('V2_FULL_FRAME_REQUIREMENT_DROPPED');
+  } else if (PRESENTER_AWARE.has(shot.presenter_relation) && !promptText.includes('Presenter-composite requirement:')) errors.push('PRESENTER_SAFE_COMPOSITION_DROPPED');
   return { ok: errors.length === 0, errors };
 }
 
 function buildPromptRecords(shots, options = {}) {
+  const grammar = options.grammar;
+  if (grammar !== undefined && grammar !== FULL_FRAME_GRAMMAR) throw new PromptCompositionError('PROMPT_GRAMMAR_UNSUPPORTED', String(grammar));
   const prompts = [];
   for (const [index, shot] of shots.entries()) {
     if (!PROMPT_MEDIA.has(shot.media_type)) continue;
-    const text = promptTextFor(shot);
+    const text = promptTextFor(shot, grammar);
     if (!text) continue;
-    const fidelity = validatePromptFidelity(shot, text);
+    const fidelity = validatePromptFidelity(shot, text, grammar);
     if (!fidelity.ok) throw new PromptCompositionError('PROMPT_INTENT_FIDELITY_FAILED', fidelity.errors.join('; '));
     const promptId = (options.newPromptId || visualPlan.newPromptId)();
     shot.prompt_refs.push(promptId);
@@ -147,7 +175,7 @@ function buildPromptRecords(shots, options = {}) {
       shot_id: shot.shot_id,
       shot_intent_digest_sha256: visualPlan.shotIntentDigest(shot),
       prompt_text: text,
-      prompt_type: promptTypeFor(shot),
+      prompt_type: promptTypeFor(shot, grammar),
       created_by: 'visual_planning_director',
       origin: shot.media_type === 'MAP_ANIMATION' ? 'camera-intent-handoff' : 'visual-plan-fidelity-adapter',
       legacy_aliases: [`block-${String(index + 1).padStart(3, '0')}-prompt-01`],
@@ -185,6 +213,8 @@ function cameraProjection(plan, shot) {
 
 module.exports = {
   PROMPT_MEDIA,
+  FULL_FRAME_GRAMMAR,
+  FULL_FRAME_SPECIFICATION,
   PromptCompositionError,
   promptTypeFor,
   promptTextFor,
