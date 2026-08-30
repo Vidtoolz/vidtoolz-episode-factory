@@ -15,6 +15,11 @@ const path = require('node:path');
 const childProcess = require('node:child_process');
 const boundaryReview = require('./presenter-boundary-review.js');
 const compositionEngine = require('./production-assembly-composition.js');
+const doctrineModule = require('./visual-draft-doctrine.js');
+const intervalScheduler = require('./visual-draft-interval-scheduler.js');
+const intervalBinding = require('./visual-draft-binding.js');
+
+const PAUSED_NARRATION_SCHEMA = 'vidtoolz.finalPausedNarration.v1';
 
 const SPEC_SCHEMA = 'vidtoolz.productionAssemblyRenderSpec.v1';
 const PACKET_SCHEMA = 'vidtoolz.productionAssemblyReleasePacket.v1';
@@ -133,8 +138,25 @@ function inspectAlpha(filePath, asset) {
   }
   return { sample_count: samples, alpha_min: minimum, alpha_max: maximum };
 }
+function inspectImageAlpha(filePath) {
+  const result = childProcess.spawnSync('ffmpeg', ['-nostdin', '-v', 'error', '-i', filePath, '-frames:v', '1', '-vf', 'alphaextract,scale=64:64:flags=area', '-pix_fmt', 'gray', '-f', 'rawvideo', 'pipe:1'], { maxBuffer: 4 * 1024 * 1024 });
+  if (result.error || result.status !== 0 || !Buffer.isBuffer(result.stdout) || result.stdout.length === 0) fail('PROXY_ALPHA_MISSING', `${filePath}: image carries no decodable alpha channel`);
+  let minimum = 255; let maximum = 0;
+  for (const value of result.stdout) { minimum = Math.min(minimum, value); maximum = Math.max(maximum, value); }
+  return { alpha_min: minimum, alpha_max: maximum };
+}
+/* Generic presenter proxy: a transparent still with real cutout alpha —
+ * genuinely transparent surroundings AND a solid subject, or it is not a
+ * usable proxy overlay. */
+function validateProxyAlphaAsset(asset, options = {}) {
+  if (asset.alpha?.required !== true || asset.alpha.format !== compositionEngine.PROXY_ALPHA_FORMAT) fail('PROXY_ALPHA_FORMAT_UNKNOWN', asset.alpha?.format || 'missing');
+  const measured = (options.inspectImageAlpha || inspectImageAlpha)(asset.path);
+  if (!measured || !Number.isFinite(measured.alpha_min) || !Number.isFinite(measured.alpha_max) || measured.alpha_min > 64 || measured.alpha_max < 192) fail('PROXY_ALPHA_MISSING', `${asset.asset_id}: clean cutout alpha required (${measured?.alpha_min}/${measured?.alpha_max})`);
+  return { alpha_required: true, alpha_present: true, alpha_nontrivial: true, format: asset.alpha.format, alpha_min: measured.alpha_min, alpha_max: measured.alpha_max };
+}
 function validatePresenterAlphaAsset(asset, media, options = {}) {
   if (asset.alpha?.required !== true) return null;
+  if (asset.role === 'GENERIC_PRESENTER_PROXY') return validateProxyAlphaAsset(asset, options);
   if (asset.alpha.format !== compositionEngine.PRESENTER_ALPHA_FORMAT) fail('PA_ALPHA_FORMAT_UNKNOWN', asset.alpha.format || 'missing');
   if (media.video?.codec !== asset.alpha.codec) fail('PA_ALPHA_CODEC_MISMATCH', `${asset.asset_id}: ${media.video?.codec || 'missing'} != ${asset.alpha.codec}`);
   const decoders = (options.ffmpegDecoders || ffmpegDecoders)();
@@ -227,6 +249,45 @@ function activeMusicDecision(music) {
   if (active.authority?.type !== 'HUMAN' || !active.authority.id) fail('MUSIC_HUMAN_AUTHORITY_REQUIRED', 'active creative music decision must be HUMAN');
   if (active.policy !== music.policy || (music.sha256 || null) !== (active.music_sha256 || null)) fail('MUSIC_POLICY_HISTORY_INVALID', 'active decision does not bind render policy/music');
   return active;
+}
+
+/*
+ * V2 grammar closure: the FINAL PAUSED NARRATION is the sole timing authority.
+ * The renderer recomputes the four-second schedule from the paused timeline
+ * (never trusting a submitted schedule), requires the narration input to BE
+ * the paused bytes, and requires the interval binding and the composition's
+ * intervals to match that recomputed schedule exactly.
+ */
+async function validateV2Closure(spec, context, options = {}) {
+  const { composition, timeline, assetManifest, doctrineRules } = context;
+  if (context.narration == null) fail('V2_GRAMMAR_NARRATION_REQUIRED', 'the V2 grammar is a narration-timed VISUAL_DRAFT grammar');
+  const pin = spec.narration?.paused_manifest;
+  if (!pin?.path || !SHA_RE.test(pin.sha256 || '')) fail('V2_PAUSED_NARRATION_REQUIRED', 'final paused narration manifest pin required');
+  const pausedPath = requireInputPath(pin.path, spec.input_roots, 'final paused narration manifest');
+  const hashFile = options.hashFile || sha256File;
+  if (await hashFile(pausedPath) !== pin.sha256) fail('V2_PAUSED_NARRATION_DRIFT', 'paused narration manifest bytes changed');
+  const paused = readJson(pausedPath, 'V2_PAUSED_NARRATION_INVALID');
+  if (paused.schema !== PAUSED_NARRATION_SCHEMA) fail('V2_PAUSED_NARRATION_INVALID', String(paused.schema));
+  if (paused.audio?.sha256 !== spec.narration.sha256) fail('V2_TIMING_AUTHORITY_VIOLATION', 'narration input must be the exact final paused narration bytes — never the pre-pause narration');
+  if (!Array.isArray(paused.sections) || paused.sections.length !== timeline.length) fail('V2_TIMING_AUTHORITY_VIOLATION', 'alignment sections do not match the paused timeline');
+  for (let index = 0; index < timeline.length; index += 1) {
+    const aligned = timeline[index]; const pausedSection = paused.sections[index];
+    if (aligned.section_id !== pausedSection.section_id || aligned.in_ms !== pausedSection.in_ms || aligned.out_ms !== pausedSection.out_ms) fail('V2_TIMING_AUTHORITY_VIOLATION', `section ${aligned.section_id}: alignment must be derived from the final paused narration`);
+  }
+  const schedule = intervalScheduler.scheduleIntervals(paused.sections.map((section) => ({ section_id: section.section_id, in_ms: section.in_ms, out_ms: section.out_ms })), { cadence: doctrineRules.background_cadence });
+  if (composition.intervals.length !== schedule.intervals.length) fail('V2_INTERVAL_SCHEDULE_DRIFT', `${composition.intervals.length} composed vs ${schedule.intervals.length} scheduled`);
+  for (let index = 0; index < schedule.intervals.length; index += 1) {
+    const want = schedule.intervals[index]; const got = composition.intervals[index];
+    if (got.interval_id !== want.interval_id || got.start_ms !== want.start_ms || got.end_ms !== want.end_ms || got.section_id !== want.section_id) fail('V2_INTERVAL_SCHEDULE_DRIFT', want.interval_id);
+  }
+  const bindingPath = requireInputPath(spec.composition.interval_binding.path, spec.input_roots, 'interval binding');
+  if (await hashFile(bindingPath) !== spec.composition.interval_binding.sha256) fail('V2_INTERVAL_BINDING_DRIFT', 'interval binding bytes changed');
+  const binding = readJson(bindingPath, 'V2_INTERVAL_BINDING_INVALID');
+  intervalBinding.validateIntervalBinding(binding, { schedule, pausedManifest: paused, assetManifest }, { doctrine: doctrineRules.script_binding });
+  const backgroundByInterval = new Map(composition.intervals.map((interval) => [interval.interval_id, interval.background_asset_id]));
+  for (const entry of binding.intervals) {
+    if (backgroundByInterval.get(entry.interval_id) !== entry.asset_id) fail('V2_BINDING_COMPOSITION_MISMATCH', `${entry.interval_id}: bound asset is not this interval's background`);
+  }
 }
 
 async function validateInputs(spec, options = {}) {
@@ -390,6 +451,18 @@ async function validateInputs(spec, options = {}) {
     if (approved.plan_id !== spec.composition.approved_visual_plan.plan_id || (spec.composition.approved_visual_plan.digest_sha256 && approved.digest_sha256 !== spec.composition.approved_visual_plan.digest_sha256)) fail('COMPOSITION_VISUAL_PLAN_DRIFT', 'approved visual-plan identity mismatch');
     const assetManifest = readJson(assetManifestPath, 'COMPOSITION_ASSET_MANIFEST_INVALID');
     if (draftClass === 'VISUAL_DRAFT' && (assetManifest.assets || []).some((asset) => asset.role === 'PRESENTER_ONLY')) fail('VISUAL_DRAFT_PRESENTER_PLACEHOLDER_FORBIDDEN', 'VISUAL_DRAFT manifest cannot carry presenter placeholders');
+    // The generic presenter proxy is a typed VISUAL_DRAFT V2 overlay only —
+    // never a stand-in inside presenter or final-performance modes.
+    if ((assetManifest.assets || []).some((asset) => asset.role === 'GENERIC_PRESENTER_PROXY') && (draftClass !== 'VISUAL_DRAFT' || spec.composition.grammar !== compositionEngine.V2_GRAMMAR)) fail('PROXY_DRAFT_CLASS_INVALID', 'GENERIC_PRESENTER_PROXY requires VISUAL_DRAFT under the V2 grammar');
+    let doctrineRules = null;
+    if (spec.composition.grammar !== undefined) {
+      // Verify the doctrine pin against the canonical doctrine file and hand
+      // the pinned version's rules to composition validation — constants are
+      // consumed from the doctrine, never copied.
+      const doctrineEntry = doctrineModule.verifyDoctrineBinding(spec.composition.doctrine, { doctrinePath: options.doctrinePath });
+      if (spec.composition.doctrine.file_sha256 && await hashFile(options.doctrinePath || doctrineModule.DOCTRINE_FILE) !== spec.composition.doctrine.file_sha256) fail('DOCTRINE_FILE_DRIFT', 'doctrine file bytes changed since the pin was recorded');
+      doctrineRules = doctrineEntry.rules;
+    }
     const alphaEvidence = new Map();
     for (const asset of assetManifest.assets || []) if (asset.status === 'ACCEPTED') {
       asset.path = requireInputPath(asset.path, spec.input_roots, `composition asset ${asset.asset_id}`);
@@ -401,8 +474,9 @@ async function validateInputs(spec, options = {}) {
       const evidence = validatePresenterAlphaAsset(asset, media, options);
       if (evidence) alphaEvidence.set(asset.asset_id, evidence);
     }
-    composition = compositionEngine.validateComposition(spec.composition, timeline, spec.output, assetManifest);
+    composition = compositionEngine.validateComposition(spec.composition, timeline, spec.output, assetManifest, { doctrineRules });
     for (const beat of composition.beats) for (const layer of beat.layers) if (layer.resolved_asset && alphaEvidence.has(layer.resolved_asset.asset_id)) layer.resolved_asset.alpha_validation = alphaEvidence.get(layer.resolved_asset.asset_id);
+    if (composition.grammar) await validateV2Closure(spec, { composition, timeline, assetManifest, doctrineRules, narration }, options);
   }
   const programmeDuration = timeline.at(-1)?.programme_out_ms || 0;
   if (music?.policy === 'FULL_PROGRAMME' && music.media_duration_ms + 50 < programmeDuration) fail('MUSIC_FULL_PROGRAMME_TOO_SHORT', `${music.media_duration_ms} < ${programmeDuration}`);
@@ -538,6 +612,14 @@ function qcCandidate(filePath, plan, options = {}) {
       beat_count: plan.composition.beats.length,
       coverage_start_ms: plan.composition.beats[0].start_ms,
       coverage_end_ms: plan.composition.beats.at(-1).end_ms,
+      ...(plan.composition.grammar ? {
+        grammar: plan.composition.grammar,
+        doctrine: plan.composition.doctrine,
+        interval_count: plan.composition.intervals.length,
+        unique_background_assets: new Set(plan.composition.intervals.map((interval) => interval.background_asset_id).filter(Boolean)).size,
+        presenter_proxy: plan.composition.proxy,
+        primary_composition_digest_sha256: plan.composition.primary_composition_digest_sha256,
+      } : {}),
       primary_owners: plan.composition.beats.map((beat) => ({ beat_id: beat.beat_id, primary_owner: beat.primary_owner })),
       presenter_absent_beats: plan.composition.beats.filter((beat) => !beat.layers.some((layer) => layer.type === 'PRESENTER' && layer.visible !== false)).map((beat) => beat.beat_id),
       operation_digests: plan.composition.beats.map((beat) => ({ beat_id: beat.beat_id, sha256: beat.operation_digest_sha256 })),
@@ -703,6 +785,7 @@ if (require.main === module) {
 
 module.exports = {
   SPEC_SCHEMA, PACKET_SCHEMA, PLAN_SCHEMA, MANIFEST_SCHEMA, EVIDENCE_SCHEMA, COMPLETION_SCHEMA, LOCK_SCHEMA, NARRATION_ALIGNMENT_SCHEMA,
-  canonicalize, digest, narrationAlignmentDigest, sha256File, probeMedia, ffmpegDecoders, inspectAlpha, validatePresenterAlphaAsset, musicDecisionDigest, activeMusicDecision, processStartIdentity,
-  lockHolderState, acquireRenderLock, releaseRenderLock, validateInputs, buildTimeline, buildPlan, buildFfmpegCommand, qcCandidate, renderFromSpec, renderPreviewFromSpec,
+  PAUSED_NARRATION_SCHEMA,
+  canonicalize, digest, narrationAlignmentDigest, sha256File, probeMedia, ffmpegDecoders, inspectAlpha, inspectImageAlpha, validatePresenterAlphaAsset, validateProxyAlphaAsset, musicDecisionDigest, activeMusicDecision, processStartIdentity,
+  lockHolderState, acquireRenderLock, releaseRenderLock, validateV2Closure, validateInputs, buildTimeline, buildPlan, buildFfmpegCommand, qcCandidate, renderFromSpec, renderPreviewFromSpec,
 };

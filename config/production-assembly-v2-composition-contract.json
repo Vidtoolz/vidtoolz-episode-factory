@@ -10,14 +10,23 @@
     "beat_rule": "each beat is wholly inside one declared timing section: script-beat narration alignment for VISUAL_DRAFT or mode-appropriate human-performance boundaries for presenter/final paths; beats are contiguous and non-overlapping",
     "audio_rule": "the declared narration or human-performance audio spine is assembled once; visual beats never restart or redefine it"
   },
-  "primary_owners": ["GENERATED_VISUAL", "PRESENTER", "TYPOGRAPHY"],
-  "layer_types": ["FULL_CANVAS_VISUAL", "PRESENTER", "TYPOGRAPHY"],
+  "primary_owners": [
+    "GENERATED_VISUAL",
+    "PRESENTER",
+    "TYPOGRAPHY"
+  ],
+  "layer_types": [
+    "FULL_CANVAS_VISUAL",
+    "PRESENTER",
+    "TYPOGRAPHY",
+    "PRESENTER_PROXY"
+  ],
   "invariants": [
     "exactly one primary owner per beat",
     "z-order is explicit and unique",
     "presenter absence is first-class",
     "a visible presenter layer conditionally requires mode-appropriate presenter authority",
-    "zero PRESENTER_ONLY assets is legal for VISUAL_DRAFT and no dummy presenter is accepted",
+    "zero PRESENTER_ONLY assets is legal for VISUAL_DRAFT and no dummy presenter posing as a human performance is accepted; the typed GENERIC_PRESENTER_PROXY final overlay (V2 grammar only) is not a presenter, claims no performance, and carries zero layout authority",
     "absence of presenter makes the full 1080x1920 canvas available; a future-presenter safe region is optional metadata, not a global constraint",
     "no raw ffmpeg filter text is accepted",
     "duplicate full-frame assets and duplicate semantic typography are rejected",
@@ -25,23 +34,74 @@
     "composition data participates in the frozen render-plan digest"
   ],
   "presenter_geometry": {
-    "required": ["x", "y", "width", "height", "anchor"],
-    "anchors": ["TOP_LEFT", "TOP_RIGHT", "BOTTOM_LEFT", "BOTTOM_RIGHT", "CENTER"],
-    "bleed": ["LEFT", "RIGHT", "BOTTOM"],
-    "edge_treatments": ["NONE", "FEATHER_INNER"],
-    "ramp_curves": ["LINEAR", "SMOOTH"]
+    "required": [
+      "x",
+      "y",
+      "width",
+      "height",
+      "anchor"
+    ],
+    "anchors": [
+      "TOP_LEFT",
+      "TOP_RIGHT",
+      "BOTTOM_LEFT",
+      "BOTTOM_RIGHT",
+      "CENTER"
+    ],
+    "bleed": [
+      "LEFT",
+      "RIGHT",
+      "BOTTOM"
+    ],
+    "edge_treatments": [
+      "NONE",
+      "FEATHER_INNER"
+    ],
+    "ramp_curves": [
+      "LINEAR",
+      "SMOOTH"
+    ]
   },
   "visual_media": {
-    "roles": ["GENERATED_VIDEO", "DETERMINISTIC_MOTION_GRAPHIC", "TYPOGRAPHIC", "STATIC_GENERATED_IMAGE_WITH_MOTION", "PRESENTER_ONLY", "EXISTING_APPROVED_ASSET"],
-    "fit": ["COVER", "CONTAIN"],
-    "duration_policy": ["TRIM", "LOOP_EXPLICIT", "STILL"],
-    "still_motion": ["STATIC", "SLOW_SCALE", "PAN", "ZOOM"],
+    "roles": [
+      "GENERATED_VIDEO",
+      "DETERMINISTIC_MOTION_GRAPHIC",
+      "TYPOGRAPHIC",
+      "STATIC_GENERATED_IMAGE_WITH_MOTION",
+      "PRESENTER_ONLY",
+      "EXISTING_APPROVED_ASSET",
+      "GENERIC_PRESENTER_PROXY"
+    ],
+    "fit": [
+      "COVER",
+      "CONTAIN"
+    ],
+    "duration_policy": [
+      "TRIM",
+      "LOOP_EXPLICIT",
+      "STILL"
+    ],
+    "still_motion": [
+      "STATIC",
+      "SLOW_SCALE",
+      "PAN",
+      "ZOOM"
+    ],
     "presenter_matte_format_for_current_run": "VP9-alpha WebM decoded explicitly with libvpx-vp9",
     "presenter_matte_alternative": "ProRes 4444 remains supported where already available but is not required for the current run",
     "presenter_matte_rule": "PRESENTER_ONLY derivatives require explicit alpha semantics, meaningful-alpha validation, a bounded derivative visual crop, immutable source-master lineage, and explicit source-time mapping; automatic decoder selection and extension-only dispatch are forbidden"
   },
-  "fallback_policies": ["REQUIRED", "FALLBACK_ALLOWED", "OPTIONAL"],
-  "music_policies": ["FADE_EARLY", "LOOP_WITH_CROSSFADE", "FULL_PROGRAMME", "NONE"],
+  "fallback_policies": [
+    "REQUIRED",
+    "FALLBACK_ALLOWED",
+    "OPTIONAL"
+  ],
+  "music_policies": [
+    "FADE_EARLY",
+    "LOOP_WITH_CROSSFADE",
+    "FULL_PROGRAMME",
+    "NONE"
+  ],
   "asset_manifest_required_fields": [
     "asset_id",
     "role",
@@ -63,5 +123,19 @@
     "engine": "same frozen plan and ffmpeg composition graph as full render",
     "authority": "NON_AUTHORITATIVE_ENGINEERING_PREVIEW",
     "complete_marker": false
+  },
+  "v2_grammar": {
+    "flag": "composition.grammar = VISUAL_DRAFT_V2_FULL_FRAME (opt-in, additive; absent = exact historical V1 semantics)",
+    "doctrine_owner": "config/visual-draft-production-doctrine-v1.json pinned via composition.doctrine {doctrine_id, version, binding_digest_sha256, file_sha256}",
+    "timing_authority": "FINAL PAUSED NARRATION (vidtoolz.finalPausedNarration.v1) \u2014 the renderer recomputes the four-second interval schedule from the paused sections and rejects any drift",
+    "invariants": [
+      "every beat carries interval_id; intervals are contiguous, never span a narration section, and obey 119..121 frames (section-final 1..121)",
+      "one unique one-use background asset per interval; identical bytes or shared provenance source identity under any filename/treatment are reuse and rejected",
+      "every V2 state keeps a full-frame background; a standalone graphic state is a justified typographic/deterministic background asset",
+      "V2 typography is white with a translucent GREY backing inside the doctrine opacity band and frame-safe margins; presenter overlap is legal, frame-edge violations are not",
+      "the PRESENTER_PROXY layer is a static, lower-right, <25%-area, alpha-validated final overlay above the complete primary frame, stable across all beats; primary_composition_digest_sha256 excludes it and must be identical with and without the proxy",
+      "the interval binding manifest (vidtoolz.visualDraftIntervalBinding.v1) is hash-pinned and validated: 100% coverage, exact spoken text per interval, zero generic filler, bound assets equal composed backgrounds"
+    ],
+    "validators": "scripts/production-assembly-composition.js#validateComposition (options.doctrineRules) + scripts/production-assembly-renderer.js#validateV2Closure"
   }
 }
