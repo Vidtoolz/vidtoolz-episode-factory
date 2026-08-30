@@ -79,7 +79,7 @@ function validateGeometry(geometry, output, label) {
 
 function validateComposition(composition, timeline, output, assetManifest, options = {}) {
   if (!composition) return null;
-  exact(composition, ['schema', 'design_package', 'approved_visual_plan', 'asset_manifest', 'coverage', 'expected_beat_count', 'beats', 'forbidden_asset_ids', 'grammar', 'doctrine', 'interval_binding'], 'composition');
+  exact(composition, ['schema', 'design_package', 'approved_visual_plan', 'asset_manifest', 'coverage', 'expected_beat_count', 'beats', 'forbidden_asset_ids', 'grammar', 'doctrine', 'interval_binding', 'background_registry'], 'composition');
   if (composition.schema !== SCHEMA || composition.coverage !== 'FULL_PROGRAMME') fail('COMPOSITION_SCHEMA_INVALID', 'exact full-programme composition schema required');
   const grammar = composition.grammar ?? null;
   if (grammar !== null && grammar !== V2_GRAMMAR) fail('COMPOSITION_GRAMMAR_INVALID', String(grammar));
@@ -91,8 +91,13 @@ function validateComposition(composition, timeline, output, assetManifest, optio
     sha(composition.doctrine.binding_digest_sha256, 'doctrine binding digest');
     exact(composition.interval_binding, ['path', 'sha256'], 'composition.interval_binding');
     sha(composition.interval_binding?.sha256, 'interval binding');
+    // Canonical background asset registry pin (derived-parent repair, Codex
+    // 2026-08-30): the registry is the canonical registration authority the
+    // renderer resolves identities against — composition must pin it.
+    exact(composition.background_registry, ['path', 'sha256'], 'composition.background_registry');
+    sha(composition.background_registry?.sha256, 'background registry');
     if (BACKING_COLOR_HEX.GREY !== String(doctrineRules.text_treatment?.backing_color || '').replace('#', '')) fail('COMPOSITION_BACKING_COLOR_UNSUPPORTED', 'doctrine backing color has no compositor realization');
-  } else if (composition.doctrine !== undefined || composition.interval_binding !== undefined) fail('COMPOSITION_GRAMMAR_INVALID', 'doctrine/interval binding require the V2 grammar');
+  } else if (composition.doctrine !== undefined || composition.interval_binding !== undefined || composition.background_registry !== undefined) fail('COMPOSITION_GRAMMAR_INVALID', 'doctrine/interval binding/background registry require the V2 grammar');
   exact(composition.design_package, ['path', 'sha256', 'schema'], 'composition.design_package');
   exact(composition.approved_visual_plan, ['path', 'file_sha256', 'plan_id', 'digest_sha256'], 'composition.approved_visual_plan');
   exact(composition.asset_manifest, ['path', 'sha256'], 'composition.asset_manifest');
@@ -329,6 +334,7 @@ function validateV2Grammar({ intervalGroups, proxyPlacements, resolved, sections
       const backgroundManifestItem = assets.get(backgroundAssetId);
       backgroundIdentityModule.validateBackgroundIdentityShape(backgroundManifestItem?.background_identity, backgroundAssetId);
       identityRecord = backgroundManifestItem.background_identity;
+      if (identityRecord.asset_id !== backgroundAssetId) fail('COMPOSITION_BACKGROUND_IDENTITY_REUSE', `${backgroundAssetId}: identity record describes ${identityRecord.asset_id} — records are not transferable between assets`);
       const root = identityRecord.root_background_identity;
       const fingerprint = identityRecord.pixel_fingerprint_sha256;
       if (rootToInterval.has(root)) fail('COMPOSITION_BACKGROUND_IDENTITY_REUSE', `${backgroundAssetId}: same root background identity as ${rootToInterval.get(root)} — a canonical derivative or re-wrapped copy is the same background`);

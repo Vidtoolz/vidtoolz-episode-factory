@@ -138,7 +138,7 @@
     ],
     "validators": "scripts/production-assembly-composition.js#validateComposition (options.doctrineRules) + scripts/production-assembly-renderer.js#validateV2Closure",
     "background_identity": {
-      "schema": "vidtoolz.backgroundIdentity.v1 (required on every V2 script-background manifest asset; forbidden on V1 manifests)",
+      "schema": "vidtoolz.backgroundIdentity.v2 (required on every V2 script-background manifest asset; forbidden on V1 manifests; carries asset_id and, for derivatives, the canonical parent's asset id)",
       "source_classes": [
         "ROOT_GENERATED_ASSET",
         "ROOT_DETERMINISTIC_ASSET",
@@ -147,11 +147,18 @@
       ],
       "root_identity": "sha256('VIDTOOLZ_BACKGROUND_ROOT_V1|' + pixel_fingerprint) for root classes; inherited from the verified parent for DERIVED_ASSET",
       "pixel_fingerprint": "sha256('VIDTOOLZ_PIXELS_V1|w=<w>|h=<h>|fmt=rgba8_straight|' + first decoded frame as straight-alpha RGBA rawvideo, row-major top-down, no metadata/container)",
-      "registration": "scripts/visual-draft-background-identity.js#registerRootBackground / #registerDerivedBackground \u2014 identity derived from canonical content, never accepted from the caller",
-      "resolution": "scripts/production-assembly-renderer.js#validateV2Closure resolves every interval background from bytes (#resolveBackgroundIdentity); composition validation enforces shape/formula/uniqueness purely",
+      "registration": "scripts/visual-draft-background-identity.js#registerRootBackground / #registerDerivedBackground against the canonical background asset registry \u2014 identity derived from canonical content and registered state, never accepted from the caller; a derivative NAMES its parent by parent_asset_id and can never DEFINE it (BACKGROUND_PARENT_OBJECT_FORBIDDEN); an unregistered, fabricated, copied, or missing parent fails closed (BACKGROUND_PARENT_NOT_REGISTERED) and never becomes a new root",
+      "resolution": "scripts/production-assembly-renderer.js#validateV2Closure resolves every interval background against the pinned canonical registry and from bytes (#resolveBackgroundIdentity, #verifyLineageFromBytes); composition validation enforces shape/formula/uniqueness purely and requires the record to describe its own manifest asset",
       "uniqueness_domain": "one VISUAL_DRAFT programme (a single FULL_PROGRAMME composition): one root and one decoded-pixel identity per timed interval; no global cross-project ban",
       "trust_boundary": "an externally transformed, lineage-destroyed import beyond exact decoded-pixel equality would require perceptual similarity to relate \u2014 deliberately out of scope; the canonical pipeline's own paths cannot strip lineage and exact decoded duplicates are caught regardless of wrapper",
-      "repair_provenance": "closes Codex defect LOSSLESS_REENCODE_STRIPPED_SOURCE_IDENTITY (BACKGROUND-PROVENANCE-ATTACK.json, certification rerun 2026-08-30)"
+      "repair_provenance": "closes Codex defect LOSSLESS_REENCODE_STRIPPED_SOURCE_IDENTITY (BACKGROUND-PROVENANCE-ATTACK.json, certification rerun 2026-08-30)",
+      "registry": {
+        "schema": "vidtoolz.backgroundAssetRegistry.v1",
+        "shape": "append-only digest-chained records (predecessor_record_digest_sha256 + record_digest_sha256), one registry per uniqueness domain (one VISUAL_DRAFT programme/run)",
+        "pin": "composition.background_registry {path, sha256} is required under the V2 grammar; the renderer hash-verifies and chain-verifies it, requires every used background to be REGISTERED with a manifest identity equal to the canonical record, and re-derives used assets' AND their ancestors' fingerprints from bytes",
+        "authority_note": "integrity is not authority: valid hashes and valid formulas do not make a record canonical \u2014 registration in the chain does; registry unavailable => fail closed, inline parent objects are never a fallback",
+        "repair_provenance": "closes Codex defect DERIVED ASSET PATH CAN DROP ROOT LINEAGE (SUCCESSOR-PROVENANCE-ATTACK.json, ce2e6e1 certification 2026-08-30)"
+      }
     }
   }
 }

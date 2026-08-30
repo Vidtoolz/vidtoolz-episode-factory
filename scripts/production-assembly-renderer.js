@@ -289,16 +289,35 @@ async function validateV2Closure(spec, context, options = {}) {
   for (const entry of binding.intervals) {
     if (backgroundByInterval.get(entry.interval_id) !== entry.asset_id) fail('V2_BINDING_COMPOSITION_MISMATCH', `${entry.interval_id}: bound asset is not this interval's background`);
   }
-  // Canonical background identity is RESOLVED from the actual bytes here —
-  // the trusted resolver — never trusted from the manifest wrapper (Codex
-  // provenance-laundering repair). A claimed fingerprint that does not match
-  // the decoded pixels fails closed before any render.
+  // Canonical background identity is RESOLVED here — the trusted resolver —
+  // never trusted from the manifest wrapper (Codex provenance-laundering
+  // repair) and never from caller-supplied parent state (Codex derived-asset
+  // re-rooting repair). Three legs, all fail-closed:
+  //   1. the hash-pinned canonical background asset registry is loaded and
+  //      chain-verified; every used background must be REGISTERED and its
+  //      manifest identity must equal the canonical record exactly —
+  //      integrity is not authority, registration is;
+  //   2. each used asset's decoded-pixel fingerprint is re-derived from the
+  //      actual bytes;
+  //   3. each used derivative's ANCESTORS are re-derived from their canonical
+  //      source bytes, so a registry hand-crafted around a parent that never
+  //      materialized cannot establish lineage.
+  const registryPin = spec.composition.background_registry;
+  if (!registryPin?.path || !SHA_RE.test(registryPin.sha256 || '')) fail('BACKGROUND_REGISTRY_UNAVAILABLE', 'canonical background registry pin required');
+  const registryPath = requireInputPath(registryPin.path, spec.input_roots, 'background registry');
+  if (await hashFile(registryPath) !== registryPin.sha256) fail('BACKGROUND_REGISTRY_UNAVAILABLE', 'background registry bytes changed');
+  const registryDocument = readJson(registryPath, 'BACKGROUND_REGISTRY_UNAVAILABLE');
+  const registryByAssetId = backgroundIdentityModule.verifyRegistryDocument(registryDocument);
   const manifestByAssetId = new Map((assetManifest.assets || []).map((item) => [item.asset_id, item]));
   for (const interval of composition.intervals) {
     if (!interval.background_asset_id) continue;
     const item = manifestByAssetId.get(interval.background_asset_id);
+    const registered = registryByAssetId.get(interval.background_asset_id);
+    if (!registered) fail('BACKGROUND_ASSET_NOT_REGISTERED', `${interval.interval_id}: ${interval.background_asset_id} is not a canonical registered background asset`);
+    if (canonicalize(backgroundIdentityModule.identityCore(registered)) !== canonicalize(item.background_identity)) fail('BACKGROUND_REGISTRY_RECORD_MISMATCH', `${interval.interval_id}: manifest identity does not match the canonical registry record`);
     const resolved = backgroundIdentityModule.resolveBackgroundIdentity(item, { computePixelFingerprint: options.computePixelFingerprint });
     if (resolved.root_background_identity !== interval.root_background_identity || resolved.pixel_fingerprint_sha256 !== interval.pixel_fingerprint_sha256) fail('BACKGROUND_FINGERPRINT_MISMATCH', `${interval.interval_id}: composed identity does not match the resolved canonical identity`);
+    backgroundIdentityModule.verifyLineageFromBytes(registryByAssetId, interval.background_asset_id, { computePixelFingerprint: options.computePixelFingerprint });
   }
 }
 

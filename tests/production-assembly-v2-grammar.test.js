@@ -23,9 +23,10 @@ const TIMELINE = [{ section_id: 'S1', story_order: 1, in_ms: 0, out_ms: 8000, du
 
 /* Canonical root identity record over a (fixture) pixel fingerprint: the
  * root MUST satisfy the public content formula or validation refuses it. */
-function rootIdentityRecord(pixelFingerprint) {
+function rootIdentityRecord(assetId, pixelFingerprint) {
   return {
     schema: backgroundIdentityModule.IDENTITY_SCHEMA,
+    asset_id: assetId,
     source_class: 'ROOT_GENERATED_ASSET',
     root_background_identity: backgroundIdentityModule.deriveRootIdentity(pixelFingerprint),
     pixel_fingerprint_sha256: pixelFingerprint,
@@ -34,7 +35,7 @@ function rootIdentityRecord(pixelFingerprint) {
   };
 }
 function backgroundAsset(id, sha, beats, provenance = {}) {
-  return { asset_id: id, role: 'STATIC_GENERATED_IMAGE_WITH_MOTION', path: `/assets/${id}.png`, sha256: sha, media_kind: 'IMAGE', width: 1080, height: 1920, provenance: { producer: 'FLUX lane', generation: { prompt: `unique concept ${id}`, ...provenance } }, background_identity: rootIdentityRecord(sha), status: 'ACCEPTED', policy: 'REQUIRED', intended_beat_ids: beats };
+  return { asset_id: id, role: 'STATIC_GENERATED_IMAGE_WITH_MOTION', path: `/assets/${id}.png`, sha256: sha, media_kind: 'IMAGE', width: 1080, height: 1920, provenance: { producer: 'FLUX lane', generation: { prompt: `unique concept ${id}`, ...provenance } }, background_identity: rootIdentityRecord(id, sha), status: 'ACCEPTED', policy: 'REQUIRED', intended_beat_ids: beats };
 }
 function proxyAsset(overrides = {}) {
   return { asset_id: 'REUSABLE_DRAFT_PRESENTER_PROXY_V1', role: 'GENERIC_PRESENTER_PROXY', path: '/assets/proxy.png', sha256: 'e'.repeat(64), media_kind: 'IMAGE', width: 900, height: 1920, alpha: { required: true, format: 'PNG_ALPHA' }, provenance: { producer: 'generic presenter proxy lane' }, status: 'ACCEPTED', policy: 'REQUIRED', intended_beat_ids: ['B01', 'B02', 'B03'], ...overrides };
@@ -65,6 +66,7 @@ function v2Composition({ beats, withProxy = true, bindingPin } = {}) {
     grammar: engine.V2_GRAMMAR,
     doctrine: { doctrine_id: 'VISUAL_DRAFT_PRODUCTION_DOCTRINE', version: 1, binding_digest_sha256: doctrineModule.doctrineBinding().binding_digest_sha256, file_sha256: doctrineModule.doctrineBinding().file_sha256 },
     interval_binding: bindingPin || { path: '/bindings/interval-binding.json', sha256: '9'.repeat(64) },
+    background_registry: arguments[0]?.registryPin || { path: '/bindings/background-registry.json', sha256: '8'.repeat(64) },
     design_package: { path: '/design.json', sha256: '1'.repeat(64), schema: 'vidtoolz.productionAssemblySpec.v2' },
     approved_visual_plan: { path: '/plan.json', file_sha256: '2'.repeat(64), plan_id: 'visual-plan-test', digest_sha256: '3'.repeat(64) },
     asset_manifest: { path: '/assets.json', sha256: '4'.repeat(64) },
@@ -102,7 +104,7 @@ test('V2G2 the V2 grammar requires the pinned doctrine rules', () => {
 
 test('V2G3 V1 compositions are untouched: grammar fields absent means no V2 output fields', () => {
   const composition = v2Composition({ withProxy: false });
-  delete composition.grammar; delete composition.doctrine; delete composition.interval_binding;
+  delete composition.grammar; delete composition.doctrine; delete composition.interval_binding; delete composition.background_registry;
   for (const item of composition.beats) delete item.interval_id;
   for (const item of composition.beats) for (const layer of item.layers) if (layer.typography) delete layer.typography.backing;
   const v1Manifest = v2Manifest({ includeProxy: false });
@@ -263,7 +265,7 @@ test('V2G23 proxy pixels may not masquerade as a background or any other layer',
 
 test('V2G24 the proxy is V2-only: a V1 composition may not carry it', () => {
   const composition = v2Composition();
-  delete composition.grammar; delete composition.doctrine; delete composition.interval_binding;
+  delete composition.grammar; delete composition.doctrine; delete composition.interval_binding; delete composition.background_registry;
   for (const item of composition.beats) { delete item.interval_id; for (const layer of item.layers) if (layer.typography) delete layer.typography.backing; }
   const v1Manifest = v2Manifest();
   for (const item of v1Manifest.assets) delete item.background_identity;
@@ -333,16 +335,26 @@ function closureFixture(mutate = {}) {
   fs.writeFileSync(bindingPath, JSON.stringify(skeleton, null, 2));
   const crypto = require('node:crypto');
   const shaOf = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-  const composition = validate(v2Composition({ withProxy: false, bindingPin: { path: bindingPath, sha256: shaOf(bindingPath) } }), v2Manifest({ includeProxy: false }));
+  const assetManifest = v2Manifest({ includeProxy: false });
+  const fingerprintByPath = new Map(assetManifest.assets.filter((a) => a.background_identity).map((a) => [a.path, a.background_identity.pixel_fingerprint_sha256]));
+  const computePixelFingerprint = (file) => {
+    if (!fingerprintByPath.has(file)) { const error = new Error(`${file}: missing fixture bytes`); error.code = 'BACKGROUND_SOURCE_MISSING'; throw error; }
+    return { pixel_fingerprint_sha256: fingerprintByPath.get(file), width: 1080, height: 1920 };
+  };
+  // real canonical registry file consistent with the manifest identities
+  const registryPath = path.join(dir, 'background-registry.json');
+  const registry = backgroundIdentityModule.createBackgroundRegistry(registryPath);
+  for (const item of assetManifest.assets) if (item.background_identity) {
+    backgroundIdentityModule.registerRootBackground(registry, { asset_id: item.asset_id, path: item.path, source_class: 'ROOT_GENERATED_ASSET' }, { computePixelFingerprint });
+  }
+  const registryPin = { path: registryPath, sha256: shaOf(registryPath) };
+  const composition = validate(v2Composition({ withProxy: false, bindingPin: { path: bindingPath, sha256: shaOf(bindingPath) }, registryPin }), assetManifest);
   const spec = {
     input_roots: [dir],
     narration: { sha256: mutate.narrationSha || 'c'.repeat(64), paused_manifest: { path: pausedPath, sha256: shaOf(pausedPath) } },
-    composition: { interval_binding: { path: bindingPath, sha256: shaOf(bindingPath) }, ...mutate.specComposition },
+    composition: { interval_binding: { path: bindingPath, sha256: shaOf(bindingPath) }, background_registry: registryPin, ...mutate.specComposition },
   };
   const timeline = mutate.timeline || TIMELINE;
-  const assetManifest = v2Manifest({ includeProxy: false });
-  const fingerprintByPath = new Map(assetManifest.assets.filter((a) => a.background_identity).map((a) => [a.path, a.background_identity.pixel_fingerprint_sha256]));
-  const computePixelFingerprint = (file) => ({ pixel_fingerprint_sha256: fingerprintByPath.get(file), width: 1080, height: 1920 });
   return { spec, options: { computePixelFingerprint }, context: { composition: mutate.composition ? mutate.composition(composition) : composition, timeline, assetManifest, doctrineRules: RULES, narration: { source_class: 'SYNTHETIC_DRAFT_NARRATION' } } };
 }
 
