@@ -422,8 +422,17 @@ function buildVideoGraph(plan, command, filters) {
         // after the complete primary frame and touches nothing beneath it.
         const asset = layer.resolved_asset; const index = inputByAsset.get(asset.asset_id); const geometry = layer.geometry;
         if (!current) { filters.push(`color=c=black:s=${plan.output.width}x${plan.output.height}:r=${plan.output.fps}:d=${duration}[b${beatIndex}base]`); current = `b${beatIndex}base`; }
-        filters.push(`[${index}:v]scale=${geometry.width}:${geometry.height}:flags=lanczos,format=rgba,fps=${plan.output.fps},trim=duration=${duration},setpts=PTS-STARTPTS[px${beatIndex}]`);
-        filters.push(`[${current}][px${beatIndex}]overlay=x=${geometry.x}:y=${geometry.y}:eof_action=pass[beat${beatIndex}px${layer.z}]`); current = `beat${beatIndex}px${layer.z}`;
+        // Same padding discipline as the background branch: clone-pad past the
+        // beat edge then trim, so a beat with the proxy yields exactly the same
+        // frame count and boundary frames as the identical beat without it.
+        filters.push(`[${index}:v]scale=${geometry.width}:${geometry.height}:flags=lanczos,format=rgba,fps=${plan.output.fps},tpad=stop_mode=clone:stop_duration=1,trim=duration=${duration},setpts=PTS-STARTPTS[px${beatIndex}]`);
+        // format=rgb keeps the composite in the RGB domain: the single
+        // RGB->YUV conversion happens at beat finalization exactly as on the
+        // proxy-free path, so pixels outside the proxy rectangle stay
+        // bit-identical with and without the proxy (independence proof).
+        // The trailing clone-pad mirrors the background branch: without it the
+        // finalize fps drops the beat's last frame after overlay at EOF.
+        filters.push(`[${current}][px${beatIndex}]overlay=x=${geometry.x}:y=${geometry.y}:format=rgb:eof_action=pass,tpad=stop_mode=clone:stop_duration=1[beat${beatIndex}px${layer.z}]`); current = `beat${beatIndex}px${layer.z}`;
       }
     }
     if (!current) fail('COMPOSITION_EMPTY_BEAT', beat.beat_id);
