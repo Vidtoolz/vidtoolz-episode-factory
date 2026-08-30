@@ -4,6 +4,7 @@
  * canonical Production assembler. This module deliberately has no CLI. */
 const crypto = require('node:crypto');
 const backgroundIdentityModule = require('./visual-draft-background-identity.js');
+const typographyLayoutModule = require('./canonical-typography-layout.js');
 
 const SCHEMA = 'vidtoolz.productionAssemblyComposition.v1';
 const ASSET_MANIFEST_SCHEMA = 'vidtoolz.productionAssemblyAssetManifest.v1';
@@ -153,6 +154,7 @@ function validateComposition(composition, timeline, output, assetManifest, optio
       if (!layer.layer_id || layerIds.has(layer.layer_id) || !TYPES.has(layer.type)) fail('COMPOSITION_LAYER_INVALID', beat.beat_id); layerIds.add(layer.layer_id);
       integer(layer.z, `${beat.beat_id}.${layer.layer_id}.z`); if (zValues.has(layer.z)) fail('COMPOSITION_Z_ORDER_INVALID', beat.beat_id); zValues.add(layer.z);
       let asset = null;
+      let canonicalTypographyLayout = null;
       if (layer.asset_id) {
         if (forbidden.has(layer.asset_id)) fail('COMPOSITION_STALE_ASSET_FORBIDDEN', layer.asset_id); asset = resolveAsset(layer.asset_id, assets, usedFallbacks);
         if (!Array.isArray(asset.intended_beat_ids) || !asset.intended_beat_ids.includes(beat.beat_id)) fail('COMPOSITION_ASSET_BEAT_BINDING_INVALID', `${asset.asset_id}:${beat.beat_id}`);
@@ -197,6 +199,10 @@ function validateComposition(composition, timeline, output, assetManifest, optio
           const margins = doctrineRules.text_treatment.frame_safe_margins_px;
           const region = layer.typography.region;
           if (region.x < margins.left || region.y < margins.top || region.x + region.width > output.width - margins.right || region.y + region.height > output.height - margins.bottom) fail('COMPOSITION_TEXT_FRAME_SAFETY_VIOLATION', `${beat.beat_id}.${layer.layer_id}`);
+          if (layer.typography.render_mode === 'PRE_RENDERED') {
+            if (!asset || asset.media_kind !== 'IMAGE' || asset.role !== 'TYPOGRAPHIC') fail('COMPOSITION_TYPOGRAPHY_PRE_RENDERED_INVALID', `${beat.beat_id}: V2 pre-rendered text must be one typographic image confined to its declared region`);
+            canonicalTypographyLayout = typographyLayoutModule.confinedPreRenderedTypography(layer.typography);
+          } else canonicalTypographyLayout = typographyLayoutModule.layoutTypography(layer.typography);
         }
       }
       if (layer.type === 'PRESENTER_PROXY') {
@@ -221,7 +227,7 @@ function validateComposition(composition, timeline, output, assetManifest, optio
         if (!['STATIC', 'SLOW_SCALE', 'PAN', 'ZOOM'].includes(layer.motion.type) || (layer.motion.type !== 'STATIC' && asset?.media_kind !== 'IMAGE')) fail('COMPOSITION_MOTION_INVALID', beat.beat_id);
         for (const key of Object.keys(layer.motion).filter((key) => key !== 'type')) integer(layer.motion[key], `${beat.beat_id}.${key}`);
       }
-      layers.push({ ...layer, resolved_asset: asset ? { asset_id: asset.asset_id, role: asset.role, path: asset.path, sha256: asset.sha256, media_kind: asset.media_kind, width: asset.width, height: asset.height, duration_ms: asset.duration_ms, alpha: asset.alpha, visual_crop: asset.visual_crop, provenance: asset.provenance } : undefined });
+      layers.push({ ...layer, ...(canonicalTypographyLayout ? { typography_layout: canonicalTypographyLayout } : {}), resolved_asset: asset ? { asset_id: asset.asset_id, role: asset.role, path: asset.path, sha256: asset.sha256, media_kind: asset.media_kind, width: asset.width, height: asset.height, duration_ms: asset.duration_ms, alpha: asset.alpha, visual_crop: asset.visual_crop, provenance: asset.provenance } : undefined });
     }
     const primaries = layers.filter((layer) => layer.primary === true);
     const ownerType = { GENERATED_VISUAL: 'FULL_CANVAS_VISUAL', PRESENTER: 'PRESENTER', TYPOGRAPHY: 'TYPOGRAPHY' }[beat.primary_owner];
@@ -430,18 +436,28 @@ function buildVideoGraph(plan, command, filters) {
         const x = interpolate(geometry.x, end.x, p); const y = interpolate(geometry.y, end.y, p);
         filters.push(`[${current}][${source}]overlay=x='${x}':y='${y}':eval=frame:eof_action=pass[beat${beatIndex}p${layer.z}]`); current = `beat${beatIndex}p${layer.z}`;
       } else if (layer.type === 'TYPOGRAPHY') {
-        const type = layer.typography; const region = type.region; const fontSize = Math.max(24, Math.min(128, Math.floor(region.height / 4)));
-        if (type.render_mode === 'PRE_RENDERED') {
+        const type = layer.typography; const region = type.region;
+        if (plan.composition.grammar === V2_GRAMMAR) typographyLayoutModule.assertCanonicalLayout(type, layer.typography_layout);
+        if (type.render_mode === 'PRE_RENDERED' && plan.composition.grammar === V2_GRAMMAR) {
+          const asset = layer.resolved_asset; const index = inputByAsset.get(asset.asset_id);
+          if (!current) { filters.push(`color=c=black:s=${plan.output.width}x${plan.output.height}:r=${plan.output.fps}:d=${duration}[b${beatIndex}base]`); current = `b${beatIndex}base`; }
+          filters.push(`[${index}:v]scale=${region.width}:${region.height}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${region.width}:${region.height}:(ow-iw)/2:(oh-ih)/2:color=0x00000000,format=rgba,fps=${plan.output.fps},tpad=stop_mode=clone:stop_duration=1,trim=duration=${duration},setpts=PTS-STARTPTS[beat${beatIndex}ti${layer.z}]`);
+          filters.push(`[${current}][beat${beatIndex}ti${layer.z}]overlay=x=${region.x}:y=${region.y}:format=rgb:eof_action=pass[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
+        } else if (type.render_mode === 'PRE_RENDERED') {
           const asset = layer.resolved_asset; const index = inputByAsset.get(asset.asset_id);
           filters.push(`[${index}:v]scale=${plan.output.width}:${plan.output.height}:force_original_aspect_ratio=increase:flags=lanczos,crop=${plan.output.width}:${plan.output.height},fps=${plan.output.fps},trim=duration=${duration},setpts=PTS-STARTPTS,format=rgba[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
         } else {
           if (!current) { filters.push(`color=c=black:s=${plan.output.width}x${plan.output.height}:r=${plan.output.fps}:d=${duration}[b${beatIndex}base]`); current = `b${beatIndex}base`; }
-          const x = type.alignment === 'CENTER' ? `${region.x}+((${region.width}-text_w)/2)` : type.alignment === 'RIGHT' ? `${region.x + region.width}-text_w-${type.safe_margin_px}` : String(region.x + type.safe_margin_px);
-          const y = `${region.y}+((${region.height}-text_h)/2)`;
+          const layout = layer.typography_layout;
+          const fontSize = layout?.font_size_px ?? Math.max(24, Math.min(128, Math.floor(region.height / 4)));
+          const x = layout?.drawtext_origin.x ?? (type.alignment === 'CENTER' ? `${region.x}+((${region.width}-text_w)/2)` : type.alignment === 'RIGHT' ? `${region.x + region.width}-text_w-${type.safe_margin_px}` : String(region.x + type.safe_margin_px));
+          const y = layout?.drawtext_origin.y ?? `${region.y}+((${region.height}-text_h)/2)`;
+          const renderedText = layout?.rendered_text ?? type.content;
+          const lineSpacing = layout ? `:line_spacing=${layout.line_spacing_px}:text_align=${{ LEFT: 'L', CENTER: 'C', RIGHT: 'R' }[type.alignment]}` : '';
           // V2 text treatment: the translucent grey panel follows the text
           // footprint (drawtext box), keeping the background visibly present.
           const backing = type.backing ? `:box=1:boxcolor=0x${BACKING_COLOR_HEX[type.backing.color]}@${Number(type.backing.opacity).toFixed(2)}:boxborderw=${type.backing.padding_px ?? 18}` : '';
-          filters.push(`[${current}]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='${escapeDrawtext(type.content)}':fontcolor=white:fontsize=${fontSize}:x='${x}':y='${y}'${backing}[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
+          filters.push(`[${current}]drawtext=fontfile=${typographyLayoutModule.FONT_FILE}:text='${escapeDrawtext(renderedText)}':fontcolor=white:fontsize=${fontSize}:expansion=none:x='${x}':y='${y}'${lineSpacing}${backing}[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
         }
       } else if (layer.type === 'PRESENTER_PROXY') {
         // The proxy is the FINAL overlay: by validated z-order it composites

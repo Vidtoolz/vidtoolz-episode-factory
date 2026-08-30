@@ -55,6 +55,7 @@ require("./paused-narration.test.js");
 require("./visual-draft-interval-scheduler.test.js");
 require("./visual-draft-binding.test.js");
 require("./production-assembly-v2-grammar.test.js");
+require("./canonical-typography-layout.test.js");
 require("./visual-draft-background-identity.test.js");
 require("./visual-draft-original-music.test.js");
 require("./visual-draft-proxy-successor.test.js");

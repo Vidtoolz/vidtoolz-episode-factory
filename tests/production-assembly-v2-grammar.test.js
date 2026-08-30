@@ -395,4 +395,33 @@ test('V2G34 proxy alpha bytes are really validated: an opaque image is not a pro
   assert.equal(evidence.alpha_nontrivial, true);
 });
 
+test('V2G35 exact hostile 120-character word is rejected by canonical composition validation', () => {
+  const content = 'W'.repeat(120);
+  const hostile = v2Composition({ withProxy: false });
+  hostile.beats[0].layers[1] = textLayer(content);
+  assert.throws(() => validate(hostile, v2Manifest({ includeProxy: false })), { code: 'COMPOSITION_TYPOGRAPHY_OVERFLOW' });
+});
+
+test('V2G36 a legal tall-region hostile word carries one measured layout into the render graph', () => {
+  const content = 'W'.repeat(120);
+  const legal = v2Composition({ withProxy: false });
+  legal.beats[0].layers[1] = textLayer(content, { region: { x: 128, y: 520, width: 824, height: 360, anchor: 'TOP_LEFT' } });
+  const composition = validate(legal, v2Manifest({ includeProxy: false }));
+  const layout = composition.beats[0].layers[1].typography_layout;
+  assert.ok(layout.line_count > 1);
+  assert.ok(layout.font_size_px >= 24);
+  const command = []; const filters = [];
+  engine.buildVideoGraph({ composition, timeline: TIMELINE, music: { policy: 'NONE' }, output: OUTPUT }, command, filters);
+  const drawtext = filters.find((line) => line.includes('drawtext=') && line.includes(`fontsize=${layout.font_size_px}`));
+  assert.ok(drawtext);
+  assert.match(drawtext, /line_spacing=/);
+  assert.ok(drawtext.includes(layout.lines[0]));
+});
+
+test('V2G37 caller cannot inject or override canonical typography layout state', () => {
+  const forged = v2Composition({ withProxy: false });
+  forged.beats[0].layers[1].typography_layout = { font_size_px: 1, rendered_text: 'FORGED' };
+  assert.throws(() => validate(forged, v2Manifest({ includeProxy: false })), { code: 'COMPOSITION_UNKNOWN_FIELD' });
+});
+
 module.exports = { tests: require('./_helpers.js').tests };
