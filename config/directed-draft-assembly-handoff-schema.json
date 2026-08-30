@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.directedDraftAssemblyHandoff.v1",
+  "title": "VIDTOOLZ Canonical Directed Draft Assembly Handoff V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "handoff_id",
+    "revision",
+    "predecessor",
+    "run_id",
+    "source_inventory",
+    "production",
+    "timeline",
+    "narration",
+    "presenter",
+    "visual",
+    "camera",
+    "media",
+    "music",
+    "editor",
+    "provenance",
+    "handoff_digest_sha256"
+  ],
+  "properties": {
+    "schema": { "const": "vidtoolz.directedDraftAssemblyHandoff.v1" },
+    "handoff_id": { "type": "string", "pattern": "^directed-draft-handoff-[a-f0-9]{24}$" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "predecessor": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["handoff_id", "handoff_digest_sha256"],
+          "properties": {
+            "handoff_id": { "type": "string" },
+            "handoff_digest_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          }
+        }
+      ]
+    },
+    "run_id": { "type": "string", "minLength": 1 },
+    "source_inventory": { "type": "object" },
+    "production": { "type": "object" },
+    "timeline": { "type": "object" },
+    "narration": { "type": "object" },
+    "presenter": { "type": "object" },
+    "visual": { "type": "object" },
+    "camera": { "type": "object" },
+    "media": { "type": "object" },
+    "music": { "type": "object" },
+    "editor": { "type": "object" },
+    "provenance": { "type": "object" },
+    "handoff_digest_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

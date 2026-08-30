@@ -48,6 +48,7 @@ require("./supervised-presenter-take-adapter.test.js");
 require("./tier3-human-performance-authority.test.js");
 require("./presenter-boundary-review.test.js");
 require("./production-assembly-renderer.test.js");
+require("./directed-draft-assembly-handoff.test.js");
 require("./production-assembly-composition.test.js");
 require("./visual-draft-doctrine.test.js");
 require("./natural-pause-planner.test.js");
