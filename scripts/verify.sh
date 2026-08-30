@@ -47,6 +47,8 @@ node --check scripts/agent-task-story-editor.js
 node --check scripts/human-approval-identity.js
 node --check scripts/production-assembly-renderer.js
 node --check scripts/production-assembly-composition.js
+node --check scripts/visual-draft-interval-scheduler.js
+node --check scripts/visual-draft-binding.js
 node --check scripts/natural-pause-planner.js
 node --check scripts/paused-narration.js
 node --check scripts/visual-draft-doctrine.js
