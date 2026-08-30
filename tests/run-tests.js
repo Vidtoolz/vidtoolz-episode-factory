@@ -51,6 +51,7 @@ require("./production-assembly-renderer.test.js");
 require("./production-assembly-release-authority.test.js");
 require("./directed-draft-assembly-handoff.test.js");
 require("./directed-draft-editor-path-projection.test.js");
+require("./directed-draft-composition-projection.test.js");
 require("./production-assembly-composition.test.js");
 require("./visual-draft-doctrine.test.js");
 require("./natural-pause-planner.test.js");

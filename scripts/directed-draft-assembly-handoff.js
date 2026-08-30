@@ -182,6 +182,20 @@ function validateTimelineModel(model) {
   if (cursor !== timeline.duration_ms) fail('ASSEMBLY_BEAT_COVERAGE_INCOMPLETE', `${cursor} != ${timeline.duration_ms}`);
   if (presenterRequired && (!presenter || !Array.isArray(presenter.assets) || presenter.assets.length === 0)) fail('PRESENTER_REQUIRED', 'release authority requires presenter media');
 }
+function validateHandoffAssetManifestPin(handoff) {
+  const pin = handoff?.visual?.asset_manifest;
+  const keys = Object.keys(pin || {});
+  const unknown = keys.filter((key) => !['path', 'sha256', 'schema'].includes(key));
+  if (unknown.length) fail('HANDOFF_ASSET_MANIFEST_UNKNOWN_FIELD', unknown[0]);
+  if (typeof pin?.path !== 'string' || !pin.path) fail('HANDOFF_ASSET_MANIFEST_PATH_REQUIRED', String(pin?.path));
+  if (!SHA_RE.test(String(pin?.sha256 || ''))) fail('HANDOFF_ASSET_MANIFEST_SHA_INVALID', String(pin?.sha256));
+  if (pin.schema !== 'vidtoolz.productionAssemblyAssetManifest.v1') fail('HANDOFF_ASSET_MANIFEST_SCHEMA_INVALID', String(pin.schema));
+  if (handoff.visual.composition?.asset_manifest
+    && handoff.visual.composition.asset_manifest.sha256 !== pin.sha256) fail('ASSET_MANIFEST_STALE', 'composition asset-manifest digest differs from handoff authority');
+  const registry = handoff.media?.registry_authority;
+  if (registry?.path !== pin.path || registry?.sha256 !== pin.sha256 || registry?.schema !== pin.schema) fail('ASSET_MANIFEST_STALE', 'media registry differs from handoff authority');
+  return pin;
+}
 function handoffCore(handoff) {
   const copy = { ...handoff };
   delete copy.handoff_id; delete copy.handoff_digest_sha256;
@@ -214,6 +228,7 @@ function validateSemanticHandoff(handoff) {
     presenter: handoff.presenter,
   });
   if (handoff.visual.grammar === 'VISUAL_DRAFT_V2_FULL_FRAME' && !handoff.visual.composition.grammar) fail('V2_COMPOSITION_REQUIRED', handoff.run_id);
+  validateHandoffAssetManifestPin(handoff);
   if (handoff.music.required && (!handoff.music.asset?.sha256 || !handoff.music.asset?.path)) fail('MUSIC_ASSET_REQUIRED', handoff.run_id);
   return true;
 }
@@ -238,6 +253,14 @@ function projectNarrationForRenderer(handoff, runDir, roots) {
     resolved_path: narrationPath,
     alignment: { ...packet.alignment, resolved_path: alignmentPath },
   };
+}
+function projectAssetManifestForRenderer(handoff, runDir, roots) {
+  const pin = validateHandoffAssetManifestPin(handoff);
+  if (!path.isAbsolute(pin.path)) fail('HANDOFF_ASSET_MANIFEST_CANONICAL_PATH_REQUIRED', pin.path);
+  const manifestPath = resolveAuthorityPath(runDir, pin.path, roots, 'asset manifest');
+  if (manifestPath !== pin.path) fail('HANDOFF_ASSET_MANIFEST_CANONICAL_PATH_REQUIRED', pin.path);
+  if (sha256FileSync(manifestPath) !== pin.sha256) fail('ASSET_MANIFEST_STALE', manifestPath);
+  return { path: manifestPath, sha256: pin.sha256 };
 }
 function buildAssetRecord(asset, manifestPin, resolvedPath) {
   return {
@@ -522,7 +545,7 @@ function rendererSpecFromHandoff(handoff, runDir, roots) {
       ...handoff.visual.composition,
       design_package: handoff.visual.design_package,
       approved_visual_plan: handoff.visual.approved_visual_plan,
-      asset_manifest: handoff.visual.asset_manifest,
+      asset_manifest: projectAssetManifestForRenderer(handoff, runDir, roots),
       beats: handoff.visual.composition.beats.map(({ purpose, ...beat }) => beat),
     },
     music: {
@@ -647,7 +670,8 @@ module.exports = {
   REVIEW_EVIDENCE_SCHEMA, LEGACY_INTAKE_SCHEMA, ASSEMBLY_DIR, STATE_FILE,
   DirectedDraftAssemblyError, canonicalize, digest, jsonBytesSha, sha256FileSync, defaultAllowedRoots,
   resolveAuthorityPath, resolveRunDir, discoverActiveIntake, flattenArtifacts,
-  validateTimelineModel, validateSemanticHandoff, projectNarrationForRenderer, materialize, validateRegisteredHandoff,
+  validateTimelineModel, validateHandoffAssetManifestPin, validateSemanticHandoff,
+  projectNarrationForRenderer, projectAssetManifestForRenderer, materialize, validateRegisteredHandoff,
   rendererSpecFromHandoff, consume, buildReviewEvidence, execute, parseArgs, main,
 };
 
