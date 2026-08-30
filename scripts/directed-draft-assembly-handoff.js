@@ -14,6 +14,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const renderer = require('./production-assembly-renderer.js');
+const releaseAuthority = require('./production-assembly-release-authority.js');
 
 const HANDOFF_SCHEMA = 'vidtoolz.directedDraftAssemblyHandoff.v1';
 const RECEIPT_SCHEMA = 'vidtoolz.directedDraftAssemblyReceipt.v1';
@@ -285,10 +286,10 @@ async function materialize(runDirInput, options = {}) {
   const visualPlan = readJson(resolved.get(visualPlanArtifact), 'VISUAL_PLAN_INVALID');
   const musicDecision = readJson(resolved.get(musicDecisionArtifact), 'MUSIC_DECISION_INVALID');
   if (release.ready !== true || (release.blockers || []).length) fail('UPSTREAM_APPROVAL_INCOMPLETE', 'release packet not assembly eligible');
-  if (release.draft_class === 'VISUAL_DRAFT' && (release.presenter_sources || []).length === 0
-    && release.human_review_binding_sha256 != null) {
-    fail('VISUAL_DRAFT_PRESENTER_PLACEHOLDER_FORBIDDEN', 'presenter-free release packet retains a human-presenter review binding');
-  }
+  const graphicsPin = releaseAuthority.graphicsDirectionPin(release);
+  const graphicsArtifact = graphicsPin ? artifactBySchema(records, releaseAuthority.GRAPHICS_DIRECTION_SCHEMA, 'GRAPHICS_DIRECTION_AUTHORITY_MISSING') : null;
+  const graphicsValue = graphicsArtifact ? readJson(resolved.get(graphicsArtifact), 'GRAPHICS_DIRECTION_JSON_INVALID') : null;
+  const releaseValidation = releaseAuthority.validateReleasePacketAuthority(release, { graphicsArtifact, graphicsValue });
   if (!sameStory(release.story, storyArtifact.story) || !sameStory(release.story, alignment.story) || !sameStory(release.story, manifest.story)) fail('UPSTREAM_APPROVAL_IDENTITY_MISMATCH', intake.run_id);
   if (String(release.story.approval_state).toLowerCase() !== 'approved') fail('APPROVED_SCRIPT_REQUIRED', release.story.version_id);
   if (release.visual_plan?.file_sha256 !== visualPlanArtifact.sha256 || release.visual_plan?.plan_id !== visualPlan.plan_id) fail('VISUAL_PLAN_STALE', visualPlanArtifact.path);
@@ -345,6 +346,7 @@ async function materialize(runDirInput, options = {}) {
         script: release.story.approval_state,
         visual_plan: release.visual_plan.approval_state,
         music: activeMusic.authority,
+        portrait_graphics_human_direction: releaseValidation.graphics_direction,
         release_ready: release.ready,
       },
     },
