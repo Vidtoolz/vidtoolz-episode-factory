@@ -55,6 +55,7 @@ require("./directed-draft-composition-projection.test.js");
 require("./production-assembly-composition.test.js");
 require("./production-assembly-reveal.test.js");
 require("./production-assembly-v4-typography-layout.test.js");
+require("./production-assembly-drawtext-escaping.test.js");
 require("./visual-draft-doctrine.test.js");
 require("./natural-pause-planner.test.js");
 require("./paused-narration.test.js");

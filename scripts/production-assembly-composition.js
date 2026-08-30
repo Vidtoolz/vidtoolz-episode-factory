@@ -493,7 +493,19 @@ function progressExpression(curve, durationSeconds) {
   return curve === 'SMOOTH' ? `(3*pow(${p},2)-2*pow(${p},3))` : p;
 }
 function interpolate(start, end, p) { return start === end ? String(start) : `${start}+(${end - start})*${p}`; }
-function escapeDrawtext(value) { return String(value).replaceAll('\\', '\\\\').replaceAll(':', '\\:').replaceAll("'", "\\'").replaceAll('%', '\\%'); }
+/* Canonical drawtext text-value serializer for a filter graph passed directly
+ * as one argv element (there is no shell). Backslash, colon and percent must
+ * survive the drawtext option/text parsers. A single quote cannot be escaped
+ * while it remains inside a filtergraph single-quoted token, so close that
+ * token, emit the escaped quote, and reopen it. Real-FFmpeg tests compare the
+ * resulting pixels with a raw UTF-8 textfile oracle. */
+function serializeDrawtextText(value) {
+  return String(value)
+    .replaceAll('\\', '\\\\')
+    .replaceAll(':', '\\:')
+    .replaceAll("'", "'\\\\\\''")
+    .replaceAll('%', '\\%');
+}
 
 /* Adds inputs and a video-only graph. Section inputs are already present at
  * indices 0..timeline.length-1 and are reused for presenter pixels. */
@@ -581,7 +593,7 @@ function buildVideoGraph(plan, command, filters) {
           // V2 text treatment: the translucent grey panel follows the text
           // footprint (drawtext box), keeping the background visibly present.
           const backing = type.backing ? `:box=1:boxcolor=0x${BACKING_COLOR_HEX[type.backing.color]}@${Number(type.backing.opacity).toFixed(2)}:boxborderw=${type.backing.padding_px ?? 18}` : '';
-          filters.push(`[${current}]drawtext=fontfile=${typographyLayoutModule.FONT_FILE}:text='${escapeDrawtext(renderedText)}':fontcolor=white:fontsize=${fontSize}:expansion=none:x='${x}':y='${y}'${lineSpacing}${backing}${revealEnable(layer, beat)}[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
+          filters.push(`[${current}]drawtext=fontfile=${typographyLayoutModule.FONT_FILE}:text='${serializeDrawtextText(renderedText)}':fontcolor=white:fontsize=${fontSize}:expansion=none:x='${x}':y='${y}'${lineSpacing}${backing}${revealEnable(layer, beat)}[beat${beatIndex}t${layer.z}]`); current = `beat${beatIndex}t${layer.z}`;
         }
       } else if (layer.type === 'PRESENTER_PROXY') {
         // The proxy is the FINAL overlay: by validated z-order it composites
@@ -618,4 +630,4 @@ function buildVideoGraph(plan, command, filters) {
   return inputByAsset;
 }
 
-module.exports = { SCHEMA, ASSET_MANIFEST_SCHEMA, PRESENTER_ALPHA_FORMAT, PRESENTER_ALPHA_DECODER, V2_GRAMMAR, PROXY_ALPHA_FORMAT, BACKING_COLOR_HEX, REVEAL_PLAN_SCHEMA, canonicalize, digest, frameIndexAtOrAfterMs, compileRevealPlan, layerVisibleAt, backgroundIdentity, validateComposition, buildVideoGraph };
+module.exports = { SCHEMA, ASSET_MANIFEST_SCHEMA, PRESENTER_ALPHA_FORMAT, PRESENTER_ALPHA_DECODER, V2_GRAMMAR, PROXY_ALPHA_FORMAT, BACKING_COLOR_HEX, REVEAL_PLAN_SCHEMA, canonicalize, digest, frameIndexAtOrAfterMs, compileRevealPlan, layerVisibleAt, backgroundIdentity, serializeDrawtextText, validateComposition, buildVideoGraph };

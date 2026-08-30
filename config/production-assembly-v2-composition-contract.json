@@ -57,6 +57,14 @@
     "failure_policy": "malformed, contradictory, max-line-exceeding or geometrically impossible layouts fail closed before rendering",
     "legacy_behavior": "typography without layout retains its existing V1/V2/static behavior"
   },
+  "drawtext_serialization": {
+    "authority": "scripts/production-assembly-composition.js#serializeDrawtextText",
+    "invocation_model": "the filter graph is one direct spawnSync argv element; no shell parses it",
+    "representation": "inline drawtext text= inside a filtergraph single-quoted token",
+    "escaping": "backslash, colon and percent are escaped for the drawtext parsers; ASCII apostrophe closes the quoted token, emits an escaped literal quote, and reopens the token",
+    "semantic_oracle": "real FFmpeg output must be pixel-identical to rendering the same UTF-8 bytes through drawtext textfile= with expansion=none",
+    "injection_policy": "approved text remains data and cannot terminate options, inject filters, create pad labels, or alter enable/coordinate expressions"
+  },
   "presenter_geometry": {
     "required": [
       "x",

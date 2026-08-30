@@ -49,6 +49,7 @@ node --check scripts/production-assembly-renderer.js
 node --check scripts/production-assembly-composition.js
 node --check tests/production-assembly-reveal.test.js
 node --check tests/production-assembly-v4-typography-layout.test.js
+node --check tests/production-assembly-drawtext-escaping.test.js
 node --check scripts/canonical-typography-layout.js
 node --check scripts/visual-draft-background-identity.js
 node --check scripts/visual-draft-original-music.js
