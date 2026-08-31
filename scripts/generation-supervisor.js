@@ -60,7 +60,7 @@ function probeHttp(url, timeoutMs = 5000) {
 // The canonical runner reads ACTIONS to validate a requested action before it
 // invokes the module. A task with no action keeps the historical direct-CLI
 // behaviour and is treated as a supervision request.
-const ACTIONS = Object.freeze(['supervise_generation', 'generate_draft_narration', 'generate_draft_proxy_presenter', 'status']);
+const ACTIONS = Object.freeze(['supervise_generation', 'generate_draft_bespoke_still', 'generate_draft_narration', 'generate_draft_proxy_presenter', 'status']);
 const DEFAULT_ACTION = 'supervise_generation';
 
 function requestedAction(task) {
@@ -351,6 +351,91 @@ async function run(task, options = {}) {
     status.state = 'COMPLETE';
     status.reason = `draft proxy presenter ready: ${built.manifest.assembled.duration_seconds.toFixed(2)}s over ${built.manifest.coverage.covered_beats} beat(s)`;
     status.handoff = { next_owner: 'qc_director', next_action: 'INSPECT_PROXY_PRESENTER' };
+    ev('COMPLETE', status.reason);
+    return finish();
+  }
+
+  // ── generate_draft_bespoke_still: one script-bound, static Draft image ──
+  // The action accepts no caller-selected engine, video mode, retry label or
+  // final-asset flag.  The policy validator owns those semantics; the existing
+  // package-engine FLUX path retains GPU locking and production dispatch gates.
+  if (action === 'generate_draft_bespoke_still') {
+    const policy = require('./draft-bespoke-still-policy.js');
+    const runDir = task.run_dir || (task.package_run_id ? path.join(path.resolve(options.repoRoot || REPO_ROOT), 'package-runs', task.package_run_id) : null);
+    const normalizedTask = { ...task, run_dir: runDir };
+    let lane;
+    try {
+      policy.validateGenerationTask(normalizedTask);
+      lane = mediaRouting.getLane('text_to_image_generation');
+    } catch (error) {
+      status.state = 'INPUT_MISSING';
+      status.reason = `${error.code || 'DRAFT_STILL_GENERATION_TASK_INVALID'}: ${error.message}`;
+      ev('INPUT_MISSING', status.reason);
+      return finish();
+    }
+    status.route = {
+      lane: 'text_to_image_generation', machine: lane.host, engine: lane.engine,
+      model: mediaRouting.resolveModel('text_to_image_generation') || null,
+      workflow: lane.preferred_workflow || null, endpoint: mediaRouting.resolveEndpoint('text_to_image_generation'),
+      fallback_allowed: false,
+    };
+    status.readiness_probe = {
+      endpoint: status.route.endpoint,
+      reachable: null,
+      delegated_to: 'package-engine FLUX production gate',
+      owner: 'production_operations',
+    };
+    let result;
+    try {
+      result = await policy.executeSlot(normalizedTask, {
+        generate: options.generateDraftBespokeStill,
+        inspectImage: options.inspectDraftBespokeStill,
+        pipelineTimings: options.pipelineTimings,
+      });
+    } catch (error) {
+      status.state = error instanceof policy.DraftBespokeStillError ? 'OUTPUT_INVALID' : 'GENERATION_FAILED';
+      status.reason = `${error.code || 'DRAFT_STILL_GENERATION_FAILED'}: ${error.message}`;
+      status.attempts = 0;
+      ev(status.state, status.reason);
+      return finish();
+    }
+    status.attempts = result.attempts_created;
+    status.max_attempts = 2;
+    status.artifact_class = policy.ASSET_CLASS;
+    status.provenance = {
+      generating_agent: AGENT_ID,
+      route: status.route,
+      slot_id: normalizedTask.slot.slot_id,
+      script_binding: normalizedTask.slot.script_binding,
+      prompt_id: normalizedTask.prompt.prompt_id,
+      prompt_sha256: normalizedTask.prompt.prompt_sha256,
+      attempt_ids: result.registry.attempts.filter((item) => item.slot_id === normalizedTask.slot.slot_id).map((item) => item.attempt_id),
+      publication_authority: false,
+      final_asset_authority: false,
+    };
+    if (result.state !== 'COMPLETE') {
+      status.state = 'OUTPUT_INVALID';
+      status.reason = `${result.attempt?.technical_failures?.join(', ') || 'DRAFT_STILL_OUTPUT_INVALID'} after bounded technical replacement`;
+      status.qc = { required: true, state: 'QC_FAILED', verdict: null };
+      ev('OUTPUT_INVALID', status.reason);
+      return finish();
+    }
+    status.outputs = [{
+      path: result.asset.path,
+      sha256: result.asset.sha256,
+      width: result.asset.width,
+      height: result.asset.height,
+      media_kind: result.asset.media_kind,
+      asset_class: result.asset.asset_class,
+      slot_id: result.asset.slot_id,
+      publication_authority: false,
+      final_asset_authority: false,
+    }];
+    status.metrics = result.metrics;
+    status.qc = { required: true, state: 'QC_PENDING', verdict: null, technical_only: true };
+    status.state = 'COMPLETE';
+    status.reason = `Draft bespoke still registered for ${normalizedTask.slot.slot_id}`;
+    status.handoff = { next_owner: 'editor', next_action: 'CONSUME_STATIC_DRAFT_STILL' };
     ev('COMPLETE', status.reason);
     return finish();
   }

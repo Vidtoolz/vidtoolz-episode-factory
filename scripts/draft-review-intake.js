@@ -59,6 +59,11 @@ const DISPOSITIONS = Object.freeze(['KEEP', 'CHANGE', 'CUT', 'REWRITE']);
 // module inventing intent.
 const TARGET_DOMAINS = Object.freeze(['SCRIPT', 'NARRATION', 'VISUAL', 'MUSIC', 'PACING', 'TIMING', 'GRAPHICS', 'OTHER']);
 
+// Optional refinement for visual notes. This remains part of draftReview.v2:
+// it distinguishes whether the reviewer is judging the idea or the disposable
+// Draft rendering of that idea without creating a second review authority.
+const VISUAL_REVIEW_DIMENSIONS = Object.freeze(['VISUAL_CONCEPT', 'IMAGE_EXECUTION']);
+
 // The axes a structural review actually turns on.
 const RATING_AXES = Object.freeze([
   'story', 'pacing', 'visuals', 'humor', 'clarity', 'music', 'overall_potential',
@@ -388,6 +393,16 @@ function addNote(runDirInput, reviewId, note) {
       fail('DRAFT_REVIEW_TARGET_DOMAIN_INVALID', `target_domain must be one of ${TARGET_DOMAINS.join(', ')}`);
     }
   }
+  let visualDimension = null;
+  if (note.visual_dimension !== undefined && note.visual_dimension !== null && String(note.visual_dimension).trim()) {
+    visualDimension = String(note.visual_dimension).toUpperCase();
+    if (!VISUAL_REVIEW_DIMENSIONS.includes(visualDimension)) {
+      fail('DRAFT_REVIEW_VISUAL_DIMENSION_INVALID', `visual_dimension must be one of ${VISUAL_REVIEW_DIMENSIONS.join(', ')}`);
+    }
+    if (targetDomain !== 'VISUAL') {
+      fail('DRAFT_REVIEW_VISUAL_DIMENSION_REQUIRES_VISUAL_DOMAIN', 'visual_dimension is legal only for target_domain VISUAL');
+    }
+  }
   const comment = verbatim(note.comment, MAX_COMMENT_BYTES, 'note comment');
 
   // Segment identity resolved from the draft the review is bound to. An
@@ -407,6 +422,7 @@ function addNote(runDirInput, reviewId, note) {
     predecessor_visual_sha256: located?.predecessor_visual_sha256 ?? null,
     disposition,
     target_domain: targetDomain,
+    visual_dimension: visualDimension,
     comment,
     created_at: new Date().toISOString(),
   };
@@ -731,9 +747,11 @@ function revisionPlanInput(runDirInput, reviewId, options = {}) {
         : 'NO_FEEDBACK',
       decisions,
       target_domains: [...new Set(notes.map((n) => n.target_domain).filter(Boolean))],
+      visual_review_dimensions: [...new Set(notes.map((n) => n.visual_dimension).filter(Boolean))],
       notes: notes.map((n) => ({
         note_id: n.note_id, timecode_seconds: n.timecode_seconds,
-        disposition: n.disposition, target_domain: n.target_domain, comment: n.comment,
+        disposition: n.disposition, target_domain: n.target_domain,
+        visual_dimension: n.visual_dimension ?? null, comment: n.comment,
       })),
     };
   });
@@ -769,7 +787,9 @@ function revisionPlanInput(runDirInput, reviewId, options = {}) {
     authority: {
       completes_rough_cut_gate: false,
       is_a_revision_plan: false,
-      note: 'this is review input for a revision planner, not a plan and not an approval',
+      draft_visual_keep_preserves_concept_not_bytes: true,
+      draft_visual_bytes_can_become_final_asset_authority: false,
+      note: 'this is review input for a revision planner, not a plan, publication asset, or approval',
     },
   };
 }
@@ -793,6 +813,7 @@ Usage:
                                                --disposition <KEEP|CHANGE|CUT|REWRITE>
                                                --comment <text> [--section <section_id>]
                                                [--domain <${TARGET_DOMAINS.join('|')}>]
+                                               [--visual-dimension <${VISUAL_REVIEW_DIMENSIONS.join('|')}>]
   node scripts/draft-review-intake.js rate    <run-dir> --review-id <id> --axis <axis> --score <${RATING_MIN}-${RATING_MAX}>
   node scripts/draft-review-intake.js approve <run-dir> --review-id <id> --subject <research|script>
                                                --state <${APPROVAL_STATES.join('|')}> [--note <text>]
@@ -865,6 +886,7 @@ function main(argv = process.argv.slice(2)) {
         comment: opts.comment,
         section_id: opts.section,
         target_domain: opts.domain,
+        visual_dimension: opts['visual-dimension'],
       });
       process.stdout.write(`${JSON.stringify(note, null, 2)}\n`);
       return 0;
@@ -928,6 +950,7 @@ module.exports = {
   ARTIFACT_TYPE,
   DISPOSITIONS,
   TARGET_DOMAINS,
+  VISUAL_REVIEW_DIMENSIONS,
   RATING_AXES,
   RATING_MIN,
   RATING_MAX,

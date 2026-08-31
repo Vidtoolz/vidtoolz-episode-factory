@@ -10,7 +10,8 @@ const SCHEMA = 'vidtoolz.productionAssemblyComposition.v1';
 const ASSET_MANIFEST_SCHEMA = 'vidtoolz.productionAssemblyAssetManifest.v1';
 const OWNERS = new Set(['GENERATED_VISUAL', 'PRESENTER', 'TYPOGRAPHY']);
 const TYPES = new Set(['FULL_CANVAS_VISUAL', 'PRESENTER', 'TYPOGRAPHY', 'PRESENTER_PROXY']);
-const ASSET_ROLES = new Set(['GENERATED_VIDEO', 'DETERMINISTIC_MOTION_GRAPHIC', 'TYPOGRAPHIC', 'STATIC_GENERATED_IMAGE_WITH_MOTION', 'PRESENTER_ONLY', 'EXISTING_APPROVED_ASSET', 'GENERIC_PRESENTER_PROXY']);
+const DRAFT_BESPOKE_STILL_ROLE = 'DRAFT_BESPOKE_STILL';
+const ASSET_ROLES = new Set(['GENERATED_VIDEO', 'DETERMINISTIC_MOTION_GRAPHIC', 'TYPOGRAPHIC', 'STATIC_GENERATED_IMAGE_WITH_MOTION', DRAFT_BESPOKE_STILL_ROLE, 'PRESENTER_ONLY', 'EXISTING_APPROVED_ASSET', 'GENERIC_PRESENTER_PROXY']);
 const POLICIES = new Set(['REQUIRED', 'FALLBACK_ALLOWED', 'OPTIONAL']);
 const ANCHORS = new Set(['TOP_LEFT', 'TOP_RIGHT', 'BOTTOM_LEFT', 'BOTTOM_RIGHT', 'CENTER']);
 const CURVES = new Set(['LINEAR', 'SMOOTH']);
@@ -237,6 +238,16 @@ function validateComposition(composition, timeline, output, assetManifest, optio
         if (mapping.basis === 'MASTER_ZERO' && (mapping.source_in_ms !== 0 || mapping.authority !== 'PRODUCTION')) fail('COMPOSITION_PRESENTER_TIME_MAPPING_INVALID', item.asset_id);
         if (mapping.basis === 'SOURCE_INTERVAL_ZERO' && mapping.authority !== 'NON_AUTHORITATIVE_CANARY') fail('COMPOSITION_PRESENTER_TIME_MAPPING_INVALID', item.asset_id);
       }
+      if (item.role === DRAFT_BESPOKE_STILL_ROLE) {
+        const provenance = item.provenance;
+        if (item.media_kind !== 'IMAGE' || item.policy !== 'REQUIRED' || item.fallback_asset_id !== undefined
+            || provenance.asset_class !== DRAFT_BESPOKE_STILL_ROLE || provenance.script_specific !== true
+            || provenance.temporal_media !== false || provenance.motion_policy !== 'NONE'
+            || provenance.normal_generation_attempts !== 1 || provenance.publication_authority !== false
+            || provenance.final_asset_authority !== false || typeof provenance.source_attempt_id !== 'string') {
+          fail('COMPOSITION_DRAFT_BESPOKE_STILL_AUTHORITY_INVALID', item.asset_id);
+        }
+      }
     }
     assets.set(item.asset_id, item);
   }
@@ -256,6 +267,7 @@ function validateComposition(composition, timeline, output, assetManifest, optio
     if (section.script_beat_ids && !section.script_beat_ids.includes(beat.beat_id)) fail('COMPOSITION_SCRIPT_BEAT_BINDING_INVALID', beat.beat_id);
     if (!OWNERS.has(beat.primary_owner) || !Array.isArray(beat.layers)) fail('COMPOSITION_PRIMARY_OWNER_INVALID', beat.beat_id);
     const layerIds = new Set(); const zValues = new Set(); const layers = [];
+    let hasDraftBespokeStill = false;
     for (const layer of beat.layers) {
       exact(layer, ['layer_id', 'type', 'primary', 'z', 'visible', 'asset_id', 'fit', 'duration_policy', 'asset_in_ms', 'geometry', 'motion', 'typography', 'replaces_insert_ids', 'reveal'], `${beat.beat_id}.layer`);
       if (!layer.layer_id || layerIds.has(layer.layer_id) || !TYPES.has(layer.type)) fail('COMPOSITION_LAYER_INVALID', beat.beat_id); layerIds.add(layer.layer_id);
@@ -267,6 +279,7 @@ function validateComposition(composition, timeline, output, assetManifest, optio
         if (forbidden.has(layer.asset_id)) fail('COMPOSITION_STALE_ASSET_FORBIDDEN', layer.asset_id); asset = resolveAsset(layer.asset_id, assets, usedFallbacks);
         if (!Array.isArray(asset.intended_beat_ids) || !asset.intended_beat_ids.includes(beat.beat_id)) fail('COMPOSITION_ASSET_BEAT_BINDING_INVALID', `${asset.asset_id}:${beat.beat_id}`);
         if (asset.role === 'GENERIC_PRESENTER_PROXY' && layer.type !== 'PRESENTER_PROXY') fail('COMPOSITION_PROXY_ASSET_INVALID', `${beat.beat_id}: proxy pixels are only a PRESENTER_PROXY overlay`);
+        if (asset.role === DRAFT_BESPOKE_STILL_ROLE) hasDraftBespokeStill = true;
       }
       if (layer.type === 'FULL_CANVAS_VISUAL') {
         if (!asset || !['COVER', 'CONTAIN'].includes(layer.fit) || !['TRIM', 'LOOP_EXPLICIT', 'STILL'].includes(layer.duration_policy)) fail('COMPOSITION_FULL_CANVAS_INVALID', beat.beat_id);
@@ -336,6 +349,7 @@ function validateComposition(composition, timeline, output, assetManifest, optio
         proxyPlacements.push({ beat_id: beat.beat_id, asset_id: asset.asset_id, geometry_digest: digest({ x: geometry.x, y: geometry.y, width: geometry.width, height: geometry.height }), area_ratio: areaRatio });
       }
       if (layer.motion) {
+        if (asset?.role === DRAFT_BESPOKE_STILL_ROLE) fail('COMPOSITION_DRAFT_BESPOKE_STILL_MOTION_FORBIDDEN', beat.beat_id);
         exact(layer.motion, ['type', 'start_scale_milli', 'end_scale_milli', 'start_x', 'end_x', 'start_y', 'end_y'], `${beat.beat_id}.${layer.layer_id}.motion`);
         if (!['STATIC', 'SLOW_SCALE', 'PAN', 'ZOOM'].includes(layer.motion.type) || (layer.motion.type !== 'STATIC' && asset?.media_kind !== 'IMAGE')) fail('COMPOSITION_MOTION_INVALID', beat.beat_id);
         for (const key of Object.keys(layer.motion).filter((key) => key !== 'type')) integer(layer.motion[key], `${beat.beat_id}.${key}`);
@@ -354,6 +368,14 @@ function validateComposition(composition, timeline, output, assetManifest, optio
     const proxyLayers = layers.filter((layer) => layer.type === 'PRESENTER_PROXY');
     if (proxyLayers.length > 1) fail('COMPOSITION_DUPLICATE_PROXY', beat.beat_id);
     if (proxyLayers.length === 1 && layers.some((layer) => layer.type !== 'PRESENTER_PROXY' && layer.z >= proxyLayers[0].z)) fail('COMPOSITION_PROXY_NOT_FINAL_LAYER', `${beat.beat_id}: the proxy is composited after the complete primary frame`);
+    if (hasDraftBespokeStill) {
+      const background = layers.find((layer) => layer.resolved_asset?.role === DRAFT_BESPOKE_STILL_ROLE);
+      if (beat.reveal_contract !== undefined || layers.some((layer) => layer.reveal !== undefined)) fail('COMPOSITION_DRAFT_BESPOKE_STILL_REVEAL_FORBIDDEN', beat.beat_id);
+      if (!background || background.type !== 'FULL_CANVAS_VISUAL' || background.duration_policy !== 'STILL'
+          || background.motion !== undefined || background.reveal !== undefined) fail('COMPOSITION_DRAFT_BESPOKE_STILL_STATIC_REQUIRED', beat.beat_id);
+      if (!['CUT', 'HARD_CUT'].includes(beat.transition_in) || !['CUT', 'HARD_CUT'].includes(beat.transition_out)) fail('COMPOSITION_DRAFT_BESPOKE_STILL_TRANSITION_FORBIDDEN', beat.beat_id);
+      if (background.geometry?.ramp !== undefined) fail('COMPOSITION_DRAFT_BESPOKE_STILL_GEOMETRY_ANIMATION_FORBIDDEN', beat.beat_id);
+    }
     if (grammar) {
       if (typeof beat.interval_id !== 'string' || !/^I\d{2,}$/.test(beat.interval_id)) fail('COMPOSITION_INTERVAL_ID_REQUIRED', beat.beat_id);
       // V2 normal grammar is background + overlay. A standalone full-frame
@@ -631,4 +653,4 @@ function buildVideoGraph(plan, command, filters) {
   return inputByAsset;
 }
 
-module.exports = { SCHEMA, ASSET_MANIFEST_SCHEMA, PRESENTER_ALPHA_FORMAT, PRESENTER_ALPHA_DECODER, V2_GRAMMAR, PROXY_ALPHA_FORMAT, BACKING_COLOR_HEX, REVEAL_PLAN_SCHEMA, DRAWTEXT_SERIALIZER_VERSION, canonicalize, digest, frameIndexAtOrAfterMs, compileRevealPlan, layerVisibleAt, backgroundIdentity, serializeDrawtextText, validateComposition, buildVideoGraph };
+module.exports = { SCHEMA, ASSET_MANIFEST_SCHEMA, DRAFT_BESPOKE_STILL_ROLE, PRESENTER_ALPHA_FORMAT, PRESENTER_ALPHA_DECODER, V2_GRAMMAR, PROXY_ALPHA_FORMAT, BACKING_COLOR_HEX, REVEAL_PLAN_SCHEMA, DRAWTEXT_SERIALIZER_VERSION, canonicalize, digest, frameIndexAtOrAfterMs, compileRevealPlan, layerVisibleAt, backgroundIdentity, serializeDrawtextText, validateComposition, buildVideoGraph };

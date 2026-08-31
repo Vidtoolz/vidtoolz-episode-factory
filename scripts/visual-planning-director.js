@@ -8,6 +8,7 @@ const { execFileSync } = require('node:child_process');
 const crypto = require('node:crypto');
 const vp = require('./visual-plan.js');
 const promptAdapter = require('./visual-plan-prompt-adapter.js');
+const draftBespokeStill = require('./draft-bespoke-still-policy.js');
 
 const AGENT_ID = 'visual_planning_director';
 const LANE = 'large_text';
@@ -16,6 +17,7 @@ const STATES = Object.freeze(['PLANNING', 'REVIEWING_COVERAGE', 'PREVIEW_ONLY', 
 const RECOMMENDATIONS = Object.freeze(['PLAN_READY', 'REVISE_COVERAGE', 'RETURN_TO_RESEARCH', 'NEEDS_HUMAN_DECISION']);
 const FORBIDDEN = new Set(['plan_id', 'plan_revision', 'shot_id', 'prompt_id', 'prompt_revision', 'digest', 'approval', 'route', 'routing', 'backend', 'host', 'model', 'engine', 'workflow', 'heading', 'pitch', 'tilt', 'orbit', 'spiral', 'altitude', 'coordinates', 'path', 'easing', 'keyframes', 'trajectory', 'selected', 'selected_asset_id', 'final_asset', 'approved_asset', 'master_metaphor', 'global_style', 'episode_identity']);
 const MAX_ATTEMPTS = 3;
+const DRAFT_BESPOKE_STILL_GRAMMAR = 'DRAFT_BESPOKE_STILL_V1';
 
 class RoutingError extends Error { constructor(code, message) { super(message); this.code = code; } }
 const norm = (v) => String(v ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
@@ -79,7 +81,7 @@ function preflight(task, options = {}) {
     beatIds.add(beat.canonical_beat_id);
   }
   if (task.creative_doctrine_ref && (!norm(task.creative_doctrine_ref.artifact_id) || !/^[a-f0-9]{64}$/.test(task.creative_doctrine_ref.digest_sha256 || ''))) errors.push('creative doctrine ref invalid');
-  if (task.production_grammar !== undefined && task.production_grammar !== 'VISUAL_DRAFT_V2_FULL_FRAME') errors.push('production_grammar invalid');
+  if (task.production_grammar !== undefined && !['VISUAL_DRAFT_V2_FULL_FRAME', DRAFT_BESPOKE_STILL_GRAMMAR].includes(task.production_grammar)) errors.push('production_grammar invalid');
   if (task.research?.bindings_doc && !Array.isArray(task.research.bindings_doc.bindings)) errors.push('Research bindings invalid');
   for (const [bindingId, authority] of Object.entries(task.research?.authority_by_binding || {})) {
     if (!authority || authority.result_state !== 'VALID') researchBlockers.push(`${bindingId}:${authority?.result_state || 'INVALID'}`);
@@ -102,7 +104,7 @@ function validateSemanticOutput(raw, task) {
   let value;
   try { value = typeof raw === 'string' ? JSON.parse(raw) : clone(raw); } catch { return { ok: false, errors: ['invalid JSON'] }; }
   const errors = [];
-  const allowedRoot = ['beats', 'coverage_findings', 'continuity_findings', 'redundancy_findings', 'human_attention', 'recommendation'];
+  const allowedRoot = ['beats', 'coverage_findings', 'continuity_findings', 'redundancy_findings', 'human_attention', 'recommendation', 'slot_count_rationale'];
   for (const key of Object.keys(value || {})) if (!allowedRoot.includes(key)) errors.push(`unknown root field ${key}`);
   errors.push(...hasForbidden(value).map((p) => `forbidden field ${p}`));
   if (!Array.isArray(value?.beats)) errors.push('beats required');
@@ -121,7 +123,7 @@ function validateSemanticOutput(raw, task) {
       // writePlan; omitting it here rejected every model echo of the advertised
       // schema as "unknown" (prompt/validator drift found by the 2026-08-28
       // autonomous draft run).
-      const allowedShot = ['visual_purpose', 'narrative_function', 'media_type', 'generation_mode', 'subject', 'shot_brief', 'why_it_serves_story', 'presenter_relation', 'duration_target_s', 'research_sensitive', 'research_binding_ids', 'required_constraint_ids', 'visual_assertion', 'camera_required', 'camera_intent', 'continuity_notes', 'alternatives', 'priority', 'demonstration', 'input_artifact_refs', 'quality_constraints', 'candidate_count_request'];
+      const allowedShot = ['visual_purpose', 'narrative_function', 'media_type', 'generation_mode', 'subject', 'shot_brief', 'why_it_serves_story', 'presenter_relation', 'duration_target_s', 'research_sensitive', 'research_binding_ids', 'required_constraint_ids', 'visual_assertion', 'camera_required', 'camera_intent', 'continuity_notes', 'alternatives', 'priority', 'demonstration', 'input_artifact_refs', 'quality_constraints', 'candidate_count_request', 'visual_role', 'repetition_rationale'];
       for (const key of Object.keys(shot)) if (!allowedShot.includes(key)) errors.push(`beats[${i}].shots[${j}].${key} unknown`);
       if (!vp.MEDIA_TYPES.includes(shot.media_type) || !vp.GENERATION_MODES.includes(shot.generation_mode) || !vp.PRESENTER_RELATIONS.includes(shot.presenter_relation)) errors.push(`beats[${i}].shots[${j}] enum invalid`);
       const expectedModes = { GENERATED_STILL: ['STILL'], GENERATED_VIDEO: ['DIRECT_VIDEO', 'IMAGE_TO_VIDEO'], INFOGRAPHIC: ['NOT_APPLICABLE'], MAP_ANIMATION: ['NOT_APPLICABLE'], SCREEN_CAPTURE: ['NOT_APPLICABLE'], ARCHIVAL_EXTERNAL: ['NOT_APPLICABLE'], PRESENTER_A_ROLL: ['NOT_APPLICABLE'], TEXT_GRAPHIC: ['NOT_APPLICABLE'] };
@@ -131,10 +133,25 @@ function validateSemanticOutput(raw, task) {
       if (shot.camera_required && (!shot.camera_intent || Object.keys(shot.camera_intent).some((key) => !vp.CAMERA_INTENT_FIELDS.includes(key)))) errors.push(`beats[${i}].shots[${j}] camera intent invalid`);
       if (shot.media_type === 'MAP_ANIMATION' && (shot.camera_required !== true || !shot.camera_intent || !norm(shot.camera_intent.subject) || !norm(shot.camera_intent.purpose))) errors.push(`beats[${i}].shots[${j}] MAP_ANIMATION requires Camera intent`);
       if (shot.generation_mode === 'IMAGE_TO_VIDEO' && shot.input_artifact_refs?.length !== 1) errors.push(`beats[${i}].shots[${j}] I2V input required`);
+      if (task.production_grammar === DRAFT_BESPOKE_STILL_GRAMMAR) {
+        if (!draftBespokeStill.ALLOWED_MEDIA_TYPES.includes(shot.media_type)) errors.push(`beats[${i}].shots[${j}] Draft bespoke still media only`);
+        if ((shot.media_type === 'GENERATED_STILL' && shot.generation_mode !== 'STILL') || (shot.media_type !== 'GENERATED_STILL' && shot.generation_mode !== 'NOT_APPLICABLE')) errors.push(`beats[${i}].shots[${j}] Draft bespoke still generation mode invalid`);
+        if (shot.candidate_count_request !== 1) errors.push(`beats[${i}].shots[${j}] Draft bespoke still candidate_count_request must equal 1`);
+        if (shot.camera_required !== false || shot.camera_intent !== null) errors.push(`beats[${i}].shots[${j}] Draft bespoke still camera motion forbidden`);
+        if (!draftBespokeStill.VISUAL_ROLES.includes(shot.visual_role)) errors.push(`beats[${i}].shots[${j}] Draft bespoke still visual_role invalid`);
+        if ((shot.input_artifact_refs || []).length !== 0) errors.push(`beats[${i}].shots[${j}] Draft bespoke still input media forbidden`);
+      }
     }
   }
   for (const id of expected) if (!seen.has(id)) errors.push(`missing beat ${id}`);
   for (const field of ['coverage_findings', 'continuity_findings', 'redundancy_findings', 'human_attention']) if (!Array.isArray(value?.[field])) errors.push(`${field} must be array`);
+  if (task.production_grammar === DRAFT_BESPOKE_STILL_GRAMMAR) {
+    const count = (value?.beats || []).reduce((sum, beat) => sum + (beat.shots || []).length, 0);
+    const duration = Number(task.output_target?.duration_seconds) || (Number(task.output_target?.max_duration_minutes) > 0 ? Number(task.output_target.max_duration_minutes) * 60 : 210);
+    const target = draftBespokeStill.targetForDuration(duration);
+    if (count > draftBespokeStill.HARD_MAX) errors.push(`Draft bespoke still slot count ${count} exceeds hard ceiling`);
+    if ((count < target.min || count > target.max) && (!norm(value?.slot_count_rationale) || norm(value.slot_count_rationale).length < 20)) errors.push('Draft bespoke still out-of-band count requires slot_count_rationale');
+  }
   if (!RECOMMENDATIONS.includes(value?.recommendation)) errors.push('recommendation invalid');
   return { ok: errors.length === 0, errors, value };
 }
@@ -150,8 +167,17 @@ function buildPrompt(task) {
   // exposed here — the proxy belongs to downstream final compositing only.
   const grammarLines = task.production_grammar === 'VISUAL_DRAFT_V2_FULL_FRAME' ? [
     'Production grammar (V2 VISUAL_DRAFT): the background image changes roughly every four seconds and every background is unique, one-use, and must visualize what is actually being said in its interval. Design every primary visual for the COMPLETE 9:16 frame edge to edge; do not reserve blank regions for any overlay, person, or future element — no region of the frame is off-limits. Text and information graphics are white with a translucent grey backing and normally OVERLAY the background rather than replacing it.',
+  ] : task.production_grammar === DRAFT_BESPOKE_STILL_GRAMMAR ? [
+    'Draft bespoke-still grammar: for a normal 3–4 minute script plan approximately 20 script-specific visual shots total. Every shot is one disposable static still: GENERATED_STILL/STILL, INFOGRAPHIC/NOT_APPLICABLE, or TEXT_GRAPHIC/NOT_APPLICABLE. Set candidate_count_request:1, camera_required:false, camera_intent:null, input_artifact_refs:[], and one visual_role from SCENE|CONCEPTUAL|METAPHOR|INFOGRAPHIC|DIAGRAM|TEXTUAL_GRAPHIC|OTHER. Do not plan video, I2V, Kling, pan, zoom, reveal, animation, generic filler, presenter media, or automatic alternatives. Use slot_count_rationale only when the bounded script structure genuinely needs fewer than 16 or more than 24 slots; 40 or more is forbidden.',
   ] : [];
-  return ['Plan visual coverage for the bounded Story. Local shot choices only; do not invent global style, factual authority, IDs, infrastructure, approvals, or Camera mechanics.', ...grammarLines, 'Return JSON only, using exactly the keys shown. Assess every required beat exactly once. For INTENTIONAL_NO_VISUAL use a nonempty reason and shots:[]. For PLAN_SHOTS use no_visual_reason:null and one or more shots.', 'Set demonstration only when the shot IS a demonstration the viewer must be walked through, as {start_state, action, expected_result}; otherwise leave it null.', 'Use exact media/mode pairs: GENERATED_STILL/STILL; GENERATED_VIDEO/DIRECT_VIDEO or IMAGE_TO_VIDEO; INFOGRAPHIC, MAP_ANIMATION, SCREEN_CAPTURE, ARCHIVAL_EXTERNAL, PRESENTER_A_ROLL, and TEXT_GRAPHIC with NOT_APPLICABLE. MAP_ANIMATION is Camera-only: set camera_required:true and supply bounded camera_intent with at least subject and purpose.', `Output schema: ${JSON.stringify(schema)}`, `Central claim: ${task.story.central_claim || ''}`, `Narrative spine: ${task.story.narrative_spine || ''}`, `Output target: ${JSON.stringify(task.output_target || {})}`, `Sections: ${JSON.stringify(task.story.sections)}`, `Required beats: ${JSON.stringify(task.required_beats)}`, `Research constraints: ${JSON.stringify(task.research?.required_constraint_ids || [])}`, `Operator instructions: ${task.operator_instructions || ''}`, ...creativeDirectionPromptLines(task)].join('\n');
+  if (task.production_grammar === DRAFT_BESPOKE_STILL_GRAMMAR) {
+    schema.slot_count_rationale = null;
+    Object.assign(schema.beats[0].shots[0], {
+      visual_role: draftBespokeStill.VISUAL_ROLES.join('|'),
+      repetition_rationale: null,
+    });
+  }
+  return ['Plan visual coverage for the bounded Story. Local shot choices only; do not invent global style, factual authority, IDs, infrastructure, approvals, or Camera mechanics.', ...grammarLines, 'Return JSON only, using exactly the keys shown. Assess every required beat exactly once. For INTENTIONAL_NO_VISUAL use a nonempty reason and shots:[]. For PLAN_SHOTS use no_visual_reason:null and one or more shots.', 'Set demonstration only when the shot IS a demonstration the viewer must be walked through, as {start_state, action, expected_result}; otherwise leave it null.', task.production_grammar === DRAFT_BESPOKE_STILL_GRAMMAR ? 'Use only the Draft bespoke-still media/mode pairs declared above.' : 'Use exact media/mode pairs: GENERATED_STILL/STILL; GENERATED_VIDEO/DIRECT_VIDEO or IMAGE_TO_VIDEO; INFOGRAPHIC, MAP_ANIMATION, SCREEN_CAPTURE, ARCHIVAL_EXTERNAL, PRESENTER_A_ROLL, and TEXT_GRAPHIC with NOT_APPLICABLE. MAP_ANIMATION is Camera-only: set camera_required:true and supply bounded camera_intent with at least subject and purpose.', `Output schema: ${JSON.stringify(schema)}`, `Central claim: ${task.story.central_claim || ''}`, `Narrative spine: ${task.story.narrative_spine || ''}`, `Output target: ${JSON.stringify(task.output_target || {})}`, `Sections: ${JSON.stringify(task.story.sections)}`, `Required beats: ${JSON.stringify(task.required_beats)}`, `Research constraints: ${JSON.stringify(task.research?.required_constraint_ids || [])}`, `Operator instructions: ${task.operator_instructions || ''}`, ...creativeDirectionPromptLines(task)].join('\n');
 }
 
 /*
@@ -190,7 +216,8 @@ function writePlan(task, semantic, options = {}) {
     for (const proposal of decision.shots) {
       const shotId = (options.newShotId || vp.newShotId)(); ids.push(shotId);
       const refs = (proposal.research_binding_ids || []).map((id) => researchRef(task, id, proposal.required_constraint_ids || [])).filter(Boolean);
-      const generationRequirements = { artifact_class: proposal.media_type.toLowerCase(), input_artifact_refs: clone(proposal.input_artifact_refs || []), quality_constraints: clone(proposal.quality_constraints || []), candidate_count_request: Math.min(proposal.candidate_count_request || 1, 4), generation_mode: proposal.generation_mode };
+      const bespoke = task.production_grammar === DRAFT_BESPOKE_STILL_GRAMMAR;
+      const generationRequirements = { artifact_class: bespoke ? draftBespokeStill.ASSET_CLASS : proposal.media_type.toLowerCase(), input_artifact_refs: clone(proposal.input_artifact_refs || []), quality_constraints: clone(proposal.quality_constraints || []), candidate_count_request: bespoke ? 1 : Math.min(proposal.candidate_count_request || 1, 4), generation_mode: proposal.generation_mode };
       if (task.output_target?.aspect_ratio) generationRequirements.aspect_target = task.output_target.aspect_ratio;
       if (proposal.duration_target_s) generationRequirements.duration_target_s = proposal.duration_target_s;
       shots.push({
@@ -211,7 +238,10 @@ function writePlan(task, semantic, options = {}) {
     coverage.push({ beat_ref: beatRef, decision: 'PLAN_SHOTS', shot_ids: ids, reason: null });
   }
   const plan = { schema_version: 1, artifact_type: 'visual-plan', plan_id: (options.newPlanId || vp.newPlanId)(), plan_revision: 1, supersedes: null, created_at: options.now || nowIso(), created_by: AGENT_ID, lifecycle_state: task.story.approval?.state === 'approved' ? 'AWAITING_HUMAN_REVIEW' : 'PREVIEW_ONLY', story: { project_id: task.story.project_id, version_id: task.story.version_id, content_hash: task.story.content_hash, approval: clone(task.story.approval), section_ids: task.story.sections.map((s) => s.section_id) }, required_beats: task.required_beats.map((b) => ({ canonical_beat_id: b.canonical_beat_id, section_id: b.section_id, aliases: clone(b.aliases || []), source_provenance: b.source_provenance || null })), coverage, shots, prompts: [], plan_digest_sha256: '' };
-  plan.prompts = promptAdapter.buildPromptRecords(plan.shots, task.production_grammar === 'VISUAL_DRAFT_V2_FULL_FRAME' ? { ...options, grammar: promptAdapter.FULL_FRAME_GRAMMAR } : options);
+  plan.prompts = promptAdapter.buildPromptRecords(plan.shots, ['VISUAL_DRAFT_V2_FULL_FRAME', DRAFT_BESPOKE_STILL_GRAMMAR].includes(task.production_grammar) ? { ...options, grammar: promptAdapter.FULL_FRAME_GRAMMAR } : options);
+  if (task.production_grammar === DRAFT_BESPOKE_STILL_GRAMMAR) {
+    plan.draft_bespoke_still_policy = draftBespokeStill.buildPlanPolicy(task, plan, { ...options, semantic });
+  }
   plan.plan_digest_sha256 = vp.planDigest(plan);
   return plan;
 }
@@ -219,6 +249,7 @@ function writePlan(task, semantic, options = {}) {
 function finish(base, state, reason, nextOwner) { base.state = state; base.reason = reason || null; base.owner = AGENT_ID; base.next_owner = nextOwner; base.attention = ['BLOCKED', 'ESCALATED', 'NEEDS_HUMAN_DECISION', 'RETURN_TO_RESEARCH'].includes(state) ? 'DECISION' : state === 'AWAITING_HUMAN_REVIEW' ? 'REVIEW' : 'INFORMATION'; base.events.push({ at: nowIso(), state, reason: reason || null }); return base; }
 
 async function run(task, options = {}) {
+  const runStartedAt = Date.now();
   const out = { agent_id: AGENT_ID, task_id: task?.task_id || null, action: task?.action || null, state: 'PLANNING', attempts: 0, max_attempts: Math.min(task?.retry_budget || 2, task?.cost_budget?.max_model_calls || MAX_ATTEMPTS, MAX_ATTEMPTS), route: null, visual_plan: null, review_bundle: null, semantic: null, generation_handoffs: [], camera_handoffs: [], events: [] };
   if (task?.action === 'status') return finish(out, 'COMPLETE', null, 'hermes');
   const check = preflight(task, options);
@@ -258,9 +289,9 @@ async function run(task, options = {}) {
   if (!currentStory || currentStory.project_id !== task.story.project_id || currentStory.version_id !== task.story.version_id || currentStory.content_hash !== task.story.content_hash || JSON.stringify(currentStory.sections.map((s) => s.section_id)) !== JSON.stringify(task.story.sections.map((s) => s.section_id))) return finish(out, 'BLOCKED', 'SOURCE_STORY_CHANGED', 'story_editor');
   let plan;
   try {
-    plan = writePlan(task, semantic, options);
+    plan = writePlan(task, semantic, { ...options, visualPlanWallClockMs: options.visualPlanWallClockMs ?? (Date.now() - runStartedAt) });
   } catch (error) {
-    if (error instanceof promptAdapter.PromptCompositionError) {
+    if (error instanceof promptAdapter.PromptCompositionError || error instanceof draftBespokeStill.DraftBespokeStillError) {
       return finish(out, 'BLOCKED', `${error.code}: ${error.message}`, 'visual_planning_director');
     }
     throw error;
@@ -270,13 +301,18 @@ async function run(task, options = {}) {
   out.visual_plan = plan; out.validation = validation; out.authority = authority; out.review_bundle = vp.buildReviewBundle(plan, authority);
   if (!validation.ok) return finish(out, 'BLOCKED', validation.errors.join('; '), 'visual_planning_director');
   if (authority.state === 'RETURN_TO_RESEARCH' || !authority.research_authorized) return finish(out, 'RETURN_TO_RESEARCH', authority.reason_codes.join(', '), 'research_director');
-  out.generation_handoffs = plan.shots.filter((s) => !['PRESENTER_A_ROLL', 'SCREEN_CAPTURE', 'ARCHIVAL_EXTERNAL', 'MAP_ANIMATION'].includes(s.media_type)).map((s) => promptAdapter.generationSupervisorProjection(task, plan, s));
-  out.camera_handoffs = plan.shots.map((s) => promptAdapter.cameraProjection(plan, s)).filter(Boolean);
+  if (plan.draft_bespoke_still_policy) {
+    out.generation_handoffs = plan.draft_bespoke_still_policy.slots.map((slot) => draftBespokeStill.generationTaskForSlot(task, plan, slot));
+    out.camera_handoffs = [];
+  } else {
+    out.generation_handoffs = plan.shots.filter((s) => !['PRESENTER_A_ROLL', 'SCREEN_CAPTURE', 'ARCHIVAL_EXTERNAL', 'MAP_ANIMATION'].includes(s.media_type)).map((s) => promptAdapter.generationSupervisorProjection(task, plan, s));
+    out.camera_handoffs = plan.shots.map((s) => promptAdapter.cameraProjection(plan, s)).filter(Boolean);
+  }
   return finish(out, authority.preview_only ? 'PREVIEW_ONLY' : 'AWAITING_HUMAN_REVIEW', null, 'mikko');
 }
 
 function controlRoomView(out) { const plan = out.visual_plan; const media = {}; for (const shot of plan?.shots || []) media[shot.media_type] = (media[shot.media_type] || 0) + 1; const storyRationale = out.story_rationale || []; return { role: 'Visual Planning Director', action: out.action, state: out.state, story: plan?.story || null, plan_id: plan?.plan_id || null, plan_revision: plan?.plan_revision || null, plan_digest: plan?.plan_digest_sha256 || null, required_beats: plan?.required_beats?.length || 0, covered_beats: plan?.coverage?.filter((c) => c.decision === 'PLAN_SHOTS').length || 0, intentional_none: plan?.coverage?.filter((c) => c.decision === 'INTENTIONAL_NO_VISUAL').length || 0, shot_count: plan?.shots?.length || 0, media_types: media, prompt_ready: plan?.prompts?.length || 0, research_sensitive: plan?.shots?.filter((s) => s.research_sensitive).length || 0, camera_required: plan?.shots?.filter((s) => s.camera_intent).length || 0, redundancy_findings: out.semantic?.redundancy_findings || [], story_rationale: storyRationale, operational_rationale: { decision: out.state, reason: out.reason || (out.attention === 'REVIEW' ? 'Visual plan is ready for human review' : `Visual planning state is ${out.state}`), evidence_refs: storyRationale, confidence: null, escalation_reason: ['REVIEW', 'DECISION'].includes(out.attention) ? out.reason : null }, authorization: out.authority ? { state: out.authority.state, authorization_ok: out.authority.authorization_ok } : null, owner: out.owner, next_owner: out.next_owner, attention: out.attention, blocker: out.reason, latest_event: out.events.at(-1) || null }; }
 
-module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, routeCapability, selectComputeRoute, invokeModel, preflight, validateSemanticOutput, buildPrompt, writePlan, run, controlRoomView, generationSupervisorProjection: promptAdapter.generationSupervisorProjection, cameraProjection: promptAdapter.cameraProjection };
+module.exports = { AGENT_ID, LANE, ACTIONS, STATES, MAX_ATTEMPTS, DRAFT_BESPOKE_STILL_GRAMMAR, routeCapability, selectComputeRoute, invokeModel, preflight, validateSemanticOutput, buildPrompt, writePlan, run, controlRoomView, generationSupervisorProjection: promptAdapter.generationSupervisorProjection, cameraProjection: promptAdapter.cameraProjection };
 
 if (require.main === module && guardExecutableLifecycle(AGENT_ID)) (async () => { const i = process.argv.indexOf('--task'); if (i < 0) process.exit(2); const out = await run(JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'))); console.log(JSON.stringify({ ...out, control_room: controlRoomView(out) }, null, 2)); process.exit(out.state === 'COMPLETE' || out.state === 'AWAITING_HUMAN_REVIEW' || out.state === 'PREVIEW_ONLY' ? 0 : 1); })().catch((error) => { console.error(error); process.exit(1); });

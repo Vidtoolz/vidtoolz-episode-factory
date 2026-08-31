@@ -7,6 +7,8 @@ const { atomicWrite, safeId } = require('./agent-run.js');
 const visualPlan = require('./visual-plan.js');
 const humanIdentity = require('./human-approval-identity.js');
 const scriptBuilderAuthority = require('./script-builder-authority.js');
+const productionMode = require('./package-run-production-mode.js');
+const visualPlanningDirector = require('./visual-planning-director.js');
 
 // Lazy require: creative-director.js -> creative-story-authority.js already
 // requires THIS module (loadCanonicalStory), so a top-level require here would
@@ -149,6 +151,13 @@ function resolveCreativeDirectionContext(options) {
   return { state: 'CANONICAL_SAFE_PROJECTION', taskField: projection };
 }
 
+function productionGrammarForRun(runDir) {
+  const mode = productionMode.readProductionMode(path.resolve(runDir));
+  return [productionMode.DRAFT, productionMode.REVIEW].includes(mode.mode)
+    ? visualPlanningDirector.DRAFT_BESPOKE_STILL_GRAMMAR
+    : null;
+}
+
 function assembleVisualPlanningTask(inputOptions) {
   const options = resolveStoryOptionsForRun(inputOptions);
   const loaded = loadCanonicalStory(options);
@@ -177,6 +186,11 @@ function assembleVisualPlanningTask(inputOptions) {
     },
   };
   if (options.operatorInstructions !== undefined) task.operator_instructions = options.operatorInstructions;
+  if (options.runDir) {
+    task.run_dir = path.resolve(options.runDir);
+    const grammar = productionGrammarForRun(options.runDir);
+    if (grammar) task.production_grammar = grammar;
+  }
   // C2: explicit canonical Creative Direction context only. Without a
   // supplied canonical id the task is byte-identical to the pre-C shape.
   const creativeDirection = resolveCreativeDirectionContext(options);
@@ -224,6 +238,6 @@ function main() {
   }
 }
 
-module.exports = { DEFAULT_SCRIPT_BUILDER_ROOT, canonicalApproval, loadCanonicalStory, resolveStoryOptionsForRun, assembleVisualPlanningTask, writeTask, parseArgs };
+module.exports = { DEFAULT_SCRIPT_BUILDER_ROOT, canonicalApproval, loadCanonicalStory, resolveStoryOptionsForRun, productionGrammarForRun, assembleVisualPlanningTask, writeTask, parseArgs };
 
 if (require.main === module) main();

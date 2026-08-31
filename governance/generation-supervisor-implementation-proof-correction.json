@@ -159,6 +159,30 @@
       "output_contract_changed": false,
       "authority_effect": "none — no action, role, lifecycle, approval, QC or publication authority changed",
       "reproven": "SN11b injects a provider that throws if consulted and proves an invalid non-DRAFT request fails INPUT_MISSING before resource readiness"
+    },
+    {
+      "extension": "draft_bespoke_still_generation",
+      "module_path": "scripts/generation-supervisor.js",
+      "module_sha256": "b5c1b9fde3783c97828586ca4edfd7e3070c0d2f45da2de42348c23cc326cd37",
+      "supersedes_binding": "952a155a299bc1e11178bb992adf11cf072d444d6c464c10a751a17d12bbbe72",
+      "actions_added": [
+        "generate_draft_bespoke_still"
+      ],
+      "changes": [
+        "added the generate_draft_bespoke_still action as a bounded adapter to the existing GPU-locked package-engine FLUX path",
+        "delegated exact Story, prompt, attempt, static-media, and non-final authority enforcement to scripts/draft-bespoke-still-policy.js",
+        "persisted immutable attempt evidence, registered still provenance, and throughput metrics without adding I2V or video dispatch"
+      ],
+      "generation_behaviour_changed": false,
+      "generation_behaviour_note": "The pre-existing supervise_generation, narration, and proxy-presenter actions are untouched. The new action is an additive branch with one normal FLUX attempt and at most one computed technical-failure replacement; it cannot dispatch I2V, Kling, or generated video.",
+      "input_contract_changed": false,
+      "output_contract_changed": "additive only — outputs/provenance/metrics for the new action",
+      "authority_effect": "none — Draft stills explicitly carry publication_authority false and final_asset_authority false",
+      "proof_binding": {
+        "test_module": "tests/draft-bespoke-still-policy.test.js",
+        "durable_evidence": "outputs/codex-draft-bespoke-still-policy-enforcement-2026-08-31/"
+      },
+      "reproven": "all pre-existing Generation Supervisor suites pass unmodified; the bespoke-still matrix proves one-shot dispatch, technical-only replacement, creative-weakness no-retry, and I2V/Kling rejection"
     }
   ],
   "statement_amendment": "The original repair binding is preserved verbatim above. Later capability growth on this module is recorded in subsequent_extensions, each binding the module hash at the time of that extension, so module drift is still detectable without erasing what was originally proven."

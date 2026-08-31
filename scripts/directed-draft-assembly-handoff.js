@@ -615,7 +615,9 @@ function buildReviewEvidence(consumed, renderResult) {
 async function execute(runDirInput, options = {}) {
   const materialized = await materialize(runDirInput, options);
   const consumed = await consume(runDirInput, options);
+  const renderStartedAt = Date.now();
   const result = await (options.renderFromSpec || renderer.renderFromSpec)(consumed.specPath, options.rendererOptions || {});
+  const editorRenderWallClockMs = Date.now() - renderStartedAt;
   const reviewEvidence = buildReviewEvidence(consumed, result);
   const reviewEvidencePath = path.join(consumed.runDir, ASSEMBLY_DIR, `${consumed.handoff.handoff_id}.review-evidence.json`);
   const completionCore = {
@@ -629,8 +631,18 @@ async function execute(runDirInput, options = {}) {
   };
   const completion = { ...completionCore, completion_digest_sha256: digest(completionCore) };
   const completionPath = path.join(consumed.runDir, ASSEMBLY_DIR, `${consumed.handoff.handoff_id}.complete.json`);
-  if (!options.dryRun) { writeJsonAtomic(reviewEvidencePath, reviewEvidence, true); writeJsonAtomic(completionPath, completion, true); }
-  return { materialized, consumed, render: result, reviewEvidence, reviewEvidencePath, completion, completionPath };
+  let draftBespokeStillTiming = { applicable: false, metrics: null };
+  if (!options.dryRun) {
+    writeJsonAtomic(reviewEvidencePath, reviewEvidence, true); writeJsonAtomic(completionPath, completion, true);
+    const metricsPath = path.join(consumed.runDir, 'media', 'draft-bespoke-stills', 'throughput-metrics.json');
+    if (fs.existsSync(metricsPath)) {
+      draftBespokeStillTiming = require('./draft-bespoke-still-policy.js').recordReviewReadyTiming(consumed.runDir, {
+        editor_render_wall_clock_ms: editorRenderWallClockMs,
+        draft_review_ready_at: new Date().toISOString(),
+      });
+    }
+  }
+  return { materialized, consumed, render: result, reviewEvidence, reviewEvidencePath, completion, completionPath, draftBespokeStillTiming };
 }
 function parseArgs(argv) {
   const out = { command: argv[0] };

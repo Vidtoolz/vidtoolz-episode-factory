@@ -6,6 +6,7 @@
 const crypto = require('node:crypto');
 const { verifyApprovalBindingForScope } = require('./agent-contract-validator.js');
 const researchValidator = require('./research-result-validator.js');
+const draftBespokeStill = require('./draft-bespoke-still-policy.js');
 
 const SCHEMA_VERSION = 1;
 const ARTIFACT_TYPE = 'visual-plan';
@@ -29,7 +30,7 @@ const PRIORITIES = Object.freeze(['LOW', 'NORMAL', 'HIGH', 'CRITICAL']);
 const PROMPT_TYPES = Object.freeze(['FULL_FRAME', 'PRESENTER_AWARE', 'INFOGRAPHIC', 'VIDEO', 'MAP', 'TEXT_GRAPHIC']);
 const RESEARCH_STATES = Object.freeze(['VALID', 'STALE', 'INVALID', 'SUPERSEDED']);
 
-const ROOT_FIELDS = ['schema_version', 'artifact_type', 'plan_id', 'plan_revision', 'supersedes', 'created_at', 'created_by', 'lifecycle_state', 'story', 'required_beats', 'coverage', 'shots', 'prompts', 'plan_digest_sha256'];
+const ROOT_FIELDS = ['schema_version', 'artifact_type', 'plan_id', 'plan_revision', 'supersedes', 'created_at', 'created_by', 'lifecycle_state', 'story', 'required_beats', 'coverage', 'shots', 'prompts', 'draft_bespoke_still_policy', 'plan_digest_sha256'];
 const STORY_FIELDS = ['project_id', 'version_id', 'content_hash', 'approval', 'section_ids'];
 const STORY_APPROVAL_FIELDS = ['state', 'approved_by', 'approved_at', 'version_id', 'content_hash'];
 const BEAT_FIELDS = ['canonical_beat_id', 'section_id', 'aliases', 'source_provenance'];
@@ -327,7 +328,7 @@ function validatePrompt(prompt, issues, index, shotById, promptIds, boundShots) 
 
 function validatePlan(plan, options = {}) {
   const issues = [];
-  if (!strictObject(issues, plan, ROOT_FIELDS, '$', ROOT_FIELDS.filter((field) => field !== 'supersedes'))) {
+  if (!strictObject(issues, plan, ROOT_FIELDS, '$', ROOT_FIELDS.filter((field) => !['supersedes', 'draft_bespoke_still_policy'].includes(field)))) {
     return { ok: false, valid: false, structurally_valid: false, current: false, coverage_complete: false, prompts_current: false, result_state: 'INVALID', reason_codes: issues.map((item) => item.code), errors: issues.map((item) => item.message), findings: issues, coverage: [] };
   }
   if (!Object.prototype.hasOwnProperty.call(plan, 'supersedes')) issues.push(issue('REQUIRED_FIELD_MISSING', '$.supersedes', 'supersedes must be explicit'));
@@ -413,6 +414,15 @@ function validatePlan(plan, options = {}) {
     if (needsPrompt && !shot.prompt_refs?.length) issues.push(issue('PROMPT_REQUIRED', `$.shots.${shot.shot_id}.prompt_refs`, 'generative/planned asset requires a prompt'));
   }
   for (const prompt of plan.prompts || []) if (!shotById.get(prompt.shot_id)?.prompt_refs?.includes(prompt.prompt_id)) issues.push(issue('PROMPT_RECORD_ORPHAN', `$.prompts.${prompt.prompt_id}`, 'prompt record is not referenced by its shot'));
+
+  // Optional, DRAFT-only extension. Legacy plans have no field and preserve
+  // their exact validation/digest behaviour. When present, the policy module
+  // validates the one-shot/static/non-final contract against these canonical
+  // Story, shot and prompt identities.
+  const bespokePolicy = draftBespokeStill.validatePlanPolicy(plan);
+  if (bespokePolicy.applicable && !bespokePolicy.ok) {
+    issues.push(issue(bespokePolicy.code, '$.draft_bespoke_still_policy', bespokePolicy.detail));
+  }
 
   if (!SHA256_RE.test(plan.plan_digest_sha256 || '')) issues.push(issue('PLAN_DIGEST_MALFORMED', '$.plan_digest_sha256', 'stored plan digest must be sha256'));
   else if (plan.plan_digest_sha256 !== planDigest(plan)) issues.push(issue('PLAN_DIGEST_MISMATCH', '$.plan_digest_sha256', 'stored plan digest does not match canonical plan bytes'));
