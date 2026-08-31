@@ -17,6 +17,7 @@ beat hand-maintained prose.
 | Components / services / ports | `config/system-registry.json` | `node scripts/system-registry.js` |
 | Production mode of a run | `package-runs/<run>/production-mode.json` (durable, per run); mode-conditional gate behaviour in `config/gate-mode-policy.json` | `docs/production-mode.md`; `node scripts/package-run-production-mode.js <run>` |
 | Current-Story Directed Draft successor | `draft-bespoke-successor.json` plus canonical Script Builder current-head approval; projection authority in `scripts/draft-bespoke-successor-authority.js` | `docs/draft-bespoke-successor-authority.md`; use the authority CLI by run ID |
+| Draft music (dual-model A/B/C) | `draft-music-package.json` per run/canary; orchestration authority in `scripts/draft-music-orchestrator.js` (entry `scripts/generate-draft-music.js`) | `docs/draft-music-automation.md`; `node scripts/generate-draft-music.js status` |
 | Package-runs discovery index | `package-runs-index.json` — DERIVED, REBUILDABLE, NON-AUTHORITATIVE projection over canonical run identity (`scripts/package-runs-index.js`). Directory count under `package-runs/` ≠ genuine run count: proof/canary/acceptance/legacy directories carry no run identity and are excluded by design. | `node scripts/package-runs-index.js --check` (read-only); `node scripts/package-runs-index.js` rebuilds atomically |
 | Index freshness | `scripts/package-runs-index.js --freshness` | rebuild with `node scripts/package-runs-index.js` |
 | Test count | none — it is not hardcoded | run `scripts/verify.sh` |

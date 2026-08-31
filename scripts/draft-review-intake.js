@@ -63,6 +63,7 @@ const TARGET_DOMAINS = Object.freeze(['SCRIPT', 'NARRATION', 'VISUAL', 'MUSIC', 
 // it distinguishes whether the reviewer is judging the idea or the disposable
 // Draft rendering of that idea without creating a second review authority.
 const VISUAL_REVIEW_DIMENSIONS = Object.freeze(['VISUAL_CONCEPT', 'IMAGE_EXECUTION']);
+const MUSIC_REVIEW_DIMENSIONS = Object.freeze(['MUSIC_CONCEPT', 'MUSIC_EXECUTION']);
 
 // The axes a structural review actually turns on.
 const RATING_AXES = Object.freeze([
@@ -403,6 +404,16 @@ function addNote(runDirInput, reviewId, note) {
       fail('DRAFT_REVIEW_VISUAL_DIMENSION_REQUIRES_VISUAL_DOMAIN', 'visual_dimension is legal only for target_domain VISUAL');
     }
   }
+  let musicDimension = null;
+  if (note.music_dimension !== undefined && note.music_dimension !== null && String(note.music_dimension).trim()) {
+    musicDimension = String(note.music_dimension).toUpperCase();
+    if (!MUSIC_REVIEW_DIMENSIONS.includes(musicDimension)) {
+      fail('DRAFT_REVIEW_MUSIC_DIMENSION_INVALID', `music_dimension must be one of ${MUSIC_REVIEW_DIMENSIONS.join(', ')}`);
+    }
+    if (targetDomain !== 'MUSIC') {
+      fail('DRAFT_REVIEW_MUSIC_DIMENSION_REQUIRES_MUSIC_DOMAIN', 'music_dimension is legal only for target_domain MUSIC');
+    }
+  }
   const comment = verbatim(note.comment, MAX_COMMENT_BYTES, 'note comment');
 
   // Segment identity resolved from the draft the review is bound to. An
@@ -423,6 +434,7 @@ function addNote(runDirInput, reviewId, note) {
     disposition,
     target_domain: targetDomain,
     visual_dimension: visualDimension,
+    music_dimension: musicDimension,
     comment,
     created_at: new Date().toISOString(),
   };
@@ -748,10 +760,11 @@ function revisionPlanInput(runDirInput, reviewId, options = {}) {
       decisions,
       target_domains: [...new Set(notes.map((n) => n.target_domain).filter(Boolean))],
       visual_review_dimensions: [...new Set(notes.map((n) => n.visual_dimension).filter(Boolean))],
+      music_review_dimensions: [...new Set(notes.map((n) => n.music_dimension).filter(Boolean))],
       notes: notes.map((n) => ({
         note_id: n.note_id, timecode_seconds: n.timecode_seconds,
         disposition: n.disposition, target_domain: n.target_domain,
-        visual_dimension: n.visual_dimension ?? null, comment: n.comment,
+        visual_dimension: n.visual_dimension ?? null, music_dimension: n.music_dimension ?? null, comment: n.comment,
       })),
     };
   });
@@ -814,6 +827,7 @@ Usage:
                                                --comment <text> [--section <section_id>]
                                                [--domain <${TARGET_DOMAINS.join('|')}>]
                                                [--visual-dimension <${VISUAL_REVIEW_DIMENSIONS.join('|')}>]
+                                               [--music-dimension <${MUSIC_REVIEW_DIMENSIONS.join('|')}>]
   node scripts/draft-review-intake.js rate    <run-dir> --review-id <id> --axis <axis> --score <${RATING_MIN}-${RATING_MAX}>
   node scripts/draft-review-intake.js approve <run-dir> --review-id <id> --subject <research|script>
                                                --state <${APPROVAL_STATES.join('|')}> [--note <text>]
@@ -887,6 +901,7 @@ function main(argv = process.argv.slice(2)) {
         section_id: opts.section,
         target_domain: opts.domain,
         visual_dimension: opts['visual-dimension'],
+        music_dimension: opts['music-dimension'],
       });
       process.stdout.write(`${JSON.stringify(note, null, 2)}\n`);
       return 0;
@@ -951,6 +966,7 @@ module.exports = {
   DISPOSITIONS,
   TARGET_DOMAINS,
   VISUAL_REVIEW_DIMENSIONS,
+  MUSIC_REVIEW_DIMENSIONS,
   RATING_AXES,
   RATING_MIN,
   RATING_MAX,
