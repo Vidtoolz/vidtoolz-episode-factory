@@ -528,4 +528,48 @@ test('DM29 model availability maps canonical readiness to the four states', asyn
   assert.match(blocked.reason, /offline/);
 });
 
+
+/* ── calibration and resume regressions ─────────────────────────────────── */
+
+test('DM30 a later invocation resumes attempt numbering and budgets instead of wedging', async () => {
+  const fx = fixtures();
+  let aAttempts = 0;
+  const pick = (clientId) => {
+    if (clientId.includes('draft-music-a')) { aAttempts += 1; if (aAttempts === 1) return { failSubmit: true }; return { fixture: fx.warm }; }
+    return { fixture: clientId.includes('draft-music-b') ? fx.bright : fx.pulse };
+  };
+  const analysis = await makeAnalysis();
+  const out = tmpdir('resume');
+  const transport = fixtureTransport(pick);
+  const context = { analysis, durationS: DURATION_S, mediaRoot: path.join(out, orchestrator.MEDIA_DIR), transport, host: 'testhost', baseSeed: 1, completed: [], generationTimeoutMs: 3000 };
+  // first invocation: one technical failure recorded, then interrupt before retry by making the budget visible
+  const first = await orchestrator.generateCandidate({ candidate: analysis.candidates[0], model: 'stable_audio_3_medium' }, context);
+  assert.equal(first.final.attempt_number, 2); // NORMAL failed, TECHNICAL_REPLACEMENT succeeded
+  // a NEW invocation over the same media root must reuse the verified success, not re-dispatch or wedge
+  const second = await orchestrator.generateCandidate({ candidate: analysis.candidates[0], model: 'stable_audio_3_medium' }, context);
+  assert.equal(second.final.output_sha256, first.final.output_sha256);
+  assert.equal(aAttempts, 2);
+});
+
+test('DM31 a few full-scale samples are a hot master, not catastrophic clipping', () => {
+  const out = tmpdir('hot-master');
+  const file = path.join(out, 'hot.wav');
+  const rate = 44100; const seconds = 30; const n = rate * seconds;
+  const pcm = Buffer.alloc(n * 2);
+  for (let i = 0; i < n; i += 1) {
+    let v = Math.round(Math.sin((2 * Math.PI * 220 * i) / rate) * 0.25 * 32767);
+    pcm.writeInt16LE(v, i * 2);
+  }
+  for (const i of [1000, 2000, 3000]) pcm.writeInt16LE(32767, i * 2); // exactly 3 full-scale samples
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0); header.writeUInt32LE(36 + pcm.length, 4); header.write('WAVE', 8);
+  header.write('fmt ', 12); header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20); header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(rate, 24); header.writeUInt32LE(rate * 2, 28); header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34);
+  header.write('data', 36); header.writeUInt32LE(pcm.length, 40);
+  fs.writeFileSync(file, Buffer.concat([header, pcm]));
+  const inspected = qc.inspectTrack(file, { requestedDurationS: DURATION_S });
+  assert.ok(!inspected.failures.includes('DRAFT_MUSIC_CLIPPING'), JSON.stringify(inspected.failures));
+  assert.ok(inspected.flat_factor < 10);
+});
+
 module.exports = { tests: require('./_helpers.js').tests };

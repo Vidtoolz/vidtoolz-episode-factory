@@ -165,9 +165,9 @@ function inspectTrack(file, options = {}) {
   const peakMatches = [...loudness.stderr.matchAll(/Peak:\s*(-?[\d.]+)\s*dBFS/g)];
   const lufsMatch = lufsMatches.at(-1) || null;
   const peakMatch = peakMatches.at(-1) || null;
-  const stats = ffmpegStderr(['-i', file, '-af', 'astats=measure_overall=Peak_level+Peak_count:measure_perchannel=none', '-f', 'null', '-']);
+  const stats = ffmpegStderr(['-i', file, '-af', 'astats=measure_overall=Peak_level+Flat_factor:measure_perchannel=none', '-f', 'null', '-']);
   const samplePeakDb = Number(([...stats.stderr.matchAll(/Peak level dB:\s*(-?[\d.]+)/g)].at(-1) || [])[1]);
-  const peakCount = Number(([...stats.stderr.matchAll(/Peak count:\s*(\d+)/g)].at(-1) || [])[1]);
+  const flatFactor = Number(([...stats.stderr.matchAll(/Flat factor:\s*([\d.]+)/g)].at(-1) || [])[1]);
   const silence = ffmpegStderr(['-i', file, '-af', 'silencedetect=noise=-50dB:d=2', '-f', 'null', '-']);
   const silentSpans = (silence.stderr.match(/silence_duration:\s*([\d.]+)/g) || [])
     .map((token) => Number(token.split(':')[1])).filter(Number.isFinite);
@@ -178,8 +178,14 @@ function inspectTrack(file, options = {}) {
   const truePeakDbfs = peakMatch ? Number(peakMatch[1]) : null;
   if (integratedLufs !== null && integratedLufs < -55) failures.push('DRAFT_MUSIC_SILENT');
   if (totalSilenceS > requested * 0.4) failures.push('DRAFT_MUSIC_MOSTLY_SILENT');
-  const flatTopClipping = Number.isFinite(samplePeakDb) && samplePeakDb >= -0.01 && Number.isFinite(peakCount) && peakCount > 100;
-  if ((truePeakDbfs !== null && truePeakDbfs > 0.3) || flatTopClipping) failures.push('DRAFT_MUSIC_CLIPPING');
+  // §19: only CATASTROPHIC clipping is a technical failure — sustained
+  // flat-top saturation or gross intersample overs. A hot master (a few
+  // full-scale samples, small dBTP overs) is recorded as a headroom warning:
+  // the Draft mix chain (-14 dB music gain + limiter) absorbs it by design.
+  const flatTopClipping = Number.isFinite(samplePeakDb) && samplePeakDb >= -0.01 && Number.isFinite(flatFactor) && flatFactor > 10;
+  const grossOver = truePeakDbfs !== null && truePeakDbfs > 1.5;
+  if (grossOver || flatTopClipping) failures.push('DRAFT_MUSIC_CLIPPING');
+  const headroomWarning = !grossOver && !flatTopClipping && truePeakDbfs !== null && truePeakDbfs > 0.3;
   if (durationS < requested - tolerance) failures.push('DRAFT_MUSIC_TOO_SHORT');
   if (durationS > requested + tolerance * 2) failures.push('DRAFT_MUSIC_TOO_LONG');
   const ending = windows.length ? classifyEnding(windows, durationS, requested, tolerance) : 'TRUNCATED';
@@ -197,7 +203,8 @@ function inspectTrack(file, options = {}) {
     integrated_lufs: integratedLufs,
     true_peak_dbfs: truePeakDbfs,
     sample_peak_db: Number.isFinite(samplePeakDb) ? samplePeakDb : null,
-    peak_count: Number.isFinite(peakCount) ? peakCount : null,
+    flat_factor: Number.isFinite(flatFactor) ? flatFactor : null,
+    headroom_warning: headroomWarning,
     total_silence_s: +totalSilenceS.toFixed(2),
     full_decode: decode.status === 0 ? 'PASS' : 'FAIL',
     ending_class: ending,

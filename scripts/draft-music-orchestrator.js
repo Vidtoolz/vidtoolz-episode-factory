@@ -219,11 +219,22 @@ async function generateCandidate(assignment, context, idSuffix = '') {
       return { candidateId, model, promptBundle, attempts: [record], final: { ...record, _features: inspection.features } };
     }
   }
+  /* Resume across invocations: prior failed attempt records stay immutable,
+   * count against the bounded budgets, and numbering continues after them. */
   const attempts = [];
-  let seed = context.baseSeed + { A: 0, B: 100, C: 200 }[candidate.candidate_slot];
+  let firstAttemptNumber = 1;
   let policyRetryUsed = false; let technicalRetryUsed = false;
+  for (let prior = 1; prior <= 3; prior += 1) {
+    const record = readJson(path.join(context.mediaRoot, 'attempts', `${candidateId}-attempt-${prior}`, 'attempt.json'), null);
+    if (!record) break;
+    attempts.push(record);
+    firstAttemptNumber = prior + 1;
+    if (record.status === 'TECHNICAL_FAILURE') { if (technicalRetryUsed) return { candidateId, model, promptBundle, attempts, final: null }; technicalRetryUsed = true; }
+    if (record.status === 'POLICY_FAILURE') { if (policyRetryUsed) return { candidateId, model, promptBundle, attempts, final: null }; policyRetryUsed = true; }
+  }
+  let seed = context.baseSeed + { A: 0, B: 100, C: 200 }[candidate.candidate_slot] + (firstAttemptNumber - 1) * 1000;
   let extraPrompt = null;
-  for (let attemptNumber = 1; attemptNumber <= 3; attemptNumber += 1) {
+  for (let attemptNumber = firstAttemptNumber; attemptNumber <= 3; attemptNumber += 1) {
     const bundle = extraPrompt
       ? { ...promptBundle, prompt_text: `${promptBundle.prompt_text} ${extraPrompt}`, prompt_sha256: prompts.sha256Text(`${promptBundle.prompt_text} ${extraPrompt}`) }
       : promptBundle;
@@ -378,13 +389,20 @@ async function generateDraftMusic(input, options = {}) {
   };
   const results = [];
   const generationStarted = Date.now();
-  for (const assignment of routing.assignments) {
-    const result = await generateCandidate(assignment, context);
-    if (!result.final) {
-      fail('DRAFT_MUSIC_CANDIDATE_FAILED', `${result.candidateId} (${assignment.model}) exhausted its bounded retry budget: ${JSON.stringify(result.attempts.map((attempt) => attempt.status))}`);
+  try {
+    for (const assignment of routing.assignments) {
+      const result = await generateCandidate(assignment, context);
+      if (!result.final) {
+        fail('DRAFT_MUSIC_CANDIDATE_FAILED', `${result.candidateId} (${assignment.model}) exhausted its bounded retry budget: ${JSON.stringify(result.attempts.map((attempt) => attempt.status))}`);
+      }
+      context.completed.push(result.final);
+      results.push(result);
     }
-    context.completed.push(result.final);
-    results.push(result);
+  } catch (error) {
+    /* §37: a failed run must not leave the worker's model cache occupying the
+     * lane's admission headroom — release before failing closed. */
+    try { await transport.freeResources(); } catch { /* preserve the primary failure */ }
+    throw error;
   }
   timings.generation_ms = Date.now() - generationStarted;
 
