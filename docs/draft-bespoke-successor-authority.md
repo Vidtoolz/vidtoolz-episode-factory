@@ -38,6 +38,8 @@ The predecessor must remain `PRODUCTION`. The successor is a distinct run whose 
 
 The successor contract sets production, publication, and final-asset authority to `false`. Synthetic Draft narration and Draft music are legal inputs. A final human performance is not required for this Draft boundary.
 
+The successor's music decision starts its own local chain: history entry 0 is a root (`predecessor_decision_id: null`) and later local decisions point at the previous local `decision_id`. Inheritance from the Production predecessor's active human decision is provenance, recorded in `predecessor_source` (predecessor run, decision id, decision file path and hash) — never as local history linkage. `plan` retried after a director failure reuses the run's immutably materialized planning task, and the CLI budgets the routed planning model's measured latency (`--model-timeout-ms` overrides).
+
 ## Registry-to-composition projection
 
 `assemble` consumes the successor's fixed Visual Plan and canonical `vidtoolz.draftBespokeStillRegistry.v1`. Every planned slot must have one registered IMAGE under the successor's own `media/draft-bespoke-stills` root with exact Story, prompt, attempt, hash, and dimension bindings. Unregistered assets, caller path injection, video/I2V/Kling provenance, or authority escalation are rejected.

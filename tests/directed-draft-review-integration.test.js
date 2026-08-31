@@ -89,10 +89,11 @@ function refreshEstate(estate, variant = {}) {
   writeJson(attemptPaths.attempt, attempt);
   writeJson(attemptPaths.completion, { state: 'COMPLETE', fixture: true });
   const head = { schema: execution.HEAD_SCHEMA, semantic_plan_digest_sha256: plan.plan_digest_sha256, active_attempt_id: attempt.attempt_id, active_attempt_path: attemptPaths.attempt, active_attempt_sha256: subjects.sha256File(attemptPaths.attempt) };
-  writeJson(base.head, head, variant.headWhitespace || 2);
+  if (variant.firstRender) { if (fs.existsSync(base.head)) fs.unlinkSync(base.head); } else writeJson(base.head, head, variant.headWhitespace || 2);
   const outputSha = subjects.sha256File(paths.output);
-  const attemptBinding = { schema: execution.ATTEMPT_SCHEMA, attempt_id: attempt.attempt_id, attempt_digest_sha256: attempt.attempt_digest_sha256, predecessor_attempt_id: attempt.predecessor.attempt_id, retry_reason: attempt.retry_reason, execution_identity_sha256: attempt.execution.execution_identity_sha256 };
-  const manifest = { schema: 'vidtoolz.productionAssemblyManifest.v1', state: 'QC_PASSED_PENDING_FINALIZATION', run_id: runId, output_sha256: outputSha, plan_digest_sha256: plan.plan_digest_sha256, execution_attempt: attemptBinding, story, narration_source_class: 'SYNTHETIC_DRAFT_NARRATION' };
+  const fullAttemptBinding = { schema: execution.ATTEMPT_SCHEMA, attempt_id: attempt.attempt_id, attempt_digest_sha256: attempt.attempt_digest_sha256, predecessor_attempt_id: attempt.predecessor.attempt_id, retry_reason: attempt.retry_reason, execution_identity_sha256: attempt.execution.execution_identity_sha256 };
+  const attemptBinding = variant.firstRender ? null : fullAttemptBinding;
+  const manifest = { schema: 'vidtoolz.productionAssemblyManifest.v1', state: 'QC_PASSED_PENDING_FINALIZATION', run_id: runId, output_sha256: outputSha, plan_digest_sha256: plan.plan_digest_sha256, ...(variant.manifestAttempt !== undefined ? { execution_attempt: variant.manifestAttempt } : attemptBinding ? { execution_attempt: attemptBinding } : {}), story, narration_source_class: 'SYNTHETIC_DRAFT_NARRATION' };
   writeJson(attemptPaths.manifest, manifest);
   const evidenceFile = path.join(assemblyDir, `${handoff.handoff_id}.review-evidence.json`);
   const evidence = {
@@ -101,7 +102,7 @@ function refreshEstate(estate, variant = {}) {
     output: { path: path.relative(runDir, paths.output), sha256: variant.claimedOutputSha || outputSha, bytes: fs.statSync(paths.output).size, duration_seconds: 5, width: 1080, height: 1920, fps: '30/1', has_audio: true },
     script: { path: paths.script, sha256: variant.evidenceScriptSha || subjects.sha256File(paths.script), schema: 'vidtoolz-script-builder.story-version.v1' },
     narration: { audio_sha256: subjects.digest('synthetic narration'), fidelity: 'SYNTHETIC_DRAFT_NARRATION', is_presenter_voice: false },
-    execution_attempt: variant.evidenceAttempt || attemptBinding,
+    ...(variant.evidenceAttempt !== undefined ? { execution_attempt: variant.evidenceAttempt } : attemptBinding ? { execution_attempt: attemptBinding } : {}),
     source_binding: { ok: true, drift: [], handoff_digest_sha256: variant.evidenceHandoffDigest || handoff.handoff_digest_sha256 },
     technical_validation: variant.technicalValidation || { ok: true, failures: [], decode_pass: true },
     fixture_marker: variant.evidenceToken || 'base',
@@ -112,7 +113,7 @@ function refreshEstate(estate, variant = {}) {
     schema: directed.COMPLETION_SCHEMA, state: variant.completionState || 'COMPLETE_REVIEWABLE_DRAFT', run_id: runId,
     handoff_id: handoff.handoff_id, handoff_digest_sha256: handoff.handoff_digest_sha256,
     output_path: paths.output, output_sha256: outputSha,
-    renderer_completion_path: attemptPaths.completion, renderer_execution_attempt: variant.completionAttempt || attemptBinding,
+    renderer_completion_path: attemptPaths.completion, renderer_execution_attempt: variant.completionAttempt !== undefined ? variant.completionAttempt : attemptBinding,
     renderer_plan_digest_sha256: variant.completionPlanDigest || plan.plan_digest_sha256,
     review_evidence_path: evidenceFile,
   };
@@ -158,6 +159,10 @@ test('DDHR16 changed semantic plan makes review stale', () => { assert.equal(sta
 test('DDHR17 changed handoff makes review stale', () => { assert.equal(staleAfter({ handoffToken: 'changed' }).current, false); });
 test('DDHR18 changed script makes review stale', () => { assert.equal(staleAfter({ scriptBytes: '# Different fixture story\n' }).current, false); });
 test('DDHR19 changed evidence makes review stale', () => { assert.equal(staleAfter({ evidenceToken: 'changed' }).current, false); });
+test('DDHR20 first LEGACY render without an execution head resolves review-ready', () => { const s = subjects.resolveDirectedSubject(seedEstate('first-render', { firstRender: true }).runDir); assert.equal(s.status, 'DRAFT_REVIEW_READY'); assert.equal(s.execution, null); assert.equal(s.publication_ready, false); });
+test('DDHR21 completion claiming an attempt without an execution head is rejected', () => { const e = seedEstate('claimed-attempt', { firstRender: true, completionAttempt: { attempt_id: 'execution-abcdefabcdefabcdefabcdef' } }); assert.equal(subjects.inspectReviewSubject(e.runDir).code, 'DIRECTED_REVIEW_EXECUTION_HEAD_MISSING'); });
+test('DDHR22 evidence claiming an attempt without an execution head is rejected', () => { const e = seedEstate('claimed-evidence', { firstRender: true, evidenceAttempt: { attempt_id: 'execution-abcdefabcdefabcdefabcdef' } }); assert.equal(subjects.inspectReviewSubject(e.runDir).code, 'DIRECTED_REVIEW_EXECUTION_MISMATCH'); });
+test('DDHR23 first-render semantic plan mismatch stays rejected', () => { const e = seedEstate('first-plan-mismatch', { firstRender: true, completionPlanDigest: subjects.digest('wrong') }); assert.equal(subjects.inspectReviewSubject(e.runDir).code, 'DIRECTED_REVIEW_SEMANTIC_PLAN_MISMATCH'); });
 test('DDHR20 changed release makes review stale', () => { assert.equal(staleAfter({ releaseToken: 'changed' }).current, false); });
 test('DDHR21 changed story identity makes review stale', () => { assert.equal(staleAfter({ storyVersion: 'fixture-story-v2' }).current, false); });
 test('DDHR22 KEEP round-trips unchanged', () => { const e = seedEstate('keep'); completeReview(e); assert.equal(review.readReview(e.runDir, 'fixture-review').notes[0].disposition, 'KEEP'); });

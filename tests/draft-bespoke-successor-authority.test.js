@@ -142,6 +142,46 @@ test('DBSA34 synthetic narration, Draft music and no final performance survive h
 test('DBSA35 Story change stales release/handoff authority', async () => { const e = baseRunEstate(); materializePlanAndRegistry(e); await successor.materializeAssemblyAuthorities(e.succ, { scriptBuilderRoot: e.story.root, predecessorRunDir: e.pred, handoffOptions: { allowedRoots: [e.succ, e.pred, e.story.root] } }); const contract = readJsonForTest(path.join(e.succ, successor.SUCCESSOR_FILE)); contract.story.content_hash = 'f'.repeat(64); const core = { ...contract }; delete core.contract_digest_sha256; contract.contract_digest_sha256 = successor.digest(core); writeJson(path.join(e.succ, successor.SUCCESSOR_FILE), contract); assert.throws(() => successor.verifySuccessorContract(e.succ, { scriptBuilderRoot: e.story.root, predecessorRunDir: e.pred })); });
 test('DBSA36 run-ID materialized handoff preserves static composition into Editor projection', async () => { const e = baseRunEstate(); materializePlanAndRegistry(e); const handoffOptions = { allowedRoots: [e.succ, e.pred, e.story.root] }; const out = await successor.materializeAssemblyAuthorities(e.succ, { scriptBuilderRoot: e.story.root, predecessorRunDir: e.pred, handoffOptions }); const consumed = await handoff.consume(e.succ, { ...handoffOptions, dryRun: true, validateRenderer: async (spec) => spec }); assert.equal(consumed.spec.run_id, 'draft-successor-run'); assert.equal(consumed.spec.composition.beats.length, 20); assert.ok(consumed.spec.composition.beats.every((beat) => beat.layers[0].motion === undefined)); assert.equal(out.handoff.provenance.caller_path_authority, false); });
 
+test('DBSA37 plan retry after a director failure reuses the frozen canonical task', async () => {
+  const e = baseRunEstate();
+  const options = { scriptBuilderRoot: e.story.root, predecessorRunDir: e.pred };
+  await rejectCode(() => successor.materializeVisualPlan(e.succ, { ...options, runDirector: async () => ({ state: 'FAILED', reason: 'fixture model failure' }) }), 'DRAFT_SUCCESSOR_VISUAL_PLAN_FAILED');
+  const taskPath = path.join(e.succ, successor.PLAN_TASK_FILE);
+  const frozenSha = successor.sha256File(taskPath);
+  const frozenBeatIds = readJsonForTest(taskPath).required_beats.map((beat) => beat.canonical_beat_id);
+  const out = await successor.materializeVisualPlan(e.succ, { ...options, runDirector: async (task) => ({ state: 'AWAITING_HUMAN_REVIEW', visual_plan: director.writePlan(task, semanticFor(task), { visualPlanWallClockMs: 5 }) }) });
+  assert.equal(out.state, 'PLAN_MATERIALIZED');
+  assert.equal(successor.sha256File(taskPath), frozenSha);
+  assert.deepEqual([...new Set(out.plan.shots.map((shot) => shot.beat_ref.canonical_beat_id))].sort(), frozenBeatIds.slice().sort());
+});
+
+test('DBSA38 tampered frozen planning task is rejected on retry', async () => {
+  const e = baseRunEstate();
+  const options = { scriptBuilderRoot: e.story.root, predecessorRunDir: e.pred };
+  await rejectCode(() => successor.materializeVisualPlan(e.succ, { ...options, runDirector: async () => ({ state: 'FAILED', reason: 'fixture model failure' }) }), 'DRAFT_SUCCESSOR_VISUAL_PLAN_FAILED');
+  const taskPath = path.join(e.succ, successor.PLAN_TASK_FILE);
+  const task = readJsonForTest(taskPath); task.story.content_hash = 'f'.repeat(64); writeJson(taskPath, task);
+  await rejectCode(() => successor.materializeVisualPlan(e.succ, { ...options, runDirector: async (input) => ({ state: 'AWAITING_HUMAN_REVIEW', visual_plan: director.writePlan(input, semanticFor(input), { visualPlanWallClockMs: 5 }) }) }), 'DRAFT_SUCCESSOR_PLAN_TASK_STALE');
+});
+
+test('DBSA39 plan CLI budgets the routed model latency and validates overrides', () => {
+  assert.equal(successor.parseArgs(['plan', '--run-id', 'r']).modelTimeoutMs, undefined);
+  assert.ok(successor.PLAN_MODEL_TIMEOUT_MS_DEFAULT > 170000);
+  assert.equal(successor.parseArgs(['plan', '--run-id', 'r', '--model-timeout-ms', '300000']).modelTimeoutMs, 300000);
+  errorCode(() => successor.parseArgs(['plan', '--run-id', 'r', '--model-timeout-ms', '10']), 'DRAFT_SUCCESSOR_ARGUMENT_INVALID');
+  errorCode(() => successor.parseArgs(['plan', '--run-id', 'r', '--model-timeout-ms', 'soon']), 'DRAFT_SUCCESSOR_ARGUMENT_INVALID');
+});
+
+test('DBSA40 assembled Draft music decision passes the renderer chain authority', async () => {
+  const e = baseRunEstate(); materializePlanAndRegistry(e);
+  await successor.materializeAssemblyAuthorities(e.succ, { scriptBuilderRoot: e.story.root, predecessorRunDir: e.pred, handoffOptions: { allowedRoots: [e.succ, e.pred, e.story.root] } });
+  const music = readJsonForTest(path.join(e.succ, successor.MUSIC_FILE));
+  assert.equal(music.policy_history[0].predecessor_decision_id, null);
+  const active = renderer.activeMusicDecision({ policy: music.active_policy, sha256: music.music_asset.sha256, policy_history: music.policy_history });
+  assert.equal(active.decision_id, music.active_decision);
+  assert.deepEqual({ run: music.predecessor_source.run_id, decision: music.predecessor_source.decision_id }, { run: 'production-run', decision: 'music-fixture' });
+});
+
 function readJsonForTest(file) { return JSON.parse(fs.readFileSync(file, 'utf8')); }
 
 module.exports = { tests: require('./_helpers.js').tests };

@@ -134,18 +134,28 @@ function resolveDirectedSubject(runDirInput) {
 
   const basePaths = execution.basePaths(outputFile, { plan_digest_sha256: completion.renderer_plan_digest_sha256 });
   const loaded = execution.loadHead(basePaths);
-  if (!loaded) fail('DIRECTED_REVIEW_EXECUTION_HEAD_MISSING', basePaths.head);
-  const headSha = sha256File(basePaths.head);
-  const attemptSha = sha256File(loaded.paths.attempt);
-  assertEqual(loaded.head.active_attempt_id, completion.renderer_execution_attempt?.attempt_id, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', 'completion attempt id');
-  assertEqual(loaded.attempt.attempt_digest_sha256, completion.renderer_execution_attempt?.attempt_digest_sha256, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', 'completion attempt digest');
-  assertEqual(loaded.attempt.execution.execution_identity_sha256, completion.renderer_execution_attempt?.execution_identity_sha256, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', 'completion execution identity');
-  assertEqual(loaded.head.semantic_plan_digest_sha256, completion.renderer_plan_digest_sha256, 'DIRECTED_REVIEW_SEMANTIC_PLAN_MISMATCH', 'completion semantic plan');
-  assertEqual(manifest.plan_digest_sha256, loaded.head.semantic_plan_digest_sha256, 'DIRECTED_REVIEW_SEMANTIC_PLAN_MISMATCH', 'manifest semantic plan');
-  for (const [label, value] of [['evidence', evidence.execution_attempt], ['manifest', manifest.execution_attempt]]) {
-    assertEqual(value?.attempt_id, loaded.attempt.attempt_id, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', `${label} attempt id`);
-    assertEqual(value?.attempt_digest_sha256, loaded.attempt.attempt_digest_sha256, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', `${label} attempt digest`);
-    assertEqual(value?.execution_identity_sha256, loaded.attempt.execution.execution_identity_sha256, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', `${label} execution identity`);
+  if (loaded) {
+    assertEqual(loaded.head.active_attempt_id, completion.renderer_execution_attempt?.attempt_id, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', 'completion attempt id');
+    assertEqual(loaded.attempt.attempt_digest_sha256, completion.renderer_execution_attempt?.attempt_digest_sha256, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', 'completion attempt digest');
+    assertEqual(loaded.attempt.execution.execution_identity_sha256, completion.renderer_execution_attempt?.execution_identity_sha256, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', 'completion execution identity');
+    assertEqual(loaded.head.semantic_plan_digest_sha256, completion.renderer_plan_digest_sha256, 'DIRECTED_REVIEW_SEMANTIC_PLAN_MISMATCH', 'completion semantic plan');
+    assertEqual(manifest.plan_digest_sha256, loaded.head.semantic_plan_digest_sha256, 'DIRECTED_REVIEW_SEMANTIC_PLAN_MISMATCH', 'manifest semantic plan');
+    for (const [label, value] of [['evidence', evidence.execution_attempt], ['manifest', manifest.execution_attempt]]) {
+      assertEqual(value?.attempt_id, loaded.attempt.attempt_id, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', `${label} attempt id`);
+      assertEqual(value?.attempt_digest_sha256, loaded.attempt.attempt_digest_sha256, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', `${label} attempt digest`);
+      assertEqual(value?.execution_identity_sha256, loaded.attempt.execution.execution_identity_sha256, 'DIRECTED_REVIEW_EXECUTION_MISMATCH', `${label} execution identity`);
+    }
+  } else {
+    // A first (LEGACY) render legitimately has no execution attempt: the
+    // renderer mints immutable execution successors only when a frozen plan
+    // is re-executed. Exact-byte review identity remains fully bound by the
+    // completion/evidence/manifest digests and output hash checked above,
+    // and no artifact may CLAIM an attempt that has no execution head.
+    if (completion.renderer_execution_attempt) fail('DIRECTED_REVIEW_EXECUTION_HEAD_MISSING', basePaths.head);
+    for (const [label, value] of [['evidence', evidence.execution_attempt], ['manifest', manifest.execution_attempt]]) {
+      if (value) fail('DIRECTED_REVIEW_EXECUTION_MISMATCH', `${label} claims an execution attempt but no execution head exists`);
+    }
+    assertEqual(manifest.plan_digest_sha256, completion.renderer_plan_digest_sha256, 'DIRECTED_REVIEW_SEMANTIC_PLAN_MISMATCH', 'manifest semantic plan');
   }
 
   const scriptFile = resolveRef(runDir, handoff.production?.script?.path, 'DIRECTED_REVIEW_SCRIPT_MISSING');
@@ -176,15 +186,15 @@ function resolveDirectedSubject(runDirInput) {
     draft_version: evidence.draft_version,
     output: { path: evidence.output.path, absolute_path: outputFile, sha256: outputSha, duration_seconds: evidence.output.duration_seconds, bytes: evidence.output.bytes, width: evidence.output.width, height: evidence.output.height, fps: evidence.output.fps, has_audio: evidence.output.has_audio },
     assembly_manifest: { path: evidence.assembly_manifest.file, sha256: evidence.assembly_manifest.sha256 },
-    semantic_plan_digest_sha256: loaded.head.semantic_plan_digest_sha256,
-    execution: {
+    semantic_plan_digest_sha256: loaded ? loaded.head.semantic_plan_digest_sha256 : completion.renderer_plan_digest_sha256,
+    execution: loaded ? {
       attempt_id: loaded.attempt.attempt_id,
       attempt_digest_sha256: loaded.attempt.attempt_digest_sha256,
       execution_identity_sha256: loaded.attempt.execution.execution_identity_sha256,
-      attempt_path: path.relative(runDir, loaded.paths.attempt), attempt_sha256: attemptSha,
-      head_path: path.relative(runDir, basePaths.head), head_sha256: headSha,
+      attempt_path: path.relative(runDir, loaded.paths.attempt), attempt_sha256: sha256File(loaded.paths.attempt),
+      head_path: path.relative(runDir, basePaths.head), head_sha256: sha256File(basePaths.head),
       head_schema: execution.HEAD_SCHEMA, attempt_schema: execution.ATTEMPT_SCHEMA,
-    },
+    } : null,
     handoff: { id: handoff.handoff_id, digest_sha256: handoff.handoff_digest_sha256, path: path.relative(runDir, handoffFile), file_sha256: sha256File(handoffFile), schema: handoff.schema },
     evidence: { path: path.relative(runDir, evidenceFile), sha256: sha256File(evidenceFile), schema: evidence.schema, state: evidence.state, technical_validation: evidence.technical_validation },
     story: handoff.production.story,

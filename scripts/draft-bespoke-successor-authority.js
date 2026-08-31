@@ -262,17 +262,34 @@ async function createDraftSuccessor(repoRootInput, predecessorRunId, successorRu
 
 async function materializeVisualPlan(runDirInput, options = {}) {
   const verified = verifySuccessorContract(runDirInput, options);
-  const assembled = planningTask.assembleVisualPlanningTask({
-    runDir: verified.runDir, runId: verified.runId,
-    taskId: `draft-bespoke-plan-${verified.runId}`,
-    requestedBy: 'draft_bespoke_successor_authority',
-    operatorInstructions: 'Create exactly 20 distinct script-specific DRAFT_BESPOKE_STILL slots for this authorized technical Draft successor. No generic filler, motion, I2V, Kling, or alternate candidates.',
-    scriptBuilderRoot: options.scriptBuilderRoot,
-  });
-  if (assembled.task.production_grammar !== visualDirector.DRAFT_BESPOKE_STILL_GRAMMAR) fail('DRAFT_SUCCESSOR_GRAMMAR_NOT_AUTHORIZED', verified.runId);
-  writeImmutable(path.join(verified.runDir, PLAN_TASK_FILE), assembled.task);
-  const runDirector = options.runDirector || ((task) => visualDirector.run(task, options.directorOptions || {}));
-  const result = await runDirector(assembled.task);
+  const taskPath = path.join(verified.runDir, PLAN_TASK_FILE);
+  let task;
+  if (fs.existsSync(taskPath) && !fs.existsSync(path.join(verified.runDir, PLAN_FILE))) {
+    // Retry after a failed director run: the immutably materialized task is
+    // the canonical task for this run. Re-assembly would mint new canonical
+    // beat identities and conflict with the frozen task file, so reuse the
+    // stored task after re-verifying its grammar and exact Story binding.
+    task = readJson(taskPath, 'DRAFT_SUCCESSOR_PLAN_TASK_INVALID');
+    if (task.production_grammar !== visualDirector.DRAFT_BESPOKE_STILL_GRAMMAR
+        || task.package_run_id !== verified.runId
+        || task.story?.version_id !== verified.contract.story.version_id
+        || task.story?.content_hash !== verified.contract.story.content_hash) {
+      fail('DRAFT_SUCCESSOR_PLAN_TASK_STALE', verified.runId);
+    }
+  } else {
+    const assembled = planningTask.assembleVisualPlanningTask({
+      runDir: verified.runDir, runId: verified.runId,
+      taskId: `draft-bespoke-plan-${verified.runId}`,
+      requestedBy: 'draft_bespoke_successor_authority',
+      operatorInstructions: 'Create exactly 20 distinct script-specific DRAFT_BESPOKE_STILL slots for this authorized technical Draft successor. No generic filler, motion, I2V, Kling, or alternate candidates.',
+      scriptBuilderRoot: options.scriptBuilderRoot,
+    });
+    if (assembled.task.production_grammar !== visualDirector.DRAFT_BESPOKE_STILL_GRAMMAR) fail('DRAFT_SUCCESSOR_GRAMMAR_NOT_AUTHORIZED', verified.runId);
+    task = assembled.task;
+  }
+  writeImmutable(taskPath, task);
+  const runDirector = options.runDirector || ((input) => visualDirector.run(input, options.directorOptions || {}));
+  const result = await runDirector(task);
   if (!result?.visual_plan || !['AWAITING_HUMAN_REVIEW', 'COMPLETE'].includes(result.state)) fail('DRAFT_SUCCESSOR_VISUAL_PLAN_FAILED', result?.reason || result?.state || 'missing result');
   const checked = bespoke.validatePlanPolicy(result.visual_plan);
   if (!checked.ok || !checked.applicable) fail(checked.code || 'DRAFT_SUCCESSOR_VISUAL_PLAN_INVALID', checked.detail || 'bespoke policy missing');
@@ -324,13 +341,19 @@ function buildMusicDecision(contract, runDir) {
   const source = readJson(contract.draft_inputs.music.decision_path, 'DRAFT_SUCCESSOR_MUSIC_DECISION_INVALID');
   const active = (source.policy_history || []).find((item) => item.decision_id === source.active_decision && item.status === 'ACTIVE');
   if (!active || active.policy !== contract.draft_inputs.music.policy || active.music_sha256 !== contract.draft_inputs.music.sha256) fail('DRAFT_SUCCESSOR_MUSIC_AUTHORITY_INVALID', source.active_decision || 'missing');
-  const projected = { ...active, decision_id: `${active.decision_id}-draft-successor-${path.basename(runDir)}`, predecessor_decision_id: active.decision_id, status: 'ACTIVE', music_path: contract.draft_inputs.music.path };
+  // The successor starts its own local decision chain: the renderer's chain
+  // authority requires history entry 0 to be a root (predecessor_decision_id
+  // null; successors point at the previous LOCAL decision_id). Cross-run
+  // inheritance from the Production predecessor is provenance, carried in
+  // predecessor_source — never in local history linkage.
+  const projected = { ...active, decision_id: `${active.decision_id}-draft-successor-${path.basename(runDir)}`, predecessor_decision_id: null, status: 'ACTIVE', music_path: contract.draft_inputs.music.path };
   delete projected.binding_digest_sha256; projected.binding_digest_sha256 = renderer.musicDecisionDigest(projected);
+  renderer.activeMusicDecision({ policy: projected.policy, sha256: contract.draft_inputs.music.sha256, policy_history: [projected] });
   return {
     schema: 'vidtoolz.visualDraftMusicDecision.v1', artifact_type: 'music-policy-decision-chain', run_id: path.basename(runDir),
     created_at: contract.created_at, policy_history: [projected], active_decision: projected.decision_id, active_policy: projected.policy,
     music_asset: { path: contract.draft_inputs.music.path, sha256: contract.draft_inputs.music.sha256, expected_sha256: contract.draft_inputs.music.sha256, sha_verified: true, duration_measured_ms: contract.draft_inputs.music.duration_ms },
-    predecessor_source: { path: contract.draft_inputs.music.decision_path, sha256: contract.draft_inputs.music.decision_sha256 },
+    predecessor_source: { run_id: contract.predecessor.run_id, decision_id: active.decision_id, path: contract.draft_inputs.music.decision_path, sha256: contract.draft_inputs.music.decision_sha256 },
   };
 }
 
@@ -433,12 +456,20 @@ function parseArgs(argv) {
     else if (argv[index] === '--successor-run-id') out.successorRunId = argv[++index];
     else if (argv[index] === '--run-id') out.runId = argv[++index];
     else if (argv[index] === '--dry-run') out.dryRun = true;
+    else if (argv[index] === '--model-timeout-ms') out.modelTimeoutMs = Number(argv[++index]);
     else fail('DRAFT_SUCCESSOR_ARGUMENT_INVALID', argv[index]);
   }
   if (out.command === 'create' && (!out.predecessorRunId || !out.successorRunId)) fail('DRAFT_SUCCESSOR_ARGUMENT_INVALID', 'create requires predecessor and successor run ids');
   if (out.command !== 'create' && !out.runId) fail('DRAFT_SUCCESSOR_ARGUMENT_INVALID', `${out.command} requires --run-id`);
+  if (out.modelTimeoutMs !== undefined && (!Number.isInteger(out.modelTimeoutMs) || out.modelTimeoutMs < 1000)) fail('DRAFT_SUCCESSOR_ARGUMENT_INVALID', '--model-timeout-ms requires an integer >= 1000');
   return out;
 }
+
+// The routed planning model's real generation time for a bounded 20-slot plan
+// is ~170s; the director's generic 120s default aborts every CLI plan attempt.
+// This bounded CLI default budgets for that measured latency; callers can
+// override it with --model-timeout-ms.
+const PLAN_MODEL_TIMEOUT_MS_DEFAULT = 540000;
 
 async function main(argv = process.argv.slice(2)) {
   try {
@@ -446,7 +477,7 @@ async function main(argv = process.argv.slice(2)) {
     if (args.command === 'create') result = await createDraftSuccessor(args.repo, args.predecessorRunId, args.successorRunId, { dryRun: args.dryRun });
     else {
       const runDir = handoff.resolveRunDir(args.repo, args.runId);
-      if (args.command === 'plan') result = await materializeVisualPlan(runDir);
+      if (args.command === 'plan') result = await materializeVisualPlan(runDir, { directorOptions: { timeoutMs: args.modelTimeoutMs || PLAN_MODEL_TIMEOUT_MS_DEFAULT } });
       else if (args.command === 'assemble') result = await materializeAssemblyAuthorities(runDir);
       else result = verifySuccessorContract(runDir);
     }
@@ -458,7 +489,7 @@ async function main(argv = process.argv.slice(2)) {
 }
 
 module.exports = {
-  SUCCESSOR_SCHEMA, ASSEMBLY_SCHEMA, SUCCESSOR_FILE, PLAN_TASK_FILE, PLAN_RESULT_FILE, PLAN_FILE,
+  SUCCESSOR_SCHEMA, ASSEMBLY_SCHEMA, SUCCESSOR_FILE, PLAN_TASK_FILE, PLAN_RESULT_FILE, PLAN_FILE, PLAN_MODEL_TIMEOUT_MS_DEFAULT,
   ALIGNMENT_FILE, DESIGN_FILE, MANIFEST_FILE, COMPOSITION_FILE, MUSIC_FILE, RELEASE_FILE, INTAKE_FILE, ASSEMBLY_FILE,
   DraftBespokeSuccessorError, canonicalize, digest, jsonSha, sha256File,
   resolveCurrentApprovedStory, buildSuccessorContract, verifySuccessorContract, existingSuccessors,
