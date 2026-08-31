@@ -50,6 +50,7 @@ intelligence, no NLE, and no generative step anywhere in the assembler.
 | `scripts/draft-assembly-render.js` | ffmpeg renderer and ffprobe validator. Two-stage so it can resume. |
 | `scripts/package-run-draft-assembly.js` | Eligibility, orchestration, manifest, typed evidence, run state, CLI. |
 | `scripts/draft-review-intake.js` | Minimal typed place for what Mikko says about the draft. |
+| `scripts/draft-review-subject.js` | Read-only adapter that resolves either V0 or the active Directed Draft execution estate into the exact subject consumed by the same review authority. |
 
 ## Input contract
 
@@ -263,6 +264,9 @@ node scripts/draft-review-intake.js note package-runs/<run-id> --review-id <id> 
   --at 1:12 --disposition CUT --comment "this beat drags"
 node scripts/draft-review-intake.js rate package-runs/<run-id> --review-id <id> --axis pacing --score 3
 node scripts/draft-review-intake.js submit package-runs/<run-id> --review-id <id> --comment "structure holds"
+
+# read-only: current reviewable bytes, review lifecycle, and promotion inputs
+node scripts/draft-review-intake.js status package-runs/<run-id>
 ```
 
 ## Review intake
@@ -283,6 +287,35 @@ could hold only notes and ratings. Every field that wrapper needed is now native
 | `approvals.research` / `approvals.script` | the reviewer's declaration, **not** the canonical markers |
 | `completion_status` | `OPEN` / `SUBMITTED` |
 | `binding_digest_sha256` | digest over the immutable identity, so later edits are detectable |
+| `submission_digest_sha256` | digest over a newly submitted review, so later changes to submitted review bytes are detected |
+
+### Directed Draft review subjects
+
+`vidtoolz.draftReview.v2` remains the sole review schema and persistence
+authority. The subject adapter does not create a second review record. When a
+Directed Draft state exists, it resolves the active handoff and successful
+execution head, then cross-checks the execution attempt, semantic-plan digest,
+assembly manifest, `vidtoolz.draftAssemblyEvidence.v1`, rendered output bytes,
+Story/script identity, and release identity. Only a `VERIFIED` evidence record
+with a clean full-decode result can become `DRAFT_REVIEW_READY`.
+
+The resulting review binding includes the exact output SHA-256 plus the active
+execution-head and attempt identities, semantic-plan digest, handoff identity
+and file hash, Story/script identity, release hash, evidence file hash, and
+assembly-manifest hash. Any material successor is therefore historical for the
+old review, even when it has the same draft version or semantic plan. Different
+visible bytes always require a new human review.
+
+Synthetic or other non-presenter Draft Mode narration is legal here. The
+adapter records `is_presenter_voice` but does not require final human
+performance for draft review. This does not make the draft publication media.
+
+The `status` projection keeps these questions separate: review submitted,
+changes requested, exact draft approved, canonical script approval, and
+canonical research approval. Review-local research/script declarations remain
+advisory. The projection can report eligibility to proceed toward a future
+production-lock decision, but it neither implements nor creates that lock and
+always reports publication readiness as false.
 
 ### The rating scale is 1–10
 

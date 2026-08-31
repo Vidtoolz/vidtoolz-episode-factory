@@ -4,9 +4,9 @@
 /*
  * Review intake for an assembled Draft.
  *
- * Draft Assembly V0 produces something to watch. This is where what Mikko
- * thinks of it goes — converted into machine-readable state WITHOUT rewriting
- * its meaning.
+ * Draft Assembly produces something to watch. This is where what Mikko thinks
+ * of either the legacy V0 output or the active Directed Draft goes — converted
+ * into machine-readable state WITHOUT rewriting its meaning.
  *
  * The contract shape is not invented here. The First Real Production Run had to
  * hand-author `vidtoolz.frr.humanReview.v1` because v1 of this module could
@@ -43,7 +43,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const assembly = require('./package-run-draft-assembly.js');
+const reviewSubject = require('./draft-review-subject.js');
 
 const REVIEW_DIR = 'draft-review';
 const REVIEW_SCHEMA = 'vidtoolz.draftReview.v2';
@@ -167,7 +167,7 @@ function verbatim(value, limit, label) {
  * detectable rather than merely impolite.
  */
 function bindingIdentity(review) {
-  return {
+  const identity = {
     run_id: review.run_id,
     review_id: review.review_id,
     draft_version: review.draft.draft_version,
@@ -177,6 +177,19 @@ function bindingIdentity(review) {
     reviewer_authority: review.reviewer_authority,
     opened_at: review.opened_at,
   };
+  // Added without invalidating already-persisted v2 reviews: legacy records do
+  // not have this field, while Directed Draft reviews bind its full canonical
+  // subject identity (execution, handoff, story, release, evidence and bytes).
+  if (review.draft.review_subject_digest_sha256) {
+    identity.review_subject_digest_sha256 = review.draft.review_subject_digest_sha256;
+  }
+  return identity;
+}
+
+function submissionIdentity(review) {
+  const copy = structuredClone(review);
+  delete copy.submission_digest_sha256;
+  return copy;
 }
 
 /* ------------------------------------------------------------------ open -- */
@@ -187,12 +200,11 @@ function bindingIdentity(review) {
  */
 function openReview(runDirInput, options = {}) {
   const runDir = path.resolve(runDirInput);
-  const status = assembly.draftAssemblyStatus(runDir, options);
+  const status = reviewSubject.inspectReviewSubject(runDir, options);
   if (!status.present) fail('DRAFT_REVIEW_NO_DRAFT', 'this run has no assembled draft to review');
   if (!status.valid) fail('DRAFT_REVIEW_DRAFT_INVALID', `the assembled draft is not currently valid (${status.code}): ${status.detail}`);
-
-  const manifest = assembly.readManifest(runDir);
-  const reviewId = options.reviewId || `draft-v${manifest.draft_version}-${options.reviewer || 'mikko'}`;
+  const subject = status.subject;
+  const reviewId = options.reviewId || `draft-v${subject.draft_version}-${options.reviewer || 'mikko'}`;
   const target = reviewFile(runDir, reviewId);
   if (fs.existsSync(target) && !options.replace) {
     fail('DRAFT_REVIEW_EXISTS', `${path.basename(target)} already exists; pass replace to start over`);
@@ -202,7 +214,7 @@ function openReview(runDirInput, options = {}) {
     schema: REVIEW_SCHEMA,
     artifact_type: ARTIFACT_TYPE,
     review_id: reviewId,
-    run_id: manifest.run_id,
+    run_id: subject.run_id,
 
     // Who judged, and who wrote it down. They are different questions: an agent
     // transcribing Mikko verbatim must not read as an agent reviewing.
@@ -216,15 +228,21 @@ function openReview(runDirInput, options = {}) {
 
     // The draft identity. These fields are what keep a note anchored.
     draft: {
-      draft_version: manifest.draft_version,
-      output_path: manifest.output.path,
-      output_sha256: manifest.output.sha256,
-      duration_seconds: manifest.output.probe?.duration_seconds ?? null,
-      assembly_manifest_sha256: sha256File(path.join(runDir, assembly.MANIFEST_FILE)),
-      plan_digest_sha256: manifest.plan_digest_sha256 ?? null,
-      fidelity: manifest.fidelity,
+      draft_version: subject.draft_version,
+      output_path: subject.output.path,
+      output_sha256: subject.output.sha256,
+      duration_seconds: subject.output.duration_seconds ?? null,
+      assembly_manifest_sha256: subject.assembly_manifest.sha256,
+      plan_digest_sha256: subject.semantic_plan_digest_sha256 ?? null,
+      fidelity: subject.narration?.fidelity ?? null,
+      review_subject_kind: subject.kind,
+      review_subject_digest_sha256: subject.subject_digest_sha256,
+      review_subject: reviewSubject.subjectBinding(subject),
+      // Snapshot the canonical beat/timeline identity Mikko is reviewing. This
+      // prevents a later successor timeline from being projected onto old notes.
+      timeline: subject.segments,
     },
-    script: manifest.script,
+    script: subject.script,
 
     // The whole-draft verdict, separate from per-section notes. The First Real
     // Production Run's review was exactly this and nothing else: an overall
@@ -315,6 +333,13 @@ function loadReviewFor(runDir, reviewId) {
   return review;
 }
 
+function requireCurrentOpenReview(runDir, reviewId) {
+  const status = reviewStatus(runDir, reviewId);
+  if (!status.present) fail('DRAFT_REVIEW_MISSING', `review ${reviewId} not found`);
+  if (!status.current) fail('DRAFT_REVIEW_STALE', status.detail || 'review is not bound to the current exact draft');
+  return requireOpen(status.review);
+}
+
 /*
  * Which assembled segment does this timecode land in? Resolving it at note time
  * is what lets a later revision plan say "the material under this note is
@@ -322,13 +347,12 @@ function loadReviewFor(runDir, reviewId) {
  * regenerated. Absence is recorded as absence; nothing is guessed.
  */
 function segmentAt(runDir, timecodeSeconds) {
-  let manifest;
-  try { manifest = assembly.readManifest(runDir); }
+  let subject;
+  try { subject = reviewSubject.resolveReviewSubject(runDir); }
   catch (_) { return null; }
-  if (!manifest) return null;
-  const segment = (manifest.segments || []).find((s) =>
+  const segment = (subject.segments || []).find((s) =>
     timecodeSeconds >= s.start_seconds && timecodeSeconds < s.end_seconds)
-    || (manifest.segments || []).at(-1) || null;
+    || (subject.segments || []).at(-1) || null;
   if (!segment) return null;
   return {
     segment_order: segment.order,
@@ -343,7 +367,7 @@ function segmentAt(runDir, timecodeSeconds) {
 
 function addNote(runDirInput, reviewId, note) {
   const runDir = path.resolve(runDirInput);
-  const review = requireOpen(loadReviewFor(runDir, reviewId));
+  const review = requireCurrentOpenReview(runDir, reviewId);
 
   const disposition = String(note.disposition || '').toUpperCase();
   if (!DISPOSITIONS.includes(disposition)) {
@@ -393,7 +417,7 @@ function addNote(runDirInput, reviewId, note) {
 
 function setRating(runDirInput, reviewId, axis, value) {
   const runDir = path.resolve(runDirInput);
-  const review = requireOpen(loadReviewFor(runDir, reviewId));
+  const review = requireCurrentOpenReview(runDir, reviewId);
   if (!RATING_AXES.includes(axis)) fail('DRAFT_REVIEW_AXIS_INVALID', `rating axis must be one of ${RATING_AXES.join(', ')}`);
   // Clearing a rating restores absence — it does not write a zero.
   if (value === null || value === undefined || value === '') {
@@ -412,7 +436,7 @@ function setRating(runDirInput, reviewId, axis, value) {
 
 function setDraftVerdict(runDirInput, reviewId, verdict, options = {}) {
   const runDir = path.resolve(runDirInput);
-  const review = requireOpen(loadReviewFor(runDir, reviewId));
+  const review = requireCurrentOpenReview(runDir, reviewId);
   const value = String(verdict || '').toUpperCase();
   if (!DISPOSITIONS.includes(value)) {
     fail('DRAFT_REVIEW_DISPOSITION_INVALID', `draft verdict must be one of ${DISPOSITIONS.join(', ')}`);
@@ -432,7 +456,7 @@ function setDraftVerdict(runDirInput, reviewId, verdict, options = {}) {
  */
 function setApproval(runDirInput, reviewId, subject, state, options = {}) {
   const runDir = path.resolve(runDirInput);
-  const review = requireOpen(loadReviewFor(runDir, reviewId));
+  const review = requireCurrentOpenReview(runDir, reviewId);
   if (!APPROVAL_SUBJECTS.includes(subject)) {
     fail('DRAFT_REVIEW_APPROVAL_SUBJECT_INVALID', `approval subject must be one of ${APPROVAL_SUBJECTS.join(', ')}`);
   }
@@ -451,7 +475,7 @@ function setApproval(runDirInput, reviewId, subject, state, options = {}) {
 
 function submitReview(runDirInput, reviewId, options = {}) {
   const runDir = path.resolve(runDirInput);
-  const review = requireOpen(loadReviewFor(runDir, reviewId));
+  const review = requireCurrentOpenReview(runDir, reviewId);
   if (options.overallComment !== undefined && options.overallComment !== null) {
     review.overall_comment = verbatim(options.overallComment, MAX_OVERALL_COMMENT_BYTES, 'overall comment');
   }
@@ -461,6 +485,7 @@ function submitReview(runDirInput, reviewId, options = {}) {
   }
   review.completion_status = COMPLETION_SUBMITTED;
   review.submitted_at = new Date().toISOString();
+  review.submission_digest_sha256 = digestOf(submissionIdentity(review));
   writeReview(runDir, review);
   return review;
 }
@@ -482,34 +507,47 @@ function reviewStatus(runDirInput, reviewId, options = {}) {
   // Tamper check on the immutable half.
   const expected = digestOf(bindingIdentity(review));
   const bindingIntact = review.binding_digest_sha256 === expected;
+  const submissionIntact = review.completion_status !== COMPLETION_SUBMITTED
+    || !review.submission_digest_sha256
+    || review.submission_digest_sha256 === digestOf(submissionIdentity(review));
 
-  const status = assembly.draftAssemblyStatus(runDir, options);
+  const status = reviewSubject.inspectReviewSubject(runDir, options);
   if (!status.present || !status.valid) {
     return {
-      present: true, review, binding_intact: bindingIntact,
+      present: true, review, binding_intact: bindingIntact, submission_intact: submissionIntact,
       lifecycle: LIFECYCLE.STALE_FOR_CURRENT_DRAFT, completion_status: review.completion_status, current: false,
       detail: 'the run has no currently valid draft',
     };
   }
-  const manifest = assembly.readManifest(runDir);
-  const current = manifest.output.sha256 === review.draft.output_sha256;
+  const subject = status.subject;
+  const exactSubject = review.draft.review_subject_digest_sha256
+    ? review.draft.review_subject_digest_sha256 === subject.subject_digest_sha256
+    : (subject.kind === reviewSubject.SUBJECT_KINDS.LEGACY
+      && subject.output.sha256 === review.draft.output_sha256
+      && subject.assembly_manifest.sha256 === review.draft.assembly_manifest_sha256
+      && subject.semantic_plan_digest_sha256 === review.draft.plan_digest_sha256);
+  const current = bindingIntact && submissionIntact && exactSubject;
   if (current) {
     return {
-      present: true, review, binding_intact: bindingIntact,
+      present: true, review, binding_intact: bindingIntact, submission_intact: submissionIntact,
       lifecycle: LIFECYCLE.ACTIVE, completion_status: review.completion_status, current: true, detail: null,
     };
   }
   // Same version number, different bytes is its own case: the draft was rebuilt
   // rather than superseded, and saying "v2 is now v2" would read as a bug.
-  const sameVersion = manifest.draft_version === review.draft.draft_version;
+  const sameVersion = subject.draft_version === review.draft.draft_version;
   return {
-    present: true, review, binding_intact: bindingIntact,
+    present: true, review, binding_intact: bindingIntact, submission_intact: submissionIntact,
     lifecycle: sameVersion ? LIFECYCLE.STALE_FOR_CURRENT_DRAFT : LIFECYCLE.SUPERSEDED,
     completion_status: review.completion_status,
     current: false,
-    detail: sameVersion
-      ? `draft v${review.draft.draft_version} was re-rendered after this review was recorded`
-      : `review is against draft v${review.draft.draft_version}; the run now holds v${manifest.draft_version}`,
+    detail: !bindingIntact
+      ? 'review immutable binding was modified'
+      : (!submissionIntact
+        ? 'submitted review bytes were modified'
+        : (sameVersion
+          ? `draft v${review.draft.draft_version} was re-rendered or its material identity changed after this review was recorded`
+          : `review is against draft v${review.draft.draft_version}; the run now holds v${subject.draft_version}`)),
   };
 }
 
@@ -542,6 +580,107 @@ function runReviewSummary(runDirInput, options = {}) {
   };
 }
 
+function legacyHistoricalReviews(runDirInput, subject = null) {
+  const runDir = path.resolve(runDirInput);
+  const file = path.join(runDir, 'HUMAN-REVIEW-V1.json');
+  if (!fs.existsSync(file)) return [];
+  let record;
+  try { record = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return []; }
+  if (record?.schema !== 'vidtoolz.frr.humanReview.v1') return [];
+  const reviewedSha = record.binding?.review_bound_to_draft_sha256 || record.draft_sha256 || null;
+  return [{
+    source: 'HISTORICAL_FFR_REVIEW_WRAPPER', schema: record.schema,
+    review_id: record.draft_id || path.basename(file, '.json'),
+    reviewer_authority: record.reviewer_authority ?? null,
+    completion_status: record.review_completion_status ?? null,
+    draft_verdict: record.draft_verdict ?? null,
+    reviewed_at: record.reviewed_at ?? null,
+    output_sha256: reviewedSha,
+    current: false,
+    lifecycle: reviewedSha && subject?.output.sha256 === reviewedSha ? LIFECYCLE.ACTIVE : LIFECYCLE.STALE_FOR_CURRENT_DRAFT,
+    detail: reviewedSha && subject?.output.sha256 !== reviewedSha
+      ? `historical review binds ${reviewedSha}; current draft is ${subject.output.sha256}` : null,
+    path: path.relative(runDir, file),
+  }];
+}
+
+function promotionDecisionView(runDirInput, options = {}) {
+  const runDir = path.resolve(runDirInput);
+  const inspection = reviewSubject.inspectReviewSubject(runDir, options);
+  const subject = inspection.valid ? inspection.subject : null;
+  const statuses = listReviews(runDir).map((review) => reviewStatus(runDir, review.review_id, options));
+  const compatible = statuses.filter((item) => item.current && item.binding_intact && item.submission_intact !== false);
+  const submitted = compatible.filter((item) => item.review.completion_status === COMPLETION_SUBMITTED)
+    .sort((left, right) => {
+      const byTime = String(right.review.submitted_at || right.review.opened_at).localeCompare(String(left.review.submitted_at || left.review.opened_at));
+      return byTime || String(right.review.review_id).localeCompare(String(left.review.review_id));
+    });
+  const current = submitted[0] || null;
+  const changesRequested = Boolean(current && (
+    ['CHANGE', 'CUT', 'REWRITE'].includes(current.review.draft_verdict)
+    || current.review.notes.some((note) => ['CHANGE', 'CUT', 'REWRITE'].includes(note.disposition))
+  ));
+  const draftApproved = Boolean(current && current.review.draft_verdict === 'KEEP' && !changesRequested);
+  const canonical = subject ? reviewSubject.canonicalApprovalStatus(runDir, subject) : {
+    script: { approved: false, current: false, state: 'UNAVAILABLE' },
+    research: { approved: false, current: false, state: 'UNAVAILABLE' },
+  };
+  const historicalV2 = statuses.filter((item) => !item.current).map((item) => ({
+    source: REVIEW_SCHEMA, review_id: item.review.review_id, reviewer_authority: item.review.reviewer_authority,
+    completion_status: item.review.completion_status, draft_verdict: item.review.draft_verdict,
+    output_sha256: item.review.draft.output_sha256, lifecycle: item.lifecycle, current: false, detail: item.detail,
+  }));
+  const historical = [...historicalV2, ...legacyHistoricalReviews(runDir, subject)];
+  const blockers = [];
+  if (!inspection.valid) blockers.push(inspection.code || 'CURRENT_DRAFT_UNAVAILABLE');
+  if (subject && subject.evidence?.state !== 'VERIFIED' && subject.kind === reviewSubject.SUBJECT_KINDS.DIRECTED) blockers.push('TECHNICAL_EVIDENCE_NOT_VERIFIED');
+  if (!current) blockers.push('CURRENT_HUMAN_REVIEW_MISSING');
+  if (changesRequested) blockers.push('DRAFT_CHANGES_REQUESTED');
+  if (!draftApproved) blockers.push('EXACT_DRAFT_NOT_APPROVED');
+  if (!canonical.script.approved || !canonical.script.current) blockers.push('SCRIPT_APPROVAL_NOT_CURRENT');
+  if (!canonical.research.approved || !canonical.research.current) blockers.push('RESEARCH_APPROVAL_NOT_CURRENT');
+  const eligible = blockers.length === 0;
+  const reviewState = !subject ? 'DRAFT_NOT_REVIEW_READY'
+    : (changesRequested ? 'DRAFT_CHANGES_REQUESTED' : (draftApproved ? 'DRAFT_APPROVED' : reviewSubject.REVIEW_READY));
+  return {
+    run_id: path.basename(runDir),
+    current_draft: subject ? {
+      status: subject.status, kind: subject.kind, draft_version: subject.draft_version,
+      output_path: subject.output.path, output_sha256: subject.output.sha256,
+      duration_seconds: subject.output.duration_seconds, subject_digest_sha256: subject.subject_digest_sha256,
+      evidence_state: subject.evidence?.state ?? 'LEGACY_VERIFIED', narration: subject.narration,
+      publication_ready: false,
+    } : null,
+    review_schema: REVIEW_SCHEMA,
+    review_state: reviewState,
+    current_review: current ? {
+      review_id: current.review.review_id, reviewer_authority: current.review.reviewer_authority,
+      completion_status: current.review.completion_status, draft_verdict: current.review.draft_verdict,
+      submitted_at: current.review.submitted_at,
+    } : null,
+    current_open_reviews: compatible.filter((item) => item.review.completion_status === COMPLETION_OPEN).map((item) => item.review.review_id),
+    historical_reviews: historical,
+    decision: {
+      current_draft_exists: Boolean(subject),
+      current_technical_evidence_verified: Boolean(subject && (subject.kind === reviewSubject.SUBJECT_KINDS.LEGACY || subject.evidence?.state === 'VERIFIED')),
+      review_submitted: Boolean(current), changes_requested: changesRequested, draft_approved: draftApproved,
+      script_approval: canonical.script, research_approval: canonical.research,
+      stale_upstream_identities: !inspection.valid,
+      eligible_to_proceed_toward_production_lock: eligible,
+      final_production_locked: false,
+      production_lock_implemented: false,
+      publication_ready: false,
+      blockers,
+    },
+    authority: {
+      review_authority: REVIEW_SCHEMA,
+      approvals_in_review_are_advisory: true,
+      exact_bytes_required: true,
+      final_production_lock_created: false,
+    },
+  };
+}
+
 /* -------------------------------------------------- revision plan input --- */
 
 /*
@@ -560,7 +699,6 @@ function revisionPlanInput(runDirInput, reviewId, options = {}) {
   const status = reviewStatus(runDir, reviewId, options);
   if (!status.present) fail('DRAFT_REVIEW_MISSING', `review ${reviewId} not found`);
   const review = status.review;
-  const manifest = assembly.readManifest(runDir);
 
   const bySection = new Map();
   for (const note of review.notes) {
@@ -569,7 +707,12 @@ function revisionPlanInput(runDirInput, reviewId, options = {}) {
     bySection.get(key).push(note);
   }
 
-  const sections = (manifest?.segments || []).map((segment) => {
+  let segments = review.draft.timeline;
+  if (!Array.isArray(segments)) {
+    try { segments = reviewSubject.resolveReviewSubject(runDir, options).segments; }
+    catch (_) { segments = []; }
+  }
+  const sections = segments.map((segment) => {
     const notes = bySection.get(segment.section_id) || [];
     const decisions = [...new Set(notes.map((n) => n.disposition))];
     return {
@@ -607,6 +750,8 @@ function revisionPlanInput(runDirInput, reviewId, options = {}) {
       output_sha256: review.draft.output_sha256,
       assembly_manifest_sha256: review.draft.assembly_manifest_sha256,
       plan_digest_sha256: review.draft.plan_digest_sha256,
+      review_subject_digest_sha256: review.draft.review_subject_digest_sha256 ?? null,
+      review_subject: review.draft.review_subject ?? null,
     },
     draft_verdict: review.draft_verdict,
     overall_comment: review.overall_comment,
@@ -653,6 +798,7 @@ Usage:
                                                --state <${APPROVAL_STATES.join('|')}> [--note <text>]
   node scripts/draft-review-intake.js submit  <run-dir> --review-id <id> [--comment <text>]
   node scripts/draft-review-intake.js show    <run-dir> [--review-id <id>]
+  node scripts/draft-review-intake.js status  <run-dir>
   node scripts/draft-review-intake.js plan    <run-dir> --review-id <id>
   node scripts/draft-review-intake.js list    <run-dir>
 
@@ -751,6 +897,11 @@ function main(argv = process.argv.slice(2)) {
       process.stdout.write(`${JSON.stringify(runReviewSummary(args.runDir), null, 2)}\n`);
       return 0;
     }
+    if (args.command === 'status') {
+      const status = promotionDecisionView(args.runDir);
+      process.stdout.write(`${JSON.stringify(status, null, 2)}\n`);
+      return status.current_draft ? 0 : 1;
+    }
     if (args.command === 'plan') {
       process.stdout.write(`${JSON.stringify(revisionPlanInput(args.runDir, opts['review-id']), null, 2)}\n`);
       return 0;
@@ -791,6 +942,7 @@ module.exports = {
   reviewFile,
   parseTimecode,
   bindingIdentity,
+  submissionIdentity,
   digestOf,
   segmentAt,
   openReview,
@@ -804,6 +956,8 @@ module.exports = {
   submitReview,
   reviewStatus,
   runReviewSummary,
+  legacyHistoricalReviews,
+  promotionDecisionView,
   revisionPlanInput,
   usage,
   main,

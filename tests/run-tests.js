@@ -108,6 +108,7 @@ require("./generation-supervisor.test.js");
 require("./draft-synthetic-narration.test.js");
 require("./draft-proxy-presenter.test.js");
 require("./draft-assembly-v0.test.js");
+require("./directed-draft-review-integration.test.js");
 require("./draft-proxy-capture-materialization.test.js");
 require("./generation-supervisor-dispatch.test.js");
 require("./generation-supervisor-proof-governance.test.js");
