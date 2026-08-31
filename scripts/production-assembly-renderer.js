@@ -487,7 +487,8 @@ async function validateInputs(spec, options = {}) {
     const designPackage = readJson(designPath, 'COMPOSITION_DESIGN_PACKAGE_INVALID');
     if (designPackage.schema !== spec.composition.design_package.schema) fail('COMPOSITION_DESIGN_PACKAGE_DRIFT', 'design package schema mismatch');
     const approved = readJson(visualPlanPath, 'COMPOSITION_VISUAL_PLAN_INVALID');
-    if (approved.plan_id !== spec.composition.approved_visual_plan.plan_id || (spec.composition.approved_visual_plan.digest_sha256 && approved.digest_sha256 !== spec.composition.approved_visual_plan.digest_sha256)) fail('COMPOSITION_VISUAL_PLAN_DRIFT', 'approved visual-plan identity mismatch');
+    const approvedDigest = approved.digest_sha256 || approved.plan_digest_sha256 || null;
+    if (approved.plan_id !== spec.composition.approved_visual_plan.plan_id || (spec.composition.approved_visual_plan.digest_sha256 && approvedDigest !== spec.composition.approved_visual_plan.digest_sha256)) fail('COMPOSITION_VISUAL_PLAN_DRIFT', 'approved visual-plan identity mismatch');
     const assetManifest = readJson(assetManifestPath, 'COMPOSITION_ASSET_MANIFEST_INVALID');
     if (draftClass === 'VISUAL_DRAFT' && (assetManifest.assets || []).some((asset) => asset.role === 'PRESENTER_ONLY')) fail('VISUAL_DRAFT_PRESENTER_PLACEHOLDER_FORBIDDEN', 'VISUAL_DRAFT manifest cannot carry presenter placeholders');
     // The generic presenter proxy is a typed VISUAL_DRAFT V2 overlay only —

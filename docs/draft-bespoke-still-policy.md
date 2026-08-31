@@ -10,6 +10,8 @@ Generation Supervisor writes immutable per-attempt provenance plus a registry an
 
 Final Production doctrine is unchanged. Draft assets cannot become `FINAL_STILL`, `FINAL_VIDEO_SOURCE`, or publication media through this workflow.
 
+When the predecessor package-run is already in Production, do not change its mode or reuse its immutable release. Resolve the current approved Story and create a separate Draft successor through `scripts/draft-bespoke-successor-authority.js`; see `docs/draft-bespoke-successor-authority.md`. The successor adapter projects the canonical still registry into static composition, Draft release, and Directed Draft handoff authorities without caller media paths.
+
 The bounded real-canary command is:
 
 ```bash

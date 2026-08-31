@@ -51,6 +51,8 @@ node --check scripts/production-assembly-composition.js
 node --check scripts/draft-bespoke-still-policy.js
 node --check scripts/package-run-draft-bespoke-stills.js
 node --check tests/draft-bespoke-still-policy.test.js
+node --check scripts/draft-bespoke-successor-authority.js
+node --check tests/draft-bespoke-successor-authority.test.js
 node --check tests/production-assembly-reveal.test.js
 node --check tests/production-assembly-v4-typography-layout.test.js
 node --check tests/production-assembly-drawtext-escaping.test.js

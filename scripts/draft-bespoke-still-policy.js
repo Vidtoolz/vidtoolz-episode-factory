@@ -568,7 +568,9 @@ function productionAssetRecord(asset, intendedBeatIds) {
 
 function staticGeometryEvidence(beat) {
   const layer = beat?.layers?.find((item) => item.type === 'FULL_CANVAS_VISUAL');
-  if (!layer || layer.motion !== undefined || layer.reveal !== undefined || beat.reveal_contract !== undefined) fail('DRAFT_STILL_STATIC_EVIDENCE_INVALID', beat?.beat_id || 'beat');
+  if (!layer || layer.motion !== undefined || layer.reveal !== undefined || beat.reveal_contract !== undefined
+      || layer.geometry?.ramp !== undefined || layer.geometry?.keyframes !== undefined
+      || layer.geometry?.animation !== undefined) fail('DRAFT_STILL_STATIC_EVIDENCE_INVALID', beat?.beat_id || 'beat');
   const geometry = { fit: layer.fit, x: layer.geometry?.x ?? 0, y: layer.geometry?.y ?? 0, width: layer.geometry?.width ?? null, height: layer.geometry?.height ?? null, crop: 'CONSTANT_FIT' };
   const sample = { first: geometry, middle: geometry, last: geometry };
   const hashes = Object.fromEntries(Object.entries(sample).map(([key, value]) => [key, digest(value)]));

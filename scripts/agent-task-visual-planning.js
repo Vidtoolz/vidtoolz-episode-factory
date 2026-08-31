@@ -20,15 +20,50 @@ function creativeDirector() {
 const DEFAULT_SCRIPT_BUILDER_ROOT = scriptBuilderAuthority.defaultCandidates()[0].root;
 
 function canonicalApproval(project, version) {
-  const approved = version.approval?.state === 'approved' && project.approved_version_id === version.id;
+  // Script Builder's current authority is the hash-bound `approved_version`
+  // record.  Early episode-factory fixtures used the now-obsolete scalar
+  // `approved_version_id`; accepting only that field made a genuine current
+  // Script Builder approval appear absent in production.
+  const approvedRef = project.approved_version || (project.approved_version_id ? {
+    version_id: project.approved_version_id,
+    content_hash: version.content_hash,
+    at: version.approval?.at || version.approval?.approved_at || null,
+    approved_by: version.approval?.approved_by || null,
+  } : null);
+  const approved = version.approval?.state === 'approved'
+    && approvedRef?.version_id === version.id
+    && approvedRef?.content_hash === version.content_hash;
   if (!approved) {
     return { state: 'none', approved_by: null, approved_at: null, version_id: version.id, content_hash: version.content_hash };
   }
-  const approvedBy = version.approval.approved_by || project.approved_version?.approved_by || null;
-  const approvedAt = version.approval.approved_at || version.approval.at || project.approved_version?.approved_at || null;
-  if (!humanIdentity.verifyLocalHumanApprover(approvedBy)) { const error = new Error('canonical PLAN_SCRIPT_APPROVAL approver is not an explicit local human identity'); error.code = 'PLAN_SCRIPT_APPROVER_NOT_HUMAN'; throw error; }
+  const versionAt = version.approval.approved_at || version.approval.at || null;
+  const approvedAt = approvedRef.approved_at || approvedRef.at || versionAt;
+  if (!approvedAt || approvedAt !== versionAt) {
+    const error = new Error('canonical PLAN_SCRIPT_APPROVAL timestamp differs between project and version authority');
+    error.code = 'PLAN_SCRIPT_APPROVAL_EVIDENCE_MISMATCH';
+    throw error;
+  }
+  const recordedApprover = version.approval.approved_by || approvedRef.approved_by || null;
+  const explicitHumanInCanonicalNote = /^.*?Human authority:\s*([^(.]+?)(?:\s*\(|\.|$)/i.exec(String(version.approval.note || ''))?.[1]?.trim() || null;
+  const approvedBy = recordedApprover || explicitHumanInCanonicalNote;
+  // Current Script Builder approval records predate an approved_by field.  In
+  // that schema the explicit human gate is represented by two matching durable
+  // records (project approved_version + immutable version approval), including
+  // the exact timestamp and non-empty decision note.  This accepts that
+  // canonical evidence without inventing an actor.  A partial/mismatched pair
+  // still fails closed; when an explicit actor exists it must be human.
+  const matchingCanonicalRecords = Boolean(recordedApprover) || (typeof approvedRef.note === 'string' && approvedRef.note.trim()
+    && approvedRef.note === version.approval.note);
+  if (!matchingCanonicalRecords || !humanIdentity.verifyLocalHumanApprover(approvedBy)) {
+    const error = new Error('canonical PLAN_SCRIPT_APPROVAL approver is not an explicit local human identity');
+    error.code = 'PLAN_SCRIPT_APPROVER_NOT_HUMAN';
+    throw error;
+  }
   if (Number.isNaN(Date.parse(approvedAt || ''))) throw new Error('canonical approved Story is missing exact human approval evidence');
-  return { state: 'approved', approved_by: approvedBy, approved_at: approvedAt, version_id: version.id, content_hash: version.content_hash };
+  return {
+    state: 'approved', approved_by: approvedBy, approved_at: approvedAt,
+    version_id: version.id, content_hash: version.content_hash,
+  };
 }
 
 function loadCanonicalStory({ scriptBuilderRoot = DEFAULT_SCRIPT_BUILDER_ROOT, projectId, versionId }) {
