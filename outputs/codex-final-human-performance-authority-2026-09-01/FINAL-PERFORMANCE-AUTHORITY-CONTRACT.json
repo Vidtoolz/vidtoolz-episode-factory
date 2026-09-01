@@ -1,0 +1,8 @@
+{
+  "schema": "vidtoolz.finalHumanPerformanceAuthority.v1",
+  "binding": ["Final Production Lock", "Final Production Package", "locked script", "Story identity", "presenter Mikko Pakkala"],
+  "lifecycle": ["REQUIRED", "REGISTERED", "SELECTED", "COMPLETE"],
+  "creative_authority": "Mikko Pakkala only",
+  "completion": "current lock/package + current manifest + all required sections covered + selected media hashes valid + named human selector",
+  "out_of_scope": ["recording", "creative ranking", "final edit", "QC", "publication"]
+}

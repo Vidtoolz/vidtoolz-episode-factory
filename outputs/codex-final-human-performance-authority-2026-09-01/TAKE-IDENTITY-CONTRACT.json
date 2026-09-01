@@ -1,0 +1,5 @@
+{
+  "take_id": "final-take-<sha256-prefix>",
+  "immutable_fields": ["source sha256", "canonical media path", "byte size", "duration", "streams", "coverage declaration", "lock/package/script binding", "ingest provenance"],
+  "authority_rule": "filename, directory, newest file, and caller assertions are not authority"
+}

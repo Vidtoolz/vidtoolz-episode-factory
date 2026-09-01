@@ -784,6 +784,11 @@ function nextActions(runDirInput, options = {}) {
   }
   const { tracker } = loadTracker(runDir);
   const performance = readJson(paths.performance, 'FINAL_PACKAGE_PERFORMANCE_INVALID');
+  /* Final performance has its own immutable take/selection authority. The
+   * package remains the requirement declaration; this projection reads the
+   * current performance lane without making visual production depend on it. */
+  const finalPerformance = require('./final-performance.js');
+  const performanceStatus = finalPerformance.status(runDir, options);
   const music = readJson(paths.music, 'FINAL_PACKAGE_MUSIC_INVALID');
   const ready = []; const blocked = []; const waiting = []; const completed = [];
 
@@ -806,19 +811,20 @@ function nextActions(runDirInput, options = {}) {
     if (beat.state === 'VIDEO_GENERATED') { waiting.push({ task: 'SELECT_FINAL_CLIP', beat: beat.final_beat_id, candidates: beat.generated_videos.length, instruction: `Select the final Kling clip for ${label}` }); continue; }
     blocked.push({ task: 'UNKNOWN_BEAT_STATE', beat: beat.final_beat_id, state: beat.state, kind });
   }
-  if (performance.state === 'REQUIRED' && !performance.takes.length) {
-    ready.push({ task: 'RECORD_FINAL_PERFORMANCE', instruction: `Record the locked script (${performance.sections.length} sections, ~${Math.round(performance.total_target_duration_ms / 1000)}s) — a fresh Mikko performance is required`, sections: performance.sections.map((section) => section.section_id) });
-  } else if (!performance.selected_take) {
-    waiting.push({ task: 'SELECT_FINAL_TAKE', instruction: 'Select the final performance take', takes: performance.takes.length });
-  } else completed.push({ task: 'FINAL_PERFORMANCE_SELECTED' });
+  if (performanceStatus.state === 'INCOMPLETE' && performanceStatus.takes === 0) {
+    ready.push({ task: 'RECORD_FINAL_PERFORMANCE', state: 'WAITING_FOR_MIKKO', instruction: `Record the locked script (${performance.sections.length} sections, ~${Math.round(performance.total_target_duration_ms / 1000)}s) — a fresh Mikko performance is required`, sections: performance.sections.map((section) => section.section_id) });
+  } else if (performanceStatus.state === 'INCOMPLETE') {
+    waiting.push({ task: 'SELECT_PERFORMANCE_TAKE', state: 'READY', instruction: performanceStatus.next_action, takes: performanceStatus.takes, missing_sections: performanceStatus.coverage.filter((item) => item.status === 'UNCOVERED').map((item) => item.section_id) });
+  } else if (performanceStatus.state === 'COMPLETE') completed.push({ task: 'FINAL_HUMAN_PERFORMANCE_COMPLETE' });
+  else blocked.push({ task: 'FINAL_HUMAN_PERFORMANCE', blocked_by: performanceStatus.error || performanceStatus.state });
   if (music.state === 'REQUIRED') {
     ready.push({ task: 'PRODUCE_FINAL_MUSIC', instruction: 'Produce or select final music against the final music brief (Draft music is provisional and is not promoted)' });
   }
   const assetsComplete = tracker.beats.every((beat) => beat.state === 'FINAL_ASSET_SELECTED');
-  if (assetsComplete && performance.selected_take && music.state !== 'REQUIRED') {
+  if (assetsComplete && performanceStatus.state === 'COMPLETE' && music.state !== 'REQUIRED') {
     ready.push({ task: 'ASSEMBLE_FINAL_EDIT_IN_RESOLVE', instruction: 'Assemble the final edit in Resolve using the blueprint' });
   } else if (assetsComplete) {
-    blocked.push({ task: 'ASSEMBLE_FINAL_EDIT_IN_RESOLVE', blocked_by: [!performance.selected_take ? 'final performance take' : null, music.state === 'REQUIRED' ? 'final music' : null].filter(Boolean) });
+    blocked.push({ task: 'ASSEMBLE_FINAL_EDIT_IN_RESOLVE', blocked_by: [performanceStatus.state !== 'COMPLETE' ? 'final performance take' : null, music.state === 'REQUIRED' ? 'final music' : null].filter(Boolean) });
   } else {
     blocked.push({ task: 'ASSEMBLE_FINAL_EDIT_IN_RESOLVE', blocked_by: [`${tracker.beats.filter((beat) => beat.state !== 'FINAL_ASSET_SELECTED').length} final visual assets outstanding`] });
   }
@@ -830,7 +836,7 @@ function nextActions(runDirInput, options = {}) {
     next_action: sortedReady[0]?.instruction || waiting[0]?.instruction || 'All Final Production tasks in this projection are complete or blocked',
     counts: { ready: sortedReady.length, blocked: blocked.length, waiting_on_mikko: waiting.length, completed: completed.length },
     final_assets_complete: assetsComplete,
-    final_human_performance_complete: Boolean(performance.selected_take),
+    final_human_performance_complete: performanceStatus.state === 'COMPLETE',
     final_music_complete: music.state !== 'REQUIRED',
     final_edit_complete: false, final_qc_pass: false, publication_approved: false,
   };

@@ -1,0 +1,1 @@
+{"fixture":"A whole script, B S03, C S08","result":"PASS","proof":["three immutable takes","section overrides explicit","unaffected sections remain on A","completion true"]}

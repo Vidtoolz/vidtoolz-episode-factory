@@ -1,0 +1,1 @@
+{"tasks":{"no_takes":"RECORD_FINAL_PERFORMANCE / WAITING_FOR_MIKKO","partial_coverage":"SELECT_PERFORMANCE_TAKE / READY","complete":"FINAL_HUMAN_PERFORMANCE_COMPLETE / COMPLETE"},"lane_dependency":"performance and final visual production remain independently actionable after the lock"}

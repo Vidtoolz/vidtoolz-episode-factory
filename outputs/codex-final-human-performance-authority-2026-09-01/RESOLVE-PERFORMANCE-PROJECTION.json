@@ -1,0 +1,1 @@
+{"schema":"vidtoolz.finalResolvePerformanceProjection.v1","source":"current final-performance selection manifest","mapping":"PERFORMANCE_<section_id> -> selected take, canonical source path, sha256, duration","incomplete_sections":"remain unresolved placeholders","canonical_resolve_blueprint_mutated":false,"final_edit_created":false}

@@ -1,0 +1,7 @@
+{
+  "command": "node scripts/final-performance.js ingest --run-id <run> --file <recording>",
+  "supported_extensions": [".mov", ".mp4", ".m4a", ".wav", ".aiff", ".aif"],
+  "checks": ["existence", "ffprobe readability", "positive duration", "audio stream", "sha256", "byte size", "stream metadata"],
+  "canonical_storage": "final-production/performance-authority/media/<sha256>.<ext>",
+  "idempotency": "identical bytes return ALREADY_REGISTERED"
+}

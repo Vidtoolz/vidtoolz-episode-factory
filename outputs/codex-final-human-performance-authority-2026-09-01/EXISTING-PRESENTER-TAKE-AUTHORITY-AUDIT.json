@@ -1,0 +1,9 @@
+{
+  "authority": "scripts/presenter-take-manifest.js",
+  "schema": "Presenter Take Manifest V1",
+  "tests": "tests/presenter-take-manifest.test.js",
+  "baseline_result": "116/116",
+  "provides": ["story and recording-unit binding", "media hash/probe validation", "immutable successor manifests", "human-only selection", "technical versus creative distinction", "editor projection"],
+  "gap_for_final": "unit-scoped takes cannot express one whole-script recording or a successor section composite bound to Final Production Lock and Package",
+  "decision": "extend/adapt existing authority; no competing finalPerformanceTake.v1 created"
+}

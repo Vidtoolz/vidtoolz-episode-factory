@@ -1,0 +1,1 @@
+{"modes":["WHOLE_SCRIPT","SECTIONS"],"rule":"duration never infers section coverage; coverage is declared and validated","statuses":["COVERED_BY_SELECTED_TAKE","UNCOVERED"],"whole_script":"one explicit whole-script selection maps every required section","composite":"section-select replaces only named sections and preserves unaffected selections"}
