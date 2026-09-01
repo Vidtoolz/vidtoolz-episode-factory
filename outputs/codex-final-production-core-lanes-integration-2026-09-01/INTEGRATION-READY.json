@@ -1,9 +1,9 @@
 {
   "integration_branch": "codex/final-production-core-lanes-integration-2026-09-01",
-  "candidate_sha": "02d69339f21715da92e8287aa2b450c3753c8986",
-  "candidate_tree": "352627024cc26f9ce13a6cb88706b2a37fe55be5",
-  "supersedes_candidate": "ce5121e2c0a53ee90ac859190c5cfe467b10b1a3",
-  "repair": "XLANE-1",
+  "candidate_sha": "8eaf2c8d247fc6609ee5e45fe7b0697246eb1b7d",
+  "candidate_tree": "ffedbe946b53d4145be25361b1a11d15bad5119b",
+  "supersedes_candidate": "02d69339f21715da92e8287aa2b450c3753c8986",
+  "repairs": ["XLANE-1", "XLANE-2"],
   "merge_commit": "3e24644",
   "parent_shas": ["bccecb16f0c512f31dca76389d43519b9a0a360f", "32a6a2cbf4eac88e372d202bf05409cbdd8ed535", "ab649c21f320d11df9774bd6a946ba869cf6a208"],
   "performance_candidate_sha": "32a6a2cbf4eac88e372d202bf05409cbdd8ed535",
