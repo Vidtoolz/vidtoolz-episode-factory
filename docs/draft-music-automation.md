@@ -39,20 +39,33 @@ rejected; it stays a QC diagnostic but never ranks again. A candidate must be
 non-truncated ending + minimum script fit) before its diversity contribution
 matters; usable candidates always outrank unusable ones.
 
-## SOLID_SONG coherence gate
+## Coherence gate: SOLID_SONG / DRAFT_MUSIC_USABLE / REJECT_COHERENCE
 
-`scripts/draft-music-coherence.js` answers one bounded question: does the
-track feel like ONE intentional piece rather than disconnected generated
-sections? Evidence classes: adjacent 5 s timbral-flow discontinuity (the
-strongest human-labeled discriminator), interior energy-jump rate (ending
-fades excluded), ending class/relation, material identity, and progression.
-Tonal/chroma continuity is computed but ADVISORY ONLY — it proved
-genre-confounded on the calibration corpus. Calibration (small, honest: 3
-human-labeled tracks + coherent controls) lives in
-`outputs/claude-stable-audio-draft-music-coherence-2026-09-01/COHERENCE-CALIBRATION.json`.
-A catastrophically incoherent (technically clean) attempt earns AT MOST one
-targeted `COHERENCE_REPLACEMENT`; if both stay non-solid the better one
-completes the candidate with its failure evidence — no auto-search.
+`scripts/draft-music-coherence.js` answers one bounded DRAFT question — "is
+this track usable enough as ONE song to judge the video with?" — never
+publication quality. Three states: `SOLID_SONG` (strongly coherent, clearly
+usable), `DRAFT_MUSIC_USABLE` (coherent enough for Draft use, weaker than the
+best), `REJECT_COHERENCE` (does not function as one usable song). Both states
+above the floor are Draft-usable; ranking separates usable from best.
+
+Human-calibrated on BOTH blind auditions (2026-08-31 dual-model: A USE, B/C
+REJECT; 2026-09-01 all-SA3M: A/B/C all USE, ranked A>B>C). The feature audit
+across all six labeled tracks found exactly ONE class-separating feature —
+adjacent 5 s timbral-flow p90 (usable ≤ 0.024, reject ≥ 0.0358; usability
+floor 0.029) — so that is the gate. Features that misfired on human-usable
+material (timbral-flow mean, interior energy-jump rate, timbral-flow max) are
+demoted to score/diagnostics; tonal/chroma continuity stays advisory
+(genre-confounded). The 0–10 score ranks candidates and defines the SOLID
+band (score ≥ 7 and p90 ≤ 0.015) plus a degenerate guard (score < 2.5) — it
+does not gate usability. Abrupt endings penalize score and ranking but never
+auto-fail a usable track; TRUNCATED fails. Calibration evidence:
+`outputs/claude-stable-audio-human-calibration-2026-09-01/COHERENCE-RECALIBRATION.json`.
+
+A usable track always completes its candidate — usable tracks are never
+regenerated. Only a CATASTROPHIC rejection (p90 > 0.05 or score < 1.5) earns
+AT MOST one targeted `COHERENCE_REPLACEMENT`; if both attempts stay rejected
+the better one completes the candidate with its failure evidence — no
+auto-search.
 
 ## Entry point
 
@@ -78,8 +91,12 @@ hides model identity); the automated ranking is a recommendation, never final
 music authority. Blind verdicts are registered immutably via
 `scripts/draft-music-human-verdict.js` (`draft-music-human-verdict.json`):
 verbatim comments preserved, track bytes bound by sha256, the historical
-machine ranking preserved unrewritten, and a `HUMAN_RANKING_ALIGNMENT`
-(MATCH/MISS) computed — the 2026-08-31 audition is the recorded baseline MISS.
+machine ranking preserved unrewritten, and a multi-component
+`HUMAN_RANKING_ALIGNMENT` computed (top-1 MATCH/MISS, per-label usable/reject
+agreement, pairwise ranking agreement — never one collapsed number). Recorded
+history: 2026-08-31 top-1 MISS (machine picked MiniMax B, human used only
+SA3M A); 2026-09-01 top-1 MATCH (machine and human both picked A; human
+additionally accepted B and C, which drove the usability recalibration).
 The human verdict outranks the machine recommendation
 (`effectiveSelection`). Human review may use the `MUSIC_CONCEPT` and
 `MUSIC_EXECUTION` dimensions in `scripts/draft-review-intake.js`.

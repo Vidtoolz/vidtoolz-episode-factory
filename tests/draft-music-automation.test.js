@@ -656,46 +656,82 @@ function coherenceFixtures() {
   return COH;
 }
 
-test('DM32 SOLID_SONG gate passes one-identity material and fails disconnected sections', () => {
+test('DM32 coherence gate: one-identity material is SOLID, disconnected sections are REJECT_COHERENCE', () => {
   const fx = coherenceFixtures();
   const solid = coherenceGate.coherenceReport(fx.solid, { endingClass: 'FADE_ACCEPTABLE' });
   assert.equal(solid.coherence_class, 'SOLID_SONG', JSON.stringify(solid.metrics.timbral_flow));
-  assert.ok(solid.solid_song && solid.coherence_score >= coherenceGate.COHERENCE_CONTRACT.floors.min_score);
+  assert.ok(solid.solid_song && solid.draft_usable && solid.coherence_score >= coherenceGate.COHERENCE_CONTRACT.solid.min_score);
   const broken = coherenceGate.coherenceReport(fx.incoherent1, { endingClass: 'ABRUPT_END' });
-  assert.equal(broken.solid_song, false);
+  assert.equal(broken.coherence_class, 'REJECT_COHERENCE');
+  assert.equal(broken.draft_usable, false);
   assert.ok(broken.floor_failures.includes('TIMBRAL_FLOW_P90'), JSON.stringify(broken.floor_failures));
   assert.ok(broken.coherence_score < solid.coherence_score - 2, `${broken.coherence_score} vs ${solid.coherence_score}`);
 });
 
-test('DM33 abrupt endings and unrelated section jumps are penalized; too-short material is not assessable', () => {
+test('DM33 abrupt endings penalize but do NOT auto-fail a usable song; section jumps reject; too-short is not assessable', () => {
   const fx = coherenceFixtures();
   const faded = coherenceGate.coherenceReport(fx.solid, { endingClass: 'FADE_ACCEPTABLE' });
   const abrupt = coherenceGate.coherenceReport(fx.solidAbrupt, { endingClass: 'ABRUPT_END' });
   assert.ok(abrupt.scores.ending < faded.scores.ending);
   assert.ok(abrupt.coherence_score < faded.coherence_score);
+  // §13/§20-17: an abrupt-but-otherwise-coherent track stays Draft-usable
+  assert.equal(abrupt.draft_usable, true, JSON.stringify(abrupt.floor_failures));
   const jumped = coherenceGate.coherenceReport(fx.incoherent2, { endingClass: 'ABRUPT_END' });
   assert.ok(jumped.metrics.energy_continuity.interior_jumps_over_6db >= 1 || jumped.metrics.timbral_flow.adjacent_discontinuity_p90 > 0.02);
-  assert.equal(jumped.solid_song, false);
+  assert.equal(jumped.draft_usable, false);
   const out = tmpdir('coh-short');
   ffmpeg(['-f', 'lavfi', '-i', 'sine=frequency=220:duration=10', path.join(out, 'short.wav')]);
   const short = coherenceGate.coherenceReport(path.join(out, 'short.wav'), { endingClass: 'ABRUPT_END' });
   assert.equal(short.coherence_class, 'NOT_ASSESSABLE');
-  assert.equal(short.solid_song, false);
+  assert.equal(short.draft_usable, false);
 });
 
 test('DM34 deliberate stepwise evolution of one identity is NOT falsely rejected', () => {
   const fx = coherenceFixtures();
   const evolution = coherenceGate.coherenceReport(fx.evolution, { endingClass: 'FADE_ACCEPTABLE' });
-  assert.equal(evolution.coherence_class, 'SOLID_SONG', JSON.stringify({ floors: evolution.floor_failures, tf: evolution.metrics.timbral_flow }));
+  assert.equal(evolution.draft_usable, true, JSON.stringify({ floors: evolution.floor_failures, tf: evolution.metrics.timbral_flow }));
+  assert.notEqual(evolution.coherence_class, 'REJECT_COHERENCE');
 });
 
-test('DM35 calibration corpus verdicts are pinned in the contract (human evidence drives thresholds)', () => {
+test('DM35 human-calibrated thresholds are pinned in the contract (both blind auditions drive them)', () => {
   const contract = coherenceGate.COHERENCE_CONTRACT;
-  assert.equal(contract.concept, 'SOLID_SONG');
+  assert.match(contract.concept, /SOLID_SONG \/ DRAFT_MUSIC_USABLE \/ REJECT_COHERENCE/);
   assert.match(contract.calibration, /2026-09-01/);
-  assert.ok(contract.floors.timbral_flow_p90_max <= 0.03, 'floor must sit below the REJECT tracks (0.036/0.039)');
-  assert.ok(contract.floors.timbral_flow_p90_max >= 0.012, 'floor must sit above the coherent controls (<=0.012)');
+  // usability floor must sit in the labeled gap: human-usable max 0.024 < floor < human-reject min 0.0358
+  assert.ok(contract.usability_floors.timbral_flow_p90_max > 0.024, 'floor must pass every human-USE track (max observed 0.024)');
+  assert.ok(contract.usability_floors.timbral_flow_p90_max < 0.0358, 'floor must reject every human-REJECT track (min observed 0.0358)');
+  assert.ok(contract.solid.min_score > contract.usability_floors.degenerate_score_min);
   assert.ok(contract.advisory_only.includes('tonal_context'), 'chroma is genre-confounded and must not gate');
+  // features that misfired on human-usable material are demoted and must never gate
+  for (const demoted of ['timbral_flow_mean', 'interior_energy_jump_rate']) {
+    assert.ok(contract.advisory_only.includes(demoted), `${demoted} must be advisory`);
+  }
+  assert.ok(contract.demoted_from_gate_2026_09_01);
+});
+
+test('DM35b classifier reproduces every human-labeled calibration point exactly (both auditions)', () => {
+  const points = [
+    // 2026-08-31 dual-model blind audition (exact labels)
+    { label: 'old_A USE', p90: 0.0031, score: 8.446, ending: 'ABRUPT_END', expect: 'SOLID_SONG', usable: true },
+    { label: 'old_B REJECT', p90: 0.0358, score: 2.576, ending: 'ABRUPT_END', expect: 'REJECT_COHERENCE', usable: false },
+    { label: 'old_C REJECT', p90: 0.0393, score: 3.517, ending: 'ABRUPT_END', expect: 'REJECT_COHERENCE', usable: false },
+    // 2026-09-01 all-Stable-Audio blind audition (exact labels, ranking A>B>C)
+    { label: 'new_A USE r1', p90: 0.0088, score: 8.264, ending: 'FADE_ACCEPTABLE', expect: 'SOLID_SONG', usable: true },
+    { label: 'new_B USE r2', p90: 0.0162, score: 5.704, ending: 'FADE_ACCEPTABLE', expect: 'DRAFT_MUSIC_USABLE', usable: true },
+    { label: 'new_C USE r3', p90: 0.024, score: 4.201, ending: 'ABRUPT_END', expect: 'DRAFT_MUSIC_USABLE', usable: true },
+    // machine-discarded catastrophic attempt (never heard by the human)
+    { label: 'new_C attempt-1', p90: 0.0967, score: 2.545, ending: 'CLEAN_END', expect: 'REJECT_COHERENCE', usable: false, catastrophic: true },
+  ];
+  for (const point of points) {
+    const verdict = coherenceGate.classifyCoherence({ timbralFlowP90: point.p90, coherenceScore: point.score, endingClass: point.ending, blockCount: 35 });
+    assert.equal(verdict.coherence_class, point.expect, point.label);
+    assert.equal(verdict.draft_usable, point.usable, point.label);
+    if (point.catastrophic) assert.equal(verdict.catastrophic, true, point.label);
+  }
+  // structural cases
+  assert.equal(coherenceGate.classifyCoherence({ timbralFlowP90: 0.001, coherenceScore: 8, endingClass: 'TRUNCATED', blockCount: 35 }).coherence_class, 'REJECT_COHERENCE');
+  assert.equal(coherenceGate.classifyCoherence({ timbralFlowP90: 0.001, coherenceScore: 2.0, endingClass: 'CLEAN_END', blockCount: 35 }).floor_failures.includes('DEGENERATE_SCORE'), true);
+  assert.equal(coherenceGate.classifyCoherence({ timbralFlowP90: 0.001, coherenceScore: 8, endingClass: 'CLEAN_END', blockCount: 3 }).coherence_class, 'NOT_ASSESSABLE');
 });
 
 /* 60 s analysis payload + run options for the coherence-scale department runs. */
@@ -733,7 +769,8 @@ test('DM36 an incoherent highly-diverse candidate cannot win; coherence replacem
   assert.equal(result.state, 'COMPLETE');
   const pkg = result.package;
   const c = pkg.candidates.find((candidate) => candidate.candidate_slot === 'C');
-  assert.equal(c.coherence.solid_song, false);
+  assert.equal(c.coherence.draft_usable, false);
+  assert.equal(c.coherence.coherence_class, 'REJECT_COHERENCE');
   assert.equal(c.attempt_count, 2, 'exactly one targeted coherence replacement');
   const cEntry = pkg.ranking.find((entry) => entry.slot === 'C');
   assert.equal(cEntry.usable, false);
@@ -854,6 +891,28 @@ test('DM42 a human blind verdict registers immutably, outranks the machine pick,
   // tamper detection
   const loaded = humanVerdict.loadHumanVerdict(out);
   errorCode(() => humanVerdict.verifyHumanVerdict({ ...loaded, tracks: { ...loaded.tracks, [machineLabel]: { ...loaded.tracks[machineLabel], verdict: 'USE' } } }), 'DRAFT_MUSIC_VERDICT_TAMPERED');
+});
+
+test('DM42b all-USE verdict with human ranking yields multi-component alignment (top-1, usable agreement, pairwise)', async () => {
+  const { out, result } = await runDepartment('align-components', incoherentDiversePick(), options60(), { durationS: COH_DURATION_S });
+  const pkg = result.package;
+  const machineOrder = pkg.ranking.map((entry) => entry.slot);
+  // human: all three usable, ranked in the machine's order (usable-agreement isolates the gate)
+  const registered = humanVerdict.registerHumanVerdict(out, {
+    authority: 'Mikko Pakkala', decided_at: '2026-09-01T12:00:00.000Z',
+    tracks: { A: { verdict: 'USE' }, B: { verdict: 'USE' }, C: { verdict: 'USE' } },
+    human_ranking: machineOrder,
+  });
+  const alignment = registered.record.alignment;
+  assert.equal(alignment.top_1, 'MATCH', 'machine pick is inside the human USE set');
+  // machine gate rejected C (incoherent fixture) but the human accepted it → 2/3 agreement, honestly reported
+  assert.equal(alignment.usable_reject_agreement.total, 3);
+  assert.equal(alignment.usable_reject_agreement.agree, 2);
+  assert.equal(alignment.usable_reject_agreement.detail.C.agree, false);
+  assert.equal(alignment.pairwise_ranking_agreement.total, 3);
+  assert.equal(alignment.pairwise_ranking_agreement.fraction, 1);
+  // alignment is measured, never collapsed into a single number
+  assert.ok(alignment.top_1 && alignment.usable_reject_agreement && alignment.pairwise_ranking_agreement);
 });
 
 test('DM43 without a human verdict the machine pick stays explicitly provisional; USE alignment is MATCH', async () => {

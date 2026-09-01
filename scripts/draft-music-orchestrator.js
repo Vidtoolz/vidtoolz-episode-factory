@@ -69,7 +69,7 @@ const MINIMAX_ROLE = 'EXPERIMENTAL_DIVERSITY_LANE';
  * beyond technical PASS. Bands are deliberately wide — they catch broken
  * candidates, ranking separates the rest. */
 const USABLE_CONTRACT = Object.freeze({
-  requires: ['TECHNICAL_PASS', 'COHERENCE_SOLID_SONG', 'NARRATION_COMPATIBILITY', 'ENDING_MINIMUM', 'SCRIPT_FIT_MINIMUM'],
+  requires: ['TECHNICAL_PASS', 'COHERENCE_DRAFT_USABLE (SOLID_SONG or DRAFT_MUSIC_USABLE)', 'NARRATION_COMPATIBILITY', 'ENDING_MINIMUM', 'SCRIPT_FIT_MINIMUM'],
   narration_lufs_hard_band: [-38, -8],
   narration_lufs_preferred_band: [-30, -12],
   script_fit_min: 0.15,
@@ -313,11 +313,13 @@ async function generateCandidate(assignment, context, idSuffix = '') {
   let seed = context.baseSeed + { A: 0, B: 100, C: 200 }[candidate.candidate_slot] + (firstAttemptNumber - 1) * 1000;
   let extraPrompt = null;
   let nextKind = firstAttemptNumber === 1 ? 'NORMAL' : 'TECHNICAL_REPLACEMENT';
-  /* §24 bounded coherence policy: a catastrophically incoherent (but
-   * technically clean) attempt earns AT MOST one targeted replacement; when
-   * both stay non-solid, the better-scoring one completes the candidate with
-   * its failure evidence — no auto-search until something passes. */
-  let bestNonSolid = null;
+  /* Bounded coherence policy (human-calibrated 2026-09-01): a DRAFT-usable
+   * track (SOLID_SONG or DRAFT_MUSIC_USABLE) always completes its candidate —
+   * usable tracks are never regenerated. Only a CATASTROPHIC rejection earns
+   * AT MOST one targeted replacement; when both attempts stay rejected, the
+   * better-scoring one completes the candidate with its failure evidence —
+   * no auto-search until something passes. */
+  let bestRejected = null;
   for (let attemptNumber = firstAttemptNumber; attemptNumber <= 3; attemptNumber += 1) {
     const bundle = extraPrompt
       ? { ...promptBundle, prompt_text: `${promptBundle.prompt_text} ${extraPrompt}`, prompt_sha256: prompts.sha256Text(`${promptBundle.prompt_text} ${extraPrompt}`) }
@@ -364,17 +366,18 @@ async function generateCandidate(assignment, context, idSuffix = '') {
     attempts.push({ ...attempt, _features: inspection?.features || null });
     if (status === 'SUCCEEDED') {
       const finalAttempt = attempts.at(-1);
-      if (evaluated.report.solid_song) return { candidateId, model, promptBundle: bundle, attempts, final: finalAttempt };
-      if (!bestNonSolid || finalAttempt.coherence.coherence_score > bestNonSolid.coherence.coherence_score) bestNonSolid = finalAttempt;
-      if (evaluated.report.coherence_class === 'CATASTROPHIC_INCOHERENCE' && !coherenceRetryUsed && attemptNumber < 3) {
+      if (evaluated.report.draft_usable) return { candidateId, model, promptBundle: bundle, attempts, final: finalAttempt };
+      if (!bestRejected || finalAttempt.coherence.coherence_score > bestRejected.coherence.coherence_score) bestRejected = finalAttempt;
+      if (evaluated.report.catastrophic && !coherenceRetryUsed && attemptNumber < 3) {
         coherenceRetryUsed = true; seed += 3000;
         extraPrompt = COHERENCE_REPLACEMENT_PROMPT;
         nextKind = 'COHERENCE_REPLACEMENT';
         continue;
       }
-      /* LOW_COHERENCE (or exhausted replacement): the candidate completes
-       * with its best evidence; the usable gate and ranking take it from here. */
-      return { candidateId, model, promptBundle: bundle, attempts, final: bestNonSolid };
+      /* Non-catastrophic REJECT_COHERENCE (or exhausted replacement): the
+       * candidate completes with its best evidence; the usable gate and
+       * ranking take it from here. */
+      return { candidateId, model, promptBundle: bundle, attempts, final: bestRejected };
     }
     if (status === 'TECHNICAL_FAILURE') {
       if (technicalRetryUsed) break;
@@ -386,8 +389,8 @@ async function generateCandidate(assignment, context, idSuffix = '') {
     }
   }
   /* A coherence replacement that ended in technical/policy failure still
-   * leaves the earlier non-solid success as the candidate's best evidence. */
-  if (bestNonSolid) return { candidateId, model, promptBundle, attempts, final: bestNonSolid };
+   * leaves the earlier rejected success as the candidate's best evidence. */
+  if (bestRejected) return { candidateId, model, promptBundle, attempts, final: bestRejected };
   return { candidateId, model, promptBundle, attempts, final: null };
 }
 
@@ -401,7 +404,7 @@ function usableVerdict(result, analysis) {
   const inspectionQc = result.final.qc;
   const candidateCoherence = result.final.coherence;
   if (!inspectionQc?.ok) failures.push('TECHNICAL');
-  if (!candidateCoherence?.solid_song) failures.push('COHERENCE');
+  if (!candidateCoherence?.draft_usable) failures.push('COHERENCE');
   const lufs = inspectionQc?.integrated_lufs;
   const [hardLow, hardHigh] = USABLE_CONTRACT.narration_lufs_hard_band;
   if (lufs === null || lufs === undefined || lufs < hardLow || lufs > hardHigh) failures.push('NARRATION_COMPATIBILITY');
@@ -418,7 +421,7 @@ function scriptFit(result, analysis) {
 function rankCandidates(results, warnings, analysis) {
   const scored = results.map((result) => {
     const inspectionQc = result.final.qc;
-    const candidateCoherence = result.final.coherence || { coherence_score: 0, coherence_class: 'NOT_ASSESSABLE', solid_song: false };
+    const candidateCoherence = result.final.coherence || { coherence_score: 0, coherence_class: 'NOT_ASSESSABLE', draft_usable: false, solid_song: false };
     const verdict = usableVerdict(result, analysis);
     const endingBonus = RANKING_WEIGHTS.ending[inspectionQc.ending_class] ?? 0;
     const lufs = inspectionQc.integrated_lufs;

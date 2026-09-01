@@ -38,29 +38,79 @@ const BANDS = 24;
 const BAND_LO_HZ = 40;
 const BAND_HI_HZ = 10000;
 
-/* Calibrated on the 2026-08-31 real dual-model canary (human-labeled:
- * A=USE sha 5063d12f…, B/C=REJECT_COHERENCE sha 45e2ece8…/3f503939…) plus
- * unlabeled plausibly-coherent controls (matched-pair SA3M, precalibration
- * SA3M attempts, legacy 237 s bed). Sample size is honestly SMALL (3 labeled
- * files); thresholds sit with >=1.6x margin to every calibration point and
- * must be revisited as human verdicts accumulate. */
+/* Human-calibrated on BOTH real blind auditions (2026-09-01 recalibration):
+ *   2026-08-31 dual-model: A(SA3M)=USE, B/C(MiniMax)=REJECT "not a single
+ *   solid/coherent song".
+ *   2026-09-01 all-SA3M: A=USE(rank 1), B=USE(rank 2), C=USE(rank 3) — ALL
+ *   three usable to the human, though the machine had failed B and C.
+ * The feature audit across all six labeled tracks (+3 coherent controls)
+ * found exactly ONE feature that separates human-USE from human-REJECT:
+ * adjacent timbral-flow p90 (usable <= 0.024, reject >= 0.0358). Every other
+ * hard floor of the first gate misfired on human-usable material:
+ *   - timbral_flow_mean OVERLAPS (usable new-C 0.0154 > reject old-C 0.0150),
+ *   - interior_energy_jump_rate OVERLAPS (usable 0.1515 vs reject 0.1563),
+ *   - timbral_flow_max INVERTS (one intentional big transition inside one
+ *     song reads larger than a wandering track's steps),
+ * so those are demoted to score/diagnostics and must never gate again.
+ *
+ * Three-state model (the gate answers a DRAFT question — "usable enough to
+ * judge the video with?" — never publication quality):
+ *   SOLID_SONG          strongly coherent, clearly usable
+ *   DRAFT_MUSIC_USABLE  coherent enough for Draft use, weaker than the best
+ *   REJECT_COHERENCE    does not function as one usable song
+ * Sample size is honestly SMALL (6 human-labeled files across two blind
+ * auditions); the usability floor 0.029 sits with only ~1.2x margin to the
+ * nearest labeled points on each side — revisit as verdicts accumulate. */
 const COHERENCE_CONTRACT = Object.freeze({
-  concept: 'SOLID_SONG',
-  question: 'does this track feel like one intentional piece of music rather than disconnected generated sections?',
-  floors: {
-    timbral_flow_p90_max: 0.020,
-    timbral_flow_mean_max: 0.010,
-    interior_energy_jump_rate_max: 0.14,
+  concept: 'SOLID_SONG / DRAFT_MUSIC_USABLE / REJECT_COHERENCE',
+  question: 'is this track usable enough as ONE song to judge the Draft video with?',
+  usability_floors: {
+    timbral_flow_p90_max: 0.029, // labeled gap: usable <= 0.024 / reject >= 0.0358
+    degenerate_score_min: 2.5, // far below every human-usable observation (min 4.2)
     min_blocks: 4,
-    min_score: 6.0,
+    truncated_fails: true,
   },
-  catastrophic: { timbral_flow_p90: 0.03, score_below: 3.0 },
+  solid: { min_score: 7.0, timbral_flow_p90_max: 0.015 },
+  catastrophic: { timbral_flow_p90: 0.05, score_below: 1.5 },
   score_weights: { timbral_flow: 4, energy_continuity: 2, ending: 2, identity: 1, progression: 1 },
-  advisory_only: ['tonal_context', 'recurrence', 'novelty'],
-  calibration: 'outputs/claude-stable-audio-draft-music-coherence-2026-09-01/COHERENCE-CALIBRATION.json',
+  score_role: 'RANKING quality signal + SOLID band + degenerate guard — NOT the usability gate (it does not separate the labeled classes: usable new-C scored 4.2 vs reject old-C 3.5)',
+  advisory_only: ['tonal_context', 'recurrence', 'novelty', 'timbral_flow_max', 'timbral_flow_mean', 'interior_energy_jump_rate'],
+  demoted_from_gate_2026_09_01: {
+    timbral_flow_mean_max: 'overlaps labeled classes — punished human-usable dynamics',
+    interior_energy_jump_rate_max: 'overlaps labeled classes — dynamics are not incoherence',
+    min_score_as_usability: 'score ranks; it does not separate usable from reject',
+  },
+  calibration: 'outputs/claude-stable-audio-human-calibration-2026-09-01/COHERENCE-RECALIBRATION.json',
 });
 
-const CLASSES = Object.freeze(['SOLID_SONG', 'LOW_COHERENCE', 'CATASTROPHIC_INCOHERENCE', 'NOT_ASSESSABLE']);
+const CLASSES = Object.freeze(['SOLID_SONG', 'DRAFT_MUSIC_USABLE', 'REJECT_COHERENCE', 'NOT_ASSESSABLE']);
+
+/* Pure three-state classifier — the calibration authority. Unit-testable
+ * against the exact labeled measurements without decoding audio. */
+function classifyCoherence({ timbralFlowP90, coherenceScore, endingClass, blockCount }) {
+  const floors = COHERENCE_CONTRACT.usability_floors;
+  if (!(blockCount >= floors.min_blocks)) {
+    return { coherence_class: 'NOT_ASSESSABLE', draft_usable: false, solid_song: false, catastrophic: false, floor_failures: ['DRAFT_MUSIC_COHERENCE_TOO_SHORT_TO_ASSESS'] };
+  }
+  const floorFailures = [];
+  if (timbralFlowP90 > floors.timbral_flow_p90_max) floorFailures.push('TIMBRAL_FLOW_P90');
+  if (coherenceScore < floors.degenerate_score_min) floorFailures.push('DEGENERATE_SCORE');
+  if (endingClass === 'TRUNCATED') floorFailures.push('ENDING_TRUNCATED');
+  const catastrophic = timbralFlowP90 > COHERENCE_CONTRACT.catastrophic.timbral_flow_p90
+    || coherenceScore < COHERENCE_CONTRACT.catastrophic.score_below;
+  if (floorFailures.length) {
+    return { coherence_class: 'REJECT_COHERENCE', draft_usable: false, solid_song: false, catastrophic, floor_failures: floorFailures };
+  }
+  const solid = coherenceScore >= COHERENCE_CONTRACT.solid.min_score
+    && timbralFlowP90 <= COHERENCE_CONTRACT.solid.timbral_flow_p90_max;
+  return {
+    coherence_class: solid ? 'SOLID_SONG' : 'DRAFT_MUSIC_USABLE',
+    draft_usable: true,
+    solid_song: solid,
+    catastrophic: false,
+    floor_failures: [],
+  };
+}
 
 class DraftMusicCoherenceError extends Error {
   constructor(code, message) { super(message); this.name = 'DraftMusicCoherenceError'; this.code = code; }
@@ -230,10 +280,9 @@ function coherenceReport(file, options = {}) {
   const endingClass = options.endingClass || 'ABRUPT_END';
   if (!qc.ENDINGS.includes(endingClass)) fail('DRAFT_MUSIC_COHERENCE_ENDING_INVALID', String(endingClass));
   const profile = options.profile || trackProfile(file);
-  const floors = COHERENCE_CONTRACT.floors;
-  if (profile.blocks.length < floors.min_blocks) {
+  if (profile.blocks.length < COHERENCE_CONTRACT.usability_floors.min_blocks) {
     return {
-      schema: SCHEMA, coherence_class: 'NOT_ASSESSABLE', solid_song: false,
+      schema: SCHEMA, coherence_class: 'NOT_ASSESSABLE', draft_usable: false, solid_song: false, catastrophic: false,
       coherence_score: 0, metrics: { block_count: profile.blocks.length }, scores: null,
       floor_failures: ['DRAFT_MUSIC_COHERENCE_TOO_SHORT_TO_ASSESS'],
       contract: COHERENCE_CONTRACT,
@@ -257,26 +306,19 @@ function coherenceReport(file, options = {}) {
   };
   const coherenceScore = +Object.values(scores).reduce((a, b) => a + b, 0).toFixed(3);
 
-  const floorFailures = [];
-  if (metrics.timbral_flow.adjacent_discontinuity_p90 > floors.timbral_flow_p90_max) floorFailures.push('TIMBRAL_FLOW_P90');
-  if (metrics.timbral_flow.adjacent_discontinuity_mean > floors.timbral_flow_mean_max) floorFailures.push('TIMBRAL_FLOW_MEAN');
-  if (metrics.energy_continuity.interior_jump_rate > floors.interior_energy_jump_rate_max) floorFailures.push('INTERIOR_ENERGY_JUMPS');
-  if (endingClass === 'TRUNCATED') floorFailures.push('ENDING_TRUNCATED');
-  if (coherenceScore < floors.min_score) floorFailures.push('COHERENCE_SCORE_FLOOR');
-
-  const catastrophic = metrics.timbral_flow.adjacent_discontinuity_p90 > COHERENCE_CONTRACT.catastrophic.timbral_flow_p90
-    || coherenceScore < COHERENCE_CONTRACT.catastrophic.score_below;
-  const coherenceClass = floorFailures.length === 0 ? 'SOLID_SONG'
-    : catastrophic ? 'CATASTROPHIC_INCOHERENCE' : 'LOW_COHERENCE';
+  const classified = classifyCoherence({
+    timbralFlowP90: metrics.timbral_flow.adjacent_discontinuity_p90,
+    coherenceScore,
+    endingClass,
+    blockCount: metrics.block_count,
+  });
   return {
     schema: SCHEMA,
-    coherence_class: coherenceClass,
-    solid_song: coherenceClass === 'SOLID_SONG',
+    ...classified,
     coherence_score: coherenceScore,
     scores,
     metrics,
     ending_class: endingClass,
-    floor_failures: floorFailures,
     contract: COHERENCE_CONTRACT,
   };
 }
@@ -312,6 +354,6 @@ function scriptFitScore(energySeriesDb, energyCurve) {
 
 module.exports = {
   SCHEMA, COHERENCE_CONTRACT, CLASSES, BLOCK_S, DraftMusicCoherenceError,
-  trackProfile, analyzeBlocks, coherenceReport, scriptFitScore, ENERGY_CURVE_TEMPLATES,
+  classifyCoherence, trackProfile, analyzeBlocks, coherenceReport, scriptFitScore, ENERGY_CURVE_TEMPLATES,
   cosineSimilarity, piecewise,
 };

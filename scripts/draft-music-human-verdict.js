@@ -104,7 +104,7 @@ function registerHumanVerdict(outRoot, input) {
     human_ranking: input.human_ranking || null,
     machine_recommended_label: machineLabel,
     machine_ranking_preserved: pkg.ranking,
-    alignment: alignment(machineLabel, tracks),
+    alignment: alignment(machineLabel, tracks, pkg, input.human_ranking || null),
     verdict_outranks_machine: true,
   };
   const record = { ...core, verdict_digest_sha256: digest(core) };
@@ -118,13 +118,44 @@ function registerHumanVerdict(outRoot, input) {
   return { registered: true, record, path: file };
 }
 
-/* HUMAN_RANKING_ALIGNMENT: did the machine's pick land inside the human
- * usable set? MISS entries are the calibration debt of the ranking system. */
-function alignment(machineLabel, tracks) {
+/* HUMAN_RANKING_ALIGNMENT: how the machine ranking relates to the human
+ * verdict — deliberately NOT one number. Components:
+ *   top_1: did the machine's pick land inside the human USE set?
+ *   usable_reject_agreement: per label, machine usable-gate vs human USE.
+ *   pairwise_ranking_agreement: of the human ranking's ordered pairs, how
+ *     many does the machine ranking order preserve?
+ * MISS entries are the calibration debt of the ranking system. */
+function alignment(machineLabel, tracks, pkg = null, humanRanking = null) {
   const humanUsable = Object.keys(tracks).filter((label) => tracks[label].verdict === 'USE').sort();
-  const verdict = machineLabel === null ? 'NO_MACHINE_PICK'
+  const top1 = machineLabel === null ? 'NO_MACHINE_PICK'
     : humanUsable.includes(machineLabel) ? 'MATCH' : 'MISS';
-  return { metric: 'HUMAN_RANKING_ALIGNMENT', machine_recommended_label: machineLabel, human_usable_labels: humanUsable, verdict };
+  const result = { metric: 'HUMAN_RANKING_ALIGNMENT', machine_recommended_label: machineLabel, human_usable_labels: humanUsable, verdict: top1, top_1: top1 };
+  if (pkg && Array.isArray(pkg.ranking)) {
+    const machineUsableBySlot = Object.fromEntries(pkg.ranking.map((entry) => [entry.slot, entry.usable === true]));
+    const detail = {};
+    let agree = 0; let total = 0;
+    for (const label of Object.keys(tracks).sort()) {
+      if (!(label in machineUsableBySlot)) continue;
+      const humanUse = tracks[label].verdict === 'USE';
+      const machineUse = machineUsableBySlot[label];
+      detail[label] = { human: humanUse ? 'USE' : 'REJECT', machine: machineUse ? 'USABLE' : 'UNUSABLE', agree: humanUse === machineUse };
+      total += 1; if (humanUse === machineUse) agree += 1;
+    }
+    result.usable_reject_agreement = { agree, total, fraction: total ? +(agree / total).toFixed(3) : null, detail };
+    if (Array.isArray(humanRanking) && humanRanking.length >= 2) {
+      const machineOrder = pkg.ranking.map((entry) => entry.slot);
+      let pairAgree = 0; let pairTotal = 0;
+      for (let i = 0; i < humanRanking.length; i += 1) {
+        for (let j = i + 1; j < humanRanking.length; j += 1) {
+          const a = machineOrder.indexOf(humanRanking[i]); const b = machineOrder.indexOf(humanRanking[j]);
+          if (a < 0 || b < 0) continue;
+          pairTotal += 1; if (a < b) pairAgree += 1;
+        }
+      }
+      result.pairwise_ranking_agreement = { agree: pairAgree, total: pairTotal, fraction: pairTotal ? +(pairAgree / pairTotal).toFixed(3) : null };
+    }
+  }
+  return result;
 }
 
 function loadHumanVerdict(outRoot) {
