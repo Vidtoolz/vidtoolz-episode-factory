@@ -1,1 +1,1 @@
-{"worktree":"/home/vidtoolz/work/final-human-performance-authority","baseline":"bccecb16f0c512f31dca76389d43519b9a0a360f","tests":"6193/6193 PASS","failures":0,"script_verify":"pending pinned Script Builder rerun"}
+{"worktree":"/home/vidtoolz/work/final-human-performance-authority","baseline":"bccecb16f0c512f31dca76389d43519b9a0a360f","tests":"6193/6193 PASS","failures":0,"script_verify":"PASS with pinned Script Builder b4627a817346634a8bf0cf780e227e77b529014e","dirty_main_environment":"not used as certification evidence"}
