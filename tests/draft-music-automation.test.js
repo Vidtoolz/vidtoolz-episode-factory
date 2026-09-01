@@ -225,20 +225,33 @@ test('DM07 unknown model is rejected', async () => {
 
 /* ── routing ────────────────────────────────────────────────────────────── */
 
-test('DM08 BOTH_READY routes A→StableAudio, B→MiniMax, C adaptively by territory', async () => {
+test('DM08 normal Draft routing is STABLE_AUDIO_FIRST: A/B/C all Stable Audio, MiniMax never called', async () => {
   const analysis = await makeAnalysis();
-  const routing = orchestrator.routeCandidates(analysis, availabilityFor(null, 'BOTH_READY'));
-  assert.equal(routing.assignments[0].model, 'stable_audio_3_medium');
-  assert.equal(routing.assignments[1].model, 'minimax_music_3');
-  // VECTOR_C (percussive_world, syncopated, organic) scores into MiniMax pulse territory vs sa3m organic — verify the rule, not a hardcoded answer
-  const expected = orchestrator.territoryScore('stable_audio_3_medium', VECTOR_C) > orchestrator.territoryScore('minimax_music_3', VECTOR_C)
-    ? 'stable_audio_3_medium' : orchestrator.territoryScore('minimax_music_3', VECTOR_C) > orchestrator.territoryScore('stable_audio_3_medium', VECTOR_C)
-      ? 'minimax_music_3' : 'stable_audio_3_medium';
-  assert.equal(routing.assignments[2].model, expected);
-  assert.match(routing.assignments[2].routing_basis, /CANDIDATE_C_ADAPTIVE/);
+  for (const state of ['BOTH_READY', 'STABLE_ONLY']) {
+    const routing = orchestrator.routeCandidates(analysis, availabilityFor(null, state));
+    assert.equal(routing.mode, 'STABLE_AUDIO_FIRST');
+    assert.deepEqual(routing.assignments.map((assignment) => assignment.model),
+      ['stable_audio_3_medium', 'stable_audio_3_medium', 'stable_audio_3_medium']);
+    assert.ok(routing.assignments.every((assignment) => /STABLE_AUDIO_FIRST slot [ABC]/.test(assignment.routing_basis)));
+  }
 });
 
-test('DM09 degraded single-model operation requires explicit permission', async () => {
+test('DM08b experimental MiniMax diversity lane restores dual-model routing only on explicit request', async () => {
+  const analysis = await makeAnalysis();
+  const routing = orchestrator.routeCandidates(analysis, availabilityFor(null, 'BOTH_READY'), { experimentalMinimax: true });
+  assert.equal(routing.mode, orchestrator.MINIMAX_ROLE);
+  assert.equal(routing.assignments[0].model, 'stable_audio_3_medium');
+  assert.equal(routing.assignments[1].model, 'minimax_music_3');
+  // VECTOR_C (percussive_world, syncopated, organic) territory rule, not a hardcoded answer
+  const expected = orchestrator.territoryScore('minimax_music_3', VECTOR_C) > orchestrator.territoryScore('stable_audio_3_medium', VECTOR_C)
+    ? 'minimax_music_3' : 'stable_audio_3_medium';
+  assert.equal(routing.assignments[2].model, expected);
+  assert.match(routing.assignments[2].routing_basis, /EXPERIMENTAL_C_ADAPTIVE/);
+  // the experimental lane needs both models
+  errorCode(() => orchestrator.routeCandidates(analysis, availabilityFor(null, 'STABLE_ONLY'), { experimentalMinimax: true }), 'DRAFT_MUSIC_MODELS_NOT_READY');
+});
+
+test('DM09 Stable-unavailable degraded MiniMax fallback requires explicit permission', async () => {
   const analysis = await makeAnalysis();
   errorCode(() => orchestrator.routeCandidates(analysis, availabilityFor(null, 'MINIMAX_ONLY')), 'DRAFT_MUSIC_MODELS_NOT_READY');
   const degraded = orchestrator.routeCandidates(analysis, availabilityFor(null, 'MINIMAX_ONLY'), { allowDegraded: true });
@@ -569,7 +582,293 @@ test('DM31 a few full-scale samples are a hot master, not catastrophic clipping'
   fs.writeFileSync(file, Buffer.concat([header, pcm]));
   const inspected = qc.inspectTrack(file, { requestedDurationS: DURATION_S });
   assert.ok(!inspected.failures.includes('DRAFT_MUSIC_CLIPPING'), JSON.stringify(inspected.failures));
-  assert.ok(inspected.flat_factor < 10);
+  assert.equal(inspected.clipping.clipped_samples, 3);
+});
+
+test('DM31b clipping is measured directly: short full-scale runs warn, sustained flat-tops fail', () => {
+  // Second calibration event 2026-09-01: astats Flat factor read ~16 for a
+  // 12-sample full-scale touch and wrongly failed a real SA3M canary track.
+  const out = tmpdir('clip-runs');
+  const rate = 44100; const seconds = 30; const n = rate * seconds;
+  const build = (name, mutate) => {
+    const pcm = Buffer.alloc(n * 2);
+    for (let i = 0; i < n; i += 1) pcm.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 220 * i) / rate) * 0.25 * 32767), i * 2);
+    mutate(pcm);
+    const header = Buffer.alloc(44);
+    header.write('RIFF', 0); header.writeUInt32LE(36 + pcm.length, 4); header.write('WAVE', 8);
+    header.write('fmt ', 12); header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20); header.writeUInt16LE(1, 22);
+    header.writeUInt32LE(rate, 24); header.writeUInt32LE(rate * 2, 28); header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34);
+    header.write('data', 36); header.writeUInt32LE(pcm.length, 40);
+    const file = path.join(out, name);
+    fs.writeFileSync(file, Buffer.concat([header, pcm]));
+    return file;
+  };
+  // 12-sample full-scale run (the misfired canary shape) => hot master, NOT clipping
+  const hot = build('hot-run.wav', (pcm) => { for (let i = 5000; i < 5012; i += 1) pcm.writeInt16LE(32767, i * 2); });
+  const hotInspected = qc.inspectTrack(hot, { requestedDurationS: DURATION_S });
+  assert.ok(!hotInspected.failures.includes('DRAFT_MUSIC_CLIPPING'), JSON.stringify(hotInspected.failures));
+  assert.equal(hotInspected.clipping.max_consecutive_run, 12);
+  assert.equal(hotInspected.headroom_warning, true);
+  // sustained flat-top (a full second at full scale) => catastrophic clipping
+  const flat = build('flat-top.wav', (pcm) => { for (let i = rate * 10; i < rate * 11; i += 1) pcm.writeInt16LE(32767, i * 2); });
+  const flatInspected = qc.inspectTrack(flat, { requestedDurationS: DURATION_S });
+  assert.ok(flatInspected.failures.includes('DRAFT_MUSIC_CLIPPING'), JSON.stringify(flatInspected.failures));
+  assert.ok(flatInspected.clipping.max_consecutive_run >= qc.CLIP_MAX_RUN_CATASTROPHIC);
+});
+
+/* ── SOLID_SONG coherence gate + coherence-first ranking (2026-09-01) ────── */
+
+const coherenceGate = require('../scripts/draft-music-coherence.js');
+const humanVerdict = require('../scripts/draft-music-human-verdict.js');
+
+const COH_DURATION_S = 60;
+const COH = {};
+/* Synthesized coherence fixtures (60 s = 12 analysis blocks):
+ *   solid: one sonic identity, gentle motion, fade ending.
+ *   solidAbrupt: identical material, no ending.
+ *   incoherent1/2/3: three unrelated sections with level resets — the
+ *     "disconnected generated sections" failure shape from the human verdict.
+ *   evolution: deliberate stepwise timbral development of ONE identity
+ *     (rising lowpass on the same source, long crossfades) — must NOT be
+ *     falsely rejected. */
+function coherenceFixtures() {
+  if (COH.root) return COH;
+  COH.root = tmpdir('coherence-fixtures');
+  const out = (name) => path.join(COH.root, `${name}.wav`);
+  ffmpeg(['-f', 'lavfi', '-i', `anoisesrc=color=pink:seed=7:duration=${COH_DURATION_S}`, '-af', `lowpass=f=2000,volume=-14dB,tremolo=f=0.4:d=0.3,afade=t=out:st=${COH_DURATION_S - 5}:d=5`, out('solid')]);
+  ffmpeg(['-f', 'lavfi', '-i', `anoisesrc=color=pink:seed=7:duration=${COH_DURATION_S}`, '-af', 'lowpass=f=2000,volume=-14dB,tremolo=f=0.4:d=0.3', out('solidAbrupt')]);
+  ffmpeg(['-f', 'lavfi', '-i', `sine=frequency=220:duration=${COH_DURATION_S}`, '-af', `volume=-10dB,tremolo=f=0.5:d=0.5,afade=t=out:st=${COH_DURATION_S - 5}:d=5`, out('solid2')]);
+  const segment = (name, source, filter) => ffmpeg(['-f', 'lavfi', '-i', source, '-af', filter, out(name)]);
+  segment('seg-a', 'sine=frequency=220:duration=20', 'volume=-10dB');
+  segment('seg-b', 'anoisesrc=color=pink:seed=3:duration=20', 'highpass=f=2500,volume=-22dB');
+  segment('seg-c', 'sine=frequency=950:duration=20', 'apulsator=hz=2,volume=-8dB');
+  ffmpeg(['-i', out('seg-a'), '-i', out('seg-b'), '-i', out('seg-c'), '-filter_complex', '[0:a][1:a][2:a]concat=n=3:v=0:a=1', out('incoherent1')]);
+  ffmpeg(['-i', out('seg-c'), '-i', out('seg-a'), '-i', out('seg-b'), '-filter_complex', '[0:a][1:a][2:a]concat=n=3:v=0:a=1', out('incoherent2')]);
+  ffmpeg(['-i', out('seg-b'), '-i', out('seg-c'), '-i', out('seg-a'), '-filter_complex', '[0:a][1:a][2:a]concat=n=3:v=0:a=1', out('incoherent3')]);
+  const cutoffs = [1000, 1250, 1550, 1950, 2450, 3050];
+  cutoffs.forEach((cutoff, index) => segment(`evo-${index}`, 'anoisesrc=color=pink:seed=5:duration=15', `lowpass=f=${cutoff},volume=-14dB`));
+  const inputs = cutoffs.flatMap((_, index) => ['-i', out(`evo-${index}`)]);
+  const chain = cutoffs.slice(1).map((_, index) => index === 0
+    ? `[0:a][1:a]acrossfade=d=5[x1]`
+    : `[x${index}][${index + 1}:a]acrossfade=d=5[x${index + 1}]`).join(';');
+  ffmpeg([...inputs, '-filter_complex', `${chain};[x${cutoffs.length - 1}]afade=t=out:st=60:d=5[evo]`, '-map', '[evo]', out('evolution')]);
+  for (const name of ['solid', 'solidAbrupt', 'solid2', 'incoherent1', 'incoherent2', 'incoherent3', 'evolution']) COH[name] = out(name);
+  return COH;
+}
+
+test('DM32 SOLID_SONG gate passes one-identity material and fails disconnected sections', () => {
+  const fx = coherenceFixtures();
+  const solid = coherenceGate.coherenceReport(fx.solid, { endingClass: 'FADE_ACCEPTABLE' });
+  assert.equal(solid.coherence_class, 'SOLID_SONG', JSON.stringify(solid.metrics.timbral_flow));
+  assert.ok(solid.solid_song && solid.coherence_score >= coherenceGate.COHERENCE_CONTRACT.floors.min_score);
+  const broken = coherenceGate.coherenceReport(fx.incoherent1, { endingClass: 'ABRUPT_END' });
+  assert.equal(broken.solid_song, false);
+  assert.ok(broken.floor_failures.includes('TIMBRAL_FLOW_P90'), JSON.stringify(broken.floor_failures));
+  assert.ok(broken.coherence_score < solid.coherence_score - 2, `${broken.coherence_score} vs ${solid.coherence_score}`);
+});
+
+test('DM33 abrupt endings and unrelated section jumps are penalized; too-short material is not assessable', () => {
+  const fx = coherenceFixtures();
+  const faded = coherenceGate.coherenceReport(fx.solid, { endingClass: 'FADE_ACCEPTABLE' });
+  const abrupt = coherenceGate.coherenceReport(fx.solidAbrupt, { endingClass: 'ABRUPT_END' });
+  assert.ok(abrupt.scores.ending < faded.scores.ending);
+  assert.ok(abrupt.coherence_score < faded.coherence_score);
+  const jumped = coherenceGate.coherenceReport(fx.incoherent2, { endingClass: 'ABRUPT_END' });
+  assert.ok(jumped.metrics.energy_continuity.interior_jumps_over_6db >= 1 || jumped.metrics.timbral_flow.adjacent_discontinuity_p90 > 0.02);
+  assert.equal(jumped.solid_song, false);
+  const out = tmpdir('coh-short');
+  ffmpeg(['-f', 'lavfi', '-i', 'sine=frequency=220:duration=10', path.join(out, 'short.wav')]);
+  const short = coherenceGate.coherenceReport(path.join(out, 'short.wav'), { endingClass: 'ABRUPT_END' });
+  assert.equal(short.coherence_class, 'NOT_ASSESSABLE');
+  assert.equal(short.solid_song, false);
+});
+
+test('DM34 deliberate stepwise evolution of one identity is NOT falsely rejected', () => {
+  const fx = coherenceFixtures();
+  const evolution = coherenceGate.coherenceReport(fx.evolution, { endingClass: 'FADE_ACCEPTABLE' });
+  assert.equal(evolution.coherence_class, 'SOLID_SONG', JSON.stringify({ floors: evolution.floor_failures, tf: evolution.metrics.timbral_flow }));
+});
+
+test('DM35 calibration corpus verdicts are pinned in the contract (human evidence drives thresholds)', () => {
+  const contract = coherenceGate.COHERENCE_CONTRACT;
+  assert.equal(contract.concept, 'SOLID_SONG');
+  assert.match(contract.calibration, /2026-09-01/);
+  assert.ok(contract.floors.timbral_flow_p90_max <= 0.03, 'floor must sit below the REJECT tracks (0.036/0.039)');
+  assert.ok(contract.floors.timbral_flow_p90_max >= 0.012, 'floor must sit above the coherent controls (<=0.012)');
+  assert.ok(contract.advisory_only.includes('tonal_context'), 'chroma is genre-confounded and must not gate');
+});
+
+/* 60 s analysis payload + run options for the coherence-scale department runs. */
+function payload60() {
+  const base = analysisPayload();
+  return {
+    ...base,
+    master_brief: {
+      ...base.master_brief,
+      target_duration_s: COH_DURATION_S,
+      sections: [
+        { name: 'opening', start_s: 0, end_s: 20, notes: 'establish tension under the hook' },
+        { name: 'development', start_s: 20, end_s: 45, notes: 'forward motion under the argument' },
+        { name: 'resolution', start_s: 45, end_s: COH_DURATION_S, notes: 'resolve under the ending claim' },
+      ],
+      narration_density: [{ start_s: 0, end_s: COH_DURATION_S, density: 'high' }],
+    },
+  };
+}
+function options60(extra = {}) {
+  return { analysisOptions: { route: FAKE_ROUTE, modelAdapter: async () => JSON.stringify(payload60()) }, ...extra };
+}
+
+function incoherentDiversePick() {
+  const cfx = coherenceFixtures();
+  return (clientId) => {
+    if (clientId.includes('draft-music-a')) return { fixture: cfx.solid2 };
+    if (clientId.includes('draft-music-b')) return { fixture: cfx.solid };
+    return { fixture: cfx.incoherent1 }; // maximally "diverse", not one song
+  };
+}
+
+test('DM36 an incoherent highly-diverse candidate cannot win; coherence replacement is bounded to one', async () => {
+  const { result } = await runDepartment('coherence-first', incoherentDiversePick(), options60(), { durationS: COH_DURATION_S });
+  assert.equal(result.state, 'COMPLETE');
+  const pkg = result.package;
+  const c = pkg.candidates.find((candidate) => candidate.candidate_slot === 'C');
+  assert.equal(c.coherence.solid_song, false);
+  assert.equal(c.attempt_count, 2, 'exactly one targeted coherence replacement');
+  const cEntry = pkg.ranking.find((entry) => entry.slot === 'C');
+  assert.equal(cEntry.usable, false);
+  assert.ok(cEntry.usable_failures.includes('COHERENCE'));
+  assert.notEqual(pkg.draft_selected_music.candidate_id, 'draft-music-c');
+  assert.equal(pkg.ranking.at(-1).slot, 'C', 'unusable candidates rank below usable ones');
+  // coherence outranks diversity: C's diversity contribution cannot rescue it
+  assert.ok(cEntry.factors.diversity_contribution <= orchestrator.RANKING_WEIGHTS.diversity_max);
+  assert.equal(pkg.ranking_doctrine.startsWith('COHERENCE_FIRST'), true);
+});
+
+test('DM37 when nothing passes the usable gate the run returns NO_USABLE_DRAFT_MUSIC, selecting nothing', async () => {
+  const cfx = coherenceFixtures();
+  const pick = (clientId) => {
+    if (clientId.includes('draft-music-a')) return { fixture: cfx.incoherent1 };
+    if (clientId.includes('draft-music-b')) return { fixture: cfx.incoherent2 };
+    return { fixture: cfx.incoherent3 };
+  };
+  const { out, result } = await runDepartment('no-usable', pick, options60(), { durationS: COH_DURATION_S });
+  assert.equal(result.state, 'NO_USABLE_DRAFT_MUSIC');
+  assert.equal(result.package.no_usable_draft_music, true);
+  assert.equal(result.package.draft_selected_music, null);
+  assert.equal(result.package.music_decision, null);
+  assert.equal(result.package.selection_mode, 'NO_USABLE_DRAFT_MUSIC');
+  const audition = JSON.parse(fs.readFileSync(result.audition_path, 'utf8'));
+  assert.equal(audition.recommended_label, null);
+  assert.equal(audition.tracks.length, 3, 'failure evidence is kept for the human');
+  assert.equal(fs.existsSync(path.join(out, orchestrator.MEDIA_DIR, 'selected-ducked-mix.wav')), false);
+});
+
+test('DM38 degraded best-available selection happens ONLY with explicit permission and is labeled', async () => {
+  const cfx = coherenceFixtures();
+  const pick = (clientId) => {
+    if (clientId.includes('draft-music-a')) return { fixture: cfx.incoherent1 };
+    if (clientId.includes('draft-music-b')) return { fixture: cfx.incoherent2 };
+    return { fixture: cfx.incoherent3 };
+  };
+  const { result } = await runDepartment('degraded-selection', pick, options60({ degradedSelection: true }), { durationS: COH_DURATION_S });
+  assert.equal(result.state, 'COMPLETE');
+  assert.equal(result.package.selection_mode, 'DEGRADED_BEST_AVAILABLE');
+  assert.ok(result.package.draft_selected_music.candidate_id);
+  assert.equal(result.package.music_decision.final_music_authority, false);
+});
+
+test('DM39 normal Stable-first department run never submits a MiniMax graph', async () => {
+  const submitted = [];
+  const fx = fixtures();
+  const pick = (clientId, graph) => {
+    submitted.push(graph);
+    if (clientId.includes('draft-music-a')) return { fixture: fx.warm };
+    if (clientId.includes('draft-music-b')) return { fixture: fx.bright };
+    return { fixture: fx.pulse };
+  };
+  const { result } = await runDepartment('stable-only-graphs', pick);
+  assert.equal(result.package.routing_policy, 'STABLE_AUDIO_FIRST');
+  assert.ok(submitted.length >= 3);
+  for (const graph of submitted) {
+    assert.equal(graph[2].inputs.type, 'stable_audio', 'every normal Draft graph must be the SA3M workflow');
+  }
+  assert.ok(result.package.candidates.every((candidate) => candidate.model === 'stable_audio_3_medium'));
+  assert.equal(result.package.minimax_role, 'EXPERIMENTAL_DIVERSITY_LANE');
+});
+
+test('DM40 SA3M prompt v2 demands one continuous piece, a structure arc and a deliberate ending', async () => {
+  const analysis = await makeAnalysis();
+  const bundle = prompts.promptFor('stable_audio_3_medium', analysis.master_brief, analysis.candidates[0]);
+  assert.match(bundle.prompt_text, /One continuous piece of music with a single consistent sonic identity/);
+  assert.match(bundle.prompt_text, /main motif that returns and develops/);
+  assert.match(bundle.prompt_text, /deliberate outro/);
+  assert.match(bundle.prompt_text, /never stopping mid-phrase/);
+  assert.match(bundle.prompt_text, /Avoid: .*abrupt unfinished ending/);
+  const arc = prompts.structureArc(180);
+  assert.deepEqual([arc.opening, arc.development, arc.evolution, arc.total], [20, 90, 150, 180]);
+  const shortArc = prompts.structureArc(60);
+  assert.ok(shortArc.opening < shortArc.development && shortArc.development < shortArc.evolution && shortArc.evolution < shortArc.total);
+});
+
+test('DM41 script-fit measures energy-curve alignment and is graded, never a hard artistic verdict', () => {
+  const rising = Array.from({ length: 12 }, (_, i) => -30 + i * 1.5);
+  const flat = Array.from({ length: 12 }, () => -20);
+  const build = coherenceGate.scriptFitScore(rising, 'slow-build');
+  const flatOnBuild = coherenceGate.scriptFitScore(flat, 'slow-build');
+  assert.ok(build.score > flatOnBuild.score, `${build.score} vs ${flatOnBuild.score}`);
+  const flatOnFlat = coherenceGate.scriptFitScore(flat, 'flat-low');
+  assert.ok(flatOnFlat.score > 0.8);
+  errorCode(() => coherenceGate.scriptFitScore(rising, 'not-a-curve'), 'DRAFT_MUSIC_SCRIPT_FIT_CURVE_UNKNOWN');
+});
+
+/* ── human verdict authority ────────────────────────────────────────────── */
+
+test('DM42 a human blind verdict registers immutably, outranks the machine pick, and preserves machine ranking', async () => {
+  const { out, result } = await runDepartment('human-verdict', happyPick());
+  const machineLabel = result.package.candidates.find((candidate) => candidate.candidate_id === result.package.recommended_candidate).candidate_slot;
+  const otherLabel = ['A', 'B', 'C'].find((label) => label !== machineLabel);
+  const tracks = { A: { verdict: 'REJECT_COHERENCE' }, B: { verdict: 'REJECT_COHERENCE' }, C: { verdict: 'REJECT_COHERENCE' } };
+  tracks[otherLabel] = { verdict: 'USE', quality_10: 7 };
+  const registered = humanVerdict.registerHumanVerdict(out, {
+    authority: 'Mikko Pakkala', decided_at: '2026-09-01T10:00:00.000Z', source: 'test blind audition',
+    verbatim_comments: { [machineLabel]: 'does not offer a single solid song' }, tracks,
+  });
+  assert.equal(registered.registered, true);
+  assert.equal(registered.record.alignment.verdict, 'MISS');
+  assert.deepEqual(registered.record.machine_ranking_preserved, result.package.ranking, 'historical machine ranking is preserved verbatim, never rewritten');
+  assert.equal(registered.record.verbatim_comments[machineLabel], 'does not offer a single solid song');
+  // the effective selection follows the HUMAN verdict, not the machine recommendation
+  const effective = humanVerdict.effectiveSelection(result.package, registered.record);
+  assert.equal(effective.source, 'HUMAN');
+  assert.equal(effective.selected_label, otherLabel);
+  // immutability: a different verdict for the same run must be refused
+  const conflicting = { ...tracks, [machineLabel]: { verdict: 'USE' } };
+  errorCode(() => humanVerdict.registerHumanVerdict(out, { authority: 'Mikko Pakkala', decided_at: '2026-09-01T10:00:00.000Z', tracks: conflicting }), 'DRAFT_MUSIC_VERDICT_IMMUTABLE');
+  // an identical re-registration is a no-op, not an error
+  const replay = humanVerdict.registerHumanVerdict(out, {
+    authority: 'Mikko Pakkala', decided_at: '2026-09-01T10:00:00.000Z', source: 'test blind audition',
+    verbatim_comments: { [machineLabel]: 'does not offer a single solid song' }, tracks,
+  });
+  assert.equal(replay.registered, false);
+  // tamper detection
+  const loaded = humanVerdict.loadHumanVerdict(out);
+  errorCode(() => humanVerdict.verifyHumanVerdict({ ...loaded, tracks: { ...loaded.tracks, [machineLabel]: { ...loaded.tracks[machineLabel], verdict: 'USE' } } }), 'DRAFT_MUSIC_VERDICT_TAMPERED');
+});
+
+test('DM43 without a human verdict the machine pick stays explicitly provisional; USE alignment is MATCH', async () => {
+  const { out, result } = await runDepartment('human-match', happyPick());
+  const provisional = humanVerdict.effectiveSelection(result.package, null);
+  assert.equal(provisional.source, 'MACHINE_PROVISIONAL');
+  const machineLabel = result.package.candidates.find((candidate) => candidate.candidate_id === result.package.recommended_candidate).candidate_slot;
+  assert.equal(provisional.selected_label, machineLabel);
+  const registered = humanVerdict.registerHumanVerdict(out, {
+    authority: 'Mikko Pakkala', decided_at: '2026-09-01T11:00:00.000Z',
+    tracks: { [machineLabel]: { verdict: 'USE' } },
+  });
+  assert.equal(registered.record.alignment.verdict, 'MATCH');
+  assert.equal(registered.record.tracks[machineLabel].model, 'stable_audio_3_medium');
+  assert.ok(/^[0-9a-f]{64}$/.test(registered.record.tracks[machineLabel].output_sha256));
 });
 
 module.exports = { tests: require('./_helpers.js').tests };

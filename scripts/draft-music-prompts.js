@@ -55,18 +55,37 @@ const PERC_WORDS = Object.freeze({
   organic_hand: 'organic hand percussion', cinematic_hits: 'sparse cinematic percussion hits', full_kit: 'full drum kit',
 });
 
-/* Stable Audio 3 Medium — one deterministic descriptive prompt. */
+/* Stable Audio 3 Medium — one deterministic descriptive prompt.
+ *
+ * v2 (2026-09-01 coherence repair): SA3M's native strength is a single vivid
+ * full-track description, so the serialization now leads with ONE-PIECE
+ * identity (single sonic identity, one recurring motif, no unrelated
+ * sections), carries an explicit proportional structure arc (intro →
+ * development → evolution → outro) and a deliberate-ending instruction. The
+ * candidate's diversity dimensions still shape palette/mood/space — three
+ * concepts stay three genuinely different songs. */
+function structureArc(durationS) {
+  const total = Math.round(durationS);
+  const opening = Math.max(5, Math.round(total * (20 / 180)));
+  const development = Math.round(total * (90 / 180));
+  const evolution = Math.round(total * (150 / 180));
+  return { opening, development, evolution, total };
+}
 function stableAudioPrompt(brief, candidate) {
   const errors = briefContract.validateMusicRenderBrief(brief);
   if (errors.length) fail('DRAFT_MUSIC_BRIEF_INVALID', errors[0]);
   const v = candidate?.diversity_vector;
   if (!v) fail('DRAFT_MUSIC_CONCEPT_REQUIRED', candidate?.concept_label || 'candidate');
-  const avoid = [...new Set([...(brief.avoid || []), 'lead vocals', 'singing', 'spoken words', 'harsh piercing highs'])];
+  const avoid = [...new Set([...(brief.avoid || []), 'lead vocals', 'singing', 'spoken words', 'harsh piercing highs',
+    'abrupt unfinished ending', 'sudden genre changes', 'unrelated new sections', 'random instrument swaps'])];
+  const arc = structureArc(brief.target_duration_s);
   const parts = [
-    `Instrumental background track: ${GENRE_WORDS[v.genre_family]}, ${Math.round(brief.target_duration_s)} seconds, ${TEMPO_WORDS[v.tempo_feel]}${brief.tempo && brief.tempo !== 'free' ? ` around ${brief.tempo} BPM` : ''}.`,
+    `Instrumental background track: ${GENRE_WORDS[v.genre_family]}, ${arc.total} seconds, ${TEMPO_WORDS[v.tempo_feel]}${brief.tempo && brief.tempo !== 'free' ? ` around ${brief.tempo} BPM` : ''}.`,
     `${candidate.character}`,
+    `One continuous piece of music with a single consistent sonic identity: the same core instrumentation and tonality carried through the whole track, one recognizable main motif that returns and develops instead of unrelated new sections.`,
     `Primary palette: ${INSTRUMENT_WORDS[v.instrumentation_family]} with ${PERC_WORDS[v.percussion_style]}; ${BRIGHTNESS_WORDS[v.tonal_brightness]}; ${SPACE_WORDS[v.spatial_character]}; ${VALENCE_WORDS[v.emotional_valence]} mood.`,
-    `Structure: ${FORM_WORDS[v.structural_form]}; energy ${brief.energy_curve.replace(/-/g, ' ')} across the full duration; ${describeEnding(v.ending_style)}.`,
+    `Structure as one arc: an intro establishing the sonic identity (0-${arc.opening}s), development of the main motif (${arc.opening}-${arc.development}s), a controlled evolution that varies the same material (${arc.development}-${arc.evolution}s), then a deliberate outro (${arc.evolution}-${arc.total}s); ${FORM_WORDS[v.structural_form]}; energy ${brief.energy_curve.replace(/-/g, ' ')} across the full duration.`,
+    `The final section must wind down and finish intentionally — ${describeEnding(v.ending_style)} — never stopping mid-phrase.`,
     'Made to sit under continuous spoken narration: keep the speech midrange uncluttered, no constant lead melody on top, controlled dynamics.',
     `Avoid: ${avoid.join(', ')}.`,
   ];
@@ -128,5 +147,5 @@ function promptFor(model, brief, candidate) {
 }
 
 module.exports = {
-  DraftMusicPromptError, stableAudioPrompt, minimaxCandidateBrief, minimaxCaption, promptFor, sha256Text,
+  DraftMusicPromptError, structureArc, stableAudioPrompt, minimaxCandidateBrief, minimaxCaption, promptFor, sha256Text,
 };

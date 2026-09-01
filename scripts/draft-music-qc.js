@@ -35,6 +35,45 @@ function ffmpegStderr(args, timeout = 300000) {
   return { status: result.status, stderr: result.stderr || '' };
 }
 
+/* Direct clipped-run measurement (per channel, native sample rate).
+ *
+ * Second calibration event (2026-09-01): the previous proxy — astats
+ * `Flat factor` — is a logarithmic consecutive-samples-at-peak measure, so a
+ * 12-sample (~0.27 ms) full-scale touch on a hot master yields ~16 and blew
+ * past the `> 10` threshold that had been calibrated on a single 08-31 event.
+ * Catastrophic clipping is now measured directly: how many samples actually
+ * sit at full scale, and how long the longest consecutive run is. A hot
+ * master with isolated full-scale touches stays a headroom warning (the
+ * -14 dB Draft mix chain absorbs it); sustained flat-topping fails. */
+const CLIP_SAMPLE_FLOOR = 32700; // |s16| at/above this counts as full scale
+const CLIP_MAX_RUN_CATASTROPHIC = 64; // ~1.5 ms of continuous flat-top at 44.1 kHz
+const CLIP_FRACTION_CATASTROPHIC = 0.0005; // 0.05% of all samples
+function measureClipping(file, channels) {
+  const result = childProcess.spawnSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 's16le', '-'],
+    { timeout: 300000, maxBuffer: 1024 * 1024 * 1024 });
+  if (result.status !== 0) fail('DRAFT_MUSIC_DECODE_FAILED', file);
+  const raw = result.stdout;
+  const channelCount = Math.max(1, Number(channels) || 1);
+  const frames = Math.floor(raw.length / (2 * channelCount));
+  let clipped = 0; let maxRun = 0;
+  for (let channel = 0; channel < channelCount; channel += 1) {
+    let run = 0;
+    for (let frame = 0; frame < frames; frame += 1) {
+      const value = Math.abs(raw.readInt16LE((frame * channelCount + channel) * 2));
+      if (value >= CLIP_SAMPLE_FLOOR) {
+        clipped += 1; run += 1;
+        if (run > maxRun) maxRun = run;
+      } else run = 0;
+    }
+  }
+  const total = frames * channelCount;
+  return {
+    clipped_samples: clipped,
+    clipped_fraction: total > 0 ? clipped / total : 0,
+    max_consecutive_run: maxRun,
+  };
+}
+
 /* Decode to mono PCM float for feature analysis. */
 function decodeMono(file) {
   const result = childProcess.spawnSync('ffmpeg', ['-v', 'error', '-i', file, '-ac', '1', '-ar', String(FEATURE_RATE), '-f', 's16le', '-'],
@@ -179,13 +218,18 @@ function inspectTrack(file, options = {}) {
   if (integratedLufs !== null && integratedLufs < -55) failures.push('DRAFT_MUSIC_SILENT');
   if (totalSilenceS > requested * 0.4) failures.push('DRAFT_MUSIC_MOSTLY_SILENT');
   // §19: only CATASTROPHIC clipping is a technical failure — sustained
-  // flat-top saturation or gross intersample overs. A hot master (a few
+  // flat-top saturation (measured DIRECTLY as clipped-sample runs, see
+  // measureClipping) or gross intersample overs. A hot master (a few
   // full-scale samples, small dBTP overs) is recorded as a headroom warning:
   // the Draft mix chain (-14 dB music gain + limiter) absorbs it by design.
-  const flatTopClipping = Number.isFinite(samplePeakDb) && samplePeakDb >= -0.01 && Number.isFinite(flatFactor) && flatFactor > 10;
+  const nearFullScale = Number.isFinite(samplePeakDb) && samplePeakDb >= -0.5;
+  const clipping = nearFullScale ? measureClipping(file, stream.channels) : { clipped_samples: 0, clipped_fraction: 0, max_consecutive_run: 0 };
+  const flatTopClipping = clipping.max_consecutive_run >= CLIP_MAX_RUN_CATASTROPHIC
+    || clipping.clipped_fraction >= CLIP_FRACTION_CATASTROPHIC;
   const grossOver = truePeakDbfs !== null && truePeakDbfs > 1.5;
   if (grossOver || flatTopClipping) failures.push('DRAFT_MUSIC_CLIPPING');
-  const headroomWarning = !grossOver && !flatTopClipping && truePeakDbfs !== null && truePeakDbfs > 0.3;
+  const headroomWarning = !grossOver && !flatTopClipping
+    && ((truePeakDbfs !== null && truePeakDbfs > 0.3) || clipping.clipped_samples > 0);
   if (durationS < requested - tolerance) failures.push('DRAFT_MUSIC_TOO_SHORT');
   if (durationS > requested + tolerance * 2) failures.push('DRAFT_MUSIC_TOO_LONG');
   const ending = windows.length ? classifyEnding(windows, durationS, requested, tolerance) : 'TRUNCATED';
@@ -204,6 +248,7 @@ function inspectTrack(file, options = {}) {
     true_peak_dbfs: truePeakDbfs,
     sample_peak_db: Number.isFinite(samplePeakDb) ? samplePeakDb : null,
     flat_factor: Number.isFinite(flatFactor) ? flatFactor : null,
+    clipping,
     headroom_warning: headroomWarning,
     total_silence_s: +totalSilenceS.toFixed(2),
     full_decode: decode.status === 0 ? 'PASS' : 'FAIL',
@@ -245,7 +290,8 @@ function audioDistance(inspectA, inspectB) {
 }
 
 module.exports = {
-  ENDINGS, WINDOW_S, DraftMusicQcError, sha256File,
-  decodeMono, windowedFeatures, classifyEnding, structureDiagnostics,
+  ENDINGS, WINDOW_S, CLIP_SAMPLE_FLOOR, CLIP_MAX_RUN_CATASTROPHIC, CLIP_FRACTION_CATASTROPHIC,
+  DraftMusicQcError, sha256File,
+  decodeMono, measureClipping, windowedFeatures, classifyEnding, structureDiagnostics,
   inspectTrack, audioDistance, fftMagnitudes,
 };

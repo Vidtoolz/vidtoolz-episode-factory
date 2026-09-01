@@ -1,14 +1,23 @@
 'use strict';
 
 /*
- * Dual-model Draft music department — one canonical entry point.
+ * Draft music department — one canonical entry point.
  *
  *   script → DraftMusicAnalysis (script-conditioned; three diversity-separated
- *   concepts) → model routing (A: Stable Audio 3 Medium, B: MiniMax Music 3,
- *   C: adaptive) → model-specific prompts → bounded generation on the
- *   canonical music_generation lane → technical QC → diversity gate →
- *   deterministic ranking → DRAFT_SELECTED_MUSIC + renderer-compatible music
- *   decision → blind A/B/C audition package.
+ *   concepts) → STABLE_AUDIO_FIRST routing (A/B/C all Stable Audio 3 Medium
+ *   with strongly separated concepts; MiniMax Music 3 demoted to an
+ *   EXPERIMENTAL_DIVERSITY_LANE) → model-specific prompts → bounded generation
+ *   on the canonical music_generation lane → technical QC → SOLID_SONG
+ *   coherence gate → diversity gate → coherence-first deterministic ranking →
+ *   DRAFT_SELECTED_MUSIC + renderer-compatible music decision + blind A/B/C
+ *   audition package, or NO_USABLE_DRAFT_MUSIC when nothing passes the
+ *   usable gate.
+ *
+ * Priority order (2026-09-01 human-evidence repair): technical validity →
+ * musical coherence → narration suitability → script fit → diversity. The
+ * first real blind audition rejected two diverse-but-incoherent tracks the
+ * old ranking had preferred; a candidate must first be a SOLID_SONG before
+ * its diversity contribution matters.
  *
  * Reuses the proven MiniMax execution estate (compute-lane admission,
  * operator-tunnel control authority, FLAC→WAV worker conversion, resource
@@ -24,13 +33,14 @@ const childProcess = require('node:child_process');
 const analysisAuthority = require('./draft-music-analysis.js');
 const prompts = require('./draft-music-prompts.js');
 const qc = require('./draft-music-qc.js');
+const coherence = require('./draft-music-coherence.js');
 const dispatch = require('../score-engine/music-dispatch.js');
 const sa3m = require('../score-engine/adapters/stable-audio-3-medium.js');
 const renderer = require('./production-assembly-renderer.js');
 const storyBinding = require('./package-run-story-binding.js');
 const planningTask = require('./agent-task-visual-planning.js');
 
-const PACKAGE_SCHEMA = 'vidtoolz.draftMusicPackage.v1';
+const PACKAGE_SCHEMA = 'vidtoolz.draftMusicPackage.v2';
 const ATTEMPT_SCHEMA = 'vidtoolz.draftMusicGenerationAttempt.v1';
 const METRICS_SCHEMA = 'vidtoolz.draftMusicThroughputMetrics.v1';
 const ANALYSIS_FILE = 'draft-music-analysis.json';
@@ -44,6 +54,38 @@ const GENERATION_TIMEOUT_MS = 40 * 60 * 1000;
 const POLL_INTERVAL_MS = 10000;
 const AUDIO_MIN_DISTANCE = 0.12;
 const DURATION_TOLERANCE_S = 15;
+
+/* Routing policy (2026-09-01, provisional pending stronger evidence):
+ * STABLE_AUDIO_FIRST. The first blind audition found the sole Stable Audio
+ * candidate usable and both MiniMax candidates "not a single solid/coherent
+ * song"; SA3M also renders a 180 s track ~25x faster. MiniMax is DEMOTED (not
+ * deleted) to an experimental diversity lane: explicit operator request
+ * (experimentalMinimax), benchmark/evaluation work, or the documented
+ * degraded fallback when Stable Audio is unavailable. */
+const ROUTING_POLICY = 'STABLE_AUDIO_FIRST';
+const MINIMAX_ROLE = 'EXPERIMENTAL_DIVERSITY_LANE';
+
+/* §29 DRAFT_MUSIC_USABLE: what automatic selection additionally requires
+ * beyond technical PASS. Bands are deliberately wide — they catch broken
+ * candidates, ranking separates the rest. */
+const USABLE_CONTRACT = Object.freeze({
+  requires: ['TECHNICAL_PASS', 'COHERENCE_SOLID_SONG', 'NARRATION_COMPATIBILITY', 'ENDING_MINIMUM', 'SCRIPT_FIT_MINIMUM'],
+  narration_lufs_hard_band: [-38, -8],
+  narration_lufs_preferred_band: [-30, -12],
+  script_fit_min: 0.15,
+});
+
+/* Coherence-first ranking weights: coherence spans 0..10 while every other
+ * factor is sub-point, so a full coherence point always outranks the entire
+ * diversity contribution (mission: coherence → quality → script fit →
+ * diversity). */
+const RANKING_WEIGHTS = Object.freeze({
+  ending: { CLEAN_END: 1.2, FADE_ACCEPTABLE: 0.9, ABRUPT_END: 0.2, TRUNCATED: 0 },
+  narration_preferred: 0.8, narration_acceptable: 0.3,
+  script_fit: 0.6,
+  diversity_max: 0.4,
+  warning_penalty: 1,
+});
 
 /* Candidate-C adaptive routing: declared model territories. EXPERIMENTAL —
  * seeded from the cross-model benchmark; recorded in provenance, revisited as
@@ -125,37 +167,59 @@ async function modelAvailability(options = {}) {
   return { state, reason: null, host: verdict.host, admission: gate, runtime, models, transport };
 }
 
-/* ── §4 deliberate dual-model routing ──────────────────────────────────── */
+/* ── routing: STABLE_AUDIO_FIRST normal policy + experimental MiniMax lane ── */
 function territoryScore(model, vector) {
   const territory = MODEL_TERRITORY[model];
   return Object.keys(territory).reduce((score, axis) => score + (territory[axis].includes(vector[axis]) ? 1 : 0), 0);
 }
 function routeCandidates(analysis, availability, options = {}) {
   const [a, b, c] = analysis.candidates;
-  if (availability.state === 'BOTH_READY') {
+  const stableReady = availability.state === 'BOTH_READY' || availability.state === 'STABLE_ONLY';
+
+  /* EXPERIMENTAL_DIVERSITY_LANE: the demoted dual-model routing, invoked only
+   * by explicit operator request / benchmark work — never by normal Draft. */
+  if (options.experimentalMinimax) {
+    if (availability.state !== 'BOTH_READY') fail('DRAFT_MUSIC_MODELS_NOT_READY', `${availability.state}: the experimental MiniMax diversity lane requires both models`);
     const scoreStable = territoryScore('stable_audio_3_medium', c.diversity_vector);
     const scoreMinimax = territoryScore('minimax_music_3', c.diversity_vector);
-    const cModel = scoreStable > scoreMinimax ? 'stable_audio_3_medium'
-      : scoreMinimax > scoreStable ? 'minimax_music_3' : 'stable_audio_3_medium'; // tie → the cheaper distilled model
+    const cModel = scoreMinimax > scoreStable ? 'minimax_music_3' : 'stable_audio_3_medium'; // tie → the cheaper distilled model
     return {
-      mode: 'BOTH_READY',
+      mode: MINIMAX_ROLE,
+      policy: ROUTING_POLICY,
       assignments: [
-        { candidate: a, model: 'stable_audio_3_medium', routing_basis: 'CANDIDATE_A_DEFAULT_STABLE_AUDIO' },
-        { candidate: b, model: 'minimax_music_3', routing_basis: 'CANDIDATE_B_DEFAULT_MINIMAX' },
-        { candidate: c, model: cModel, routing_basis: `CANDIDATE_C_ADAPTIVE territory ${scoreStable}(sa3m) vs ${scoreMinimax}(minimax)` },
+        { candidate: a, model: 'stable_audio_3_medium', routing_basis: 'EXPERIMENTAL_A_STABLE_AUDIO' },
+        { candidate: b, model: 'minimax_music_3', routing_basis: 'EXPERIMENTAL_B_MINIMAX' },
+        { candidate: c, model: cModel, routing_basis: `EXPERIMENTAL_C_ADAPTIVE territory ${scoreStable}(sa3m) vs ${scoreMinimax}(minimax)` },
       ],
     };
   }
-  if (!options.allowDegraded) fail('DRAFT_MUSIC_MODELS_NOT_READY', `${availability.state}: dual-model generation requires both models (pass allowDegraded only with explicit permission)`);
-  const only = availability.state === 'STABLE_ONLY' ? 'stable_audio_3_medium'
-    : availability.state === 'MINIMAX_ONLY' ? 'minimax_music_3' : null;
-  if (!only) fail('DRAFT_MUSIC_MODELS_NOT_READY', availability.reason || 'no music model is available');
-  return {
-    mode: `${availability.state}_DEGRADED`,
-    assignments: analysis.candidates.map((candidate, index) => ({
-      candidate, model: only, routing_basis: `DEGRADED_${availability.state} slot ${['A', 'B', 'C'][index]}`,
-    })),
-  };
+
+  /* Normal Draft: three Stable Audio candidates from three strongly separated
+   * concepts (the analysis diversity contract still enforces >=5 major-axis
+   * differences per pair — never three seeds of one idea). */
+  if (stableReady) {
+    return {
+      mode: ROUTING_POLICY,
+      policy: ROUTING_POLICY,
+      assignments: analysis.candidates.map((candidate) => ({
+        candidate, model: 'stable_audio_3_medium', routing_basis: `STABLE_AUDIO_FIRST slot ${candidate.candidate_slot}`,
+      })),
+    };
+  }
+
+  /* Stable Audio unavailable: MiniMax fallback only with explicit permission. */
+  if (availability.state === 'MINIMAX_ONLY') {
+    if (!options.allowDegraded) fail('DRAFT_MUSIC_MODELS_NOT_READY', 'MINIMAX_ONLY: Stable Audio is unavailable — MiniMax fallback requires explicit degraded permission (allowDegraded)');
+    return {
+      mode: 'MINIMAX_ONLY_DEGRADED',
+      policy: ROUTING_POLICY,
+      assignments: analysis.candidates.map((candidate, index) => ({
+        candidate, model: 'minimax_music_3', routing_basis: `DEGRADED_MINIMAX_ONLY slot ${['A', 'B', 'C'][index]}`,
+      })),
+    };
+  }
+  fail('DRAFT_MUSIC_MODELS_NOT_READY', availability.reason || `${availability.state}: no music model is available`);
+  return null;
 }
 
 /* ── generation executor (both models, same transport estate) ───────────── */
@@ -201,6 +265,18 @@ async function runGeneration({ model, promptBundle, seed, durationS, mediaRoot, 
   return { attemptId, attemptDir, localWav, promptId, remoteFlac, remoteWav, startedAt, endedAt: nowIso(), wallMs, host };
 }
 
+/* SOLID_SONG evaluation for a technically clean attempt: the full report is
+ * carried on the in-memory result; the persisted attempt record keeps the
+ * verdict + metrics (never the contract boilerplate). */
+function evaluateCoherence(file, inspection, timers) {
+  const startedAt = Date.now();
+  const report = coherence.coherenceReport(file, { endingClass: inspection.ending_class });
+  if (timers) timers.coherence_ms = (timers.coherence_ms || 0) + (Date.now() - startedAt);
+  const { contract, ...persisted } = report;
+  return { report, persisted };
+}
+const COHERENCE_REPLACEMENT_PROMPT = 'Critically: keep this ONE continuous piece of music — the same instrumentation, key and groove for the entire duration, developing one recurring motif; absolutely no unrelated new sections, no genre changes, no sudden level jumps.';
+
 async function generateCandidate(assignment, context, idSuffix = '') {
   const { candidate, model } = assignment;
   const candidateId = `draft-music-${String(candidate.candidate_slot).toLowerCase()}${idSuffix}`;
@@ -216,14 +292,15 @@ async function generateCandidate(assignment, context, idSuffix = '') {
         && record.output_path && fs.existsSync(record.output_path)
         && qc.sha256File(record.output_path) === record.output_sha256) {
       const inspection = qc.inspectTrack(record.output_path, { requestedDurationS: context.durationS, durationToleranceS: DURATION_TOLERANCE_S });
-      return { candidateId, model, promptBundle, attempts: [record], final: { ...record, _features: inspection.features } };
+      const evaluated = evaluateCoherence(record.output_path, inspection, context.timers);
+      return { candidateId, model, promptBundle, attempts: [record], final: { ...record, coherence: evaluated.persisted, _features: inspection.features } };
     }
   }
   /* Resume across invocations: prior failed attempt records stay immutable,
    * count against the bounded budgets, and numbering continues after them. */
   const attempts = [];
   let firstAttemptNumber = 1;
-  let policyRetryUsed = false; let technicalRetryUsed = false;
+  let policyRetryUsed = false; let technicalRetryUsed = false; let coherenceRetryUsed = false;
   for (let prior = 1; prior <= 3; prior += 1) {
     const record = readJson(path.join(context.mediaRoot, 'attempts', `${candidateId}-attempt-${prior}`, 'attempt.json'), null);
     if (!record) break;
@@ -231,9 +308,16 @@ async function generateCandidate(assignment, context, idSuffix = '') {
     firstAttemptNumber = prior + 1;
     if (record.status === 'TECHNICAL_FAILURE') { if (technicalRetryUsed) return { candidateId, model, promptBundle, attempts, final: null }; technicalRetryUsed = true; }
     if (record.status === 'POLICY_FAILURE') { if (policyRetryUsed) return { candidateId, model, promptBundle, attempts, final: null }; policyRetryUsed = true; }
+    if (record.attempt_kind === 'COHERENCE_REPLACEMENT') coherenceRetryUsed = true;
   }
   let seed = context.baseSeed + { A: 0, B: 100, C: 200 }[candidate.candidate_slot] + (firstAttemptNumber - 1) * 1000;
   let extraPrompt = null;
+  let nextKind = firstAttemptNumber === 1 ? 'NORMAL' : 'TECHNICAL_REPLACEMENT';
+  /* §24 bounded coherence policy: a catastrophically incoherent (but
+   * technically clean) attempt earns AT MOST one targeted replacement; when
+   * both stay non-solid, the better-scoring one completes the candidate with
+   * its failure evidence — no auto-search until something passes. */
+  let bestNonSolid = null;
   for (let attemptNumber = firstAttemptNumber; attemptNumber <= 3; attemptNumber += 1) {
     const bundle = extraPrompt
       ? { ...promptBundle, prompt_text: `${promptBundle.prompt_text} ${extraPrompt}`, prompt_sha256: prompts.sha256Text(`${promptBundle.prompt_text} ${extraPrompt}`) }
@@ -248,10 +332,10 @@ async function generateCandidate(assignment, context, idSuffix = '') {
       analysis_digest_sha256: context.analysis.analysis_digest_sha256,
       script_sha256: context.analysis.script.sha256,
       attempt_number: attemptNumber,
-      attempt_kind: attemptNumber === 1 ? 'NORMAL' : (policyRetryUsed && attemptNumber > 1 && attempts.at(-1)?.status === 'POLICY_FAILURE' ? 'POLICY_REPLACEMENT' : 'TECHNICAL_REPLACEMENT'),
+      attempt_kind: nextKind,
       publication_authority: false, final_music_authority: false,
     };
-    let execution = null; let failures = []; let policyFailure = null; let inspection = null;
+    let execution = null; let failures = []; let policyFailure = null; let inspection = null; let evaluated = null;
     try {
       execution = await runGeneration({
         model, promptBundle: bundle, seed, durationS: context.durationS,
@@ -262,6 +346,7 @@ async function generateCandidate(assignment, context, idSuffix = '') {
       if (!inspection.ok) failures = inspection.failures;
       const duplicate = context.completed.find((other) => other.output_sha256 === inspection.sha256);
       if (!failures.length && duplicate) { policyFailure = 'DRAFT_MUSIC_DUPLICATE_OUTPUT'; }
+      if (!failures.length && !policyFailure) evaluated = evaluateCoherence(execution.localWav, inspection, context.timers);
     } catch (error) {
       failures = [error.code || 'DRAFT_MUSIC_GENERATION_FAILED'];
     }
@@ -273,37 +358,98 @@ async function generateCandidate(assignment, context, idSuffix = '') {
       host: context.host, remote_flac: execution?.remoteFlac || null, remote_wav: execution?.remoteWav || null,
       output_path: execution?.localWav || null, output_sha256: inspection?.sha256 || null,
       qc: inspection ? { ...inspection, features: undefined } : null,
+      coherence: evaluated ? evaluated.persisted : null,
     };
     writeExclusive(path.join(context.mediaRoot, 'attempts', attempt.attempt_id, 'attempt.json'), attempt);
     attempts.push({ ...attempt, _features: inspection?.features || null });
-    if (status === 'SUCCEEDED') return { candidateId, model, promptBundle: bundle, attempts, final: attempts.at(-1) };
+    if (status === 'SUCCEEDED') {
+      const finalAttempt = attempts.at(-1);
+      if (evaluated.report.solid_song) return { candidateId, model, promptBundle: bundle, attempts, final: finalAttempt };
+      if (!bestNonSolid || finalAttempt.coherence.coherence_score > bestNonSolid.coherence.coherence_score) bestNonSolid = finalAttempt;
+      if (evaluated.report.coherence_class === 'CATASTROPHIC_INCOHERENCE' && !coherenceRetryUsed && attemptNumber < 3) {
+        coherenceRetryUsed = true; seed += 3000;
+        extraPrompt = COHERENCE_REPLACEMENT_PROMPT;
+        nextKind = 'COHERENCE_REPLACEMENT';
+        continue;
+      }
+      /* LOW_COHERENCE (or exhausted replacement): the candidate completes
+       * with its best evidence; the usable gate and ranking take it from here. */
+      return { candidateId, model, promptBundle: bundle, attempts, final: bestNonSolid };
+    }
     if (status === 'TECHNICAL_FAILURE') {
       if (technicalRetryUsed) break;
-      technicalRetryUsed = true; seed += 1000;
+      technicalRetryUsed = true; seed += 1000; nextKind = 'TECHNICAL_REPLACEMENT';
     } else {
       if (policyRetryUsed) break;
-      policyRetryUsed = true; seed += 2000;
+      policyRetryUsed = true; seed += 2000; nextKind = 'POLICY_REPLACEMENT';
       extraPrompt = 'Take a clearly different arrangement of the same concept.';
     }
   }
+  /* A coherence replacement that ended in technical/policy failure still
+   * leaves the earlier non-solid success as the candidate's best evidence. */
+  if (bestNonSolid) return { candidateId, model, promptBundle, attempts, final: bestNonSolid };
   return { candidateId, model, promptBundle, attempts, final: null };
 }
 
-/* ── ranking (recommendation, not artistic authority) ───────────────────── */
-function rankCandidates(results, warnings) {
+/* ── §29 DRAFT_MUSIC_USABLE gate + coherence-first ranking ──────────────── */
+/* The 2026-08-31 blind audition proved the old ranking defective: its only
+ * discriminating factor (development_score = energy variance + section-change
+ * count) REWARDED the disconnected sections Mikko rejected. development_score
+ * stays a QC diagnostic but never ranks again. */
+function usableVerdict(result, analysis) {
+  const failures = [];
+  const inspectionQc = result.final.qc;
+  const candidateCoherence = result.final.coherence;
+  if (!inspectionQc?.ok) failures.push('TECHNICAL');
+  if (!candidateCoherence?.solid_song) failures.push('COHERENCE');
+  const lufs = inspectionQc?.integrated_lufs;
+  const [hardLow, hardHigh] = USABLE_CONTRACT.narration_lufs_hard_band;
+  if (lufs === null || lufs === undefined || lufs < hardLow || lufs > hardHigh) failures.push('NARRATION_COMPATIBILITY');
+  if (inspectionQc?.ending_class === 'TRUNCATED') failures.push('ENDING_MINIMUM');
+  const fit = scriptFit(result, analysis);
+  if (fit.score < USABLE_CONTRACT.script_fit_min) failures.push('SCRIPT_FIT_MINIMUM');
+  return { usable: failures.length === 0, failures, script_fit: fit };
+}
+function scriptFit(result, analysis) {
+  const series = result.final.coherence?.metrics?.energy_series_db;
+  if (!Array.isArray(series)) return { score: 0, basis: 'NO_COHERENCE_METRICS' };
+  return coherence.scriptFitScore(series, analysis.master_brief.energy_curve);
+}
+function rankCandidates(results, warnings, analysis) {
   const scored = results.map((result) => {
     const inspectionQc = result.final.qc;
-    const structure = inspectionQc.structure || { development_score: 0 };
-    const endingBonus = inspectionQc.ending_class === 'CLEAN_END' ? 1.5 : inspectionQc.ending_class === 'FADE_ACCEPTABLE' ? 1.0 : 0;
+    const candidateCoherence = result.final.coherence || { coherence_score: 0, coherence_class: 'NOT_ASSESSABLE', solid_song: false };
+    const verdict = usableVerdict(result, analysis);
+    const endingBonus = RANKING_WEIGHTS.ending[inspectionQc.ending_class] ?? 0;
     const lufs = inspectionQc.integrated_lufs;
-    const narrationFit = lufs !== null && lufs >= -30 && lufs <= -12 ? 1.0 : 0.3;
+    const [prefLow, prefHigh] = USABLE_CONTRACT.narration_lufs_preferred_band;
+    const narrationFit = lufs !== null && lufs >= prefLow && lufs <= prefHigh ? RANKING_WEIGHTS.narration_preferred : RANKING_WEIGHTS.narration_acceptable;
+    const scriptFitScore = +(verdict.script_fit.score * RANKING_WEIGHTS.script_fit).toFixed(3);
     const minDistance = Math.min(...results.filter((other) => other !== result).map((other) => result.pairDistances[other.candidateId] ?? 1), 1);
-    const diversityContribution = Math.min(1.5, minDistance * 6);
-    const warningPenalty = warnings.filter((warning) => warning.candidate_id === result.candidateId).length;
-    const score = +(5 + endingBonus + Math.min(2, structure.development_score * 0.25) + narrationFit + diversityContribution - warningPenalty).toFixed(3);
-    return { candidate_id: result.candidateId, slot: result.final.candidate_slot, score, factors: { ending_bonus: endingBonus, development: structure.development_score, narration_fit: narrationFit, diversity_contribution: diversityContribution, warning_penalty: warningPenalty } };
+    const diversityContribution = +Math.min(RANKING_WEIGHTS.diversity_max, minDistance * 2).toFixed(3);
+    const warningPenalty = warnings.filter((warning) => warning.candidate_id === result.candidateId).length * RANKING_WEIGHTS.warning_penalty;
+    const score = +(candidateCoherence.coherence_score + endingBonus + narrationFit + scriptFitScore + diversityContribution - warningPenalty).toFixed(3);
+    return {
+      candidate_id: result.candidateId,
+      slot: result.final.candidate_slot,
+      usable: verdict.usable,
+      usable_failures: verdict.failures,
+      coherence_class: candidateCoherence.coherence_class,
+      score,
+      factors: {
+        coherence_score: candidateCoherence.coherence_score,
+        ending_bonus: endingBonus,
+        narration_fit: narrationFit,
+        script_fit: scriptFitScore,
+        script_fit_basis: verdict.script_fit.basis,
+        diversity_contribution: diversityContribution,
+        warning_penalty: warningPenalty,
+      },
+    };
   });
-  return scored.sort((a, b) => b.score - a.score || a.slot.localeCompare(b.slot));
+  /* Usable candidates always outrank unusable ones; within a tier the score
+   * decides; slot order keeps it deterministic. */
+  return scored.sort((a, b) => (b.usable ? 1 : 0) - (a.usable ? 1 : 0) || b.score - a.score || a.slot.localeCompare(b.slot));
 }
 
 /* ── narration-first Draft mix (bounded ducking; renderer untouched) ─────── */
@@ -385,7 +531,7 @@ async function generateDraftMusic(input, options = {}) {
   const context = {
     analysis, durationS, mediaRoot, transport, host: availability.host,
     baseSeed: Number.isInteger(input.seed) ? input.seed : 1, completed: [],
-    generationTimeoutMs: options.generationTimeoutMs,
+    generationTimeoutMs: options.generationTimeoutMs, timers: timings,
   };
   const results = [];
   const generationStarted = Date.now();
@@ -437,16 +583,25 @@ async function generateDraftMusic(input, options = {}) {
   }
   timings.diversity_ms = Date.now() - diversityStarted;
 
-  /* 5. ranking + selection */
+  /* 5. usable gate + coherence-first ranking + selection. When nothing is
+   * usable there is NO quiet best-effort pick: the run reports
+   * NO_USABLE_DRAFT_MUSIC unless the caller explicitly permitted degraded
+   * best-available selection. */
   const rankingStarted = Date.now();
-  const ranking = rankCandidates(results, warnings);
-  const selectedId = ranking[0].candidate_id;
-  const selected = results.find((result) => result.candidateId === selectedId);
+  const ranking = rankCandidates(results, warnings, analysis);
+  const usableRanking = ranking.filter((entry) => entry.usable);
+  let selected = null; let selectionMode = 'NORMAL_USABLE';
+  if (usableRanking.length) {
+    selected = results.find((result) => result.candidateId === usableRanking[0].candidate_id);
+  } else if (options.degradedSelection) {
+    selected = results.find((result) => result.candidateId === ranking[0].candidate_id);
+    selectionMode = 'DEGRADED_BEST_AVAILABLE';
+  }
   timings.ranking_ms = Date.now() - rankingStarted;
 
   /* 6. narration-first mix (bounded ducking) for the selected track */
   let mix = null;
-  if (input.narrationWav && fs.existsSync(input.narrationWav)) {
+  if (selected && input.narrationWav && fs.existsSync(input.narrationWav)) {
     const mixStarted = Date.now();
     mix = buildDuckedMix(selected.final.output_path, input.narrationWav, path.join(mediaRoot, 'selected-ducked-mix.wav'), options.mixOptions || {});
     timings.mix_ms = Date.now() - mixStarted;
@@ -472,26 +627,38 @@ async function generateDraftMusic(input, options = {}) {
     output_path: result.final.output_path,
     output_sha256: result.final.output_sha256,
     qc: result.final.qc,
+    coherence: result.final.coherence,
     pair_distances: result.pairDistances,
     generation_wall_clock_ms: result.final.generation_wall_clock_ms,
     host: result.final.host,
     publication_authority: false,
     final_music_authority: false,
   }));
-  const decision = buildDraftMusicDecision(selected, runId, createdAt);
+  const decision = selected ? buildDraftMusicDecision(selected, runId, createdAt) : null;
   const core = {
     schema: PACKAGE_SCHEMA, run_id: runId, created_at: createdAt,
     script: analysis.script, analysis_digest_sha256: analysis.analysis_digest_sha256,
     master_brief_sha256: digest(analysis.master_brief),
-    availability_state: availability.state, routing_mode: routing.mode,
+    availability_state: availability.state,
+    routing_policy: ROUTING_POLICY, routing_mode: routing.mode,
+    minimax_role: MINIMAX_ROLE,
     routing: routing.assignments.map((assignment) => ({ slot: assignment.candidate.candidate_slot, model: assignment.model, basis: assignment.routing_basis })),
-    model_territory_basis: 'EXPERIMENTAL benchmark-seeded territory table (MODEL_TERRITORY)',
+    model_territory_basis: 'EXPERIMENTAL benchmark-seeded territory table (MODEL_TERRITORY; experimental lane only)',
     candidates,
+    coherence_contract: coherence.COHERENCE_CONTRACT,
+    usable_contract: USABLE_CONTRACT,
     diversity: { audio_min_distance: AUDIO_MIN_DISTANCE, warnings, declared: analysis.diversity },
-    ranking, recommended_candidate: ranking[0].candidate_id, second_choice: ranking[1]?.candidate_id || null, third_choice: ranking[2]?.candidate_id || null,
-    draft_selected_music: { candidate_id: selectedId, output_sha256: selected.final.output_sha256, output_path: selected.final.output_path, mix: mix || null },
+    ranking_doctrine: 'COHERENCE_FIRST: technical validity -> musical coherence -> narration suitability -> script fit -> diversity; usable candidates always outrank unusable ones',
+    ranking,
+    recommended_candidate: selected ? (usableRanking[0] || ranking[0]).candidate_id : null,
+    second_choice: ranking[1]?.candidate_id || null, third_choice: ranking[2]?.candidate_id || null,
+    selection_mode: selected ? selectionMode : 'NO_USABLE_DRAFT_MUSIC',
+    no_usable_draft_music: !selected,
+    draft_selected_music: selected
+      ? { candidate_id: selected.candidateId, output_sha256: selected.final.output_sha256, output_path: selected.final.output_path, mix: mix || null }
+      : null,
     music_decision: decision,
-    human_review: { authority: 'Mikko', dimensions: ['MUSIC_CONCEPT', 'MUSIC_EXECUTION'], note: 'automated ranking is a recommendation; the machine does not know which song Mikko should prefer' },
+    human_review: { authority: 'Mikko', dimensions: ['MUSIC_CONCEPT', 'MUSIC_EXECUTION'], note: 'automated ranking is a recommendation; the human blind-audition verdict outranks it and is registered separately (draft-music-human-verdict.json)' },
     publication_authority: false, final_music_authority: false,
   };
   const packageValue = { ...core, package_digest_sha256: digest(core) };
@@ -501,13 +668,14 @@ async function generateDraftMusic(input, options = {}) {
   writeImmutable(path.join(outRoot, AUDITION_FILE), {
     schema: 'vidtoolz.draftMusicAudition.v1', run_id: runId,
     tracks: candidates.map((candidate) => ({ label: candidate.candidate_slot, path: candidate.output_path, duration_s: candidate.qc.duration_s })),
-    recommended_label: candidates.find((candidate) => candidate.candidate_id === selectedId).candidate_slot,
+    recommended_label: selected ? candidates.find((candidate) => candidate.candidate_id === selected.candidateId).candidate_slot : null,
     note: 'listen blind; model provenance is deliberately not shown here',
   });
   const metrics = {
     schema: METRICS_SCHEMA, run_id: runId,
     script_analysis_ms: timings.analysis_ms, availability_ms: timings.availability_ms,
-    generation_ms: timings.generation_ms, diversity_ms: timings.diversity_ms, ranking_ms: timings.ranking_ms,
+    generation_ms: timings.generation_ms, coherence_ms: timings.coherence_ms ?? null,
+    diversity_ms: timings.diversity_ms, ranking_ms: timings.ranking_ms,
     mix_ms: timings.mix_ms ?? null,
     per_candidate_generation_ms: candidates.map((candidate) => ({ candidate_id: candidate.candidate_id, model: candidate.model, wall_clock_ms: candidate.generation_wall_clock_ms, attempts: candidate.attempt_count })),
     total_wall_clock_ms: Date.now() - Date.parse(timings.started_at),
@@ -515,7 +683,8 @@ async function generateDraftMusic(input, options = {}) {
     started_at: timings.started_at, completed_at: nowIso(),
   };
   atomicJson(path.join(outRoot, METRICS_FILE), metrics);
-  return { state: 'COMPLETE', package: packageValue, package_path: packagePath, metrics, audition_path: path.join(outRoot, AUDITION_FILE) };
+  const state = selected ? 'COMPLETE' : 'NO_USABLE_DRAFT_MUSIC';
+  return { state, package: packageValue, package_path: packagePath, metrics, audition_path: path.join(outRoot, AUDITION_FILE) };
 }
 
 /* ── CLI ─────────────────────────────────────────────────────────────────── */
@@ -531,6 +700,8 @@ function parseArgs(argv) {
     else if (argv[index] === '--narration') out.narrationWav = argv[++index];
     else if (argv[index] === '--seed') out.seed = Number(argv[++index]);
     else if (argv[index] === '--allow-degraded') out.allowDegraded = true;
+    else if (argv[index] === '--experimental-minimax') out.experimentalMinimax = true;
+    else if (argv[index] === '--degraded-selection') out.degradedSelection = true;
     else fail('DRAFT_MUSIC_ARGUMENT_INVALID', argv[index]);
   }
   if (out.command !== 'status' && !out.runId && !out.scriptFile) fail('DRAFT_MUSIC_ARGUMENT_INVALID', `${out.command} requires --run-id or --script-file`);
@@ -562,9 +733,17 @@ async function main(argv = process.argv.slice(2)) {
       process.stdout.write(`${JSON.stringify({ state: 'ANALYZED', path: target, digest: analysis.analysis_digest_sha256, candidates: analysis.candidates.map((candidate) => candidate.concept_label) }, null, 2)}\n`);
       return 0;
     }
-    const result = await generateDraftMusic({ scriptText, story, outRoot, runId, durationS: args.durationS, narrationWav, seed: args.seed }, { allowDegraded: args.allowDegraded });
-    process.stdout.write(`${JSON.stringify({ state: result.state, package: result.package_path, recommended: result.package.recommended_candidate, selected: result.package.draft_selected_music.candidate_id, routing: result.package.routing }, null, 2)}\n`);
-    return 0;
+    const result = await generateDraftMusic({ scriptText, story, outRoot, runId, durationS: args.durationS, narrationWav, seed: args.seed },
+      { allowDegraded: args.allowDegraded, experimentalMinimax: args.experimentalMinimax, degradedSelection: args.degradedSelection });
+    process.stdout.write(`${JSON.stringify({
+      state: result.state, package: result.package_path,
+      routing_policy: result.package.routing_policy, selection_mode: result.package.selection_mode,
+      recommended: result.package.recommended_candidate,
+      selected: result.package.draft_selected_music ? result.package.draft_selected_music.candidate_id : null,
+      coherence: result.package.candidates.map((candidate) => ({ slot: candidate.candidate_slot, class: candidate.coherence?.coherence_class, score: candidate.coherence?.coherence_score })),
+      routing: result.package.routing,
+    }, null, 2)}\n`);
+    return result.state === 'NO_USABLE_DRAFT_MUSIC' ? 3 : 0;
   } catch (error) {
     process.stderr.write(`${error.code || 'DRAFT_MUSIC_FAILED'}: ${error.message}\n`);
     return 1;
@@ -574,8 +753,9 @@ async function main(argv = process.argv.slice(2)) {
 module.exports = {
   PACKAGE_SCHEMA, ATTEMPT_SCHEMA, METRICS_SCHEMA, ANALYSIS_FILE, PACKAGE_FILE, AUDITION_FILE, METRICS_FILE,
   MEDIA_DIR, MODELS, MODEL_TERRITORY, AUDIO_MIN_DISTANCE, DURATION_TOLERANCE_S, GENERATION_TIMEOUT_MS,
+  ROUTING_POLICY, MINIMAX_ROLE, USABLE_CONTRACT, RANKING_WEIGHTS, COHERENCE_REPLACEMENT_PROMPT,
   DraftMusicError, modelAvailability, territoryScore, routeCandidates, buildGraph, runGeneration,
-  generateCandidate, rankCandidates, buildDuckedMix, buildDraftMusicDecision, resolveRunScript,
+  generateCandidate, usableVerdict, rankCandidates, buildDuckedMix, buildDraftMusicDecision, resolveRunScript,
   generateDraftMusic, parseArgs, main,
 };
 
