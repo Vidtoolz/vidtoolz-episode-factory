@@ -16,11 +16,12 @@ function deriveFinalProductionLaneStates(runDir, options = {}) {
   const performanceStatus = performancePackageError
     ? { state: performancePackageError.code || 'FINAL_PACKAGE_PERFORMANCE_INVALID', error: performancePackageError.message }
     : perf.status(runDir, options);
-  let musicCompletion = { complete: false }; let musicRegistry = { candidates: [], selection_history: [] }; let musicError = null;
+  let musicCompletion = { complete: false }; let musicRegistry = { candidates: [], selection_history: [] }; let musicNextAction = null; let musicError = null;
   try {
     const context = music.context(runDir, options);
     musicRegistry = music.loadRegistry(context, options);
     musicCompletion = music.finalMusicComplete(context, musicRegistry);
+    musicNextAction = music.nextAction(context, musicRegistry, musicCompletion);
   } catch (error) { musicError = error; }
   const visualStatus = {
     beats: tracker.beats.length,
@@ -35,7 +36,7 @@ function deriveFinalProductionLaneStates(runDir, options = {}) {
   const performance = performancePackageError || performanceStatus.state !== 'INCOMPLETE' && performanceStatus.state !== 'COMPLETE'
     ? { state: 'BLOCKED', complete: false, code: performanceStatus.error_code || performanceStatus.state, reason: performanceStatus.error || performanceStatus.state, status: performanceStatus }
     : { state: performanceStatus.state === 'COMPLETE' ? 'COMPLETE' : 'READY', complete: performanceStatus.state === 'COMPLETE', code: null, reason: null, status: performanceStatus };
-  const musicStatus = { final_music_complete: musicCompletion.complete, blocking_reasons: musicCompletion.blocking_reasons || [], counts: { candidates: musicRegistry.candidates.length, selected: musicRegistry.selected_candidate_id ? 1 : 0, selections_made: musicRegistry.selection_history.length } };
+  const musicStatus = { final_music_complete: musicCompletion.complete, blocking_reasons: musicCompletion.blocking_reasons || [], counts: { candidates: musicRegistry.candidates.length, selected: musicRegistry.selected_candidate_id ? 1 : 0, selections_made: musicRegistry.selection_history.length }, next_action: musicNextAction };
   const musicLane = musicError
     ? { state: 'BLOCKED', complete: false, code: musicError.code || 'FINAL_MUSIC_AUTHORITY_INVALID', reason: musicError.message, status: null }
     : { state: musicCompletion.complete ? 'COMPLETE' : 'READY', complete: musicCompletion.complete, code: null, reason: null, status: musicStatus };
