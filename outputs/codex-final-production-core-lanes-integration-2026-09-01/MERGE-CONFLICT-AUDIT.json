@@ -1,0 +1,1 @@
+{"merge_commit":"3e24644","conflicts":[{"file":"tests/run-tests.js","classification":"additive test registration","resolution":"retained both final-performance.test.js and final-music-production.test.js","semantic_authority_changed":false}],"hard_stop_conflicts":0}

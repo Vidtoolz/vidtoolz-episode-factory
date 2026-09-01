@@ -1,0 +1,5 @@
+{
+  "base": {"commit": "bccecb16f0c512f31dca76389d43519b9a0a360f", "tree": "06363a411e896f768e43276768c393d29c55b09b"},
+  "performance": {"branch": "codex/final-human-performance-authority", "commit": "32a6a2cbf4eac88e372d202bf05409cbdd8ed535", "tree": "85dc7ece33de5201f3a5bacef54db740da0f52d1", "base_ancestor": true, "reported_certification": "6193/6193"},
+  "music": {"branch": "fable5/final-music-authority-2026-09-01", "commit": "ab649c21f320d11df9774bd6a946ba869cf6a208", "tree": "9157f2b0f2fa42e81978235e95b4169e22448436", "base_ancestor": true, "reported_certification": "6218/6218"}
+}

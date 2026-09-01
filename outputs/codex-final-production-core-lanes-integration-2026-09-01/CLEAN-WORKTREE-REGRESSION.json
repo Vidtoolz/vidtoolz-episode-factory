@@ -1,0 +1,1 @@
+{"candidate":"6d2df51e0200f5ba314559a5c7c457de798d28eb","status":"PASS","test_total":6244,"failures":0,"assertions":"see verifier output","dirty_main_environment":{"known_unrelated_earth_studio_wip":true,"used_as_certification":false},"required":"./scripts/verify.sh with pinned Script Builder dependency"}

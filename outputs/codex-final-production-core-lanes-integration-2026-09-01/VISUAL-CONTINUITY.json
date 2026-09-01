@@ -1,0 +1,1 @@
+{"baseline":"bccecb1","invariants":["GENERATED != SELECTED","selected-image SHA required for authoritative I2V","20 PROMPT_READY, 0 generated, 0 selected on canary","human visual selection","stale I2V after re-selection"]}
