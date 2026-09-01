@@ -112,6 +112,7 @@ require("./final-production-lock-package.test.js");
 require("./final-asset-production.test.js");
 require("./final-performance.test.js");
 require("./final-music-production.test.js");
+require("./final-production-core-lanes-integration.test.js");
 require("./draft-successor-music-history.test.js");
 require("./draft-music-automation.test.js");
 require("./draft-synthetic-narration.test.js");
