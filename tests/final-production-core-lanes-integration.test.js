@@ -1,7 +1,10 @@
 'use strict';
 
-const { assert, test } = require('./_helpers.js');
+const { assert, fs, os, path, test } = require('./_helpers.js');
+const childProcess = require('node:child_process');
 const core = require('../scripts/final-production-core-lanes.js');
+const music = require('../scripts/final-music-production.js');
+const fplHarness = require('./final-production-lock-package.test.js');
 
 function lane(complete, extra = {}) { return { complete, state: complete ? 'COMPLETE' : 'REQUIRED', status: { takes: 0, next_action: complete ? 'complete' : 'record or select', coverage: [] , ...extra } }; }
 function snapshot(v = false, p = false, m = false) { return { run_id: 'integration-fixture', package_state: 'FINAL_PRODUCTION_PACKAGE_READY', lock_id: 'lock-1', lock_digest_sha256: 'lock-sha', final_edit_complete: false, final_qc_pass: false, publication_approved: false, lanes: { visual: { complete: v, status: { selected: v ? 20 : 0 } }, performance: lane(p, { takes: p ? 1 : 0 }), music: lane(m) } }; }
@@ -30,3 +33,35 @@ test('CIL-17 changed visual selection remains a visual lane placeholder until cu
 test('CIL-18 changed performance selection remains a performance placeholder until current authority says complete', () => { assert.equal(projection(true, false, true).lanes.performance.placeholder, 'FINAL_HUMAN_PERFORMANCE'); });
 test('CIL-19 changed music selection remains a music placeholder until current authority says complete', () => { assert.equal(projection(true, true, false).lanes.music.placeholder, 'FINAL_MUSIC'); });
 test('CIL-20 lock change cannot be silently represented as a completed downstream edit', () => { const x = snapshot(true, true, true); x.lock_digest_sha256 = 'changed-lock'; const p = core.projectionFromSnapshot(x, 'new-blueprint', '2026-09-01T00:00:00.000Z'); assert.equal(p.final_edit_created, false); assert.equal(p.canonical_resolve_blueprint_mutated, false); });
+
+function makeMusicFile(label) {
+  const file = path.join(os.tmpdir(), `xlane-${label}-${process.pid}.wav`);
+  childProcess.spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `sine=frequency=${200 + label.charCodeAt(0)}:duration=30`, '-af', 'afade=t=out:st=20:d=10', file], { timeout: 180000 });
+  return file;
+}
+
+test('CIL-21 shared package nextActions uses current Final Music completion and re-selection authority', async () => {
+  const estate = await fplHarness.packagedEstate(`x-lane-${Date.now()}`);
+  const opts = { scriptBuilderRoot: estate.story.root, now: '2026-09-01T00:00:00.000Z' };
+  const before = require('../scripts/final-production-package.js').nextActions(estate.runDir, opts);
+  assert.equal(before.final_music_complete, false);
+  assert.ok(before.ready.some((item) => item.task === 'PRODUCE_FINAL_MUSIC'));
+  const first = music.ingestMusic(estate.runDir, { ...opts, file: makeMusicFile('a') });
+  music.selectMusic(estate.runDir, { ...opts, candidate: first.candidate.candidate_id, authority: 'Mikko Pakkala' });
+  const selected = require('../scripts/final-production-package.js').nextActions(estate.runDir, opts);
+  assert.equal(selected.final_music_complete, true);
+  assert.equal(selected.ready.some((item) => item.task === 'PRODUCE_FINAL_MUSIC'), false);
+  assert.equal(selected.blocked.some((item) => item.task === 'ASSEMBLE_FINAL_EDIT_IN_RESOLVE' && item.blocked_by.includes('final music')), false);
+  const second = music.ingestMusic(estate.runDir, { ...opts, file: makeMusicFile('b') });
+  music.selectMusic(estate.runDir, { ...opts, candidate: second.candidate.candidate_id, authority: 'Mikko Pakkala' });
+  const reselected = require('../scripts/final-production-package.js').nextActions(estate.runDir, opts);
+  assert.equal(reselected.final_music_complete, true);
+  const registry = music.loadRegistry(music.context(estate.runDir, opts), opts);
+  assert.equal(registry.selected_candidate_id, second.candidate.candidate_id);
+  assert.equal(registry.candidates.find((item) => item.candidate_id === first.candidate.candidate_id).disposition, 'SUPERSEDED');
+  const stored = path.resolve(estate.runDir, second.candidate.media.path);
+  fs.appendFileSync(stored, 'drift');
+  const stale = require('../scripts/final-production-package.js').nextActions(estate.runDir, opts);
+  assert.equal(stale.final_music_complete, false);
+  assert.ok(stale.ready.some((item) => item.task === 'PRODUCE_FINAL_MUSIC'));
+});

@@ -789,7 +789,14 @@ function nextActions(runDirInput, options = {}) {
    * current performance lane without making visual production depend on it. */
   const finalPerformance = require('./final-performance.js');
   const performanceStatus = finalPerformance.status(runDir, options);
-  const music = readJson(paths.music, 'FINAL_PACKAGE_MUSIC_INVALID');
+  /* Final Music completion belongs to the live candidate/selection authority,
+   * not to the immutable requirement brief. Keep this lookup here (rather
+   * than duplicating completion logic) so shared readiness agrees with the
+   * Final Music lane after Mikko selects or re-selects a candidate. */
+  const finalMusicAuthority = require('./final-music-production.js');
+  const musicContext = finalMusicAuthority.context(runDir, options);
+  const musicRegistry = finalMusicAuthority.loadRegistry(musicContext, options);
+  const musicCompletion = finalMusicAuthority.finalMusicComplete(musicContext, musicRegistry);
   const ready = []; const blocked = []; const waiting = []; const completed = [];
 
   for (const beat of tracker.beats) {
@@ -817,14 +824,14 @@ function nextActions(runDirInput, options = {}) {
     waiting.push({ task: 'SELECT_PERFORMANCE_TAKE', state: 'READY', instruction: performanceStatus.next_action, takes: performanceStatus.takes, missing_sections: performanceStatus.coverage.filter((item) => item.status === 'UNCOVERED').map((item) => item.section_id) });
   } else if (performanceStatus.state === 'COMPLETE') completed.push({ task: 'FINAL_HUMAN_PERFORMANCE_COMPLETE' });
   else blocked.push({ task: 'FINAL_HUMAN_PERFORMANCE', blocked_by: performanceStatus.error || performanceStatus.state });
-  if (music.state === 'REQUIRED') {
+  if (!musicCompletion.complete) {
     ready.push({ task: 'PRODUCE_FINAL_MUSIC', instruction: 'Produce or select final music against the final music brief (Draft music is provisional and is not promoted)' });
   }
   const assetsComplete = tracker.beats.every((beat) => beat.state === 'FINAL_ASSET_SELECTED');
-  if (assetsComplete && performanceStatus.state === 'COMPLETE' && music.state !== 'REQUIRED') {
+  if (assetsComplete && performanceStatus.state === 'COMPLETE' && musicCompletion.complete) {
     ready.push({ task: 'ASSEMBLE_FINAL_EDIT_IN_RESOLVE', instruction: 'Assemble the final edit in Resolve using the blueprint' });
   } else if (assetsComplete) {
-    blocked.push({ task: 'ASSEMBLE_FINAL_EDIT_IN_RESOLVE', blocked_by: [performanceStatus.state !== 'COMPLETE' ? 'final performance take' : null, music.state === 'REQUIRED' ? 'final music' : null].filter(Boolean) });
+    blocked.push({ task: 'ASSEMBLE_FINAL_EDIT_IN_RESOLVE', blocked_by: [performanceStatus.state !== 'COMPLETE' ? 'final performance take' : null, !musicCompletion.complete ? 'final music' : null].filter(Boolean) });
   } else {
     blocked.push({ task: 'ASSEMBLE_FINAL_EDIT_IN_RESOLVE', blocked_by: [`${tracker.beats.filter((beat) => beat.state !== 'FINAL_ASSET_SELECTED').length} final visual assets outstanding`] });
   }
@@ -837,7 +844,7 @@ function nextActions(runDirInput, options = {}) {
     counts: { ready: sortedReady.length, blocked: blocked.length, waiting_on_mikko: waiting.length, completed: completed.length },
     final_assets_complete: assetsComplete,
     final_human_performance_complete: performanceStatus.state === 'COMPLETE',
-    final_music_complete: music.state !== 'REQUIRED',
+    final_music_complete: musicCompletion.complete,
     final_edit_complete: false, final_qc_pass: false, publication_approved: false,
   };
 }
