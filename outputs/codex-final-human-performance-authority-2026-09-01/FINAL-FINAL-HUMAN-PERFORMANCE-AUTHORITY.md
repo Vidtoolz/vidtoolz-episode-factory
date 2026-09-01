@@ -64,7 +64,7 @@ No final edit, final QC pass, publication approval, or publication artifact is c
 
 ## 23. Source control
 
-Implementation commit: `ab93debc7e9c502c28fb1c280022c5298b7509b2`; certification/evidence commit: `36c749649e221bb779c11ac027f193e7af00adb4`; branch tip tree `3750b426f17fad25015a289ad8f85ef26b12751d`. Merge: no. Push: no. Promotion: no.
+Implementation commit: `ab93debc7e9c502c28fb1c280022c5298b7509b2`; certification/evidence commits: `36c749649e221bb779c11ac027f193e7af00adb4`, `6e96025ed8cb58e108255efbd756d22ad5fdb0c0`; branch tip tree `c208aad411ed8b50904cc8c092fe807cc46179fc`. Merge: no. Push: no. Promotion: no.
 
 ## 24. Next human action
 
