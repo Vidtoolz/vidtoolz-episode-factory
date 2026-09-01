@@ -796,7 +796,9 @@ function nextActions(runDirInput, options = {}) {
       continue;
     }
     if (beat.state === 'GENERATED') { waiting.push({ task: 'SELECT_FINAL_IMAGE', beat: beat.final_beat_id, candidates: beat.generated_images.length, instruction: `Select the final GPT image for beat ${label}` }); continue; }
-    if (beat.state === 'SELECTED') {
+    // 'SELECTED_IMAGE' is the canonical spelling used by the Final Asset
+    // Production workflow; 'SELECTED' remains accepted as its predecessor.
+    if (beat.state === 'SELECTED' || beat.state === 'SELECTED_IMAGE') {
       ready.push({ task: 'BIND_MOTION_PROMPT', beat: beat.final_beat_id, instruction: `Bind the image-bound Kling motion prompt for ${label} to the selected image`, requires_selected_image: true });
       continue;
     }
