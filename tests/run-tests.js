@@ -110,6 +110,7 @@ require("./draft-bespoke-successor-authority.test.js");
 require("./draft-revision-successor.test.js");
 require("./final-production-lock-package.test.js");
 require("./final-asset-production.test.js");
+require("./final-music-production.test.js");
 require("./draft-successor-music-history.test.js");
 require("./draft-music-automation.test.js");
 require("./draft-synthetic-narration.test.js");
