@@ -3,6 +3,7 @@
 const { assert, fs, os, path, test } = require('./_helpers.js');
 const childProcess = require('node:child_process');
 const core = require('../scripts/final-production-core-lanes.js');
+const laneStateAuthority = require('../scripts/final-production-lane-state.js');
 const music = require('../scripts/final-music-production.js');
 const fplHarness = require('./final-production-lock-package.test.js');
 
@@ -101,4 +102,33 @@ test('CIL-24 blocked Visual authority remains explicit while Performance and Mus
   assert.ok(value.ready.some((item) => item.task === 'PRODUCE_FINAL_MUSIC'));
   assert.ok(value.blocked.some((item) => item.lane === 'VISUAL'));
   assert.equal(value.final_assets_complete, false);
+});
+
+test('CIL-25 both operator surfaces consume the same canonical lane-state derivation', async () => {
+  const packageAuthority = require('../scripts/final-production-package.js');
+  assert.equal(packageAuthority.nextActions.toString().includes('deriveFinalProductionLaneStates'), true);
+  assert.equal(core.laneState.toString().includes('deriveFinalProductionLaneStates'), true);
+  assert.equal(laneStateAuthority.deriveFinalProductionLaneStates, require('../scripts/final-production-lane-state.js').deriveFinalProductionLaneStates);
+  const estate = await fplHarness.packagedEstate(`x-lane-parity-${Date.now()}`);
+  const opts = { scriptBuilderRoot: estate.story.root };
+  const shared = laneStateAuthority.deriveFinalProductionLaneStates(estate.runDir, opts);
+  const operator = core.laneState(estate.runDir, opts);
+  const packageNext = packageAuthority.nextActions(estate.runDir, opts);
+  for (const name of ['visual', 'performance', 'music']) assert.equal(operator.lanes[name].state, shared[name].state);
+  assert.equal(packageNext.final_assets_complete, shared.visual.complete);
+  assert.equal(packageNext.final_human_performance_complete, shared.performance.complete);
+  assert.equal(packageNext.final_music_complete, shared.music.complete);
+});
+
+test('CIL-26 parity matrix covers all eight complete/incomplete lane combinations without edit authority', () => {
+  const combinations = [[0,0,0],[1,0,0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[1,1,1]];
+  for (const [v, p, m] of combinations) {
+    const value = projection(Boolean(v), Boolean(p), Boolean(m));
+    assert.equal(value.lanes.visual.state, v ? 'RESOLVED' : 'PLACEHOLDER');
+    assert.equal(value.lanes.performance.state, p ? 'RESOLVED' : 'PLACEHOLDER');
+    assert.equal(value.lanes.music.state, m ? 'RESOLVED' : 'PLACEHOLDER');
+    assert.equal(value.final_edit_created, false);
+    assert.equal(value.final_qc_pass, false);
+    assert.equal(value.publication_approved, false);
+  }
 });

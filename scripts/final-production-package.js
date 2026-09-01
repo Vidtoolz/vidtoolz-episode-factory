@@ -782,28 +782,20 @@ function nextActions(runDirInput, options = {}) {
   if (!fs.existsSync(paths.package)) {
     return { run_id: status.run_id, package_state: 'FINAL_PRODUCTION_LOCKED', ready: [{ task: 'CREATE_FINAL_PRODUCTION_PACKAGE' }], blocked: [], waiting_on_mikko: [], completed: [], next_action: 'Create the Final Production Package from the current lock' };
   }
-  let tracker = { beats: [] }; let visualFailure = null;
-  try { ({ tracker } = loadTracker(runDir)); } catch (error) { visualFailure = error; }
-  let performance = { sections: [], total_target_duration_ms: 0 }; let performancePackageFailure = null;
-  try { performance = readJson(paths.performance, 'FINAL_PACKAGE_PERFORMANCE_INVALID'); } catch (error) { performancePackageFailure = error; }
+  const laneState = require('./final-production-lane-state.js').deriveFinalProductionLaneStates(runDir, options);
+  const tracker = laneState.visual.detail.tracker;
+  const visualFailure = laneState.visual.state === 'BLOCKED' ? { code: laneState.visual.code, message: laneState.visual.reason } : null;
+  const performance = laneState.performance.detail.package;
   /* Final performance has its own immutable take/selection authority. The
    * package remains the requirement declaration; this projection reads the
    * current performance lane without making visual production depend on it. */
-  const finalPerformance = require('./final-performance.js');
-  const performanceStatus = performancePackageFailure
-    ? { state: performancePackageFailure.code || 'FINAL_PACKAGE_PERFORMANCE_INVALID', error: performancePackageFailure.message }
-    : finalPerformance.status(runDir, options);
+  const performanceStatus = laneState.performance.status;
   /* Final Music completion belongs to the live candidate/selection authority,
    * not to the immutable requirement brief. Keep this lookup here (rather
    * than duplicating completion logic) so shared readiness agrees with the
    * Final Music lane after Mikko selects or re-selects a candidate. */
-  const finalMusicAuthority = require('./final-music-production.js');
-  let musicCompletion = { complete: false }; let musicFailure = null;
-  try {
-    const musicContext = finalMusicAuthority.context(runDir, options);
-    const musicRegistry = finalMusicAuthority.loadRegistry(musicContext, options);
-    musicCompletion = finalMusicAuthority.finalMusicComplete(musicContext, musicRegistry);
-  } catch (error) { musicFailure = error; }
+  const musicCompletion = laneState.music.detail.completion;
+  const musicFailure = laneState.music.state === 'BLOCKED' ? { code: laneState.music.code, message: laneState.music.reason } : null;
   const ready = []; const blocked = []; const waiting = []; const completed = [];
 
   if (visualFailure) blocked.push({ task: 'FINAL_VISUAL_ASSETS', lane: 'VISUAL', code: visualFailure.code || 'FINAL_PACKAGE_VISUAL_INVALID', blocked_by: visualFailure.message });
@@ -837,7 +829,7 @@ function nextActions(runDirInput, options = {}) {
   } else if (!musicCompletion.complete) {
     ready.push({ task: 'PRODUCE_FINAL_MUSIC', instruction: 'Produce or select final music against the final music brief (Draft music is provisional and is not promoted)' });
   }
-  const assetsComplete = !visualFailure && tracker.beats.length > 0 && tracker.beats.every((beat) => beat.state === 'FINAL_ASSET_SELECTED');
+  const assetsComplete = laneState.visual.complete;
   if (assetsComplete && performanceStatus.state === 'COMPLETE' && musicCompletion.complete) {
     ready.push({ task: 'ASSEMBLE_FINAL_EDIT_IN_RESOLVE', instruction: 'Assemble the final edit in Resolve using the blueprint' });
   } else if (assetsComplete) {

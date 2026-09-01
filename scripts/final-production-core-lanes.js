@@ -11,9 +11,8 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const pkg = require('./final-production-package.js');
-const perf = require('./final-performance.js');
-const music = require('./final-music-production.js');
 const directed = require('./directed-draft-assembly-handoff.js');
+const laneStateAuthority = require('./final-production-lane-state.js');
 
 const SCHEMA = 'vidtoolz.finalProductionCoreLanesProjection.v1';
 const AUTHORITY_DIR = 'final-production/core-lanes';
@@ -22,18 +21,8 @@ function digest(value) { return crypto.createHash('sha256').update(JSON.stringif
 function readJson(file) { return JSON.parse(fs.readFileSync(file, 'utf8')); }
 function paths(runDir) { const base = path.join(path.resolve(runDir), AUTHORITY_DIR); return { base, projection: path.join(base, 'resolve-core-lanes-projection.json') }; }
 
-function visualStatus(runDir) {
-  const tracker = pkg.loadTracker(runDir).tracker;
-  const selected = tracker.beats.filter((beat) => beat.state === 'FINAL_ASSET_SELECTED');
-  const generated = tracker.beats.filter((beat) => beat.generated_images?.length || beat.state === 'GENERATED' || beat.state === 'SELECTED_IMAGE' || beat.state === 'I2V_READY' || beat.state === 'VIDEO_GENERATED');
-  return {
-    beats: tracker.beats.length,
-    prompt_ready: tracker.beats.filter((beat) => beat.state === 'PROMPT_READY').length,
-    generated: generated.length,
-    selected: selected.length,
-    complete: tracker.beats.length > 0 && selected.length === tracker.beats.length,
-    states: tracker.beats.map((beat) => ({ beat_id: beat.final_beat_id, state: beat.state })),
-  };
+function visualStatus(runDir, options = {}) {
+  return laneStateAuthority.deriveFinalProductionLaneStates(runDir, options).visual.status;
 }
 
 function laneState(runDir, options = {}) {
@@ -41,18 +30,19 @@ function laneState(runDir, options = {}) {
   if (lock.state !== 'FINAL_PRODUCTION_LOCKED') return { run_id: lock.run_id, package_state: lock.state, lock, lanes: null };
   const packagePaths = pkg.packagePaths(runDir);
   if (!fs.existsSync(packagePaths.package)) return { run_id: lock.run_id, package_state: 'FINAL_PRODUCTION_LOCKED', lock, lanes: null };
-  const visual = visualStatus(runDir);
-  const performance = perf.status(runDir, options);
-  const finalMusic = music.musicStatus(runDir, options);
+  const lanes = laneStateAuthority.deriveFinalProductionLaneStates(runDir, options);
+  const visual = lanes.visual.status;
+  const performance = lanes.performance.status;
+  const finalMusic = lanes.music.status;
   return {
     run_id: lock.run_id,
     package_state: 'FINAL_PRODUCTION_PACKAGE_READY',
     lock_id: lock.lock_id,
     lock_digest_sha256: lock.lock_digest_sha256,
     lanes: {
-      visual: { state: visual.complete ? 'COMPLETE' : 'REQUIRED', complete: visual.complete, status: visual },
-      performance: { state: performance.final_human_performance_complete ? 'COMPLETE' : 'REQUIRED', complete: performance.final_human_performance_complete, status: performance },
-      music: { state: finalMusic.final_music_complete ? 'COMPLETE' : 'REQUIRED', complete: finalMusic.final_music_complete, status: finalMusic },
+      visual: lanes.visual,
+      performance: lanes.performance,
+      music: lanes.music,
     },
     final_edit_complete: false,
     final_qc_pass: false,
