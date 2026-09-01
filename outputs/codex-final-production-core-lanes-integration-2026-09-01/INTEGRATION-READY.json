@@ -1,0 +1,13 @@
+{
+  "integration_branch": "codex/final-production-core-lanes-integration-2026-09-01",
+  "candidate_sha": "ce5121e2c0a53ee90ac859190c5cfe467b10b1a3",
+  "candidate_sha_note": "clean committed integration/evidence candidate; this marker is the audit handoff and does not alter source semantics",
+  "candidate_tree": "d8f8afd23df3d5bc965806b97b1aa93b4c1818fe",
+  "merge_commit": "3e24644",
+  "parent_shas": ["bccecb16f0c512f31dca76389d43519b9a0a360f", "32a6a2cbf4eac88e372d202bf05409cbdd8ed535", "ab649c21f320d11df9774bd6a946ba869cf6a208"],
+  "performance_candidate_sha": "32a6a2cbf4eac88e372d202bf05409cbdd8ed535",
+  "music_candidate_sha": "ab649c21f320d11df9774bd6a946ba869cf6a208",
+  "conflicts_occurred": true,
+  "reconciliation_files_changed": ["scripts/final-production-core-lanes.js", "tests/final-production-core-lanes-integration.test.js", "tests/run-tests.js"],
+  "status": "READY_FOR_INDEPENDENT_AUDIT"
+}
