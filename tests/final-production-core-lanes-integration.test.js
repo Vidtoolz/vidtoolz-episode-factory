@@ -65,3 +65,40 @@ test('CIL-21 shared package nextActions uses current Final Music completion and 
   assert.equal(stale.final_music_complete, false);
   assert.ok(stale.ready.some((item) => item.task === 'PRODUCE_FINAL_MUSIC'));
 });
+
+test('CIL-22 stale Music authority blocks only Music while Visual and Performance remain visible', async () => {
+  const estate = await fplHarness.packagedEstate(`x-lane-music-stale-${Date.now()}`);
+  const brief = JSON.parse(fs.readFileSync(estate.paths.music, 'utf8'));
+  brief.target_duration_ms += 1;
+  fs.writeFileSync(estate.paths.music, `${JSON.stringify(brief, null, 2)}\n`);
+  const value = require('../scripts/final-production-package.js').nextActions(estate.runDir, { scriptBuilderRoot: estate.story.root });
+  assert.ok(value.ready.some((item) => item.task === 'GENERATE_FINAL_IMAGE'));
+  assert.ok(value.ready.some((item) => item.task === 'RECORD_FINAL_PERFORMANCE'));
+  assert.equal(value.ready.some((item) => item.task === 'PRODUCE_FINAL_MUSIC'), false);
+  assert.ok(value.blocked.some((item) => item.lane === 'MUSIC' && item.code === 'FINAL_MUSIC_BRIEF_STALE'));
+  assert.equal(value.final_music_complete, false);
+});
+
+test('CIL-23 stale Performance authority blocks only Performance while Visual and Music remain visible', async () => {
+  const estate = await fplHarness.packagedEstate(`x-lane-performance-stale-${Date.now()}`);
+  const performance = JSON.parse(fs.readFileSync(estate.paths.performance, 'utf8'));
+  performance.takes = [{ forged: true }];
+  fs.writeFileSync(estate.paths.performance, `${JSON.stringify(performance, null, 2)}\n`);
+  const value = require('../scripts/final-production-package.js').nextActions(estate.runDir, { scriptBuilderRoot: estate.story.root });
+  assert.ok(value.ready.some((item) => item.task === 'GENERATE_FINAL_IMAGE'));
+  assert.ok(value.ready.some((item) => item.task === 'PRODUCE_FINAL_MUSIC'));
+  assert.equal(value.ready.some((item) => item.task === 'RECORD_FINAL_PERFORMANCE'), false);
+  assert.ok(value.blocked.some((item) => item.lane === 'PERFORMANCE'));
+  assert.equal(value.final_human_performance_complete, false);
+});
+
+test('CIL-24 blocked Visual authority remains explicit while Performance and Music remain visible', async () => {
+  const estate = await fplHarness.packagedEstate(`x-lane-visual-stale-${Date.now()}`);
+  fs.writeFileSync(estate.paths.tracker, '{ invalid tracker');
+  const value = require('../scripts/final-production-package.js').nextActions(estate.runDir, { scriptBuilderRoot: estate.story.root });
+  assert.equal(value.ready.some((item) => item.task === 'GENERATE_FINAL_IMAGE'), false);
+  assert.ok(value.ready.some((item) => item.task === 'RECORD_FINAL_PERFORMANCE'));
+  assert.ok(value.ready.some((item) => item.task === 'PRODUCE_FINAL_MUSIC'));
+  assert.ok(value.blocked.some((item) => item.lane === 'VISUAL'));
+  assert.equal(value.final_assets_complete, false);
+});
