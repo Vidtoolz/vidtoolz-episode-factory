@@ -132,3 +132,31 @@ test('CIL-26 parity matrix covers all eight complete/incomplete lane combination
     assert.equal(value.publication_approved, false);
   }
 });
+
+test('CIL-27 stale Music core-lanes status and next remain lane-local and never crash', async () => {
+  const estate = await fplHarness.packagedEstate(`x-lane-2c-${Date.now()}`);
+  const brief = JSON.parse(fs.readFileSync(estate.paths.music, 'utf8'));
+  brief.target_duration_ms += 1;
+  fs.writeFileSync(estate.paths.music, `${JSON.stringify(brief, null, 2)}\n`);
+  const opts = { scriptBuilderRoot: estate.story.root };
+  const status = core.laneState(estate.runDir, opts);
+  assert.equal(status.lanes.music.state, 'BLOCKED');
+  assert.equal(status.lanes.music.status.final_music_complete, false);
+  assert.equal(status.lanes.music.status.next_action.state, 'BLOCKED');
+  assert.equal(status.lanes.music.status.next_action.task, 'FINAL_MUSIC_AUTHORITY_BLOCKED');
+  const next = core.nextActions(estate.runDir, opts);
+  assert.ok(next.ready.some((item) => item.task === 'VISUAL_READY'));
+  assert.ok(next.ready.some((item) => item.task === 'PERFORMANCE_READY'));
+  assert.equal(next.ready.some((item) => item.task === 'MUSIC_READY'), false);
+  assert.ok(next.blocked.some((item) => item.lane === 'MUSIC' && item.code === 'FINAL_MUSIC_BRIEF_STALE'));
+  const packageNext = require('../scripts/final-production-package.js').nextActions(estate.runDir, opts);
+  assert.equal(packageNext.final_music_complete, false);
+  assert.ok(packageNext.blocked.some((item) => item.lane === 'MUSIC' && item.code === 'FINAL_MUSIC_BRIEF_STALE'));
+});
+
+test('CIL-28 blocked lane status is structurally non-null for every shared lane failure', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'final-production-lane-state.js'), 'utf8');
+  assert.equal(source.includes("status: null"), false);
+  assert.ok(source.includes("state: 'BLOCKED'"));
+  assert.ok(source.includes('next_action: { task:'));
+});

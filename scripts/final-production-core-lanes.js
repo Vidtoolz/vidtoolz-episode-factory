@@ -60,6 +60,7 @@ function nextActionsFromSnapshot(snapshot) {
   const { visual, performance, music: finalMusic } = snapshot.lanes;
   const ready = [];
   const waiting = [];
+  const blocked = [];
   if (!visual.complete) ready.push({ task: 'VISUAL_READY', lane: 'FINAL_VISUAL_ASSETS', state: 'READY', detail: 'Generate or select the next Final visual asset; visual production is independent' });
   if (!performance.complete) {
     const action = performance.status.next_action;
@@ -67,12 +68,15 @@ function nextActionsFromSnapshot(snapshot) {
     ready.push({ task: 'PERFORMANCE_READY', lane: 'FINAL_HUMAN_PERFORMANCE', state, detail: action, missing_sections: performance.status.coverage?.filter((x) => x.status !== 'COVERED_BY_SELECTED_TAKE').map((x) => x.section_id) || [] });
   }
   if (!finalMusic.complete) {
-    const action = finalMusic.status.next_action;
-    const state = action.task === 'CREATE_FINAL_MUSIC_CANDIDATE' ? 'WAITING_FOR_MIKKO' : 'READY';
-    ready.push({ task: 'MUSIC_READY', lane: 'FINAL_MUSIC', state, detail: action.detail, commands: action.commands || [action.command].filter(Boolean) });
+    const action = finalMusic.status?.next_action;
+    if (finalMusic.state === 'BLOCKED') blocked.push({ task: 'FINAL_MUSIC', lane: 'MUSIC', code: finalMusic.code, blocked_by: finalMusic.reason });
+    else {
+      const state = action.task === 'CREATE_FINAL_MUSIC_CANDIDATE' ? 'WAITING_FOR_MIKKO' : 'READY';
+      ready.push({ task: 'MUSIC_READY', lane: 'FINAL_MUSIC', state, detail: action.detail, commands: action.commands || [action.command].filter(Boolean) });
+    }
   }
   if (visual.complete && performance.complete && finalMusic.complete) waiting.push({ task: 'ASSEMBLE_FINAL_EDIT_IN_RESOLVE', state: 'WAITING_FOR_FINAL_EDIT_AUTHORITY', detail: 'All lanes are complete; edit, QC and publication remain separate authorities' });
-  return { ...snapshot, ready, waiting_on_mikko: waiting, blocked: [], independent_lanes: true, next_action: ready[0]?.detail || waiting[0]?.detail || 'All core lanes are complete' };
+  return { ...snapshot, ready, waiting_on_mikko: waiting, blocked, independent_lanes: true, next_action: ready[0]?.detail || waiting[0]?.detail || 'All core lanes are complete' };
 }
 
 function projection(runDir, options = {}) {

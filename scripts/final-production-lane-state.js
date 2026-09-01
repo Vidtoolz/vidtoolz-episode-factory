@@ -38,7 +38,15 @@ function deriveFinalProductionLaneStates(runDir, options = {}) {
     : { state: performanceStatus.state === 'COMPLETE' ? 'COMPLETE' : 'READY', complete: performanceStatus.state === 'COMPLETE', code: null, reason: null, status: performanceStatus };
   const musicStatus = { final_music_complete: musicCompletion.complete, blocking_reasons: musicCompletion.blocking_reasons || [], counts: { candidates: musicRegistry.candidates.length, selected: musicRegistry.selected_candidate_id ? 1 : 0, selections_made: musicRegistry.selection_history.length }, next_action: musicNextAction };
   const musicLane = musicError
-    ? { state: 'BLOCKED', complete: false, code: musicError.code || 'FINAL_MUSIC_AUTHORITY_INVALID', reason: musicError.message, status: null }
+    ? {
+      state: 'BLOCKED', complete: false, code: musicError.code || 'FINAL_MUSIC_AUTHORITY_INVALID', reason: musicError.message,
+      status: {
+        final_music_complete: false,
+        blocking_reasons: [musicError.code || 'FINAL_MUSIC_AUTHORITY_INVALID'],
+        counts: { candidates: musicRegistry.candidates.length, selected: musicRegistry.selected_candidate_id ? 1 : 0, selections_made: musicRegistry.selection_history.length },
+        next_action: { task: 'FINAL_MUSIC_AUTHORITY_BLOCKED', state: 'BLOCKED', detail: musicError.message, commands: [] },
+      },
+    }
     : { state: musicCompletion.complete ? 'COMPLETE' : 'READY', complete: musicCompletion.complete, code: null, reason: null, status: musicStatus };
   return {
     visual: { ...visual, detail: { tracker } },
