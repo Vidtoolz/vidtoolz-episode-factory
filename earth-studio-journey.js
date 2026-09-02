@@ -1634,7 +1634,7 @@
     if (!context || context.opening) return;
     const given = HOLD_CAMERA_FIELDS.filter((k) => isPresent(raw[k]));
     if (!given.length) return;
-    errors.push(`${at} is a ${def.label}, which keeps the camera exactly where the previous movement left it — it cannot set ${given.map((k) => k.replace(/_deg$|_m$/, "")).join(" or ")}. Put the tilt or altitude on the movement before it, on the orbit that follows, or on the place itself; only the journey's opening movement frames the camera.`);
+    errors.push(`${at} is a ${def.label}, which keeps the camera exactly where the previous movement left it — it cannot set ${given.join(" or ")}. Put the tilt or altitude on the movement before it, on the orbit that follows, or on the place itself; only the journey's opening movement frames the camera.`);
   }
 
   // A non-opening hold must sit where the camera IS. The compiler treats every
