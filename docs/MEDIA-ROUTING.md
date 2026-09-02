@@ -72,7 +72,7 @@ images are flagged as warnings, not rejected.
 
 Image-to-video prompt generation routes to Ollama on PRESTO at
 `OLLAMA_PRESTO_BASE_URL` (default `http://192.168.50.187:11434`, model
-`OLLAMA_PRESTO_MODEL`). It does not use vidnux Ollama and does not use a cloud
+`OLLAMA_PRESTO_MODEL`). Its default is the PRESTO-hosted Qwen3.8-27B Unsloth Dynamic V3 Q4_K_XL model. It does not use vidnux Ollama and does not use a cloud
 LLM. Saved prompts (`video-prompts.json`) record `prompt_host: presto`.
 
 GUI path (guided workflow): once images are selected, the project enters the

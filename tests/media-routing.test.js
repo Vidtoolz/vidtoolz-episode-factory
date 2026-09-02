@@ -50,14 +50,14 @@ test("routing: image prompts route to vidnux Ollama, local, no fallback", () => 
   assert.equal(routing.assertLocalLane(routing.LANE.IMAGE_PROMPT), true);
 });
 
-test("routing: local default model is qwen3.5:9b, env-overridable, PRESTO lane untouched (2026-07-27 migration)", () => {
+test("routing: PRESTO high-quality lane defaults to Qwen3.8-27B Dynamic V3 Q4_K_XL and remains env-overridable", () => {
   // Active vidnux default — a reversion to the retired qwen3:14b default is a regression.
   assert.equal(routing.resolveModel(routing.LANE.IMAGE_PROMPT, {}), "qwen3.5:9b");
   assert.notEqual(routing.resolveModel(routing.LANE.IMAGE_PROMPT, {}), "qwen3:14b");
   // Explicit env selection still wins (qwen3:14b remains selectable as rollback).
   assert.equal(routing.resolveModel(routing.LANE.IMAGE_PROMPT, { OLLAMA_MODEL: "qwen3:14b" }), "qwen3:14b");
-  // The PRESTO I2V-prompt lane is a separate route and must not have moved.
-  assert.equal(routing.resolveModel(routing.LANE.I2V_PROMPT, {}), "vidtoolz-presto:latest");
+  // The PRESTO I2V-prompt lane is the high-quality local route.
+  assert.equal(routing.resolveModel(routing.LANE.I2V_PROMPT, {}), "qwen38-27b-dynamic-v3-q4-k-xl:latest");
   // The server's OLLAMA_MODEL literal must agree with the routing lane default —
   // two contradictory defaults for the same lane is exactly the drift this guards.
   const serverSource = fs.readFileSync(path.join(__dirname, "..", "package-engine-server.js"), "utf8");
