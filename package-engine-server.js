@@ -680,10 +680,9 @@ const LOCAL_IMAGE_PROVIDER = Object.freeze({
 // Local Ollama LLM (no credentials, localhost only). Used for browser-local
 // idea-triage drafting. Configurable via env so a different host/model can be used.
 const OLLAMA_BASE_URL = String(process.env.OLLAMA_URL || process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
-// Local default: qwen3.5:9b (confirmed 2026-07-27, replacing qwen3:14b after
-// an output-quality check; rollback = re-pull qwen3:14b + OLLAMA_MODEL override).
-// Must match the image_prompt_generation lane default in
-// config/media-routing.json (guarded by media-routing.test.js).
+// Explicit image-prompt lane: qwen3.5:9b on vidnux. Normal/default chat falls
+// through to HIGH_QUALITY_OLLAMA_MODEL below, so specialized image prompting
+// remains separate from the default high-quality local LLM route.
 const OLLAMA_MODEL = String(process.env.OLLAMA_MODEL || 'qwen3.5:9b');
 const SUPER_FOCUS_EVAL_MODEL = String(process.env.SUPER_FOCUS_EVAL_MODEL || 'qwen3:30b');
 const SUPER_FOCUS_EVAL_NUM_CTX = Number(process.env.SUPER_FOCUS_EVAL_NUM_CTX) > 0 ? Number(process.env.SUPER_FOCUS_EVAL_NUM_CTX) : 16384;
@@ -858,6 +857,15 @@ function buildClearUnlinkedPreview(id, state, indexes, sfRoot, sfMediaRoot) {
 
 const OLLAMA_PRESTO_BASE_URL = mediaRouting.resolveEndpoint(mediaRouting.LANE.I2V_PROMPT);
 const OLLAMA_PRESTO_MODEL = mediaRouting.resolveModel(mediaRouting.LANE.I2V_PROMPT);
+// Normal/high-quality local LLM calls use PRESTO by default. Explicit lanes
+// (notably image-prompt generation and Super Focus provider decisions) pass
+// their own endpoint/model and therefore retain their existing ownership.
+const HIGH_QUALITY_OLLAMA_BASE_URL = String(
+  process.env.OLLAMA_HIGH_QUALITY_URL || OLLAMA_PRESTO_BASE_URL
+).replace(/\/+$/, '');
+const HIGH_QUALITY_OLLAMA_MODEL = String(
+  process.env.OLLAMA_HIGH_QUALITY_MODEL || OLLAMA_PRESTO_MODEL
+);
 
 // Read-only routing status: the policy plus the resolved local endpoints/models
 // for each lane. Used by the cockpit to make machine/provider routing obvious
@@ -882,6 +890,11 @@ function buildMediaRoutingStatus() {
         host: 'presto', engine: 'ollama', locality: 'local', fallback_allowed: false,
         endpoint: OLLAMA_PRESTO_BASE_URL, model: OLLAMA_PRESTO_MODEL,
         label: 'LOCAL · PRESTO · Ollama',
+      },
+      default_local_high_quality: {
+        host: 'presto', engine: 'ollama', locality: 'local', fallback_allowed: false,
+        endpoint: HIGH_QUALITY_OLLAMA_BASE_URL, model: HIGH_QUALITY_OLLAMA_MODEL,
+        label: 'DEFAULT HIGH-QUALITY · PRESTO · Ollama',
       },
       image_to_video_generation: {
         host: 'presto', engine: 'comfyui', locality: 'local', fallback_allowed: false,
@@ -5175,7 +5188,7 @@ async function callOllamaChat({ system, user, schema, model, baseUrl } = {}, opt
   // baseUrl selects the host lane (default vidnux Ollama). I2V prompts pass the
   // PRESTO Ollama base; on failure we surface a blocked state and do NOT retry
   // against another host.
-  const resolvedBase = String(baseUrl || OLLAMA_BASE_URL).replace(/\/+$/, '');
+  const resolvedBase = String(baseUrl || HIGH_QUALITY_OLLAMA_BASE_URL).replace(/\/+$/, '');
   const url = `${resolvedBase}/api/chat`;
   let response;
   try {
@@ -5183,7 +5196,7 @@ async function callOllamaChat({ system, user, schema, model, baseUrl } = {}, opt
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: model || OLLAMA_MODEL,
+        model: model || HIGH_QUALITY_OLLAMA_MODEL,
         messages: [
           { role: 'system', content: system || '' },
           { role: 'user', content: user || '' },
@@ -5681,7 +5694,7 @@ function ideaEngineTimeoutMs(options = {}) {
 }
 
 function ideaEngineModel(options = {}) {
-  return String(options.ideaEngineModel || process.env.IDEA_ENGINE_OLLAMA_MODEL || OLLAMA_MODEL);
+  return String(options.ideaEngineModel || process.env.IDEA_ENGINE_OLLAMA_MODEL || HIGH_QUALITY_OLLAMA_MODEL);
 }
 
 // Classifies parser/validator rejection evidence into stable diagnostic

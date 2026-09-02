@@ -17,7 +17,7 @@ function listen(s) { return new Promise((r) => s.listen(0, "127.0.0.1", r)); }
 function close(s) { return new Promise((r) => s.close(r)); }
 
 const EVAL_SCRIPT = "The plate did not render. So I built a gate.";
-const CHAT_MODEL = "qwen38-27b-ud-q3-k-xl:chat";
+const CHAT_MODEL = "qwen38-27b-dynamic-v3-q3-k-xl:official";
 
 // A parser-valid evaluation fixture. The production parser requires at least
 // two of EVALUATION_KEYS (categories/sentences/hard_gates/checklist/fix_plan/
@@ -40,7 +40,7 @@ function capturingOllama(content, evalModel) {
     // model is installed before dispatching. Serve a real models list so the
     // probe passes hermetically (no real Ollama).
     if (/\/api\/tags/.test(u)) {
-      return { ok: true, status: 200, json: async () => ({ models: [{ name: evalModel || "qwen38-27b-ud-q3-k-xl:chat" }] }) };
+      return { ok: true, status: 200, json: async () => ({ models: [{ name: evalModel || "qwen38-27b-dynamic-v3-q3-k-xl:official" }] }) };
     }
     calls.push({ url: u, body: JSON.parse(init.body || "{}") });
     return {
@@ -115,7 +115,7 @@ function routerStub(decision) {
   };
 }
 
-function dispatchDecision({ host = "vidnux", endpoint = "http://127.0.0.1:11434", chatTag = "qwen38-27b-ud-q3-k-xl:chat" } = {}) {
+function dispatchDecision({ host = "vidnux", endpoint = "http://127.0.0.1:11434", chatTag = "qwen38-27b-dynamic-v3-q3-k-xl:official" } = {}) {
   return {
     final_state: "WOULD_DISPATCH_LOCAL_AUTO",
     evaluated_at: new Date().toISOString(),
@@ -177,7 +177,7 @@ test("routing flag ON: vidnux selected → chat call goes to vidnux endpoint wit
     const chat = fake.calls.filter((c) => /\/api\/chat$/.test(c.url));
     assert.ok(chat.length > 0, "expected a chat call");
     assert.ok(chat[0].url.startsWith("http://127.0.0.1:11434"), `call hit vidnux endpoint, got ${chat[0].url}`);
-    assert.equal(chat[0].body.model, "qwen38-27b-ud-q3-k-xl:chat");
+    assert.equal(chat[0].body.model, "qwen38-27b-dynamic-v3-q3-k-xl:official");
     assert.equal(chat[0].body.options.num_ctx, 16384, "num_ctx must stay 16384");
     const body = unwrap(res);
     assert.ok(body.routing, "response carries routing provenance");

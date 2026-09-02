@@ -13,8 +13,9 @@ explicitly promotes it into Super Focus.
   `package-engine-server.js`
 - **State:** `idea-engine-state/` (git-ignored, local, never on VIDNAS;
   env-overridable via `IDEA_ENGINE_ROOT`) — `categories.json` + `ideas.json`
-- **Generation:** local vidnux Ollama only (`/api/chat`, JSON-schema `format`,
-  `think:false`), model `IDEA_ENGINE_OLLAMA_MODEL` → `OLLAMA_MODEL` → `qwen3.5:9b`
+- **Generation:** local Ollama (`/api/chat`, JSON-schema `format`,
+  `think:false`), model `IDEA_ENGINE_OLLAMA_MODEL` → the PRESTO high-quality
+  local default (`qwen38-27b-dynamic-v3-q4-k-xl:latest`)
 
 ## Relationship to the existing Idea Module (~/vidtoolz-idea-module)
 
@@ -305,9 +306,11 @@ is touched by adding or removing this contract.
 
 ## Model routing (Idea Engine only)
 
-Resolution chain (route-isolated — no other VIDTOOLZ route is affected):
+Resolution chain (the explicit `IDEA_ENGINE_OLLAMA_MODEL` override remains
+route-local):
 `options.ideaEngineModel` (tests) → **`IDEA_ENGINE_OLLAMA_MODEL`** env →
-`OLLAMA_MODEL` env → the global default (currently `qwen3.5:9b`). Every
+the PRESTO high-quality local default (currently
+`qwen38-27b-dynamic-v3-q4-k-xl:latest`). Every
 generation status record carries the resolved `model`, so the live route is
 inspectable at any time via `GET /api/idea-engine/generation-status` (the GUI
 shows "with <model>" during and after runs).

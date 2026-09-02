@@ -128,9 +128,11 @@ test("routing: provenanceFor yields correct provenance per lane", () => {
 
 // ── Server routing status ─────────────────────────────────────────────────
 
-test("server: buildMediaRoutingStatus exposes 6 lanes with hosts, openai disabled", () => {
+test("server: buildMediaRoutingStatus exposes 7 lanes with hosts, openai disabled", () => {
   const status = packageEngineServer.buildMediaRoutingStatus();
-  assert.equal(Object.keys(status.lanes).length, 6);
+  assert.equal(Object.keys(status.lanes).length, 7);
+  assert.equal(status.lanes.default_local_high_quality.host, "presto");
+  assert.equal(status.lanes.default_local_high_quality.model, "qwen38-27b-dynamic-v3-q4-k-xl:latest");
   assert.equal(status.lanes.i2v_prompt_generation.host, "presto");
   assert.equal(status.lanes.text_to_image_generation.host, "vidnux");
   assert.equal(status.openai_image_generation, "disabled");

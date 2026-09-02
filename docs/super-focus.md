@@ -450,11 +450,11 @@ items, so it is safe to re-run to resume.
 | `SUPER_FOCUS_PRODUCTION_SCRIPT` | canonical `run-production.py` | Video dispatch script |
 | `SUPER_FOCUS_PYTHON_BIN` | `python3` | Interpreter for the dispatch scripts |
 | `OLLAMA_MODEL` | `qwen3.5:9b` | vidnux text model (confirmed default since 2026-07-27; rollback = re-pull `qwen3:14b` and set this variable) |
-| `OLLAMA_PRESTO_MODEL` | `vidtoolz-presto:latest` | PRESTO i2v-prompt model |
+| `OLLAMA_PRESTO_MODEL` | `qwen38-27b-dynamic-v3-q4-k-xl:latest` | PRESTO high-quality Qwen3.8 Dynamic V3 Q4_K_XL model |
 
 > **PRESTO i2v model routing:** the PRESTO i2v-prompt model is declared in the
 > canonical routing policy `config/media-routing.json`
-> (`i2v_prompt_generation.model_default`), currently `vidtoolz-presto:latest` —
+> (`i2v_prompt_generation.model_default`), currently `qwen38-27b-dynamic-v3-q4-k-xl:latest` —
 > the model actually installed on PRESTO. This is read by both Super Focus and
 > the existing aigen i2v lane, so no per-launch env is required. It stays
 > env-overridable via `OLLAMA_PRESTO_MODEL`; the durable `vidtoolz-cockpit.service`
