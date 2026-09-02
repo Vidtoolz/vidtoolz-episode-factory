@@ -44,6 +44,25 @@
     return Number.isFinite(n) ? n : null;
   }
 
+  // Invalidity evidence. Normalization is deliberately tolerant (it must never
+  // throw on junk), but tolerance must not become authority: whenever a value
+  // that WAS present is discarded by coercion — a non-numeric number, an unknown
+  // enum, a non-list where a list belongs — the original is kept on the
+  // normalized record under `invalid_fields` and carried across repeated
+  // normalization, so validation can refuse it regardless of call order.
+  // Valid input never produces this field, so canonical output is unchanged.
+  const wasGiven = (v) => !(v === undefined || v === null || v === "");
+  // Non-finite numbers cannot survive JSON (they become null = "absent"), so
+  // the evidence is stored as text ("NaN", "Infinity") — still non-numeric to
+  // the validator, but durable across serialization.
+  const evidenceValue = (v) => (typeof v === "number" && !Number.isFinite(v) ? String(v) : v);
+  function carryInvalid(target, src, rejected) {
+    const carried = src && typeof src === "object" && src.invalid_fields && typeof src.invalid_fields === "object" ? src.invalid_fields : null;
+    const merged = { ...(carried || {}), ...rejected };
+    if (Object.keys(merged).length) target.invalid_fields = merged;
+    return target;
+  }
+
   const JOURNEY_VERSION = 1;
   const CONTINUATION_STATE_VERSION = 1;
 
@@ -592,8 +611,20 @@
     step.tilt_deg = numOrNull(src.tilt_deg);
     step.revolutions = numOrNull(src.revolutions);
     step.framing = FRAMING_SCALES[src.framing] ? src.framing : null;
-    if (!valid && src.type) step.unsupported_type = String(src.type);
-    return step;
+    // Invalidity EVIDENCE is preserved, never erased: an unknown / wrong-slot /
+    // missing type still normalizes to a safe default (this function must never
+    // throw — see "normalizing junk yields a safe journey"), but the original
+    // identity rides along as `unsupported_type` ("" = no type given) and is
+    // carried across repeated normalization, so validation sees it whichever
+    // order a caller uses. Enforcement lives in validateJourneyInput.
+    if (!valid) step.unsupported_type = src.type == null ? "" : String(src.type);
+    else if (src.unsupported_type !== undefined && src.unsupported_type !== null) step.unsupported_type = String(src.unsupported_type);
+    const rejected = {};
+    ["duration_seconds", "emphasis", "altitude_m", "tilt_deg", "revolutions"].forEach((k) => { if (wasGiven(src[k]) && step[k] === null) rejected[k] = evidenceValue(src[k]); });
+    if (wasGiven(src.pace) && !PACE_PRESETS[src.pace]) rejected.pace = src.pace;
+    if (wasGiven(src.framing) && src.framing !== "auto" && !FRAMING_SCALES[src.framing]) rejected.framing = src.framing;
+    if (wasGiven(src.direction) && Number(src.direction) !== 1 && Number(src.direction) !== -1) rejected.direction = src.direction;
+    return carryInvalid(step, src, rejected);
   }
 
   // Story intent attached to a stop: what this place is DOING in the sequence.
@@ -611,13 +642,17 @@
 
   function normalizePlace(raw) {
     const src = raw && typeof raw === "object" ? raw : { location: raw };
-    return {
+    const place = {
       location: String(src.location == null ? "" : src.location).trim(),
       story: normalizeStory(src.story),
       framing: src.framing === "auto" || !src.framing ? "auto" : (FRAMING_SCALES[src.framing] ? src.framing : "auto"),
       altitude_m: numOrNull(src.altitude_m),
       tilt_deg: numOrNull(src.tilt_deg),
     };
+    const rejected = {};
+    if (wasGiven(src.framing) && src.framing !== "auto" && !FRAMING_SCALES[src.framing]) rejected.framing = src.framing;
+    ["altitude_m", "tilt_deg"].forEach((k) => { if (wasGiven(src[k]) && place[k] === null) rejected[k] = evidenceValue(src[k]); });
+    return carryInvalid(place, src, rejected);
   }
 
   function normalizeJourney(raw) {
@@ -625,16 +660,24 @@
     const start = normalizePlace(src.start);
     const startSource = src.start && src.start.source === "continuation" ? "continuation" : "location";
     const continuation = startSource === "continuation" && src.start.continuation ? src.start.continuation : null;
-    return {
+    const startRejected = {};
+    if (src.start && typeof src.start === "object" && wasGiven(src.start.source)
+      && src.start.source !== "location" && src.start.source !== "continuation") startRejected.source = src.start.source;
+    const journeyRejected = {};
+    if (wasGiven(src.journey_version) && Number(src.journey_version) !== JOURNEY_VERSION) journeyRejected.journey_version = src.journey_version;
+    if (wasGiven(src.pace) && !PACE_PRESETS[src.pace]) journeyRejected.pace = src.pace;
+    if (wasGiven(src.start_movements) && !Array.isArray(src.start_movements)) journeyRejected.start_movements = src.start_movements;
+    if (wasGiven(src.legs) && !Array.isArray(src.legs)) journeyRejected.legs = src.legs;
+    const journey = {
       journey_version: JOURNEY_VERSION,
       pace: PACE_PRESETS[src.pace] ? src.pace : DEFAULT_PACE,
       aspect: src.aspect || null,
       preset: src.preset || null,
-      start: {
+      start: carryInvalid({
         source: startSource,
         ...start,
         ...(continuation ? { continuation } : {}),
-      },
+      }, start, startRejected),
       start_movements: (Array.isArray(src.start_movements) ? src.start_movements : []).map((s) => normalizeStep(s, "at")),
       legs: (Array.isArray(src.legs) ? src.legs : []).map((leg) => {
         const l = leg && typeof leg === "object" ? leg : {};
@@ -642,14 +685,20 @@
         const travel = Array.isArray(l.travel) && l.travel.length
           ? l.travel.map((s) => normalizeStep(s, "travel"))
           : TRAVEL_STYLES[styleKey].steps.map((k) => newStep(k, "travel"));
-        return {
+        const legRejected = {};
+        if (wasGiven(l.travel_style) && !TRAVEL_STYLES[l.travel_style]) legRejected.travel_style = l.travel_style;
+        if (wasGiven(l.travel) && !Array.isArray(l.travel)) legRejected.travel = l.travel;
+        if (wasGiven(l.movements) && !Array.isArray(l.movements)) legRejected.movements = l.movements;
+        return carryInvalid({
           destination: normalizePlace(l.destination),
           travel_style: styleKey,
           travel,
           movements: (Array.isArray(l.movements) ? l.movements : []).map((s) => normalizeStep(s, "at")),
-        };
+        }, l, legRejected);
       }),
     };
+    // `start.invalid_fields` from a previous pass rides inside `start` via the spread above.
+    return carryInvalid(journey, src, journeyRejected);
   }
 
   function moveLeg(journey, index, delta) {
@@ -1516,8 +1565,145 @@
   }
 
   // ── Validation (operator language) ────────────────────────────────────────
+  //
+  // AUTHORITY CONTRACT (2026-09-02 repair):
+  //   raw journey ─► validateJourneyInput (structure + intent, on the RAW input)
+  //               ─► normalizeJourney      (compatibility canonicalization; tolerant, never throws)
+  //               ─► canonical checks      (places resolve, durations, compile verification)
+  //               ─► compile
+  // Validity is INVARIANT under normalization: normalizeStep preserves the
+  // evidence of an unsupported movement (`unsupported_type`), and the raw stage
+  // enforces that evidence too, so validate(raw) and validate(normalize(raw))
+  // reach the same verdict. Normalization can therefore never turn an invalid
+  // journey into a valid one, whatever order a caller happens to use.
+  //
+  // "Present" below means not undefined / null / "" — an absent optional is
+  // never an error (compatibility), but a present value must be inside the
+  // contract: numeric fields must coerce to a finite number (numeric strings
+  // stay accepted), enums must be known, movements must exist for their slot.
+  const isPresent = (v) => !(v === undefined || v === null || v === "");
+  // Exactly numOrNull's acceptance: whatever normalization would coerce to a
+  // finite number is valid here, so raw and normalized verdicts cannot disagree.
+  const isFiniteLike = (v) => numOrNull(v) !== null;
+  // A record with `invalid_fields` evidence is validated as if the rejected raw
+  // values were still present — the evidence re-materializes the input.
+  const restoreView = (rec) => (rec && typeof rec === "object" && !Array.isArray(rec) && rec.invalid_fields && typeof rec.invalid_fields === "object")
+    ? { ...rec, ...rec.invalid_fields } : rec;
+  const NUMERIC_STEP_FIELDS = ["duration_seconds", "emphasis", "altitude_m", "tilt_deg", "revolutions"];
+  const NUMERIC_PLACE_FIELDS = ["altitude_m", "tilt_deg"];
+
+  function movementList(slot) {
+    return (slot === "travel" ? TRAVEL_MOVEMENT_KEYS : AT_MOVEMENT_KEYS).map((k) => MOVEMENTS[k].label).join(", ");
+  }
+
+  function validateStepInput(rawStep, slot, at, errors) {
+    const raw = restoreView(rawStep);
+    if (typeof raw === "string") {
+      const def = MOVEMENTS[raw];
+      if (!raw.trim()) errors.push(`${at} has no movement type. Pick one of: ${movementList(slot)}.`);
+      else if (!def || def.slot !== slot) errors.push(`${at} is "${raw}", which this generator cannot produce. Pick one of: ${movementList(slot)}.`);
+      return;
+    }
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      errors.push(`${at} is not a movement. Each movement needs a type — pick one of: ${movementList(slot)}.`);
+      return;
+    }
+    // Evidence carried by an already-normalized step wins: the original type is
+    // what the operator asked for, not the safe default it was normalized to.
+    const askedType = raw.unsupported_type !== undefined && raw.unsupported_type !== null ? String(raw.unsupported_type) : raw.type;
+    if (!isPresent(askedType) || (typeof askedType === "string" && !askedType.trim())) {
+      errors.push(`${at} has no movement type. Pick one of: ${movementList(slot)}.`);
+    } else if (typeof askedType !== "string") {
+      errors.push(`${at} has a movement type that is not a name (${JSON.stringify(askedType)}). Pick one of: ${movementList(slot)}.`);
+    } else {
+      const def = MOVEMENTS[askedType];
+      if (!def || def.slot !== slot) errors.push(`${at} is "${askedType}", which this generator cannot produce. Pick one of: ${movementList(slot)}.`);
+    }
+    NUMERIC_STEP_FIELDS.forEach((k) => {
+      if (isPresent(raw[k]) && !isFiniteLike(raw[k])) errors.push(`${at} has a ${k.replace(/_/g, " ")} that is not a number (${JSON.stringify(raw[k])}).`);
+    });
+    if (isPresent(raw.revolutions) && isFiniteLike(raw.revolutions) && Number(raw.revolutions) < 0) {
+      errors.push(`${at} has negative revolutions (${raw.revolutions}). Use a positive number of turns, and set the direction to counterclockwise for the other way round.`);
+    }
+    if (isPresent(raw.direction) && Number(raw.direction) !== 1 && Number(raw.direction) !== -1) {
+      errors.push(`${at} has direction ${JSON.stringify(raw.direction)}; use 1 (clockwise) or -1 (counterclockwise).`);
+    }
+    if (isPresent(raw.pace) && !PACE_PRESETS[raw.pace]) {
+      errors.push(`${at} has pace "${raw.pace}", which is not one of: ${Object.keys(PACE_PRESETS).join(", ")}.`);
+    }
+    if (isPresent(raw.framing) && raw.framing !== "auto" && !FRAMING_SCALES[raw.framing]) {
+      errors.push(`${at} has framing "${raw.framing}", which is not one of: auto, ${Object.keys(FRAMING_SCALES).join(", ")}.`);
+    }
+  }
+
+  function validatePlaceInput(rawPlace, label, errors) {
+    const raw = restoreView(rawPlace);
+    if (raw === undefined || raw === null || typeof raw === "string") return; // bare name or absent: canonical checks handle it
+    if (typeof raw !== "object" || Array.isArray(raw)) { errors.push(`${label} is not a place. Give a place name, or coordinates like 60.17,24.94.`); return; }
+    if (isPresent(raw.framing) && raw.framing !== "auto" && !FRAMING_SCALES[raw.framing]) {
+      errors.push(`${label} has framing "${raw.framing}", which is not one of: auto, ${Object.keys(FRAMING_SCALES).join(", ")}.`);
+    }
+    NUMERIC_PLACE_FIELDS.forEach((k) => {
+      if (isPresent(raw[k]) && !isFiniteLike(raw[k])) errors.push(`${label} has a ${k.replace(/_/g, " ")} that is not a number (${JSON.stringify(raw[k])}).`);
+    });
+  }
+
+  // Stage 1: RAW structure + intent validation. Runs on exactly what the caller
+  // supplied (raw or already-normalized), before any canonicalization.
+  function validateJourneyInput(rawJourney, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const errors = [];
+    if (!rawJourney || typeof rawJourney !== "object" || Array.isArray(rawJourney)) {
+      return { ok: false, errors: ["This is not a camera journey. Send the journey object built by the journey builder."] };
+    }
+    const journey = restoreView(rawJourney);
+    if (isPresent(journey.journey_version) && Number(journey.journey_version) !== JOURNEY_VERSION) {
+      errors.push(`This journey is version ${JSON.stringify(journey.journey_version)}; this generator understands journey version ${JOURNEY_VERSION}.`);
+    }
+    if (isPresent(journey.pace) && !PACE_PRESETS[journey.pace]) {
+      errors.push(`The journey pace "${journey.pace}" is not one of: ${Object.keys(PACE_PRESETS).join(", ")}.`);
+    }
+    if (isPresent(journey.aspect) && planner && planner.ASPECTS && !planner.ASPECTS[journey.aspect]) {
+      errors.push(`The aspect "${journey.aspect}" is not one of: ${Object.keys(planner.ASPECTS).join(", ")}.`);
+    }
+    if (journey.start !== undefined && journey.start !== null && typeof journey.start === "object" && !Array.isArray(journey.start)) {
+      const startView = restoreView(journey.start);
+      if (isPresent(startView.source) && startView.source !== "location" && startView.source !== "continuation") {
+        errors.push(`The start source "${startView.source}" is not one of: location, continuation.`);
+      }
+    }
+    validatePlaceInput(journey.start, "The start location", errors);
+    if (journey.start_movements !== undefined && journey.start_movements !== null && !Array.isArray(journey.start_movements)) {
+      errors.push("Start movements must be a list of movements.");
+    } else {
+      (journey.start_movements || []).forEach((s, i) => validateStepInput(s, "at", `Start movement ${i + 1}`, errors));
+    }
+    if (journey.legs !== undefined && journey.legs !== null && !Array.isArray(journey.legs)) {
+      errors.push("Destinations must be a list.");
+    } else {
+      (journey.legs || []).forEach((rawLeg, i) => {
+        const label = `Destination ${i + 1}`;
+        if (!rawLeg || typeof rawLeg !== "object" || Array.isArray(rawLeg)) { errors.push(`${label} is not a destination. Give it a place and its movements.`); return; }
+        const leg = restoreView(rawLeg);
+        validatePlaceInput(leg.destination, `${label}'s location`, errors);
+        if (isPresent(leg.travel_style) && !TRAVEL_STYLES[leg.travel_style]) {
+          errors.push(`${label} has travel style "${leg.travel_style}", which is not one of: ${Object.keys(TRAVEL_STYLES).join(", ")}.`);
+        }
+        if (leg.travel !== undefined && leg.travel !== null && !Array.isArray(leg.travel)) errors.push(`${label}'s travel must be a list of movements.`);
+        else (leg.travel || []).forEach((s, k) => validateStepInput(s, "travel", `${label} travel movement ${k + 1}`, errors));
+        if (leg.movements !== undefined && leg.movements !== null && !Array.isArray(leg.movements)) errors.push(`${label}'s movements must be a list.`);
+        else (leg.movements || []).forEach((s, k) => validateStepInput(s, "at", `${label} movement ${k + 1}`, errors));
+      });
+    }
+    return { ok: errors.length === 0, errors };
+  }
+
   function validateJourney(journey, options = {}) {
     const planner = loadPlanner(options.planner);
+    // Stage 1 — raw input authority. Refuse before normalization can soften anything.
+    const raw = validateJourneyInput(journey, { planner });
+    if (!raw.ok) return { ok: false, errors: raw.errors, warnings: [], compiled: null, journey: null };
+    // Stage 2 — compatibility canonicalization; Stage 3 — canonical checks below.
     const j = normalizeJourney(journey);
     const errors = [];
     const warnings = [];
@@ -1550,10 +1736,9 @@
       steps.forEach((step, i) => {
         const def = MOVEMENTS[step.type];
         const at = `${label} movement ${i + 1}`;
-        if (step.unsupported_type) {
-          errors.push(`${at} is "${step.unsupported_type}", which this generator cannot produce. Pick one of: ${(step.slot === "travel" ? TRAVEL_MOVEMENT_KEYS : AT_MOVEMENT_KEYS).map((k) => MOVEMENTS[k].label).join(", ")}.`);
-          return;
-        }
+        // Unsupported / missing types were refused by validateJourneyInput
+        // (stage 1) before we got here; defensively skip if evidence survived.
+        if (step.unsupported_type !== undefined) return;
         if (step.duration_seconds === null) return;
         if (step.duration_seconds < 0) {
           errors.push(`${at} (${def ? def.label : step.type}) has a negative duration. Durations must be at least 1 second.`);
@@ -1601,7 +1786,7 @@
       }
     }
 
-    return { ok: errors.length === 0, errors, warnings, compiled };
+    return { ok: errors.length === 0, errors, warnings, compiled, journey: j };
   }
 
   // ── Summary / timeline ────────────────────────────────────────────────────
@@ -1896,6 +2081,7 @@
     compileJourneyToParsed,
     verifyCompilation,
     verifyParsedEquivalence,
+    validateJourneyInput,
     validateJourney,
     summarizeJourney,
     continuationStateFromPlan,

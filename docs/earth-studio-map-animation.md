@@ -20,6 +20,20 @@ lane (`earth-studio-lane.js`) still uses the text path**; the structured path is
 byte-identical to it over every tracked journey canary and a set of adversarial journeys in
 `tests/earth-studio-path-equivalence.test.js`. Activating it in the lane is a separate, later decision.
 
+## Journey validation authority
+
+`validateJourney` is the single gate for camera journeys and runs in three stages: **raw input
+validation** on exactly what the caller supplied (`validateJourneyInput`: movement types must exist
+for their slot, numbers must be numbers, enums, journey version, start source and list shapes must
+be known), then **compatibility normalization** (`normalizeJourney`, tolerant, never throws: numeric
+strings, omitted/null/empty optionals, bare-string steps and places, empty travel lists), then the
+**canonical checks** (places resolve, durations, compile verification). Normalization preserves the
+evidence of anything it had to discard (`unsupported_type`, `invalid_fields`) and the raw stage
+enforces that evidence too, so validity is invariant under normalization: a journey that is invalid
+raw stays invalid after any number of normalizations or JSON round trips. The lane validates the raw
+payload and takes the canonical journey from the validator (`check.journey`); it never normalizes
+before validating.
+
 ## What it automates (and the one thing it can't)
 Google Earth Studio is a **browser-only** Google product with **no API / no headless mode**, so the
 frame export itself is always a manual in-browser step. Everything around it is automated here:
