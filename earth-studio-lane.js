@@ -102,12 +102,16 @@ function writeJob(packageDir, payload = {}, options = {}) {
   let journeyCompiled = null;
   let journeySummary = null;
   if (payload.journey && typeof payload.journey === 'object') {
-    journey = journeyModel.normalizeJourney(payload.journey);
-    const check = journeyModel.validateJourney(journey);
+    // Validate the RAW payload first (validateJourney runs its raw-input stage
+    // before normalizing), then take the canonical journey FROM the validator.
+    // Normalizing before validating let an unsupported movement type be coerced
+    // to a safe default and generated; the order is now part of the contract.
+    const check = journeyModel.validateJourney(payload.journey);
     if (!check.ok) {
       const e = new Error(`this camera journey cannot be generated yet:\n- ${check.errors.join('\n- ')}`);
       e.statusCode = 400; e.journey_errors = check.errors; throw e;
     }
+    journey = check.journey;
     journeyCompiled = check.compiled;
     journeySummary = journeyModel.summarizeJourney(journey);
   }
