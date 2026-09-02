@@ -1,0 +1,309 @@
+diff --git a/earth-studio-height-framing.js b/earth-studio-height-framing.js
+index 621cd86..a3b6860 100644
+--- a/earth-studio-height-framing.js
++++ b/earth-studio-height-framing.js
+@@ -323,3 +323,4 @@
+   if (typeof module !== 'undefined' && module.exports) module.exports = api;
+   else globalScope.VidtoolzEarthStudioHeightFraming = api;
+ })(typeof globalThis !== 'undefined' ? globalThis : this);
++
+diff --git a/earth-studio-job-planner.js b/earth-studio-job-planner.js
+index 2924c96..0b21841 100644
+--- a/earth-studio-job-planner.js
++++ b/earth-studio-job-planner.js
+@@ -1,17 +1,6 @@
+ (function earthStudioJobPlanner(globalScope) {
+   "use strict";
+ 
+-  // Production travel framing is kept in a pure helper so the reviewed
+-  // envelope can be tested without invoking the UI. Browser and Node callers
+-  // resolve the same implementation; no remote service or mutable state is
+-  // involved.
+-  const heightFraming = typeof module !== "undefined" && module.exports
+-    ? require("./earth-studio-height-framing.js")
+-    : globalScope.VidtoolzEarthStudioHeightFraming;
+-  const smoothCalmTravel = typeof module !== "undefined" && module.exports
+-    ? require("./earth-studio-smooth-calm-travel.js")
+-    : globalScope.VidtoolzEarthStudioSmoothCalmTravel;
+-
+   const DEFAULT_OUTPUT_DIR = "/home/vidtoolz/Videos/vidtoolz-earth-studio-jobs";
+   const VERSION = "0.9.4"; // v0.9.4 semantic-space composition constraint; explicit tilt remains authoritative. v0.9.3 evidence-integrity hardening (profile v4): role-correct easing — the Google-template heavy deceleration lands on SEGMENT-BOUNDARY keyframes (positional 0.99·gap/0.99, altitude 2.5·gap/1.0 — the template authors it on the keyframe ENDING the big move, an interior keyframe, NOT the track final), track finals get the gentle multi-reference arrival (0.25/0.29, infl 0.4), interior influence is corpus-DERIVED (0.43; darien-gap 0.35 participates). // v0.9.2 corpus-rebuilt profile v3: deterministic derivation (scripts/rebuild-earth-studio-motion-profile.js) over 4 approved internet references; family-aware arrivals — APPROACH finals use the Google Zoom-To template full-gap deceleration (x 0.99·gap, influence 0.99, via 2 independent template exports), others the multi-reference 0.31/0.4. // v0.9.1 internet-reference motion profile v2: gap-relative eased handles + final settle-hold, derived ONLY from internet-sourced human-authored .esp references (config/earth-studio-motion/, operator directive: local/generated files do not qualify) — ES preserves unadorned keyframes as hard-linear, so easing must be authored. (v0.8.0 fly→orbit geometry: a fly/zoom immediately followed by an orbit around the same resolved target terminates at the orbit's ring entry (plan-annotated lookahead, ends_at_orbit_entry), so the pair plays as one continuous move — no sideways slide onto the ring. (v0.7.0: hover holds camera, orbit-scoped modifiers, fragment merge, "tilt N degrees", global duration strip, antimeridian seam pairs.)
+   const FRAME_RATE = 30;
+@@ -1143,31 +1132,9 @@
+       if (!orbit) continue;
+       if (!sameResolvedTarget(seg.location, orbit.location)) continue;
+       seg.ends_at_orbit_entry = orbit.segment_id;
+-      // A ring entry is one complete camera pose, not merely a latitude/
+-      // longitude destination.  The camera position is offset from the subject
+-      // by `altitude * tan(tilt)`, so staging on the successor orbit's radius
+-      // while retaining the predecessor's altitude produces a view axis that
+-      // misses the subject whenever those altitudes differ (Matterhorn exposed
+-      // this as a 6.39 degree arrival error).  Preserve the movement's requested
+-      // framing on the segment, but make the actual staged boundary authority
+-      // explicit for the keyframe compiler.
+-      // The complete-pose override is specifically terrain-arrival authority:
+-      // morphology calibration can deliberately choose a successor orbit
+-      // altitude different from the gazetteer's local arrival altitude. Other
+-      // staged handoffs (including frozen DIRN17) retain their accepted framing
+-      // contract and ordinary acquisition semantics.
+-      if ((seg.location && seg.location.terrain_morphology)
+-          || (orbit.location && orbit.location.terrain_morphology)) {
+-        seg.orbit_entry_altitude_m = orbit.altitude_m;
+-        seg.orbit_entry_tilt_deg = orbit.tilt_deg;
+-      }
+       const through = segments[i + 1] !== orbit
+         ? ` through the held segment ${segments[i + 1].segment_id}` : "";
+-      if (Number.isFinite(seg.orbit_entry_altitude_m)) {
+-        notes.push(`segment ${seg.segment_id}: endpoint set to segment ${orbit.segment_id}'s complete orbit ring entry${through} (same target — position, altitude and tilt match the orbit's opening pose).`);
+-      } else {
+-        notes.push(`segment ${seg.segment_id}: endpoint set to segment ${orbit.segment_id}'s orbit ring entry${through} (same target — the move lands on the ring the orbit starts from).`);
+-      }
++      notes.push(`segment ${seg.segment_id}: endpoint set to segment ${orbit.segment_id}'s orbit ring entry${through} (same target — the move lands on the ring the orbit starts from).`);
+     }
+ 
+     // OPENING-HOLD STAGING: the shot's first movement is a hover whose next
+@@ -1250,10 +1217,6 @@
+   // `heading_deg` is the same angle wrapped into [0, 360) for humans.
+   // Longitude is wrapped into the exported ±180 contract.
+   function finalCameraState(plan, options = {}) {
+-    const reviewed = plan && plan.approved_smooth_calm_motion;
+-    if (reviewed && reviewed.final_camera && !options.compareLegacyMotion) {
+-      return { ...reviewed.final_camera };
+-    }
+     const capture = {};
+     buildEspKeyframes(plan, { ...options, captureState: capture });
+     const state = capture.final;
+@@ -1293,10 +1256,6 @@
+       ? {
+         coherent_trajectory: !!options.motionPolicy.coherent_trajectory,
+         dedupe_keyframes: !!options.motionPolicy.dedupe_keyframes,
+-        ...(Object.hasOwn(options.motionPolicy, "smooth_travel_trajectory")
+-          ? { smooth_travel_trajectory: !!options.motionPolicy.smooth_travel_trajectory } : {}),
+-        ...(Object.hasOwn(options.motionPolicy, "smooth_calm_travel")
+-          ? { smooth_calm_travel: !!options.motionPolicy.smooth_calm_travel } : {}),
+         source: String(options.motionPolicy.source || "caller"),
+       }
+       : null;
+@@ -1861,13 +1820,6 @@ This checklist is technical planning support only. It is not creative approval,
+     return {
+       coherentTrajectory: !!(p && p.coherent_trajectory) && !options.compareLegacyMotion,
+       dedupeKeyframes: !!(p && p.dedupe_keyframes) && !options.compareLegacyMotion,
+-      // The 2026-08-25 real Earth Studio review selected SMOOTH in all four
+-      // geographic cases. This applies only to travel position; specialist
+-      // orbit/reveal behavior still requires its existing explicit policy.
+-      smoothTravelTrajectory: !options.compareLegacyMotion
+-        && !!(p && p.smooth_travel_trajectory),
+-      smoothCalmTravel: !options.compareLegacyMotion
+-        && !!(p && p.smooth_calm_travel),
+     };
+   }
+ 
+@@ -2007,29 +1959,6 @@ This checklist is technical planning support only. It is not creative approval,
+       const previous = last(trackName);
+       if (previous && previous.time < startFrame) put(trackName, startFrame, previous.value, false, true);
+     };
+-    const valueAtFrame = (trackName, frame) => {
+-      const track = tracks[trackName];
+-      if (!track.length) return null;
+-      if (frame <= track[0].time) return track[0].value;
+-      for (let i = 1; i < track.length; i += 1) {
+-        if (frame <= track[i].time) {
+-          const a = track[i - 1];
+-          const b = track[i];
+-          const span = b.time - a.time;
+-          return span > 0 ? a.value + (b.value - a.value) * ((frame - a.time) / span) : b.value;
+-        }
+-      }
+-      return track[track.length - 1].value;
+-    };
+-    const replaceSampledSpan = (trackName, startFrame, endFrame, samples) => {
+-      const outside = tracks[trackName].filter((key) => key.time < startFrame || key.time > endFrame);
+-      const authored = samples.map((sample, index) => {
+-        const key = espKeyframe(sample.frame, sample.value);
+-        key.sampledInterior = index === 0 ? "out" : index === samples.length - 1 ? "in" : true;
+-        return key;
+-      });
+-      tracks[trackName] = [...outside, ...authored].sort((a, b) => a.time - b.time);
+-    };
+ 
+     const resolved = plan.segments.filter((s) => s.location && s.duration_seconds > 0);
+     if (!resolved.length) return tracks;
+@@ -2041,20 +1970,8 @@ This checklist is technical planning support only. It is not creative approval,
+     resolved.forEach((segment, idx) => {
+       const location = segment.location;
+       const minAlt = location.min_altitude_m || 0;
+-      // A movement annotated as ending at an orbit entry owns the successor
+-      // orbit's complete boundary pose.  Using only its ring position with this
+-      // segment's independent altitude/tilt makes the optical axis intersect a
+-      // different ground point.  These explicit annotation fields are created
+-      // by buildShotPlan above and keep the requested segment framing available
+-      // for diagnostics while the authored boundary remains coherent.
+-      const endAltitude = clampAltitude(
+-        Number.isFinite(segment.orbit_entry_altitude_m)
+-          ? segment.orbit_entry_altitude_m : (segment.altitude_m || DEFAULT_ALTITUDE_M),
+-        minAlt,
+-      );
+-      const tilt = Number.isFinite(segment.orbit_entry_tilt_deg)
+-        ? segment.orbit_entry_tilt_deg
+-        : (typeof segment.tilt_deg === "number" ? segment.tilt_deg : 45);
++      const endAltitude = clampAltitude(segment.altitude_m || DEFAULT_ALTITUDE_M, minAlt);
++      const tilt = typeof segment.tilt_deg === "number" ? segment.tilt_deg : 45;
+       const sf = segment.start_frame;
+       const ef = segment.end_frame;
+ 
+@@ -2766,9 +2683,6 @@ This checklist is technical planning support only. It is not creative approval,
+       let destLat = location.latitude;
+       let destLng = targetLng;
+       let orbitEntryApproach = null;
+-      let orbitEntryBearing = state.pan - 180;
+-      let orbitEntryPan = state.pan;
+-      let orbitEntryAngularRatePerFrame = 0;
+       // A camera-position hold (hover at the same target) stays exactly where
+       // the camera is — after an orbit that is the ring, not the center.
+       // A STAGED opening hold also holds: it was deliberately placed on the
+@@ -2808,29 +2722,13 @@ This checklist is technical planning support only. It is not creative approval,
+         const nextMinAlt = (orbitEntrySeg.location && orbitEntrySeg.location.min_altitude_m) || 0;
+         const nextAlt = clampAltitude(orbitEntrySeg.altitude_m || DEFAULT_ALTITUDE_M, nextMinAlt);
+         const nextTilt = typeof orbitEntrySeg.tilt_deg === "number" ? orbitEntrySeg.tilt_deg : 45;
+-        // A same-target zoom starts at radius zero, where ring phase is free.
+-        // Spend that freedom on a derivative-matched handoff: begin at the
+-        // inherited bearing and advance just enough during the close-in that
+-        // its terminal angular velocity equals the orbit's first chord. This
+-        // avoids a radial->tangential direction snap without a correction key.
+-        const targetLockedZoom = Number.isFinite(segment.orbit_entry_altitude_m)
+-          && ["zoom_in", "zoom_out"].includes(segment.action)
+-          && haversineMeters(state, locRef) < 1 && em > sf;
+-        if (targetLockedZoom) {
+-          const orbitFrames = Math.max(1, orbitEntrySeg.end_frame - orbitEntrySeg.start_frame);
+-          orbitEntryAngularRatePerFrame = ((orbitEntrySeg.orbit_degrees || 360)
+-            * (orbitEntrySeg.orbit_direction || 1)) / orbitFrames;
+-          const phaseLead = orbitEntryAngularRatePerFrame * (em - sf) * 0.5;
+-          orbitEntryBearing += phaseLead;
+-          orbitEntryPan += phaseLead;
+-        }
+         const entry = offsetPoint({ latitude: location.latitude, longitude: targetLng },
+-          orbitEntryBearing, orbitRadiusMeters(nextAlt, nextTilt));
++          state.pan - 180, orbitRadiusMeters(nextAlt, nextTilt));
+         destLat = entry.latitude;
+         destLng = entry.longitude;
+         if (policy.coherentTrajectory) {
+           const entryRadius = orbitRadiusMeters(nextAlt, nextTilt);
+-          const entryBearing = orbitEntryBearing;
++          const entryBearing = state.pan - 180;
+           const orbitTangent = entryBearing + 90 * (orbitEntrySeg.orbit_direction || 1);
+           const approachDistance = Math.min(
+             haversineMeters(state, entry) * 0.25,
+@@ -2865,8 +2763,9 @@ This checklist is technical planning support only. It is not creative approval,
+         && distance > CRUISE_MIN_DISTANCE_M
+         && (destLat !== state.latitude || destLng !== state.longitude);
+       const positionChanges = destLat !== state.latitude || destLng !== state.longitude;
+-      if (policy.smoothTravelTrajectory && positionChanges
+-          && !segment.holds_camera && !segment.stages_orbit_entry && !segment.ends_at_orbit_entry) {
++      const crossesAntimeridian = Math.abs(wrapLng(state.longitude) - wrapLng(destLng)) > 180;
++      if (policy.coherentTrajectory && positionChanges && !crossesAntimeridian
++          && !segment.holds_camera && !segment.stages_orbit_entry) {
+         const samples = buildGeographicTrajectory(
+           { latitude: state.latitude, longitude: state.longitude },
+           { latitude: destLat, longitude: destLng }, sf, em,
+@@ -2924,48 +2823,7 @@ This checklist is technical planning support only. It is not creative approval,
+         }
+         change("tilt", sf, em, tilt);
+       }
+-      // A same-target zoom into an orbit is a target-locked arrival. Author its
+-      // offset radius, position and pitch from ONE C2 progress value at every
+-      // frame. This prevents two independent interpolations (linear position
+-      // versus changing altitude/tilt) from sweeping the optical axis away from
+-      // the subject and then correcting only at the boundary. The opening point
+-      // must be the target centre; other approaches retain the established orbit
+-      // acquisition path rather than being silently reinterpreted.
+-      const targetLockedEntry = orbitEntrySeg
+-        && Number.isFinite(segment.orbit_entry_altitude_m)
+-        && ["zoom_in", "zoom_out"].includes(segment.action)
+-        && haversineMeters(state, locRef) < 1
+-        && em > sf;
+-      if (targetLockedEntry) {
+-        const span = em - sf;
+-        const endRadius = orbitRadiusMeters(endAltitude, tilt);
+-        const samples = [];
+-        for (let frame = sf; frame <= em; frame += 1) {
+-          const u = (frame - sf) / span;
+-          const q = heightFraming && typeof heightFraming.smootherstep === "function"
+-            ? heightFraming.smootherstep(u)
+-            : u * u * u * (u * (u * 6 - 15) + 10);
+-          const altitudeAtFrame = valueAtFrame("alt", frame);
+-          const radiusAtFrame = endRadius * q;
+-          const tiltAtFrame = Math.atan2(radiusAtFrame, altitudeAtFrame) * 180 / Math.PI;
+-          // Integral of smootherstep: I(u)=u^6-3u^5+2.5u^4, I(1)=0.5.
+-          // Its frame derivative reaches the orbit's angular rate with zero
+-          // acceleration at the boundary.
+-          const angularIntegral = u ** 6 - 3 * u ** 5 + 2.5 * u ** 4;
+-          const bearingAtFrame = (state.pan - 180)
+-            + orbitEntryAngularRatePerFrame * span * angularIntegral;
+-          const panAtFrame = state.pan + orbitEntryAngularRatePerFrame * span * angularIntegral;
+-          const camera = offsetPoint(locRef, bearingAtFrame, radiusAtFrame);
+-          samples.push({ frame, latitude: camera.latitude, longitude: camera.longitude,
+-            altitude: altitudeAtFrame, pan: panAtFrame, tilt: tiltAtFrame });
+-        }
+-        replaceSampledSpan("lat", sf, em, samples.map((row) => ({ frame: row.frame, value: row.latitude })));
+-        replaceSampledSpan("lng", sf, em, samples.map((row) => ({ frame: row.frame, value: row.longitude })));
+-        replaceSampledSpan("alt", sf, em, samples.map((row) => ({ frame: row.frame, value: row.altitude })));
+-        replaceSampledSpan("pan", sf, em, samples.map((row) => ({ frame: row.frame, value: row.pan })));
+-        replaceSampledSpan("tilt", sf, em, samples.map((row) => ({ frame: row.frame, value: row.tilt })));
+-      }
+-      state = { latitude: destLat, longitude: destLng, altitude: endAltitude, pan: orbitEntryPan, tilt };
++      state = { latitude: destLat, longitude: destLng, altitude: endAltitude, pan: state.pan, tilt };
+     });
+     // Terminal camera state out-channel: the state machine's last state IS the
+     // ending frame's camera, in real-world units (longitude still unwrapped —
+@@ -3064,7 +2922,7 @@ This checklist is technical planning support only. It is not creative approval,
+   // options.compareLegacyMotion (COMPARISON ONLY — never production): emit the
+   // pre-v0.9 motion — no authored transitions, no settle-hold — so a real
+   // Earth Studio import can A/B the corpus-informed easing against legacy.
+-  function buildEspBase(plan, options = {}) {
++  function buildEsp(plan, options = {}) {
+     const dims = plan.render_dimensions || ASPECTS[plan.aspect] || ASPECTS[DEFAULT_ASPECT];
+     const width = options.width || dims.width;
+     const height = options.height || dims.height;
+@@ -3460,33 +3318,6 @@ This checklist is technical planning support only. It is not creative approval,
+     };
+   }
+ 
+-  // Production wrapper for the human-approved bundle. The underlying ESP is
+-  // first authored with the approved shared-progress geographic trajectory,
+-  // then the calm climb/cruise/descent envelope is applied exactly once. A
+-  // serialized plan can be rebuilt deterministically: its original timing is
+-  // retained in the approval provenance and restored before regeneration.
+-  function buildEsp(plan, options = {}) {
+-    const restoredPlan = smoothCalmTravel && smoothCalmTravel.restoreSourcePlan
+-      ? smoothCalmTravel.restoreSourcePlan(plan) : plan;
+-    const policy = motionPolicy(restoredPlan, options);
+-    // Calm framing retimes the plan as well as the ESP. Direct buildEsp callers
+-    // historically receive a pure serialization operation, so mutate only an
+-    // internal copy unless buildArtifacts explicitly asks for the retimed plan.
+-    const sourcePlan = policy.smoothCalmTravel
+-      ? JSON.parse(JSON.stringify(restoredPlan)) : restoredPlan;
+-    const esp = buildEspBase(sourcePlan, options);
+-    if (!policy.smoothCalmTravel || !smoothCalmTravel || !heightFraming) return esp;
+-    const result = smoothCalmTravel.apply(sourcePlan, esp, {
+-      framing: heightFraming,
+-      haversineMeters,
+-    });
+-    if (options.applyPlanTiming && result.applied) {
+-      for (const key of Object.keys(plan)) delete plan[key];
+-      Object.assign(plan, sourcePlan);
+-    }
+-    return result.esp;
+-  }
+-
+   // ORBIT SWEEP RATE, MADE VISIBLE.
+   //
+   // When a ring acquisition is unavoidable it takes its frames out of the orbit
+@@ -3536,7 +3367,7 @@ This checklist is technical planning support only. It is not creative approval,
+     // is serialised — it is only knowable from the keyframe walk, and the operator
+     // reading shot-plan.json is exactly who needs to see its cost.
+     const orbitTiming = [];
+-    const esp = buildEsp(plan, { ...options, orbitTiming, applyPlanTiming: true });
++    const esp = buildEsp(plan, { ...options, orbitTiming });
+     annotateOrbitTiming(plan, orbitTiming);
+     return {
+       "README.md": buildReadme(plan),

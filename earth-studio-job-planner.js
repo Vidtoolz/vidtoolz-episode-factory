@@ -1523,6 +1523,102 @@ This checklist is technical planning support only. It is not creative approval, 
     return ((((value + 180) % 360) + 360) % 360) - 180;
   }
 
+  // A geographic move is one parametric position, never two independently
+  // shaped scalar tracks. Short/local and single-axis moves stay in the
+  // unwrapped coordinate plane; longer moves follow the spherical shortest arc.
+  // Longitude remains unwrapped until the existing emit-time seam handling.
+  function geographicPathPoint(start, end, progress) {
+    const u = Math.max(0, Math.min(1, Number(progress) || 0));
+    const a = { latitude: Number(start.latitude), longitude: Number(start.longitude) };
+    const endLng = a.longitude + shortestLngDelta(a.longitude, Number(end.longitude));
+    const b = { latitude: Number(end.latitude), longitude: endLng };
+    if (u === 0) return { ...a };
+    if (u === 1) return { ...b };
+    const dLat = b.latitude - a.latitude;
+    const dLng = b.longitude - a.longitude;
+    const local = haversineMeters(a, b) <= 100000;
+    if (local || Math.abs(dLat) < 1e-12 || Math.abs(dLng) < 1e-12) {
+      return { latitude: a.latitude + dLat * u, longitude: a.longitude + dLng * u };
+    }
+    const unit = (point) => {
+      const lat = toRadians(point.latitude);
+      const lng = toRadians(point.longitude);
+      return [Math.cos(lat) * Math.cos(lng), Math.cos(lat) * Math.sin(lng), Math.sin(lat)];
+    };
+    const av = unit(a);
+    const bv = unit(b);
+    const dot = Math.max(-1, Math.min(1, av[0] * bv[0] + av[1] * bv[1] + av[2] * bv[2]));
+    const omega = Math.acos(dot);
+    if (!(omega > 1e-9) || Math.abs(Math.PI - omega) < 1e-7) {
+      return { latitude: a.latitude + dLat * u, longitude: a.longitude + dLng * u };
+    }
+    const sinOmega = Math.sin(omega);
+    const wa = Math.sin((1 - u) * omega) / sinOmega;
+    const wb = Math.sin(u * omega) / sinOmega;
+    const x = wa * av[0] + wb * bv[0];
+    const y = wa * av[1] + wb * bv[1];
+    const z = wa * av[2] + wb * bv[2];
+    const latitude = Math.atan2(z, Math.hypot(x, y)) * 180 / Math.PI;
+    let longitude = Math.atan2(y, x) * 180 / Math.PI;
+    longitude = a.longitude + shortestLngDelta(a.longitude, longitude);
+    return { latitude, longitude };
+  }
+
+  // One shot-level launch/cruise/settle law. The optional through-arrival form
+  // is used only when a following orbit needs a non-zero entry tangent.
+  function geographicProgress(time, throughArrival = false) {
+    const s = Math.max(0, Math.min(1, Number(time) || 0));
+    // Thirty percent keeps normal corpus-length moves ease-dominated like the
+    // calibrated two-key profile, while still leaving a sustained middle phase
+    // on long travel. It is one shot envelope, not a restart at every sample.
+    const ramp = 0.3;
+    // Integral of smoothstep velocity: value, velocity and acceleration join a
+    // constant-speed cruise continuously (C2 timing) at x=1.
+    const rampDistance = (x) => x * x * x - 0.5 * x * x * x * x;
+    if (throughArrival) {
+      const velocity = 1 / (1 - ramp / 2);
+      if (s < ramp) return velocity * ramp * rampDistance(s / ramp);
+      return velocity * (ramp / 2 + s - ramp);
+    }
+    const velocity = 1 / (1 - ramp);
+    if (s < ramp) return velocity * ramp * rampDistance(s / ramp);
+    if (s > 1 - ramp) return 1 - velocity * ramp * rampDistance((1 - s) / ramp);
+    return velocity * (s - ramp / 2);
+  }
+
+  function buildGeographicTrajectory(start, end, startFrame, endFrame, options = {}) {
+    const span = Math.max(1, Number(endFrame) - Number(startFrame));
+    const distance = haversineMeters(start, end);
+    const count = Math.max(6, Math.min(24, Math.floor(span), Math.ceil(distance / 1200000)));
+    const frames = [];
+    for (let i = 0; i <= count; i += 1) {
+      const frame = i === count ? endFrame : Math.round(startFrame + span * i / count);
+      if (!frames.length || frame > frames[frames.length - 1]) frames.push(frame);
+    }
+    frames.sort((a, b) => a - b);
+    const pathAt = (u) => geographicPathPoint(start, end, u);
+    const at = (s) => pathAt(geographicProgress(s, options.throughArrival));
+    return frames.map((frame, index) => {
+      const s = (frame - startFrame) / span;
+      const point = index === 0 ? pathAt(0)
+        : index === frames.length - 1 ? pathAt(1) : at(s);
+      const epsilon = 1e-5;
+      const lo = Math.max(0, s - epsilon);
+      const hi = Math.min(1, s + epsilon);
+      const before = at(lo);
+      const after = at(hi);
+      const dsFrames = Math.max(1e-12, (hi - lo) * span);
+      const longitudeAfter = before.longitude + shortestLngDelta(before.longitude, after.longitude);
+      return {
+        frame,
+        latitude: round6(point.latitude),
+        longitude: round6(point.longitude),
+        latitude_rate_per_frame: (after.latitude - before.latitude) / dsFrames,
+        longitude_rate_per_frame: (longitudeAfter - before.longitude) / dsFrames,
+      };
+    });
+  }
+
   // Re-emit an UNWRAPPED piecewise-linear longitude track as wrapped [-180,180]
   // keyframes. At each antimeridian crossing a one-frame keyframe pair is
   // inserted (+180 then -180, or the reverse): both sides name the same
@@ -1534,10 +1630,16 @@ This checklist is technical planning support only. It is not creative approval, 
       return track.map((k) => espKeyframe(k.time, round6(wrapLng(k.value))));
     }
     const out = [];
-    const push = (frame, value, sampledInterior = false) => {
+    const push = (frame, value, sampledInterior = false, source = null) => {
       const kf = espKeyframe(frame, round6(value));
       if (sampledInterior) kf.sampledInterior = sampledInterior === "in" ? "in"
         : sampledInterior === "out" ? "out" : true;
+      if (source && source.positionTrajectory) {
+        kf.positionTrajectory = true;
+        if (Number.isFinite(source.rateIn)) kf.rateIn = source.rateIn;
+        if (Number.isFinite(source.rateOut)) kf.rateOut = source.rateOut;
+        if (source.semanticBoundary) kf.semanticBoundary = true;
+      }
       if (out.length && out[out.length - 1].time === kf.time) out[out.length - 1] = kf;
       else if (!out.length || out[out.length - 1].time < kf.time) out.push(kf);
     };
@@ -1562,7 +1664,7 @@ This checklist is technical planning support only. It is not creative approval, 
           push(before + 1, eastward ? -180 : 180, cur.sampledInterior);
         }
       }
-      push(cur.time, wrapLng(cur.value), cur.sampledInterior);
+      push(cur.time, wrapLng(cur.value), cur.sampledInterior, cur);
       // SETTLE-THEN-LAUNCH handoff markers must survive the wrap — the
       // serializer keys its easing off them.
       const last = out[out.length - 1];
@@ -1819,6 +1921,20 @@ This checklist is technical planning support only. It is not creative approval, 
     const setRate = (trackName, side, ratePerFrame) => {
       const kf = tracks[trackName][tracks[trackName].length - 1];
       if (!kf || !Number.isFinite(ratePerFrame)) return;
+      if (side === "in" || side === "both") kf.rateIn = ratePerFrame;
+      if (side === "out" || side === "both") kf.rateOut = ratePerFrame;
+    };
+    const putPositionSample = (trackName, frame, value, ratePerFrame, side) => {
+      const prior = last(trackName);
+      const sameFrame = prior && prior.time === Math.max(0, Math.round(frame)) ? { ...prior } : null;
+      put(trackName, frame, value, false, side !== "both");
+      const kf = last(trackName);
+      kf.positionTrajectory = true;
+      // One keyframe is shared by adjacent primitives. Preserve the incoming
+      // derivative already authored by the preceding trajectory when the next
+      // trajectory adds its outgoing derivative at the same exact position.
+      if (sameFrame && Number.isFinite(sameFrame.rateIn)) kf.rateIn = sameFrame.rateIn;
+      if (sameFrame && sameFrame.positionTrajectory) kf.positionTrajectory = true;
       if (side === "in" || side === "both") kf.rateIn = ratePerFrame;
       if (side === "out" || side === "both") kf.rateOut = ratePerFrame;
     };
@@ -2360,6 +2476,30 @@ This checklist is technical planning support only. It is not creative approval, 
           // through the middle of the orbit (measured: 28 deg off-target).
           if (policy.coherentTrajectory) put("pan", frame, sweepPanBase + sweep * t, interior);
         }
+        // A travel trajectory and its successor orbit share the boundary key.
+        // Give that key the orbit/acquisition's real outgoing coordinate rate,
+        // so the shared position handle continues into the next geometric span
+        // instead of falling back to a hard-linear scalar onset.
+        if (policy.coherentTrajectory) {
+          let carriesTravelArrival = false;
+          for (const trackName of ["lat", "lng"]) {
+            const track = tracks[trackName];
+            const atBoundary = track.findIndex((key) => key.time === sf);
+            if (atBoundary < 0 || atBoundary >= track.length - 1) continue;
+            const key = track[atBoundary];
+            const nextKey = track.slice(atBoundary + 1).find((candidate) => candidate.time > key.time);
+            if (!nextKey || !key.positionTrajectory) continue;
+            carriesTravelArrival = true;
+            key.rateOut = 0;
+            // Travel settles to zero at the ring; the orbit launches from that
+            // same derivative instead of bending through a shaping-point loop.
+          }
+          // Co-sample the look direction with the same zero-velocity launch.
+          if (carriesTravelArrival) {
+            const panBoundary = tracks.pan.find((key) => key.time === sf);
+            if (panBoundary) panBoundary.positionOrbitLaunch = true;
+          }
+        }
         // Phase C holds radius, altitude and pitch — acquisition already put the
         // camera in orbit geometry, so these are no-ops after a real entry.
         change("alt", sweepStart, ef, endAltitude);
@@ -2602,18 +2742,9 @@ This checklist is technical planning support only. It is not creative approval, 
           }
         }
       }
-      if (orbitEntryApproach && em - sf >= 4) {
-        // The approach key is emitted before the endpoint change below. Fence
-        // every position channel at the segment boundary first, otherwise the
-        // later key becomes the first neighbour and Earth Studio starts the
-        // orbit approach inside the preceding hold.
-        anchor("lng", sf);
-        anchor("lat", sf);
-        const approachFrame = sf + Math.max(1, Math.round((em - sf) * 0.8));
-        const approachLng = state.longitude + shortestLngDelta(state.longitude, orbitEntryApproach.longitude);
-        put("lng", approachFrame, approachLng);
-        put("lat", approachFrame, orbitEntryApproach.latitude);
-      }
+      // `orbitEntryApproach` identifies this as a travel→orbit arrival. Its
+      // former shaping point is deliberately not emitted: real Earth Studio
+      // proved that curve could overshoot an interior coordinate sample.
       // ── Long-crossing cruise (see CRUISE_* constants) ──────────────────
       // Three segments instead of one: ease up to a travel speed, hold it, ease
       // down. The cruise boundaries carry the cruise SLOPE as a real handle, so
@@ -2631,7 +2762,24 @@ This checklist is technical planning support only. It is not creative approval, 
         && cruiseMoveSeconds > CRUISE_MIN_SECONDS
         && distance > CRUISE_MIN_DISTANCE_M
         && (destLat !== state.latitude || destLng !== state.longitude);
-      if (cruiseApplies) {
+      const positionChanges = destLat !== state.latitude || destLng !== state.longitude;
+      const crossesAntimeridian = Math.abs(wrapLng(state.longitude) - wrapLng(destLng)) > 180;
+      if (policy.coherentTrajectory && positionChanges && !crossesAntimeridian
+          && !segment.holds_camera && !segment.stages_orbit_entry) {
+        const samples = buildGeographicTrajectory(
+          { latitude: state.latitude, longitude: state.longitude },
+          { latitude: destLat, longitude: destLng }, sf, em,
+          { throughArrival: false },
+        );
+        samples.forEach((sample, sampleIndex) => {
+          const side = sampleIndex === 0 ? "out"
+            : sampleIndex === samples.length - 1 ? "in" : "both";
+          putPositionSample("lat", sample.frame, sample.latitude, sample.latitude_rate_per_frame, side);
+          putPositionSample("lng", sample.frame, sample.longitude, sample.longitude_rate_per_frame, side);
+        });
+      } else if (cruiseApplies) {
+        // Legacy comparison path only. Production coherent motion is authored
+        // by buildGeographicTrajectory above from one shared progress parameter.
         const { accel, decel } = cruiseProfile;
         const v = 1 / (1 - (accel + decel) / 2);
         const spanF = em - sf;
@@ -2643,18 +2791,12 @@ This checklist is technical planning support only. It is not creative approval, 
         const pB = 1 - (v * decel) / 2;
         const frameA = sf + spanF * accel;
         const frameB = sf + spanF * (1 - decel);
-        const rateLat = (dLat * v) / spanF;
-        const rateLng = (dLng * v) / spanF;
         anchor("lng", sf);
         anchor("lat", sf);
         put("lat", frameA, fromLat + dLat * pA, true);
-        setRate("lat", "in", rateLat);
         put("lng", frameA, fromLng + dLng * pA, true);
-        setRate("lng", "in", rateLng);
         put("lat", frameB, fromLat + dLat * pB, true);
-        setRate("lat", "out", rateLat);
         put("lng", frameB, fromLng + dLng * pB, true);
-        setRate("lng", "out", rateLng);
         put("lat", em, destLat);
         put("lng", em, destLng);
       } else {
@@ -2855,6 +2997,36 @@ This checklist is technical planning support only. It is not creative approval, 
       .map((sg) => frac(sg.end_frame)));
     const kfs = (arr, mapValue, kind, trackName0) => arr.map((k, i) => {
       const kf = { time: frac(k.time), value: mapValue(k.value) };
+      // A sampled geographic trajectory carries the derivative of the ONE
+      // parametric position curve on both coordinate tracks. Explicit cubic
+      // handles reproduce that derivative in Earth Studio: y/x is d(value)/dt,
+      // so incoming and outgoing tangents meet exactly at every interior sample.
+      // There is no per-sample ease; the only launch/settle law was already
+      // applied once when P(u(t)) was sampled.
+      if (!legacy && k.positionTrajectory) {
+        const valueScale = (mapValue(1000) - mapValue(0)) / 1000;
+        const handle = (rate, gap, sign) => {
+          const x = round6(sign * gap / 3);
+          const slope = rate * valueScale * totalFrames;
+          const y = Math.round(slope * x * 1e12) / 1e12;
+          // Native Earth Studio references use linked `auto` handles for a
+          // nonzero C1 tangent. A true zero derivative must remain explicit,
+          // otherwise auto-tangent inference would relaunch a settled boundary.
+          return Math.abs(rate) < 1e-12
+            ? { x, y: 0, influence: 0, type: "custom" }
+            : { x, y, influence: 0.35, type: "auto" };
+        };
+        const gapPrev = i > 0 ? frac(k.time) - frac(arr[i - 1].time) : 0;
+        const gapNext = i < arr.length - 1 ? frac(arr[i + 1].time) - frac(k.time) : 0;
+        if (Number.isFinite(k.rateIn) && gapPrev > 0) kf.transitionIn = handle(k.rateIn, gapPrev, -1);
+        else if (gapPrev > 0) kf.transitionIn = { x: 0, y: 0, type: "linear" };
+        if (Number.isFinite(k.rateOut) && gapNext > 0) kf.transitionOut = handle(k.rateOut, gapNext, 1);
+        else if (gapNext > 0) kf.transitionOut = { x: 0, y: 0, type: "linear" };
+        if (kf.transitionIn?.type === "custom" || kf.transitionOut?.type === "custom") {
+          kf.transitionLinked = false;
+        }
+        return kf;
+      }
       // Interior sample of a described curve (orbit ring, space-zoom climb):
       // hard-linear on BOTH sides.
       //
@@ -2906,6 +3078,14 @@ This checklist is technical planning support only. It is not creative approval, 
       // SETTLE-THEN-LAUNCH orbit→travel handoff easing (checked before the
       // generic cases so the reviewed candidate's exact handle shapes win).
       const hKey = `${trackName0}:${i}`;
+      if (!legacy && k.positionOrbitLaunch) {
+        const gapNextP = i < arr.length - 1 ? frac(arr[i + 1].time) - frac(k.time) : 0;
+        kf.transitionIn = { x: 0, y: 0, type: "linear" };
+        kf.transitionOut = gapNextP > 0
+          ? { x: round6(gapNextP / 3), y: 0, influence: 0, type: "custom" }
+          : { x: 0, y: 0, type: "linear" };
+        return kf;
+      }
       if (!legacy && handoffBoundary.has(hKey)) {
         const gapPrevH = i > 0 ? frac(k.time) - frac(arr[i - 1].time) : 0;
         if (gapPrevH > 0) {
@@ -3292,6 +3472,9 @@ This checklist is technical planning support only. It is not creative approval, 
     normalizeInitialCamera,
     finalCameraState,
     offsetPoint,
+    geographicPathPoint,
+    geographicProgress,
+    buildGeographicTrajectory,
     motionPolicy,
     dropRedundantKeyframes,
     expectedFiles,
