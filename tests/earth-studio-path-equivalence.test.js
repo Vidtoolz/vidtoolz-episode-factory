@@ -140,7 +140,7 @@ const ADVERSARIAL = {
   "fractional values: duration 12.345, tilt 45.678, revolutions 0.3333": () => J(place(requireFixture("Paris")), [], { start_movements: [step("orbit", { duration_seconds: 12.345, tilt_deg: 45.678, revolutions: 0.3333 })] }),
   "emphasis and pace without explicit durations (suggested law)": () => J(place(requireFixture("Helsinki")), [leg(place(requireFixture("Stockholm")), [step("fly", { emphasis: 1.35 })], [step("orbit", { emphasis: 0.8 })])], { pace: "quick", start_movements: [step("hold", { emphasis: 1.08 })] }),
   "16:9 aspect with same journey": () => ({ ...J(place(requireFixture("Paris")), [], { start_movements: [step("hold", { duration_seconds: 3 }), step("orbit", { duration_seconds: 18 })] }), aspect: "16:9" }),
-  "mid-journey hold with explicit tilt (known leak preserved, not repaired)": () => J(place(requireFixture("Helsinki")), [leg(place(requireFixture("Stockholm")), [step("fly", { duration_seconds: 10 })], [step("hold", { duration_seconds: 4, tilt_deg: 30 }), step("orbit", { duration_seconds: 18 })])]),
+  "mid-journey hold after travel with omitted fields (the hold inherits; formerly the explicit-tilt leak case)": () => J(place(requireFixture("Helsinki")), [leg(place(requireFixture("Stockholm")), [step("fly", { duration_seconds: 10 })], [step("hold", { duration_seconds: 4 }), step("orbit", { duration_seconds: 18 })])]),
 };
 
 Object.entries(ADVERSARIAL).forEach(([label, make]) => {
@@ -210,6 +210,17 @@ test("direct IR: an invalid journey is refused by compileJourneyToParsed with th
 });
 
 // ── 5. Provenance and authority boundary ───────────────────────────────────
+test("direct IR: a non-opening hold with explicit camera fields is refused identically by both paths (hold owns time, not camera)", () => {
+  const journeyWithHoldTilt = J(place(requireFixture("Helsinki")), [leg(place(requireFixture("Stockholm")), [step("fly", { duration_seconds: 10 })], [step("hold", { duration_seconds: 4, tilt_deg: 30 }), step("orbit", { duration_seconds: 18 })])]);
+  let direct = null;
+  try { journeyModel.compileJourneyToParsed(journeyWithHoldTilt, { planner, aspect: journeyWithHoldTilt.aspect }); } catch (e) { direct = e; }
+  const laneCheck = journeyModel.validateJourney(journeyWithHoldTilt, { planner });
+  assert.ok(direct && direct.statusCode === 400, "direct path must refuse");
+  assert.equal(laneCheck.ok, false, "lane validation must refuse");
+  assert.deepEqual(direct.journey_errors, laneCheck.errors, "identical refusal on both paths");
+  assert.ok(laneCheck.errors.some((e) => /is a Hold/.test(e) && /tilt/.test(e)), laneCheck.errors.join(" | "));
+});
+
 test("direct IR: plan bytes keep the historical parser_strategy string; truthful origin is out-of-band", () => {
   const journey = J(place(requireFixture("Paris")), [], { start_movements: [step("hold", { duration_seconds: 3 })] });
   const direct = journeyModel.compileJourneyToParsed(journey, { planner, aspect: journey.aspect });

@@ -2778,6 +2778,31 @@ This checklist is technical planning support only. It is not creative approval, 
         put("lng", em, destLng, "in", true);
         put("lat", em, destLat, "in", true);
       }
+      // A HOLD AFTER A MOVEMENT THAT IS STILL MOVING AT THE BOUNDARY must be
+      // fenced hard-linear on both hold-facing sides. An orbit's sweep ends at
+      // full tangential speed (its closing ring sample is a through-boundary
+      // key, not a terminal settle), and an `auto` handle on that key — or on
+      // the hold's end key — derives its tangent from the MOVING neighbours, so
+      // Earth Studio bows the flat hold span: measured 210.7 m of transient
+      // position drift inside a 4 s hold after a 17 km-altitude orbit, returning
+      // to the same endpoint (invisible to endpoint checks, visible in playback).
+      // Fly / zoom arrivals already decelerate to rest (custom arrival handles),
+      // so their holds do not bow and are left byte-identical. A hold that ENDS
+      // the animation has no far-side neighbour for a tangent to lean on, so it
+      // cannot bow either and stays exactly as before (no end key is added).
+      // Only the hold-facing sides are pinned: the arrival keeps its easing on
+      // the way in, the next movement keeps its own departure.
+      const holdAfterMotion = !!(segment.holds_camera && idx > 0
+        && resolved[idx - 1] && resolved[idx - 1].action === "orbit"
+        && resolved[idx + 1]);
+      if (holdAfterMotion) {
+        for (const trackName of ["lng", "lat", "alt", "pan", "tilt"]) {
+          const prev = last(trackName);
+          if (!prev || prev.time !== sf) continue;
+          pinOut(trackName);
+          put(trackName, em, prev.value, "in", true);
+        }
+      }
       if (!constrainedSpaceZoom) {
         const enteringOrbit = policy.coherentTrajectory && segment.ends_at_orbit_entry
           && last("tilt") && last("tilt").value !== tilt;

@@ -20,6 +20,26 @@ lane (`earth-studio-lane.js`) still uses the text path**; the structured path is
 byte-identical to it over every tracked journey canary and a set of adversarial journeys in
 `tests/earth-studio-path-equivalence.test.js`. Activating it in the lane is a separate, later decision.
 
+## Hold camera-state authority
+
+**A non-opening hold owns time, not camera.** A `Hold` (and a travel-slot `Pause`) inherits the exact
+incoming canonical camera state — position, altitude, pan and tilt — and applies nothing of its own; its
+only degree of freedom is duration. Omitted camera fields mean *inherit*, never *default*. Explicit
+`tilt_deg`, `altitude_m` or `framing` on a non-opening hold are refused at raw journey validation (same
+message on the lane and on the direct IR path, no artifact is written); the journey's **opening** movement
+is the one exception, because there is no incoming camera to hold, so it states its framing as before.
+The compiler's camera cursor after a hold equals what the planner applies (the hold is transparent: an
+orbit after `fly_low → hold` inherits the same tilt as an orbit directly after `fly_low`; a reclassified
+"already framed" zoom that becomes a hover records the hover's applied camera). In the keyframe engine a
+hold that sits between an orbit and a following movement is fenced hard-linear on both hold-facing sides,
+because the orbit's closing ring sample is still in motion and an `auto` tangent bowed the flat span by
+210 m before returning to the same point; holds after fly/zoom arrivals (which settle to rest) and holds
+that end the animation are unchanged byte-for-byte. A hold must also sit where the camera *is*: a Hold or
+Pause at a destination that none of the leg's travel movements reaches (only Fly To, Cruise, Fly High, Low
+Approach and Descend reach the destination; Pull Back, Climb Out and Pause do not) is refused, because the
+planner would have moved the camera there as a hover-approach — a jump disguised as a hold. Same-place legs
+are fine. Deliberate stationary re-framing is a future movement primitive, not a hold.
+
 ## Journey validation authority
 
 `validateJourney` is the single gate for camera journeys and runs in three stages: **raw input

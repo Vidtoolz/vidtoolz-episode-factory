@@ -278,10 +278,13 @@ test('staging: the mid-journey arrival matches the orbit geometry on every chann
     `arrival is aimed ${g.arrival.aim.toFixed(2)} deg off the subject`);
 });
 
-test('staging: explicit hold geometry keeps the acquisition fallback', () => {
-  // The operator asked for a specific hold, so the arrival must NOT be restaged
-  // and the bounded ring acquisition has to carry the orbit entry as before.
-  const g = midJourney([atStep('hold', 3, { altitude_m: 3000 }), atStep('half_orbit', 12)]);
+test('staging: explicit orbit geometry that differs from the arrival keeps the acquisition fallback', () => {
+  // The operator asked for a specific ORBIT altitude, so the hold in between
+  // (which owns no camera of its own) cannot be read through with matching
+  // geometry, the arrival must NOT be restaged, and the bounded ring acquisition
+  // has to carry the orbit entry as before. (Formerly stated as an explicit
+  // hold altitude — a non-opening hold may not carry camera fields.)
+  const g = midJourney([atStep('hold', 3), atStep('half_orbit', 12, { altitude_m: 3000 })]);
   assert.ok(!g.flySegment.ends_at_orbit_entry,
     'an explicitly framed hold must not be read through');
   assert.ok(g.acquisitionFraction > 0.05,
@@ -364,14 +367,21 @@ test('staging: no shot gains roll from staging', () => {
 // position to fourteen decimal places for all 480 frames of a requested 180°
 // orbit while pan swept the full arc. A dead nadir spin, presented as an orbit.
 
-function topDownJourney(holdExtra, orbitExtra) {
+// The top-down arrival is stated on the FLY (the movement that frames the
+// camera); the hold that follows inherits it. A hold owns time, not camera:
+// explicit camera fields on a non-opening hold are refused at validation
+// (tests/earth-studio-hold-camera-state.test.js), so the previous fixture form
+// `hold(tilt_deg: 0)` no longer exists. Geometry is identical to the old
+// fixture: the fly arrives at 0°, the hold carries 0°, the orbit keeps its own
+// 60° and must acquire its ring.
+function topDownJourney(flyExtra, orbitExtra) {
   const compiled = journey.compileJourney(journey.normalizeJourney({
     pace: 'calm', aspect: '16:9',
     start: { location: 'Paris', framing: 'city' }, start_movements: [atStep('hold', 3)],
     legs: [{
       destination: COLOSSEUM, travel_style: 'direct',
-      travel: [{ ...journey.newStep('fly', 'travel'), duration_seconds: 7 }],
-      movements: [atStep('hold', 3, holdExtra), atStep('half_orbit', 12, orbitExtra)],
+      travel: [{ ...journey.newStep('fly', 'travel'), duration_seconds: 7, ...(flyExtra || {}) }],
+      movements: [atStep('hold', 3), atStep('half_orbit', 12, orbitExtra)],
     }],
   }));
   const plan = planner.buildShotPlan('t', compiled.description, '2026-08-19T14:00:00.000Z',
@@ -415,16 +425,17 @@ function topDownJourney(holdExtra, orbitExtra) {
   };
 }
 
-test('top-down hold: the hold stays exactly as asked for', () => {
-  const g = topDownJourney({ tilt_deg: 0 });
-  assert.equal(g.hold.tilt_deg, 0, 'an explicit top-down hold must stay top-down');
+test('top-down hold: the hold stays exactly as the top-down arrival left it', () => {
+  const g = topDownJourney({ tilt_deg: 0 } /* on the fly */);
+  assert.equal(g.hold.tilt_deg, 0, 'the hold must carry the top-down arrival');
+  assert.equal(g.hold.tilt_source, 'carried_over', 'a hold inherits, it does not state');
   assert.ok(!g.hold.stages_orbit_entry, 'an explicitly framed hold must never be restaged');
   assert.ok(g.holdReport.stationary,
     `the hold must be exactly static, got ${JSON.stringify(g.holdReport.maximum_drift)}`);
 });
 
 test('top-down hold: the following orbit keeps its own tilt and a real ring', () => {
-  const g = topDownJourney({ tilt_deg: 0 });
+  const g = topDownJourney({ tilt_deg: 0 } /* on the fly */);
   assert.ok(g.orbit.tilt_deg > 30,
     `the orbit must keep its own oblique tilt, got ${g.orbit.tilt_deg}`);
   assert.ok(g.ring > 100, `the orbit must have a usable ring, got ${g.ring.toFixed(1)} m`);
@@ -432,13 +443,13 @@ test('top-down hold: the following orbit keeps its own tilt and a real ring', ()
 
 test('top-down hold: the requested orbit actually orbits', () => {
   // The defect this closes. Displacement was 0.0 m across a full 180 deg sweep.
-  const g = topDownJourney({ tilt_deg: 0 });
+  const g = topDownJourney({ tilt_deg: 0 } /* on the fly */);
   assert.ok(g.displacement > g.ring * 0.5,
     `a 180 deg orbit must move the camera, got ${g.displacement.toFixed(1)} m on a ${g.ring.toFixed(0)} m ring`);
 });
 
 test('top-down hold: the bounded acquisition carries the entry, monotonically', () => {
-  const g = topDownJourney({ tilt_deg: 0 });
+  const g = topDownJourney({ tilt_deg: 0 } /* on the fly */);
   assert.ok(g.acquired > g.i0, 'an acquisition phase must engage — nothing staged this arrival');
   const frac = (g.acquired - g.i0) / (g.i1 - g.i0);
   assert.ok(frac < 0.4, `acquisition must stay bounded, got ${(frac * 100).toFixed(1)}%`);
@@ -467,7 +478,7 @@ test('top-down hold: the bounded acquisition carries the entry, monotonically', 
 });
 
 test('top-down hold: the subject stays framed through acquisition and sweep', () => {
-  const g = topDownJourney({ tilt_deg: 0 });
+  const g = topDownJourney({ tilt_deg: 0 } /* on the fly */);
   for (let f = g.acquired; f <= g.i1; f += 5) {
     const aim = g.aimAt(f);
     if (aim === null) continue;
@@ -476,7 +487,7 @@ test('top-down hold: the subject stays framed through acquisition and sweep', ()
 });
 
 test('top-down hold: the orbit keeps its whole arc, duration and no roll', () => {
-  const g = topDownJourney({ tilt_deg: 0 });
+  const g = topDownJourney({ tilt_deg: 0 } /* on the fly */);
   assert.equal(g.orbit.duration_seconds, 12, 'orbit duration changed');
   assert.equal(Math.abs(g.orbit.orbit_degrees), 180, 'orbit arc changed');
   const roll = g.esp.scenes[0].attributes[0].attributes[2].attributes[2];
@@ -494,8 +505,8 @@ test('top-down hold: an explicit tilt on the ORBIT ITSELF is still obeyed', () =
 });
 
 test('dead-orbit gate: a healthy orbit and an ordinary hold are not flagged', () => {
-  for (const [label, extra] of [['staged hold', {}], ['explicit hold altitude', { altitude_m: 3000 }]]) {
-    const g = topDownJourney(extra);
+  for (const [label, flyExtra, orbitExtra] of [['staged hold', {}, {}], ['explicit orbit altitude', {}, { altitude_m: 3000 }]]) {
+    const g = topDownJourney(flyExtra, orbitExtra);
     const findings = quality.deadOrbitReport({ plan: g.plan, tracks: quality.cameraTracks(g.esp) });
     assert.equal(findings.length, 0, `${label}: healthy orbit must not be flagged (${findings.join('; ')})`);
   }
@@ -519,7 +530,7 @@ test('dead-orbit gate: a healthy orbit and an ordinary hold are not flagged', ()
 // a chosen semantics.
 
 test('duration: an acquisition compresses the sweep, and the amount is reported', () => {
-  const g = topDownJourney({ tilt_deg: 0 });
+  const g = topDownJourney({ tilt_deg: 0 } /* on the fly */);
   const timing = planner.orbitTimingReport(g.plan, { motionPolicy: JOURNEY_POLICY });
   assert.equal(timing.length, 1, 'one orbit should be reported');
   const t = timing[0];
@@ -543,7 +554,7 @@ test('duration: an acquisition compresses the sweep, and the amount is reported'
 test('duration: total shot time still equals the sum of segment durations', () => {
   // The documented accounting, in both earth-studio-map-animation.md and
   // earth-studio-directorial-time-allocation.md. Nothing in this pass changes it.
-  const g = topDownJourney({ tilt_deg: 0 });
+  const g = topDownJourney({ tilt_deg: 0 } /* on the fly */);
   const segments = g.plan.segments.filter((s) => s.location && s.duration_seconds > 0);
   const summed = segments.reduce((total, s) => total + s.duration_seconds, 0);
   assert.equal(g.plan.total_duration_seconds, summed,
@@ -551,14 +562,14 @@ test('duration: total shot time still equals the sum of segment durations', () =
 });
 
 test('duration: the compression is stated in the plan the operator reads', () => {
-  const g = topDownJourney({ tilt_deg: 0 });
+  const g = topDownJourney({ tilt_deg: 0 } /* on the fly */);
   const compiled = journey.compileJourney(journey.normalizeJourney({
     pace: 'calm', aspect: '16:9',
     start: { location: 'Paris', framing: 'city' }, start_movements: [atStep('hold', 3)],
     legs: [{
       destination: COLOSSEUM, travel_style: 'direct',
-      travel: [{ ...journey.newStep('fly', 'travel'), duration_seconds: 7 }],
-      movements: [atStep('hold', 3, { tilt_deg: 0 }), atStep('half_orbit', 12)],
+      travel: [{ ...journey.newStep('fly', 'travel'), duration_seconds: 7, tilt_deg: 0 }],
+      movements: [atStep('hold', 3), atStep('half_orbit', 12)],
     }],
   }));
   const artifacts = planner.buildArtifacts('t', compiled.description, '2026-08-19T14:00:00.000Z',

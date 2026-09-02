@@ -1011,15 +1011,30 @@
         && cursor.tilt_deg <= maxTargetFramingTiltDeg({ planner });
       const inheritable = Number.isFinite(cursor.tilt_deg)
         && !(action === "orbit" && (cursor.tilt_capped || carriedTiltLeavesNoRing));
-      let baseTilt = Number.isFinite(step.tilt_deg) ? step.tilt_deg
+      // A NON-OPENING HOLD OWNS TIME, NOT CAMERA. The planner keeps the previous
+      // camera for it (`holdsPreviousCamera` → carried_over) and applies nothing
+      // the hold might state, so the compiler's camera cursor must record
+      // exactly that incoming camera — not the step's fields, not a default, and
+      // not a framing cap (a cap re-derives a tilt for a shot that frames
+      // nothing). Before this rule an explicit hold tilt leaked into the next
+      // movement, and a hold after an orbit was recorded as top-down (0°) while
+      // the camera stayed at the ring's 60°. Explicit hold camera fields are
+      // refused at raw validation; this keeps compile itself coherent when it is
+      // called without validation.
+      const heldCamera = !!def.holdsCamera && cursor.started;
+      let baseTilt = heldCamera
+        ? (Number.isFinite(cursor.tilt_deg) ? cursor.tilt_deg
+          : (planner.DEFAULT_TILT_DEG.hover != null ? planner.DEFAULT_TILT_DEG.hover : 45))
+        : Number.isFinite(step.tilt_deg) ? step.tilt_deg
         : Number.isFinite(def.tiltDeg) ? def.tiltDeg
         : Number.isFinite(targetPlace && targetPlace.tilt_deg) ? targetPlace.tilt_deg
         : (endsAtOrbitEntry || stagesOrbitEntry) ? successorOrbitTilt
         : inheritable ? cursor.tilt_deg
         : (planner.DEFAULT_TILT_DEG[action] != null ? planner.DEFAULT_TILT_DEG[action] : 45);
-      // Cap a DERIVED tilt so the requested place is actually in shot.
+      // Cap a DERIVED tilt so the requested place is actually in shot. A held
+      // camera frames nothing of its own, so it is never re-capped.
       const framesTargetFromAbove = action !== "orbit" && !endsAtOrbitEntry && !stagesOrbitEntry
-        && !holdsOrbitEntryGeometry;
+        && !holdsOrbitEntryGeometry && !heldCamera;
       if (framesTargetFromAbove && !tiltIntentional && baseTilt > TARGET_FRAMING_TILT_DEG) {
         baseTilt = TARGET_FRAMING_TILT_DEG;
       }
@@ -1028,8 +1043,9 @@
       // meaningful for a camera above its target. The flag must therefore be
       // sticky across carry-over (a second Hold inherits 0 without re-clamping),
       // so an orbit further down the journey still refuses to inherit it.
-      let tiltCapped = framesTargetFromAbove && !tiltIntentional
-        && baseTilt <= maxTargetFramingTiltDeg({ planner });
+      // The held camera carries its flattened-ness unchanged (sticky across holds).
+      let tiltCapped = heldCamera ? !!cursor.tilt_capped
+        : (framesTargetFromAbove && !tiltIntentional && baseTilt <= maxTargetFramingTiltDeg({ planner }));
 
       // Framing for this step's target, shifted by the movement's own intent
       // (push in = one step closer, reveal = two steps wider, ...).
@@ -1270,7 +1286,7 @@
         holds_camera: isHold && !openingHold,
         ends_at_orbit_entry: endsAtOrbitEntry,
         stages_orbit_entry: stagesOrbitEntry ? (next && next.step ? next.step.id : true) : false,
-        tilt_intentional: tiltIntentional,
+        tilt_intentional: heldCamera ? false : tiltIntentional,
         tilt_capped: tiltCapped,
         orbit_flattened: orbitFlattened,
         target_offset_half_frames: action === "orbit" || endsAtOrbitEntry || stagesOrbitEntry
@@ -1303,6 +1319,16 @@
         compiled.emit_altitude = false;
         compiled.emit_tilt = false;
         compiled.altitude_m = Math.round(cursor.altitude_m);
+        // The reclassified movement IS a hold now, so its recorded camera must be
+        // what the planner applies to a hover that states nothing: the incoming
+        // camera when there is one, the planner's hover default when this is the
+        // opening movement (there is no previous camera to carry).
+        compiled.tilt_deg = round2(cursor.started && Number.isFinite(cursor.tilt_deg)
+          ? cursor.tilt_deg
+          : (planner.DEFAULT_TILT_DEG.hover != null ? planner.DEFAULT_TILT_DEG.hover : 45));
+        compiled.tilt_intentional = false;
+        compiled.tilt_capped = cursor.started ? !!cursor.tilt_capped : false;
+        tiltCapped = compiled.tilt_capped;
         warnings.push(`${def.label} at ${compiledLocationLabel(targetInfo)} ${transitReclassified
           ? `was already at or above the legible crossing altitude (${formatAltitude(compiled.altitude_m)}), so there was nothing to climb to`
           : zoomOutReclassified
@@ -1596,7 +1622,45 @@
     return (slot === "travel" ? TRAVEL_MOVEMENT_KEYS : AT_MOVEMENT_KEYS).map((k) => MOVEMENTS[k].label).join(", ");
   }
 
-  function validateStepInput(rawStep, slot, at, errors) {
+  // Camera-state fields a Hold/Pause may NOT carry once the journey has a camera
+  // to hold: a hold owns time, not camera. The opening movement is the one
+  // exception (there is no incoming camera, so it must state its framing).
+  const HOLD_CAMERA_FIELDS = ["tilt_deg", "altitude_m", "framing"];
+
+  function validateHoldCameraFields(raw, slot, at, errors, context) {
+    const type = raw.unsupported_type !== undefined && raw.unsupported_type !== null ? null : raw.type;
+    const def = typeof type === "string" ? MOVEMENTS[type] : null;
+    if (!def || !def.holdsCamera || def.slot !== slot) return;
+    if (!context || context.opening) return;
+    const given = HOLD_CAMERA_FIELDS.filter((k) => isPresent(raw[k]));
+    if (!given.length) return;
+    errors.push(`${at} is a ${def.label}, which keeps the camera exactly where the previous movement left it — it cannot set ${given.map((k) => k.replace(/_deg$|_m$/, "")).join(" or ")}. Put the tilt or altitude on the movement before it, on the orbit that follows, or on the place itself; only the journey's opening movement frames the camera.`);
+  }
+
+  // A non-opening hold must sit where the camera IS. The compiler treats every
+  // destination movement as happening at the destination, but the camera only
+  // gets there through a travel step that reaches it (`travelsToDestination` /
+  // `atDestination`, or a travel style's defaults). A Hold at a destination that
+  // nothing flew to is not a hold — the planner moves the camera there as a
+  // hover-approach (measured: a 395 km "hold" from a pull-back at the previous
+  // stop). Same-place legs (destination == where the camera already is) are fine.
+  function validateHoldLocation(raw, slot, at, errors, context, planner) {
+    if (!context || context.opening || slot !== "at" || !context.leg) return;
+    const type = raw.unsupported_type !== undefined && raw.unsupported_type !== null ? null : raw.type;
+    const def = typeof type === "string" ? MOVEMENTS[type] : null;
+    if (!def || !def.holdsCamera) return;
+    const { reached, cameraText, destinationText, travelTypes } = context.leg;
+    if (reached) return;
+    if (!planner || !cameraText || !destinationText) return;
+    const cam = planner.resolveLocation(cameraText);
+    const dest = planner.resolveLocation(destinationText);
+    if (!cam || !dest) return; // unresolved places are reported by the canonical stage
+    if (Math.abs(cam.latitude - dest.latitude) < 1e-6 && Math.abs(cam.longitude - dest.longitude) < 1e-6) return;
+    const labels = travelTypes.map((t) => (MOVEMENTS[t] ? MOVEMENTS[t].label : t)).join(", ") || "nothing";
+    errors.push(`${at} is a ${def.label} at ${dest.name || destinationText}, but the camera is still at ${cam.name || cameraText}: this destination's travel (${labels}) does not fly there, so the hold would jump the camera across. Add Fly To, Cruise, Fly High, Low Approach or Descend before holding at ${dest.name || destinationText}.`);
+  }
+
+  function validateStepInput(rawStep, slot, at, errors, context) {
     const raw = restoreView(rawStep);
     if (typeof raw === "string") {
       const def = MOVEMENTS[raw];
@@ -1634,6 +1698,8 @@
     if (isPresent(raw.framing) && raw.framing !== "auto" && !FRAMING_SCALES[raw.framing]) {
       errors.push(`${at} has framing "${raw.framing}", which is not one of: auto, ${Object.keys(FRAMING_SCALES).join(", ")}.`);
     }
+    validateHoldCameraFields(raw, slot, at, errors, context);
+    validateHoldLocation(raw, slot, at, errors, context, context && context.planner);
   }
 
   function validatePlaceInput(rawPlace, label, errors) {
@@ -1673,10 +1739,21 @@
       }
     }
     validatePlaceInput(journey.start, "The start location", errors);
+    // Which movement OPENS the journey (no incoming camera yet)? Mirrors the
+    // compiler's walk: start movements first, then each leg's travel — an
+    // empty/missing travel list is filled with the style's default (non-hold)
+    // steps by normalization, so a destination movement is never the opening
+    // one in that case — then the leg's movements.
+    let seenMovement = false;
+    let legInfo = null;
+    const nextContext = () => { const ctx = { opening: !seenMovement, leg: legInfo, planner }; seenMovement = true; return ctx; };
+    const REACHES = (t) => { const d = typeof t === "string" ? MOVEMENTS[t] : null; return !!(d && (d.travelsToDestination || d.atDestination)); };
+    const placeText = (pl) => (pl && typeof pl === "object" ? pl.location : pl);
+    let cameraText = journey.start && typeof journey.start === "object" ? placeText(restoreView(journey.start)) : placeText(journey.start);
     if (journey.start_movements !== undefined && journey.start_movements !== null && !Array.isArray(journey.start_movements)) {
       errors.push("Start movements must be a list of movements.");
     } else {
-      (journey.start_movements || []).forEach((s, i) => validateStepInput(s, "at", `Start movement ${i + 1}`, errors));
+      (journey.start_movements || []).forEach((s, i) => validateStepInput(s, "at", `Start movement ${i + 1}`, errors, nextContext()));
     }
     if (journey.legs !== undefined && journey.legs !== null && !Array.isArray(journey.legs)) {
       errors.push("Destinations must be a list.");
@@ -1685,14 +1762,23 @@
         const label = `Destination ${i + 1}`;
         if (!rawLeg || typeof rawLeg !== "object" || Array.isArray(rawLeg)) { errors.push(`${label} is not a destination. Give it a place and its movements.`); return; }
         const leg = restoreView(rawLeg);
+        const destinationText = placeText(restoreView(leg.destination));
+        const travelTypes = Array.isArray(leg.travel) && leg.travel.length
+          ? leg.travel.map((s) => (s && typeof s === "object" ? s.type : s)) : null;
+        // Empty travel takes the style's default steps, all of which reach the destination.
+        const reached = travelTypes === null || travelTypes.some(REACHES);
+        legInfo = { reached, cameraText, destinationText, travelTypes: travelTypes || [] };
         validatePlaceInput(leg.destination, `${label}'s location`, errors);
         if (isPresent(leg.travel_style) && !TRAVEL_STYLES[leg.travel_style]) {
           errors.push(`${label} has travel style "${leg.travel_style}", which is not one of: ${Object.keys(TRAVEL_STYLES).join(", ")}.`);
         }
         if (leg.travel !== undefined && leg.travel !== null && !Array.isArray(leg.travel)) errors.push(`${label}'s travel must be a list of movements.`);
-        else (leg.travel || []).forEach((s, k) => validateStepInput(s, "travel", `${label} travel movement ${k + 1}`, errors));
+        else if (Array.isArray(leg.travel) && leg.travel.length) leg.travel.forEach((s, k) => validateStepInput(s, "travel", `${label} travel movement ${k + 1}`, errors, nextContext()));
+        else seenMovement = true; // normalization inserts the travel style's default steps here
         if (leg.movements !== undefined && leg.movements !== null && !Array.isArray(leg.movements)) errors.push(`${label}'s movements must be a list.`);
-        else (leg.movements || []).forEach((s, k) => validateStepInput(s, "at", `${label} movement ${k + 1}`, errors));
+        else (leg.movements || []).forEach((s, k) => validateStepInput(s, "at", `${label} movement ${k + 1}`, errors, nextContext()));
+        cameraText = destinationText; // the compiler's walk continues from the destination
+        legInfo = null;
       });
     }
     return { ok: errors.length === 0, errors };
