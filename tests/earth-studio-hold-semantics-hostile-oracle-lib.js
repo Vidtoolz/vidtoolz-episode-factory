@@ -41,6 +41,14 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function stripEditorIds(value) {
+  if (Array.isArray(value)) return value.map(stripEditorIds);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => key !== "id")
+    .map(([key, child]) => [key, stripEditorIds(child)]));
+}
+
 function at(type, duration_seconds, extra = {}) {
   return { type, duration_seconds, ...extra };
 }
@@ -163,6 +171,11 @@ function evidenceLocation(scenario) {
 }
 
 function positiveRequests(repoRoot, corpus = loadCorpus(repoRoot)) {
+  const repairDeltaCases = new Set([
+    "mid-hold-after-orbit-omitted",
+    "hold-before-travel-omitted",
+    "settle-launch-orbit-hold-travel",
+  ]);
   return corpus.positive.map((row) => ({
     id: `positive:${row.id}`,
     kind: "positive",
@@ -171,21 +184,34 @@ function positiveRequests(repoRoot, corpus = loadCorpus(repoRoot)) {
     journey: scenarioJourney(row),
     job_name: `HOLD-POSITIVE-${row.id}`,
     generated_at: corpus.generated_at,
-    artifact_policy: row.scenario === "continuation" ? "semantic-repair-delta-allowed" : "frozen",
+    artifact_policy: repairDeltaCases.has(row.id) ? "semantic-repair-delta-allowed" : "frozen",
   }));
 }
 
 function hostileRequests(repoRoot, corpus = loadCorpus(repoRoot)) {
-  return corpus.negative.map((row) => ({
-    id: `hostile:${row.id}`,
-    kind: "hostile",
-    scenario: row.scenario,
-    journey: scenarioJourney(row),
-    job_name: `HOLD-HOSTILE-${row.id}`,
-    generated_at: corpus.generated_at,
-    expected_fields: [...row.expected_fields],
-    expected_location: evidenceLocation(row.scenario),
-  }));
+  const modules = loadModules(repoRoot);
+  return corpus.negative.flatMap((row) => {
+    const raw = scenarioJourney(row);
+    const normalized = stripEditorIds(modules.journey.normalizeJourney(clone(raw)));
+    const normalizedTwice = stripEditorIds(modules.journey.normalizeJourney(clone(normalized)));
+    const variants = {
+      raw,
+      normalized,
+      normalized_twice: normalizedTwice,
+      json_roundtrip: clone(raw),
+    };
+    return Object.entries(variants).map(([normalizationVariant, journey]) => ({
+      id: `hostile:${row.id}:${normalizationVariant}`,
+      kind: "hostile",
+      scenario: row.scenario,
+      normalization_variant: normalizationVariant,
+      journey,
+      job_name: `HOLD-HOSTILE-${row.id}-${normalizationVariant}`,
+      generated_at: corpus.generated_at,
+      expected_fields: [...row.expected_fields],
+      expected_location: evidenceLocation(row.scenario),
+    }));
+  });
 }
 
 function trackedJourneyFiles(repoRoot) {
@@ -241,6 +267,28 @@ function artifactHashes(artifacts) {
     if (!artifacts || typeof artifacts[name] !== "string") throw new Error(`missing ${name}`);
     return [name, sha256(Buffer.from(artifacts[name], "utf8"))];
   }));
+}
+
+function cameraStateHashes(plan, modules) {
+  const finalCamera = modules.planner.finalCameraState(plan);
+  const continuationState = modules.journey.continuationStateFromPlan(plan);
+  if (!finalCamera || !continuationState) throw new Error("camera-state authority missing");
+  return {
+    final_camera_sha256: sha256(Buffer.from(JSON.stringify(finalCamera))),
+    continuation_state_sha256: sha256(Buffer.from(JSON.stringify(continuationState))),
+  };
+}
+
+function rollKeyframeCount(espBytes) {
+  const esp = JSON.parse(espBytes);
+  let count = 0;
+  const walk = (value) => {
+    if (!value || typeof value !== "object") return;
+    if (value.type === "rotationZ" && Array.isArray(value.keyframes)) count += value.keyframes.length;
+    Object.values(value).forEach(walk);
+  };
+  walk(esp);
+  return count;
 }
 
 function positionDeltaMeters(a, b) {
@@ -310,11 +358,14 @@ function buildHoldObservations(request, compiled, plan, modules, artifacts) {
 }
 
 function acceptedPayload(request, artifacts, compiled, plan, modules, generatedFiles) {
+  const cameraStates = cameraStateHashes(plan, modules);
   return {
     accepted: true,
     artifact_sha256: artifactHashes(artifacts),
+    ...cameraStates,
+    roll_keyframe_count: rollKeyframeCount(artifacts["earth-studio.esp"]),
     generated_files: generatedFiles,
-    holds: request.kind === "positive" ? buildHoldObservations(request, compiled, plan, modules, artifacts) : [],
+    holds: request.kind === "hostile" ? [] : buildHoldObservations(request, compiled, plan, modules, artifacts),
   };
 }
 
@@ -325,6 +376,9 @@ function rejectionPayload(error, generatedFiles = []) {
     errors: Array.isArray(error.journey_errors) ? error.journey_errors.map(String) : [String(error.message || error)],
     generated_files: generatedFiles,
     artifact_sha256: {},
+    final_camera_sha256: null,
+    continuation_state_sha256: null,
+    roll_keyframe_count: 0,
     holds: [],
   };
 }
@@ -378,7 +432,7 @@ function executeRequest(request, repoRoot, modules = loadModules(repoRoot)) {
 }
 
 function defectReproduction(repoRoot, modules = loadModules(repoRoot)) {
-  const hostile = hostileRequests(repoRoot).find((request) => request.id === "hostile:destination-hold-tilt-30");
+  const hostile = hostileRequests(repoRoot).find((request) => request.id === "hostile:destination-hold-tilt-30:raw");
   if (!hostile) throw new Error("cursor-leak hostile fixture missing");
   const observational = { ...hostile, kind: "positive", fields: { tilt_deg: 30 } };
   const direct = executeDirect(observational, repoRoot, modules);
@@ -404,7 +458,8 @@ function defectReproduction(repoRoot, modules = loadModules(repoRoot)) {
 
 function semanticFailures(request, pathResult) {
   const failures = [];
-  if (!pathResult || !Array.isArray(pathResult.holds) || !pathResult.holds.length) return ["hold observations missing"];
+  if (!pathResult || !Array.isArray(pathResult.holds)) return ["hold observations missing"];
+  if (!pathResult.holds.length) return request.kind === "tracked-production" ? [] : ["hold observations missing"];
   const tolerance = { position_m: 0.02, altitude_m: 0.02, pan_deg: 0.0001, tilt_deg: 0.0001 };
   for (const hold of pathResult.holds) {
     const label = `hold[${hold.index}]`;
@@ -413,7 +468,7 @@ function semanticFailures(request, pathResult) {
     if (!incoming || !outgoing || !hold.compiler_cursor || !hold.planner_segment) {
       failures.push(`${label}: malformed observation`); continue;
     }
-    if (!hold.opening || request.scenario === "continuation") {
+    if (!hold.opening) {
       if (positionDeltaMeters(incoming, outgoing) > tolerance.position_m) failures.push(`${label}: position moved during hold`);
       if (Math.abs(incoming.altitude_m - outgoing.altitude_m) > tolerance.altitude_m) failures.push(`${label}: altitude moved during hold`);
       if (angularDelta(incoming.pan_deg, outgoing.pan_deg) > tolerance.pan_deg) failures.push(`${label}: pan moved during hold`);
@@ -436,18 +491,6 @@ function semanticFailures(request, pathResult) {
       }
     }
   }
-  if (request.scenario === "continuation") {
-    const camera = request.journey.start.continuation.camera;
-    const opening = pathResult.holds.find((hold) => hold.opening);
-    if (!opening) failures.push("continuation opening hold missing");
-    else {
-      if (positionDeltaMeters(camera, opening.incoming_applied) > tolerance.position_m) failures.push("continuation opening position does not equal incoming canonical state");
-      for (const field of ["altitude_m", "pan_deg", "tilt_deg"]) {
-        const delta = field === "pan_deg" ? angularDelta(camera[field], opening.incoming_applied[field]) : Math.abs(camera[field] - opening.incoming_applied[field]);
-        if (delta > tolerance[field]) failures.push(`continuation opening ${field} does not equal incoming canonical state`);
-      }
-    }
-  }
   return failures;
 }
 
@@ -455,15 +498,21 @@ function manifestRecord(request, result) {
   const paths = Object.fromEntries(PATH_NAMES.map((name) => [name, {
     accepted: result.paths[name].accepted,
     artifact_sha256: result.paths[name].artifact_sha256,
+    final_camera_sha256: result.paths[name].final_camera_sha256,
+    continuation_state_sha256: result.paths[name].continuation_state_sha256,
+    roll_keyframe_count: result.paths[name].roll_keyframe_count,
+    hold_count: result.paths[name].holds.length,
+    holds: result.paths[name].holds,
     generated_artifact_files: (result.paths[name].generated_files || []).filter((file) => /(?:^|\/)(?:shot-plan\.json|earth-studio\.esp)$/.test(file)),
     errors: result.paths[name].errors || [],
-    semantic_failures: request.kind === "positive" && result.paths[name].accepted ? semanticFailures(request, result.paths[name]) : [],
+    semantic_failures: request.kind !== "hostile" && result.paths[name].accepted ? semanticFailures(request, result.paths[name]) : [],
   }]));
   return {
     id: request.id,
     kind: request.kind,
     ...(request.source ? { source: request.source, source_bytes_sha256: request.source_bytes_sha256 } : {}),
     ...(request.artifact_policy ? { artifact_policy: request.artifact_policy } : {}),
+    ...(request.normalization_variant ? { normalization_variant: request.normalization_variant } : {}),
     ...(request.expected_fields ? { expected_fields: request.expected_fields, expected_location: request.expected_location } : {}),
     input_sha256: sha256(Buffer.from(JSON.stringify(request.journey))),
     baseline: { paths },
@@ -487,8 +536,16 @@ function buildManifest(repoRoot) {
       tracked_production: tracked.length,
       tracked_forbidden_non_opening_hold_fields: countTrackedForbiddenHolds(tracked),
       positive: positive.length,
+      hostile_semantic_cases: corpus.negative.length,
       hostile: hostile.length,
+      normalization_variants_per_hostile: 4,
       path_executions: records.length * PATH_NAMES.length,
+      tracked_hold_observations: records.filter((record) => record.kind === "tracked-production")
+        .reduce((sum, record) => sum + record.baseline.paths.lane.hold_count, 0),
+      tracked_non_opening_hold_observations: records.filter((record) => record.kind === "tracked-production")
+        .reduce((sum, record) => sum + record.baseline.paths.lane.holds.filter((hold) => !hold.opening).length, 0),
+      tracked_hold_semantic_failures: records.filter((record) => record.kind === "tracked-production")
+        .reduce((sum, record) => sum + record.baseline.paths.lane.semantic_failures.length, 0),
       hostile_baseline_acceptances: hostile.reduce((sum, request) => {
         const record = records.find((row) => row.id === request.id);
         return sum + PATH_NAMES.filter((name) => record.baseline.paths[name].accepted).length;

@@ -24,6 +24,9 @@ function validatePathShape(caseId, pathName, value) {
     for (const artifact of oracle.EXACT_ARTIFACTS) {
       if (!HASH.test(value.artifact_sha256[artifact] || "")) throw new Error(`${caseId}/${pathName}: missing or malformed ${artifact} hash`);
     }
+    if (!HASH.test(value.final_camera_sha256 || "")) throw new Error(`${caseId}/${pathName}: missing or malformed final camera hash`);
+    if (!HASH.test(value.continuation_state_sha256 || "")) throw new Error(`${caseId}/${pathName}: missing or malformed continuation-state hash`);
+    if (!Number.isInteger(value.roll_keyframe_count) || value.roll_keyframe_count < 0) throw new Error(`${caseId}/${pathName}: malformed roll keyframe count`);
   } else {
     if (!Array.isArray(value.errors) || !value.errors.length || value.errors.some((error) => typeof error !== "string" || !error)) {
       throw new Error(`${caseId}/${pathName}: rejection errors must be a non-empty string list`);
@@ -61,6 +64,10 @@ function compareTracked(request, manifestRecord, response) {
       const expectedHash = manifestRecord.baseline.paths[name].artifact_sha256[artifact];
       if (actual.artifact_sha256[artifact] !== expectedHash) failures.push(`${name}: ${artifact} differs from frozen production bytes`);
     }
+    for (const field of ["final_camera_sha256", "continuation_state_sha256", "roll_keyframe_count"]) {
+      if (actual[field] !== manifestRecord.baseline.paths[name][field]) failures.push(`${name}: ${field} differs from frozen production authority`);
+    }
+    failures.push(...oracle.semanticFailures(request, actual).map((message) => `${name}: ${message}`));
   }
   return { pass: failures.length === 0, failures };
 }
@@ -76,6 +83,9 @@ function comparePositive(request, manifestRecord, response) {
         const expectedHash = manifestRecord.baseline.paths[name].artifact_sha256[artifact];
         if (actual.artifact_sha256[artifact] !== expectedHash) failures.push(`${name}: unexpected positive ${artifact} difference`);
       }
+      for (const field of ["final_camera_sha256", "continuation_state_sha256", "roll_keyframe_count"]) {
+        if (actual[field] !== manifestRecord.baseline.paths[name][field]) failures.push(`${name}: unexpected positive ${field} difference`);
+      }
     }
   }
   if (manifestRecord.artifact_policy === "semantic-repair-delta-allowed") {
@@ -83,6 +93,9 @@ function comparePositive(request, manifestRecord, response) {
       if (response.paths.lane.artifact_sha256[artifact] !== response.paths.direct_ir.artifact_sha256[artifact]) {
         failures.push(`lane/direct_ir: ${artifact} differs for the explicitly allowed semantic repair delta`);
       }
+    }
+    for (const field of ["final_camera_sha256", "continuation_state_sha256", "roll_keyframe_count"]) {
+      if (response.paths.lane[field] !== response.paths.direct_ir[field]) failures.push(`lane/direct_ir: ${field} differs for the explicitly allowed semantic repair delta`);
     }
   }
   return { pass: failures.length === 0, failures };
@@ -96,6 +109,7 @@ function compareHostile(request, _manifestRecord, response) {
     if (actual.status_code !== 400) failures.push(`${name}: rejection did not report raw Journey status 400`);
     const created = createdEarthStudioArtifacts(actual);
     if (created.length) failures.push(`${name}: invalid input created Earth Studio artifacts: ${created.join(", ")}`);
+    if ((actual.generated_files || []).length) failures.push(`${name}: invalid input created files: ${actual.generated_files.join(", ")}`);
     const evidence = (actual.errors || []).join("\n");
     for (const field of request.expected_fields) {
       if (!fieldPattern(field).test(evidence)) failures.push(`${name}: rejection evidence does not identify ${field}`);

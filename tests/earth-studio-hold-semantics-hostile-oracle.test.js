@@ -32,16 +32,20 @@ test("hold oracle: current production independently reproduces the hostile tilt 
   assert.equal(defect.cursor_diverged, true);
 });
 
-test("hold oracle: all hostile fields are accepted by current production on both paths, proving the collision", () => {
+test("hold oracle: raw, normalized, twice-normalized and JSON-round-tripped hostile fields expose the collision", () => {
   const records = frozen.records.filter((record) => record.kind === "hostile");
-  assert.equal(records.length, 16);
+  assert.equal(records.length, 64);
+  assert.deepEqual([...new Set(records.map((record) => record.normalization_variant))].sort(),
+    ["json_roundtrip", "normalized", "normalized_twice", "raw"]);
   for (const record of records) {
     for (const name of oracle.PATH_NAMES) {
       assert.equal(record.baseline.paths[name].accepted, true, `${record.id}/${name}`);
       assert.deepEqual(Object.keys(record.baseline.paths[name].artifact_sha256).sort(), oracle.EXACT_ARTIFACTS.slice().sort());
     }
   }
-  assert.equal(frozen.counts.hostile_baseline_acceptances, 32);
+  assert.equal(frozen.counts.hostile_semantic_cases, 16);
+  assert.equal(frozen.counts.normalization_variants_per_hostile, 4);
+  assert.equal(frozen.counts.hostile_baseline_acceptances, 128);
 });
 
 test("hold oracle: exactly 148 tracked Journey inputs are frozen and contain no forbidden hold fields", () => {
@@ -52,7 +56,7 @@ test("hold oracle: exactly 148 tracked Journey inputs are frozen and contain no 
   assert.equal(frozen.counts.tracked_forbidden_non_opening_hold_fields, 0);
 });
 
-test("hold oracle: every tracked Journey freezes byte-exact shot-plan and ESP identities on lane and Direct IR", () => {
+test("hold oracle: every tracked Journey freezes byte-exact artifacts, terminal state and hold cursor observations", () => {
   const records = frozen.records.filter((record) => record.kind === "tracked-production");
   assert.equal(records.length, 148);
   for (const record of records) {
@@ -60,7 +64,19 @@ test("hold oracle: every tracked Journey freezes byte-exact shot-plan and ESP id
     const direct = record.baseline.paths.direct_ir.artifact_sha256;
     assert.deepEqual(direct, lane, `${record.id}: lane/Direct IR baseline differs`);
     for (const name of oracle.EXACT_ARTIFACTS) assert.match(lane[name], /^[a-f0-9]{64}$/);
+    for (const name of oracle.PATH_NAMES) {
+      const baseline = record.baseline.paths[name];
+      assert.match(baseline.final_camera_sha256, /^[a-f0-9]{64}$/);
+      assert.match(baseline.continuation_state_sha256, /^[a-f0-9]{64}$/);
+      assert.equal(baseline.roll_keyframe_count, 0);
+      assert.deepEqual(baseline.semantic_failures, [], `${record.id}/${name}: tracked hold invariant failed`);
+    }
+    assert.equal(record.baseline.paths.lane.final_camera_sha256, record.baseline.paths.direct_ir.final_camera_sha256);
+    assert.equal(record.baseline.paths.lane.continuation_state_sha256, record.baseline.paths.direct_ir.continuation_state_sha256);
   }
+  assert.equal(frozen.counts.tracked_hold_observations, 148);
+  assert.equal(frozen.counts.tracked_non_opening_hold_observations, 55);
+  assert.equal(frozen.counts.tracked_hold_semantic_failures, 0);
 });
 
 test("hold oracle: legitimate baseline semantics pass where already implemented and known positive defects stay characterized", () => {
@@ -70,13 +86,13 @@ test("hold oracle: legitimate baseline semantics pass where already implemented 
       "positive:mid-hold-after-orbit-omitted",
       "positive:hold-before-travel-omitted",
       "positive:settle-launch-orbit-hold-travel",
-      "positive:continuation-opening-hold-omitted",
     ]);
   const passing = records.filter((record) => !failing.includes(record));
-  assert.equal(passing.length, 12);
+  assert.equal(passing.length, 13);
   assert.ok(passing.some((record) => record.id === "positive:opening-hold-explicit-both"));
   assert.ok(passing.some((record) => record.id === "positive:orbit-staging-fly-hold-orbit"));
   assert.ok(passing.some((record) => record.id === "positive:terrain-matterhorn-hold-omitted"));
+  assert.equal(records.find((record) => record.id === "positive:continuation-opening-hold-omitted").artifact_policy, "frozen");
 });
 
 test("hold oracle: comparator distinguishes baseline acceptance from required candidate rejection", () => {

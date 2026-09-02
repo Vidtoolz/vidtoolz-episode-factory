@@ -10,12 +10,12 @@
     {
       "label": "COMPARATOR",
       "path": "scripts/earth-studio-hold-semantics-comparator.js",
-      "sha256": "394509a1cb8ecf55cf961a775739ec88e83a8bbe16ebd3cf03d850fd6c8bc20f"
+      "sha256": "6af56ca01142a2391d85a5b2cc2f64fb666c47d315f91d771daf81bcd5beeba9"
     },
     {
       "label": "MANIFEST",
       "path": "tests/fixtures/earth-studio-hold-semantics-production-manifest.json",
-      "sha256": "1a36221e8eb7612ce45f946b2222345bd363f54afe429f472210dd871ec7ce52"
+      "sha256": "3e7b012e36f9bb41bcf127eb13a1aa13f38c88649bba7cbbdc7e7ff73163affc"
     }
   ]
 }

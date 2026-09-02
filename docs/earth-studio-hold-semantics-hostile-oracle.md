@@ -4,26 +4,26 @@ This independent, test-only oracle is frozen against production commit `818db55f
 
 ## Frozen protocol
 
-The corpus contains 16 legitimate and 16 hostile authored Journeys. Every request is executed through both production ingestion paths:
+The corpus contains 16 legitimate and 16 hostile semantic Journeys. Every hostile Journey is exercised raw, normalized once, normalized twice, and after a JSON round trip: 64 hostile protocol requests. Every request is executed through both production ingestion paths:
 
 1. `earth-studio-lane.writeJob`, exercising the raw Journey boundary and filesystem artifact creation.
 2. `compileJourneyToParsed` followed by `buildShotPlanFromParsed` / `buildArtifactsFromParsed`, exercising Direct Journey IR without text parsing.
 
 The adapter emits NDJSON using protocol `earth-studio-hold-semantics-oracle-v1`. The comparator fails closed on a malformed protocol, missing or duplicate cases, missing paths, missing output hashes, invalid error arrays, generated artifacts after rejection, hash differences, or semantic cursor differences.
 
-The candidate must reject every hostile case with status 400 on both paths, create or return no `shot-plan.json` or `earth-studio.esp`, and identify every forbidden field plus its exact non-opening Journey location. Both fields must be named when both were supplied.
+The candidate must reject every hostile case with status 400 on both paths, create no files and return no `shot-plan.json` or `earth-studio.esp`, and identify every forbidden field plus its exact non-opening Journey location. Both fields must be named when both were supplied.
 
 Legitimate cases cover explicit opening framing, fresh and continuation openings, mid-journey and terminal holds, movement/hold/movement boundaries, travel pause, repeated holds, settle/launch, terrain, fly/hold/orbit staging, omitted and null fields, and short/long dwell durations. Playback observations compare position, altitude, pan and tilt at each hold boundary. Compiler altitude/tilt must equal planner-applied state, and the following movement's compiler altitude must start from that same state.
 
 ## Current-production defect proof
 
-Current production accepts all 16 hostile cases through both paths (32/32 incorrect acceptances) and generates Earth Studio artifacts. In the canonical `fly → hold(tilt_deg: 30) → half_orbit` reproduction, the compiler records hold tilt 30°, suppresses it from the planner phrase, and advances its cursor to 30°. The planner correctly holds the actually incoming 0° camera, while the next orbit inherits the compiler's unapplied 30°. The oracle records the acceptance collision and the compiler/planner mismatch; it does not bless either.
+Current production accepts all 64 hostile protocol requests through both paths (128/128 incorrect acceptances) and generates Earth Studio artifacts. This proves that normalization, repeated normalization, or a JSON round trip cannot launder invalid hold intent. In the canonical `fly → hold(tilt_deg: 30) → half_orbit` reproduction, the compiler records hold tilt 30°, suppresses it from the planner phrase, and advances its cursor to 30°. The planner correctly holds the actually incoming 0° camera, while the next orbit inherits the compiler's unapplied 30°. The oracle records the acceptance collision and the compiler/planner mismatch; it does not bless either.
 
-Current production also exposes legitimate omitted-field defects: terminal holds after orbit retain planner-applied camera state but the compiler tilt cursor says 0°, and a continuation-opening hold with omitted fields moves away from its incoming continuation camera. Those are expected baseline failures, not candidate allowances. Twelve authored positive cases already satisfy the semantic checks on production and remain byte-frozen. The continuation-opening repair is the only authored positive allowed to change baseline artifact hashes, and even there lane and Direct IR must remain byte-identical. All other positive differences fail closed.
+Current production also exposes three legitimate omitted-field cursor defects: terminal holds after orbit retain planner-applied camera state but the compiler tilt cursor says 0°. Those are expected baseline failures, not candidate allowances. Thirteen authored positive cases already satisfy the semantic checks on production and remain byte-frozen. Only the three omitted-field cursor-defect cases may change baseline artifact hashes, and even there lane and Direct IR must remain byte-identical. Opening framing, including continuation-opening behavior, remains frozen rather than being silently redefined by this non-opening-hold mission.
 
 ## Tracked-production preservation
 
-The manifest freezes every one of the 148 Git-tracked `package-runs/**/earth-studio/journey.json` inputs. For each it records the input byte identity and the exact production-base SHA-256 of `shot-plan.json` and `earth-studio.esp` on both paths. Candidate hashes must match. No tracked Journey contains an explicit camera field on a non-opening hold, so strict rejection creates no preservation conflict. The runner has no re-pin mode: its one-time manifest command refuses when the manifest already exists.
+The manifest freezes every one of the 148 Git-tracked `package-runs/**/earth-studio/journey.json` inputs. For each it records the input byte identity and the exact production-base SHA-256 of `shot-plan.json`, `earth-studio.esp`, final camera state, and continuation state on both paths. It also records every tracked hold observation; all 55 non-opening tracked holds satisfy the static/cursor invariant, and none has an explicit camera field. Candidate hashes must match. Strict rejection therefore creates no preservation conflict. The runner has no re-pin mode: its one-time manifest command refuses when the manifest already exists.
 
 ## Existing invalid test fixtures
 
