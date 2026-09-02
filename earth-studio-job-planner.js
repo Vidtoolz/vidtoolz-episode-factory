@@ -872,12 +872,20 @@
     return DEFAULT_DURATION_S[action] || 4;
   }
 
-  function parseSegment(text, segmentId, currentSeconds, frameRate = FRAME_RATE, previousLocation = null, previousAltitudeM = DEFAULT_ALTITUDE_M, previousTiltDeg = null, framingOptions = {}) {
-    const warnings = [];
-    const notes = [];
-    const actionInfo = detectAction(text);
-    if (actionInfo.warning) warnings.push(actionInfo.warning);
+  // ── Segment spec: the PURE-PARSING output of one description fragment ─────
+  // Text → structure only. Every semantic rule (location resolution, defaults,
+  // clamps, carry-over, pacing notes, frame mapping) lives in assembleSegment
+  // below and is shared by BOTH the text path and the structured (direct
+  // journey IR) path, so the two cannot drift. The spec is the parser's single
+  // hand-off contract:
+  //   { source_text, action, resolution_status, action_warning,
+  //     location_phrase, duration_seconds, altitude_m, altitude_spec_source,
+  //     tilt_deg, orbit_degrees, orbit_direction }
+  const SEGMENT_ACTIONS = Object.freeze(["fly_to", "hover", "orbit", "zoom_in", "zoom_out"]);
+  const ALTITUDE_SPEC_SOURCES = Object.freeze(["explicit", "space", "low", "high"]);
 
+  function extractSegmentSpec(text) {
+    const actionInfo = detectAction(text);
     // Strip modifiers front-to-back so the location extractor sees a clean phrase.
     let working = removeDurationPhrase(text);
     const tiltSpec = extractTiltSpec(working);
@@ -892,8 +900,76 @@
     working = orbitSpec.text;
     const altitudeSpec = extractAltitudeSpec(working);
     working = altitudeSpec.text;
+    return {
+      source_text: cleanString(text),
+      action: actionInfo.action,
+      resolution_status: actionInfo.resolutionStatus,
+      action_warning: actionInfo.warning || null,
+      location_phrase: extractLocationPhrase(working, actionInfo.action),
+      duration_seconds: extractDurationSeconds(text),
+      altitude_m: altitudeSpec.altitude_m,
+      altitude_spec_source: altitudeSpec.source,
+      tilt_deg: tiltSpec.tilt_deg,
+      orbit_degrees: orbitSpec.orbit_degrees,
+      orbit_direction: orbitSpec.orbit_direction,
+    };
+  }
 
-    const locationPhrase = extractLocationPhrase(working, actionInfo.action);
+  // Structured input is a PARSER bypass, never a VALIDATION bypass: a spec that
+  // did not come from the text extractors must satisfy exactly the value domain
+  // the extractors can produce (finite numbers, known enums, non-negative
+  // magnitudes, tilt inside the extractor's 0–85 clamp). Anything else is
+  // refused loudly instead of being normalized away.
+  function validateSegmentSpecs(specs) {
+    if (!Array.isArray(specs)) throw new TypeError("segment specs must be an array");
+    const finiteOrNull = (v) => v === null || (typeof v === "number" && Number.isFinite(v));
+    specs.forEach((spec, i) => {
+      const at = `segment spec ${i + 1}`;
+      if (!spec || typeof spec !== "object" || Array.isArray(spec)) throw new TypeError(`${at}: must be an object`);
+      if (typeof spec.source_text !== "string" || !spec.source_text.trim()) throw new TypeError(`${at}: source_text must be a non-empty string`);
+      if (!SEGMENT_ACTIONS.includes(spec.action)) throw new TypeError(`${at}: action must be one of ${SEGMENT_ACTIONS.join(", ")} (got ${JSON.stringify(spec.action)})`);
+      if (spec.resolution_status !== undefined && spec.resolution_status !== "parsed") throw new TypeError(`${at}: resolution_status must be "parsed" for structured input`);
+      if (spec.action_warning !== undefined && spec.action_warning !== null) throw new TypeError(`${at}: action_warning must be null for structured input`);
+      if (typeof spec.location_phrase !== "string") throw new TypeError(`${at}: location_phrase must be a string`);
+      if (!finiteOrNull(spec.duration_seconds) || (spec.duration_seconds !== null && spec.duration_seconds < 0)) throw new TypeError(`${at}: duration_seconds must be null or a finite number >= 0`);
+      if (!finiteOrNull(spec.altitude_m) || (spec.altitude_m !== null && spec.altitude_m < 0)) throw new TypeError(`${at}: altitude_m must be null or a finite number >= 0`);
+      const altSource = spec.altitude_spec_source === undefined ? null : spec.altitude_spec_source;
+      if (spec.altitude_m === null ? altSource !== null : !ALTITUDE_SPEC_SOURCES.includes(altSource)) throw new TypeError(`${at}: altitude_spec_source must be null when altitude_m is null, otherwise one of ${ALTITUDE_SPEC_SOURCES.join(", ")}`);
+      if (!finiteOrNull(spec.tilt_deg) || (spec.tilt_deg !== null && (spec.tilt_deg < 0 || spec.tilt_deg > 85))) throw new TypeError(`${at}: tilt_deg must be null or a finite number within 0–85`);
+      if (!finiteOrNull(spec.orbit_degrees) || (spec.orbit_degrees !== null && spec.orbit_degrees < 0)) throw new TypeError(`${at}: orbit_degrees must be null or a finite number >= 0`);
+      const dir = spec.orbit_direction === undefined ? 1 : spec.orbit_direction;
+      if (dir !== 1 && dir !== -1) throw new TypeError(`${at}: orbit_direction must be 1 or -1`);
+      if (spec.action !== "orbit" && (spec.orbit_degrees !== null || dir !== 1)) throw new TypeError(`${at}: orbit modifiers are only valid on an orbit action`);
+    });
+  }
+
+  function normalizeSegmentSpec(spec) {
+    return {
+      source_text: spec.source_text,
+      action: spec.action,
+      resolution_status: "parsed",
+      action_warning: null,
+      location_phrase: spec.location_phrase,
+      duration_seconds: spec.duration_seconds,
+      altitude_m: spec.altitude_m,
+      altitude_spec_source: spec.altitude_m === null ? null : spec.altitude_spec_source,
+      tilt_deg: spec.tilt_deg,
+      orbit_degrees: spec.action === "orbit" ? spec.orbit_degrees : null,
+      orbit_direction: spec.action === "orbit" ? (spec.orbit_direction === -1 ? -1 : 1) : 1,
+    };
+  }
+
+  // ── Segment assembly: the SHARED semantic authority ──────────────────────
+  // spec → resolved segment. Text and structured inputs meet here.
+  function assembleSegment(spec, segmentId, currentSeconds, frameRate = FRAME_RATE, previousLocation = null, previousAltitudeM = DEFAULT_ALTITUDE_M, previousTiltDeg = null, framingOptions = {}) {
+    const warnings = [];
+    const notes = [];
+    const actionInfo = { action: spec.action, resolutionStatus: spec.resolution_status, warning: spec.action_warning || undefined };
+    if (actionInfo.warning) warnings.push(actionInfo.warning);
+    const tiltSpec = { tilt_deg: spec.tilt_deg };
+    const orbitSpec = { orbit_degrees: spec.orbit_degrees, orbit_direction: spec.orbit_direction };
+    const altitudeSpec = { altitude_m: spec.altitude_m, source: spec.altitude_spec_source };
+    const locationPhrase = spec.location_phrase;
     let location = locationPhrase ? resolveLocation(locationPhrase) : null;
     if (locationPhrase && !location) warnings.push(`unknown location fixture: ${locationPhrase}`);
     if (!locationPhrase) {
@@ -954,7 +1030,7 @@
       fromAltitudeM: previousAltitudeM,
       toAltitudeM: altitude.value,
     };
-    let durationSeconds = extractDurationSeconds(text);
+    let durationSeconds = spec.duration_seconds;
     let durationSource = "explicit";
     if (durationSeconds === null) {
       if (actionInfo.action !== "unresolved") {
@@ -1000,7 +1076,7 @@
 
     const segment = {
       segment_id: segmentId,
-      source_text: cleanString(text),
+      source_text: cleanString(spec.source_text),
       action: actionInfo.action,
       requested_action: actionInfo.action,
       location_name: location ? location.name : locationPhrase || "",
@@ -1037,6 +1113,11 @@
     return { segment, nextSeconds: endSeconds, warnings, notes };
   }
 
+  // Text path: parse one fragment, then run the shared assembly.
+  function parseSegment(text, segmentId, currentSeconds, frameRate = FRAME_RATE, previousLocation = null, previousAltitudeM = DEFAULT_ALTITUDE_M, previousTiltDeg = null, framingOptions = {}) {
+    return assembleSegment(extractSegmentSpec(text), segmentId, currentSeconds, frameRate, previousLocation, previousAltitudeM, previousTiltDeg, framingOptions);
+  }
+
   // A comma-separated fragment with no camera action and nothing but modifier
   // vocabulary ("…, tilted 45 degrees, …") is a continuation of the previous
   // segment, not a new (unresolvable) segment — commas both chain segments AND
@@ -1052,14 +1133,34 @@
     return t === "";
   }
 
+  // Text path: split the description into fragments (PURE PARSING), then hand
+  // the extracted specs to the shared assembly.
   function parseDescription(description, options = {}) {
-    const frameRate = options.frameRate || FRAME_RATE;
     const rawParts = splitSegments(description);
     const parts = [];
     rawParts.forEach((part) => {
       if (parts.length && isModifierOnlyFragment(part)) parts[parts.length - 1] += ` ${part}`;
       else parts.push(part);
     });
+    return assembleParsedDescription(description, parts.map(extractSegmentSpec), options);
+  }
+
+  // Structured path (direct journey IR): the caller already holds segment
+  // specs, so no text is split or parsed. `sourceDescription` is the
+  // human-readable provenance string recorded in the plan; it is generated by
+  // the caller and never re-read. Validation is NOT bypassed (see
+  // validateSegmentSpecs): a spec outside the extractors' value domain throws.
+  function buildParsedFromSegmentSpecs(sourceDescription, specs, options = {}) {
+    if (typeof sourceDescription !== "string") throw new TypeError("sourceDescription must be a string");
+    validateSegmentSpecs(specs);
+    return assembleParsedDescription(sourceDescription, specs.map(normalizeSegmentSpec), options);
+  }
+
+  // Shared assembly for BOTH paths: per-segment semantics (assembleSegment),
+  // camera carry-over between segments, the successor-orbit and opening-hold
+  // lookaheads, and the parsed-description contract consumed by buildShotPlan.
+  function assembleParsedDescription(sourceDescription, specs, options = {}) {
+    const frameRate = options.frameRate || FRAME_RATE;
     const warnings = [];
     const notes = [];
     const segments = [];
@@ -1068,10 +1169,10 @@
     let lastAltitude = DEFAULT_ALTITUDE_M;
     let lastTilt = null;
 
-    if (!parts.length) warnings.push("description did not contain any parseable segments.");
+    if (!specs.length) warnings.push("description did not contain any parseable segments.");
 
-    parts.forEach((part, index) => {
-      const parsed = parseSegment(part, index + 1, currentSeconds, frameRate, lastLocation, lastAltitude, lastTilt, {
+    specs.forEach((spec, index) => {
+      const parsed = assembleSegment(spec, index + 1, currentSeconds, frameRate, lastLocation, lastAltitude, lastTilt, {
         aspect: options.aspect,
         calibratedPortraitFraming: options.calibratedPortraitFraming,
       });
@@ -1163,7 +1264,7 @@
     }
 
     return {
-      source_description: cleanString(description),
+      source_description: cleanString(sourceDescription),
       parser_strategy: "offline_regex_with_manual_review_fallback",
       frame_rate: frameRate,
       frame_convention: {
@@ -1246,11 +1347,21 @@
     }));
   }
 
+  // Text path: parse, then assemble the plan. Byte-identical to the historical
+  // single-function form; the tail is shared with the structured path.
   function buildShotPlan(jobName, description, generatedAt = new Date().toISOString(), options = {}) {
     const parsed = parseDescription(description, {
       aspect: options.aspect,
       calibratedPortraitFraming: options.calibratedPortraitFraming,
     });
+    return buildShotPlanFromParsed(jobName, parsed, generatedAt, options);
+  }
+
+  // Shared plan assembly: parsed-description object → canonical shot plan.
+  // The plan literal below IS the byte contract of shot-plan.json; its field set
+  // and key order are pinned by acceptance fixtures and must not move.
+  function buildShotPlanFromParsed(jobName, parsed, generatedAt = new Date().toISOString(), options = {}) {
+    if (!parsed || !Array.isArray(parsed.segments)) throw new TypeError("buildShotPlanFromParsed: parsed description with segments[] is required");
     const initialCamera = normalizeInitialCamera(options.initialCamera);
     const motionPolicyOption = options.motionPolicy && typeof options.motionPolicy === "object"
       ? {
@@ -3181,8 +3292,18 @@ This checklist is technical planning support only. It is not creative approval, 
     }
   }
 
+  // Text path wrapper (historical signature, byte-identical output).
   function buildArtifacts(jobName, description, generatedAt, options = {}) {
-    const plan = buildShotPlan(jobName, description, generatedAt, options);
+    return buildArtifactsFromPlan(buildShotPlan(jobName, description, generatedAt, options), options);
+  }
+
+  // Structured path: parsed-description object → artifacts, no text parsing.
+  function buildArtifactsFromParsed(jobName, parsed, generatedAt, options = {}) {
+    return buildArtifactsFromPlan(buildShotPlanFromParsed(jobName, parsed, generatedAt, options), options);
+  }
+
+  // Shared artifact assembly from a canonical plan (both paths).
+  function buildArtifactsFromPlan(plan, options = {}) {
     // The .esp is built FIRST so the derived acquisition is known before the plan
     // is serialised — it is only knowable from the keyframe walk, and the operator
     // reading shot-plan.json is exactly who needs to see its cost.
@@ -3279,9 +3400,18 @@ This checklist is technical planning support only. It is not creative approval, 
     parseExplicitCoords,
     defaultDuration,
     orbitSecondsPerRevolution,
+    SEGMENT_ACTIONS,
+    extractSegmentSpec,
+    validateSegmentSpecs,
+    assembleSegment,
+    parseSegment,
     parseDescription,
+    buildParsedFromSegmentSpecs,
     buildShotPlan,
+    buildShotPlanFromParsed,
     buildArtifacts,
+    buildArtifactsFromParsed,
+    buildArtifactsFromPlan,
     buildKml,
     buildShotPlanMarkdown,
     buildEspKeyframes,

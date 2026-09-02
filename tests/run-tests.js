@@ -100,6 +100,7 @@ require("./earth-studio-visual-review.test.js");
 require("./earth-studio-terrain-motion.test.js");
 require("./earth-studio-smoothness-doctrine.test.js");
 require("./earth-studio-orbit-travel-handoff.test.js");
+require("./earth-studio-path-equivalence.test.js");
 require("./earth-studio-movement-intent.test.js");
 require("./earth-studio-promotion-durability.test.js");
 require("./earth-studio-promotion-state.test.js");

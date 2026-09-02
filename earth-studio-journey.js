@@ -20,6 +20,20 @@
   // VERIFIED by re-parsing it and checking each segment against the intent
   // (see verifyCompilation) — a silent grammar drift becomes a loud error
   // rather than a wrong animation.
+  //
+  // DIRECT JOURNEY IR (structured path, shadow-only until activated): the same
+  // compiled steps can be handed to the planner as SEGMENT SPECS instead of
+  // English, skipping splitSegments/extractSegmentSpec while every semantic
+  // rule still runs in the planner's shared assembleSegment / lookaheads /
+  // plan literal (one semantic authority, two input channels):
+  //
+  //   journey -> compileJourney -> steps -> segment specs
+  //           -> planner.buildParsedFromSegmentSpecs -> buildShotPlanFromParsed
+  //
+  // The generated description is still recorded in the plan as provenance
+  // (`source_description`, per-segment `source_text`) — produced, not parsed.
+  // Equivalence with the text path is asserted byte-for-byte over the tracked
+  // journey canaries in tests/earth-studio-path-equivalence.test.js.
   // ───────────────────────────────────────────────────────────────────────────
 
   // Strict numeric coercion: null / undefined / "" mean ABSENT, not zero.
@@ -1414,6 +1428,93 @@
     return { ok: problems.length === 0, problems, parsed };
   }
 
+  // ── Direct journey IR → planner segment specs (structured path) ───────────
+  // One spec per compiled step, carrying exactly the values the phrase would
+  // carry: the same rounding (round2 tilt/duration, Math.round altitude), the
+  // same omission rules (emit_altitude / emit_tilt), the same canonical
+  // location phrase, the same orbit degrees/direction. Nothing is re-derived
+  // here — the planner's shared assembly owns every downstream rule.
+  function segmentSpecsFromCompiled(compiled) {
+    return compiled.steps.map((step) => ({
+      source_text: step.phrase,
+      action: step.action,
+      resolution_status: "parsed",
+      action_warning: null,
+      location_phrase: step.location_phrase,
+      duration_seconds: round2(step.duration_seconds),
+      altitude_m: step.emit_altitude ? Math.round(step.altitude_m) : null,
+      altitude_spec_source: step.emit_altitude ? "explicit" : null,
+      tilt_deg: step.emit_tilt ? round2(step.tilt_deg) : null,
+      orbit_degrees: step.action === "orbit" ? step.orbit_degrees : null,
+      orbit_direction: step.action === "orbit" ? (step.orbit_direction === -1 ? -1 : 1) : 1,
+    }));
+  }
+
+  // Structured entry point. Validation is NOT bypassed: by default the journey
+  // goes through validateJourney (operator-language errors, the same gate the
+  // lane applies) before compiling. Returns the parsed-description object the
+  // planner's buildShotPlanFromParsed / buildArtifactsFromParsed consume, plus
+  // out-of-band provenance. NOTE: `parsed.parser_strategy` keeps the historical
+  // string for byte identity with the text path; the truthful origin lives in
+  // `provenance`, never inside the plan bytes.
+  function compileJourneyToParsed(journey, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const j = normalizeJourney(journey);
+    let compiled;
+    if (options.validate === false) {
+      compiled = compileJourney(j, { planner });
+    } else {
+      // Validate the RAW input, not a pre-normalized copy: normalizeStep records
+      // an unsupported movement type as `unsupported_type` on the first pass and
+      // drops it on a second pass, so validating an already-normalized journey
+      // silently accepts a coerced default movement. (The lane's
+      // normalize-then-validate order has that gap; the structured entry point
+      // must not inherit it.)
+      const check = validateJourney(journey, { planner });
+      if (!check.ok) {
+        const e = new Error(`this camera journey cannot be generated yet:\n- ${check.errors.join("\n- ")}`);
+        e.statusCode = 400; e.journey_errors = check.errors; throw e;
+      }
+      compiled = check.compiled;
+    }
+    const specs = segmentSpecsFromCompiled(compiled);
+    const parsed = planner.buildParsedFromSegmentSpecs(compiled.description, specs, {
+      aspect: options.aspect || j.aspect || undefined,
+      calibratedPortraitFraming: options.calibratedPortraitFraming,
+      frameRate: options.frameRate,
+    });
+    return {
+      parsed,
+      compiled,
+      specs,
+      provenance: {
+        input: "structured_journey",
+        journey_version: j.journey_version,
+        text_parsed_for_authority: false,
+        text_parsed_for_verification: options.validate !== false,
+        planner_version: planner.VERSION,
+      },
+    };
+  }
+
+  // Structured-output equivalence check (sibling of verifyCompilation, used by
+  // the equivalence tests): the parsed object the text path recovers from the
+  // generated English must equal, field for field, the one built directly from
+  // the steps. Exact equality — no tolerances.
+  function verifyParsedEquivalence(fromText, fromSteps) {
+    const a = JSON.stringify(fromText);
+    const b = JSON.stringify(fromSteps);
+    if (a === b) return { ok: true, problems: [] };
+    const problems = [];
+    const keys = new Set([...Object.keys(fromText || {}), ...Object.keys(fromSteps || {})]);
+    keys.forEach((k) => {
+      const x = JSON.stringify(fromText ? fromText[k] : undefined);
+      const y = JSON.stringify(fromSteps ? fromSteps[k] : undefined);
+      if (x !== y) problems.push(`${k}: text path ${x && x.slice(0, 200)} vs structured ${y && y.slice(0, 200)}`);
+    });
+    return { ok: false, problems };
+  }
+
   // ── Validation (operator language) ────────────────────────────────────────
   function validateJourney(journey, options = {}) {
     const planner = loadPlanner(options.planner);
@@ -1791,7 +1892,10 @@
     framingAltitudeM,
     transitAltitudeM,
     compileJourney,
+    segmentSpecsFromCompiled,
+    compileJourneyToParsed,
     verifyCompilation,
+    verifyParsedEquivalence,
     validateJourney,
     summarizeJourney,
     continuationStateFromPlan,

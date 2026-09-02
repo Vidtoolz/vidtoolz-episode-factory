@@ -3,6 +3,23 @@
 An optional per-project tool to produce Google Earth Studio map fly-overs, operable from the
 cockpit GUI and run entirely on **vidnux** (no PRESTO required).
 
+## Direct journey IR (structured path, shadow-only)
+
+Since 2026-09-02 the planner exposes a second input channel beside the description
+grammar. A journey compiled by `earth-studio-journey.js` can hand its steps to the planner as
+**segment specs** (`compileJourneyToParsed` → `planner.buildParsedFromSegmentSpecs` →
+`buildShotPlanFromParsed` / `buildArtifactsFromParsed`) instead of as English. Text extraction
+(`splitSegments`, `extractSegmentSpec`) is skipped; every semantic rule — location resolution,
+defaults, clamps, camera carry-over, the successor-orbit and opening-hold lookaheads, pacing
+notes, the plan literal — runs in the same shared `assembleSegment` / `assembleParsedDescription`
+that the text path uses, so there is one semantic authority with two input channels. Structured
+input is validated (`validateSegmentSpecs`, and the journey still passes `validateJourney`); it is a
+parser bypass, not a validation bypass. The generated English is still recorded in the plan as
+provenance (`source_description`, per-segment `source_text`) but is never re-read. **The production
+lane (`earth-studio-lane.js`) still uses the text path**; the structured path is asserted
+byte-identical to it over every tracked journey canary and a set of adversarial journeys in
+`tests/earth-studio-path-equivalence.test.js`. Activating it in the lane is a separate, later decision.
+
 ## What it automates (and the one thing it can't)
 Google Earth Studio is a **browser-only** Google product with **no API / no headless mode**, so the
 frame export itself is always a manual in-browser step. Everything around it is automated here:
