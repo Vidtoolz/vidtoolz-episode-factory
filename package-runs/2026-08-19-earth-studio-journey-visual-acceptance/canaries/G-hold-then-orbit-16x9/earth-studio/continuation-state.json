@@ -10,11 +10,11 @@
   "total_frames": 930,
   "ends_at_frame": 929,
   "camera": {
-    "latitude": 59.940776,
-    "longitude": 24.6559,
+    "latitude": 60.139346,
+    "longitude": 25.171859,
     "altitude_m": 17014,
-    "pan_deg": 360,
-    "heading_deg": 0,
+    "pan_deg": 644.230885,
+    "heading_deg": 284.230885,
     "tilt_deg": 60
   },
   "esp_mapping": {

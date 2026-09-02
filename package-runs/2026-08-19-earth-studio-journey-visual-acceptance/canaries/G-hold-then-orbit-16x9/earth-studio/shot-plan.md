@@ -23,6 +23,7 @@ Frame convention: start_frame inclusive, end_frame exclusive
 
 - segment 2: hover holds the previous camera (altitude 34028m, tilt 0°).
 - camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus.
+- segment 3: ring acquisition takes 6.30s of the 23s orbit, so its 360° sweep runs in 16.70s at 21.56°/s instead of the requested 15.65°/s (38% faster). A 31.68s segment would hold the requested rate — the acquisition is 27% of the segment and grows with it, so adding 6.30s is not enough. Staging the arrival removes the acquisition entirely.
 
 ## Unresolved Warnings
 

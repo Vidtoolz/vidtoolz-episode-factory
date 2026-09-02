@@ -17,10 +17,10 @@
   "total_duration_seconds": 58,
   "total_frames": 1740,
   "initial_camera": {
-    "latitude": 59.594024,
-    "longitude": 18.0686,
+    "latitude": 59.065896,
+    "longitude": 18.125705,
     "altitude_m": 17014,
-    "pan_deg": 900,
+    "pan_deg": 713.640625,
     "tilt_deg": 60
   },
   "motion_policy": {

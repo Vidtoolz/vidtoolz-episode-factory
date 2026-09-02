@@ -33,5 +33,6 @@
     "movement_count": 1,
     "compiled_description": "orbit Finland once clockwise at 3686333m tilted 0 degrees for 18 seconds"
   },
+  "camera_quality": "camera-quality.json",
   "continuation_state": "continuation-state.json"
 }

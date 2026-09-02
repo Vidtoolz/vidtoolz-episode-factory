@@ -11,9 +11,9 @@
 // property that does hold and does matter: every movement accelerates once and
 // decelerates once, and nothing stalls in the middle.
 //
-// Measured on move PROGRESS, not ground speed. Ground speed folds in the
-// cos(latitude) projection, which changes along a long route and makes an
-// evenly-eased move look like it is still accelerating.
+// Measured on physical ground-path progress. Latitude and longitude are one
+// position curve, so neither scalar coordinate is a valid progress proxy on a
+// geodesic (latitude may accelerate while arc-length remains at cruise speed).
 
 const { assert, test } = require('./_helpers.js');
 const planner = require('../earth-studio-job-planner.js');
@@ -98,10 +98,23 @@ function segmentShape(description, trackName, segmentIndex) {
   const tracks = continuity.extractEspCameraTracks(esp);
   const segments = plan.segments.filter((s) => s.location && s.duration_seconds > 0);
   const seg = segments[segmentIndex === undefined ? segments.length - 1 : segmentIndex];
-  const sampled = continuity.samplePlaybackTrack(tracks[trackName], plan.total_frames, plan.frame_rate);
   const i0 = Math.round(seg.start_frame);
   const i1 = Math.round(seg.end_frame);
-  const rates = sampled.rates.slice(i0 + 1, i1 + 1).map(Math.abs);
+  let rates;
+  if (trackName === 'lat' || trackName === 'lng') {
+    const lat = continuity.samplePlaybackTrack(tracks.lat, plan.total_frames, plan.frame_rate);
+    const lng = continuity.samplePlaybackTrack(tracks.lng, plan.total_frames, plan.frame_rate);
+    rates = [];
+    for (let frame = i0 + 1; frame <= i1; frame += 1) {
+      rates.push(planner.haversineMeters(
+        { latitude: lat.values[frame - 1], longitude: lng.values[frame - 1] },
+        { latitude: lat.values[frame], longitude: lng.values[frame] },
+      ) * plan.frame_rate);
+    }
+  } else {
+    const sampled = continuity.samplePlaybackTrack(tracks[trackName], plan.total_frames, plan.frame_rate);
+    rates = sampled.rates.slice(i0 + 1, i1 + 1).map(Math.abs);
+  }
   const peak = Math.max(...rates);
   const moveSeconds = (i1 - i0) / plan.frame_rate;
   const cruiseIdx = rates.map((r, i) => (r >= 0.9 * peak ? i : -1)).filter((i) => i >= 0);

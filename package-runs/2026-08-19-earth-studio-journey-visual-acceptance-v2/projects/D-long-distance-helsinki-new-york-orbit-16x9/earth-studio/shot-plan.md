@@ -11,8 +11,8 @@ Frame convention: start_frame inclusive, end_frame exclusive
 | # | Action | Location | Alt (m) | Tilt | Time | start_frame | end_frame | Status |
 |---|---|---|---:|---:|---:|---:|---:|---|
 | 1 | hover | Helsinki | 34028 | 0 | 0-4s | 0 | 120 | resolved |
-| 2 | zoom_out | Helsinki | 155960 | 0 | 4-16s | 120 | 480 | resolved |
-| 3 | fly_to | New York | 155960 | 0 | 16-121s | 480 | 3630 | resolved |
+| 2 | zoom_out | Helsinki | 178738 | 0 | 4-16s | 120 | 480 | resolved |
+| 3 | fly_to | New York | 178738 | 0 | 16-121s | 480 | 3630 | resolved |
 | 4 | zoom_in | New York | 17014 | 60 | 121-137s | 3630 | 4110 | resolved |
 | 5 | orbit | New York | 17014 | 60 | 137-145s | 4110 | 4350 | resolved |
 

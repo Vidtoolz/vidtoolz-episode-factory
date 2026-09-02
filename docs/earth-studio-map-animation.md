@@ -257,6 +257,16 @@ a target much wider than tall loses its left and right edges (documented with ev
 prohibited by default. Journey-built jobs therefore carry a `plan.motion_policy` that the keyframe
 engine honours (freeform jobs do not, which is what keeps the byte-frozen path byte-frozen):
 
+**Position trajectory.** Latitude and longitude are the two serialized components of one physical
+camera position `P(u(t))`, not independent animation channels. A movement has one shared progress
+parameter and one shot-level launch/cruise/settle law. Local and single-axis moves use controlled
+unwrapped coordinate interpolation; longer travel uses shortest-arc spherical interpolation.
+Intermediate coordinate keys represent that geometry only: their incoming and outgoing Earth
+Studio handles carry matched derivatives, so they do not restart easing. C0 position continuity is
+mandatory and C1 tangent continuity is the production default. Longitude is kept unwrapped while
+the path is constructed, making antimeridian crossings follow the short route, and is normalized
+only for the existing Earth Studio serialization seam.
+
 - the long-flight **arc bump** is suppressed — a flight no longer rises and falls inside one leg,
   which is where the visible wobble came from;
 - interior keyframes that are equal to both neighbours are **dropped** — a keyframe that changes
@@ -274,7 +284,8 @@ rather than an invented constant-radius contract. Stable framing is preferred to
 pitch, altitude or target nudges.
 
 The machine-readable smoothness report identifies altitude/tilt pumping, radius breathing, heading
-oscillation or reversal, target drift, roll instability, route reversal and repeated speed pulses.
+oscillation or reversal, target drift, roll instability, route reversal, internal position-tangent
+discontinuity and repeated speed pulses.
 It also checks primitive joins: ordinary moving boundaries require approximately C1-continuous
 velocity, while movement into a hold must settle to zero. A moving linear join, hard launch or hard
 stop is a defect unless the plan explicitly declares hard-transition semantics. Acceleration
@@ -296,18 +307,47 @@ after a movement has settled to rest, so orbit→hold and travel→hold do not m
 a zero vector. Cross-track acceleration timing remains advisory where custom playback authority is
 incomplete.
 
-**Motivated tilt.** Tilt is not decoration: it changes only because the shot that follows needs it.
-A descent into a destination stays level and the camera leans over only as the circling shot begins,
-at no more than `ORBIT_ENTRY_TILT_MAX_RATE_DEG_PER_S` (12°/s), so the lean reads as entering the
-orbit rather than as an unexplained drift during the descent.
+**Height-aware perspective.** Earth Studio tilt is measured from nadir: `0°` is straight down and
+larger values approach the horizon. In ordinary moving shots altitude and perspective form one
+framing system. `tiltForAltitude()` normalizes log altitude from the practical local reference
+(500 m) to semantic-space scale (12,000 km), passes that progress through a quintic smootherstep,
+and maps `72° → 0°`. Thus a climb continuously reduces numeric tilt toward a map-like view, while a
+descent continuously restores a spatial/local view. Altitude and tilt use the same authored sample
+times and matched derivatives; during climb/descent one quintic progress value drives both
+log-altitude and tilt. Tilt is not eased a second time after height easing, because that nested ease
+compresses a large viewing-angle change into a visible mid-climb burst. There are no height bands
+or delayed correction phases. Explicit
+whole-shot locks, exact continuation boundaries, and local morphology tilt anchors retain higher
+authority. A constant-altitude terrain orbit therefore retains its calibrated angle; a later climb
+transitions smoothly away from that local anchor. Because an oblique camera placed directly over a
+target points away from it, height-aware framing also treats the original geographic path as a
+ground-target path and offsets the physical camera behind it by `altitude × tan(tilt)`; this keeps
+local endpoints visibly framed instead of reproducing the documented open-sea/black-frame defect.
+The universal helper and height-aware review package implement this doctrine, but the generic
+production planner does not enable it until human review and accepted-byte authority are complete.
 
 **Legibility over the ground.** Crossing long distances close to the ground is unreadable — the
 image changes faster than a viewer can place it. Transit altitude is therefore chosen from a screen-
 speed budget: ground speed measured in **frame-widths per second**, capped at
-`READABLE_SCREEN_SPEED_FW_PER_S` (1.0), with route framing as a ceiling rather than a target. The
-limit is bracketed by real playback verdicts — 0.80 fw/s accepted, 3.29 fw/s reported unreadable. A
+`READABLE_SCREEN_SPEED_FW_PER_S`, with route framing as a ceiling rather than a target. The
+2026-08-25 fixed-tilt ladder narrowed the useful interval: 0.8 and 0.4 fw/s were usable, 0.2 was
+unnecessarily high, and the fixed 2,500 m control was unusably low. That review is superseded for
+final altitude authority because it held viewing angle independently of height. Production retains
+the prior 1.0 fw/s threshold. The first height-aware review found HIGHER_A, HIGHER_B and HIGHER_C
+usable in altitude but found the tilt movement insufficiently smooth in all three; no altitude
+winner or production threshold was inferred. A separate smooth-tilt re-review package preserves the
+same ladder while removing the nested tilt ease. A
 climb demanded purely by legibility is marked `functional`, so it does not spend the flourish budget
 that governs ceremony.
+
+Travel altitude is a coordinated **local framing → climb → high cruise → descend → destination
+framing** envelope, not one altitude held for the whole shot. Start and arrival altitudes come from
+the respective subject scales and purposes. Cruise altitude comes from physical geodesic distance,
+duration, FOV, tilt and the screen-speed budget. Major lateral travel begins only after enough climb
+to support it; most of a long crossing stays at stable cruise altitude; descent begins after the
+destination geography is substantially reached. Adjacent multi-point legs reuse a compatible
+cruise height rather than pumping at every waypoint. Altitude and geographic velocity are planned
+as one action: climb and accelerate geographically, cruise, then settle geographically and descend.
 
 **Circle an endpoint; spiral only what has none.** A spiral keeps closing in rather than settling on
 anything, so it is refused at an arrival: a subject the camera travelled *to* is circled instead.

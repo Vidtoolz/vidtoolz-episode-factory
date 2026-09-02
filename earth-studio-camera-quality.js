@@ -306,6 +306,28 @@ function deadOrbitReport({ plan, tracks }) {
 const DEAD_MOVE_DEGENERATE_FRACTION = 0.005;   // 0.5% — indistinguishable from no change
 const DEAD_MOVE_WEAK_FRACTION = 0.05;          // 5% — real but very slight
 const DEAD_FLY_DEGENERATE_M = 25;              // shortest real fly measured: 100 m
+// ARRIVAL CORRECTNESS.
+//
+// "A fly must not merely travel — it must arrive at the requested subject." A
+// camera can cross a continent and still settle on the wrong place, and travelling
+// far is no evidence at all that it arrived.
+//
+// The camera position is NOT the test: an arrival is often deliberately offset —
+// above the subject, or out on an orbit ring. What must be right is where the shot
+// is POINTED. The view axis meets the ground `altitude · tan(tilt)` along the pan
+// direction, which is the same geometry the planner uses to place a ring, so that
+// look-at point is the thing to compare against the requested subject. It handles
+// both cases with one formula: at tilt 0 the look-at IS the camera position, and on
+// an oblique ring it is the subject.
+//
+// The error is expressed as the ANGLE it subtends at the camera rather than as
+// metres, because that is inherently framing-relative — 100 m is catastrophic for a
+// landmark and irrelevant for a country, and the angle says so without needing a
+// scale table. Measured across 22 real arrivals: 21 land at exactly 0.0000 deg and
+// the one oblique arrival at 0.0609 deg. So 1 deg is 16x the worst real case and
+// 5 deg is 82x.
+const ARRIVAL_WARN_DEG = 1;
+const ARRIVAL_ERROR_DEG = 5;
 const FRAMING_ACTIONS = { zoom_in: 'closer', zoom_out: 'wider' };
 function deadMovementReport({ plan, tracks }) {
   const errors = [];
@@ -315,7 +337,35 @@ function deadMovementReport({ plan, tracks }) {
   const lat = denormalized(tracks.latitude, 'latitude');
   const lng = denormalized(tracks.longitude, 'longitude');
   const alt = denormalized(tracks.altitude, 'altitude');
+  const pan = denormalized(tracks.rotationX, 'pan');
+  const tilt = denormalized(tracks.rotationY, 'tilt');
   if (!total || !alt.length) return { errors, warnings };
+  // Where the view axis meets the ground, and how far that is from the subject —
+  // reported as the angle it subtends at the camera. See the note above.
+  const arrivalAt = (time, subject) => {
+    if (!pan.length || !tilt.length) return null;
+    const camLat = valueAt(lat, time);
+    const camLng = valueAt(lng, time);
+    const camAlt = valueAt(alt, time);
+    const camPan = valueAt(pan, time);
+    const camTilt = valueAt(tilt, time);
+    if (![camLat, camLng, camAlt, camPan, camTilt].every(Number.isFinite)) return null;
+    const offset = camAlt * Math.tan((camTilt * Math.PI) / 180);
+    if (!Number.isFinite(offset)) return null;
+    const cosLat = Math.cos((camLat * Math.PI) / 180) || 1e-6;
+    const lookLat = camLat + (offset * Math.cos((camPan * Math.PI) / 180)) / EARTH_M_PER_DEG;
+    const lookLng = camLng + (offset * Math.sin((camPan * Math.PI) / 180)) / (EARTH_M_PER_DEG * cosLat);
+    const dy = (lookLat - subject.latitude) * EARTH_M_PER_DEG;
+    const dx = (lookLng - subject.longitude) * EARTH_M_PER_DEG * cosLat;
+    const groundError = Math.hypot(dx, dy);
+    const framingDistance = Math.hypot(offset, camAlt);
+    return {
+      ground_offset_m: groundError,
+      framing_distance_m: framingDistance,
+      aim_error_deg: framingDistance > 1e-6
+        ? (Math.atan2(groundError, framingDistance) * 180) / Math.PI : null,
+    };
+  };
   const sameResolved = (a, b) => a && b
     && Math.abs(a.latitude - b.latitude) < 1e-6 && Math.abs(a.longitude - b.longitude) < 1e-6;
   segments.forEach((segment, index) => {
@@ -334,9 +384,33 @@ function deadMovementReport({ plan, tracks }) {
       if (change <= DEAD_MOVE_DEGENERATE_FRACTION) {
         errors.push(`${label} asks the camera to move ${want} but its framing altitude goes ${detail} `
           + `(${(change * 100).toFixed(2)}% ${want}) — the movement does not perform the movement it names.`);
-      } else if (change < DEAD_MOVE_WEAK_FRACTION) {
+        return;
+      }
+      if (change < DEAD_MOVE_WEAK_FRACTION) {
         warnings.push(`${label} moves only ${(change * 100).toFixed(1)}% ${want} (${detail}) — `
           + `weak for a movement whose whole purpose is that change.`);
+      }
+      // It moved the right way. Is it still framing the subject it was asked to?
+      //
+      // A push can descend perfectly while its look-at drifts to the next square
+      // over: the movement happened and the command still failed. Same look-at
+      // geometry as the fly arrival check, and the same measured bands — across 41
+      // real framing moves the END aim error never exceeds 0.0613 deg.
+      //
+      // Deliberately END-state only. The aim excursion DURING a framing move is
+      // large and legitimate: a zoom that tips its pitch sweeps its look-at through
+      // the move, and those same 41 correct moves reach 68.8 deg mid-flight. Gating
+      // on the worst value through the move would fire on correct output.
+      const framingArrival = arrivalAt(t1, segment.location);
+      if (!framingArrival || framingArrival.aim_error_deg == null) return;
+      const subjectName = segment.location.name || 'its subject';
+      const aimDetail = `${framingArrival.aim_error_deg.toFixed(2)}\u00b0 away `
+        + `(${framingArrival.ground_offset_m.toFixed(0)} m at a ${framingArrival.framing_distance_m.toFixed(0)} m framing distance)`;
+      if (framingArrival.aim_error_deg > ARRIVAL_ERROR_DEG) {
+        errors.push(`${label} moves ${want} on ${subjectName} (${detail}) but the view settles `
+          + `${aimDetail} — it moved correctly around the wrong subject.`);
+      } else if (framingArrival.aim_error_deg > ARRIVAL_WARN_DEG) {
+        warnings.push(`${label} ends ${aimDetail} from ${subjectName} — framed off the subject it was asked to frame.`);
       }
       return;
     }
@@ -355,9 +429,126 @@ function deadMovementReport({ plan, tracks }) {
       errors.push(`segment ${segment.segment_id || '?'} (fly_to) names `
         + `${segment.location.name || 'another place'} but the camera travels ${travelled.toFixed(1)} m `
         + `from where it started — a flight to a different subject that never leaves.`);
+      return;
+    }
+    // It left. Did it ARRIVE?
+    const arrival = arrivalAt(t1, segment.location);
+    if (!arrival || arrival.aim_error_deg == null) return;
+    const name = segment.location.name || 'its destination';
+    const detail = `${arrival.aim_error_deg.toFixed(2)}\u00b0 off (${arrival.ground_offset_m.toFixed(0)} m on the `
+      + `ground at a ${arrival.framing_distance_m.toFixed(0)} m framing distance)`;
+    if (arrival.aim_error_deg > ARRIVAL_ERROR_DEG) {
+      errors.push(`segment ${segment.segment_id || '?'} (fly_to) travels ${(travelled / 1000).toFixed(0)} km `
+        + `to ${name} but the shot settles pointing ${detail} — it moved, and it did not arrive.`);
+    } else if (arrival.aim_error_deg > ARRIVAL_WARN_DEG) {
+      warnings.push(`segment ${segment.segment_id || '?'} (fly_to) arrives at ${name} `
+        + `${detail} — framed off its own subject.`);
     }
   });
   return { errors, warnings };
+}
+
+// COMPOSITION DIAGNOSTICS — measurement only, no policy.
+//
+// A repeated limitation in this tool's own reports: geometry can be exactly right
+// while composition is still poor. An exit can be aligned to 0.1 deg and still
+// leave in an uninteresting direction; an arrival can hit the ring perfectly and
+// still show a dull side of the subject; aim can be 0.00 deg and the frame still
+// be flat.
+//
+// Nothing here tries to fix that. It makes the missing information observable, so a
+// future directorial pass has something concrete to work from instead of guessing.
+//
+// What can honestly be derived from the camera tracks:
+//
+//   target_bearing_deg   which side of the subject the camera is on
+//   camera_distance_m    how far the camera is from the subject in 3D
+//   pitch_deg            how oblique the view is
+//   target_aim_error_deg how far the view axis lands from the subject
+//   ground_offset_m      the same error in metres
+//   framing_class        the scale band the framing distance falls in
+//
+// What CANNOT be derived and is therefore absent rather than guessed: subject
+// screen position, subject apparent size in frame, occlusion, and anything needing
+// the rendered image. The readback exposes camera state, not pixels, and inventing
+// screen-space numbers from geometry alone would manufacture confidence this has no
+// basis for. Those fields are omitted deliberately — see the report for what that
+// costs.
+const FRAMING_BANDS = [
+  ['landmark', 2500], ['city', 60000], ['region', 600000], ['country', 5000000],
+];
+function framingClass(distanceM) {
+  if (!Number.isFinite(distanceM)) return null;
+  for (const [name, ceiling] of FRAMING_BANDS) if (distanceM <= ceiling) return name;
+  return 'globe';
+}
+function compositionReport({ plan, tracks, frames }) {
+  const total = plan && plan.total_frames;
+  const lat = denormalized(tracks.latitude, 'latitude');
+  const lng = denormalized(tracks.longitude, 'longitude');
+  const alt = denormalized(tracks.altitude, 'altitude');
+  const pan = denormalized(tracks.rotationX, 'pan');
+  const tilt = denormalized(tracks.rotationY, 'tilt');
+  if (!total || !lat.length || !alt.length) return [];
+  const segments = (plan && plan.segments || []).filter((s) => s && s.location && s.duration_seconds > 0);
+  const wanted = Array.isArray(frames) && frames.length ? frames : null;
+  const out = [];
+  for (const segment of segments) {
+    const points = wanted
+      ? wanted.filter((f) => f >= segment.start_frame && f <= segment.end_frame).map((f) => ['sample', f])
+      : [['start', segment.start_frame], ['end', segment.end_frame]];
+    for (const [label, frame] of points) {
+      const time = frame / total;
+      const camLat = valueAt(lat, time);
+      const camLng = valueAt(lng, time);
+      const camAlt = valueAt(alt, time);
+      const camPan = pan.length ? valueAt(pan, time) : null;
+      const camTilt = tilt.length ? valueAt(tilt, time) : null;
+      if (![camLat, camLng, camAlt].every(Number.isFinite)) continue;
+      const cosLat = Math.cos((segment.location.latitude * Math.PI) / 180) || 1e-6;
+      // Bearing FROM the subject TO the camera: which side of the subject we see.
+      const dy = (camLat - segment.location.latitude) * EARTH_M_PER_DEG;
+      const dx = (camLng - segment.location.longitude) * EARTH_M_PER_DEG * cosLat;
+      const groundRange = Math.hypot(dx, dy);
+      const bearing = groundRange > 1
+        ? ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360 : null;
+      const distance = Math.hypot(groundRange, camAlt);
+      let aimError = null;
+      let aimOffset = null;
+      if (Number.isFinite(camPan) && Number.isFinite(camTilt)) {
+        const offset = camAlt * Math.tan((camTilt * Math.PI) / 180);
+        if (Number.isFinite(offset)) {
+          const lookLat = camLat + (offset * Math.cos((camPan * Math.PI) / 180)) / EARTH_M_PER_DEG;
+          const lookLng = camLng + (offset * Math.sin((camPan * Math.PI) / 180)) / (EARTH_M_PER_DEG * cosLat);
+          const ey = (lookLat - segment.location.latitude) * EARTH_M_PER_DEG;
+          const ex = (lookLng - segment.location.longitude) * EARTH_M_PER_DEG * cosLat;
+          aimOffset = Math.hypot(ex, ey);
+          const framing = Math.hypot(offset, camAlt);
+          aimError = framing > 1e-6 ? (Math.atan2(aimOffset, framing) * 180) / Math.PI : null;
+        }
+      }
+      out.push({
+        segment_id: segment.segment_id,
+        action: segment.action,
+        subject: segment.location.name || null,
+        at: label,
+        frame,
+        target_bearing_deg: bearing,
+        camera_distance_m: distance,
+        ground_range_m: groundRange,
+        pitch_deg: camTilt,
+        target_aim_error_deg: aimError,
+        ground_offset_m: aimOffset,
+        framing_class: framingClass(distance),
+        // Absent on purpose: screen-space position and apparent size need the
+        // rendered frame, which the scene readback does not provide.
+        subject_screen_x: null,
+        subject_screen_y: null,
+        subject_apparent_scale: null,
+      });
+    }
+  }
+  return out;
 }
 
 function orbitReport({ plan, tracks }) {
@@ -552,6 +743,11 @@ const SMOOTHNESS_TOLERANCES = Object.freeze({
   // Count of meaningful acceleration-direction changes inside cruise. A normal
   // launch→cruise→settle has at most one; two indicates repeated pulsing.
   heading_speed_pulse_changes: 2,
+  // Degrees at an INTERNAL coordinate sample. Direct sampled trajectories own
+  // no semantic turn there; matched parametric handles measure ~0°, while the
+  // synthetic staircase regression is 90°. Five degrees leaves ample numeric
+  // room without weakening the calibrated primitive-boundary threshold below.
+  position_tangent_discontinuity_deg: 5,
   // Dimensionless |after-before| / local speed scale. Calibration fixtures
   // tolerate small representation differences; a 65% rate seam is substantial.
   boundary_velocity_discontinuity: 0.65,
@@ -576,7 +772,7 @@ const SMOOTHNESS_TOLERANCES = Object.freeze({
 });
 
 function defectRecord({ defectClass, parameter, segment, before = null, after = null,
-  frameStart, frameEnd, measured, threshold, explanation, severity = 'error' }) {
+  frameStart, frameEnd, measured, threshold, explanation, severity = 'error', details = null }) {
   return {
     defect_class: defectClass,
     parameter,
@@ -589,6 +785,7 @@ function defectRecord({ defectClass, parameter, segment, before = null, after = 
     threshold,
     explanation,
     severity,
+    ...(details ? { details } : {}),
   };
 }
 
@@ -798,6 +995,97 @@ function trajectoryDefects({ plan, tracks }) {
         frameStart: events[0].frame_start, frameEnd: events.at(-1).frame_end,
         measured: events.length, threshold: POSITION_DIRECTION_TOLERANCE,
         explanation: `${kind} repeatedly reverses inside one travel primitive instead of committing to its route` }));
+    }
+    const latLeaf = tracks.latitude;
+    const lngLeaf = tracks.longitude;
+    const t0 = segment.start_frame / plan.total_frames;
+    const t1 = segment.end_frame / plan.total_frames;
+    const leafScale = (leaf, kind) => {
+      const min = leaf && leaf.value ? Number(leaf.value.minValueRange) || 0 : 0;
+      return kind === 'latitude' ? 90 - min : 180 - min;
+    };
+    const slopeAt = (leaf, kind, time, side) => {
+      const keys = (leaf && leaf.keyframes) || [];
+      const exact = keys.findIndex((key) => Math.abs(Number(key.time) - time) < 1e-9);
+      const scale = leafScale(leaf, kind);
+      if (exact >= 0) {
+        const key = keys[exact];
+        const handle = side === 'in' ? key.transitionIn : key.transitionOut;
+        if (handle && handle.type === 'auto') {
+          if (Math.abs(Number(handle.y) || 0) >= 1e-12 && Math.abs(Number(handle.x)) > 1e-12) {
+            return (Number(handle.y) / Number(handle.x)) * scale;
+          }
+          const before = keys[exact - 1];
+          const after = keys[exact + 1];
+          let base = null;
+          if (side === 'in' && after && Number(after.time) > Number(key.time)) {
+            base = (Number(after.value) - Number(key.value)) / (Number(after.time) - Number(key.time));
+          } else if (before && after && Number(after.time) > Number(before.time)) {
+            base = (Number(after.value) - Number(before.value)) / (Number(after.time) - Number(before.time));
+          }
+          if (Number.isFinite(base)) return (base / 3) * scale;
+        }
+        if (handle && handle.type !== 'linear' && Number.isFinite(Number(handle.x))
+          && Math.abs(Number(handle.x)) > 1e-12 && Number.isFinite(Number(handle.y))) {
+          return (Number(handle.y) / Number(handle.x)) * scale;
+        }
+        const a = side === 'in' ? keys[exact - 1] : key;
+        const b = side === 'in' ? key : keys[exact + 1];
+        if (!a || !b || !(Number(b.time) > Number(a.time))) return null;
+        return ((Number(b.value) - Number(a.value)) / (Number(b.time) - Number(a.time))) * scale;
+      }
+      for (let index = 1; index < keys.length; index += 1) {
+        const a = keys[index - 1];
+        const b = keys[index];
+        if (Number(a.time) < time && time < Number(b.time) && Number(b.time) > Number(a.time)) {
+          return ((Number(b.value) - Number(a.value)) / (Number(b.time) - Number(a.time))) * scale;
+        }
+      }
+      return null;
+    };
+    const latKeys = (latLeaf && latLeaf.keyframes) || [];
+    const lngKeys = (lngLeaf && lngLeaf.keyframes) || [];
+    const internalTimes = [...new Set([...latKeys, ...lngKeys].map((key) => Number(key.time))
+      .filter((time) => time > t0 + 1e-9 && time < t1 - 1e-9))].sort((a, b) => a - b);
+    for (const time of internalTimes) {
+      // The final acquisition samples before an orbit are transition geometry,
+      // not interior samples of the travel primitive. They intentionally bend
+      // into the ring and are governed by the existing primitive-boundary and
+      // orbit-geometry checks. Treating them as anonymous travel samples would
+      // misclassify a semantic travel→orbit bend as trajectory segmentation.
+      const segmentIndex = ((plan && plan.segments) || []).indexOf(segment);
+      const nextSegment = ((plan && plan.segments) || []).slice(segmentIndex + 1)
+        .find((row) => row && row.location && row.duration_seconds > 0);
+      const frame = time * plan.total_frames;
+      if (nextSegment && nextSegment.action === 'orbit'
+        && frame >= segment.end_frame - Math.max(2, 0.25 * (segment.end_frame - segment.start_frame))) continue;
+      const latIn = slopeAt(latLeaf, 'latitude', time, 'in');
+      const latOut = slopeAt(latLeaf, 'latitude', time, 'out');
+      const lngIn = slopeAt(lngLeaf, 'longitude', time, 'in');
+      const lngOut = slopeAt(lngLeaf, 'longitude', time, 'out');
+      if (![latIn, latOut, lngIn, lngOut].every(Number.isFinite)) continue;
+      const latitude = valueAt(denormalized(latLeaf, 'latitude'), time);
+      const cosLat = Math.max(1e-6, Math.abs(Math.cos(Number(latitude) * Math.PI / 180)));
+      const before = { east: lngIn * cosLat, north: latIn };
+      const after = { east: lngOut * cosLat, north: latOut };
+      const speedBefore = Math.hypot(before.east, before.north);
+      const speedAfter = Math.hypot(after.east, after.north);
+      if (Math.max(speedBefore, speedAfter) < 1e-9) continue;
+      const bearingBefore = Math.atan2(before.east, before.north) * 180 / Math.PI;
+      const bearingAfter = Math.atan2(after.east, after.north) * 180 / Math.PI;
+      const mismatch = Math.abs(motionContinuity.angleDeltaDeg(bearingBefore, bearingAfter));
+      if (mismatch <= SMOOTHNESS_TOLERANCES.position_tangent_discontinuity_deg) continue;
+      const duration = Math.max(1e-9, Number(plan.total_duration_seconds));
+      defects.push(defectRecord({ defectClass: 'POSITION_TANGENT_DISCONTINUITY',
+        parameter: 'ground_velocity_vector', segment,
+        frameStart: Math.max(segment.start_frame, Math.round(time * plan.total_frames) - 1),
+        frameEnd: Math.min(segment.end_frame, Math.round(time * plan.total_frames) + 1),
+        measured: mismatch, threshold: SMOOTHNESS_TOLERANCES.position_tangent_discontinuity_deg,
+        explanation: `geographic path changes tangent ${mismatch.toFixed(2)}° at an internal coordinate sample instead of remaining one C1 trajectory`,
+        severity: 'error',
+        details: { keyframe_time: time, speed_before_mps: speedBefore * EARTH_M_PER_DEG / duration,
+          speed_after_mps: speedAfter * EARTH_M_PER_DEG / duration },
+      }));
     }
   }
   return defects;
@@ -1070,6 +1358,6 @@ function evaluate({ plan, esp }) {
 }
 
 module.exports = { cameraTracks, evaluate, coherenceReport, orbitReport, deadOrbitReport, deadMovementReport,
-  rollReport, sortedTimedSamples, timeAwareDerivatives, motionEnvelope,
+  compositionReport, framingClass, rollReport, sortedTimedSamples, timeAwareDerivatives, motionEnvelope,
   scalarPumpDefects, radiusAndTargetDefects, headingDefects, trajectoryDefects, boundaryContinuityDefects,
   boundaryVectorMetrics, smoothnessDoctrineReport, SMOOTHNESS_TOLERANCES, POSITION_DIRECTION_TOLERANCE };

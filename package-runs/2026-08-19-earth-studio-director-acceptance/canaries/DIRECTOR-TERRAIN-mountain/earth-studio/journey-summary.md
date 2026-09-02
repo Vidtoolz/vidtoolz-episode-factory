@@ -20,5 +20,5 @@ Estimated duration: 88 seconds (01:28) at calm pace.
 ## Compiled description
 
 ```
-hover over Zurich at 34028m tilted 0 degrees for 4 seconds then zoom out from Zurich at 155960m tilted 0 degrees for 1.4 seconds then fly to Matterhorn at 155960m tilted 0 degrees for 4.2 seconds then zoom in on Matterhorn tilted 72 degrees for 1.4 seconds then orbit Matterhorn once clockwise tilted 72 degrees for 77 seconds
+hover over Zurich at 34028m tilted 0 degrees for 4 seconds then zoom out from Zurich at 155960m tilted 0 degrees for 1.4 seconds then fly to Matterhorn at 155960m tilted 0 degrees for 4.2 seconds then zoom in on Matterhorn tilted 74 degrees for 1.4 seconds then orbit Matterhorn once clockwise at 5736m tilted 74 degrees for 77 seconds
 ```

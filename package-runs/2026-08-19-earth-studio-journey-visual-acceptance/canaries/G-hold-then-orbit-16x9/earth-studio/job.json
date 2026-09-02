@@ -33,5 +33,6 @@
     "movement_count": 3,
     "compiled_description": "hover over Helsinki at 34028m tilted 0 degrees for 4 seconds then hover over Helsinki for 4 seconds then orbit Espoo once clockwise at 17014m tilted 60 degrees for 23 seconds"
   },
+  "camera_quality": "camera-quality.json",
   "continuation_state": "continuation-state.json"
 }

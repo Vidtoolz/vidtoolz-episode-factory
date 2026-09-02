@@ -365,3 +365,300 @@ test('dead-shot: the existing acceptance set produces no movement-intent finding
     assert.equal(intent.length, 0, `${path.basename(path.dirname(path.dirname(file)))}: ${intent.join('; ')}`);
   }
 });
+
+// ── FLY ARRIVAL CORRECTNESS ─────────────────────────────────────────────────
+//
+// "A fly must not merely travel — it must arrive at the requested subject."
+// Travelling far is no evidence of arriving: a camera can cross a continent and
+// settle on the wrong city.
+//
+// The camera POSITION is not the test. An arrival is often deliberately offset —
+// above the subject, or out on an orbit ring — so what must be right is where the
+// shot is POINTED. The view axis meets the ground `altitude · tan(tilt)` along the
+// pan direction, which is the planner's own ring geometry, and that look-at point
+// is what gets compared to the requested subject. One formula covers both cases: at
+// tilt 0 the look-at IS the camera, and on an oblique ring it is the subject.
+//
+// The error is an ANGLE at the camera rather than metres, because that is
+// inherently framing-relative: measured across 22 real arrivals, 21 land at exactly
+// 0.0000° and the one oblique arrival at 0.0609°. The same 5 km miss is then
+// catastrophic for a landmark and mild for a city without needing a scale table.
+
+const ARRIVAL_ALT_SCALE = 1.5356706349899208e-08;
+const ARRIVAL_PLACES = {
+  helsinki: { name: 'Helsinki', latitude: 60.1699, longitude: 24.9384 },
+  paris: { name: 'Paris', latitude: 48.8566, longitude: 2.3522 },
+  london: { name: 'London', latitude: 51.5074, longitude: -0.1278 },
+  eiffel: { name: 'Eiffel Tower', latitude: 48.8584, longitude: 2.2945 },
+  newYork: { name: 'New York', latitude: 40.7128, longitude: -74.0060 },
+};
+
+function arrivalTracks({ fromLat, fromLng, camLat, camLng, altitude, pan = 0, tilt = 0 }) {
+  const leaf = (pairs, meta) => ({ keyframes: pairs.map(([time, value]) => ({ time, value })), value: meta || {} });
+  return {
+    latitude: leaf([[0.1, fromLat / 90], [1.0, camLat / 90]]),
+    longitude: leaf([[0.1, fromLng / 180], [1.0, camLng / 180]]),
+    altitude: leaf([[0.1, altitude * ARRIVAL_ALT_SCALE], [1.0, altitude * ARRIVAL_ALT_SCALE]]),
+    rotationX: leaf([[0.1, pan / 360], [1.0, pan / 360]], { minValueRange: 0, maxValueRange: 360 }),
+    rotationY: leaf([[0.1, tilt / 180], [1.0, tilt / 180]]),
+  };
+}
+
+function arrivalPlan(subject, previousSubject) {
+  return {
+    total_frames: 100,
+    frame_rate: 30,
+    segments: [
+      { segment_id: 1, action: 'hover', duration_seconds: 1, start_frame: 0, end_frame: 10, location: previousSubject },
+      { segment_id: 2, action: 'fly_to', duration_seconds: 3, start_frame: 10, end_frame: 100,
+        location: subject, altitude_m: 1000, tilt_deg: 0 },
+    ],
+  };
+}
+
+const arrival = ({ subject, from, camera, altitude, pan, tilt }) => quality.deadMovementReport({
+  plan: arrivalPlan(subject, from),
+  tracks: arrivalTracks({
+    fromLat: from.latitude, fromLng: from.longitude,
+    camLat: camera.latitude, camLng: camera.longitude, altitude, pan, tilt,
+  }),
+});
+
+test('arrival: a city fly that lands on its city passes', () => {
+  const r = arrival({ subject: ARRIVAL_PLACES.paris, from: ARRIVAL_PLACES.helsinki,
+    camera: ARRIVAL_PLACES.paris, altitude: 155960 });
+  assert.equal(r.errors.length, 0);
+  assert.equal(r.warnings.length, 0);
+});
+
+test('arrival: a landmark fly that lands on its landmark passes', () => {
+  const r = arrival({ subject: ARRIVAL_PLACES.eiffel, from: ARRIVAL_PLACES.paris,
+    camera: ARRIVAL_PLACES.eiffel, altitude: 438 });
+  assert.equal(r.errors.length, 0);
+});
+
+test('arrival: a long intercontinental fly that lands correctly passes', () => {
+  const r = arrival({ subject: ARRIVAL_PLACES.newYork, from: ARRIVAL_PLACES.helsinki,
+    camera: ARRIVAL_PLACES.newYork, altitude: 178738 });
+  assert.equal(r.errors.length, 0);
+});
+
+test('arrival: naming Paris but settling on London is an error', () => {
+  // The wrong-destination canary. It travels 2,074 km — distance proves nothing.
+  const r = arrival({ subject: ARRIVAL_PLACES.paris, from: ARRIVAL_PLACES.helsinki,
+    camera: ARRIVAL_PLACES.london, altitude: 155960 });
+  assert.equal(r.errors.length, 1, 'a wrong-destination arrival must be reported');
+  assert.match(r.errors[0], /it moved, and it did not arrive/);
+  assert.match(r.errors[0], /Paris/);
+});
+
+test('arrival: the same miss is fatal for a landmark and mild for a city', () => {
+  // 3 km from the Eiffel Tower at a 438 m framing distance is 81.7 deg off frame.
+  const landmark = arrival({ subject: ARRIVAL_PLACES.eiffel, from: ARRIVAL_PLACES.paris,
+    camera: { latitude: ARRIVAL_PLACES.eiffel.latitude + 0.027, longitude: ARRIVAL_PLACES.eiffel.longitude },
+    altitude: 438 });
+  assert.equal(landmark.errors.length, 1, 'kilometres off a landmark is an error');
+  // 5 km from Paris at a 156 km framing distance is under 2 deg.
+  const city = arrival({ subject: ARRIVAL_PLACES.paris, from: ARRIVAL_PLACES.helsinki,
+    camera: { latitude: ARRIVAL_PLACES.paris.latitude + 0.045, longitude: ARRIVAL_PLACES.paris.longitude },
+    altitude: 155960 });
+  assert.equal(city.errors.length, 0, 'the same distance at city scale is not an error');
+  assert.equal(city.warnings.length, 1, 'but it is worth a warning');
+});
+
+test('arrival: a same-place preparatory fly is exempt', () => {
+  const r = arrival({ subject: ARRIVAL_PLACES.paris, from: ARRIVAL_PLACES.paris,
+    camera: ARRIVAL_PLACES.paris, altitude: 155960 });
+  assert.equal(r.errors.length, 0);
+  assert.equal(r.warnings.length, 0);
+});
+
+test('arrival: an intentionally offset orbit-ring arrival passes on aim', () => {
+  // The staged mid-journey case: the camera sits 1,228 m off the subject at 60 deg
+  // pitch, pointing back at it. Position is deliberately wrong; aim is right.
+  const subject = ARRIVAL_PLACES.eiffel;
+  const ring = 709 * Math.tan((60 * Math.PI) / 180);
+  const r = arrival({
+    subject, from: ARRIVAL_PLACES.paris,
+    // Camera due south of the subject, so it must look due north (pan 0).
+    camera: { latitude: subject.latitude - ring / 111320, longitude: subject.longitude },
+    altitude: 709, pan: 0, tilt: 60,
+  });
+  assert.equal(r.errors.length, 0, 'a correct ring arrival must not be flagged');
+  assert.equal(r.warnings.length, 0);
+});
+
+// ── COMPOSITION DIAGNOSTICS ─────────────────────────────────────────────────
+//
+// Measurement only. Geometry being right does not make a frame good, and this makes
+// the missing information observable rather than guessing at it.
+
+test('composition: bearing, distance, pitch and aim are derived correctly', () => {
+  const subject = ARRIVAL_PLACES.eiffel;
+  const ring = 709 * Math.tan((60 * Math.PI) / 180);
+  const plan = {
+    total_frames: 100,
+    frame_rate: 30,
+    segments: [{ segment_id: 1, action: 'orbit', duration_seconds: 3, start_frame: 0, end_frame: 100,
+      location: subject, altitude_m: 709, tilt_deg: 60 }],
+  };
+  // Camera due south of the subject looking north: bearing subject->camera = 180.
+  const rows = quality.compositionReport({
+    plan,
+    tracks: arrivalTracks({
+      fromLat: subject.latitude - ring / 111320, fromLng: subject.longitude,
+      camLat: subject.latitude - ring / 111320, camLng: subject.longitude,
+      altitude: 709, pan: 0, tilt: 60,
+    }),
+  });
+  assert.ok(rows.length >= 1, 'a segment should produce composition rows');
+  const row = rows[0];
+  assert.ok(Math.abs(row.target_bearing_deg - 180) < 1,
+    `camera due south should read bearing 180, got ${row.target_bearing_deg}`);
+  assert.ok(Math.abs(row.pitch_deg - 60) < 0.5, 'pitch should be the orbit pitch');
+  assert.ok(Math.abs(row.camera_distance_m - Math.hypot(ring, 709)) < 5, 'distance should be the 3D range');
+  assert.ok(row.target_aim_error_deg < 1, 'a ring camera pointing at its subject is aimed');
+  assert.equal(row.framing_class, 'landmark', 'a 1.4 km framing distance is landmark scale');
+});
+
+test('composition: unavailable screen-space data is absent, not invented', () => {
+  // The scene readback exposes camera state, not pixels. Guessing subject screen
+  // position from geometry would manufacture confidence with no basis.
+  const plan = {
+    total_frames: 100,
+    frame_rate: 30,
+    segments: [{ segment_id: 1, action: 'hover', duration_seconds: 3, start_frame: 0, end_frame: 100,
+      location: ARRIVAL_PLACES.paris, altitude_m: 1000, tilt_deg: 0 }],
+  };
+  const rows = quality.compositionReport({
+    plan,
+    tracks: arrivalTracks({
+      fromLat: ARRIVAL_PLACES.paris.latitude, fromLng: ARRIVAL_PLACES.paris.longitude,
+      camLat: ARRIVAL_PLACES.paris.latitude, camLng: ARRIVAL_PLACES.paris.longitude, altitude: 1000,
+    }),
+  });
+  assert.equal(rows[0].subject_screen_x, null);
+  assert.equal(rows[0].subject_screen_y, null);
+  assert.equal(rows[0].subject_apparent_scale, null);
+});
+
+test('composition: framing classes span landmark to globe', () => {
+  assert.equal(quality.framingClass(1400), 'landmark');
+  assert.equal(quality.framingClass(35000), 'city');
+  assert.equal(quality.framingClass(200000), 'region');
+  assert.equal(quality.framingClass(3000000), 'country');
+  assert.equal(quality.framingClass(14000000), 'globe');
+});
+
+// ── ZOOM/PUSH TARGET CORRECTNESS ────────────────────────────────────────────
+//
+// A push can descend perfectly while its look-at drifts to the next square over:
+// the movement happened and the command still failed.
+//
+// Same look-at geometry and the same bands as the fly arrival check — measured
+// across 41 real framing moves the END aim error never exceeds 0.0613°.
+//
+// Deliberately END-state only. The aim excursion DURING a framing move is large and
+// legitimate: a zoom that tips its pitch sweeps its look-at, and those same 41
+// correct moves reach 68.8° mid-flight. Gating on the worst value through the move
+// would fire on correct output.
+
+const CATHEDRAL = { name: 'Helsinki Cathedral', latitude: 60.1705, longitude: 24.9522 };
+
+function framingPlan(action, subject) {
+  return {
+    total_frames: 100,
+    frame_rate: 30,
+    segments: [
+      { segment_id: 1, action: 'hover', duration_seconds: 1, start_frame: 0, end_frame: 10, location: subject },
+      { segment_id: 2, action, duration_seconds: 3, start_frame: 10, end_frame: 100,
+        location: subject, altitude_m: 1000, tilt_deg: 0 },
+    ],
+  };
+}
+
+// The shared arrival helper holds altitude constant; framing needs it to change.
+function framingTracks({ camLat, camLng, alt0, alt1, pan = 0, tilt = 0 }) {
+  const leaf = (pairs, meta) => ({ keyframes: pairs.map(([time, value]) => ({ time, value })), value: meta || {} });
+  return {
+    latitude: leaf([[0.1, camLat / 90], [1.0, camLat / 90]]),
+    longitude: leaf([[0.1, camLng / 180], [1.0, camLng / 180]]),
+    altitude: leaf([[0.1, alt0 * ARRIVAL_ALT_SCALE], [1.0, alt1 * ARRIVAL_ALT_SCALE]]),
+    rotationX: leaf([[0.1, pan / 360], [1.0, pan / 360]], { minValueRange: 0, maxValueRange: 360 }),
+    rotationY: leaf([[0.1, tilt / 180], [1.0, tilt / 180]]),
+  };
+}
+
+const framingCheck = (action, opts) => quality.deadMovementReport({
+  plan: framingPlan(action, CATHEDRAL),
+  tracks: framingTracks(opts),
+});
+
+test('zoom target: a valid push on its own subject passes', () => {
+  const r = framingCheck('zoom_in', {
+    camLat: CATHEDRAL.latitude, camLng: CATHEDRAL.longitude, alt0: 1418, alt1: 634,
+  });
+  assert.equal(r.errors.length, 0);
+  assert.equal(r.warnings.length, 0);
+});
+
+test('zoom target: a valid reveal on its own subject passes', () => {
+  const r = framingCheck('zoom_out', {
+    camLat: CATHEDRAL.latitude, camLng: CATHEDRAL.longitude, alt0: 1000, alt1: 1923,
+  });
+  assert.equal(r.errors.length, 0);
+});
+
+test('zoom target: a push that descends around the wrong subject is an error', () => {
+  // Altitude falls correctly. The view ends 2 km away.
+  const r = framingCheck('zoom_in', {
+    camLat: CATHEDRAL.latitude + 0.018, camLng: CATHEDRAL.longitude, alt0: 1418, alt1: 634,
+  });
+  assert.equal(r.errors.length, 1, 'a push around the wrong subject must be reported');
+  assert.match(r.errors[0], /moved correctly around the wrong subject/);
+});
+
+test('zoom target: a reveal that widens around the wrong subject is an error', () => {
+  const r = framingCheck('zoom_out', {
+    camLat: CATHEDRAL.latitude + 0.018, camLng: CATHEDRAL.longitude, alt0: 1000, alt1: 1923,
+  });
+  assert.equal(r.errors.length, 1, 'a reveal around the wrong subject must be reported');
+});
+
+test('zoom target: a small but deliberate push does not false-positive', () => {
+  const r = framingCheck('zoom_in', {
+    camLat: CATHEDRAL.latitude, camLng: CATHEDRAL.longitude, alt0: 1000, alt1: 920,
+  });
+  assert.equal(r.errors.length, 0, 'an 8% push is real');
+  assert.equal(r.warnings.length, 0, 'and it is on its subject');
+});
+
+test('zoom target: an oblique push from the ring passes because the aim is right', () => {
+  // Camera deliberately 1,228 m off the subject at 60 deg, pointing back at it.
+  const ring = 709 * Math.tan((60 * Math.PI) / 180);
+  const r = framingCheck('zoom_in', {
+    camLat: CATHEDRAL.latitude - ring / 111320, camLng: CATHEDRAL.longitude,
+    alt0: 1418, alt1: 709, pan: 0, tilt: 60,
+  });
+  assert.equal(r.errors.length, 0, 'position is deliberately offset; aim is correct');
+  assert.equal(r.warnings.length, 0);
+});
+
+test('zoom target: a borderline framing offset warns rather than failing', () => {
+  const r = framingCheck('zoom_in', {
+    camLat: CATHEDRAL.latitude + 0.000225, camLng: CATHEDRAL.longitude, alt0: 1418, alt1: 634,
+  });
+  assert.equal(r.errors.length, 0);
+  assert.equal(r.warnings.length, 1);
+  assert.match(r.warnings[0], /framed off the subject it was asked to frame/);
+});
+
+test('zoom target: holds and orbits are unaffected', () => {
+  for (const action of ['hover', 'orbit']) {
+    const r = framingCheck(action, {
+      camLat: CATHEDRAL.latitude + 0.018, camLng: CATHEDRAL.longitude, alt0: 1000, alt1: 1000,
+    });
+    assert.equal(r.errors.length, 0, `${action} must not be judged by the framing rule`);
+    assert.equal(r.warnings.length, 0);
+  }
+});

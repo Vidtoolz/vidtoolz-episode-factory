@@ -17,7 +17,7 @@
       },
       "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9",
       "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9/earth-studio/earth-studio.esp",
-      "esp_sha256": "a9b3a8cbb11b8d7b33cef662f4c5776021aa4ac44231f2f6838ea8f8f9330f37",
+      "esp_sha256": "0b254d0d66010f0a7b469e7c096a37c2b175adea94eacefde0a1a5ae3bf8eb82",
       "job_id": null,
       "generation_job_id": null,
       "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9/earth-studio/journey.json",
@@ -42,7 +42,7 @@
             "direction_changes": 0
           },
           "altitude": {
-            "keyframes": 6,
+            "keyframes": 3,
             "finite": true,
             "duplicate_keyframes": 1,
             "direction_changes": 0
@@ -61,6 +61,21 @@
           }
         },
         "segments": 3,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
         "motion_policy": {
           "coherent_trajectory": true,
           "dedupe_keyframes": true,
@@ -69,6 +84,7 @@
       },
       "continuation_source": null,
       "intended_behavior": "Close, restrained local transition; no unnecessary regional pullback; settle on the destination.",
+      "what_changed": "No camera-math change specific to this shot this pass; it is here as a control.",
       "visual_questions": [
         "Does the opening framing fit the square?",
         "Is the local move gentle and readable?",
@@ -90,7 +106,7 @@
       },
       "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9",
       "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9/earth-studio/earth-studio.esp",
-      "esp_sha256": "9a26cdb41527cf947754edca254b53ad1b3766012ee0af6222039cdcc5b09f65",
+      "esp_sha256": "017ed90da85159fb257a89eb4e3ea3faffb218d65d341b76713ebd10a0cb0c4e",
       "job_id": null,
       "generation_job_id": null,
       "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9/earth-studio/journey.json",
@@ -115,7 +131,7 @@
             "direction_changes": 0
           },
           "altitude": {
-            "keyframes": 11,
+            "keyframes": 5,
             "finite": true,
             "duplicate_keyframes": 2,
             "direction_changes": 1
@@ -134,6 +150,21 @@
           }
         },
         "segments": 5,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
         "motion_policy": {
           "coherent_trajectory": true,
           "dedupe_keyframes": true,
@@ -142,6 +173,7 @@
       },
       "continuation_source": null,
       "intended_behavior": "Calm departure, coherent regional travel, natural destination reveal and short settle.",
+      "what_changed": "Unchanged: this move sits inside the corpus evidence range, where the derived easing is authoritative and was deliberately left alone. It is the control proving the easing bound did not disturb short and mid-length moves.",
       "visual_questions": [
         "Is the route continuous without backtracking?",
         "Does altitude rise and descend for the distance?",
@@ -163,7 +195,7 @@
       },
       "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/C-region-to-city-finland-helsinki-16x9",
       "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/C-region-to-city-finland-helsinki-16x9/earth-studio/earth-studio.esp",
-      "esp_sha256": "bb506cd23f7cd707b9b45c54a80dcd89113f424904affbf05f212a079cd3dc9a",
+      "esp_sha256": "366c74b7ea5e689a98bf6ead9c48e6711abfc9bfc7c60a9e7347a1f919c8ba9b",
       "job_id": null,
       "generation_job_id": null,
       "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/C-region-to-city-finland-helsinki-16x9/earth-studio/journey.json",
@@ -188,7 +220,7 @@
             "direction_changes": 0
           },
           "altitude": {
-            "keyframes": 11,
+            "keyframes": 5,
             "finite": true,
             "duplicate_keyframes": 2,
             "direction_changes": 1
@@ -207,6 +239,21 @@
           }
         },
         "segments": 5,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
         "motion_policy": {
           "coherent_trajectory": true,
           "dedupe_keyframes": true,
@@ -215,6 +262,7 @@
       },
       "continuation_source": null,
       "intended_behavior": "Start at country context, descend monotonically into a city-scale destination composition.",
+      "what_changed": "No camera-math change specific to this shot this pass; it is here as a control.",
       "visual_questions": [
         "Is Finland comfortably framed at the start?",
         "Does the scale transition explain the geography?",
@@ -236,7 +284,7 @@
       },
       "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9",
       "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9/earth-studio/earth-studio.esp",
-      "esp_sha256": "e6d8c04a74d0a5712a4d77ebfa356b4f2c6a17b1fdb985b599a7c1deee882765",
+      "esp_sha256": "404a2f162c2d37899bc897a0611cbb4d67f14987218e9c16a309b3566482fa57",
       "job_id": null,
       "generation_job_id": null,
       "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9/earth-studio/journey.json",
@@ -249,37 +297,52 @@
         "warnings": [],
         "tracks": {
           "longitude": {
-            "keyframes": 8,
+            "keyframes": 14,
             "finite": true,
-            "duplicate_keyframes": 2,
-            "direction_changes": 0
+            "duplicate_keyframes": 1,
+            "direction_changes": 2
           },
           "latitude": {
-            "keyframes": 8,
+            "keyframes": 14,
             "finite": true,
             "duplicate_keyframes": 1,
             "direction_changes": 1
           },
           "altitude": {
-            "keyframes": 11,
+            "keyframes": 5,
             "finite": true,
             "duplicate_keyframes": 2,
             "direction_changes": 1
           },
           "rotationX": {
-            "keyframes": 3,
+            "keyframes": 11,
             "finite": true,
             "duplicate_keyframes": 1,
             "direction_changes": 0
           },
           "rotationY": {
-            "keyframes": 3,
+            "keyframes": 4,
             "finite": true,
-            "duplicate_keyframes": 1,
+            "duplicate_keyframes": 2,
             "direction_changes": 0
           }
         },
         "segments": 5,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
         "motion_policy": {
           "coherent_trajectory": true,
           "dedupe_keyframes": true,
@@ -288,6 +351,7 @@
       },
       "continuation_source": null,
       "intended_behavior": "Local context, broad geographic travel, high transit arc, deliberate descent, then one clean partial orbit.",
+      "what_changed": "Its destination orbit now gets an explicit ring-acquisition phase, and the keyframe where the orbit hands over to the next move no longer drags the ring out of shape. The long-crossing EASING is unchanged: bounding it was tried and reverted after the repo's calibrated playback model showed the bound made a 105 s crossing worse, not better.",
       "visual_questions": [
         "Does the camera leave local altitude before the long transit?",
         "Is the global path stable and free of reversals?",
@@ -309,7 +373,7 @@
       },
       "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/E-multi-destination-helsinki-stockholm-copenhagen-16x9",
       "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/E-multi-destination-helsinki-stockholm-copenhagen-16x9/earth-studio/earth-studio.esp",
-      "esp_sha256": "4630406fd44a4740b14426fef2561857299ec6dd171e4ffd5c60ea4d63e00f83",
+      "esp_sha256": "8c8b41559ffbfdfe0ffaee70650cc5847d1a1a02f57860c082af2d2961210ef5",
       "job_id": null,
       "generation_job_id": null,
       "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/E-multi-destination-helsinki-stockholm-copenhagen-16x9/earth-studio/journey.json",
@@ -319,9 +383,7 @@
         "verdict": "PASS_FOR_HUMAN_REVIEW",
         "scope": "machine continuity and serialization checks; not an aesthetic approval",
         "errors": [],
-        "warnings": [
-          "altitude direction changes 3 times"
-        ],
+        "warnings": [],
         "tracks": {
           "longitude": {
             "keyframes": 5,
@@ -336,7 +398,7 @@
             "direction_changes": 0
           },
           "altitude": {
-            "keyframes": 21,
+            "keyframes": 9,
             "finite": true,
             "duplicate_keyframes": 4,
             "direction_changes": 3
@@ -355,6 +417,21 @@
           }
         },
         "segments": 9,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
         "motion_policy": {
           "coherent_trajectory": true,
           "dedupe_keyframes": true,
@@ -363,10 +440,641 @@
       },
       "continuation_source": null,
       "intended_behavior": "A single designed sequence: each arrival becomes the next departure state without reset-like jumps.",
+      "what_changed": "Unchanged motion. The quality gate used to warn 'altitude direction changes 3 times' on this correct shot; the check is now per-segment, so it is silent.",
       "visual_questions": [
         "Does each leg begin from the actual prior state?",
         "Do heading, altitude and target remain coherent at Stockholm?",
         "Does the final Copenhagen arrival feel earned rather than corrected?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "G-standalone-orbit-colosseum-16x9",
+      "title": "Fresh G — Colosseum standalone orbit",
+      "category": "G orbit geometry in isolation",
+      "route": "Colosseum, Rome — partial orbit only",
+      "aspect": "16:9",
+      "duration_seconds": 14,
+      "total_frames": 420,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/G-standalone-orbit-colosseum-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/G-standalone-orbit-colosseum-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "10d52c32ab9f18b8ff7c4ae45301b684327fbcae1b53302c237170f9f4ee7181",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/G-standalone-orbit-colosseum-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/G-standalone-orbit-colosseum-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 19,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 1
+          },
+          "latitude": {
+            "keyframes": 19,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "altitude": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationX": {
+            "keyframes": 19,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          }
+        },
+        "segments": 1,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "One clean partial orbit. Constant-feeling angular speed, a ring that does not breathe in and out, the subject pinned in frame, tilt and altitude still.",
+      "what_changed": "Sweep geometry unchanged from the last pass (radius breathing 0.39%, aim 0.01 deg, steady rate). Kept as the isolated control for the sweep itself.",
+      "visual_questions": [
+        "Does the subject stay put in frame, or does it slide sideways mid-orbit?",
+        "Does the camera hold its distance, or does it pulse closer and further?",
+        "Is the rotation speed even, or does it stutter as it goes round?",
+        "Does the orbit ease in and settle, rather than starting and stopping dead?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "H-fly-into-orbit-eiffel-16x9",
+      "title": "Fresh H — approach the Eiffel Tower and settle into orbit",
+      "category": "H travel -> orbit transition",
+      "route": "Paris -> Eiffel Tower -> orbit",
+      "aspect": "16:9",
+      "duration_seconds": 20,
+      "total_frames": 600,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/H-fly-into-orbit-eiffel-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/H-fly-into-orbit-eiffel-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "9c1e3fa7b41913bf4d2baab0af074819877aa613a04e7620aa83717d9bfa7556",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/H-fly-into-orbit-eiffel-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/H-fly-into-orbit-eiffel-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 22,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 1
+          },
+          "latitude": {
+            "keyframes": 22,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 1
+          },
+          "altitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "rotationX": {
+            "keyframes": 20,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 4,
+            "finite": true,
+            "duplicate_keyframes": 2,
+            "direction_changes": 0
+          }
+        },
+        "segments": 3,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "The approach should land ON the orbit ring and keep going, reading as one continuous camera performance — not travel, stop, reset, orbit.",
+      "what_changed": "The orbit's pitch change used to have no keyframe at the boundary, so it interpolated from frame 0 and crept upward through the whole approach. It is now confined to the acquisition window, and the sweep holds pitch exactly.",
+      "visual_questions": [
+        "At the moment the orbit takes over, is there a sideways slide or a visible reset?",
+        "Does the tilt tip into the orbit smoothly rather than snapping?",
+        "Does it read as one move, or as two moves glued together?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "I-landmark-push-helsinki-cathedral-16x9",
+      "title": "Fresh I — push in on Helsinki Cathedral",
+      "category": "I small-subject framing + push",
+      "route": "Helsinki Cathedral — wider architectural view to closer framing",
+      "aspect": "16:9",
+      "duration_seconds": 9,
+      "total_frames": 270,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/I-landmark-push-helsinki-cathedral-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/I-landmark-push-helsinki-cathedral-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "22f15189fffaec524a8b9b618237168b1f0879e3e67ce2a51d6dece2cd4c5a60",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/I-landmark-push-helsinki-cathedral-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/I-landmark-push-helsinki-cathedral-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "latitude": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "altitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "rotationX": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          }
+        },
+        "segments": 2,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "Establish the building, then one gentle push that decelerates into an attractive closer framing. No lateral wander, no zoom pumping.",
+      "what_changed": "Unchanged this pass. The push itself was fixed in the previous pass (it used to produce a static shot).",
+      "visual_questions": [
+        "Is the building whole and readable in the opening frame?",
+        "Does the push travel straight in, without drifting left or right?",
+        "Does it decelerate into the end framing, or arrive and stop abruptly?",
+        "Is the closing composition worth holding on?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "J-country-scale-finland-16x9",
+      "title": "Fresh J — Finland at country scale",
+      "category": "J large-subject framing",
+      "route": "Finland — establish and gentle reveal",
+      "aspect": "16:9",
+      "duration_seconds": 11,
+      "total_frames": 330,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/J-country-scale-finland-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/J-country-scale-finland-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "f4ce518fc433b7cc7f0c8814ef90f85f06b88dc5355863503da6a02d5df54250",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/J-country-scale-finland-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/J-country-scale-finland-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "latitude": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "altitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "rotationX": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          }
+        },
+        "segments": 2,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "A country must be framed as a country: whole, with useful context, at a distance nothing like a landmark distance.",
+      "what_changed": "No camera-math change specific to this shot this pass; it is here as a control.",
+      "visual_questions": [
+        "Is the whole country in frame, without huge dead space around it?",
+        "Is the reveal calm and legible at this scale?",
+        "Does the pull-out stay controlled instead of tipping toward the horizon?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "K-hover-into-orbit-colosseum-16x9",
+      "title": "Fresh K — hold the Colosseum, then orbit it",
+      "category": "K orbit ring acquisition",
+      "route": "Colosseum — establish top-down, then orbit",
+      "aspect": "16:9",
+      "duration_seconds": 17,
+      "total_frames": 510,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/K-hover-into-orbit-colosseum-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/K-hover-into-orbit-colosseum-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "c98024a4051229d7a4ef381a78f5ae398d56bbbe967b5d440db5b6500f8ef42a",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/K-hover-into-orbit-colosseum-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/K-hover-into-orbit-colosseum-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 20,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 1
+          },
+          "latitude": {
+            "keyframes": 20,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "altitude": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationX": {
+            "keyframes": 20,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          }
+        },
+        "segments": 2,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "A hold frames the subject from directly above, which is the CENTRE of the orbit ring, not a point on it. The camera should visibly and deliberately move out onto the ring and tip into the orbit pitch FIRST, then circle at a steady rate — one continuous performance, not a slide.",
+      "what_changed": "NEW SHOT, and the headline fix. A hold frames its subject from directly above, i.e. the CENTRE of the orbit ring. Previously the orbit started sweeping immediately and travelled 1,228 m outward while already circling (103% radius breathing, 60 deg of pitch swing, subject lost). The orbit now has an explicit bounded ring-acquisition phase before the sweep.",
+      "visual_questions": [
+        "Does the camera deliberately move out onto the orbit circle before it starts circling?",
+        "Does the subject stay in frame the whole way out, or does it swing away?",
+        "Is the tip from looking-down to the orbit angle smooth, or is there a snap?",
+        "Once circling, does it hold its distance and its angle?",
+        "Does the whole thing read as one intentional move, or as a correction?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "L-globe-pullback-finland-16x9",
+      "title": "Fresh L — pull back from Finland to the globe",
+      "category": "L large-scale pull back",
+      "route": "Finland — country framing out to whole-globe framing",
+      "aspect": "16:9",
+      "duration_seconds": 14,
+      "total_frames": 420,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/L-globe-pullback-finland-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/L-globe-pullback-finland-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "39bb334715fa777504927ce36f5e61c76137b8777c4790c5e00c458ae175d86c",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/L-globe-pullback-finland-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/L-globe-pullback-finland-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "latitude": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "altitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "rotationX": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          }
+        },
+        "segments": 2,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "A very large monotonic altitude change. It should accelerate once, hold a steady climb, and settle — never lurch, stall, or pulse on the way out.",
+      "what_changed": "NEW SHOT. A very large monotonic altitude change, here to check the climb accelerates once and settles once rather than stuttering.",
+      "visual_questions": [
+        "Does the pull-back climb at an even rate, or does it stutter on the way out?",
+        "Is the globe sensibly framed at the end, without huge dead space?",
+        "Does it settle rather than stopping dead?",
+        "Does anything about the scale change feel abrupt?"
+      ],
+      "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
+    },
+    {
+      "id": "M-long-crossing-control-16x9",
+      "title": "Fresh M — Helsinki to New York, isolated long crossing",
+      "category": "M long-travel easing control",
+      "route": "Helsinki -> New York (no destination orbit)",
+      "aspect": "16:9",
+      "duration_seconds": 136,
+      "total_frames": 4080,
+      "render_dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/M-long-crossing-control-16x9",
+      "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/M-long-crossing-control-16x9/earth-studio/earth-studio.esp",
+      "esp_sha256": "59ef0498395e3249568a6c935a63cfad264e39c0f999728706d232b882fcc252",
+      "job_id": null,
+      "generation_job_id": null,
+      "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/M-long-crossing-control-16x9/earth-studio/journey.json",
+      "continuation_state": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/M-long-crossing-control-16x9/earth-studio/continuation-state.json",
+      "camera_quality": {
+        "schema_version": 1,
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "scope": "machine continuity and serialization checks; not an aesthetic approval",
+        "errors": [],
+        "warnings": [],
+        "tracks": {
+          "longitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "latitude": {
+            "keyframes": 3,
+            "finite": true,
+            "duplicate_keyframes": 1,
+            "direction_changes": 0
+          },
+          "altitude": {
+            "keyframes": 5,
+            "finite": true,
+            "duplicate_keyframes": 2,
+            "direction_changes": 1
+          },
+          "rotationX": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          },
+          "rotationY": {
+            "keyframes": 1,
+            "finite": true,
+            "duplicate_keyframes": 0,
+            "direction_changes": 0
+          }
+        },
+        "segments": 5,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
+        "motion_policy": {
+          "coherent_trajectory": true,
+          "dedupe_keyframes": true,
+          "source": "journey"
+        }
+      },
+      "continuation_source": null,
+      "intended_behavior": "One long, calm crossing: depart, establish a travel speed, hold it for a meaningful stretch, then arrive gently. It should not feel as if it accelerates almost to the midpoint and then immediately begins slowing down.",
+      "what_changed": "NEW SHOT, and it is a CONTROL, not a fix. It isolates long-travel easing with nothing else moving so the velocity profile can be read from a real Earth Studio import. The easing itself is UNCHANGED this pass: bounding it was tried and reverted because the repo's calibrated playback model showed the bound made a 105 s crossing worse. This shot exists to settle that question with real evidence rather than a model.",
+      "visual_questions": [
+        "Does it settle into a travel speed you can read, or does it feel like it is still accelerating most of the way?",
+        "Is the departure calm rather than a launch?",
+        "Is the arrival gentle rather than a stop?",
+        "Does the ground stay legible at cruise, or does it smear past?",
+        "Would you cut this into a video as-is?"
       ],
       "generated_via": "Journey Creator model -> earth-studio-lane.writeJob (production /api/earth-studio/plan path)"
     },
@@ -384,7 +1092,7 @@
       },
       "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F1-continuation-source-helsinki-stockholm-16x9",
       "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F1-continuation-source-helsinki-stockholm-16x9/earth-studio/earth-studio.esp",
-      "esp_sha256": "1786be62c5cbefd75c7b152fe632f7a4352b69e6850f9dfa9a50925ae1b1d059",
+      "esp_sha256": "49d9668cbcc528f0fcf16caa4203d2d948452c899282fb26d11ad59e9c575cbe",
       "job_id": null,
       "generation_job_id": null,
       "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F1-continuation-source-helsinki-stockholm-16x9/earth-studio/journey.json",
@@ -409,7 +1117,7 @@
             "direction_changes": 0
           },
           "altitude": {
-            "keyframes": 11,
+            "keyframes": 5,
             "finite": true,
             "duplicate_keyframes": 2,
             "direction_changes": 1
@@ -428,6 +1136,21 @@
           }
         },
         "segments": 5,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
         "motion_policy": {
           "coherent_trajectory": true,
           "dedupe_keyframes": true,
@@ -436,6 +1159,7 @@
       },
       "continuation_source": null,
       "intended_behavior": "Produce the authoritative final camera state used by Fresh F2.",
+      "what_changed": "No camera-math change specific to this shot this pass; it is here as a control.",
       "visual_questions": [
         "Record the final frame state; it must be the exact starting state of F2."
       ],
@@ -455,7 +1179,7 @@
       },
       "project_dir": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9",
       "esp": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9/earth-studio/earth-studio.esp",
-      "esp_sha256": "2d63e37783225126079a232fd2d956e8dd29d1b333bb672d648097fc84c6e135",
+      "esp_sha256": "6cda225cfb746e5338672693908507f76a4482d3e8e50aaab8e27338dc7e8569",
       "job_id": null,
       "generation_job_id": null,
       "journey_json": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9/earth-studio/journey.json",
@@ -468,37 +1192,52 @@
         "warnings": [],
         "tracks": {
           "longitude": {
-            "keyframes": 16,
+            "keyframes": 41,
             "finite": true,
-            "duplicate_keyframes": 2,
-            "direction_changes": 2
+            "duplicate_keyframes": 1,
+            "direction_changes": 4
           },
           "latitude": {
-            "keyframes": 16,
+            "keyframes": 41,
             "finite": true,
             "duplicate_keyframes": 1,
             "direction_changes": 2
           },
           "altitude": {
-            "keyframes": 11,
+            "keyframes": 5,
             "finite": true,
             "duplicate_keyframes": 2,
             "direction_changes": 1
           },
           "rotationX": {
-            "keyframes": 3,
+            "keyframes": 38,
             "finite": true,
             "duplicate_keyframes": 1,
             "direction_changes": 0
           },
           "rotationY": {
-            "keyframes": 3,
+            "keyframes": 4,
             "finite": true,
-            "duplicate_keyframes": 1,
+            "duplicate_keyframes": 2,
             "direction_changes": 0
           }
         },
         "segments": 5,
+        "coherence": {
+          "position_direction_tolerance": 1,
+          "findings": []
+        },
+        "orbit_geometry": {
+          "radius_breathing_tolerance_pct": 2,
+          "aim_tolerance_deg": 2,
+          "tilt_tolerance_deg": 1,
+          "findings": []
+        },
+        "roll": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0
+        },
         "motion_policy": {
           "coherent_trajectory": true,
           "dedupe_keyframes": true,
@@ -507,6 +1246,7 @@
       },
       "continuation_source": "F1-continuation-source-helsinki-stockholm-16x9",
       "intended_behavior": "Begin exactly at F1 final camera state, hold briefly, then continue to Copenhagen.",
+      "what_changed": "No camera-math change specific to this shot this pass; it is here as a control.",
       "visual_questions": [
         "Is frame 0 identical to F1 final frame?",
         "Is there any heading, altitude, pitch or target snap?",

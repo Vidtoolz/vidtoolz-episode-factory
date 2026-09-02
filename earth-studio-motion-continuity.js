@@ -338,7 +338,7 @@ function playbackValueAt(keyframes, time) {
       // endpoint invented a 0.19-0.23 degree reversal. Keep those at the authored
       // y=0 endpoint. This remains a diagnostic model, not a replacement renderer.
       const aIndex = i - 1;
-      if (out && out.type === "auto") {
+      if (out && out.type === "auto" && Math.abs(Number(out.y) || 0) < 1e-12) {
         p1y += autoTangentSlope(keyframes, aIndex, "out")
           * Number(out.x || 0) / 3;
       }
@@ -348,11 +348,13 @@ function playbackValueAt(keyframes, time) {
       // common hold/arrival boundary) remains a settled endpoint.  Treating
       // every incoming auto as a tangent made the diagnostic invent pan and
       // altitude motion that the authenticated H import does not play.
-      if (incoming && incoming.type === "auto" && b.transitionOut && b.transitionOut.type === "auto") {
+      if (incoming && incoming.type === "auto" && Math.abs(Number(incoming.y) || 0) < 1e-12
+          && b.transitionOut && b.transitionOut.type === "auto") {
         p2y -= autoTangentSlope(keyframes, i, "in")
           * Math.abs(Number(incoming.x || 0)) / 3;
       }
-      if (incoming && incoming.type === "custom" && finite(incoming.influence)
+      if (incoming && incoming.type === "custom" && Math.abs(Number(incoming.y) || 0) < 1e-12
+          && finite(incoming.influence)
           && i < keyframes.length - 1) {
         p2y += (Number(b.value) - Number(a.value)) * Number(incoming.influence) * 0.5;
       }
@@ -523,14 +525,25 @@ function extractEspCameraTracks(esp) {
   const camera = findAttribute(scene && scene.attributes, "cameraGroup");
   const positionGroup = findAttribute(camera && camera.attributes, "cameraPositionGroup");
   const rotationGroup = findAttribute(camera && camera.attributes, "cameraRotationGroup");
-  const decode = (leaf, transform) => (leaf && leaf.keyframes || []).map((keyframe) => ({
-    ...keyframe,
-    // Keep serialized normalized time here. samplePlaybackTrack converts the
-    // requested frame to the same [0,1] domain; raw planner diagnostics retain
-    // their frame-domain tracks separately.
-    time: Number(keyframe.time),
-    value: transform(Number(keyframe.value), leaf.value || {}),
-  }));
+  const decode = (leaf, transform) => (leaf && leaf.keyframes || []).map((keyframe) => {
+    const raw = Number(keyframe.value);
+    const meta = leaf.value || {};
+    const decodeHandle = (handle) => {
+      if (!handle || !Number.isFinite(Number(handle.y))) return handle;
+      return { ...handle, y: transform(raw + Number(handle.y), meta) - transform(raw, meta) };
+    };
+    return {
+      ...keyframe,
+      // Keep serialized normalized time here. samplePlaybackTrack converts the
+      // requested frame to the same [0,1] domain; raw planner diagnostics retain
+      // their frame-domain tracks separately. Handle y is a normalized VALUE
+      // delta and must pass through the same affine codec as the key value.
+      time: Number(keyframe.time),
+      value: transform(raw, meta),
+      ...(keyframe.transitionIn ? { transitionIn: decodeHandle(keyframe.transitionIn) } : {}),
+      ...(keyframe.transitionOut ? { transitionOut: decodeHandle(keyframe.transitionOut) } : {}),
+    };
+  });
   const range = (meta, fallback) => Number.isFinite(Number(meta)) ? Number(meta) : fallback;
   return {
     lat: decode(findAttribute(positionGroup && positionGroup.attributes, "latitude"), (value, meta) => value * (90 - range(meta.minValueRange, 0)) + range(meta.minValueRange, 0)),

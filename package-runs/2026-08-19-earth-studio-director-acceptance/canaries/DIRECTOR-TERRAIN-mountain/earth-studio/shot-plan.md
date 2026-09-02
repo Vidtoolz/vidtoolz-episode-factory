@@ -13,8 +13,8 @@ Frame convention: start_frame inclusive, end_frame exclusive
 | 1 | hover | Zurich | 34028 | 0 | 0-4s | 0 | 120 | resolved |
 | 2 | zoom_out | Zurich | 155960 | 0 | 4-5.4s | 120 | 162 | resolved |
 | 3 | fly_to | Matterhorn | 155960 | 0 | 5.4-9.600000000000001s | 162 | 288 | resolved |
-| 4 | zoom_in | Matterhorn | 6500 | 72 | 9.600000000000001-11.000000000000002s | 288 | 330 | resolved |
-| 5 | orbit | Matterhorn | 6500 | 72 | 11.000000000000002-88s | 330 | 2640 | resolved |
+| 4 | zoom_in | Matterhorn | 6500 | 74 | 9.600000000000001-11.000000000000002s | 288 | 330 | resolved |
+| 5 | orbit | Matterhorn | 5736 | 74 | 11.000000000000002-88s | 330 | 2640 | resolved |
 
 ## Locations
 

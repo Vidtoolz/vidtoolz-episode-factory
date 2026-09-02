@@ -546,6 +546,8 @@ test("director canaries: every canary generates a real, importable Earth Studio 
 //
 // Measured as frame-widths of ground per second. Bracketed by the operator's own
 // verdicts on real playback: accepted <= 0.80 fw/s, reported unreadable >= 3.29.
+// The fixed-tilt ladder is superseded for final authority, so it does not move
+// the production threshold before the height-aware review.
 
 const FW_LIMIT = journey.READABLE_SCREEN_SPEED_FW_PER_S;
 

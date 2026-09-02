@@ -442,10 +442,10 @@
         "height": 1080
       },
       "esp": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/earth-studio.esp",
-      "esp_sha256": "b03d581f7468bbda59de5f8116ea9098cd9776be10da15004bb2f8b9b02ef480",
+      "esp_sha256": "d0b7780aad3989234463193eb8a224e7e9aa0b99e3ade13e0ab182195aa173aa",
       "journey_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/journey.json",
       "direction_json": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/direction.json",
-      "compiled_description": "hover over Zurich at 34028m tilted 0 degrees for 4 seconds then zoom out from Zurich at 155960m tilted 0 degrees for 1.4 seconds then fly to Matterhorn at 155960m tilted 0 degrees for 4.2 seconds then zoom in on Matterhorn tilted 72 degrees for 1.4 seconds then orbit Matterhorn once clockwise tilted 72 degrees for 77 seconds",
+      "compiled_description": "hover over Zurich at 34028m tilted 0 degrees for 4 seconds then zoom out from Zurich at 155960m tilted 0 degrees for 1.4 seconds then fly to Matterhorn at 155960m tilted 0 degrees for 4.2 seconds then zoom in on Matterhorn tilted 74 degrees for 1.4 seconds then orbit Matterhorn once clockwise at 5736m tilted 74 degrees for 77 seconds",
       "movements": [
         {
           "label": "Hold · Zurich",

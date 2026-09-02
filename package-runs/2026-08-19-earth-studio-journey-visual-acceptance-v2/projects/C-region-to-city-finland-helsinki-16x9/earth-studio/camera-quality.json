@@ -18,7 +18,7 @@
       "direction_changes": 0
     },
     "altitude": {
-      "keyframes": 11,
+      "keyframes": 5,
       "finite": true,
       "duplicate_keyframes": 2,
       "direction_changes": 1
@@ -37,6 +37,21 @@
     }
   },
   "segments": 5,
+  "coherence": {
+    "position_direction_tolerance": 1,
+    "findings": []
+  },
+  "orbit_geometry": {
+    "radius_breathing_tolerance_pct": 2,
+    "aim_tolerance_deg": 2,
+    "tilt_tolerance_deg": 1,
+    "findings": []
+  },
+  "roll": {
+    "present": false,
+    "non_zero": 0,
+    "keyframes": 0
+  },
   "motion_policy": {
     "coherent_trajectory": true,
     "dedupe_keyframes": true,

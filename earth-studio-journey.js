@@ -243,14 +243,241 @@
     return { scale: "city", source: "assumed_city" };
   }
 
+  // EFFECTIVE FRAMING SPAN — which span actually describes the shot being made.
+  //
+  // Two different quantities were being used interchangeably, and an audit of the
+  // 61 calibrated gazetteer entries found 59 where they disagree, by ratios from
+  // 0.64x to 551x:
+  //
+  //   framing_span_default_m    the class constant, FRAMING_SCALES[scale].span_m.
+  //                             A generic category value: every landmark is 500 m.
+  //   framing_span_effective_m  what this shot's own altitude actually frames.
+  //
+  // For a calibrated place the second is authoritative, because the calibrated
+  // altitude IS the framing decision — it goes straight into the .esp (see
+  // altitude_source "gazetteer_calibrated"). Colosseum sits at a hand-validated
+  // 700 m, which frames 247 m; calling it a 500 m object because the "landmark"
+  // class says so is what reported it as filling 2.03 frame heights.
+  //
+  // The extreme cases are not calibrated-vs-derived but SCALE_OVERRIDES: the Great
+  // Wall of China is declared "region" (nominal 350 km) while its calibrated 1800 m
+  // altitude frames 635 m — ratio 551. Reported, not silently averaged.
+  //
+  // This resolves the span for REPORTING only. Camera behaviour is deliberately
+  // untouched: the .esp altitude already comes from the calibrated value, and the
+  // director's route-foreshadow threshold still uses the class default, because
+  // moving it would change real openings with no evidence asking for that.
+  function effectiveFramingSpanM(resolved, rawName, options = {}) {
+    const classified = classifyScale(resolved, rawName);
+    const cls = FRAMING_SCALES[classified.scale] || null;
+    const defaultSpan = cls && Number.isFinite(cls.span_m) ? cls.span_m : null;
+    const tiltDeg = Number.isFinite(options.tiltDeg) ? options.tiltDeg : 0;
+    const out = {
+      scale: classified.scale,
+      classification_source: classified.source,
+      framing_span_default_m: defaultSpan,
+      framing_span_effective_m: defaultSpan,
+      effective_span_source: defaultSpan === null ? "unknown" : "class_default",
+      calibrated_altitude_m: null,
+      default_vs_effective_ratio: null,
+    };
+    // An explicit frame span states the subject's framing extent outright and
+    // outranks both the class constant and any calibrated altitude.
+    if (resolved && Number.isFinite(resolved.frame_span_m) && resolved.frame_span_m > 0) {
+      out.framing_span_effective_m = resolved.frame_span_m;
+      out.effective_span_source = "authoritative_frame_span";
+    } else if (resolved && Number.isFinite(resolved.altitude_m) && resolved.altitude_m > 0) {
+      out.calibrated_altitude_m = resolved.altitude_m;
+      out.framing_span_effective_m = frameWidthMeters(resolved.altitude_m, tiltDeg, options);
+      out.effective_span_source = "calibrated_altitude";
+    }
+    if (Number.isFinite(defaultSpan) && Number.isFinite(out.framing_span_effective_m)
+      && out.framing_span_effective_m > 0) {
+      out.default_vs_effective_ratio = defaultSpan / out.framing_span_effective_m;
+    }
+    return out;
+  }
+
+  // FRAMING-AUTHORITY CONSISTENCY REPORT.
+  //
+  // Diagnostic only. It classifies the disagreement between a subject's CLASS span
+  // and the span its own calibrated altitude frames, and separates three distinct
+  // causes that an earlier pass had collapsed into one:
+  //
+  //   tilt_basis_mismatch      They agree at a tilt the system actually uses. The
+  //                            framing law is `2*(alt/cos tilt)*tan(FOV/2)`, so the
+  //                            effective span depends on tilt; comparing a class
+  //                            span against the span at tilt 0 manufactures a
+  //                            discrepancy that does not exist in the shot. The
+  //                            Colosseum's 700 m frames 494 m at 60 deg (the orbit
+  //                            default) against a 500 m class span — a 1.01 ratio,
+  //                            not the 2.03 that a tilt-0 basis reports.
+  //   bucketing_loss           A continuous implied scale was rounded to a class,
+  //                            and the class constant is then substituted back in
+  //                            for a span the system could have computed exactly.
+  //   classification_conflict  No tilt in the usable range reconciles them. The
+  //                            class label and the calibrated altitude describe
+  //                            genuinely different subjects.
+  //
+  // `camera_behavior_affected` is not a guess: the classification feeds
+  // earth-studio-director.js, where `g.scales.includes(ctx.scale)` is a HARD veto on
+  // movement eligibility, and it also feeds scale_fit scoring and
+  // styleCruiseAltitudeM. So relabelling is a camera change, never a metadata tidy.
+  const AUTHORITY_MAX_TILT_DEG = 80;   // framingAltitudeM's own clamp
+
+  function framingAuthorityAudit(subjects, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const fov = options.fovDeg || planner.EARTH_STUDIO_DEFAULT_FOV_DEG;
+    const rad = (d) => (d * Math.PI) / 180;
+    const out = [];
+    for (const entry of Array.isArray(subjects) ? subjects : []) {
+      const resolved = entry && entry.resolved ? entry.resolved : null;
+      const name = (entry && entry.name) || (resolved && resolved.name) || "";
+      const eff = effectiveFramingSpanM(resolved, name, { tiltDeg: 0, planner });
+      const classSpan = eff.framing_span_default_m;
+      const alt = resolved && Number.isFinite(resolved.altitude_m) ? resolved.altitude_m : null;
+      // Which tilt, if any, makes the calibrated altitude frame the class span?
+      //   span(t) = 2*(alt/cos t)*tan(fov/2) = classSpan
+      //   => cos t = 2*alt*tan(fov/2)/classSpan
+      let reconciling = null;
+      if (alt !== null && Number.isFinite(classSpan) && classSpan > 0) {
+        const c = (2 * alt * Math.tan(rad(fov / 2))) / classSpan;
+        if (c > 0 && c <= 1) {
+          const t = (Math.acos(c) * 180) / Math.PI;
+          if (t <= AUTHORITY_MAX_TILT_DEG) reconciling = Number(t.toFixed(1));
+        }
+      }
+      const ratio = eff.default_vs_effective_ratio;
+      let conflict = "none";
+      if (alt === null) conflict = "none";
+      else if (reconciling !== null) conflict = "tilt_basis_mismatch";
+      else if (Number.isFinite(ratio) && Math.abs(ratio - 1) > 0.05) conflict = "classification_conflict";
+      // Severity is graded on the UNRECONCILABLE cases only: a tilt-basis mismatch
+      // is a reporting artefact, not a data defect.
+      let severity = "none";
+      if (conflict === "classification_conflict") {
+        const r = Math.max(ratio, 1 / ratio);
+        severity = r >= 100 ? "extreme" : r >= 10 ? "major" : r >= 1.5 ? "moderate" : "minor";
+      } else if (conflict === "tilt_basis_mismatch") severity = "informational";
+      out.push({
+        subject: name,
+        classification: eff.scale,
+        classification_source: eff.classification_source,
+        class_span_m: classSpan,
+        calibrated_altitude_m: alt,
+        // Stated basis, so this number can never again be read as tilt-free.
+        effective_span_m: eff.framing_span_effective_m,
+        effective_span_basis_tilt_deg: 0,
+        effective_span_source: eff.effective_span_source,
+        default_vs_effective_ratio: ratio,
+        reconciling_tilt_deg: reconciling,
+        classification_conflict: conflict,
+        conflict_severity: severity,
+        // Changing the LABEL would move camera behaviour; changing the reported
+        // SPAN would not, because framing already uses the calibrated altitude.
+        camera_behavior_affected: eff.classification_source === "classified_override"
+          || eff.classification_source === "gazetteer_scale",
+        relabel_is_safe: false,
+      });
+    }
+    // Deterministic order: worst unreconcilable first, then by name.
+    const rank = { extreme: 0, major: 1, moderate: 2, minor: 3, informational: 4, none: 5 };
+    out.sort((a, b) => (rank[a.conflict_severity] - rank[b.conflict_severity])
+      || String(a.subject).localeCompare(String(b.subject)));
+    return out;
+  }
+
   function stepScale(scaleKey, steps) {
     const i = SCALE_LADDER.indexOf(scaleKey);
     if (i < 0) return scaleKey;
     return SCALE_LADDER[Math.min(SCALE_LADDER.length - 1, Math.max(0, i + steps))];
   }
 
+  // ASPECT-LIMITING AXIS — measured, not assumed.
+  //
+  // The framing law below has no aspect argument, and matched 16:9 / 9:16 imports
+  // established why that is a defect. Earth Studio's stored 20 deg FOV is applied
+  // VERTICALLY: its own projection matrix reports half_fov_y = 10.000 deg exactly,
+  // with the horizontal half-angle derived from the frame shape. Measured on
+  // Helsinki at one identical altitude, 12 km declared span:
+  //
+  //   16:9   height occupancy 0.9988   width occupancy 0.5617
+  //   9:16   height occupancy 0.9988   width occupancy 1.7732   <- 1.77x OVERFLOW
+  //
+  // So `span * cos(tilt) / (2 tan(FOV/2))` frames the span across the frame's
+  // VERTICAL extent whatever the aspect, and on a vertical frame the horizontal
+  // extent is 1.778x smaller — the subject runs off the sides.
+  //
+  // The fix is to fit the declared span to the LIMITING visible axis rather than to
+  // one fixed axis. With frameAspect = width/height:
+  //
+  //   limitingFactor = min(1, frameAspect)
+  //   altitude = span * cos(tilt) / (2 tan(FOV/2) * limitingFactor)
+  //
+  // For every landscape aspect (frameAspect >= 1) the factor is exactly 1, so 16:9
+  // and 1:1 output is byte-unchanged and no existing artifact moves. Only portrait
+  // aspects gain altitude, which is where the overflow was measured.
+  //
+  // This preserves the DECLARED SPAN across aspects. It deliberately adds no
+  // margin: whether a subject should touch the frame edges is a directorial
+  // decision and stays open.
+  function aspectLimitingFactor(aspect, options = {}) {
+    const planner = loadPlanner(options.planner);
+    const dims = (planner.ASPECTS && planner.ASPECTS[aspect]) || null;
+    if (!dims || !(dims.width > 0) || !(dims.height > 0)) return 1;
+    return Math.min(1, dims.width / dims.height);
+  }
+
+  // CALIBRATED-LANDMARK PORTRAIT CANDIDATE — an experiment switch, not a default.
+  //
+  // `aspectAwareFraming` cannot reach a calibrated place: its altitude comes
+  // straight from the gazetteer (altitude_source "gazetteer_calibrated") and never
+  // passes through framingAltitudeM. Measured in real Earth Studio, the Colosseum
+  // at its calibrated 700 m occupies 3.59 frame widths at 9:16 — the largest
+  // framing defect in the channel's actual output format.
+  //
+  // The candidate does NOT substitute the generic class span back in. It preserves
+  // what the calibration itself frames: the effective span implied by the
+  // calibrated altitude at the shot's own tilt,
+  //
+  //   S = frameWidthMeters(calibratedAltitude, tilt)
+  //
+  // and solves for the altitude that puts that same S on the LIMITING axis:
+  //
+  //   altitude = calibratedAltitude / min(1, frameWidth / frameHeight)
+  //
+  // The tilt cancels, so the rule is one division and the preserved span is exact
+  // at whatever tilt the shot uses. For any landscape or square aspect the divisor
+  // is 1 and the calibrated altitude is returned unchanged, so existing 16:9
+  // behaviour is byte-identical by construction.
+  //
+  // Kept separate from `aspectAwareFraming` on purpose: that one is real-import
+  // verified for DERIVED framings, and raising a hand-validated landmark altitude
+  // changes visual emphasis, which is Mikko's call and not a refactor's.
+  //
+  // APPLIED IN THE PLANNER, not here. On AUTO framing with a calibrated altitude
+  // the compiled phrase deliberately OMITS the altitude (see emit_altitude), so the
+  // planner's targetAltitude() is what actually reaches the .esp. This helper is the
+  // shared rule both layers agree on; applying it in both would divide twice.
+  const CALIBRATED_PORTRAIT_DEFAULT = false;
+
+  function calibratedPortraitAltitudeM(calibratedAltitudeM, options = {}) {
+    const alt = Number(calibratedAltitudeM);
+    if (!Number.isFinite(alt) || alt <= 0) return calibratedAltitudeM;
+    const enabled = options.calibratedPortraitFraming !== undefined
+      ? !!options.calibratedPortraitFraming : CALIBRATED_PORTRAIT_DEFAULT;
+    if (!enabled) return alt;
+    const limiting = aspectLimitingFactor(options.aspect, options);
+    if (!(limiting > 0) || limiting >= 1) return alt;
+    const planner = loadPlanner(options.planner);
+    return Math.round(Math.min(planner.MAX_ALTITUDE_M,
+      Math.max(planner.MIN_ALTITUDE_M, alt / limiting)));
+  }
+
   // altitude = span * cos(tilt) / (2 * tan(FOV/2)), floored by the place's
-  // terrain minimum and clamped to Earth Studio's altitude range.
+  // terrain minimum and clamped to Earth Studio's altitude range. When
+  // `aspectAwareFraming` is on, the divisor also carries the limiting-axis factor
+  // above so the declared span survives a portrait frame.
   function framingAltitudeM(scaleKey, tiltDeg, options = {}) {
     const planner = loadPlanner(options.planner);
     const scale = scaleOf(scaleKey) || FRAMING_SCALES.city;
@@ -258,7 +485,9 @@
     const tilt = Math.min(80, Math.max(0, Number.isFinite(tiltDeg) ? tiltDeg : 45));
     const rad = (d) => (d * Math.PI) / 180;
     const spanM = Number.isFinite(options.spanM) && options.spanM > 0 ? options.spanM : scale.span_m;
-    const raw = (spanM * Math.cos(rad(tilt))) / (2 * Math.tan(rad(fov / 2)));
+    const limiting = options.aspectAwareFraming
+      ? aspectLimitingFactor(options.aspect, options) : 1;
+    const raw = (spanM * Math.cos(rad(tilt))) / (2 * Math.tan(rad(fov / 2)) * limiting);
     const floor = Math.max(planner.MIN_ALTITUDE_M, options.minAltitudeM || 0);
     return Math.round(Math.min(planner.MAX_ALTITUDE_M, Math.max(floor, raw)));
   }
@@ -272,8 +501,11 @@
   // against the operator's own verdicts on real playback: everything accepted sat
   // at or below 0.80 fw/s (a 396 km leg at 156 km altitude; a 4 km leg at 1 km),
   // and everything reported unreadable was 3.29 fw/s or worse (up to 21.8 fw/s
-  // for 8,873 km flown at 34 km altitude). The limit therefore sits between the
-  // two, at 1.0.
+  // for 8,873 km flown at 34 km altitude). The fixed-tilt 2026-08-25 review
+  // narrowed the useful interval (0.8 and 0.4 usable; 0.2 too distant), but it
+  // is superseded for final calibration because height and tilt must co-vary.
+  // Keep the existing production threshold until the height-aware ladder has
+  // human authority; do not silently promote an obsolete fixed-tilt result.
   const READABLE_SCREEN_SPEED_FW_PER_S = 1.0;
 
   function frameWidthMeters(altitudeM, tiltDeg, options = {}) {
@@ -677,7 +909,7 @@
     return resolved ? resolved.name : text.trim();
   }
 
-  function framingFor(planner, place, resolvedInfo, tiltDeg) {
+  function framingFor(planner, place, resolvedInfo, tiltDeg, framingOptions = {}) {
     const classified = classifyScale(resolvedInfo.resolved, resolvedInfo.text);
     const scale = place.framing === "auto" ? classified.scale : place.framing;
     const minAltitudeM = (resolvedInfo.resolved && resolvedInfo.resolved.min_altitude_m) || 0;
@@ -696,7 +928,7 @@
       const extent = place.framing === "auto" && resolvedInfo.resolved
         && Number.isFinite(resolvedInfo.resolved.frame_span_m)
         ? resolvedInfo.resolved.frame_span_m : null;
-      altitude = framingAltitudeM(scale, tiltDeg, { planner, minAltitudeM, spanM: extent });
+      altitude = framingAltitudeM(scale, tiltDeg, { planner, minAltitudeM, spanM: extent, ...framingOptions });
       source = extent ? "derived_optical_extent" : "derived_optical";
     }
     return {
@@ -775,6 +1007,15 @@
     const j = normalizeJourney(journey);
     const steps = [];
     const warnings = [];
+    // See aspectLimitingFactor. Opt-in: with the flag off, or on any landscape
+    // aspect, the divisor is exactly 1 and every altitude is byte-unchanged.
+    const framingOptions = {
+      aspect: options.aspect || j.aspect || null,
+      aspectAwareFraming: !!options.aspectAwareFraming,
+      // Separate switch: reaches calibrated landmarks, which the derived fix
+      // structurally cannot. See calibratedPortraitAltitudeM.
+      calibratedPortraitFraming: !!options.calibratedPortraitFraming,
+    };
 
     // Resolve every place once.
     const startInfo = resolvePlace(planner, j.start);
@@ -785,7 +1026,7 @@
     // flat default), so a Hold that opens the journey holds the framing the
     // operator chose rather than a generic altitude.
     const startFraming = startInfo.resolved
-      ? framingFor(planner, j.start, startInfo, planner.DEFAULT_TILT_DEG.hover)
+      ? framingFor(planner, j.start, startInfo, planner.DEFAULT_TILT_DEG.hover, framingOptions)
       : null;
     let cursor = {
       info: startInfo,
@@ -973,7 +1214,7 @@
       const frameBase = framingFor(planner, {
         ...targetPlace,
         framing: step.framing || targetPlace.framing,
-      }, targetInfo, baseTilt);
+      }, targetInfo, baseTilt, framingOptions);
       let altitude = frameBase.altitude_m;
       let altitudeSource = frameBase.altitude_source;
       let scale = frameBase.scale;
@@ -982,7 +1223,7 @@
         const shifted = stepScale(frameBase.scale, shift);
         if (shifted !== frameBase.scale) {
           scale = shifted;
-          altitude = framingAltitudeM(scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m });
+          altitude = framingAltitudeM(scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m, ...framingOptions });
           altitudeSource = "derived_optical_shifted";
         }
         else {
@@ -1019,8 +1260,8 @@
           const neighbour = SCALE_LADDER[inward
             ? Math.min(SCALE_LADDER.length - 1, i + 1)
             : Math.max(0, i - 1)];
-          const here = framingAltitudeM(frameBase.scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m });
-          const there = framingAltitudeM(neighbour, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m });
+          const here = framingAltitudeM(frameBase.scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m, ...framingOptions });
+          const there = framingAltitudeM(neighbour, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m, ...framingOptions });
           const ratio = here > 0 && there > 0 ? Math.max(here, there) / Math.min(here, there) : 1;
           if (framingMove && !calibrated && ratio > 1.0001 && neighbour !== frameBase.scale) {
             // HALF a rung per shift, not a whole one. Past the end of the ladder
@@ -1138,9 +1379,9 @@
           // The framing altitude depends on the tilt, so re-derive it at the new
           // one unless the altitude came from somewhere else entirely.
           if (altitudeSource === "derived_optical") {
-            altitude = framingAltitudeM(frameBase.scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m });
+            altitude = framingAltitudeM(frameBase.scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m, ...framingOptions });
           } else if (altitudeSource === "derived_optical_shifted") {
-            altitude = framingAltitudeM(scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m });
+            altitude = framingAltitudeM(scale, baseTilt, { planner, minAltitudeM: frameBase.min_altitude_m, ...framingOptions });
           }
         }
       }
@@ -1774,6 +2015,10 @@
     normalizeStep,
     moveLeg,
     classifyScale,
+    effectiveFramingSpanM,
+    framingAuthorityAudit,
+    aspectLimitingFactor,
+    calibratedPortraitAltitudeM,
     stepScale,
     maxTargetFramingTiltDeg,
     targetOffsetHalfFrames,

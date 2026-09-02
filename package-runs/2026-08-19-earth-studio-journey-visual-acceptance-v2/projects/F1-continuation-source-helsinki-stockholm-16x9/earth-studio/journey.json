@@ -17,7 +17,7 @@
   },
   "start_movements": [
     {
-      "id": "s261",
+      "id": "s407",
       "type": "hold",
       "duration_seconds": 4,
       "pace": null,
@@ -45,7 +45,7 @@
       "travel_style": "cinematic",
       "travel": [
         {
-          "id": "s258",
+          "id": "s404",
           "type": "pull_back",
           "duration_seconds": 8,
           "pace": null,
@@ -57,7 +57,7 @@
           "revolutions": null
         },
         {
-          "id": "s259",
+          "id": "s405",
           "type": "cruise",
           "duration_seconds": 52,
           "pace": null,
@@ -69,7 +69,7 @@
           "revolutions": null
         },
         {
-          "id": "s260",
+          "id": "s406",
           "type": "descend",
           "duration_seconds": 12,
           "pace": null,
@@ -83,7 +83,7 @@
       ],
       "movements": [
         {
-          "id": "s257",
+          "id": "s403",
           "type": "hold",
           "duration_seconds": null,
           "pace": null,

@@ -6,37 +6,52 @@
   "warnings": [],
   "tracks": {
     "longitude": {
-      "keyframes": 8,
+      "keyframes": 14,
       "finite": true,
-      "duplicate_keyframes": 2,
-      "direction_changes": 0
+      "duplicate_keyframes": 1,
+      "direction_changes": 2
     },
     "latitude": {
-      "keyframes": 8,
+      "keyframes": 14,
       "finite": true,
       "duplicate_keyframes": 1,
       "direction_changes": 1
     },
     "altitude": {
-      "keyframes": 11,
+      "keyframes": 5,
       "finite": true,
       "duplicate_keyframes": 2,
       "direction_changes": 1
     },
     "rotationX": {
-      "keyframes": 3,
+      "keyframes": 11,
       "finite": true,
       "duplicate_keyframes": 1,
       "direction_changes": 0
     },
     "rotationY": {
-      "keyframes": 3,
+      "keyframes": 4,
       "finite": true,
-      "duplicate_keyframes": 1,
+      "duplicate_keyframes": 2,
       "direction_changes": 0
     }
   },
   "segments": 5,
+  "coherence": {
+    "position_direction_tolerance": 1,
+    "findings": []
+  },
+  "orbit_geometry": {
+    "radius_breathing_tolerance_pct": 2,
+    "aim_tolerance_deg": 2,
+    "tilt_tolerance_deg": 1,
+    "findings": []
+  },
+  "roll": {
+    "present": false,
+    "non_zero": 0,
+    "keyframes": 0
+  },
   "motion_policy": {
     "coherent_trajectory": true,
     "dedupe_keyframes": true,

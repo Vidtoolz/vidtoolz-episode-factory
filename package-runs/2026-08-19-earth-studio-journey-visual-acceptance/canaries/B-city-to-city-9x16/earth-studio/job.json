@@ -33,5 +33,6 @@
     "movement_count": 5,
     "compiled_description": "orbit Helsinki once clockwise at 17014m tilted 60 degrees for 31 seconds then zoom out from Helsinki at 155960m tilted 0 degrees for 7 seconds then fly to Stockholm at 155960m tilted 0 degrees for 9 seconds then zoom in on Stockholm at 17014m tilted 60 degrees for 7 seconds then orbit Stockholm once clockwise at 17014m tilted 60 degrees for 31 seconds"
   },
+  "camera_quality": "camera-quality.json",
   "continuation_state": "continuation-state.json"
 }

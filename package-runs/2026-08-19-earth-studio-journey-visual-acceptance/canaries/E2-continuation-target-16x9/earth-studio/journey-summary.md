@@ -1,6 +1,6 @@
 # E2-continuation-target-16x9 — camera journey
 
-Begin exactly where the previous animation ended (over Stockholm): 17.0 km up, heading 180deg, tilted 60deg.
+Begin exactly where the previous animation ended (over Stockholm): 17.0 km up, heading 354deg, tilted 60deg.
 Open on Stockholm at 34.0 km (city framing) and hold for 4 seconds without moving the camera.
 Pull back from Stockholm over 7 seconds before setting off.
 Cruise to Copenhagen (522 km) over 9 seconds, holding 156 km.

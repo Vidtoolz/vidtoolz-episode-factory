@@ -146,64 +146,16 @@
                         "type": "auto"
                       },
                       "transitionOut": {
-                        "x": 0.00625,
+                        "x": 0.025,
                         "y": 0,
                         "type": "easeOut"
-                      }
-                    },
-                    {
-                      "time": 0.075,
-                      "value": 0.00081513397305265,
-                      "transitionIn": {
-                        "x": -0.0075,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.0075,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.1,
-                      "value": 0.0014587949630023253,
-                      "transitionIn": {
-                        "x": -0.0075,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.0075,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.125,
-                      "value": 0.0021024559529520008,
-                      "transitionIn": {
-                        "x": -0.0075,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.0075,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
                       }
                     },
                     {
                       "time": 0.15,
                       "value": 0.0023950319223302804,
                       "transitionIn": {
-                        "x": -0.0625,
+                        "x": -0.25,
                         "y": 0,
                         "influence": 1,
                         "type": "custom"
@@ -224,55 +176,7 @@
                         "type": "custom"
                       },
                       "transitionOut": {
-                        "x": 0.01125,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.8375,
-                      "value": 0.0021024559529520008,
-                      "transitionIn": {
-                        "x": -0.01125,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.01125,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.875,
-                      "value": 0.0014587949630023253,
-                      "transitionIn": {
-                        "x": -0.01125,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.01125,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      }
-                    },
-                    {
-                      "time": 0.9125,
-                      "value": 0.00081513397305265,
-                      "transitionIn": {
-                        "x": -0.01125,
-                        "y": 0,
-                        "influence": 0.43,
-                        "type": "auto"
-                      },
-                      "transitionOut": {
-                        "x": 0.01125,
+                        "x": 0.045,
                         "y": 0,
                         "influence": 0.43,
                         "type": "auto"
@@ -282,7 +186,7 @@
                       "time": 0.95,
                       "value": 0.0005225580036743703,
                       "transitionIn": {
-                        "x": -0.010875,
+                        "x": -0.0435,
                         "y": 0,
                         "influence": 0.4,
                         "type": "custom"
