@@ -19808,6 +19808,7 @@
             ],
             "errors": [],
             "semantic_failures": [
+              "hold[1]: position moved within hold interval",
               "hold[1]: compiler tilt cursor differs from planner-applied state"
             ]
           },
@@ -19869,6 +19870,7 @@
             "generated_artifact_files": [],
             "errors": [],
             "semantic_failures": [
+              "hold[1]: position moved within hold interval",
               "hold[1]: compiler tilt cursor differs from planner-applied state"
             ]
           }
@@ -20714,6 +20716,7 @@
             ],
             "errors": [],
             "semantic_failures": [
+              "hold[1]: position moved within hold interval",
               "hold[1]: compiler tilt cursor differs from planner-applied state"
             ]
           },
@@ -20815,6 +20818,7 @@
             "generated_artifact_files": [],
             "errors": [],
             "semantic_failures": [
+              "hold[1]: position moved within hold interval",
               "hold[1]: compiler tilt cursor differs from planner-applied state"
             ]
           }

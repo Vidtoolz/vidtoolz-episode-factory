@@ -473,6 +473,13 @@ function semanticFailures(request, pathResult) {
       if (Math.abs(incoming.altitude_m - outgoing.altitude_m) > tolerance.altitude_m) failures.push(`${label}: altitude moved during hold`);
       if (angularDelta(incoming.pan_deg, outgoing.pan_deg) > tolerance.pan_deg) failures.push(`${label}: pan moved during hold`);
       if (Math.abs(incoming.tilt_deg - outgoing.tilt_deg) > tolerance.tilt_deg) failures.push(`${label}: tilt moved during hold`);
+      if (!hold.maximum_drift) failures.push(`${label}: whole-interval drift observation missing`);
+      else {
+        if (hold.maximum_drift.position_m > tolerance.position_m) failures.push(`${label}: position moved within hold interval`);
+        if (hold.maximum_drift.altitude_m > tolerance.altitude_m) failures.push(`${label}: altitude moved within hold interval`);
+        if (hold.maximum_drift.pan_deg > tolerance.pan_deg) failures.push(`${label}: pan moved within hold interval`);
+        if (hold.maximum_drift.tilt_deg > tolerance.tilt_deg) failures.push(`${label}: tilt moved within hold interval`);
+      }
     }
     if (Math.abs(Number(hold.compiler_cursor.altitude_m) - outgoing.altitude_m) > tolerance.altitude_m) failures.push(`${label}: compiler altitude cursor differs from planner-applied state`);
     if (Math.abs(Number(hold.compiler_cursor.tilt_deg) - outgoing.tilt_deg) > tolerance.tilt_deg) failures.push(`${label}: compiler tilt cursor differs from planner-applied state`);

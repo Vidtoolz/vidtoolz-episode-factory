@@ -13,7 +13,7 @@ The adapter emits NDJSON using protocol `earth-studio-hold-semantics-oracle-v1`.
 
 The candidate must reject every hostile case with status 400 on both paths, create no files and return no `shot-plan.json` or `earth-studio.esp`, and identify every forbidden field plus its exact non-opening Journey location. Both fields must be named when both were supplied.
 
-Legitimate cases cover explicit opening framing, fresh and continuation openings, mid-journey and terminal holds, movement/hold/movement boundaries, travel pause, repeated holds, settle/launch, terrain, fly/hold/orbit staging, omitted and null fields, and short/long dwell durations. Playback observations compare position, altitude, pan and tilt at each hold boundary. Compiler altitude/tilt must equal planner-applied state, and the following movement's compiler altitude must start from that same state.
+Legitimate cases cover explicit opening framing, fresh and continuation openings, mid-journey and terminal holds, movement/hold/movement boundaries, travel pause, repeated holds, settle/launch, terrain, fly/hold/orbit staging, omitted and null fields, and short/long dwell durations. Playback observations compare position, altitude, pan and tilt both at hold boundaries and at every frame inside the interval, so an excursion that returns to its start still fails. Compiler altitude/tilt must equal planner-applied state, and the following movement's compiler altitude must start from that same state.
 
 ## Current-production defect proof
 
