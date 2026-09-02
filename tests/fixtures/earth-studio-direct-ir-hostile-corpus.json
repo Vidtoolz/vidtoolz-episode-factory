@@ -1,0 +1,447 @@
+{
+  "schema_version": 1,
+  "authority": {
+    "baseline_commit": "f8eb499d4891ac087bf8986a92f1a7319cae6b2a",
+    "frame_rate": 30,
+    "generated_at": "2026-09-02T00:00:00.000Z",
+    "motion_policy": {
+      "coherent_trajectory": true,
+      "dedupe_keyframes": true,
+      "source": "journey"
+    }
+  },
+  "ordinary_valid": [
+    {
+      "id": "ordinary-opening-hold",
+      "journey": {
+        "pace": "standard",
+        "aspect": "16:9",
+        "start": { "location": "Helsinki", "framing": "auto" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 4 }],
+        "legs": []
+      }
+    },
+    {
+      "id": "ordinary-city-travel",
+      "journey": {
+        "pace": "standard",
+        "aspect": "16:9",
+        "start": { "location": "Helsinki", "framing": "city" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 3 }],
+        "legs": [{
+          "destination": { "location": "Stockholm", "framing": "city" },
+          "travel_style": "direct",
+          "travel": [{ "type": "fly", "duration_seconds": 8 }],
+          "movements": [{ "type": "hold", "duration_seconds": 3 }]
+        }]
+      }
+    },
+    {
+      "id": "ordinary-clockwise-orbit",
+      "journey": {
+        "pace": "standard",
+        "aspect": "16:9",
+        "start": { "location": "Colosseum", "framing": "landmark" },
+        "start_movements": [
+          { "type": "hold", "duration_seconds": 3 },
+          { "type": "orbit", "duration_seconds": 12 }
+        ],
+        "legs": []
+      }
+    },
+    {
+      "id": "ordinary-zoom-pair",
+      "journey": {
+        "pace": "standard",
+        "aspect": "16:9",
+        "start": { "location": "Eiffel Tower", "framing": "city" },
+        "start_movements": [
+          { "type": "zoom_in", "duration_seconds": 5 },
+          { "type": "zoom_out", "duration_seconds": 6 }
+        ],
+        "legs": []
+      }
+    },
+    {
+      "id": "ordinary-multistop",
+      "journey": {
+        "pace": "calm",
+        "aspect": "9:16",
+        "start": { "location": "Paris", "framing": "city" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 3 }],
+        "legs": [
+          {
+            "destination": { "location": "Berlin", "framing": "city" },
+            "travel_style": "cinematic",
+            "travel": [{ "type": "pull_back" }, { "type": "cruise" }, { "type": "descend" }],
+            "movements": [{ "type": "half_orbit", "duration_seconds": 10 }]
+          },
+          {
+            "destination": { "location": "Warsaw", "framing": "city" },
+            "travel_style": "direct",
+            "travel": [{ "type": "fly", "duration_seconds": 8 }],
+            "movements": [{ "type": "hold", "duration_seconds": 3 }]
+          }
+        ]
+      }
+    },
+    {
+      "id": "ordinary-continuation",
+      "journey": {
+        "pace": "standard",
+        "aspect": "16:9",
+        "start": {
+          "source": "continuation",
+          "location": "Stockholm",
+          "framing": "auto",
+          "continuation": {
+            "continuation_state_version": 1,
+            "camera": { "latitude": 59.3293, "longitude": 18.0686, "altitude_m": 34028, "pan_deg": 0, "tilt_deg": 0 },
+            "target": { "name": "Stockholm", "latitude": 59.3293, "longitude": 18.0686 }
+          }
+        },
+        "start_movements": [{ "type": "hold", "duration_seconds": 3 }],
+        "legs": [{
+          "destination": { "location": "Copenhagen", "framing": "auto" },
+          "travel_style": "direct",
+          "travel": [{ "type": "fly", "duration_seconds": 8 }],
+          "movements": [{ "type": "hold", "duration_seconds": 3 }]
+        }]
+      }
+    }
+  ],
+  "hostile_valid": [
+    {
+      "id": "coordinates-antimeridian-eastbound",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "location": "0,179.9", "framing": "region" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }],
+        "legs": [{ "destination": { "location": "0,-179.9", "framing": "region" }, "travel_style": "direct", "travel": [{ "type": "fly", "duration_seconds": 8 }], "movements": [{ "type": "hold", "duration_seconds": 2 }] }]
+      }
+    },
+    {
+      "id": "coordinates-antimeridian-westbound",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "location": "0,-179.9", "framing": "region" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }],
+        "legs": [{ "destination": { "location": "0,179.9", "framing": "region" }, "travel_style": "direct", "travel": [{ "type": "fly", "duration_seconds": 8 }], "movements": [{ "type": "hold", "duration_seconds": 2 }] }]
+      }
+    },
+    {
+      "id": "coordinates-near-positive-180",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "location": "10,179.999999", "framing": "region" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }],
+        "legs": [{ "destination": { "location": "10,179.9999", "framing": "region" }, "travel_style": "direct", "travel": [{ "type": "fly", "duration_seconds": 4 }], "movements": [] }]
+      }
+    },
+    {
+      "id": "coordinates-high-latitude",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "location": "85,170", "framing": "region" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }],
+        "legs": [{ "destination": { "location": "85,-170", "framing": "region" }, "travel_style": "direct", "travel": [{ "type": "fly", "duration_seconds": 10 }], "movements": [] }]
+      }
+    },
+    {
+      "id": "coordinates-tiny-displacement",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "location": "60.1699,24.9384", "framing": "landmark" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }],
+        "legs": [{ "destination": { "location": "60.169901,24.938401", "framing": "landmark" }, "travel_style": "direct", "travel": [{ "type": "fly", "duration_seconds": 4 }], "movements": [] }]
+      }
+    },
+    {
+      "id": "coordinates-large-displacement",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "location": "Helsinki", "framing": "city" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }],
+        "legs": [{ "destination": { "location": "Sydney", "framing": "city" }, "travel_style": "direct", "travel": [{ "type": "fly", "duration_seconds": 25 }], "movements": [] }]
+      }
+    },
+    {
+      "id": "heading-explicit-zero",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "source": "continuation", "location": "Helsinki", "continuation": { "continuation_state_version": 1, "camera": { "latitude": 60.1699, "longitude": 24.9384, "altitude_m": 1200, "pan_deg": 0, "tilt_deg": 45 } } },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": []
+      }
+    },
+    {
+      "id": "heading-near-360",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "source": "continuation", "location": "Helsinki", "continuation": { "continuation_state_version": 1, "camera": { "latitude": 60.1699, "longitude": 24.9384, "altitude_m": 1200, "pan_deg": 359.999999, "tilt_deg": 45 } } },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": []
+      }
+    },
+    {
+      "id": "heading-one-degree",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "source": "continuation", "location": "Helsinki", "continuation": { "continuation_state_version": 1, "camera": { "latitude": 60.1699, "longitude": 24.9384, "altitude_m": 1200, "pan_deg": 1, "tilt_deg": 45 } } },
+        "start_movements": [{ "type": "orbit", "duration_seconds": 8, "direction": -1, "revolutions": 0.25 }], "legs": []
+      }
+    },
+    {
+      "id": "heading-negative-one",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "source": "continuation", "location": "Helsinki", "continuation": { "continuation_state_version": 1, "camera": { "latitude": 60.1699, "longitude": 24.9384, "altitude_m": 1200, "pan_deg": -1, "tilt_deg": 45 } } },
+        "start_movements": [{ "type": "orbit", "duration_seconds": 8, "direction": 1, "revolutions": 0.25 }], "legs": []
+      }
+    },
+    {
+      "id": "precision-duration-rounding",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Helsinki", "framing": "auto" }, "start_movements": [{ "type": "hold", "duration_seconds": 12.345 }], "legs": [] }
+    },
+    {
+      "id": "precision-tilt-altitude-order",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Eiffel Tower", "framing": "landmark" }, "start_movements": [{ "type": "hold", "duration_seconds": 3, "tilt_deg": 45.678 }], "legs": [] }
+    },
+    {
+      "id": "precision-tiny-nonzero-tilt",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Eiffel Tower", "framing": "landmark" }, "start_movements": [{ "type": "hold", "duration_seconds": 3, "tilt_deg": 0.0049 }], "legs": [] }
+    },
+    {
+      "id": "zero-tilt-and-zero-revolutions",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Colosseum", "framing": "landmark" }, "start_movements": [{ "type": "orbit", "duration_seconds": 4, "tilt_deg": 0, "revolutions": 0 }], "legs": [] }
+    },
+    {
+      "id": "negative-zero-tilt",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Colosseum", "framing": "landmark" }, "start_movements": [{ "type": "hold", "duration_seconds": 3, "tilt_deg": { "$number": "-0" } }], "legs": [] }
+    },
+    {
+      "id": "altitude-low-legal",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "0,0", "framing": "auto", "altitude_m": 150, "tilt_deg": 0 }, "start_movements": [{ "type": "hold", "duration_seconds": 3 }], "legs": [] }
+    },
+    {
+      "id": "altitude-high-legal",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "0,0", "framing": "auto", "altitude_m": 63170000, "tilt_deg": 0 }, "start_movements": [{ "type": "hold", "duration_seconds": 3 }], "legs": [] }
+    },
+    {
+      "id": "altitude-meaningful-change",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Helsinki", "framing": "auto", "altitude_m": 1000, "tilt_deg": 45 }, "start_movements": [{ "type": "hold", "duration_seconds": 2 }, { "type": "zoom_out", "duration_seconds": 6, "altitude_m": 8000, "tilt_deg": 60 }], "legs": [] }
+    },
+    {
+      "id": "altitude-near-equal-staging",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Colosseum", "framing": "auto" }, "start_movements": [{ "type": "zoom_in", "duration_seconds": 5, "altitude_m": 1000.4, "tilt_deg": 45.1 }, { "type": "orbit", "duration_seconds": 8, "altitude_m": 1000.49, "tilt_deg": 45.49 }], "legs": [] }
+    },
+    {
+      "id": "timing-short-legal",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Helsinki", "framing": "auto" }, "start_movements": [{ "type": "hold", "duration_seconds": 0.5 }], "legs": [] }
+    },
+    {
+      "id": "timing-long",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Helsinki", "framing": "auto" }, "start_movements": [{ "type": "orbit", "duration_seconds": 120 }], "legs": [] }
+    },
+    {
+      "id": "timing-default-injection",
+      "journey": { "pace": "quick", "aspect": "16:9", "start": { "location": "Helsinki", "framing": "auto" }, "start_movements": [{ "type": "hold", "duration_seconds": null }], "legs": [] }
+    },
+    {
+      "id": "camera-extra-roll-fov-ignored",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "source": "continuation", "location": "Helsinki", "continuation": { "continuation_state_version": 1, "camera": { "latitude": 60.1699, "longitude": 24.9384, "altitude_m": 1200, "pan_deg": 45, "tilt_deg": 30, "roll_deg": 12, "fov_deg": 40 } } },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": []
+      }
+    },
+    {
+      "id": "movement-intent-climb-out",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "location": "Helsinki", "framing": "globe", "altitude_m": 1000000 },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }],
+        "legs": [{ "destination": { "location": "Stockholm", "framing": "city" }, "travel_style": "custom", "travel": [{ "type": "climb_to_transit", "duration_seconds": 4 }, { "type": "fly", "duration_seconds": 8 }], "movements": [] }]
+      }
+    },
+    {
+      "id": "movement-intent-zoom-out",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Eiffel Tower", "framing": "landmark" }, "start_movements": [{ "type": "zoom_out", "duration_seconds": 5 }], "legs": [] }
+    },
+    {
+      "id": "transition-mid-hold-tilt-leak",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "location": "Helsinki", "framing": "city" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }],
+        "legs": [{ "destination": { "location": "Stockholm", "framing": "city" }, "travel_style": "custom", "travel": [{ "type": "fly", "duration_seconds": 8 }, { "type": "pause", "duration_seconds": 2, "tilt_deg": 30 }], "movements": [{ "type": "orbit", "duration_seconds": 10 }] }]
+      }
+    },
+    {
+      "id": "transition-mid-hold-altitude-ignored",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "location": "Helsinki", "framing": "city" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 2 }],
+        "legs": [{ "destination": { "location": "Stockholm", "framing": "city" }, "travel_style": "custom", "travel": [{ "type": "fly", "duration_seconds": 8 }, { "type": "pause", "duration_seconds": 2, "altitude_m": 9999 }], "movements": [{ "type": "orbit", "duration_seconds": 10 }] }]
+      }
+    },
+    {
+      "id": "transition-orbit-to-travel",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "location": "Colosseum", "framing": "landmark" },
+        "start_movements": [{ "type": "half_orbit", "duration_seconds": 14 }],
+        "legs": [{ "destination": { "location": "Eiffel Tower", "framing": "landmark" }, "travel_style": "direct", "travel": [{ "type": "fly", "duration_seconds": 12 }], "movements": [] }]
+      }
+    },
+    {
+      "id": "transition-reveal-to-travel",
+      "journey": {
+        "pace": "standard", "aspect": "16:9",
+        "start": { "location": "Colosseum", "framing": "landmark" },
+        "start_movements": [{ "type": "reveal", "duration_seconds": 8 }],
+        "legs": [{ "destination": { "location": "Eiffel Tower", "framing": "landmark" }, "travel_style": "direct", "travel": [{ "type": "fly", "duration_seconds": 12 }], "movements": [] }]
+      }
+    },
+    {
+      "id": "terrain-metadata-present",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Matterhorn", "framing": "auto" }, "start_movements": [{ "type": "hold", "duration_seconds": 3 }, { "type": "half_orbit", "duration_seconds": 12 }], "legs": [] }
+    },
+    {
+      "id": "terrain-metadata-omitted-explicit-coordinates",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "45.9763,7.6586", "framing": "auto" }, "start_movements": [{ "type": "hold", "duration_seconds": 3 }, { "type": "half_orbit", "duration_seconds": 12 }], "legs": [] }
+    },
+    {
+      "id": "morphology-bearing-grand-canyon",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Grand Canyon", "framing": "auto" }, "start_movements": [{ "type": "hold", "duration_seconds": 3 }, { "type": "zoom_out", "duration_seconds": 8 }], "legs": [] }
+    },
+    {
+      "id": "compatibility-null-optionals",
+      "journey": { "pace": "standard", "aspect": "16:9", "preset": null, "start": { "location": "Helsinki", "framing": "auto", "altitude_m": null, "tilt_deg": null }, "start_movements": [{ "type": "hold", "duration_seconds": 3, "pace": null, "emphasis": null, "altitude_m": null, "tilt_deg": null, "framing": null, "revolutions": null }], "legs": [] }
+    },
+    {
+      "id": "compatibility-missing-optionals",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Helsinki" }, "start_movements": [{ "type": "hold", "duration_seconds": 3 }], "legs": [] }
+    },
+    {
+      "id": "compatibility-empty-travel-default",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Helsinki" }, "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": [{ "destination": { "location": "Stockholm" }, "travel_style": "direct", "travel": [], "movements": [] }] }
+    },
+    {
+      "id": "compatibility-unknown-false-ignored",
+      "journey": { "pace": "standard", "aspect": "16:9", "experimental": false, "start": { "location": "Helsinki", "camera_target": false }, "start_movements": [{ "type": "hold", "duration_seconds": 3, "enabled": false }], "legs": [] }
+    },
+    {
+      "id": "compatibility-numeric-string-coercion",
+      "journey": { "pace": "standard", "aspect": "16:9", "start": { "location": "Helsinki", "altitude_m": "1200", "tilt_deg": "45" }, "start_movements": [{ "type": "hold", "duration_seconds": "5" }], "legs": [] }
+    }
+  ],
+  "invalid": [
+    {
+      "id": "invalid-continuation-nan",
+      "journey": { "start": { "source": "continuation", "continuation": { "continuation_state_version": 1, "camera": { "latitude": { "$number": "NaN" }, "longitude": 0, "altitude_m": 1000, "pan_deg": 0, "tilt_deg": 0 } } }, "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": [] },
+      "expected_error_pattern": "usable latitude"
+    },
+    {
+      "id": "invalid-continuation-infinity",
+      "journey": { "start": { "source": "continuation", "continuation": { "continuation_state_version": 1, "camera": { "latitude": 0, "longitude": 0, "altitude_m": { "$number": "Infinity" }, "pan_deg": 0, "tilt_deg": 0 } } }, "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": [] },
+      "expected_error_pattern": "usable altitude"
+    },
+    {
+      "id": "invalid-latitude-out-of-range",
+      "journey": { "start": { "location": "91,0" }, "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": [] },
+      "expected_error_pattern": "contains a comma"
+    },
+    {
+      "id": "invalid-longitude-out-of-range",
+      "journey": { "start": { "location": "0,181" }, "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": [] },
+      "expected_error_pattern": "contains a comma"
+    },
+    {
+      "id": "invalid-location-type",
+      "journey": { "start": { "location": { "latitude": 60, "longitude": 25 } }, "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": [] },
+      "expected_error_pattern": "not a place"
+    },
+    {
+      "id": "invalid-missing-start",
+      "journey": { "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": [] },
+      "expected_error_pattern": "start location"
+    },
+    {
+      "id": "invalid-empty-sequence",
+      "journey": { "start": { "location": "Helsinki" }, "start_movements": [], "legs": [] },
+      "expected_error_pattern": "nothing in it"
+    },
+    {
+      "id": "invalid-string-camera-number",
+      "journey": { "start": { "source": "continuation", "continuation": { "continuation_state_version": 1, "camera": { "latitude": "north", "longitude": 0, "altitude_m": 1000, "pan_deg": 0, "tilt_deg": 0 } } }, "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": [] },
+      "expected_error_pattern": "usable latitude"
+    },
+    {
+      "id": "invalid-unsupported-enum",
+      "journey": { "start": { "location": "Helsinki" }, "start_movements": [{ "type": "barrel_roll", "duration_seconds": 2 }], "legs": [] },
+      "expected_error_pattern": "cannot produce"
+    },
+    {
+      "id": "invalid-malformed-camera-keyframes",
+      "journey": { "start": { "source": "continuation", "continuation": { "continuation_state_version": 1, "camera": { "keyframes": [{ "time": 0, "value": 1 }] } } }, "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": [] },
+      "expected_error_pattern": "usable latitude"
+    },
+    {
+      "id": "invalid-zero-duration",
+      "journey": { "start": { "location": "Helsinki" }, "start_movements": [{ "type": "hold", "duration_seconds": 0 }], "legs": [] },
+      "expected_error_pattern": "0 seconds"
+    },
+    {
+      "id": "invalid-negative-duration",
+      "journey": { "start": { "location": "Helsinki" }, "start_movements": [{ "type": "hold", "duration_seconds": -1 }], "legs": [] },
+      "expected_error_pattern": "negative duration"
+    },
+    {
+      "id": "invalid-malformed-camera-array",
+      "journey": { "start": { "source": "continuation", "continuation": { "continuation_state_version": 1, "camera": [] } }, "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": [] },
+      "expected_error_pattern": "usable latitude"
+    },
+    {
+      "id": "invalid-missing-destination-identity",
+      "journey": { "start": { "location": "Helsinki" }, "start_movements": [{ "type": "hold", "duration_seconds": 2 }], "legs": [{ "destination": {}, "travel_style": "direct", "travel": [{ "type": "fly", "duration_seconds": 5 }], "movements": [] }] },
+      "expected_error_pattern": "no destination location"
+    }
+  ],
+  "preserved_regressions": [
+    {
+      "id": "regression-director-terrain-mountain",
+      "source": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/journey.json",
+      "authority": "clean f8eb499 directed terrain canary; 6.39-degree policy remains unadjudicated"
+    },
+    {
+      "id": "regression-long-distance-orbit",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9/earth-studio/journey.json",
+      "authority": "tracked long travel and orbit journey"
+    },
+    {
+      "id": "regression-fly-into-orbit",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/H-fly-into-orbit-eiffel-16x9/earth-studio/journey.json",
+      "authority": "tracked fly-to-orbit staging journey"
+    },
+    {
+      "id": "regression-hold-then-orbit",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/G-hold-then-orbit-16x9/earth-studio/journey.json",
+      "authority": "tracked hold-to-orbit geometry journey"
+    },
+    {
+      "id": "regression-matterhorn-terrain-form",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/earth-studio/journey.json",
+      "authority": "tracked morphology-bearing terrain journey"
+    },
+    {
+      "id": "regression-zoom-climb-intent",
+      "source_test": "tests/earth-studio-movement-intent.test.js",
+      "hostile_case_ids": ["movement-intent-climb-out", "movement-intent-zoom-out"],
+      "authority": "existing zoom_out and dead climb-out movement-intent contract"
+    }
+  ],
+  "focused_registered_tests": [
+    "settle-then-launch: serialized handles match the human-approved candidate",
+    "coherence: known-good directed canaries have zero interior ground-path reversals"
+  ]
+}

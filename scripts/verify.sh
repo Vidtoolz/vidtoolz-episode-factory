@@ -111,6 +111,11 @@ node --check music-cue-generator.js
 node --check supervised-capture.js
 node --check earth-studio-job-planner.js
 node --check earth-studio-journey.js
+node --check tests/earth-studio-direct-ir-hostile-oracle-lib.js
+node --check tests/earth-studio-direct-ir-hostile-oracle.test.js
+node --check scripts/run-earth-studio-direct-ir-hostile-oracle.js
+node --check scripts/run-earth-studio-direct-ir-focused-regressions.js
+node --check scripts/earth-studio-direct-ir-legacy-oracle-adapter.js
 node --check earth-studio-director.js
 node --check earth-studio-lane.js
 node --check earth-studio-native-template-profiles.js
