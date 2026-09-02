@@ -1,0 +1,369 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-25T00:00:00.000Z",
+  "status": "READY_FOR_CALMER_MOTION_HUMAN_REVIEW_NOT_PRODUCTION",
+  "source_review": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/review-session.json",
+  "human_feedback": "BOTH_BAD but close: increase duration/easing; slower move-out and close-in; remove their wobble.",
+  "timing_policy": {
+    "climb_descent_duration_scale": 2,
+    "cruise_duration_scale": 1.25,
+    "phase_samples": 16,
+    "easing": "one C2 smootherstep drives log-height and log target-offset radius over longer phases; tilt is derived geometrically",
+    "lateral_policy": "ground target is fixed through climb and descent; only the cruise carries geographic translation",
+    "tangent_policy": "monotone harmonic-mean coordinate rates; zero rate at phase endpoints"
+  },
+  "controlled_difference": "CURRENT versus SMOOTH geographic cruise path; both use identical calmer timing, altitude, tilt, and phase geometry.",
+  "cases": [
+    {
+      "id": "MEDIUM-DIAGONAL",
+      "name": "Medium diagonal",
+      "purpose": "Judge directional calm and perspective through a medium crossing.",
+      "total_frames": 564,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "Helsinki",
+          "to": "Stockholm",
+          "start_frame": 30,
+          "end_frame": 390,
+          "duration_s": 12,
+          "distance_m": 395820,
+          "ground_speed_mps": 32985,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 26.455,
+          "readable_altitude_at_1_fw_s_m": 66138
+        }
+      ],
+      "production_solve": {
+        "altitude_m": 98253,
+        "tilt_deg": 32.821882738734814,
+        "predicted_apparent_speed_fw_s": 0.799994669816485,
+        "target_apparent_speed_fw_s": 0.8,
+        "satisfied": true,
+        "clamped": false,
+        "iterations": 31,
+        "leg_solves": [
+          {
+            "altitude_m": 98253,
+            "tilt_deg": 32.821882738734814,
+            "predicted_apparent_speed_fw_s": 0.799994669816485,
+            "target_apparent_speed_fw_s": 0.8,
+            "satisfied": true,
+            "clamped": false,
+            "iterations": 31
+          }
+        ]
+      },
+      "timing": {
+        "old_total_frames": 390,
+        "new_total_frames": 564,
+        "climb_descent_scale": 2,
+        "cruise_scale": 1.25,
+        "old_phases": {
+          "start": 0,
+          "climbEnd": 30,
+          "descentStart": 318,
+          "end": 390
+        },
+        "new_phases": {
+          "start": 0,
+          "climbEnd": 60,
+          "descentStart": 420,
+          "end": 564
+        }
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calm-motion/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+          "sha256": "2e1a9f6dccbc7adf1b0fa1fa55e747beb05c9fed69d39b30f4fd527201b746e5",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+          "source_sha256": "aefacd82a1f642059ef1742f9de84fe9e1ddd7cfba9ce1b35405242dcdbf94f2",
+          "total_frames": 564,
+          "position_sample_count": 206,
+          "altitude_tilt_sample_count": 206
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calm-motion/projects/MEDIUM-DIAGONAL/SMOOTH/earth-studio.esp",
+          "sha256": "786512878c11d1b1444bd7716bf334f1b9a4a40643f461774f97d41a17b2f1f9",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/SMOOTH/earth-studio.esp",
+          "source_sha256": "6bf446ae6595c05f00eea39bf1aa903675c92c08f50b8d210fb70bf76d5ea05a",
+          "total_frames": 564,
+          "position_sample_count": 211,
+          "altitude_tilt_sample_count": 206
+        }
+      }
+    },
+    {
+      "id": "LONG-DIAGONAL",
+      "name": "Long diagonal",
+      "purpose": "Judge whether high cruise feels calm and map-like without losing context.",
+      "total_frames": 866,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "Helsinki",
+          "to": "New York",
+          "start_frame": 30,
+          "end_frame": 630,
+          "duration_s": 20,
+          "distance_m": 6618426,
+          "ground_speed_mps": 330921,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 265.412,
+          "readable_altitude_at_1_fw_s_m": 663531
+        }
+      ],
+      "production_solve": {
+        "altitude_m": 1166344,
+        "tilt_deg": 6.092145613114781,
+        "predicted_apparent_speed_fw_s": 0.7999994093036662,
+        "target_apparent_speed_fw_s": 0.8,
+        "satisfied": true,
+        "clamped": false,
+        "iterations": 31,
+        "leg_solves": [
+          {
+            "altitude_m": 1166344,
+            "tilt_deg": 6.092145613114781,
+            "predicted_apparent_speed_fw_s": 0.7999994093036662,
+            "target_apparent_speed_fw_s": 0.8,
+            "satisfied": true,
+            "clamped": false,
+            "iterations": 31
+          }
+        ]
+      },
+      "timing": {
+        "old_total_frames": 630,
+        "new_total_frames": 866,
+        "climb_descent_scale": 2,
+        "cruise_scale": 1.25,
+        "old_phases": {
+          "start": 0,
+          "climbEnd": 30,
+          "descentStart": 555,
+          "end": 630
+        },
+        "new_phases": {
+          "start": 0,
+          "climbEnd": 60,
+          "descentStart": 716,
+          "end": 866
+        }
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calm-motion/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+          "sha256": "0ee5c118dba9f432d612afd60cccbc2b185f8824640ad299ff4b09f06c0d6c3e",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+          "source_sha256": "e9ad76d3b9f312f75029e32c371741d43338088895c4194d029fdac44ea47d99",
+          "total_frames": 866,
+          "position_sample_count": 212,
+          "altitude_tilt_sample_count": 212
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calm-motion/projects/LONG-DIAGONAL/SMOOTH/earth-studio.esp",
+          "sha256": "61f7938d2c55d99c041bb233853cccc3995f4cd5cc59f6205c67f919a717c3ee",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/SMOOTH/earth-studio.esp",
+          "source_sha256": "6638a5b6301908e276a9dd472e4bb917319d7681e4aeb8f856a72c8e48cc9451",
+          "total_frames": 866,
+          "position_sample_count": 217,
+          "altitude_tilt_sample_count": 212
+        }
+      }
+    },
+    {
+      "id": "HIGH-LATITUDE",
+      "name": "High latitude",
+      "purpose": "Judge geographic legibility and perspective stability at high latitude.",
+      "total_frames": 564,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "80.0000, 10.0000",
+          "to": "80.5000, 70.0000",
+          "start_frame": 30,
+          "end_frame": 390,
+          "duration_s": 12,
+          "distance_m": 1081297,
+          "ground_speed_mps": 90108,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 72.27,
+          "readable_altitude_at_1_fw_s_m": 180676
+        }
+      ],
+      "production_solve": {
+        "altitude_m": 302663,
+        "tilt_deg": 18.626658837521447,
+        "predicted_apparent_speed_fw_s": 0.7999997023714985,
+        "target_apparent_speed_fw_s": 0.8,
+        "satisfied": true,
+        "clamped": false,
+        "iterations": 31,
+        "leg_solves": [
+          {
+            "altitude_m": 302663,
+            "tilt_deg": 18.626658837521447,
+            "predicted_apparent_speed_fw_s": 0.7999997023714985,
+            "target_apparent_speed_fw_s": 0.8,
+            "satisfied": true,
+            "clamped": false,
+            "iterations": 31
+          }
+        ]
+      },
+      "timing": {
+        "old_total_frames": 390,
+        "new_total_frames": 564,
+        "climb_descent_scale": 2,
+        "cruise_scale": 1.25,
+        "old_phases": {
+          "start": 0,
+          "climbEnd": 30,
+          "descentStart": 318,
+          "end": 390
+        },
+        "new_phases": {
+          "start": 0,
+          "climbEnd": 60,
+          "descentStart": 420,
+          "end": 564
+        }
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calm-motion/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+          "sha256": "2368f4aea930d514633973f9095b53d96595250fa9fb6c3c9598ff77ccf3d8ea",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+          "source_sha256": "a7f546e852880d964ee3330609dc10e66955719ed2f002663f16981e2675fcd9",
+          "total_frames": 564,
+          "position_sample_count": 206,
+          "altitude_tilt_sample_count": 206
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calm-motion/projects/HIGH-LATITUDE/SMOOTH/earth-studio.esp",
+          "sha256": "5033e11886be26fd01a7cedc3eea4b84fc9c3534308aedbe83978d51862caa8d",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/SMOOTH/earth-studio.esp",
+          "source_sha256": "58f8a7480bfaad4c9f25574bc469885b6078869b39efc72ff99d9176c02eb513",
+          "total_frames": 564,
+          "position_sample_count": 211,
+          "altitude_tilt_sample_count": 206
+        }
+      }
+    },
+    {
+      "id": "MULTI-POINT-SEGMENT",
+      "name": "Multi-point",
+      "purpose": "Judge altitude/tilt coherence across the multi-point travel segment.",
+      "total_frames": 696,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "Helsinki",
+          "to": "Stockholm",
+          "start_frame": 30,
+          "end_frame": 270,
+          "duration_s": 8,
+          "distance_m": 395820,
+          "ground_speed_mps": 49477,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 39.683,
+          "readable_altitude_at_1_fw_s_m": 99207
+        },
+        {
+          "segment_id": 3,
+          "from": "Stockholm",
+          "to": "Copenhagen",
+          "start_frame": 270,
+          "end_frame": 510,
+          "duration_s": 8,
+          "distance_m": 522129,
+          "ground_speed_mps": 65266,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 52.346,
+          "readable_altitude_at_1_fw_s_m": 130865
+        }
+      ],
+      "production_solve": {
+        "altitude_m": 213257,
+        "tilt_deg": 22.80438432501755,
+        "predicted_apparent_speed_fw_s": 0.7999968019690415,
+        "target_apparent_speed_fw_s": 0.8,
+        "satisfied": true,
+        "clamped": false,
+        "iterations": 31,
+        "leg_solves": [
+          {
+            "altitude_m": 156687,
+            "tilt_deg": 26.692231879089285,
+            "predicted_apparent_speed_fw_s": 0.7999957207646907,
+            "target_apparent_speed_fw_s": 0.8,
+            "satisfied": true,
+            "clamped": false,
+            "iterations": 31
+          },
+          {
+            "altitude_m": 213257,
+            "tilt_deg": 22.80438432501755,
+            "predicted_apparent_speed_fw_s": 0.7999968019690415,
+            "target_apparent_speed_fw_s": 0.8,
+            "satisfied": true,
+            "clamped": false,
+            "iterations": 31
+          }
+        ]
+      },
+      "timing": {
+        "old_total_frames": 510,
+        "new_total_frames": 696,
+        "climb_descent_scale": 2,
+        "cruise_scale": 1.25,
+        "old_phases": {
+          "start": 0,
+          "climbEnd": 30,
+          "descentStart": 462,
+          "end": 510
+        },
+        "new_phases": {
+          "start": 0,
+          "climbEnd": 60,
+          "descentStart": 600,
+          "end": 696
+        }
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calm-motion/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+          "sha256": "de22ba9a7fd46ae12e593ac523b072f0443dafcd6dfb8dc9c48ace857635eca3",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+          "source_sha256": "7aac82edd12d3eb0a3649d41c2da966bdc481629760c023e7355539a71d43bbb",
+          "total_frames": 696,
+          "position_sample_count": 159,
+          "altitude_tilt_sample_count": 158
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calm-motion/projects/MULTI-POINT-SEGMENT/SMOOTH/earth-studio.esp",
+          "sha256": "eff7799babbf3800565ea2249e3945faf6da3dd46ead76ca6196cbc6bc8d65ab",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/SMOOTH/earth-studio.esp",
+          "source_sha256": "70e1bbf8a87b184b4b4fda9c8e479d92302153a4ab0d24c3516f4ff16b01e034",
+          "total_frames": 696,
+          "position_sample_count": 169,
+          "altitude_tilt_sample_count": 158
+        }
+      }
+    }
+  ]
+}

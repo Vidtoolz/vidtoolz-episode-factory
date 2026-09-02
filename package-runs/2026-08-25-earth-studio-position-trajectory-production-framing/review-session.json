@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "review_type": "position_trajectory_current_vs_smooth",
+  "reviewer": {
+    "name": "Mikko",
+    "authority": "canonical human visual reviewer"
+  },
+  "blind_order_used": false,
+  "current_case_id": "HIGH-LATITUDE",
+  "records": {
+    "MEDIUM-DIAGONAL": {
+      "case_id": "MEDIUM-DIAGONAL",
+      "case_name": "Medium diagonal",
+      "current_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+      "smooth_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MEDIUM-DIAGONAL/SMOOTH/earth-studio.esp",
+      "verdict": "BOTH_BAD",
+      "note": "Both variants are close to acceptable, but need a longer, calmer duration and stronger easing. Moving out and closing in still wobble and should run more slowly.",
+      "recorded_at": "2026-08-25T08:44:24.872Z",
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "ab_mapping": null,
+      "last_prepared": "SMOOTH",
+      "prepared_at": "2026-08-25T08:43:59.521Z"
+    },
+    "LONG-DIAGONAL": {
+      "case_id": "LONG-DIAGONAL",
+      "case_name": "Long diagonal",
+      "current_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+      "smooth_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/LONG-DIAGONAL/SMOOTH/earth-studio.esp",
+      "verdict": null,
+      "note": "",
+      "recorded_at": null,
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "ab_mapping": null,
+      "last_prepared": null,
+      "prepared_at": null
+    },
+    "HIGH-LATITUDE": {
+      "case_id": "HIGH-LATITUDE",
+      "case_name": "High latitude",
+      "current_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+      "smooth_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/HIGH-LATITUDE/SMOOTH/earth-studio.esp",
+      "verdict": null,
+      "note": "",
+      "recorded_at": null,
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "ab_mapping": null,
+      "last_prepared": null,
+      "prepared_at": null
+    },
+    "MULTI-POINT-SEGMENT": {
+      "case_id": "MULTI-POINT-SEGMENT",
+      "case_name": "Multi-point",
+      "current_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+      "smooth_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MULTI-POINT-SEGMENT/SMOOTH/earth-studio.esp",
+      "verdict": null,
+      "note": "",
+      "recorded_at": null,
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "ab_mapping": null,
+      "last_prepared": null,
+      "prepared_at": null
+    }
+  }
+}

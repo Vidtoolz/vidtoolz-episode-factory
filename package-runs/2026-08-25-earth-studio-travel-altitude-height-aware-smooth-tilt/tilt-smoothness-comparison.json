@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "measured_at": "2026-08-25T10:34:18+03:00",
+  "measurement": "Earth Studio ESP playback evaluator at consecutive integer frames during the 30-frame climb",
+  "before_package": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware",
+  "after_package": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware-smooth-tilt",
+  "controlled_variables": [
+    "candidate cruise-altitude endpoint",
+    "start and arrival altitude",
+    "total duration and climb/descent phase boundaries",
+    "ground-target trajectory",
+    "FOV and pan"
+  ],
+  "summary": {
+    "before_peak_step_range_deg_per_frame": [4.534226, 11.522861],
+    "after_peak_step_range_deg_per_frame": [2.155657, 4.26807],
+    "before_peak_acceleration_range_deg_per_frame2": [1.445943, 3.903511],
+    "after_peak_acceleration_range_deg_per_frame2": [0.222538, 0.440612],
+    "interpretation": "One shared log-height smootherstep removes the nested-ease burst; visual approval remains pending."
+  },
+  "cases": [
+    { "case_id": "MEDIUM-DIAGONAL", "candidate": "HIGHER_A", "before": [4.534226, 1.445943], "after": [2.155657, 0.222538] },
+    { "case_id": "MEDIUM-DIAGONAL", "candidate": "HIGHER_B", "before": [6.389124, 2.424403], "after": [2.724196, 0.281231] },
+    { "case_id": "MEDIUM-DIAGONAL", "candidate": "HIGHER_C", "before": [7.930484, 2.875618], "after": [3.246488, 0.33515] },
+    { "case_id": "LONG-DIAGONAL", "candidate": "HIGHER_A", "before": [9.367774, 3.758725], "after": [3.806418, 0.392954] },
+    { "case_id": "LONG-DIAGONAL", "candidate": "HIGHER_B", "before": [10.430944, 3.647412], "after": [4.097234, 0.422976] },
+    { "case_id": "LONG-DIAGONAL", "candidate": "HIGHER_C", "before": [11.522861, 3.788143], "after": [4.26807, 0.440612] },
+    { "case_id": "HIGH-LATITUDE", "candidate": "HIGHER_A", "before": [7.220241, 2.750129], "after": [2.967255, 0.306323] },
+    { "case_id": "HIGH-LATITUDE", "candidate": "HIGHER_B", "before": [8.560047, 2.687406], "after": [3.456243, 0.356804] },
+    { "case_id": "HIGH-LATITUDE", "candidate": "HIGHER_C", "before": [9.605879, 3.903511], "after": [3.848751, 0.397324] },
+    { "case_id": "MULTI-POINT-SEGMENT", "candidate": "HIGHER_A", "before": [6.357517, 2.410625], "after": [2.715646, 0.280348] },
+    { "case_id": "MULTI-POINT-SEGMENT", "candidate": "HIGHER_B", "before": [7.916036, 2.877141], "after": [3.238956, 0.334372] },
+    { "case_id": "MULTI-POINT-SEGMENT", "candidate": "HIGHER_C", "before": [8.966466, 3.105503], "after": [3.679742, 0.379876] }
+  ],
+  "tuple_order": ["max_tilt_step_deg_per_frame", "max_tilt_acceleration_deg_per_frame2"]
+}

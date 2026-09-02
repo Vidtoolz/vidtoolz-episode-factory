@@ -1,0 +1,124 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-25T00:00:00.000Z",
+  "status": "READY_FOR_TRAJECTORY_HUMAN_REVIEW_NOT_PRODUCTION",
+  "altitude_authority": {
+    "candidate": "HIGHER_A",
+    "rationale": "lowest human-usable altitude; CURRENT too low, HIGHER_C too high"
+  },
+  "controlled_difference": "CURRENT versus SMOOTH position trajectory; altitude envelope, duration, tilt, FOV, and endpoints are identical per pair",
+  "cases": [
+    {
+      "id": "MEDIUM-DIAGONAL",
+      "description": "hover over Helsinki for 1 seconds then fly to Stockholm for 12 seconds",
+      "calibrated_altitude": {
+        "authority": "Mikko minimum usable candidate HIGHER_A",
+        "cruise_altitude_m": 82673,
+        "source": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/MEDIUM-DIAGONAL/HIGHER_A/earth-studio.esp",
+        "source_sha256": "344e8edf1c9dc7377ba3b25c2e00c89b83815430be7964ca6c3bede5173e2d18"
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calibrated-altitude/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+          "sha256": "524cb0100910c16b6bc4f2010bd420733961cfc67a94417d6d4b0f1059af6768",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+          "source_sha256": "aefacd82a1f642059ef1742f9de84fe9e1ddd7cfba9ce1b35405242dcdbf94f2",
+          "total_frames": 390,
+          "calibrated_altitude_sha256": "3ade4d0205cc74934bbb2974c25badf2929c4ba8c1573cbe66f8385ac220a682"
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calibrated-altitude/projects/MEDIUM-DIAGONAL/SMOOTH/earth-studio.esp",
+          "sha256": "164d643169bd56446320ff09214ab45fdf776d377620e8765c568aa37d78c267",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/SMOOTH/earth-studio.esp",
+          "source_sha256": "6bf446ae6595c05f00eea39bf1aa903675c92c08f50b8d210fb70bf76d5ea05a",
+          "total_frames": 390,
+          "calibrated_altitude_sha256": "3ade4d0205cc74934bbb2974c25badf2929c4ba8c1573cbe66f8385ac220a682"
+        }
+      }
+    },
+    {
+      "id": "LONG-DIAGONAL",
+      "description": "hover over Helsinki for 1 seconds then fly to New York for 20 seconds",
+      "calibrated_altitude": {
+        "authority": "Mikko minimum usable candidate HIGHER_A",
+        "cruise_altitude_m": 829414,
+        "source": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/LONG-DIAGONAL/HIGHER_A/earth-studio.esp",
+        "source_sha256": "9646d6c260c3aa9c04ffe6eeba4fb393e5246b334273debe3c15351db27c46a3"
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calibrated-altitude/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+          "sha256": "6224364d90cfc46c7d4811c41177dc5e3380cc22ad79d7716c603f8909e41ae8",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+          "source_sha256": "e9ad76d3b9f312f75029e32c371741d43338088895c4194d029fdac44ea47d99",
+          "total_frames": 630,
+          "calibrated_altitude_sha256": "438ad2c2481f4aad2ca0cc3488c227beeb09bae072b0856eecaefd90e721ca16"
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calibrated-altitude/projects/LONG-DIAGONAL/SMOOTH/earth-studio.esp",
+          "sha256": "799cc54be1092bab93022b3af59b86315f5bf1a466b813b54e6988aa5004e712",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/SMOOTH/earth-studio.esp",
+          "source_sha256": "6638a5b6301908e276a9dd472e4bb917319d7681e4aeb8f856a72c8e48cc9451",
+          "total_frames": 630,
+          "calibrated_altitude_sha256": "438ad2c2481f4aad2ca0cc3488c227beeb09bae072b0856eecaefd90e721ca16"
+        }
+      }
+    },
+    {
+      "id": "HIGH-LATITUDE",
+      "description": "hover over 80, 10 for 1 seconds then fly to 80.5, 70 for 12 seconds",
+      "calibrated_altitude": {
+        "authority": "Mikko minimum usable candidate HIGHER_A",
+        "cruise_altitude_m": 225845,
+        "source": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/HIGH-LATITUDE/HIGHER_A/earth-studio.esp",
+        "source_sha256": "57c904b58391b629e1010a4dd42d1258825a47134ddc54c05470d7f22b2bc52d"
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calibrated-altitude/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+          "sha256": "fed5ad9000123a64f1a19b4df27dfec055935ce2e0a35d518391f95a7f94199d",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+          "source_sha256": "a7f546e852880d964ee3330609dc10e66955719ed2f002663f16981e2675fcd9",
+          "total_frames": 390,
+          "calibrated_altitude_sha256": "5b757b223182c68545e29c8a84df37e121272b62683176095a8bd0fa1f11945a"
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calibrated-altitude/projects/HIGH-LATITUDE/SMOOTH/earth-studio.esp",
+          "sha256": "2e0ad8e5f129763392b0922b2ab4d7624ff4986b569e438c2098ccae984737ee",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/SMOOTH/earth-studio.esp",
+          "source_sha256": "58f8a7480bfaad4c9f25574bc469885b6078869b39efc72ff99d9176c02eb513",
+          "total_frames": 390,
+          "calibrated_altitude_sha256": "5b757b223182c68545e29c8a84df37e121272b62683176095a8bd0fa1f11945a"
+        }
+      }
+    },
+    {
+      "id": "MULTI-POINT-SEGMENT",
+      "description": "hover over Helsinki for 1 seconds then fly to Stockholm for 8 seconds then fly to Copenhagen for 8 seconds",
+      "calibrated_altitude": {
+        "authority": "Mikko minimum usable candidate HIGHER_A",
+        "cruise_altitude_m": 163581,
+        "source": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/MULTI-POINT-SEGMENT/HIGHER_A/earth-studio.esp",
+        "source_sha256": "4ca6d5d242f9dcefb038470c74b1601c505a8ea48646ce1b741d2f8fd057dcc1"
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calibrated-altitude/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+          "sha256": "c634feedb4778dd5d23e05a4791ae3f3242c0d20308ed6e407c5a3f1f89e4607",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+          "source_sha256": "7aac82edd12d3eb0a3649d41c2da966bdc481629760c023e7355539a71d43bbb",
+          "total_frames": 510,
+          "calibrated_altitude_sha256": "a755bc5f134c2d52b7cd26054fbcb456fdd449d3a93c8fdef417584fff9ed354"
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-calibrated-altitude/projects/MULTI-POINT-SEGMENT/SMOOTH/earth-studio.esp",
+          "sha256": "40905874fba288df08943175defe4ea358e50bf3a3e9e063890718a858f43408",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/SMOOTH/earth-studio.esp",
+          "source_sha256": "70e1bbf8a87b184b4b4fda9c8e479d92302153a4ab0d24c3516f4ff16b01e034",
+          "total_frames": 510,
+          "calibrated_altitude_sha256": "a755bc5f134c2d52b7cd26054fbcb456fdd449d3a93c8fdef417584fff9ed354"
+        }
+      }
+    }
+  ]
+}

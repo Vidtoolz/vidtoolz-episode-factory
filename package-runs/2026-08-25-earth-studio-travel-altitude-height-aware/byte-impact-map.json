@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-08-25T00:00:00.000Z",
+  "production_default_enabled": false,
+  "accepted_artifacts": {
+    "gate3_v094_controls": "UNCHANGED_BY_IMPORT_GRAPH",
+    "director_canaries": "UNCHANGED_BY_IMPORT_GRAPH",
+    "journey_v2_canaries": "UNCHANGED_BY_IMPORT_GRAPH",
+    "directorial_evaluation": "UNCHANGED_BY_IMPORT_GRAPH",
+    "morphology_and_obliquity": "UNCHANGED_BY_IMPORT_GRAPH",
+    "terrain_review": "UNCHANGED_BY_IMPORT_GRAPH",
+    "boundary_calibration": "UNCHANGED_BY_IMPORT_GRAPH",
+    "continuation": "UNCHANGED_BY_IMPORT_GRAPH",
+    "position_trajectory_projects": "ESP_BYTES_UNCHANGED; calibrated-altitude README marked superseded",
+    "fixed_tilt_altitude_package": "ESP_BYTES_UNCHANGED; manifest/README status marked superseded",
+    "height_aware_altitude_package": "NEW 16-candidate review evidence"
+  },
+  "authority_required_before_default_enablement": true
+}

@@ -1,0 +1,506 @@
+{
+  "modelVersion": 17,
+  "settings": {
+    "name": "LOCAL-DIAGONAL-SMOOTH",
+    "frameRate": 30,
+    "dimensions": {
+      "width": 1920,
+      "height": 1080
+    },
+    "duration": 210,
+    "timeFormat": "frames"
+  },
+  "scenes": [
+    {
+      "world": {
+        "kmls": []
+      },
+      "animationModel": {
+        "roving": false,
+        "logarithmic": false,
+        "groupedPosition": true
+      },
+      "duration": 210,
+      "attributes": [
+        {
+          "type": "cameraGroup",
+          "inTimeline": true,
+          "attributes": [
+            {
+              "type": "cameraPositionGroup",
+              "inTimeline": true,
+              "attributes": [
+                {
+                  "type": "longitude",
+                  "value": {
+                    "relative": 0,
+                    "minValueRange": 24.9
+                  },
+                  "keyframes": [
+                    {
+                      "time": 0,
+                      "value": 0,
+                      "transitionOut": {
+                        "x": 0.035714,
+                        "y": 0,
+                        "type": "easeOut"
+                      }
+                    },
+                    {
+                      "time": 0.14285714285714285,
+                      "value": 0,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0,
+                        "influence": 0,
+                        "type": "custom"
+                      },
+                      "transitionLinked": false
+                    },
+                    {
+                      "time": 0.2571428571428571,
+                      "value": 0.00010265635074145564,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": -0.000089494757,
+                        "influence": 0.35,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0.000089494757,
+                        "influence": 0.35,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.37142857142857144,
+                      "value": 0.0005065828497743402,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": -0.000153509832,
+                        "influence": 0.35,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0.000153509832,
+                        "influence": 0.35,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.4857142857142857,
+                      "value": 0.0009671179883945979,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": -0.000153509832,
+                        "influence": 0.35,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0.000153509832,
+                        "influence": 0.35,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.6,
+                      "value": 0.0014276531270148328,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": -0.000153509832,
+                        "influence": 0.35,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0.000153509832,
+                        "influence": 0.35,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.7142857142857143,
+                      "value": 0.0018315796260477172,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": -0.000089494757,
+                        "influence": 0.35,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0.000089494757,
+                        "influence": 0.35,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.8285714285714286,
+                      "value": 0.0019342359767891728,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": 0,
+                        "influence": 0,
+                        "type": "custom"
+                      },
+                      "transitionLinked": false
+                    }
+                  ],
+                  "intimeline": true
+                },
+                {
+                  "type": "latitude",
+                  "value": {
+                    "relative": 0,
+                    "minValueRange": 60.16
+                  },
+                  "keyframes": [
+                    {
+                      "time": 0,
+                      "value": 0,
+                      "transitionOut": {
+                        "x": 0.035714,
+                        "y": 0,
+                        "type": "easeOut"
+                      }
+                    },
+                    {
+                      "time": 0.14285714285714285,
+                      "value": 0,
+                      "transitionIn": {
+                        "x": 0,
+                        "y": 0,
+                        "type": "linear"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0,
+                        "influence": 0,
+                        "type": "custom"
+                      },
+                      "transitionLinked": false
+                    },
+                    {
+                      "time": 0.2571428571428571,
+                      "value": 0.00021343833780182667,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": -0.00018606752,
+                        "influence": 0.35,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0.00018606752,
+                        "influence": 0.35,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.37142857142857144,
+                      "value": 0.0010532506702413812,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": -0.000319160522,
+                        "influence": 0.35,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0.000319160522,
+                        "influence": 0.35,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.4857142857142857,
+                      "value": 0.0020107238605898883,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": -0.000319160523,
+                        "influence": 0.35,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0.000319160523,
+                        "influence": 0.35,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.6,
+                      "value": 0.0029681970509383955,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": -0.000319160522,
+                        "influence": 0.35,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0.000319160522,
+                        "influence": 0.35,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.7142857142857143,
+                      "value": 0.003808009383378188,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": -0.00018606752,
+                        "influence": 0.35,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.038095,
+                        "y": 0.00018606752,
+                        "influence": 0.35,
+                        "type": "auto"
+                      }
+                    },
+                    {
+                      "time": 0.8285714285714286,
+                      "value": 0.0040214477211797765,
+                      "transitionIn": {
+                        "x": -0.038095,
+                        "y": 0,
+                        "influence": 0,
+                        "type": "custom"
+                      },
+                      "transitionLinked": false
+                    }
+                  ],
+                  "intimeline": true
+                },
+                {
+                  "type": "altitude",
+                  "value": {
+                    "relative": 0,
+                    "logarithmic": false
+                  },
+                  "keyframes": [
+                    {
+                      "time": 0,
+                      "value": 0.00003839176587474802
+                    }
+                  ],
+                  "intimeline": true
+                }
+              ]
+            },
+            {
+              "type": "cameraTargetEffect",
+              "attributes": [
+                {
+                  "type": "enabled",
+                  "value": {}
+                },
+                {
+                  "type": "poi",
+                  "attributes": [
+                    {
+                      "type": "longitudePOI",
+                      "value": {}
+                    },
+                    {
+                      "type": "latitudePOI",
+                      "value": {}
+                    },
+                    {
+                      "type": "altitudePOI",
+                      "value": {
+                        "logarithmic": false
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "influence",
+                  "value": {}
+                }
+              ]
+            },
+            {
+              "type": "cameraRotationGroup",
+              "inTimeline": true,
+              "attributes": [
+                {
+                  "type": "rotationX",
+                  "value": {
+                    "relative": 0,
+                    "minValueRange": 0,
+                    "maxValueRange": 360
+                  },
+                  "keyframes": [
+                    {
+                      "time": 0,
+                      "value": 0
+                    }
+                  ],
+                  "intimeline": true
+                },
+                {
+                  "type": "rotationY",
+                  "value": {
+                    "relative": 0
+                  },
+                  "keyframes": [
+                    {
+                      "time": 0,
+                      "value": 0.2777777777777778,
+                      "transitionOut": {
+                        "x": 0.035714,
+                        "y": 0,
+                        "type": "easeOut"
+                      }
+                    },
+                    {
+                      "time": 0.14285714285714285,
+                      "value": 0.2777777777777778,
+                      "transitionIn": {
+                        "x": -0.042857,
+                        "y": 0,
+                        "influence": 0.43,
+                        "type": "auto"
+                      },
+                      "transitionOut": {
+                        "x": 0.171429,
+                        "y": 0,
+                        "type": "easeOut"
+                      }
+                    },
+                    {
+                      "time": 0.8285714285714286,
+                      "value": 0.25,
+                      "transitionIn": {
+                        "x": -0.171429,
+                        "y": 0,
+                        "influence": 0.4,
+                        "type": "custom"
+                      }
+                    }
+                  ],
+                  "intimeline": true
+                },
+                {
+                  "type": "rotationZ",
+                  "value": {}
+                }
+              ]
+            },
+            {
+              "type": "cameraLensGroup",
+              "attributes": [
+                {
+                  "type": "fov",
+                  "value": {}
+                },
+                {
+                  "type": "exposure",
+                  "value": {}
+                },
+                {
+                  "type": "aperture",
+                  "value": {}
+                },
+                {
+                  "type": "minFocusLength",
+                  "value": {}
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "environmentGroup",
+          "attributes": [
+            {
+              "type": "sunGroup",
+              "attributes": [
+                {
+                  "type": "sunVisibility",
+                  "value": {}
+                },
+                {
+                  "type": "worldTime",
+                  "value": {
+                    "relative": 0.5
+                  }
+                }
+              ]
+            },
+            {
+              "type": "cloudGroup",
+              "attributes": [
+                {
+                  "type": "cloudVisibility",
+                  "value": {}
+                },
+                {
+                  "type": "cloudopacity",
+                  "value": {}
+                },
+                {
+                  "type": "cloudheight",
+                  "value": {}
+                },
+                {
+                  "type": "clouddate",
+                  "value": {}
+                }
+              ]
+            },
+            {
+              "type": "starsPlanetsGroup",
+              "attributes": [
+                {
+                  "type": "starsEnabled",
+                  "value": {}
+                }
+              ]
+            },
+            {
+              "type": "seawaterGroup",
+              "attributes": [
+                {
+                  "type": "seawater",
+                  "value": {}
+                },
+                {
+                  "type": "influence",
+                  "value": {
+                    "relative": 1
+                  }
+                }
+              ]
+            },
+            {
+              "type": "buildingsEnabled",
+              "value": {}
+            }
+          ]
+        }
+      ],
+      "cameraExport": {
+        "logarithmic": false,
+        "modelVersion": 2
+      }
+    }
+  ],
+  "playbackManager": {
+    "range": {
+      "start": 0,
+      "end": 210
+    }
+  }
+}

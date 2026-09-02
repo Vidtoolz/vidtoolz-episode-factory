@@ -1,0 +1,1200 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-25T00:00:00.000Z",
+  "status": "SUPERSEDED_FOR_HUMAN_ALTITUDE_REVIEW",
+  "superseded_by": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware",
+  "supersession_reason": "The fixed-tilt candidates remain valid technical evidence, but final altitude judgment must use the universal altitude-coupled viewing-angle law.",
+  "source_trajectory": "shared ungrouped calibration rendering of CURRENT production lat/lng tracks",
+  "production_source_mutated": false,
+  "review_question": "Which altitude makes the movement feel calm and readable without making the camera unnecessarily high?",
+  "phase_policy": {
+    "climb": "during_static_opening_before_position_travel",
+    "descent_start": "last_position_terminal"
+  },
+  "candidate_targets_frame_widths_per_second": {
+    "CURRENT": null,
+    "HIGHER_A": 0.8,
+    "HIGHER_B": 0.4,
+    "HIGHER_C": 0.2
+  },
+  "cases": [
+    {
+      "id": "MEDIUM-DIAGONAL",
+      "name": "Medium diagonal",
+      "source_current_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+      "source_current_sha256": "aefacd82a1f642059ef1742f9de84fe9e1ddd7cfba9ce1b35405242dcdbf94f2",
+      "total_frames": 390,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "local_start_altitude_m": 2500,
+      "local_arrival_altitude_m": 2500,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "Helsinki",
+          "to": "Stockholm",
+          "start_frame": 30,
+          "end_frame": 390,
+          "duration_s": 12,
+          "distance_m": 395820,
+          "ground_speed_mps": 32985,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 26.455,
+          "readable_altitude_at_1_fw_s_m": 66138
+        }
+      ],
+      "candidates": {
+        "CURRENT": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+          "sha256": "93bd557a6aa8ce5a281a053686a05f0ee9c45fe92a67d1a4665894a2bbccdcad",
+          "cruise_altitude_m": 2500,
+          "target_screen_speed_fw_s": null,
+          "measured_proxy_fw_s": 26.455,
+          "phase_durations": null,
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.019231,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.019231,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 318,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.044872,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 388,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.044872,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "constant local altitude"
+        },
+        "HIGHER_A": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/MEDIUM-DIAGONAL/HIGHER_A/earth-studio.esp",
+          "sha256": "344e8edf1c9dc7377ba3b25c2e00c89b83815430be7964ca6c3bede5173e2d18",
+          "cruise_altitude_m": 82673,
+          "target_screen_speed_fw_s": 0.8,
+          "measured_proxy_fw_s": 0.8,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 9.6,
+            "descent_s": 2.4,
+            "travel_start_frame": 30,
+            "descent_start_frame": 318
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.019231,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 82673,
+              "transitionIn": {
+                "x": -0.019231,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 318,
+              "altitude_m": 82673,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.044872,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 388,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.044872,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        },
+        "HIGHER_B": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/MEDIUM-DIAGONAL/HIGHER_B/earth-studio.esp",
+          "sha256": "4265e6fab97d363faf51b17018c471e03540425126626e8b8bd69442d9f8631e",
+          "cruise_altitude_m": 165345,
+          "target_screen_speed_fw_s": 0.4,
+          "measured_proxy_fw_s": 0.4,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 9.6,
+            "descent_s": 2.4,
+            "travel_start_frame": 30,
+            "descent_start_frame": 318
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.019231,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 165345,
+              "transitionIn": {
+                "x": -0.019231,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 318,
+              "altitude_m": 165345,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.044872,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 388,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.044872,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        },
+        "HIGHER_C": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/MEDIUM-DIAGONAL/HIGHER_C/earth-studio.esp",
+          "sha256": "9f91ef7a1931b6231015791cd394887c6113b0266981c1b2fa05cfcfb0f81672",
+          "cruise_altitude_m": 330690,
+          "target_screen_speed_fw_s": 0.2,
+          "measured_proxy_fw_s": 0.2,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 9.6,
+            "descent_s": 2.4,
+            "travel_start_frame": 30,
+            "descent_start_frame": 318
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.019231,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 330690,
+              "transitionIn": {
+                "x": -0.019231,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 318,
+              "altitude_m": 330690,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.044872,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 388,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.044872,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        }
+      }
+    },
+    {
+      "id": "LONG-DIAGONAL",
+      "name": "Long diagonal",
+      "source_current_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+      "source_current_sha256": "e9ad76d3b9f312f75029e32c371741d43338088895c4194d029fdac44ea47d99",
+      "total_frames": 630,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "local_start_altitude_m": 2500,
+      "local_arrival_altitude_m": 2500,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "Helsinki",
+          "to": "New York",
+          "start_frame": 30,
+          "end_frame": 630,
+          "duration_s": 20,
+          "distance_m": 6618426,
+          "ground_speed_mps": 330921,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 265.412,
+          "readable_altitude_at_1_fw_s_m": 663531
+        }
+      ],
+      "candidates": {
+        "CURRENT": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+          "sha256": "4840db8e5300b7974f5816e93953982b4d2b2abb32e7e164f3f099a50f37f08c",
+          "cruise_altitude_m": 2500,
+          "target_screen_speed_fw_s": null,
+          "measured_proxy_fw_s": 265.412,
+          "phase_durations": null,
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.011905,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.011905,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 555,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.028968,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 628,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.028968,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "constant local altitude"
+        },
+        "HIGHER_A": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/LONG-DIAGONAL/HIGHER_A/earth-studio.esp",
+          "sha256": "9646d6c260c3aa9c04ffe6eeba4fb393e5246b334273debe3c15351db27c46a3",
+          "cruise_altitude_m": 829414,
+          "target_screen_speed_fw_s": 0.8,
+          "measured_proxy_fw_s": 0.8,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 17.5,
+            "descent_s": 2.5,
+            "travel_start_frame": 30,
+            "descent_start_frame": 555
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.011905,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 829414,
+              "transitionIn": {
+                "x": -0.011905,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 555,
+              "altitude_m": 829414,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.028968,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 628,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.028968,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        },
+        "HIGHER_B": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/LONG-DIAGONAL/HIGHER_B/earth-studio.esp",
+          "sha256": "7f50b87cfcb8b1887e03d4e812e65bd452910ca9869f9044766a0109d167fc1c",
+          "cruise_altitude_m": 1658828,
+          "target_screen_speed_fw_s": 0.4,
+          "measured_proxy_fw_s": 0.4,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 17.5,
+            "descent_s": 2.5,
+            "travel_start_frame": 30,
+            "descent_start_frame": 555
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.011905,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 1658828,
+              "transitionIn": {
+                "x": -0.011905,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 555,
+              "altitude_m": 1658828,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.028968,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 628,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.028968,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        },
+        "HIGHER_C": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/LONG-DIAGONAL/HIGHER_C/earth-studio.esp",
+          "sha256": "eca7b0331c2988e598821aaa7fd4602b8371599b7b5c9141203443954bc99278",
+          "cruise_altitude_m": 3317655,
+          "target_screen_speed_fw_s": 0.2,
+          "measured_proxy_fw_s": 0.2,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 17.5,
+            "descent_s": 2.5,
+            "travel_start_frame": 30,
+            "descent_start_frame": 555
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.011905,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 3317655,
+              "transitionIn": {
+                "x": -0.011905,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 555,
+              "altitude_m": 3317655,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.028968,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 628,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.028968,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        }
+      }
+    },
+    {
+      "id": "HIGH-LATITUDE",
+      "name": "High latitude",
+      "source_current_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+      "source_current_sha256": "a7f546e852880d964ee3330609dc10e66955719ed2f002663f16981e2675fcd9",
+      "total_frames": 390,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "local_start_altitude_m": 2500,
+      "local_arrival_altitude_m": 2500,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "80.0000, 10.0000",
+          "to": "80.5000, 70.0000",
+          "start_frame": 30,
+          "end_frame": 390,
+          "duration_s": 12,
+          "distance_m": 1081297,
+          "ground_speed_mps": 90108,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 72.27,
+          "readable_altitude_at_1_fw_s_m": 180676
+        }
+      ],
+      "candidates": {
+        "CURRENT": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+          "sha256": "a4b6fd8293d1fdc23222c9970726ed6b0bd27536d9c5aa020f3d12d4a6fac94f",
+          "cruise_altitude_m": 2500,
+          "target_screen_speed_fw_s": null,
+          "measured_proxy_fw_s": 72.27,
+          "phase_durations": null,
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.019231,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.019231,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 318,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.044872,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 388,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.044872,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "constant local altitude"
+        },
+        "HIGHER_A": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/HIGH-LATITUDE/HIGHER_A/earth-studio.esp",
+          "sha256": "57c904b58391b629e1010a4dd42d1258825a47134ddc54c05470d7f22b2bc52d",
+          "cruise_altitude_m": 225845,
+          "target_screen_speed_fw_s": 0.8,
+          "measured_proxy_fw_s": 0.8,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 9.6,
+            "descent_s": 2.4,
+            "travel_start_frame": 30,
+            "descent_start_frame": 318
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.019231,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 225845,
+              "transitionIn": {
+                "x": -0.019231,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 318,
+              "altitude_m": 225845,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.044872,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 388,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.044872,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        },
+        "HIGHER_B": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/HIGH-LATITUDE/HIGHER_B/earth-studio.esp",
+          "sha256": "7a4f8a9c27af06a1b1d38b05b85b47f93461bf7f8e8faeae0403979ce7f0e2c5",
+          "cruise_altitude_m": 451690,
+          "target_screen_speed_fw_s": 0.4,
+          "measured_proxy_fw_s": 0.4,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 9.6,
+            "descent_s": 2.4,
+            "travel_start_frame": 30,
+            "descent_start_frame": 318
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.019231,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 451690,
+              "transitionIn": {
+                "x": -0.019231,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 318,
+              "altitude_m": 451690,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.044872,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 388,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.044872,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        },
+        "HIGHER_C": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/HIGH-LATITUDE/HIGHER_C/earth-studio.esp",
+          "sha256": "15e94f3bfc5105d931e32d831ad29b9da3c14f763adde68d04b871b9a9cda866",
+          "cruise_altitude_m": 903380,
+          "target_screen_speed_fw_s": 0.2,
+          "measured_proxy_fw_s": 0.2,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 9.6,
+            "descent_s": 2.4,
+            "travel_start_frame": 30,
+            "descent_start_frame": 318
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.019231,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 903380,
+              "transitionIn": {
+                "x": -0.019231,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 318,
+              "altitude_m": 903380,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.044872,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 388,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.044872,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        }
+      }
+    },
+    {
+      "id": "MULTI-POINT-SEGMENT",
+      "name": "Multi-point",
+      "source_current_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+      "source_current_sha256": "7aac82edd12d3eb0a3649d41c2da966bdc481629760c023e7355539a71d43bbb",
+      "total_frames": 510,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "local_start_altitude_m": 2500,
+      "local_arrival_altitude_m": 2500,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "Helsinki",
+          "to": "Stockholm",
+          "start_frame": 30,
+          "end_frame": 270,
+          "duration_s": 8,
+          "distance_m": 395820,
+          "ground_speed_mps": 49477,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 39.683,
+          "readable_altitude_at_1_fw_s_m": 99207
+        },
+        {
+          "segment_id": 3,
+          "from": "Stockholm",
+          "to": "Copenhagen",
+          "start_frame": 270,
+          "end_frame": 510,
+          "duration_s": 8,
+          "distance_m": 522129,
+          "ground_speed_mps": 65266,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 52.346,
+          "readable_altitude_at_1_fw_s_m": 130865
+        }
+      ],
+      "candidates": {
+        "CURRENT": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+          "sha256": "28e07482fa1e850b118f0661293449867cb3bad34bcef0ba3e20b9cc5b86df4b",
+          "cruise_altitude_m": 2500,
+          "target_screen_speed_fw_s": null,
+          "measured_proxy_fw_s": 52.346,
+          "phase_durations": null,
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.014706,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.014706,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 462,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.022549,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 508,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.022549,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "constant local altitude"
+        },
+        "HIGHER_A": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/MULTI-POINT-SEGMENT/HIGHER_A/earth-studio.esp",
+          "sha256": "4ca6d5d242f9dcefb038470c74b1601c505a8ea48646ce1b741d2f8fd057dcc1",
+          "cruise_altitude_m": 163581,
+          "target_screen_speed_fw_s": 0.8,
+          "measured_proxy_fw_s": 0.8,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 14.4,
+            "descent_s": 1.6,
+            "travel_start_frame": 30,
+            "descent_start_frame": 462
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.014706,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 163581,
+              "transitionIn": {
+                "x": -0.014706,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 462,
+              "altitude_m": 163581,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.022549,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 508,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.022549,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        },
+        "HIGHER_B": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/MULTI-POINT-SEGMENT/HIGHER_B/earth-studio.esp",
+          "sha256": "1622dfcdd4431faaf793aedaeec9b1198a899982d46bfe5a62a4210e0827279a",
+          "cruise_altitude_m": 327163,
+          "target_screen_speed_fw_s": 0.4,
+          "measured_proxy_fw_s": 0.4,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 14.4,
+            "descent_s": 1.6,
+            "travel_start_frame": 30,
+            "descent_start_frame": 462
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.014706,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 327163,
+              "transitionIn": {
+                "x": -0.014706,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 462,
+              "altitude_m": 327163,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.022549,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 508,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.022549,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        },
+        "HIGHER_C": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-calibration/projects/MULTI-POINT-SEGMENT/HIGHER_C/earth-studio.esp",
+          "sha256": "399d3c6499508240cab1c1843847c9c2e1d4c8b1ad8d09b1009fe27ffea2008d",
+          "cruise_altitude_m": 654325,
+          "target_screen_speed_fw_s": 0.2,
+          "measured_proxy_fw_s": 0.2,
+          "phase_durations": {
+            "climb_s": 1,
+            "cruise_s": 14.4,
+            "descent_s": 1.6,
+            "travel_start_frame": 30,
+            "descent_start_frame": 462
+          },
+          "authored_altitude": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "transitionIn": null,
+              "transitionOut": {
+                "x": 0.014706,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 30,
+              "altitude_m": 654325,
+              "transitionIn": {
+                "x": -0.014706,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              }
+            },
+            {
+              "frame": 462,
+              "altitude_m": 654325,
+              "transitionIn": {
+                "x": 0,
+                "y": 0,
+                "type": "linear"
+              },
+              "transitionOut": {
+                "x": 0.022549,
+                "y": 0,
+                "type": "easeOut"
+              }
+            },
+            {
+              "frame": 508,
+              "altitude_m": 2500,
+              "transitionIn": {
+                "x": -0.022549,
+                "y": 0,
+                "influence": 0.4,
+                "type": "custom"
+              },
+              "transitionOut": null
+            }
+          ],
+          "altitude_envelope": "local start -> smooth climb -> stable cruise -> smooth descent -> local arrival"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "review_type": "travel_altitude_envelope_calibration",
+  "reviewer": {
+    "name": "Mikko",
+    "authority": "canonical human visual reviewer"
+  },
+  "blind_order_used": false,
+  "candidate_usability_authority": {
+    "recorded_at": "2026-08-25T10:24:29+03:00",
+    "reviewer": {
+      "name": "Mikko",
+      "authority": "canonical human visual reviewer"
+    },
+    "assessment": {
+      "CURRENT": "NOT_USABLE_CAMERA_TOO_LOW",
+      "HIGHER_A": "USABLE_TILT_MOVEMENT_REQUIRES_SMOOTHER_EXECUTION",
+      "HIGHER_B": "USABLE_TILT_MOVEMENT_REQUIRES_SMOOTHER_EXECUTION",
+      "HIGHER_C": "USABLE_TILT_MOVEMENT_REQUIRES_SMOOTHER_EXECUTION"
+    },
+    "minimum_usable_candidate": "HIGHER_A",
+    "maximum_usable_candidate": "HIGHER_C",
+    "shared_tilt_finding": "The tilt movement should be smoother in every usable higher-altitude candidate.",
+    "production_calibration_status": "WITHHELD_PENDING_TILT_SMOOTHNESS_CALIBRATION",
+    "source_statement": "CURRENT: not usable, camera too low. HIGHER_A: usable, the tilt movement should be smoother. HIGHER_B: usable, the tilt movement should be smoother. HIGHER_C: usable, the tilt movement should be smoother."
+  },
+  "current_case_id": "MEDIUM-DIAGONAL",
+  "records": {
+    "MEDIUM-DIAGONAL": {
+      "case_id": "MEDIUM-DIAGONAL",
+      "case_name": "Medium diagonal",
+      "artifacts": {
+        "CURRENT": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+        "HIGHER_A": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MEDIUM-DIAGONAL/HIGHER_A/earth-studio.esp",
+        "HIGHER_B": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MEDIUM-DIAGONAL/HIGHER_B/earth-studio.esp",
+        "HIGHER_C": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MEDIUM-DIAGONAL/HIGHER_C/earth-studio.esp"
+      },
+      "verdict": null,
+      "note": "",
+      "recorded_at": null,
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "candidate_mapping": null,
+      "last_prepared": "HIGHER_C",
+      "prepared_at": "2026-08-25T07:18:23.091Z"
+    },
+    "LONG-DIAGONAL": {
+      "case_id": "LONG-DIAGONAL",
+      "case_name": "Long diagonal",
+      "artifacts": {
+        "CURRENT": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+        "HIGHER_A": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/LONG-DIAGONAL/HIGHER_A/earth-studio.esp",
+        "HIGHER_B": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/LONG-DIAGONAL/HIGHER_B/earth-studio.esp",
+        "HIGHER_C": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/LONG-DIAGONAL/HIGHER_C/earth-studio.esp"
+      },
+      "verdict": null,
+      "note": "",
+      "recorded_at": null,
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "candidate_mapping": null,
+      "last_prepared": null,
+      "prepared_at": null
+    },
+    "HIGH-LATITUDE": {
+      "case_id": "HIGH-LATITUDE",
+      "case_name": "High latitude",
+      "artifacts": {
+        "CURRENT": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+        "HIGHER_A": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/HIGH-LATITUDE/HIGHER_A/earth-studio.esp",
+        "HIGHER_B": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/HIGH-LATITUDE/HIGHER_B/earth-studio.esp",
+        "HIGHER_C": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/HIGH-LATITUDE/HIGHER_C/earth-studio.esp"
+      },
+      "verdict": null,
+      "note": "",
+      "recorded_at": null,
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "candidate_mapping": null,
+      "last_prepared": null,
+      "prepared_at": null
+    },
+    "MULTI-POINT-SEGMENT": {
+      "case_id": "MULTI-POINT-SEGMENT",
+      "case_name": "Multi-point",
+      "artifacts": {
+        "CURRENT": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+        "HIGHER_A": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MULTI-POINT-SEGMENT/HIGHER_A/earth-studio.esp",
+        "HIGHER_B": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MULTI-POINT-SEGMENT/HIGHER_B/earth-studio.esp",
+        "HIGHER_C": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MULTI-POINT-SEGMENT/HIGHER_C/earth-studio.esp"
+      },
+      "verdict": null,
+      "note": "",
+      "recorded_at": null,
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "candidate_mapping": null,
+      "last_prepared": null,
+      "prepared_at": null
+    }
+  }
+}

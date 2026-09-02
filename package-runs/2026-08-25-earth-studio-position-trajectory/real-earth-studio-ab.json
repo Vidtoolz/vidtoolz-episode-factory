@@ -1,0 +1,3246 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-25T03:25:29.665Z",
+  "baseline_commit": "d62b8528d3258e9102646a24e656113ea0a19630",
+  "candidate_source": "live worktree",
+  "authority": "authenticated Google Earth Studio scene.getCurrentWorldValues every-frame readback",
+  "cases": [
+    {
+      "id": "LOCAL-DIAGONAL",
+      "description": "hover over 60.16, 24.90 for 1 seconds then fly to 60.28, 25.20 for 6 seconds",
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LOCAL-DIAGONAL/CURRENT/earth-studio.esp",
+          "sha256": "8bb8e2e3d996de2ca3790e8a1a0384275d957f0f8aa289322bc38f6055535043",
+          "total_frames": 210,
+          "position_keyframes": {
+            "latitude": 3,
+            "longitude": 3
+          },
+          "real": {
+            "import": {
+              "duration": 210,
+              "totalFrames": 210,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 181,
+              "authored_position_keyframes": 3,
+              "internal_authored_frames": [
+                174
+              ],
+              "max_internal_one_frame_turn_deg": 0.0010674566495936233,
+              "max_internal_one_frame_turn_frame": 86,
+              "p95_internal_one_frame_turn_deg": 0.001063162799937345,
+              "median_internal_one_frame_turn_deg": 0.0007052724049572134,
+              "max_keyframe_correlated_turn_deg": null,
+              "max_keyframe_local_turn_excess_deg": null,
+              "cruise_speed_cv": 0.6015172534147293,
+              "max_abs_cruise_acceleration_mps2": 398998.38084040704
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 171,
+                "latitude": 60.27980856716873,
+                "longitude": 25.199522421683277,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 172,
+                "latitude": 60.27989187913469,
+                "longitude": 25.19973070229618,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 173,
+                "latitude": 60.27995160585402,
+                "longitude": 25.199880019594907,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 174,
+                "latitude": 60.27998757067534,
+                "longitude": 25.199969931949497,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 175,
+                "latitude": 60.27999959785523,
+                "longitude": 25.2,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 176,
+                "latitude": 60.27999959785523,
+                "longitude": 25.2,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 177,
+                "latitude": 60.27999959785523,
+                "longitude": 25.2,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LOCAL-DIAGONAL/CURRENT/frame-75.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LOCAL-DIAGONAL/CURRENT/frame-120.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LOCAL-DIAGONAL/CURRENT/frame-165.png"
+            ]
+          }
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LOCAL-DIAGONAL/SMOOTH/earth-studio.esp",
+          "sha256": "c3fbed8e9ca7e929ae4b2e820ba444714389051afdf3026a2ead5c66eebae371",
+          "total_frames": 210,
+          "position_keyframes": {
+            "latitude": 8,
+            "longitude": 8
+          },
+          "real": {
+            "import": {
+              "duration": 210,
+              "totalFrames": 210,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 181,
+              "authored_position_keyframes": 8,
+              "internal_authored_frames": [
+                54,
+                78,
+                102,
+                126,
+                150,
+                174
+              ],
+              "max_internal_one_frame_turn_deg": 0.0011443139875382258,
+              "max_internal_one_frame_turn_frame": 127,
+              "p95_internal_one_frame_turn_deg": 0.0011084079417287285,
+              "median_internal_one_frame_turn_deg": 0.0009196750116871044,
+              "max_keyframe_correlated_turn_deg": 0.0011443139875382258,
+              "max_keyframe_local_turn_excess_deg": 0.00013135248332218907,
+              "cruise_speed_cv": 0.5978151586000207,
+              "max_abs_cruise_acceleration_mps2": 570074.6913013514
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 51,
+                "latitude": 60.164169214422145,
+                "longitude": 24.910422583643555,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 52,
+                "latitude": 60.1646323196704,
+                "longitude": 24.911580344396278,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 53,
+                "latitude": 60.16514555366777,
+                "longitude": 24.912863429667958,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 54,
+                "latitude": 60.165719440813945,
+                "longitude": 24.914298150382862,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 55,
+                "latitude": 60.165719440813945,
+                "longitude": 24.914298150382862,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 56,
+                "latitude": 60.167082961663034,
+                "longitude": 24.91770695679526,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 57,
+                "latitude": 60.16783658450513,
+                "longitude": 24.919591001293963,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 75,
+                "latitude": 60.18663846410354,
+                "longitude": 24.966594948956423,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 76,
+                "latitude": 60.187838277189115,
+                "longitude": 24.969594464336996,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 77,
+                "latitude": 60.189038064152186,
+                "longitude": 24.972593921199113,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 78,
+                "latitude": 60.19023562477659,
+                "longitude": 24.97558781979244,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 79,
+                "latitude": 60.191428894674935,
+                "longitude": 24.978571,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 80,
+                "latitude": 60.192619364880194,
+                "longitude": 24.981547192462724,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 81,
+                "latitude": 60.193809831236926,
+                "longitude": 24.98452338877575,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 99,
+                "latitude": 60.21523794024615,
+                "longitude": 25.03809520798625,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 100,
+                "latitude": 60.21523794024615,
+                "longitude": 25.03809520798625,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 101,
+                "latitude": 60.217618862358684,
+                "longitude": 25.04404761122425,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 102,
+                "latitude": 60.21880932871875,
+                "longitude": 25.047023807537276,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 103,
+                "latitude": 60.21999979892761,
+                "longitude": 25.05,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 104,
+                "latitude": 60.21999979892761,
+                "longitude": 25.05,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 105,
+                "latitude": 60.222380735496536,
+                "longitude": 25.05595238877575,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 123,
+                "latitude": 60.24380884451159,
+                "longitude": 25.109524207986247,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 124,
+                "latitude": 60.244999303882715,
+                "longitude": 25.112500411288334,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 125,
+                "latitude": 60.2461897666183,
+                "longitude": 25.11547661122425,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 126,
+                "latitude": 60.24738023297503,
+                "longitude": 25.118452807537274,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 127,
+                "latitude": 60.24857070318029,
+                "longitude": 25.121429,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 128,
+                "latitude": 60.249763973078636,
+                "longitude": 25.124412180207557,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 129,
+                "latitude": 60.249763973078636,
+                "longitude": 25.124412180207557,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 147,
+                "latitude": 60.2705391696186,
+                "longitude": 25.176349443493756,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 148,
+                "latitude": 60.271370281391285,
+                "longitude": 25.178427191601976,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 149,
+                "latitude": 60.272163013350095,
+                "longitude": 25.180408998706035,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 150,
+                "latitude": 60.272163013350095,
+                "longitude": 25.180408998706035,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 151,
+                "latitude": 60.27363061919906,
+                "longitude": 25.184078,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 152,
+                "latitude": 60.27428015704128,
+                "longitude": 25.185701849617136,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 153,
+                "latitude": 60.27485404418746,
+                "longitude": 25.18713657033204,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 171,
+                "latitude": 60.2796831738924,
+                "longitude": 25.19920908029112,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 172,
+                "latitude": 60.2796831738924,
+                "longitude": 25.19920908029112,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 173,
+                "latitude": 60.27987252704339,
+                "longitude": 25.19968239640818,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 174,
+                "latitude": 60.27994561916869,
+                "longitude": 25.19986509103946,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 175,
+                "latitude": 60.27999959785523,
+                "longitude": 25.2,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 176,
+                "latitude": 60.27999959785523,
+                "longitude": 25.2,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 177,
+                "latitude": 60.27999959785523,
+                "longitude": 25.2,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LOCAL-DIAGONAL/SMOOTH/frame-75.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LOCAL-DIAGONAL/SMOOTH/frame-120.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LOCAL-DIAGONAL/SMOOTH/frame-165.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "MEDIUM-DIAGONAL",
+      "description": "hover over Helsinki for 1 seconds then fly to Stockholm for 12 seconds",
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+          "sha256": "aefacd82a1f642059ef1742f9de84fe9e1ddd7cfba9ce1b35405242dcdbf94f2",
+          "total_frames": 390,
+          "position_keyframes": {
+            "latitude": 3,
+            "longitude": 3
+          },
+          "real": {
+            "import": {
+              "duration": 390,
+              "totalFrames": 390,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 361,
+              "authored_position_keyframes": 3,
+              "internal_authored_frames": [
+                318
+              ],
+              "max_internal_one_frame_turn_deg": 0.006256903099142619,
+              "max_internal_one_frame_turn_frame": 60,
+              "p95_internal_one_frame_turn_deg": 0.001742134181313304,
+              "median_internal_one_frame_turn_deg": 0.0014098486974489788,
+              "max_keyframe_correlated_turn_deg": null,
+              "max_keyframe_local_turn_excess_deg": null,
+              "cruise_speed_cv": 0.3453265252924408,
+              "max_abs_cruise_acceleration_mps2": 1430399.9095142032
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 315,
+                "latitude": 59.32963618399896,
+                "longitude": 18.071347471289663,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 316,
+                "latitude": 59.329489333597394,
+                "longitude": 18.07014733308133,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 317,
+                "latitude": 59.32938425040282,
+                "longitude": 18.06928853831115,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 318,
+                "latitude": 59.32932108810319,
+                "longitude": 18.068772342997413,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 319,
+                "latitude": 59.3293,
+                "longitude": 18.0686,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 320,
+                "latitude": 59.3293,
+                "longitude": 18.0686,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 321,
+                "latitude": 59.3293,
+                "longitude": 18.0686,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/CURRENT/frame-120.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/CURRENT/frame-210.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/CURRENT/frame-300.png"
+            ]
+          }
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/SMOOTH/earth-studio.esp",
+          "sha256": "6bf446ae6595c05f00eea39bf1aa903675c92c08f50b8d210fb70bf76d5ea05a",
+          "total_frames": 390,
+          "position_keyframes": {
+            "latitude": 8,
+            "longitude": 8
+          },
+          "real": {
+            "import": {
+              "duration": 390,
+              "totalFrames": 390,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 361,
+              "authored_position_keyframes": 8,
+              "internal_authored_frames": [
+                78,
+                126,
+                174,
+                222,
+                270,
+                318
+              ],
+              "max_internal_one_frame_turn_deg": 0.11045046704941797,
+              "max_internal_one_frame_turn_frame": 44,
+              "p95_internal_one_frame_turn_deg": 0.032933190074686536,
+              "median_internal_one_frame_turn_deg": 0.026920687560959777,
+              "max_keyframe_correlated_turn_deg": 0.03331896371048515,
+              "max_keyframe_local_turn_excess_deg": 0.007690957606314441,
+              "cruise_speed_cv": 0.29105704053144754,
+              "max_abs_cruise_acceleration_mps2": 565769.3373613304
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 75,
+                "latitude": 60.14176322310278,
+                "longitude": 24.6417896807798,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 76,
+                "latitude": 60.14001406364788,
+                "longitude": 24.62366141534902,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 77,
+                "latitude": 60.13820384800072,
+                "longitude": 24.604913826046584,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 78,
+                "latitude": 60.13820384800072,
+                "longitude": 24.604913826046584,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 79,
+                "latitude": 60.13440037500937,
+                "longitude": 24.565563,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 80,
+                "latitude": 60.132407442331456,
+                "longitude": 24.544978116187746,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 81,
+                "latitude": 60.13035397890252,
+                "longitude": 24.52381102766413,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 123,
+                "latitude": 59.99958838954263,
+                "longitude": 23.245261161421244,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 124,
+                "latitude": 59.99585036576686,
+                "longitude": 23.210509868033892,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 125,
+                "latitude": 59.992107600981974,
+                "longitude": 23.1758140475471,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 126,
+                "latitude": 59.988361609865954,
+                "longitude": 23.14118862183618,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 127,
+                "latitude": 59.984613863381014,
+                "longitude": 23.106648,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 128,
+                "latitude": 59.98086199521741,
+                "longitude": 23.072157700856483,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 129,
+                "latitude": 59.97710257081624,
+                "longitude": 23.037674002656157,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 171,
+                "latitude": 59.81104923845136,
+                "longitude": 21.596703877710596,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 172,
+                "latitude": 59.806899743672204,
+                "longitude": 21.56257726169632,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 173,
+                "latitude": 59.80274250902874,
+                "longitude": 21.528458167008807,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 174,
+                "latitude": 59.79857769979426,
+                "longitude": 21.49434645897258,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 175,
+                "latitude": 59.794405483546186,
+                "longitude": 21.460242,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 176,
+                "latitude": 59.7902259620751,
+                "longitude": 21.4261446711661,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 177,
+                "latitude": 59.78603901724085,
+                "longitude": 21.39205455876748,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 219,
+                "latitude": 59.60218902315902,
+                "longitude": 19.968259335265554,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 220,
+                "latitude": 59.59761977393687,
+                "longitude": 19.934556744288557,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 221,
+                "latitude": 59.59304294065767,
+                "longitude": 19.900862257267153,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 222,
+                "latitude": 59.58845868477356,
+                "longitude": 19.867175726192364,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 223,
+                "latitude": 59.583867169996125,
+                "longitude": 19.833497,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 224,
+                "latitude": 59.57926155710198,
+                "longitude": 19.79978560868659,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 225,
+                "latitude": 59.574636172192896,
+                "longitude": 19.76601021059006,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 267,
+                "latitude": 59.3949923152131,
+                "longitude": 18.506184059516766,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 268,
+                "latitude": 59.39182753171891,
+                "longitude": 18.484819256958133,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 269,
+                "latitude": 59.388740711056705,
+                "longitude": 18.46401189057392,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 270,
+                "latitude": 59.385732594944415,
+                "longitude": 18.44376550436359,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 271,
+                "latitude": 59.38280382555338,
+                "longitude": 18.424083,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 272,
+                "latitude": 59.37995828556071,
+                "longitude": 18.40497917017329,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 273,
+                "latitude": 59.37719963977766,
+                "longitude": 18.386468091086545,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 315,
+                "latitude": 59.32941649370216,
+                "longitude": 18.069315019989656,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 316,
+                "latitude": 59.32936238075173,
+                "longitude": 18.068980747563845,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 317,
+                "latitude": 59.32932634335965,
+                "longitude": 18.068759807744243,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 318,
+                "latitude": 59.32930624493015,
+                "longitude": 18.068637629619435,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 319,
+                "latitude": 59.3293,
+                "longitude": 18.0686,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 320,
+                "latitude": 59.3293,
+                "longitude": 18.0686,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 321,
+                "latitude": 59.3293,
+                "longitude": 18.0686,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/SMOOTH/frame-120.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/SMOOTH/frame-210.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/SMOOTH/frame-300.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "LONG-DIAGONAL",
+      "description": "hover over Helsinki for 1 seconds then fly to New York for 20 seconds",
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+          "sha256": "e9ad76d3b9f312f75029e32c371741d43338088895c4194d029fdac44ea47d99",
+          "total_frames": 630,
+          "position_keyframes": {
+            "latitude": 3,
+            "longitude": 3
+          },
+          "real": {
+            "import": {
+              "duration": 630,
+              "totalFrames": 630,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 601,
+              "authored_position_keyframes": 3,
+              "internal_authored_frames": [
+                555
+              ],
+              "max_internal_one_frame_turn_deg": 0.023860838189079914,
+              "max_internal_one_frame_turn_frame": 157,
+              "p95_internal_one_frame_turn_deg": 0.023725093832240418,
+              "median_internal_one_frame_turn_deg": 0.01428823862875106,
+              "max_keyframe_correlated_turn_deg": null,
+              "max_keyframe_local_turn_excess_deg": null,
+              "cruise_speed_cv": 0.18626559508389612,
+              "max_abs_cruise_acceleration_mps2": 104447.13263956073
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 552,
+                "latitude": 40.71514685012043,
+                "longitude": -73.99406563423176,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 553,
+                "latitude": 40.71412098067997,
+                "longitude": -73.99928245699618,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 554,
+                "latitude": 40.71338749225258,
+                "longitude": -74.00301244345884,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 555,
+                "latitude": 40.712946970428945,
+                "longitude": -74.00525261573334,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 556,
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 557,
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 558,
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/CURRENT/frame-180.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/CURRENT/frame-330.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/CURRENT/frame-480.png"
+            ]
+          }
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/SMOOTH/earth-studio.esp",
+          "sha256": "6638a5b6301908e276a9dd472e4bb917319d7681e4aeb8f856a72c8e48cc9451",
+          "total_frames": 630,
+          "position_keyframes": {
+            "latitude": 8,
+            "longitude": 8
+          },
+          "real": {
+            "import": {
+              "duration": 630,
+              "totalFrames": 630,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 601,
+              "authored_position_keyframes": 8,
+              "internal_authored_frames": [
+                118,
+                205,
+                293,
+                380,
+                468,
+                555
+              ],
+              "max_internal_one_frame_turn_deg": 0.6539283628999328,
+              "max_internal_one_frame_turn_frame": 543,
+              "p95_internal_one_frame_turn_deg": 0.5153937059972122,
+              "median_internal_one_frame_turn_deg": 0.221546455069074,
+              "max_keyframe_correlated_turn_deg": 0.46117600442573803,
+              "max_keyframe_local_turn_excess_deg": 0.25564596021320085,
+              "cruise_speed_cv": 0.12650189455544264,
+              "max_abs_cruise_acceleration_mps2": 277565.29451208597
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 115,
+                "latitude": 61.48022897607609,
+                "longitude": 19.766405107214013,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 116,
+                "latitude": 61.51735318818099,
+                "longitude": 19.597380841974072,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 117,
+                "latitude": 61.55515806188686,
+                "longitude": 19.424639219170047,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 118,
+                "latitude": 61.59365150801874,
+                "longitude": 19.248135050623006,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 119,
+                "latitude": 61.63284155473226,
+                "longitude": 19.067823000000004,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 120,
+                "latitude": 61.67259346359984,
+                "longitude": 18.882737740256985,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 121,
+                "latitude": 61.712749955166856,
+                "longitude": 18.692091747933745,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 202,
+                "latitude": 64.37742144837327,
+                "longitude": -6.266264340048409,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 203,
+                "latitude": 64.38287913078177,
+                "longitude": -6.638653812566943,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 204,
+                "latitude": 64.38723387216747,
+                "longitude": -7.011765477343246,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 205,
+                "latitude": 64.39047127101195,
+                "longitude": -7.385555791935047,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 206,
+                "latitude": 64.39257695542656,
+                "longitude": -7.759977000000006,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 207,
+                "latitude": 64.39348288984519,
+                "longitude": -8.134357668507604,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 208,
+                "latitude": 64.3931468035964,
+                "longitude": -8.50808018225274,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 290,
+                "latitude": 61.33222402750147,
+                "longitude": -37.11357987782512,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 291,
+                "latitude": 61.26267448185196,
+                "longitude": -37.42101994193274,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 292,
+                "latitude": 61.1921873390476,
+                "longitude": -37.726160975997004,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 293,
+                "latitude": 61.120735707855424,
+                "longitude": -38.02885526936633,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 294,
+                "latitude": 61.04828974074607,
+                "longitude": -38.328938,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 295,
+                "latitude": 60.974504420848746,
+                "longitude": -38.62656247852583,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 296,
+                "latitude": 60.89917873041578,
+                "longitude": -38.922059950798,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 377,
+                "latitude": 53.158380566476815,
+                "longitude": -58.5801816589089,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 378,
+                "latitude": 53.04856604543991,
+                "longitude": -58.77619071793255,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 379,
+                "latitude": 52.93789791722195,
+                "longitude": -58.97073628373368,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 380,
+                "latitude": 52.82624021517588,
+                "longitude": -59.16378318800979,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 381,
+                "latitude": 52.71340965162152,
+                "longitude": -59.355294,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 382,
+                "latitude": 52.59959011814969,
+                "longitude": -59.545547047951146,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 383,
+                "latitude": 52.48522636727946,
+                "longitude": -59.73484158551592,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 465,
+                "latitude": 43.56601485532795,
+                "longitude": -71.2521318943394,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 466,
+                "latitude": 43.48223584434706,
+                "longitude": -71.33425393798453,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 467,
+                "latitude": 43.400528610755586,
+                "longitude": -71.41472051772138,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 468,
+                "latitude": 43.321130508034315,
+                "longitude": -71.49352158014699,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 469,
+                "latitude": 43.244327863711064,
+                "longitude": -71.570647,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 470,
+                "latitude": 43.17010993092393,
+                "longitude": -71.64623197977375,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 471,
+                "latitude": 43.098151795005926,
+                "longitude": -71.72041978031343,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 552,
+                "latitude": 40.71778809880791,
+                "longitude": -74.00494181656852,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 553,
+                "latitude": 40.71561446710976,
+                "longitude": -74.00543009325303,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 554,
+                "latitude": 40.714054858993514,
+                "longitude": -74.00575788341409,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 555,
+                "latitude": 40.71311474555104,
+                "longitude": -74.00594224473726,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 556,
+                "latitude": 40.71311474555104,
+                "longitude": -74.00594224473726,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 557,
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 558,
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/SMOOTH/frame-180.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/SMOOTH/frame-330.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/SMOOTH/frame-480.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "HIGH-LATITUDE",
+      "description": "hover over 80, 10 for 1 seconds then fly to 80.5, 70 for 12 seconds",
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+          "sha256": "a7f546e852880d964ee3330609dc10e66955719ed2f002663f16981e2675fcd9",
+          "total_frames": 390,
+          "position_keyframes": {
+            "latitude": 3,
+            "longitude": 3
+          },
+          "real": {
+            "import": {
+              "duration": 390,
+              "totalFrames": 390,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 361,
+              "authored_position_keyframes": 3,
+              "internal_authored_frames": [
+                318
+              ],
+              "max_internal_one_frame_turn_deg": 0.019719285396490704,
+              "max_internal_one_frame_turn_frame": 40,
+              "p95_internal_one_frame_turn_deg": 0.0028604462982002588,
+              "median_internal_one_frame_turn_deg": 0.000880807051771626,
+              "max_keyframe_correlated_turn_deg": null,
+              "max_keyframe_local_turn_excess_deg": null,
+              "cruise_speed_cv": 0.3484250156242836,
+              "max_abs_cruise_acceleration_mps2": 49486.95142207364
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 315,
+                "latitude": 80.49979503465785,
+                "longitude": 69.97600391898172,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 316,
+                "latitude": 80.49988238263064,
+                "longitude": 69.98648578053515,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 317,
+                "latitude": 80.49994488708363,
+                "longitude": 69.99398638989948,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 318,
+                "latitude": 80.4999824566018,
+                "longitude": 69.99849477716316,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 319,
+                "latitude": 80.499995,
+                "longitude": 70,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 320,
+                "latitude": 80.499995,
+                "longitude": 70,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 321,
+                "latitude": 80.499995,
+                "longitude": 70,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/CURRENT/frame-120.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/CURRENT/frame-210.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/CURRENT/frame-300.png"
+            ]
+          }
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/SMOOTH/earth-studio.esp",
+          "sha256": "58f8a7480bfaad4c9f25574bc469885b6078869b39efc72ff99d9176c02eb513",
+          "total_frames": 390,
+          "position_keyframes": {
+            "latitude": 8,
+            "longitude": 8
+          },
+          "real": {
+            "import": {
+              "duration": 390,
+              "totalFrames": 390,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 361,
+              "authored_position_keyframes": 8,
+              "internal_authored_frames": [
+                78,
+                126,
+                174,
+                222,
+                270,
+                318
+              ],
+              "max_internal_one_frame_turn_deg": 0.762182098011408,
+              "max_internal_one_frame_turn_frame": 43,
+              "p95_internal_one_frame_turn_deg": 0.42415447582902743,
+              "median_internal_one_frame_turn_deg": 0.28983495969578144,
+              "max_keyframe_correlated_turn_deg": 0.4326803202555993,
+              "max_keyframe_local_turn_excess_deg": 0.1504177434715075,
+              "cruise_speed_cv": 0.28992601506957977,
+              "max_abs_cruise_acceleration_mps2": 108678.52992984233
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 75,
+                "latitude": 80.21360979783124,
+                "longitude": 12.045475097641077,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 76,
+                "latitude": 80.22580405249718,
+                "longitude": 12.17267317244616,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 77,
+                "latitude": 80.23847170724636,
+                "longitude": 12.304754446712646,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 78,
+                "latitude": 80.25162641001566,
+                "longitude": 12.441777027680562,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 79,
+                "latitude": 80.26528234715,
+                "longitude": 12.583796,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 80,
+                "latitude": 80.27940795096517,
+                "longitude": 12.731479329208828,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 81,
+                "latitude": 80.29394031676023,
+                "longitude": 12.885293238486744,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 123,
+                "latitude": 81.0315827135013,
+                "longitude": 22.885386711648046,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 124,
+                "latitude": 81.04789838817626,
+                "longitude": 23.17685710016851,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 125,
+                "latitude": 81.06392108180741,
+                "longitude": 23.4696758857303,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 126,
+                "latitude": 81.07962333844326,
+                "longitude": 23.763756663330376,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 127,
+                "latitude": 81.09497505014001,
+                "longitude": 24.059008,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 128,
+                "latitude": 81.11000981355343,
+                "longitude": 24.355618082808043,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 129,
+                "latitude": 81.1247846526794,
+                "longitude": 24.653743877498606,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 171,
+                "latitude": 81.52121672919807,
+                "longitude": 37.85617327362776,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 172,
+                "latitude": 81.52509685630824,
+                "longitude": 38.181338712144466,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 173,
+                "latitude": 81.52868882826465,
+                "longitude": 38.50702485606696,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 174,
+                "latitude": 81.53198926659739,
+                "longitude": 38.8332556085639,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 175,
+                "latitude": 81.5349946499,
+                "longitude": 39.16006,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 176,
+                "latitude": 81.53771856834001,
+                "longitude": 39.48724517208581,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 177,
+                "latitude": 81.54017637626414,
+                "longitude": 39.81457241783127,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 219,
+                "latitude": 81.39772303211849,
+                "longitude": 53.467129522600885,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 220,
+                "latitude": 81.38856864575585,
+                "longitude": 53.784550863437566,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 221,
+                "latitude": 81.37916106686383,
+                "longitude": 54.10112618932244,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 222,
+                "latitude": 81.36950204818638,
+                "longitude": 54.41676883184946,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 223,
+                "latitude": 81.35959340392999,
+                "longitude": 54.731377,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 224,
+                "latitude": 81.34938521030372,
+                "longitude": 55.04502852255565,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 225,
+                "latitude": 81.33883792547329,
+                "longitude": 55.357792732669566,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 267,
+                "latitude": 80.77213093043923,
+                "longitude": 66.45837061789169,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 268,
+                "latitude": 80.75963876621236,
+                "longitude": 66.64047746341758,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 269,
+                "latitude": 80.7473914908096,
+                "longitude": 66.81635742047817,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 270,
+                "latitude": 80.73540623195201,
+                "longitude": 66.98572547769425,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 271,
+                "latitude": 80.72370076292,
+                "longitude": 67.14827500000001,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 272,
+                "latitude": 80.71233476510182,
+                "longitude": 67.30449532876153,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 273,
+                "latitude": 80.7013511957722,
+                "longitude": 67.4551406371117,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 315,
+                "latitude": 80.50092684470587,
+                "longitude": 69.99252754851227,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 316,
+                "latitude": 80.50051207007776,
+                "longitude": 69.99594092676872,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 317,
+                "latitude": 80.50022167387071,
+                "longitude": 69.99825955950647,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 318,
+                "latitude": 80.50005088900829,
+                "longitude": 69.99958066349144,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 319,
+                "latitude": 80.499995,
+                "longitude": 70,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 320,
+                "latitude": 80.499995,
+                "longitude": 70,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 321,
+                "latitude": 80.499995,
+                "longitude": 70,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/SMOOTH/frame-120.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/SMOOTH/frame-210.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/SMOOTH/frame-300.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "ANTIMERIDIAN",
+      "description": "hover over 45, 179.5 for 1 seconds then fly to 46, -179.5 for 10 seconds",
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/ANTIMERIDIAN/CURRENT/earth-studio.esp",
+          "sha256": "81b976f803c2a2e27c8dfd8920d7181e75710565638fb4c35700fa7daed92fb1",
+          "total_frames": 330,
+          "position_keyframes": {
+            "latitude": 3,
+            "longitude": 5
+          },
+          "real": {
+            "import": {
+              "duration": 330,
+              "totalFrames": 330,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 301,
+              "authored_position_keyframes": 5,
+              "internal_authored_frames": [
+                150,
+                151,
+                270
+              ],
+              "max_internal_one_frame_turn_deg": 1.1608551385686496,
+              "max_internal_one_frame_turn_frame": 34,
+              "p95_internal_one_frame_turn_deg": 1.1238311862007322,
+              "median_internal_one_frame_turn_deg": 0.49493373482414427,
+              "max_keyframe_correlated_turn_deg": 0.7927354757077865,
+              "max_keyframe_local_turn_excess_deg": 0.030432361403654795,
+              "cruise_speed_cv": 0.16521833172520245,
+              "max_abs_cruise_acceleration_mps2": 70794.85199072977
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 147,
+                "latitude": 45.556532075826865,
+                "longitude": 179.99900263813993,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 148,
+                "latitude": 45.562858190076795,
+                "longitude": 179.99943837806262,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 149,
+                "latitude": 45.5692088446239,
+                "longitude": 179.999750126354,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 150,
+                "latitude": 45.575588327471635,
+                "longitude": 179.99993746694145,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 151,
+                "latitude": 45.58200900793763,
+                "longitude": 180,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 152,
+                "latitude": 45.587722422694554,
+                "longitude": -180,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 153,
+                "latitude": 45.593404695198444,
+                "longitude": -179.99993612253755,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 154,
+                "latitude": 45.59900549213251,
+                "longitude": -179.9997435952591,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 267,
+                "latitude": 45.99907007794394,
+                "longitude": -179.50119255038416,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 268,
+                "latitude": 45.9994701921162,
+                "longitude": -179.50066865180102,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 269,
+                "latitude": 45.99976066402086,
+                "longitude": -179.5002962079408,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 270,
+                "latitude": 45.99993782220671,
+                "longitude": -179.50007380664414,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 271,
+                "latitude": 45.99999777777778,
+                "longitude": -179.5,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 272,
+                "latitude": 45.99999777777778,
+                "longitude": -179.5,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 273,
+                "latitude": 45.99999777777778,
+                "longitude": -179.5,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/ANTIMERIDIAN/CURRENT/frame-105.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/ANTIMERIDIAN/CURRENT/frame-180.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/ANTIMERIDIAN/CURRENT/frame-255.png"
+            ]
+          }
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/ANTIMERIDIAN/SMOOTH/earth-studio.esp",
+          "sha256": "64140321f02255e20b423e9e61157b47237344171c5c781e91a4577f0e671030",
+          "total_frames": 330,
+          "position_keyframes": {
+            "latitude": 3,
+            "longitude": 5
+          },
+          "real": {
+            "import": {
+              "duration": 330,
+              "totalFrames": 330,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 301,
+              "authored_position_keyframes": 5,
+              "internal_authored_frames": [
+                150,
+                151,
+                270
+              ],
+              "max_internal_one_frame_turn_deg": 1.1608551385686496,
+              "max_internal_one_frame_turn_frame": 34,
+              "p95_internal_one_frame_turn_deg": 1.1238311862007322,
+              "median_internal_one_frame_turn_deg": 0.49493373482414427,
+              "max_keyframe_correlated_turn_deg": 0.7927354757077865,
+              "max_keyframe_local_turn_excess_deg": 0.030432361403654795,
+              "cruise_speed_cv": 0.16521833172520245,
+              "max_abs_cruise_acceleration_mps2": 70794.85199072977
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 147,
+                "latitude": 45.556532075826865,
+                "longitude": 179.99900263813993,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 148,
+                "latitude": 45.562858190076795,
+                "longitude": 179.99943837806262,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 149,
+                "latitude": 45.5692088446239,
+                "longitude": 179.999750126354,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 150,
+                "latitude": 45.575588327471635,
+                "longitude": 179.99993746694145,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 151,
+                "latitude": 45.58200900793763,
+                "longitude": 180,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 152,
+                "latitude": 45.587722422694554,
+                "longitude": -180,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 153,
+                "latitude": 45.593404695198444,
+                "longitude": -179.99993612253755,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 154,
+                "latitude": 45.59900549213251,
+                "longitude": -179.9997435952591,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 267,
+                "latitude": 45.99907007794394,
+                "longitude": -179.50119255038416,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 268,
+                "latitude": 45.9994701921162,
+                "longitude": -179.50066865180102,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 269,
+                "latitude": 45.99976066402086,
+                "longitude": -179.5002962079408,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 270,
+                "latitude": 45.99993782220671,
+                "longitude": -179.50007380664414,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 271,
+                "latitude": 45.99999777777778,
+                "longitude": -179.5,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 272,
+                "latitude": 45.99999777777778,
+                "longitude": -179.5,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 273,
+                "latitude": 45.99999777777778,
+                "longitude": -179.5,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/ANTIMERIDIAN/SMOOTH/frame-105.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/ANTIMERIDIAN/SMOOTH/frame-180.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/ANTIMERIDIAN/SMOOTH/frame-255.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "APPROACH-FLY",
+      "description": "fly to the colosseum in 6 seconds then orbit the colosseum for 14 seconds",
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/APPROACH-FLY/CURRENT/earth-studio.esp",
+          "sha256": "0d2e1c2f1edc55e50bf572a14a513cbed4f952f6546ec7312a877903178600e2",
+          "total_frames": 600,
+          "position_keyframes": {
+            "latitude": 39,
+            "longitude": 39
+          },
+          "real": {
+            "import": {
+              "duration": 600,
+              "totalFrames": 600,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 181,
+              "authored_position_keyframes": 39,
+              "internal_authored_frames": [
+                144
+              ],
+              "max_internal_one_frame_turn_deg": 0.00004664731613956974,
+              "max_internal_one_frame_turn_frame": 172,
+              "p95_internal_one_frame_turn_deg": 0.00002294983153205976,
+              "median_internal_one_frame_turn_deg": 0.000017703715116113017,
+              "max_keyframe_correlated_turn_deg": null,
+              "max_keyframe_local_turn_excess_deg": null,
+              "cruise_speed_cv": 0.5109611535544105,
+              "max_abs_cruise_acceleration_mps2": 21889.898393793388
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 141,
+                "latitude": 41.87931832918457,
+                "longitude": 12.49585350299756,
+                "altitude": 1528.0254024801263
+              },
+              {
+                "frame": 142,
+                "latitude": 41.87931832918457,
+                "longitude": 12.49585350299756,
+                "altitude": 1528.0254024801263
+              },
+              {
+                "frame": 143,
+                "latitude": 41.87930165216781,
+                "longitude": 12.495859102290042,
+                "altitude": 1470.9454546312465
+              },
+              {
+                "frame": 144,
+                "latitude": 41.87930165216781,
+                "longitude": 12.495859102290042,
+                "altitude": 1470.9454546312465
+              },
+              {
+                "frame": 145,
+                "latitude": 41.879296,
+                "longitude": 12.495861,
+                "altitude": 1419.9129849103417
+              },
+              {
+                "frame": 146,
+                "latitude": 41.879296,
+                "longitude": 12.495861,
+                "altitude": 1419.9129849103417
+              },
+              {
+                "frame": 147,
+                "latitude": 41.879296,
+                "longitude": 12.495838436114747,
+                "altitude": 1370.730571374995
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/APPROACH-FLY/CURRENT/frame-45.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/APPROACH-FLY/CURRENT/frame-90.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/APPROACH-FLY/CURRENT/frame-135.png"
+            ]
+          }
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/APPROACH-FLY/SMOOTH/earth-studio.esp",
+          "sha256": "250fb5b7207747a8ca806022962adb5e494d555671b8304f7fa1d77dbf851a53",
+          "total_frames": 600,
+          "position_keyframes": {
+            "latitude": 43,
+            "longitude": 38
+          },
+          "real": {
+            "import": {
+              "duration": 600,
+              "totalFrames": 600,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 181,
+              "authored_position_keyframes": 43,
+              "internal_authored_frames": [
+                30,
+                60,
+                90,
+                120,
+                150
+              ],
+              "max_internal_one_frame_turn_deg": 0,
+              "max_internal_one_frame_turn_frame": 13,
+              "p95_internal_one_frame_turn_deg": 0,
+              "median_internal_one_frame_turn_deg": 0,
+              "max_keyframe_correlated_turn_deg": 0,
+              "max_keyframe_local_turn_excess_deg": 0,
+              "cruise_speed_cv": 0.3910145054622816,
+              "max_abs_cruise_acceleration_mps2": 25592.32475664267
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 27,
+                "latitude": 41.88977936755401,
+                "longitude": 12.4922,
+                "altitude": 8975.307000929202
+              },
+              {
+                "frame": 28,
+                "latitude": 41.88974476893661,
+                "longitude": 12.4922,
+                "altitude": 8976.58463254959
+              },
+              {
+                "frame": 29,
+                "latitude": 41.88970721713801,
+                "longitude": 12.4922,
+                "altitude": 8985.830270326813
+              },
+              {
+                "frame": 30,
+                "latitude": 41.8896661887507,
+                "longitude": 12.4922,
+                "altitude": 9003.741245657908
+              },
+              {
+                "frame": 31,
+                "latitude": 41.88962097854354,
+                "longitude": 12.4922,
+                "altitude": 9031.08088389831
+              },
+              {
+                "frame": 32,
+                "latitude": 41.889571886206305,
+                "longitude": 12.4922,
+                "altitude": 9060.734774058681
+              },
+              {
+                "frame": 33,
+                "latitude": 41.88951984141443,
+                "longitude": 12.4922,
+                "altitude": 9085.149835547169
+              },
+              {
+                "frame": 57,
+                "latitude": 41.887676938019325,
+                "longitude": 12.4922,
+                "altitude": 8846.902976960702
+              },
+              {
+                "frame": 58,
+                "latitude": 41.88759237129541,
+                "longitude": 12.4922,
+                "altitude": 8841.517117847592
+              },
+              {
+                "frame": 59,
+                "latitude": 41.88750860318842,
+                "longitude": 12.4922,
+                "altitude": 8839.483489273302
+              },
+              {
+                "frame": 60,
+                "latitude": 41.88742576598953,
+                "longitude": 12.4922,
+                "altitude": 8841.051871459218
+              },
+              {
+                "frame": 61,
+                "latitude": 41.887343983275386,
+                "longitude": 12.4922,
+                "altitude": 8846.450868393942
+              },
+              {
+                "frame": 62,
+                "latitude": 41.88726245542286,
+                "longitude": 12.4922,
+                "altitude": 8848.414733422587
+              },
+              {
+                "frame": 63,
+                "latitude": 41.88718031402593,
+                "longitude": 12.4922,
+                "altitude": 8839.89396185721
+              },
+              {
+                "frame": 87,
+                "latitude": 41.88509655436854,
+                "longitude": 12.4922,
+                "altitude": 7630.682389102889
+              },
+              {
+                "frame": 88,
+                "latitude": 41.8850089967122,
+                "longitude": 12.4922,
+                "altitude": 7640.931289278729
+              },
+              {
+                "frame": 89,
+                "latitude": 41.88492169808152,
+                "longitude": 12.4922,
+                "altitude": 7663.326623338075
+              },
+              {
+                "frame": 90,
+                "latitude": 41.88483468669118,
+                "longitude": 12.4922,
+                "altitude": 7698.4105548139305
+              },
+              {
+                "frame": 91,
+                "latitude": 41.884747988670156,
+                "longitude": 12.4922,
+                "altitude": 7746.66681371964
+              },
+              {
+                "frame": 92,
+                "latitude": 41.884661290649134,
+                "longitude": 12.4922,
+                "altitude": 7793.27352937218
+              },
+              {
+                "frame": 93,
+                "latitude": 41.88457427925879,
+                "longitude": 12.4922,
+                "altitude": 7823.583230755497
+              },
+              {
+                "frame": 117,
+                "latitude": 41.88248172233441,
+                "longitude": 12.4922,
+                "altitude": 6586.811251021207
+              },
+              {
+                "frame": 118,
+                "latitude": 41.882398402750795,
+                "longitude": 12.4922,
+                "altitude": 6597.348868938241
+              },
+              {
+                "frame": 119,
+                "latitude": 41.88231566331437,
+                "longitude": 12.4922,
+                "altitude": 6623.372260008139
+              },
+              {
+                "frame": 120,
+                "latitude": 41.88223352191745,
+                "longitude": 12.4922,
+                "altitude": 6665.697761641779
+              },
+              {
+                "frame": 121,
+                "latitude": 41.88215199406492,
+                "longitude": 12.4922,
+                "altitude": 6725.060904791493
+              },
+              {
+                "frame": 122,
+                "latitude": 41.88215199406492,
+                "longitude": 12.4922,
+                "altitude": 6725.060904791493
+              },
+              {
+                "frame": 123,
+                "latitude": 41.88198737415188,
+                "longitude": 12.4922,
+                "altitude": 6828.412369061559
+              },
+              {
+                "frame": 147,
+                "latitude": 41.88008884664597,
+                "longitude": 12.4922,
+                "altitude": 4703.557565557638
+              },
+              {
+                "frame": 148,
+                "latitude": 41.880031076771076,
+                "longitude": 12.4922,
+                "altitude": 4581.202436236107
+              },
+              {
+                "frame": 149,
+                "latitude": 41.87997613592588,
+                "longitude": 12.4922,
+                "altitude": 4464.235120739193
+              },
+              {
+                "frame": 150,
+                "latitude": 41.87992409113401,
+                "longitude": 12.4922,
+                "altitude": 4353.394824041885
+              },
+              {
+                "frame": 151,
+                "latitude": 41.87987499879677,
+                "longitude": 12.4922,
+                "altitude": 4249.3696875343285
+              },
+              {
+                "frame": 152,
+                "latitude": 41.87982861511733,
+                "longitude": 12.4922,
+                "altitude": 4144.253781890683
+              },
+              {
+                "frame": 153,
+                "latitude": 41.87978465888223,
+                "longitude": 12.4922,
+                "altitude": 4030.103231974904
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/APPROACH-FLY/SMOOTH/frame-45.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/APPROACH-FLY/SMOOTH/frame-90.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/APPROACH-FLY/SMOOTH/frame-135.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "MULTI-POINT-SEGMENT",
+      "description": "hover over Helsinki for 1 seconds then fly to Stockholm for 8 seconds then fly to Copenhagen for 8 seconds",
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+          "sha256": "7aac82edd12d3eb0a3649d41c2da966bdc481629760c023e7355539a71d43bbb",
+          "total_frames": 510,
+          "position_keyframes": {
+            "latitude": 4,
+            "longitude": 4
+          },
+          "real": {
+            "import": {
+              "duration": 510,
+              "totalFrames": 510,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 241,
+              "authored_position_keyframes": 4,
+              "internal_authored_frames": [],
+              "max_internal_one_frame_turn_deg": 0.006576522477871549,
+              "max_internal_one_frame_turn_frame": 62,
+              "p95_internal_one_frame_turn_deg": 0.005996120550889827,
+              "median_internal_one_frame_turn_deg": 0.0012652372522552469,
+              "max_keyframe_correlated_turn_deg": null,
+              "max_keyframe_local_turn_excess_deg": null,
+              "cruise_speed_cv": 0.6381086421533801,
+              "max_abs_cruise_acceleration_mps2": 1015277.7607299596
+            },
+            "authored_frame_windows": [],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/CURRENT/frame-90.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/CURRENT/frame-150.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/CURRENT/frame-210.png"
+            ]
+          }
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/SMOOTH/earth-studio.esp",
+          "sha256": "70e1bbf8a87b184b4b4fda9c8e479d92302153a4ab0d24c3516f4ff16b01e034",
+          "total_frames": 510,
+          "position_keyframes": {
+            "latitude": 14,
+            "longitude": 14
+          },
+          "real": {
+            "import": {
+              "duration": 510,
+              "totalFrames": 510,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 241,
+              "authored_position_keyframes": 14,
+              "internal_authored_frames": [
+                70,
+                110,
+                150,
+                190,
+                230
+              ],
+              "max_internal_one_frame_turn_deg": 0.12917305245491661,
+              "max_internal_one_frame_turn_frame": 43,
+              "p95_internal_one_frame_turn_deg": 0.039240863339273346,
+              "median_internal_one_frame_turn_deg": 0.03241392301663382,
+              "max_keyframe_correlated_turn_deg": 0.03986697729669686,
+              "max_keyframe_local_turn_excess_deg": 0.009489205735121686,
+              "cruise_speed_cv": 0.018054328049083114,
+              "max_abs_cruise_acceleration_mps2": 40495.7522140113
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 67,
+                "latitude": 60.14310790870243,
+                "longitude": 24.65582820254876,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 68,
+                "latitude": 60.14106031627195,
+                "longitude": 24.6346018820508,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 69,
+                "latitude": 60.13892480260603,
+                "longitude": 24.61248212520116,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 70,
+                "latitude": 60.13670133582839,
+                "longitude": 24.589468791801753,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 71,
+                "latitude": 60.13439001108266,
+                "longitude": 24.565562999999997,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 72,
+                "latitude": 60.131991148335,
+                "longitude": 24.54078824246401,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 73,
+                "latitude": 60.129504999924336,
+                "longitude": 24.515170920416615,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 107,
+                "latitude": 60.00256363430065,
+                "longitude": 23.273087585593522,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 108,
+                "latitude": 59.99808326980106,
+                "longitude": 23.23135311215829,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 109,
+                "latitude": 59.99359469408891,
+                "longitude": 23.189684179876544,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 110,
+                "latitude": 59.98910056370846,
+                "longitude": 23.14810730076011,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 111,
+                "latitude": 59.98460344747538,
+                "longitude": 23.106648,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 112,
+                "latitude": 59.98010027536985,
+                "longitude": 23.065260515716886,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 113,
+                "latitude": 59.97558612457248,
+                "longitude": 23.02388274386582,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 147,
+                "latitude": 59.81435229811917,
+                "longitude": 21.6240119671077,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 148,
+                "latitude": 59.80937968088536,
+                "longitude": 21.583053079968273,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 149,
+                "latitude": 59.80439574004509,
+                "longitude": 21.54210526287708,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 150,
+                "latitude": 59.79940075279042,
+                "longitude": 21.50116830777724,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 151,
+                "latitude": 59.79439500163443,
+                "longitude": 21.460242,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 152,
+                "latitude": 59.78937865574191,
+                "longitude": 21.41932615906083,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 153,
+                "latitude": 59.78435151366548,
+                "longitude": 21.378420930446122,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 187,
+                "latitude": 59.605827852828995,
+                "longitude": 19.995228705628254,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 188,
+                "latitude": 59.600351427826034,
+                "longitude": 19.95477811929623,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 189,
+                "latitude": 59.594863899379895,
+                "longitude": 19.914339460619686,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 190,
+                "latitude": 59.58936553689678,
+                "longitude": 19.873912499783007,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 191,
+                "latitude": 59.58385661502335,
+                "longitude": 19.833497,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 192,
+                "latitude": 59.57832742830878,
+                "longitude": 19.793035383493084,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 193,
+                "latitude": 59.5727703218812,
+                "longitude": 19.75248614169306,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 227,
+                "latitude": 59.39757098751834,
+                "longitude": 18.52371032805165,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 228,
+                "latitude": 59.39370762229615,
+                "longitude": 18.497593084159348,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 229,
+                "latitude": 59.38995595691189,
+                "longitude": 18.472277934634235,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 230,
+                "latitude": 59.386317411547004,
+                "longitude": 18.447772475424284,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 231,
+                "latitude": 59.3827932008076,
+                "longitude": 18.424083,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 232,
+                "latitude": 59.37938904973117,
+                "longitude": 18.401230653181507,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 233,
+                "latitude": 59.37611022565419,
+                "longitude": 18.379234280545024,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/SMOOTH/frame-90.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/SMOOTH/frame-150.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/SMOOTH/frame-210.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "LATITUDE-ONLY",
+      "description": "hover over 45, 10 for 1 seconds then fly to 46, 10 for 8 seconds",
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LATITUDE-ONLY/CURRENT/earth-studio.esp",
+          "sha256": "d90a65cc95825343d21ef411dec7e17822759549852cd70ffac94866c08c58bc",
+          "total_frames": 270,
+          "position_keyframes": {
+            "latitude": 3,
+            "longitude": 1
+          },
+          "real": {
+            "import": {
+              "duration": 270,
+              "totalFrames": 270,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 241,
+              "authored_position_keyframes": 3,
+              "internal_authored_frames": [
+                222
+              ],
+              "max_internal_one_frame_turn_deg": 0,
+              "max_internal_one_frame_turn_frame": 35,
+              "p95_internal_one_frame_turn_deg": 0,
+              "median_internal_one_frame_turn_deg": 0,
+              "max_keyframe_correlated_turn_deg": null,
+              "max_keyframe_local_turn_excess_deg": null,
+              "cruise_speed_cv": 0.35835956206458774,
+              "max_abs_cruise_acceleration_mps2": 1085343.2831941354
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 219,
+                "latitude": 45.999100120759834,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 220,
+                "latitude": 45.99949191980809,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 221,
+                "latitude": 45.99977254128722,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 222,
+                "latitude": 45.99994136616699,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 223,
+                "latitude": 45.99999777777778,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 224,
+                "latitude": 45.99999777777778,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 225,
+                "latitude": 45.99999777777778,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LATITUDE-ONLY/CURRENT/frame-90.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LATITUDE-ONLY/CURRENT/frame-150.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LATITUDE-ONLY/CURRENT/frame-210.png"
+            ]
+          }
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LATITUDE-ONLY/SMOOTH/earth-studio.esp",
+          "sha256": "30e01e55f9c23c36539cf12b3560d354210c722449d695b9f5abe87bb527cbd9",
+          "total_frames": 270,
+          "position_keyframes": {
+            "latitude": 8,
+            "longitude": 3
+          },
+          "real": {
+            "import": {
+              "duration": 270,
+              "totalFrames": 270,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 241,
+              "authored_position_keyframes": 8,
+              "internal_authored_frames": [
+                62,
+                94,
+                126,
+                158,
+                190,
+                222
+              ],
+              "max_internal_one_frame_turn_deg": 0,
+              "max_internal_one_frame_turn_frame": 43,
+              "p95_internal_one_frame_turn_deg": 0,
+              "median_internal_one_frame_turn_deg": 0,
+              "max_keyframe_correlated_turn_deg": 0,
+              "max_keyframe_local_turn_excess_deg": 0,
+              "cruise_speed_cv": 0.3235201245862825,
+              "max_abs_cruise_acceleration_mps2": 1481496.0867477742
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 59,
+                "latitude": 45.03807903658667,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 60,
+                "latitude": 45.0415683726292,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 61,
+                "latitude": 45.045230908736436,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 62,
+                "latitude": 45.04906606036645,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 63,
+                "latitude": 45.05307288206,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 64,
+                "latitude": 45.057285637184684,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 65,
+                "latitude": 45.06173691591538,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 91,
+                "latitude": 45.23331215010135,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 92,
+                "latitude": 45.24056964353064,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 93,
+                "latitude": 45.24776070676817,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 94,
+                "latitude": 45.25487540524889,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 95,
+                "latitude": 45.26190441798889,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 96,
+                "latitude": 45.26891280420252,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 97,
+                "latitude": 45.27597082001375,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 123,
+                "latitude": 45.470039375818416,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 124,
+                "latitude": 45.47756330809849,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 125,
+                "latitude": 45.48506592669527,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 126,
+                "latitude": 45.49254511164252,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 127,
+                "latitude": 45.49999888888889,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 128,
+                "latitude": 45.50745266613526,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 129,
+                "latitude": 45.51493185108251,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 155,
+                "latitude": 45.70976692704895,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 156,
+                "latitude": 45.71692049306765,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 157,
+                "latitude": 45.72402695776403,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 158,
+                "latitude": 45.73108497357526,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 159,
+                "latitude": 45.73809335978889,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 160,
+                "latitude": 45.74512237252889,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 161,
+                "latitude": 45.75223707100961,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 187,
+                "latitude": 45.92866050347959,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 188,
+                "latitude": 45.93357531581493,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 189,
+                "latitude": 45.938260861862396,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 190,
+                "latitude": 45.942712140593095,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 191,
+                "latitude": 45.94692489571778,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 192,
+                "latitude": 45.95093171741133,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 193,
+                "latitude": 45.95476686904134,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 219,
+                "latitude": 45.9996239423851,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 220,
+                "latitude": 45.999796910397286,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 221,
+                "latitude": 45.99991262783331,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 222,
+                "latitude": 45.99997750528347,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 223,
+                "latitude": 45.99999777777778,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 224,
+                "latitude": 45.99999777777778,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 225,
+                "latitude": 45.99999777777778,
+                "longitude": 10,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LATITUDE-ONLY/SMOOTH/frame-90.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LATITUDE-ONLY/SMOOTH/frame-150.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LATITUDE-ONLY/SMOOTH/frame-210.png"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "LONGITUDE-ONLY",
+      "description": "hover over 45, 10 for 1 seconds then fly to 45, 12 for 8 seconds",
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONGITUDE-ONLY/CURRENT/earth-studio.esp",
+          "sha256": "0de089356ed70453f46e82d46cb5a529ba764fdb7fafd489b1dd66479ecab3c9",
+          "total_frames": 270,
+          "position_keyframes": {
+            "latitude": 1,
+            "longitude": 3
+          },
+          "real": {
+            "import": {
+              "duration": 270,
+              "totalFrames": 270,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 241,
+              "authored_position_keyframes": 3,
+              "internal_authored_frames": [
+                222
+              ],
+              "max_internal_one_frame_turn_deg": 0.0013812281608807098,
+              "max_internal_one_frame_turn_frame": 42,
+              "p95_internal_one_frame_turn_deg": 0.00013360476373236452,
+              "median_internal_one_frame_turn_deg": 0.00005098013002680091,
+              "max_keyframe_correlated_turn_deg": null,
+              "max_keyframe_local_turn_excess_deg": null,
+              "cruise_speed_cv": 0.33759426284750255,
+              "max_abs_cruise_acceleration_mps2": 15822.388302107367
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 219,
+                "latitude": 45,
+                "longitude": 11.99820468197452,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 220,
+                "latitude": 45,
+                "longitude": 11.998988281812354,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 221,
+                "latitude": 45,
+                "longitude": 11.999549526017837,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 222,
+                "latitude": 45,
+                "longitude": 11.999887176527707,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 223,
+                "latitude": 45,
+                "longitude": 12,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 224,
+                "latitude": 45,
+                "longitude": 12,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 225,
+                "latitude": 45,
+                "longitude": 12,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONGITUDE-ONLY/CURRENT/frame-90.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONGITUDE-ONLY/CURRENT/frame-150.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONGITUDE-ONLY/CURRENT/frame-210.png"
+            ]
+          }
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONGITUDE-ONLY/SMOOTH/earth-studio.esp",
+          "sha256": "a1e0c4462dea527d32831c3653e4a68dd74d608ce67300bb3523366d024dfeb2",
+          "total_frames": 270,
+          "position_keyframes": {
+            "latitude": 3,
+            "longitude": 8
+          },
+          "real": {
+            "import": {
+              "duration": 270,
+              "totalFrames": 270,
+              "frameRate": 30,
+              "loading": false,
+              "bodyHasError": false,
+              "imported": false
+            },
+            "metrics": {
+              "frame_count": 241,
+              "authored_position_keyframes": 8,
+              "internal_authored_frames": [
+                62,
+                94,
+                126,
+                158,
+                190,
+                222
+              ],
+              "max_internal_one_frame_turn_deg": 0.0002655706676932823,
+              "max_internal_one_frame_turn_frame": 63,
+              "p95_internal_one_frame_turn_deg": 0.00014605667479372642,
+              "median_internal_one_frame_turn_deg": 0.00004433938420334016,
+              "max_keyframe_correlated_turn_deg": 0.0002655706676932823,
+              "max_keyframe_local_turn_excess_deg": 0.00013550819483043597,
+              "cruise_speed_cv": 0.2993442084819128,
+              "max_abs_cruise_acceleration_mps2": 53154.19607629134
+            },
+            "authored_frame_windows": [
+              {
+                "frame": 59,
+                "latitude": 45,
+                "longitude": 10.077203316545345,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 60,
+                "latitude": 45,
+                "longitude": 10.083531585332503,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 61,
+                "latitude": 45,
+                "longitude": 10.090399378448309,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 62,
+                "latitude": 45,
+                "longitude": 10.097897615608861,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 63,
+                "latitude": 45,
+                "longitude": 10.106147,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 64,
+                "latitude": 45,
+                "longitude": 10.115009666133814,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 65,
+                "latitude": 45,
+                "longitude": 10.124245085664903,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 91,
+                "latitude": 45,
+                "longitude": 10.46396645662759,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 92,
+                "latitude": 45,
+                "longitude": 10.478965791533996,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 93,
+                "latitude": 45,
+                "longitude": 10.493949298488042,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 94,
+                "latitude": 45,
+                "longitude": 10.508902085339345,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 95,
+                "latitude": 45,
+                "longitude": 10.52381,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 96,
+                "latitude": 45,
+                "longitude": 10.538690951128347,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 97,
+                "latitude": 45,
+                "longitude": 10.553571899817163,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 123,
+                "latitude": 45,
+                "longitude": 10.940476209706492,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 124,
+                "latitude": 45,
+                "longitude": 10.955357153831795,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 125,
+                "latitude": 45,
+                "longitude": 10.970238100182836,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 126,
+                "latitude": 45,
+                "longitude": 10.985119048871653,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 127,
+                "latitude": 45,
+                "longitude": 11,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 128,
+                "latitude": 45,
+                "longitude": 11.014880951128347,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 129,
+                "latitude": 45,
+                "longitude": 11.029761899817164,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 155,
+                "latitude": 45,
+                "longitude": 11.416666209706493,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 156,
+                "latitude": 45,
+                "longitude": 11.431547153831795,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 157,
+                "latitude": 45,
+                "longitude": 11.446428100182837,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 158,
+                "latitude": 45,
+                "longitude": 11.461309048871653,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 159,
+                "latitude": 45,
+                "longitude": 11.47619,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 160,
+                "latitude": 45,
+                "longitude": 11.491097914660655,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 161,
+                "latitude": 45,
+                "longitude": 11.506050701511958,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 187,
+                "latitude": 45,
+                "longitude": 11.856179841352002,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 188,
+                "latitude": 45,
+                "longitude": 11.866149992769298,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 189,
+                "latitude": 45,
+                "longitude": 11.875754914335097,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 190,
+                "latitude": 45,
+                "longitude": 11.884990333866185,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 191,
+                "latitude": 45,
+                "longitude": 11.893853,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 192,
+                "latitude": 45,
+                "longitude": 11.902102384391139,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 193,
+                "latitude": 45,
+                "longitude": 11.90960062155169,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 219,
+                "latitude": 45,
+                "longitude": 11.996417078021981,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 220,
+                "latitude": 45,
+                "longitude": 11.997537549266571,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 221,
+                "latitude": 45,
+                "longitude": 11.998523826321913,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 222,
+                "latitude": 45,
+                "longitude": 11.999361041883946,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 223,
+                "latitude": 45,
+                "longitude": 12,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 224,
+                "latitude": 45,
+                "longitude": 12,
+                "altitude": 2500.9750465135867
+              },
+              {
+                "frame": 225,
+                "latitude": 45,
+                "longitude": 12,
+                "altitude": 2500.9750465135867
+              }
+            ],
+            "screenshots": [
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONGITUDE-ONLY/SMOOTH/frame-90.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONGITUDE-ONLY/SMOOTH/frame-150.png",
+              "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONGITUDE-ONLY/SMOOTH/frame-210.png"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

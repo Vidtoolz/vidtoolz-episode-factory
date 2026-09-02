@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "review_type": "position_trajectory_current_vs_smooth",
+  "reviewer": {
+    "name": "Mikko",
+    "authority": "canonical human visual reviewer"
+  },
+  "blind_order_used": false,
+  "current_case_id": "MULTI-POINT-SEGMENT",
+  "records": {
+    "MEDIUM-DIAGONAL": {
+      "case_id": "MEDIUM-DIAGONAL",
+      "case_name": "Medium diagonal",
+      "current_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+      "smooth_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/SMOOTH/earth-studio.esp",
+      "verdict": "BOTH_BAD",
+      "note": "Camera altitude is too low for the movement scale. Apparent ground/image motion is too fast, so CURRENT vs SMOOTH positional quality cannot be judged fairly.",
+      "recorded_at": "2026-08-25T04:35:22.912Z",
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "ab_mapping": null,
+      "last_prepared": "CURRENT",
+      "prepared_at": "2026-08-25T04:20:59.944Z"
+    },
+    "LONG-DIAGONAL": {
+      "case_id": "LONG-DIAGONAL",
+      "case_name": "Long diagonal",
+      "current_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+      "smooth_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/SMOOTH/earth-studio.esp",
+      "verdict": "BOTH_BAD",
+      "note": "Camera altitude is too low for the movement scale. Apparent ground/image motion is too fast, so CURRENT vs SMOOTH positional quality cannot be judged fairly.",
+      "recorded_at": "2026-08-25T04:35:22.913Z",
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "ab_mapping": null,
+      "last_prepared": "CURRENT",
+      "prepared_at": "2026-08-25T04:21:42.737Z"
+    },
+    "HIGH-LATITUDE": {
+      "case_id": "HIGH-LATITUDE",
+      "case_name": "High latitude",
+      "current_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+      "smooth_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/SMOOTH/earth-studio.esp",
+      "verdict": "BOTH_BAD",
+      "note": "Camera altitude is too low for the movement scale. Apparent ground/image motion is too fast, so CURRENT vs SMOOTH positional quality cannot be judged fairly.",
+      "recorded_at": "2026-08-25T04:35:22.914Z",
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "ab_mapping": null,
+      "last_prepared": "CURRENT",
+      "prepared_at": "2026-08-25T04:22:03.665Z"
+    },
+    "MULTI-POINT-SEGMENT": {
+      "case_id": "MULTI-POINT-SEGMENT",
+      "case_name": "Multi-point",
+      "current_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+      "smooth_artifact": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/SMOOTH/earth-studio.esp",
+      "verdict": "BOTH_BAD",
+      "note": "Camera altitude is too low for the movement scale. Apparent ground/image motion is too fast, so CURRENT vs SMOOTH positional quality cannot be judged fairly.",
+      "recorded_at": "2026-08-25T04:35:22.914Z",
+      "reviewer": {
+        "name": "Mikko",
+        "authority": "canonical human visual reviewer"
+      },
+      "blind_order_used": false,
+      "ab_mapping": null,
+      "last_prepared": "SMOOTH",
+      "prepared_at": "2026-08-25T04:30:36.148Z"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "validated_at": "2026-08-25T10:34:18+03:00",
+  "authority": "authenticated Google Earth Studio import and scene-model project info",
+  "result": "PASS",
+  "imports_passed": 16,
+  "imports_total": 16,
+  "checks": [
+    "import completed without an Earth Studio error",
+    "scene duration matched the authored total frame count",
+    "scene frame rate read back as 30 fps"
+  ],
+  "cases": {
+    "MEDIUM-DIAGONAL": {
+      "expected_frames": 390,
+      "CURRENT": "PASS",
+      "HIGHER_A": "PASS",
+      "HIGHER_B": "PASS",
+      "HIGHER_C": "PASS"
+    },
+    "LONG-DIAGONAL": {
+      "expected_frames": 630,
+      "CURRENT": "PASS",
+      "HIGHER_A": "PASS",
+      "HIGHER_B": "PASS",
+      "HIGHER_C": "PASS"
+    },
+    "HIGH-LATITUDE": {
+      "expected_frames": 390,
+      "CURRENT": "PASS",
+      "HIGHER_A": "PASS",
+      "HIGHER_B": "PASS",
+      "HIGHER_C": "PASS"
+    },
+    "MULTI-POINT-SEGMENT": {
+      "expected_frames": 510,
+      "CURRENT": "PASS",
+      "HIGHER_A": "PASS",
+      "HIGHER_B": "PASS",
+      "HIGHER_C": "PASS"
+    }
+  },
+  "human_visual_approval": "PENDING",
+  "note": "Import success is technical evidence only; it does not claim that the revised tilt motion is visually approved."
+}

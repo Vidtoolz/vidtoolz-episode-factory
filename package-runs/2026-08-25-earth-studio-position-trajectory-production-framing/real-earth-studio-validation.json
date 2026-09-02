@@ -1,0 +1,359 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-25T08:25:42.866Z",
+  "authority": "authenticated Google Earth Studio scene.getCurrentWorldValues every-frame readback",
+  "imports": [
+    {
+      "case_id": "MEDIUM-DIAGONAL",
+      "variant": "CURRENT",
+      "artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+      "trace": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/traces/MEDIUM-DIAGONAL-CURRENT.json",
+      "import": {
+        "duration": 390,
+        "totalFrames": 390,
+        "frameRate": 30,
+        "loading": false,
+        "bodyHasError": false,
+        "imported": false
+      },
+      "framing": {
+        "start_altitude_m": 2500.9750465135867,
+        "maximum_altitude_m": 98253.01929803977,
+        "end_altitude_m": 2550.4396507324386,
+        "minimum_tilt_deg": 32.821883,
+        "maximum_tilt_deg": 69.729936,
+        "cruise_sample_count": 297
+      },
+      "trajectory": {
+        "frame_count": 390,
+        "authored_position_keyframes": 18,
+        "internal_authored_frames": [
+          318,
+          327,
+          336,
+          345,
+          354,
+          363,
+          372,
+          381
+        ],
+        "max_internal_one_frame_turn_deg": 1.0435313758714528,
+        "max_internal_one_frame_turn_frame": 41,
+        "p95_internal_one_frame_turn_deg": 0.2697234663407926,
+        "median_internal_one_frame_turn_deg": 0.008355657985362086,
+        "max_keyframe_correlated_turn_deg": 0,
+        "max_keyframe_local_turn_excess_deg": 0,
+        "cruise_speed_cv": 0.28081177530174284,
+        "max_abs_cruise_acceleration_mps2": 22922.278375073147
+      }
+    },
+    {
+      "case_id": "MEDIUM-DIAGONAL",
+      "variant": "SMOOTH",
+      "artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MEDIUM-DIAGONAL/SMOOTH/earth-studio.esp",
+      "trace": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/traces/MEDIUM-DIAGONAL-SMOOTH.json",
+      "import": {
+        "duration": 390,
+        "totalFrames": 390,
+        "frameRate": 30,
+        "loading": false,
+        "bodyHasError": false,
+        "imported": false
+      },
+      "framing": {
+        "start_altitude_m": 2500.9750465135867,
+        "maximum_altitude_m": 98253.01929803977,
+        "end_altitude_m": 2550.4396507324386,
+        "minimum_tilt_deg": 32.821883,
+        "maximum_tilt_deg": 69.729936,
+        "cruise_sample_count": 297
+      },
+      "trajectory": {
+        "frame_count": 390,
+        "authored_position_keyframes": 18,
+        "internal_authored_frames": [
+          318,
+          327,
+          336,
+          345,
+          354,
+          363,
+          372,
+          381
+        ],
+        "max_internal_one_frame_turn_deg": 1.0435313758714528,
+        "max_internal_one_frame_turn_frame": 41,
+        "p95_internal_one_frame_turn_deg": 0.3011934047780187,
+        "median_internal_one_frame_turn_deg": 0.008566404481143763,
+        "max_keyframe_correlated_turn_deg": 0,
+        "max_keyframe_local_turn_excess_deg": 0,
+        "cruise_speed_cv": 0.28081177530174284,
+        "max_abs_cruise_acceleration_mps2": 22922.278375073147
+      }
+    },
+    {
+      "case_id": "LONG-DIAGONAL",
+      "variant": "CURRENT",
+      "artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+      "trace": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/traces/LONG-DIAGONAL-CURRENT.json",
+      "import": {
+        "duration": 630,
+        "totalFrames": 630,
+        "frameRate": 30,
+        "loading": false,
+        "bodyHasError": false,
+        "imported": false
+      },
+      "framing": {
+        "start_altitude_m": 2500.9750465135867,
+        "maximum_altitude_m": 1166333.358260337,
+        "end_altitude_m": 2525.7959369462596,
+        "minimum_tilt_deg": 6.092145999999999,
+        "maximum_tilt_deg": 69.729936,
+        "cruise_sample_count": 532
+      },
+      "trajectory": {
+        "frame_count": 630,
+        "authored_position_keyframes": 18,
+        "internal_authored_frames": [
+          555,
+          564,
+          574,
+          583,
+          593,
+          602,
+          611,
+          621
+        ],
+        "max_internal_one_frame_turn_deg": 0.2251023510897312,
+        "max_internal_one_frame_turn_frame": 545,
+        "p95_internal_one_frame_turn_deg": 0.04087377443033802,
+        "median_internal_one_frame_turn_deg": 0.01503261344009843,
+        "max_keyframe_correlated_turn_deg": 0,
+        "max_keyframe_local_turn_excess_deg": 0,
+        "cruise_speed_cv": 0.16264249472073516,
+        "max_abs_cruise_acceleration_mps2": 31298002.781946145
+      }
+    },
+    {
+      "case_id": "LONG-DIAGONAL",
+      "variant": "SMOOTH",
+      "artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/LONG-DIAGONAL/SMOOTH/earth-studio.esp",
+      "trace": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/traces/LONG-DIAGONAL-SMOOTH.json",
+      "import": {
+        "duration": 630,
+        "totalFrames": 630,
+        "frameRate": 30,
+        "loading": false,
+        "bodyHasError": false,
+        "imported": false
+      },
+      "framing": {
+        "start_altitude_m": 2500.9750465135867,
+        "maximum_altitude_m": 1166333.358260337,
+        "end_altitude_m": 2580.2300567771395,
+        "minimum_tilt_deg": 6.092145999999999,
+        "maximum_tilt_deg": 69.729936,
+        "cruise_sample_count": 532
+      },
+      "trajectory": {
+        "frame_count": 630,
+        "authored_position_keyframes": 18,
+        "internal_authored_frames": [
+          555,
+          564,
+          574,
+          583,
+          593,
+          602,
+          611,
+          621
+        ],
+        "max_internal_one_frame_turn_deg": 0.4290839472839707,
+        "max_internal_one_frame_turn_frame": 548,
+        "p95_internal_one_frame_turn_deg": 0.05644513524453032,
+        "median_internal_one_frame_turn_deg": 0.015124229879461382,
+        "max_keyframe_correlated_turn_deg": 0,
+        "max_keyframe_local_turn_excess_deg": 0,
+        "cruise_speed_cv": 0.14507355724017576,
+        "max_abs_cruise_acceleration_mps2": 136157.24391968834
+      }
+    },
+    {
+      "case_id": "HIGH-LATITUDE",
+      "variant": "CURRENT",
+      "artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+      "trace": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/traces/HIGH-LATITUDE-CURRENT.json",
+      "import": {
+        "duration": 390,
+        "totalFrames": 390,
+        "frameRate": 30,
+        "loading": false,
+        "bodyHasError": false,
+        "imported": false
+      },
+      "framing": {
+        "start_altitude_m": 2500.9750465135867,
+        "maximum_altitude_m": 302660.97900117666,
+        "end_altitude_m": 2521.5599125642475,
+        "minimum_tilt_deg": 18.626659,
+        "maximum_tilt_deg": 69.729936,
+        "cruise_sample_count": 296
+      },
+      "trajectory": {
+        "frame_count": 390,
+        "authored_position_keyframes": 18,
+        "internal_authored_frames": [
+          318,
+          327,
+          336,
+          345,
+          354,
+          363,
+          372,
+          381
+        ],
+        "max_internal_one_frame_turn_deg": 0.6709528732035324,
+        "max_internal_one_frame_turn_frame": 39,
+        "p95_internal_one_frame_turn_deg": 0.16696675315188259,
+        "median_internal_one_frame_turn_deg": 0.003358424963835205,
+        "max_keyframe_correlated_turn_deg": 0,
+        "max_keyframe_local_turn_excess_deg": 0,
+        "cruise_speed_cv": 0.3534021812842075,
+        "max_abs_cruise_acceleration_mps2": 10796208.611868901
+      }
+    },
+    {
+      "case_id": "HIGH-LATITUDE",
+      "variant": "SMOOTH",
+      "artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/HIGH-LATITUDE/SMOOTH/earth-studio.esp",
+      "trace": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/traces/HIGH-LATITUDE-SMOOTH.json",
+      "import": {
+        "duration": 390,
+        "totalFrames": 390,
+        "frameRate": 30,
+        "loading": false,
+        "bodyHasError": false,
+        "imported": false
+      },
+      "framing": {
+        "start_altitude_m": 2500.9750465135867,
+        "maximum_altitude_m": 302660.97900117666,
+        "end_altitude_m": 2521.5599125642475,
+        "minimum_tilt_deg": 18.626659,
+        "maximum_tilt_deg": 69.729936,
+        "cruise_sample_count": 296
+      },
+      "trajectory": {
+        "frame_count": 390,
+        "authored_position_keyframes": 18,
+        "internal_authored_frames": [
+          318,
+          327,
+          336,
+          345,
+          354,
+          363,
+          372,
+          381
+        ],
+        "max_internal_one_frame_turn_deg": 0.545746079131959,
+        "max_internal_one_frame_turn_frame": 310,
+        "p95_internal_one_frame_turn_deg": 0.15372991131584968,
+        "median_internal_one_frame_turn_deg": 0.003634316573993601,
+        "max_keyframe_correlated_turn_deg": 0,
+        "max_keyframe_local_turn_excess_deg": 0,
+        "cruise_speed_cv": 0.3592719073298743,
+        "max_abs_cruise_acceleration_mps2": 11599316.955227526
+      }
+    },
+    {
+      "case_id": "MULTI-POINT-SEGMENT",
+      "variant": "CURRENT",
+      "artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+      "trace": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/traces/MULTI-POINT-SEGMENT-CURRENT.json",
+      "import": {
+        "duration": 510,
+        "totalFrames": 510,
+        "frameRate": 30,
+        "loading": false,
+        "bodyHasError": false,
+        "imported": false
+      },
+      "framing": {
+        "start_altitude_m": 2500.9750465135867,
+        "maximum_altitude_m": 213255.87139773916,
+        "end_altitude_m": 2538.952862607785,
+        "minimum_tilt_deg": 22.804384000000002,
+        "maximum_tilt_deg": 69.729936,
+        "cruise_sample_count": 438
+      },
+      "trajectory": {
+        "frame_count": 510,
+        "authored_position_keyframes": 18,
+        "internal_authored_frames": [
+          462,
+          468,
+          474,
+          480,
+          486,
+          492,
+          498,
+          504
+        ],
+        "max_internal_one_frame_turn_deg": 180,
+        "max_internal_one_frame_turn_frame": 27,
+        "p95_internal_one_frame_turn_deg": 0.11742287796460005,
+        "median_internal_one_frame_turn_deg": 0.011992691147270307,
+        "max_keyframe_correlated_turn_deg": 0,
+        "max_keyframe_local_turn_excess_deg": 0,
+        "cruise_speed_cv": 0.13754565378173494,
+        "max_abs_cruise_acceleration_mps2": 20924.755547563327
+      }
+    },
+    {
+      "case_id": "MULTI-POINT-SEGMENT",
+      "variant": "SMOOTH",
+      "artifact": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MULTI-POINT-SEGMENT/SMOOTH/earth-studio.esp",
+      "trace": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/traces/MULTI-POINT-SEGMENT-SMOOTH.json",
+      "import": {
+        "duration": 510,
+        "totalFrames": 510,
+        "frameRate": 30,
+        "loading": false,
+        "bodyHasError": false,
+        "imported": false
+      },
+      "framing": {
+        "start_altitude_m": 2500.9750465135867,
+        "maximum_altitude_m": 213255.87139773916,
+        "end_altitude_m": 2538.952862607785,
+        "minimum_tilt_deg": 22.804384000000002,
+        "maximum_tilt_deg": 69.729936,
+        "cruise_sample_count": 438
+      },
+      "trajectory": {
+        "frame_count": 510,
+        "authored_position_keyframes": 18,
+        "internal_authored_frames": [
+          462,
+          468,
+          474,
+          480,
+          486,
+          492,
+          498,
+          504
+        ],
+        "max_internal_one_frame_turn_deg": 180,
+        "max_internal_one_frame_turn_frame": 27,
+        "p95_internal_one_frame_turn_deg": 0.1202399716759146,
+        "median_internal_one_frame_turn_deg": 0.0119456853143447,
+        "max_keyframe_correlated_turn_deg": 0,
+        "max_keyframe_local_turn_excess_deg": 0,
+        "cruise_speed_cv": 0.13754565378173494,
+        "max_abs_cruise_acceleration_mps2": 20924.755547563327
+      }
+    }
+  ]
+}

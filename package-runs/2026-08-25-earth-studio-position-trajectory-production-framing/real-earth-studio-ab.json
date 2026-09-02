@@ -1,0 +1,1316 @@
+{
+  "schema_version": 3,
+  "generated_at": "2026-08-25T00:00:00.000Z",
+  "status": "READY_FOR_FAIR_TRAJECTORY_HUMAN_REVIEW_NOT_PRODUCTION_TRAJECTORY",
+  "source_package": "package-runs/2026-08-25-earth-studio-position-trajectory",
+  "calibration_authority": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware-smooth-tilt/review-session.json",
+  "production_framing_model": {
+    "target_apparent_speed_fw_s": 0.8,
+    "selection": "lowest integer-metre altitude satisfying the target with dynamic tilt",
+    "headroom_multiplier": 1,
+    "tilt": "tiltForAltitude(h); 0deg is nadir and larger values are more oblique",
+    "solver": "bounded monotonic binary search, at most 64 iterations, 0.01m interval tolerance, round upward"
+  },
+  "controlled_difference": "Within each pair altitude, tilt, duration, FOV, pan, roll, phase timing, and endpoints are identical; only CURRENT versus SMOOTH ground position interpolation differs.",
+  "cases": [
+    {
+      "id": "MEDIUM-DIAGONAL",
+      "name": "Medium diagonal",
+      "purpose": "Judge directional calm and perspective through a medium crossing.",
+      "total_frames": 390,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "local_start_altitude_m": 2500,
+      "local_arrival_altitude_m": 2500,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "Helsinki",
+          "to": "Stockholm",
+          "start_frame": 30,
+          "end_frame": 390,
+          "duration_s": 12,
+          "distance_m": 395820,
+          "ground_speed_mps": 32985,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 26.455,
+          "readable_altitude_at_1_fw_s_m": 66138
+        }
+      ],
+      "historical_higher_a_altitude_m": 82673,
+      "production_solve": {
+        "altitude_m": 98253,
+        "tilt_deg": 32.821882738734814,
+        "predicted_apparent_speed_fw_s": 0.799994669816485,
+        "target_apparent_speed_fw_s": 0.8,
+        "satisfied": true,
+        "clamped": false,
+        "iterations": 31,
+        "leg_solves": [
+          {
+            "altitude_m": 98253,
+            "tilt_deg": 32.821882738734814,
+            "predicted_apparent_speed_fw_s": 0.799994669816485,
+            "target_apparent_speed_fw_s": 0.8,
+            "satisfied": true,
+            "clamped": false,
+            "iterations": 31
+          }
+        ]
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+          "sha256": "47232e6c2bed41ce4fbb79ea29b659c4ae211d057ec96d774d5667a0ffc0252c",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+          "source_sha256": "aefacd82a1f642059ef1742f9de84fe9e1ddd7cfba9ce1b35405242dcdbf94f2",
+          "total_frames": 390,
+          "altitude_tilt_envelope": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 3.75,
+              "altitude_m": 2651.757483,
+              "tilt_deg": 69.137479,
+              "altitude_rate_per_frame": 116.462066631,
+              "tilt_rate_per_frame": -0.441527009
+            },
+            {
+              "frame": 7.5,
+              "altitude_m": 3655.829414,
+              "tilt_deg": 65.909376,
+              "altitude_rate_per_frame": 471.848983826,
+              "tilt_rate_per_frame": -1.297548761
+            },
+            {
+              "frame": 11.25,
+              "altitude_m": 6866.453401,
+              "tilt_deg": 59.572562,
+              "altitude_rate_per_frame": 1384.744358401,
+              "tilt_rate_per_frame": -2.027419939
+            },
+            {
+              "frame": 15,
+              "altitude_m": 15672.667291,
+              "tilt_deg": 51.27591,
+              "altitude_rate_per_frame": 3596.147436289,
+              "tilt_rate_per_frame": -2.306753353
+            },
+            {
+              "frame": 18.75,
+              "altitude_m": 35772.834338,
+              "tilt_deg": 42.979257,
+              "altitude_rate_per_frame": 7214.238216246,
+              "tilt_rate_per_frame": -2.027419939
+            },
+            {
+              "frame": 22.5,
+              "altitude_m": 67189.26739,
+              "tilt_deg": 36.642443,
+              "altitude_rate_per_frame": 8671.954830338,
+              "tilt_rate_per_frame": -1.297548761
+            },
+            {
+              "frame": 26.25,
+              "altitude_m": 92630.077049,
+              "tilt_deg": 33.41434,
+              "altitude_rate_per_frame": 4068.203926199,
+              "tilt_rate_per_frame": -0.441527009
+            },
+            {
+              "frame": 30,
+              "altitude_m": 98253,
+              "tilt_deg": 32.821883,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 318,
+              "altitude_m": 98253,
+              "tilt_deg": 32.821883,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 327,
+              "altitude_m": 92630.077049,
+              "tilt_deg": 33.41434,
+              "altitude_rate_per_frame": -1695.08496925,
+              "tilt_rate_per_frame": 0.183969587
+            },
+            {
+              "frame": 336,
+              "altitude_m": 67189.26739,
+              "tilt_deg": 36.642443,
+              "altitude_rate_per_frame": -3613.314512641,
+              "tilt_rate_per_frame": 0.540645317
+            },
+            {
+              "frame": 345,
+              "altitude_m": 35772.834338,
+              "tilt_deg": 42.979257,
+              "altitude_rate_per_frame": -3005.932590102,
+              "tilt_rate_per_frame": 0.844758308
+            },
+            {
+              "frame": 354,
+              "altitude_m": 15672.667291,
+              "tilt_deg": 51.27591,
+              "altitude_rate_per_frame": -1498.394765121,
+              "tilt_rate_per_frame": 0.96114723
+            },
+            {
+              "frame": 363,
+              "altitude_m": 6866.453401,
+              "tilt_deg": 59.572562,
+              "altitude_rate_per_frame": -576.976816,
+              "tilt_rate_per_frame": 0.844758308
+            },
+            {
+              "frame": 372,
+              "altitude_m": 3655.829414,
+              "tilt_deg": 65.909376,
+              "altitude_rate_per_frame": -196.603743261,
+              "tilt_rate_per_frame": 0.540645317
+            },
+            {
+              "frame": 381,
+              "altitude_m": 2651.757483,
+              "tilt_deg": 69.137479,
+              "altitude_rate_per_frame": -48.525861096,
+              "tilt_rate_per_frame": 0.183969587
+            },
+            {
+              "frame": 390,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            }
+          ]
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MEDIUM-DIAGONAL/SMOOTH/earth-studio.esp",
+          "sha256": "412023eb691a86c62ad52580ce5e914ccfbb65b818a941ab32cffe7e5007b4c2",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MEDIUM-DIAGONAL/SMOOTH/earth-studio.esp",
+          "source_sha256": "6bf446ae6595c05f00eea39bf1aa903675c92c08f50b8d210fb70bf76d5ea05a",
+          "total_frames": 390,
+          "altitude_tilt_envelope": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 3.75,
+              "altitude_m": 2651.757483,
+              "tilt_deg": 69.137479,
+              "altitude_rate_per_frame": 116.462066631,
+              "tilt_rate_per_frame": -0.441527009
+            },
+            {
+              "frame": 7.5,
+              "altitude_m": 3655.829414,
+              "tilt_deg": 65.909376,
+              "altitude_rate_per_frame": 471.848983826,
+              "tilt_rate_per_frame": -1.297548761
+            },
+            {
+              "frame": 11.25,
+              "altitude_m": 6866.453401,
+              "tilt_deg": 59.572562,
+              "altitude_rate_per_frame": 1384.744358401,
+              "tilt_rate_per_frame": -2.027419939
+            },
+            {
+              "frame": 15,
+              "altitude_m": 15672.667291,
+              "tilt_deg": 51.27591,
+              "altitude_rate_per_frame": 3596.147436289,
+              "tilt_rate_per_frame": -2.306753353
+            },
+            {
+              "frame": 18.75,
+              "altitude_m": 35772.834338,
+              "tilt_deg": 42.979257,
+              "altitude_rate_per_frame": 7214.238216246,
+              "tilt_rate_per_frame": -2.027419939
+            },
+            {
+              "frame": 22.5,
+              "altitude_m": 67189.26739,
+              "tilt_deg": 36.642443,
+              "altitude_rate_per_frame": 8671.954830338,
+              "tilt_rate_per_frame": -1.297548761
+            },
+            {
+              "frame": 26.25,
+              "altitude_m": 92630.077049,
+              "tilt_deg": 33.41434,
+              "altitude_rate_per_frame": 4068.203926199,
+              "tilt_rate_per_frame": -0.441527009
+            },
+            {
+              "frame": 30,
+              "altitude_m": 98253,
+              "tilt_deg": 32.821883,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 318,
+              "altitude_m": 98253,
+              "tilt_deg": 32.821883,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 327,
+              "altitude_m": 92630.077049,
+              "tilt_deg": 33.41434,
+              "altitude_rate_per_frame": -1695.08496925,
+              "tilt_rate_per_frame": 0.183969587
+            },
+            {
+              "frame": 336,
+              "altitude_m": 67189.26739,
+              "tilt_deg": 36.642443,
+              "altitude_rate_per_frame": -3613.314512641,
+              "tilt_rate_per_frame": 0.540645317
+            },
+            {
+              "frame": 345,
+              "altitude_m": 35772.834338,
+              "tilt_deg": 42.979257,
+              "altitude_rate_per_frame": -3005.932590102,
+              "tilt_rate_per_frame": 0.844758308
+            },
+            {
+              "frame": 354,
+              "altitude_m": 15672.667291,
+              "tilt_deg": 51.27591,
+              "altitude_rate_per_frame": -1498.394765121,
+              "tilt_rate_per_frame": 0.96114723
+            },
+            {
+              "frame": 363,
+              "altitude_m": 6866.453401,
+              "tilt_deg": 59.572562,
+              "altitude_rate_per_frame": -576.976816,
+              "tilt_rate_per_frame": 0.844758308
+            },
+            {
+              "frame": 372,
+              "altitude_m": 3655.829414,
+              "tilt_deg": 65.909376,
+              "altitude_rate_per_frame": -196.603743261,
+              "tilt_rate_per_frame": 0.540645317
+            },
+            {
+              "frame": 381,
+              "altitude_m": 2651.757483,
+              "tilt_deg": 69.137479,
+              "altitude_rate_per_frame": -48.525861096,
+              "tilt_rate_per_frame": 0.183969587
+            },
+            {
+              "frame": 390,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "LONG-DIAGONAL",
+      "name": "Long diagonal",
+      "purpose": "Judge whether high cruise feels calm and map-like without losing context.",
+      "total_frames": 630,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "local_start_altitude_m": 2500,
+      "local_arrival_altitude_m": 2500,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "Helsinki",
+          "to": "New York",
+          "start_frame": 30,
+          "end_frame": 630,
+          "duration_s": 20,
+          "distance_m": 6618426,
+          "ground_speed_mps": 330921,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 265.412,
+          "readable_altitude_at_1_fw_s_m": 663531
+        }
+      ],
+      "historical_higher_a_altitude_m": 829414,
+      "production_solve": {
+        "altitude_m": 1166344,
+        "tilt_deg": 6.092145613114781,
+        "predicted_apparent_speed_fw_s": 0.7999994093036662,
+        "target_apparent_speed_fw_s": 0.8,
+        "satisfied": true,
+        "clamped": false,
+        "iterations": 31,
+        "leg_solves": [
+          {
+            "altitude_m": 1166344,
+            "tilt_deg": 6.092145613114781,
+            "predicted_apparent_speed_fw_s": 0.7999994093036662,
+            "target_apparent_speed_fw_s": 0.8,
+            "satisfied": true,
+            "clamped": false,
+            "iterations": 31
+          }
+        ]
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+          "sha256": "e72593b932c8cf7a3afc24a887eaf7a27f837dff527cd131e2d2762fbaeb3598",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+          "source_sha256": "e9ad76d3b9f312f75029e32c371741d43338088895c4194d029fdac44ea47d99",
+          "total_frames": 630,
+          "altitude_tilt_envelope": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 3.75,
+              "altitude_m": 2759.190169,
+              "tilt_deg": 68.708407,
+              "altitude_rate_per_frame": 202.844662362,
+              "tilt_rate_per_frame": -0.761291931
+            },
+            {
+              "frame": 7.5,
+              "altitude_m": 4722.929669,
+              "tilt_deg": 63.142431,
+              "altitude_rate_per_frame": 1020.375073221,
+              "tilt_rate_per_frame": -2.237266082
+            },
+            {
+              "frame": 11.25,
+              "altitude_m": 13565.558663,
+              "tilt_deg": 52.216338,
+              "altitude_rate_per_frame": 4579.373557394,
+              "tilt_rate_per_frame": -3.495728253
+            },
+            {
+              "frame": 15,
+              "altitude_m": 53998.703688,
+              "tilt_deg": 37.911041,
+              "altitude_rate_per_frame": 20740.019941025,
+              "tilt_rate_per_frame": -3.977361923
+            },
+            {
+              "frame": 18.75,
+              "altitude_m": 214945.810375,
+              "tilt_deg": 23.605744,
+              "altitude_rate_per_frame": 72560.016492045,
+              "tilt_rate_per_frame": -3.495728253
+            },
+            {
+              "frame": 22.5,
+              "altitude_m": 617383.743614,
+              "tilt_deg": 12.679651,
+              "altitude_rate_per_frame": 133383.94317056,
+              "tilt_rate_per_frame": -2.237266082
+            },
+            {
+              "frame": 26.25,
+              "altitude_m": 1056781.092016,
+              "tilt_deg": 7.113675,
+              "altitude_rate_per_frame": 77690.333272133,
+              "tilt_rate_per_frame": -0.761291931
+            },
+            {
+              "frame": 30,
+              "altitude_m": 1166344,
+              "tilt_deg": 6.092146,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 555,
+              "altitude_m": 1166344,
+              "tilt_deg": 6.092146,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 564.375,
+              "altitude_m": 1056781.092016,
+              "tilt_deg": 7.113675,
+              "altitude_rate_per_frame": -31076.133308853,
+              "tilt_rate_per_frame": 0.304516772
+            },
+            {
+              "frame": 573.75,
+              "altitude_m": 617383.743614,
+              "tilt_deg": 12.679651,
+              "altitude_rate_per_frame": -53353.577268224,
+              "tilt_rate_per_frame": 0.894906433
+            },
+            {
+              "frame": 583.125,
+              "altitude_m": 214945.810375,
+              "tilt_deg": 23.605744,
+              "altitude_rate_per_frame": -29024.006596818,
+              "tilt_rate_per_frame": 1.398291301
+            },
+            {
+              "frame": 592.5,
+              "altitude_m": 53998.703688,
+              "tilt_deg": 37.911041,
+              "altitude_rate_per_frame": -8296.00797641,
+              "tilt_rate_per_frame": 1.590944769
+            },
+            {
+              "frame": 601.875,
+              "altitude_m": 13565.558663,
+              "tilt_deg": 52.216338,
+              "altitude_rate_per_frame": -1831.749422957,
+              "tilt_rate_per_frame": 1.398291301
+            },
+            {
+              "frame": 611.25,
+              "altitude_m": 4722.929669,
+              "tilt_deg": 63.142431,
+              "altitude_rate_per_frame": -408.150029289,
+              "tilt_rate_per_frame": 0.894906433
+            },
+            {
+              "frame": 620.625,
+              "altitude_m": 2759.190169,
+              "tilt_deg": 68.708407,
+              "altitude_rate_per_frame": -81.137864945,
+              "tilt_rate_per_frame": 0.304516772
+            },
+            {
+              "frame": 630,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            }
+          ]
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/LONG-DIAGONAL/SMOOTH/earth-studio.esp",
+          "sha256": "951e81e2a474ff8d62df1a909e51dad01b35173c4e1ace60108354ef690e20d2",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/LONG-DIAGONAL/SMOOTH/earth-studio.esp",
+          "source_sha256": "6638a5b6301908e276a9dd472e4bb917319d7681e4aeb8f856a72c8e48cc9451",
+          "total_frames": 630,
+          "altitude_tilt_envelope": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 3.75,
+              "altitude_m": 2759.190169,
+              "tilt_deg": 68.708407,
+              "altitude_rate_per_frame": 202.844662362,
+              "tilt_rate_per_frame": -0.761291931
+            },
+            {
+              "frame": 7.5,
+              "altitude_m": 4722.929669,
+              "tilt_deg": 63.142431,
+              "altitude_rate_per_frame": 1020.375073221,
+              "tilt_rate_per_frame": -2.237266082
+            },
+            {
+              "frame": 11.25,
+              "altitude_m": 13565.558663,
+              "tilt_deg": 52.216338,
+              "altitude_rate_per_frame": 4579.373557394,
+              "tilt_rate_per_frame": -3.495728253
+            },
+            {
+              "frame": 15,
+              "altitude_m": 53998.703688,
+              "tilt_deg": 37.911041,
+              "altitude_rate_per_frame": 20740.019941025,
+              "tilt_rate_per_frame": -3.977361923
+            },
+            {
+              "frame": 18.75,
+              "altitude_m": 214945.810375,
+              "tilt_deg": 23.605744,
+              "altitude_rate_per_frame": 72560.016492045,
+              "tilt_rate_per_frame": -3.495728253
+            },
+            {
+              "frame": 22.5,
+              "altitude_m": 617383.743614,
+              "tilt_deg": 12.679651,
+              "altitude_rate_per_frame": 133383.94317056,
+              "tilt_rate_per_frame": -2.237266082
+            },
+            {
+              "frame": 26.25,
+              "altitude_m": 1056781.092016,
+              "tilt_deg": 7.113675,
+              "altitude_rate_per_frame": 77690.333272133,
+              "tilt_rate_per_frame": -0.761291931
+            },
+            {
+              "frame": 30,
+              "altitude_m": 1166344,
+              "tilt_deg": 6.092146,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 555,
+              "altitude_m": 1166344,
+              "tilt_deg": 6.092146,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 564.375,
+              "altitude_m": 1056781.092016,
+              "tilt_deg": 7.113675,
+              "altitude_rate_per_frame": -31076.133308853,
+              "tilt_rate_per_frame": 0.304516772
+            },
+            {
+              "frame": 573.75,
+              "altitude_m": 617383.743614,
+              "tilt_deg": 12.679651,
+              "altitude_rate_per_frame": -53353.577268224,
+              "tilt_rate_per_frame": 0.894906433
+            },
+            {
+              "frame": 583.125,
+              "altitude_m": 214945.810375,
+              "tilt_deg": 23.605744,
+              "altitude_rate_per_frame": -29024.006596818,
+              "tilt_rate_per_frame": 1.398291301
+            },
+            {
+              "frame": 592.5,
+              "altitude_m": 53998.703688,
+              "tilt_deg": 37.911041,
+              "altitude_rate_per_frame": -8296.00797641,
+              "tilt_rate_per_frame": 1.590944769
+            },
+            {
+              "frame": 601.875,
+              "altitude_m": 13565.558663,
+              "tilt_deg": 52.216338,
+              "altitude_rate_per_frame": -1831.749422957,
+              "tilt_rate_per_frame": 1.398291301
+            },
+            {
+              "frame": 611.25,
+              "altitude_m": 4722.929669,
+              "tilt_deg": 63.142431,
+              "altitude_rate_per_frame": -408.150029289,
+              "tilt_rate_per_frame": 0.894906433
+            },
+            {
+              "frame": 620.625,
+              "altitude_m": 2759.190169,
+              "tilt_deg": 68.708407,
+              "altitude_rate_per_frame": -81.137864945,
+              "tilt_rate_per_frame": 0.304516772
+            },
+            {
+              "frame": 630,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "HIGH-LATITUDE",
+      "name": "High latitude",
+      "purpose": "Judge geographic legibility and perspective stability at high latitude.",
+      "total_frames": 390,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "local_start_altitude_m": 2500,
+      "local_arrival_altitude_m": 2500,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "80.0000, 10.0000",
+          "to": "80.5000, 70.0000",
+          "start_frame": 30,
+          "end_frame": 390,
+          "duration_s": 12,
+          "distance_m": 1081297,
+          "ground_speed_mps": 90108,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 72.27,
+          "readable_altitude_at_1_fw_s_m": 180676
+        }
+      ],
+      "historical_higher_a_altitude_m": 225845,
+      "production_solve": {
+        "altitude_m": 302663,
+        "tilt_deg": 18.626658837521447,
+        "predicted_apparent_speed_fw_s": 0.7999997023714985,
+        "target_apparent_speed_fw_s": 0.8,
+        "satisfied": true,
+        "clamped": false,
+        "iterations": 31,
+        "leg_solves": [
+          {
+            "altitude_m": 302663,
+            "tilt_deg": 18.626658837521447,
+            "predicted_apparent_speed_fw_s": 0.7999997023714985,
+            "target_apparent_speed_fw_s": 0.8,
+            "satisfied": true,
+            "clamped": false,
+            "iterations": 31
+          }
+        ]
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+          "sha256": "e31287a3ad52325a413f46eb6381d6a89ea0971da0049a203c8a0417020f2395",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+          "source_sha256": "a7f546e852880d964ee3330609dc10e66955719ed2f002663f16981e2675fcd9",
+          "total_frames": 390,
+          "altitude_tilt_envelope": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 3.75,
+              "altitude_m": 2700.083205,
+              "tilt_deg": 68.909614,
+              "altitude_rate_per_frame": 154.925271919,
+              "tilt_rate_per_frame": -0.61134292
+            },
+            {
+              "frame": 7.5,
+              "altitude_m": 4107.381625,
+              "tilt_deg": 64.439949,
+              "altitude_rate_per_frame": 692.590591431,
+              "tilt_rate_per_frame": -1.796599601
+            },
+            {
+              "frame": 11.25,
+              "altitude_m": 9358.421245,
+              "tilt_deg": 55.66593,
+              "altitude_rate_per_frame": 2465.665438193,
+              "tilt_rate_per_frame": -2.807186877
+            },
+            {
+              "frame": 15,
+              "altitude_m": 27507.408093,
+              "tilt_deg": 44.178298,
+              "altitude_rate_per_frame": 8245.911615523,
+              "tilt_rate_per_frame": -3.193954847
+            },
+            {
+              "frame": 18.75,
+              "altitude_m": 80853.114026,
+              "tilt_deg": 32.690665,
+              "altitude_rate_per_frame": 21302.388898058,
+              "tilt_rate_per_frame": -2.807186877
+            },
+            {
+              "frame": 22.5,
+              "altitude_m": 184218.942658,
+              "tilt_deg": 23.916647,
+              "altitude_rate_per_frame": 31063.173112499,
+              "tilt_rate_per_frame": -1.796599601
+            },
+            {
+              "frame": 26.25,
+              "altitude_m": 280234.882604,
+              "tilt_deg": 19.446981,
+              "altitude_rate_per_frame": 16079.306484594,
+              "tilt_rate_per_frame": -0.61134292
+            },
+            {
+              "frame": 30,
+              "altitude_m": 302663,
+              "tilt_deg": 18.626659,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 318,
+              "altitude_m": 302663,
+              "tilt_deg": 18.626659,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 327,
+              "altitude_m": 280234.882604,
+              "tilt_deg": 19.446981,
+              "altitude_rate_per_frame": -6699.711035247,
+              "tilt_rate_per_frame": 0.254726217
+            },
+            {
+              "frame": 336,
+              "altitude_m": 184218.942658,
+              "tilt_deg": 23.916647,
+              "altitude_rate_per_frame": -12942.988796874,
+              "tilt_rate_per_frame": 0.748583167
+            },
+            {
+              "frame": 345,
+              "altitude_m": 80853.114026,
+              "tilt_deg": 32.690665,
+              "altitude_rate_per_frame": -8875.995374191,
+              "tilt_rate_per_frame": 1.169661199
+            },
+            {
+              "frame": 354,
+              "altitude_m": 27507.408093,
+              "tilt_deg": 44.178298,
+              "altitude_rate_per_frame": -3435.796506468,
+              "tilt_rate_per_frame": 1.33081452
+            },
+            {
+              "frame": 363,
+              "altitude_m": 9358.421245,
+              "tilt_deg": 55.66593,
+              "altitude_rate_per_frame": -1027.360599247,
+              "tilt_rate_per_frame": 1.169661199
+            },
+            {
+              "frame": 372,
+              "altitude_m": 4107.381625,
+              "tilt_deg": 64.439949,
+              "altitude_rate_per_frame": -288.579413096,
+              "tilt_rate_per_frame": 0.748583167
+            },
+            {
+              "frame": 381,
+              "altitude_m": 2700.083205,
+              "tilt_deg": 68.909614,
+              "altitude_rate_per_frame": -64.552196633,
+              "tilt_rate_per_frame": 0.254726217
+            },
+            {
+              "frame": 390,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            }
+          ]
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/HIGH-LATITUDE/SMOOTH/earth-studio.esp",
+          "sha256": "d9dbf26d295b2bc3870e41c85822509aaf7f97fa7a7ea0b09f9d3fc2b92039c1",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/HIGH-LATITUDE/SMOOTH/earth-studio.esp",
+          "source_sha256": "58f8a7480bfaad4c9f25574bc469885b6078869b39efc72ff99d9176c02eb513",
+          "total_frames": 390,
+          "altitude_tilt_envelope": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 3.75,
+              "altitude_m": 2700.083205,
+              "tilt_deg": 68.909614,
+              "altitude_rate_per_frame": 154.925271919,
+              "tilt_rate_per_frame": -0.61134292
+            },
+            {
+              "frame": 7.5,
+              "altitude_m": 4107.381625,
+              "tilt_deg": 64.439949,
+              "altitude_rate_per_frame": 692.590591431,
+              "tilt_rate_per_frame": -1.796599601
+            },
+            {
+              "frame": 11.25,
+              "altitude_m": 9358.421245,
+              "tilt_deg": 55.66593,
+              "altitude_rate_per_frame": 2465.665438193,
+              "tilt_rate_per_frame": -2.807186877
+            },
+            {
+              "frame": 15,
+              "altitude_m": 27507.408093,
+              "tilt_deg": 44.178298,
+              "altitude_rate_per_frame": 8245.911615523,
+              "tilt_rate_per_frame": -3.193954847
+            },
+            {
+              "frame": 18.75,
+              "altitude_m": 80853.114026,
+              "tilt_deg": 32.690665,
+              "altitude_rate_per_frame": 21302.388898058,
+              "tilt_rate_per_frame": -2.807186877
+            },
+            {
+              "frame": 22.5,
+              "altitude_m": 184218.942658,
+              "tilt_deg": 23.916647,
+              "altitude_rate_per_frame": 31063.173112499,
+              "tilt_rate_per_frame": -1.796599601
+            },
+            {
+              "frame": 26.25,
+              "altitude_m": 280234.882604,
+              "tilt_deg": 19.446981,
+              "altitude_rate_per_frame": 16079.306484594,
+              "tilt_rate_per_frame": -0.61134292
+            },
+            {
+              "frame": 30,
+              "altitude_m": 302663,
+              "tilt_deg": 18.626659,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 318,
+              "altitude_m": 302663,
+              "tilt_deg": 18.626659,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 327,
+              "altitude_m": 280234.882604,
+              "tilt_deg": 19.446981,
+              "altitude_rate_per_frame": -6699.711035247,
+              "tilt_rate_per_frame": 0.254726217
+            },
+            {
+              "frame": 336,
+              "altitude_m": 184218.942658,
+              "tilt_deg": 23.916647,
+              "altitude_rate_per_frame": -12942.988796874,
+              "tilt_rate_per_frame": 0.748583167
+            },
+            {
+              "frame": 345,
+              "altitude_m": 80853.114026,
+              "tilt_deg": 32.690665,
+              "altitude_rate_per_frame": -8875.995374191,
+              "tilt_rate_per_frame": 1.169661199
+            },
+            {
+              "frame": 354,
+              "altitude_m": 27507.408093,
+              "tilt_deg": 44.178298,
+              "altitude_rate_per_frame": -3435.796506468,
+              "tilt_rate_per_frame": 1.33081452
+            },
+            {
+              "frame": 363,
+              "altitude_m": 9358.421245,
+              "tilt_deg": 55.66593,
+              "altitude_rate_per_frame": -1027.360599247,
+              "tilt_rate_per_frame": 1.169661199
+            },
+            {
+              "frame": 372,
+              "altitude_m": 4107.381625,
+              "tilt_deg": 64.439949,
+              "altitude_rate_per_frame": -288.579413096,
+              "tilt_rate_per_frame": 0.748583167
+            },
+            {
+              "frame": 381,
+              "altitude_m": 2700.083205,
+              "tilt_deg": 68.909614,
+              "altitude_rate_per_frame": -64.552196633,
+              "tilt_rate_per_frame": 0.254726217
+            },
+            {
+              "frame": 390,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "MULTI-POINT-SEGMENT",
+      "name": "Multi-point",
+      "purpose": "Judge altitude/tilt coherence across the multi-point travel segment.",
+      "total_frames": 510,
+      "frame_rate": 30,
+      "fov_deg": 20,
+      "local_start_altitude_m": 2500,
+      "local_arrival_altitude_m": 2500,
+      "legs": [
+        {
+          "segment_id": 2,
+          "from": "Helsinki",
+          "to": "Stockholm",
+          "start_frame": 30,
+          "end_frame": 270,
+          "duration_s": 8,
+          "distance_m": 395820,
+          "ground_speed_mps": 49477,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 39.683,
+          "readable_altitude_at_1_fw_s_m": 99207
+        },
+        {
+          "segment_id": 3,
+          "from": "Stockholm",
+          "to": "Copenhagen",
+          "start_frame": 270,
+          "end_frame": 510,
+          "duration_s": 8,
+          "distance_m": 522129,
+          "ground_speed_mps": 65266,
+          "tilt_deg": 45,
+          "current_altitude_m": 2500,
+          "current_screen_speed_fw_s": 52.346,
+          "readable_altitude_at_1_fw_s_m": 130865
+        }
+      ],
+      "historical_higher_a_altitude_m": 163581,
+      "production_solve": {
+        "altitude_m": 213257,
+        "tilt_deg": 22.80438432501755,
+        "predicted_apparent_speed_fw_s": 0.7999968019690415,
+        "target_apparent_speed_fw_s": 0.8,
+        "satisfied": true,
+        "clamped": false,
+        "iterations": 31,
+        "leg_solves": [
+          {
+            "altitude_m": 156687,
+            "tilt_deg": 26.692231879089285,
+            "predicted_apparent_speed_fw_s": 0.7999957207646907,
+            "target_apparent_speed_fw_s": 0.8,
+            "satisfied": true,
+            "clamped": false,
+            "iterations": 31
+          },
+          {
+            "altitude_m": 213257,
+            "tilt_deg": 22.80438432501755,
+            "predicted_apparent_speed_fw_s": 0.7999968019690415,
+            "target_apparent_speed_fw_s": 0.8,
+            "satisfied": true,
+            "clamped": false,
+            "iterations": 31
+          }
+        ]
+      },
+      "versions": {
+        "CURRENT": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+          "sha256": "a5c70ab72a0c343ec242102d3375a323a6ed7b01d7e99d10c9cb96e639f49e84",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+          "source_sha256": "7aac82edd12d3eb0a3649d41c2da966bdc481629760c023e7355539a71d43bbb",
+          "total_frames": 510,
+          "altitude_tilt_envelope": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 3.75,
+              "altitude_m": 2684.950643,
+              "tilt_deg": 68.976676,
+              "altitude_rate_per_frame": 142.811159078,
+              "tilt_rate_per_frame": -0.561365247
+            },
+            {
+              "frame": 7.5,
+              "altitude_m": 3961.182759,
+              "tilt_deg": 64.872409,
+              "altitude_rate_per_frame": 619.180299108,
+              "tilt_rate_per_frame": -1.64972644
+            },
+            {
+              "frame": 11.25,
+              "altitude_m": 8498.761173,
+              "tilt_deg": 56.815672,
+              "altitude_rate_per_frame": 2075.715845534,
+              "tilt_rate_per_frame": -2.577697562
+            },
+            {
+              "frame": 15,
+              "altitude_m": 23089.878735,
+              "tilt_deg": 46.26716,
+              "altitude_rate_per_frame": 6416.399181848,
+              "tilt_rate_per_frame": -2.932847004
+            },
+            {
+              "frame": 18.75,
+              "altitude_m": 62731.789863,
+              "tilt_deg": 35.718649,
+              "altitude_rate_per_frame": 15321.453043001,
+              "tilt_rate_per_frame": -2.577697562
+            },
+            {
+              "frame": 22.5,
+              "altitude_m": 134591.74504,
+              "tilt_deg": 27.661912,
+              "altitude_rate_per_frame": 21038.301440444,
+              "tilt_rate_per_frame": -1.64972644
+            },
+            {
+              "frame": 26.25,
+              "altitude_m": 198566.964866,
+              "tilt_deg": 23.557645,
+              "altitude_rate_per_frame": 10561.675865719,
+              "tilt_rate_per_frame": -0.561365247
+            },
+            {
+              "frame": 30,
+              "altitude_m": 213257,
+              "tilt_deg": 22.804384,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 462,
+              "altitude_m": 213257,
+              "tilt_deg": 22.804384,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 468,
+              "altitude_m": 198566.964866,
+              "tilt_deg": 23.557645,
+              "altitude_rate_per_frame": -6601.047416074,
+              "tilt_rate_per_frame": 0.350853279
+            },
+            {
+              "frame": 474,
+              "altitude_m": 134591.74504,
+              "tilt_deg": 27.661912,
+              "altitude_rate_per_frame": -13148.938400278,
+              "tilt_rate_per_frame": 1.031079025
+            },
+            {
+              "frame": 480,
+              "altitude_m": 62731.789863,
+              "tilt_deg": 35.718649,
+              "altitude_rate_per_frame": -9575.908151876,
+              "tilt_rate_per_frame": 1.611060976
+            },
+            {
+              "frame": 486,
+              "altitude_m": 23089.878735,
+              "tilt_deg": 46.26716,
+              "altitude_rate_per_frame": -4010.249488655,
+              "tilt_rate_per_frame": 1.833029377
+            },
+            {
+              "frame": 492,
+              "altitude_m": 8498.761173,
+              "tilt_deg": 56.815672,
+              "altitude_rate_per_frame": -1297.322403458,
+              "tilt_rate_per_frame": 1.611060976
+            },
+            {
+              "frame": 498,
+              "altitude_m": 3961.182759,
+              "tilt_deg": 64.872409,
+              "altitude_rate_per_frame": -386.987686943,
+              "tilt_rate_per_frame": 1.031079025
+            },
+            {
+              "frame": 504,
+              "altitude_m": 2684.950643,
+              "tilt_deg": 68.976676,
+              "altitude_rate_per_frame": -89.256974424,
+              "tilt_rate_per_frame": 0.350853279
+            },
+            {
+              "frame": 510,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            }
+          ]
+        },
+        "SMOOTH": {
+          "esp": "package-runs/2026-08-25-earth-studio-position-trajectory-production-framing/projects/MULTI-POINT-SEGMENT/SMOOTH/earth-studio.esp",
+          "sha256": "896f8ba03e2d7e45b7cc11af8e929ea81ec0214d36c9844048f159a1de1a83f4",
+          "source_esp": "package-runs/2026-08-25-earth-studio-position-trajectory/projects/MULTI-POINT-SEGMENT/SMOOTH/earth-studio.esp",
+          "source_sha256": "70e1bbf8a87b184b4b4fda9c8e479d92302153a4ab0d24c3516f4ff16b01e034",
+          "total_frames": 510,
+          "altitude_tilt_envelope": [
+            {
+              "frame": 0,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 3.75,
+              "altitude_m": 2684.950643,
+              "tilt_deg": 68.976676,
+              "altitude_rate_per_frame": 142.811159078,
+              "tilt_rate_per_frame": -0.561365247
+            },
+            {
+              "frame": 7.5,
+              "altitude_m": 3961.182759,
+              "tilt_deg": 64.872409,
+              "altitude_rate_per_frame": 619.180299108,
+              "tilt_rate_per_frame": -1.64972644
+            },
+            {
+              "frame": 11.25,
+              "altitude_m": 8498.761173,
+              "tilt_deg": 56.815672,
+              "altitude_rate_per_frame": 2075.715845534,
+              "tilt_rate_per_frame": -2.577697562
+            },
+            {
+              "frame": 15,
+              "altitude_m": 23089.878735,
+              "tilt_deg": 46.26716,
+              "altitude_rate_per_frame": 6416.399181848,
+              "tilt_rate_per_frame": -2.932847004
+            },
+            {
+              "frame": 18.75,
+              "altitude_m": 62731.789863,
+              "tilt_deg": 35.718649,
+              "altitude_rate_per_frame": 15321.453043001,
+              "tilt_rate_per_frame": -2.577697562
+            },
+            {
+              "frame": 22.5,
+              "altitude_m": 134591.74504,
+              "tilt_deg": 27.661912,
+              "altitude_rate_per_frame": 21038.301440444,
+              "tilt_rate_per_frame": -1.64972644
+            },
+            {
+              "frame": 26.25,
+              "altitude_m": 198566.964866,
+              "tilt_deg": 23.557645,
+              "altitude_rate_per_frame": 10561.675865719,
+              "tilt_rate_per_frame": -0.561365247
+            },
+            {
+              "frame": 30,
+              "altitude_m": 213257,
+              "tilt_deg": 22.804384,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 462,
+              "altitude_m": 213257,
+              "tilt_deg": 22.804384,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            },
+            {
+              "frame": 468,
+              "altitude_m": 198566.964866,
+              "tilt_deg": 23.557645,
+              "altitude_rate_per_frame": -6601.047416074,
+              "tilt_rate_per_frame": 0.350853279
+            },
+            {
+              "frame": 474,
+              "altitude_m": 134591.74504,
+              "tilt_deg": 27.661912,
+              "altitude_rate_per_frame": -13148.938400278,
+              "tilt_rate_per_frame": 1.031079025
+            },
+            {
+              "frame": 480,
+              "altitude_m": 62731.789863,
+              "tilt_deg": 35.718649,
+              "altitude_rate_per_frame": -9575.908151876,
+              "tilt_rate_per_frame": 1.611060976
+            },
+            {
+              "frame": 486,
+              "altitude_m": 23089.878735,
+              "tilt_deg": 46.26716,
+              "altitude_rate_per_frame": -4010.249488655,
+              "tilt_rate_per_frame": 1.833029377
+            },
+            {
+              "frame": 492,
+              "altitude_m": 8498.761173,
+              "tilt_deg": 56.815672,
+              "altitude_rate_per_frame": -1297.322403458,
+              "tilt_rate_per_frame": 1.611060976
+            },
+            {
+              "frame": 498,
+              "altitude_m": 3961.182759,
+              "tilt_deg": 64.872409,
+              "altitude_rate_per_frame": -386.987686943,
+              "tilt_rate_per_frame": 1.031079025
+            },
+            {
+              "frame": 504,
+              "altitude_m": 2684.950643,
+              "tilt_deg": 68.976676,
+              "altitude_rate_per_frame": -89.256974424,
+              "tilt_rate_per_frame": 0.350853279
+            },
+            {
+              "frame": 510,
+              "altitude_m": 2500,
+              "tilt_deg": 69.729936,
+              "altitude_rate_per_frame": 0,
+              "tilt_rate_per_frame": 0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,883 @@
+{
+  "schema_version": 1,
+  "authority": "authenticated Google Earth Studio scene.getCurrentWorldValues dense readback",
+  "height_tilt_law": {
+    "engine_convention": "0deg is nadir/top-down; increasing degrees move toward the horizon",
+    "low_altitude_m": 500,
+    "high_altitude_m": 12000000,
+    "low_tilt_deg": 72,
+    "high_tilt_deg": 0,
+    "normalized_height": "clamp(log(h/500)/log(12000000/500), 0, 1)",
+    "interpolation": "quintic smootherstep; C2 at practical-height clamps"
+  },
+  "cases": [
+    {
+      "id": "MEDIUM-DIAGONAL",
+      "candidates": {
+        "CURRENT": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MEDIUM-DIAGONAL/CURRENT/earth-studio.esp",
+          "import": {
+            "duration": 390,
+            "totalFrames": 390,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/MEDIUM-DIAGONAL-CURRENT.json",
+          "metrics": {
+            "sampled_frames": 160,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 389,
+              "latitude": 59.2683400730983,
+              "longitude": 18.068599999999975,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 2500.9750465135867,
+            "minimum_tilt_deg": 69.729936,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 0,
+            "tilt_direction_reversals": 0,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 16.36,
+            "cruise_p95_apparent_speed_proxy_fw_s": 16.353
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_A": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MEDIUM-DIAGONAL/HIGHER_A/earth-studio.esp",
+          "import": {
+            "duration": 390,
+            "totalFrames": 390,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/MEDIUM-DIAGONAL-HIGHER_A.json",
+          "metrics": {
+            "sampled_frames": 160,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 389,
+              "latitude": 59.2683400730983,
+              "longitude": 18.068599999999975,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 82673.1748081671,
+            "minimum_tilt_deg": 35.128246,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 22.314,
+            "cruise_p95_apparent_speed_proxy_fw_s": 1.183
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_B": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MEDIUM-DIAGONAL/HIGHER_B/earth-studio.esp",
+          "import": {
+            "duration": 390,
+            "totalFrames": 390,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/MEDIUM-DIAGONAL-HIGHER_B.json",
+          "metrics": {
+            "sampled_frames": 160,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 389,
+              "latitude": 59.2683400730983,
+              "longitude": 18.068599999999975,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 165344.3496263156,
+            "minimum_tilt_deg": 26.002305000000003,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 21.276,
+            "cruise_p95_apparent_speed_proxy_fw_s": 0.654
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_C": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MEDIUM-DIAGONAL/HIGHER_C/earth-studio.esp",
+          "import": {
+            "duration": 390,
+            "totalFrames": 390,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/MEDIUM-DIAGONAL-HIGHER_C.json",
+          "metrics": {
+            "sampled_frames": 160,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 389,
+              "latitude": 59.2683400730983,
+              "longitude": 18.068599999999975,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 330687.6992526312,
+            "minimum_tilt_deg": 17.618704,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 32.019,
+            "cruise_p95_apparent_speed_proxy_fw_s": 0.349
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "LONG-DIAGONAL",
+      "candidates": {
+        "CURRENT": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/LONG-DIAGONAL/CURRENT/earth-studio.esp",
+          "import": {
+            "duration": 630,
+            "totalFrames": 630,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/LONG-DIAGONAL-CURRENT.json",
+          "metrics": {
+            "sampled_frames": 209,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 629,
+              "latitude": 40.651850415598346,
+              "longitude": -74.006,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 2500.9750465135867,
+            "minimum_tilt_deg": 69.729936,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 0,
+            "tilt_direction_reversals": 0,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 190.227,
+            "cruise_p95_apparent_speed_proxy_fw_s": 187.412
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 5,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_A": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/LONG-DIAGONAL/HIGHER_A/earth-studio.esp",
+          "import": {
+            "duration": 630,
+            "totalFrames": 630,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/LONG-DIAGONAL-HIGHER_A.json",
+          "metrics": {
+            "sampled_frames": 209,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 629,
+              "latitude": 40.651850415598346,
+              "longitude": -74.006,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 829406.7212916081,
+            "minimum_tilt_deg": 8.630946,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 51.057,
+            "cruise_p95_apparent_speed_proxy_fw_s": 1.652
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 5,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_B": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/LONG-DIAGONAL/HIGHER_B/earth-studio.esp",
+          "import": {
+            "duration": 630,
+            "totalFrames": 630,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/LONG-DIAGONAL-HIGHER_B.json",
+          "metrics": {
+            "sampled_frames": 209,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 629,
+              "latitude": 40.651850415598346,
+              "longitude": -74.006,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 1658812.4425832161,
+            "minimum_tilt_deg": 3.962892,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 71.009,
+            "cruise_p95_apparent_speed_proxy_fw_s": 0.833
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 5,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_C": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/LONG-DIAGONAL/HIGHER_C/earth-studio.esp",
+          "import": {
+            "duration": 630,
+            "totalFrames": 630,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/LONG-DIAGONAL-HIGHER_C.json",
+          "metrics": {
+            "sampled_frames": 209,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 629,
+              "latitude": 40.651850415598346,
+              "longitude": -74.006,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 3317622.885176413,
+            "minimum_tilt_deg": 1.220698,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 88.485,
+            "cruise_p95_apparent_speed_proxy_fw_s": 0.415
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 5,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "HIGH-LATITUDE",
+      "candidates": {
+        "CURRENT": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/HIGH-LATITUDE/CURRENT/earth-studio.esp",
+          "import": {
+            "duration": 390,
+            "totalFrames": 390,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/HIGH-LATITUDE-CURRENT.json",
+          "metrics": {
+            "sampled_frames": 160,
+            "start": {
+              "frame": 0,
+              "latitude": 79.93902858937611,
+              "longitude": 10,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 389,
+              "latitude": 80.43902831159832,
+              "longitude": 70,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 2500.9750465135867,
+            "minimum_tilt_deg": 69.729936,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 0,
+            "tilt_direction_reversals": 0,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 47.486,
+            "cruise_p95_apparent_speed_proxy_fw_s": 47.435
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 10.52887,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.021581,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_A": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/HIGH-LATITUDE/HIGHER_A/earth-studio.esp",
+          "import": {
+            "duration": 390,
+            "totalFrames": 390,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/HIGH-LATITUDE-HIGHER_A.json",
+          "metrics": {
+            "sampled_frames": 160,
+            "start": {
+              "frame": 0,
+              "latitude": 79.93902858937611,
+              "longitude": 10,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 389,
+              "latitude": 80.43902831159832,
+              "longitude": 70,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 225843.7457519444,
+            "minimum_tilt_deg": 22.100828,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 25.317,
+            "cruise_p95_apparent_speed_proxy_fw_s": 1.512
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 10.52887,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.021581,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_B": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/HIGH-LATITUDE/HIGHER_B/earth-studio.esp",
+          "import": {
+            "duration": 390,
+            "totalFrames": 390,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/HIGH-LATITUDE-HIGHER_B.json",
+          "metrics": {
+            "sampled_frames": 160,
+            "start": {
+              "frame": 0,
+              "latitude": 79.93902858937611,
+              "longitude": 10,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 389,
+              "latitude": 80.43902831159832,
+              "longitude": 70,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 451686.4915038888,
+            "minimum_tilt_deg": 14.251799,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 37.554,
+            "cruise_p95_apparent_speed_proxy_fw_s": 0.806
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 10.52887,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.021581,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_C": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/HIGH-LATITUDE/HIGHER_C/earth-studio.esp",
+          "import": {
+            "duration": 390,
+            "totalFrames": 390,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/HIGH-LATITUDE-HIGHER_C.json",
+          "metrics": {
+            "sampled_frames": 160,
+            "start": {
+              "frame": 0,
+              "latitude": 79.93902858937611,
+              "longitude": 10,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 389,
+              "latitude": 80.43902831159832,
+              "longitude": 70,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 903371.9830077776,
+            "minimum_tilt_deg": 7.951422,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 53.431,
+            "cruise_p95_apparent_speed_proxy_fw_s": 0.416
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 10.52887,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.021581,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "MULTI-POINT-SEGMENT",
+      "candidates": {
+        "CURRENT": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MULTI-POINT-SEGMENT/CURRENT/earth-studio.esp",
+          "import": {
+            "duration": 510,
+            "totalFrames": 510,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/MULTI-POINT-SEGMENT-CURRENT.json",
+          "metrics": {
+            "sampled_frames": 184,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 509,
+              "latitude": 55.61514210265392,
+              "longitude": 12.568299999999994,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 2500.9750465135867,
+            "minimum_tilt_deg": 69.729936,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 0,
+            "tilt_direction_reversals": 0,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 24.892,
+            "cruise_p95_apparent_speed_proxy_fw_s": 24.866
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_A": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MULTI-POINT-SEGMENT/HIGHER_A/earth-studio.esp",
+          "import": {
+            "duration": 510,
+            "totalFrames": 510,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/MULTI-POINT-SEGMENT-HIGHER_A.json",
+          "metrics": {
+            "sampled_frames": 184,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 509,
+              "latitude": 55.61514210265392,
+              "longitude": 12.568299999999994,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 163580.3672334956,
+            "minimum_tilt_deg": 26.139544,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 21.372,
+            "cruise_p95_apparent_speed_proxy_fw_s": 0.997
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_B": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MULTI-POINT-SEGMENT/HIGHER_B/earth-studio.esp",
+          "import": {
+            "duration": 510,
+            "totalFrames": 510,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/MULTI-POINT-SEGMENT-HIGHER_B.json",
+          "metrics": {
+            "sampled_frames": 184,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 509,
+              "latitude": 55.61514210265392,
+              "longitude": 12.568299999999994,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 327160.7344570098,
+            "minimum_tilt_deg": 17.739598,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 31.851,
+            "cruise_p95_apparent_speed_proxy_fw_s": 0.531
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        },
+        "HIGHER_C": {
+          "artifact": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/projects/MULTI-POINT-SEGMENT/HIGHER_C/earth-studio.esp",
+          "import": {
+            "duration": 510,
+            "totalFrames": 510,
+            "frameRate": 30,
+            "loading": false,
+            "bodyHasError": false,
+            "imported": false
+          },
+          "trace": "package-runs/2026-08-25-earth-studio-travel-altitude-height-aware/traces/MULTI-POINT-SEGMENT-HIGHER_C.json",
+          "metrics": {
+            "sampled_frames": 184,
+            "start": {
+              "frame": 0,
+              "latitude": 60.108939606098346,
+              "longitude": 24.9384,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "end": {
+              "frame": 509,
+              "latitude": 55.61514210265392,
+              "longitude": 12.568299999999994,
+              "altitude": 2500.9750465135867,
+              "pan_deg": 0,
+              "tilt_deg": 69.729936,
+              "fov_deg": 20
+            },
+            "minimum_altitude_m": 2500.9750465135867,
+            "maximum_altitude_m": 654319.468924001,
+            "minimum_tilt_deg": 10.664289,
+            "maximum_tilt_deg": 69.729936,
+            "altitude_direction_reversals": 1,
+            "tilt_direction_reversals": 1,
+            "altitude_tilt_phase_violations": 0,
+            "maximum_apparent_speed_proxy_fw_s": 44.798,
+            "cruise_p95_apparent_speed_proxy_fw_s": 0.275
+          },
+          "endpoint_comparison": {
+            "start_error_m": 0,
+            "end_error_m": 0
+          },
+          "target_framing": {
+            "sampled_authored_keys": 6,
+            "maximum_camera_position_readback_error_m": 9.272979,
+            "maximum_tilt_readback_error_deg": 0,
+            "maximum_flat_ground_target_aim_error_deg": 0.018135,
+            "maximum_pan_target_aim_error_deg": 0
+          }
+        }
+      }
+    }
+  ]
+}

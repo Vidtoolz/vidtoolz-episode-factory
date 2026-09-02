@@ -1,0 +1,62 @@
+{
+  "generated_at": "2026-08-25T00:00:00.000Z",
+  "engine_tilt_convention": "0deg is nadir/top-down; increasing degrees move toward the horizon",
+  "movements": [
+    {
+      "movement": "point-to-point travel / fly_to",
+      "altitude_changes": true,
+      "tilt_changes": "only when segment endpoint default changes",
+      "coupled_today": false,
+      "defect_risk": "high: climb/descent can retain one action-default tilt"
+    },
+    {
+      "movement": "distance-aware climb / cruise / descent",
+      "altitude_changes": true,
+      "tilt_changes": "segment-authored",
+      "coupled_today": false,
+      "defect_risk": "high: height phases and tilt phases have separate authority"
+    },
+    {
+      "movement": "zoom_in / approach / reveal",
+      "altitude_changes": true,
+      "tilt_changes": "fixed action default or explicit endpoint",
+      "coupled_today": false,
+      "defect_risk": "high-to-close can remain map-like until a later correction"
+    },
+    {
+      "movement": "zoom_out / pull-back",
+      "altitude_changes": true,
+      "tilt_changes": "fixed except semantic-space limb constraint",
+      "coupled_today": "partial",
+      "defect_risk": "ordinary pull-backs retain fixed tilt; semantic-space is co-sampled"
+    },
+    {
+      "movement": "constant-altitude orbit",
+      "altitude_changes": false,
+      "tilt_changes": false,
+      "coupled_today": "shot-specific morphology anchor",
+      "defect_risk": "none; preserve calibrated angle"
+    },
+    {
+      "movement": "orbit acquisition / changing-altitude orbit",
+      "altitude_changes": true,
+      "tilt_changes": true,
+      "coupled_today": "specialized sampled geometry",
+      "defect_risk": "specialized policy; do not replace blindly"
+    },
+    {
+      "movement": "continuation",
+      "altitude_changes": "after exact inherited boundary",
+      "tilt_changes": "after exact inherited boundary",
+      "coupled_today": false,
+      "defect_risk": "initial state is exact; later height changes can drift independently"
+    },
+    {
+      "movement": "multi-point journey",
+      "altitude_changes": true,
+      "tilt_changes": "per segment",
+      "coupled_today": false,
+      "defect_risk": "repeated segment corrections and phase disagreement"
+    }
+  ]
+}

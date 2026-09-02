@@ -1,0 +1,5078 @@
+[
+  {
+    "frame": 0,
+    "latitude": 79.93902858937611,
+    "longitude": 10,
+    "altitude": 2500.9750465135867,
+    "pan_deg": 0,
+    "tilt_deg": 69.72993638813486,
+    "fov_deg": 20
+  },
+  {
+    "frame": 1,
+    "latitude": 79.93902058938056,
+    "longitude": 10,
+    "altitude": 2501.516444678496,
+    "pan_deg": 0,
+    "tilt_deg": 69.72818472967857,
+    "fov_deg": 20
+  },
+  {
+    "frame": 2,
+    "latitude": 79.93897058940834,
+    "longitude": 10,
+    "altitude": 2505.2005253368634,
+    "pan_deg": 0,
+    "tilt_deg": 69.71627186855244,
+    "fov_deg": 20
+  },
+  {
+    "frame": 3,
+    "latitude": 79.93883658948278,
+    "longitude": 10,
+    "altitude": 2514.900420086145,
+    "pan_deg": 0,
+    "tilt_deg": 69.6849623028871,
+    "fov_deg": 20
+  },
+  {
+    "frame": 4,
+    "latitude": 79.93858458962274,
+    "longitude": 10,
+    "altitude": 2533.2515778031398,
+    "pan_deg": 0,
+    "tilt_deg": 69.6259488174552,
+    "fov_deg": 20
+  },
+  {
+    "frame": 5,
+    "latitude": 79.93818258984612,
+    "longitude": 10,
+    "altitude": 2562.7314326649166,
+    "pan_deg": 0,
+    "tilt_deg": 69.53174563900014,
+    "fov_deg": 20
+  },
+  {
+    "frame": 6,
+    "latitude": 79.93759859017055,
+    "longitude": 10,
+    "altitude": 2605.751634334063,
+    "pan_deg": 0,
+    "tilt_deg": 69.39557252171,
+    "fov_deg": 20
+  },
+  {
+    "frame": 7,
+    "latitude": 79.93680359061219,
+    "longitude": 10,
+    "altitude": 2664.758245163038,
+    "pan_deg": 0,
+    "tilt_deg": 69.21123844259074,
+    "fov_deg": 20
+  },
+  {
+    "frame": 8,
+    "latitude": 79.9357705911861,
+    "longitude": 10,
+    "altitude": 2742.3378447605955,
+    "pan_deg": 0,
+    "tilt_deg": 68.97303188259788,
+    "fov_deg": 20
+  },
+  {
+    "frame": 9,
+    "latitude": 79.93447059190837,
+    "longitude": 10,
+    "altitude": 2841.3294947320937,
+    "pan_deg": 0,
+    "tilt_deg": 68.67562329482344,
+    "fov_deg": 20
+  },
+  {
+    "frame": 10,
+    "latitude": 79.93287559279446,
+    "longitude": 10,
+    "altitude": 2964.944052561114,
+    "pan_deg": 0,
+    "tilt_deg": 68.31398432014787,
+    "fov_deg": 20
+  },
+  {
+    "frame": 11,
+    "latitude": 79.9309525938628,
+    "longitude": 10,
+    "altitude": 3116.8934701319754,
+    "pan_deg": 0,
+    "tilt_deg": 67.8833275800868,
+    "fov_deg": 20
+  },
+  {
+    "frame": 12,
+    "latitude": 79.92867059513054,
+    "longitude": 10,
+    "altitude": 3301.533559864553,
+    "pan_deg": 0,
+    "tilt_deg": 67.37907040476881,
+    "fov_deg": 20
+  },
+  {
+    "frame": 13,
+    "latitude": 79.92599359661776,
+    "longitude": 10,
+    "altitude": 3524.0243330145154,
+    "pan_deg": 0,
+    "tilt_deg": 66.7968255621417,
+    "fov_deg": 20
+  },
+  {
+    "frame": 14,
+    "latitude": 79.92288159834666,
+    "longitude": 10,
+    "altitude": 3790.51245463992,
+    "pan_deg": 0,
+    "tilt_deg": 66.13242183576192,
+    "fov_deg": 20
+  },
+  {
+    "frame": 15,
+    "latitude": 79.91929160034113,
+    "longitude": 10,
+    "altitude": 4108.340627334664,
+    "pan_deg": 0,
+    "tilt_deg": 65.38195701737232,
+    "fov_deg": 20
+  },
+  {
+    "frame": 16,
+    "latitude": 79.91517660262724,
+    "longitude": 10,
+    "altitude": 4486.28878178271,
+    "pan_deg": 0,
+    "tilt_deg": 64.5418853731753,
+    "fov_deg": 20
+  },
+  {
+    "frame": 17,
+    "latitude": 79.91048360523442,
+    "longitude": 10,
+    "altitude": 4934.851745680357,
+    "pan_deg": 0,
+    "tilt_deg": 63.609140721841506,
+    "fov_deg": 20
+  },
+  {
+    "frame": 18,
+    "latitude": 79.90515460819498,
+    "longitude": 10,
+    "altitude": 5466.55746839255,
+    "pan_deg": 0,
+    "tilt_deg": 62.5812947300214,
+    "fov_deg": 20
+  },
+  {
+    "frame": 19,
+    "latitude": 79.89912661154389,
+    "longitude": 10,
+    "altitude": 6096.32873476447,
+    "pan_deg": 0,
+    "tilt_deg": 61.45674770669342,
+    "fov_deg": 20
+  },
+  {
+    "frame": 20,
+    "latitude": 79.89232961532,
+    "longitude": 10,
+    "altitude": 6841.889398084346,
+    "pan_deg": 0,
+    "tilt_deg": 60.23494594424776,
+    "fov_deg": 20
+  },
+  {
+    "frame": 21,
+    "latitude": 79.88468961956443,
+    "longitude": 10,
+    "altitude": 7724.213245157407,
+    "pan_deg": 0,
+    "tilt_deg": 58.91661552678661,
+    "fov_deg": 20
+  },
+  {
+    "frame": 22,
+    "latitude": 79.87612562432219,
+    "longitude": 10,
+    "altitude": 8768.009387656673,
+    "pan_deg": 0,
+    "tilt_deg": 57.5039977346335,
+    "fov_deg": 20
+  },
+  {
+    "frame": 23,
+    "latitude": 79.86655262964055,
+    "longitude": 10,
+    "altitude": 10002.232252866053,
+    "pan_deg": 0,
+    "tilt_deg": 56.00106624246753,
+    "fov_deg": 20
+  },
+  {
+    "frame": 24,
+    "latitude": 79.85588063556943,
+    "longitude": 10,
+    "altitude": 11460.596548443491,
+    "pan_deg": 0,
+    "tilt_deg": 54.413702095020426,
+    "fov_deg": 20
+  },
+  {
+    "frame": 25,
+    "latitude": 79.84401664216057,
+    "longitude": 10,
+    "altitude": 13182.067808412467,
+    "pan_deg": 0,
+    "tilt_deg": 52.74980009444312,
+    "fov_deg": 20
+  },
+  {
+    "frame": 26,
+    "latitude": 79.83086664946612,
+    "longitude": 10,
+    "altitude": 15211.287266111372,
+    "pan_deg": 0,
+    "tilt_deg": 51.019281000910794,
+    "fov_deg": 20
+  },
+  {
+    "frame": 27,
+    "latitude": 79.81633565753887,
+    "longitude": 10,
+    "altitude": 17598.876093218478,
+    "pan_deg": 0,
+    "tilt_deg": 49.233988868490954,
+    "fov_deg": 20
+  },
+  {
+    "frame": 28,
+    "latitude": 79.80033266642945,
+    "longitude": 10,
+    "altitude": 20401.54914333291,
+    "pan_deg": 0,
+    "tilt_deg": 47.40746230700598,
+    "fov_deg": 20
+  },
+  {
+    "frame": 29,
+    "latitude": 79.782772676185,
+    "longitude": 10,
+    "altitude": 23681.953433097864,
+    "pan_deg": 0,
+    "tilt_deg": 45.554581845751144,
+    "fov_deg": 20
+  },
+  {
+    "frame": 30,
+    "latitude": 79.76357768684886,
+    "longitude": 10,
+    "altitude": 27508.13353080011,
+    "pan_deg": 0,
+    "tilt_deg": 43.691111055408236,
+    "fov_deg": 20
+  },
+  {
+    "frame": 31,
+    "latitude": 79.74268569845552,
+    "longitude": 10,
+    "altitude": 31952.517375298787,
+    "pan_deg": 0,
+    "tilt_deg": 41.83316387669937,
+    "fov_deg": 20
+  },
+  {
+    "frame": 32,
+    "latitude": 79.72005271102944,
+    "longitude": 10,
+    "altitude": 37090.31508486112,
+    "pan_deg": 0,
+    "tilt_deg": 39.99664160930992,
+    "fov_deg": 20
+  },
+  {
+    "frame": 33,
+    "latitude": 79.69565572458333,
+    "longitude": 10,
+    "altitude": 42997.233811013604,
+    "pan_deg": 0,
+    "tilt_deg": 38.19668771548528,
+    "fov_deg": 20
+  },
+  {
+    "frame": 34,
+    "latitude": 79.66950273911277,
+    "longitude": 10,
+    "altitude": 49746.43753470536,
+    "pan_deg": 0,
+    "tilt_deg": 36.44720586726717,
+    "fov_deg": 20
+  },
+  {
+    "frame": 35,
+    "latitude": 79.64163075459723,
+    "longitude": 10,
+    "altitude": 57404.725258006874,
+    "pan_deg": 0,
+    "tilt_deg": 34.760477168041994,
+    "fov_deg": 20
+  },
+  {
+    "frame": 36,
+    "latitude": 79.61211877099277,
+    "longitude": 10,
+    "altitude": 66027.96629699759,
+    "pan_deg": 0,
+    "tilt_deg": 33.146898414208444,
+    "fov_deg": 20
+  },
+  {
+    "frame": 37,
+    "latitude": 79.58108578823334,
+    "longitude": 10,
+    "altitude": 75655.91690930758,
+    "pan_deg": 0,
+    "tilt_deg": 31.614847665069938,
+    "fov_deg": 20
+  },
+  {
+    "frame": 38,
+    "latitude": 79.5486938062289,
+    "longitude": 10,
+    "altitude": 86306.64444775964,
+    "pan_deg": 0,
+    "tilt_deg": 30.17066920813997,
+    "fov_deg": 20
+  },
+  {
+    "frame": 39,
+    "latitude": 79.5151558248611,
+    "longitude": 10,
+    "altitude": 97970.8955684924,
+    "pan_deg": 0,
+    "tilt_deg": 28.818759367438375,
+    "fov_deg": 20
+  },
+  {
+    "frame": 40,
+    "latitude": 79.48072884398721,
+    "longitude": 10,
+    "altitude": 110606.85123524301,
+    "pan_deg": 0,
+    "tilt_deg": 27.561728457489785,
+    "fov_deg": 20
+  },
+  {
+    "frame": 41,
+    "latitude": 79.44571386344,
+    "longitude": 10,
+    "altitude": 124135.79699065063,
+    "pan_deg": 0,
+    "tilt_deg": 26.400612386891158,
+    "fov_deg": 20
+  },
+  {
+    "frame": 42,
+    "latitude": 79.41045488302834,
+    "longitude": 10,
+    "altitude": 138439.2836438825,
+    "pan_deg": 0,
+    "tilt_deg": 25.335109056716433,
+    "fov_deg": 20
+  },
+  {
+    "frame": 43,
+    "latitude": 79.37532790254335,
+    "longitude": 10,
+    "altitude": 153358.34312319325,
+    "pan_deg": 0,
+    "tilt_deg": 24.363818547016187,
+    "fov_deg": 20
+  },
+  {
+    "frame": 44,
+    "latitude": 79.34073292176276,
+    "longitude": 10,
+    "altitude": 168695.24286668422,
+    "pan_deg": 0,
+    "tilt_deg": 23.484470938407913,
+    "fov_deg": 20
+  },
+  {
+    "frame": 45,
+    "latitude": 79.30708394045666,
+    "longitude": 10,
+    "altitude": 184218.10389582856,
+    "pan_deg": 0,
+    "tilt_deg": 22.69413052717628,
+    "fov_deg": 20
+  },
+  {
+    "frame": 46,
+    "latitude": 79.274794958395,
+    "longitude": 10,
+    "altitude": 199668.47810917682,
+    "pan_deg": 0,
+    "tilt_deg": 21.989369545155796,
+    "fov_deg": 20
+  },
+  {
+    "frame": 47,
+    "latitude": 79.24426597535557,
+    "longitude": 10,
+    "altitude": 214771.69800248533,
+    "pan_deg": 0,
+    "tilt_deg": 21.366407983963157,
+    "fov_deg": 20
+  },
+  {
+    "frame": 48,
+    "latitude": 79.21586499113388,
+    "longitude": 10,
+    "altitude": 229249.50826613596,
+    "pan_deg": 0,
+    "tilt_deg": 20.821218678381904,
+    "fov_deg": 20
+  },
+  {
+    "frame": 49,
+    "latitude": 79.18991700554943,
+    "longitude": 10,
+    "altitude": 242834.20413044174,
+    "pan_deg": 0,
+    "tilt_deg": 20.34959851030063,
+    "fov_deg": 20
+  },
+  {
+    "frame": 50,
+    "latitude": 79.16668601845558,
+    "longitude": 10,
+    "altitude": 255283.27984852163,
+    "pan_deg": 0,
+    "tilt_deg": 19.947207616878096,
+    "fov_deg": 20
+  },
+  {
+    "frame": 51,
+    "latitude": 79.14636702974389,
+    "longitude": 10,
+    "altitude": 266393.47188912274,
+    "pan_deg": 0,
+    "tilt_deg": 19.609579016308892,
+    "fov_deg": 20
+  },
+  {
+    "frame": 52,
+    "latitude": 79.12906903935388,
+    "longitude": 10,
+    "altitude": 276013.0926092368,
+    "pan_deg": 0,
+    "tilt_deg": 19.332101288986056,
+    "fov_deg": 20
+  },
+  {
+    "frame": 53,
+    "latitude": 79.11481404727334,
+    "longitude": 10,
+    "altitude": 284051.70034235064,
+    "pan_deg": 0,
+    "tilt_deg": 19.109977037961407,
+    "fov_deg": 20
+  },
+  {
+    "frame": 54,
+    "latitude": 79.10352905354279,
+    "longitude": 10,
+    "altitude": 290486.4286710956,
+    "pan_deg": 0,
+    "tilt_deg": 18.938159941594506,
+    "fov_deg": 20
+  },
+  {
+    "frame": 55,
+    "latitude": 79.09504605825558,
+    "longitude": 10,
+    "altitude": 295364.6690533758,
+    "pan_deg": 0,
+    "tilt_deg": 18.811273418651183,
+    "fov_deg": 20
+  },
+  {
+    "frame": 56,
+    "latitude": 79.08910306155724,
+    "longitude": 10,
+    "altitude": 298803.2208037063,
+    "pan_deg": 0,
+    "tilt_deg": 18.7235143435314,
+    "fov_deg": 20
+  },
+  {
+    "frame": 57,
+    "latitude": 79.08534806364332,
+    "longitude": 10,
+    "altitude": 300984.43953311245,
+    "pan_deg": 0,
+    "tilt_deg": 18.668545945989194,
+    "fov_deg": 20
+  },
+  {
+    "frame": 58,
+    "latitude": 79.083347064755,
+    "longitude": 10,
+    "altitude": 302150.2837437557,
+    "pan_deg": 0,
+    "tilt_deg": 18.639385052303584,
+    "fov_deg": 20
+  },
+  {
+    "frame": 59,
+    "latitude": 79.08258306517945,
+    "longitude": 10,
+    "altitude": 302595.4487153934,
+    "pan_deg": 0,
+    "tilt_deg": 18.62829019563286,
+    "fov_deg": 20
+  },
+  {
+    "frame": 60,
+    "latitude": 79.08247106524163,
+    "longitude": 10,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 61,
+    "latitude": 79.08253792355498,
+    "longitude": 10.000132793163061,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 62,
+    "latitude": 79.08271818186049,
+    "longitude": 10.000567197244408,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 63,
+    "latitude": 79.08301441051248,
+    "longitude": 10.001358083817735,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 64,
+    "latitude": 79.08342917147297,
+    "longitude": 10.002561409171363,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 65,
+    "latitude": 79.08396501411625,
+    "longitude": 10.004234175790543,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 66,
+    "latitude": 79.08462447088482,
+    "longitude": 10.00643438987612,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 67,
+    "latitude": 79.0854100528079,
+    "longitude": 10.009221014869382,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 68,
+    "latitude": 79.08632424489579,
+    "longitude": 10.0126539209719,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 69,
+    "latitude": 79.0873695014244,
+    "longitude": 10.016793830670139,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 70,
+    "latitude": 79.08854824112635,
+    "longitude": 10.021702260297644,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 71,
+    "latitude": 79.08986284230625,
+    "longitude": 10.027441457689946,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 72,
+    "latitude": 79.09131563789947,
+    "longitude": 10.034074336012651,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 73,
+    "latitude": 79.0929089104948,
+    "longitude": 10.041664403867628,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 74,
+    "latitude": 79.0946448873429,
+    "longitude": 10.050275691807911,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 75,
+    "latitude": 79.09652573537352,
+    "longitude": 10.059972675417555,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 76,
+    "latitude": 79.09855355624538,
+    "longitude": 10.070820195139703,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 77,
+    "latitude": 79.10073038145347,
+    "longitude": 10.082883373060127,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 78,
+    "latitude": 79.10305816751921,
+    "longitude": 10.096227526880654,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 79,
+    "latitude": 79.10553879128923,
+    "longitude": 10.110918081340202,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 80,
+    "latitude": 79.10817404536826,
+    "longitude": 10.127020477364795,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 81,
+    "latitude": 79.11096563371296,
+    "longitude": 10.14460007925129,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 82,
+    "latitude": 79.11391516741108,
+    "longitude": 10.163722080208288,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 83,
+    "latitude": 79.11702416067169,
+    "longitude": 10.18445140659827,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 84,
+    "latitude": 79.12029402705036,
+    "longitude": 10.206852621240074,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 85,
+    "latitude": 79.12372607593207,
+    "longitude": 10.230989826146157,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 86,
+    "latitude": 79.12732150929395,
+    "longitude": 10.256926565079851,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 87,
+    "latitude": 79.13108141876742,
+    "longitude": 10.284725726327338,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 88,
+    "latitude": 79.13500678301835,
+    "longitude": 10.314449446083529,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 89,
+    "latitude": 79.13909846546122,
+    "longitude": 10.346159012855964,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 90,
+    "latitude": 79.14335721232138,
+    "longitude": 10.379914773287283,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 91,
+    "latitude": 79.14778365105693,
+    "longitude": 10.415776039796299,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 92,
+    "latitude": 79.15237828914931,
+    "longitude": 10.453801000427717,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 93,
+    "latitude": 79.15714151326935,
+    "longitude": 10.494046631292747,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 94,
+    "latitude": 79.16207358882201,
+    "longitude": 10.536568611967425,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 95,
+    "latitude": 79.16717465987156,
+    "longitude": 10.581421244200499,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 96,
+    "latitude": 79.17244474944516,
+    "longitude": 10.6286573742629,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 97,
+    "latitude": 79.17788376021068,
+    "longitude": 10.678328319248266,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 98,
+    "latitude": 79.18349147552178,
+    "longitude": 10.730483797611242,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 99,
+    "latitude": 79.1892675608209,
+    "longitude": 10.785171864201516,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 100,
+    "latitude": 79.19521156538849,
+    "longitude": 10.842438850025445,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 101,
+    "latitude": 79.20132292442423,
+    "longitude": 10.902329306935371,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 102,
+    "latitude": 79.20760096144426,
+    "longitude": 10.964885957416556,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 103,
+    "latitude": 79.21404489097674,
+    "longitude": 11.030149649609626,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 104,
+    "latitude": 79.22065382153608,
+    "longitude": 11.098159317672867,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 105,
+    "latitude": 79.22742675885485,
+    "longitude": 11.168951947557758,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 106,
+    "latitude": 79.23436260935165,
+    "longitude": 11.242562548236492,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 107,
+    "latitude": 79.24146018381182,
+    "longitude": 11.31902412838997,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 108,
+    "latitude": 79.2487182012575,
+    "longitude": 11.398367678531997,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 109,
+    "latitude": 79.25613529298289,
+    "longitude": 11.48062215851624,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 110,
+    "latitude": 79.26371000673097,
+    "longitude": 11.5658144903434,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 111,
+    "latitude": 79.27144081098709,
+    "longitude": 11.653969556158074,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 112,
+    "latitude": 79.27932609936599,
+    "longitude": 11.74511020130069,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 113,
+    "latitude": 79.28736419506859,
+    "longitude": 11.8392572422552,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 114,
+    "latitude": 79.29555335538615,
+    "longitude": 11.93642947931238,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 115,
+    "latitude": 79.3038917762295,
+    "longitude": 12.036643713749896,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 116,
+    "latitude": 79.31237759666286,
+    "longitude": 12.13991476931244,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 117,
+    "latitude": 79.32100890342173,
+    "longitude": 12.246255517761853,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 118,
+    "latitude": 79.32978373539697,
+    "longitude": 12.355676908254651,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 119,
+    "latitude": 79.33870008806679,
+    "longitude": 12.468188000294504,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 120,
+    "latitude": 79.34775591786112,
+    "longitude": 12.583796000000007,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 121,
+    "latitude": 79.35707010556419,
+    "longitude": 12.702803006189754,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 122,
+    "latitude": 79.36675855847514,
+    "longitude": 12.825474907604615,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 123,
+    "latitude": 79.37681443583915,
+    "longitude": 12.95176240250197,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 124,
+    "latitude": 79.38723048035826,
+    "longitude": 13.08161509111585,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 125,
+    "latitude": 79.39799901543739,
+    "longitude": 13.214981480517935,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 126,
+    "latitude": 79.40911194349806,
+    "longitude": 13.351808990333126,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 127,
+    "latitude": 79.42056074542305,
+    "longitude": 13.492043959322643,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 128,
+    "latitude": 79.4323364811923,
+    "longitude": 13.635631652844353,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 129,
+    "latitude": 79.44442979176569,
+    "longitude": 13.782516271200677,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 130,
+    "latitude": 79.45683090226328,
+    "longitude": 13.932640958881365,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 131,
+    "latitude": 79.46952962648817,
+    "longitude": 14.085947814708788,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 132,
+    "latitude": 79.48251537282994,
+    "longitude": 14.242377902891548,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 133,
+    "latitude": 79.49577715158006,
+    "longitude": 14.401871264989865,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 134,
+    "latitude": 79.50930358368146,
+    "longitude": 14.564366932796588,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 135,
+    "latitude": 79.52308291092712,
+    "longitude": 14.729802942135024,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 136,
+    "latitude": 79.53710300761199,
+    "longitude": 14.898116347573307,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 137,
+    "latitude": 79.55135139363333,
+    "longitude": 15.069243238053986,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 138,
+    "latitude": 79.56581524902413,
+    "longitude": 15.243118753436221,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 139,
+    "latitude": 79.58048142989361,
+    "longitude": 15.419677101945098,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 140,
+    "latitude": 79.59533648573853,
+    "longitude": 15.598851578522442,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 141,
+    "latitude": 79.61036667807679,
+    "longitude": 15.780574584071331,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 142,
+    "latitude": 79.62555800034599,
+    "longitude": 15.964777645584547,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 143,
+    "latitude": 79.64089619899732,
+    "longitude": 16.151391437145833,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 144,
+    "latitude": 79.65636679570528,
+    "longitude": 16.3403458017917,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 145,
+    "latitude": 79.67195511060478,
+    "longitude": 16.53156977421864,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 146,
+    "latitude": 79.68764628645698,
+    "longitude": 16.724991604320593,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 147,
+    "latitude": 79.70342531363676,
+    "longitude": 16.920538781538,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 148,
+    "latitude": 79.71927705582834,
+    "longitude": 17.118138060000092,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 149,
+    "latitude": 79.73518627630753,
+    "longitude": 17.317715484438708,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 150,
+    "latitude": 79.75113766468453,
+    "longitude": 17.51919641685177,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 151,
+    "latitude": 79.7671158639769,
+    "longitude": 17.722505563892213,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 152,
+    "latitude": 79.78310549787847,
+    "longitude": 17.927567004956558,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 153,
+    "latitude": 79.7990911980894,
+    "longitude": 18.134304220946518,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 154,
+    "latitude": 79.81505763157122,
+    "longitude": 18.342640123675153,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 155,
+    "latitude": 79.83098952759187,
+    "longitude": 18.552497085887154,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 156,
+    "latitude": 79.84687170442783,
+    "longitude": 18.76379697186337,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 157,
+    "latitude": 79.86268909559467,
+    "longitude": 18.976461168575668,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 158,
+    "latitude": 79.87842677548056,
+    "longitude": 19.19041061735993,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 159,
+    "latitude": 79.89406998426458,
+    "longitude": 19.405565846071255,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 160,
+    "latitude": 79.90960415200743,
+    "longitude": 19.621847001686717,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 161,
+    "latitude": 79.925014921811,
+    "longitude": 19.83917388331767,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 162,
+    "latitude": 79.94028817195061,
+    "longitude": 20.057465975595136,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 163,
+    "latitude": 79.95541003689439,
+    "longitude": 20.27664248238912,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 164,
+    "latitude": 79.97036692713314,
+    "longitude": 20.496622360822386,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 165,
+    "latitude": 79.98514554775491,
+    "longitude": 20.717324355539574,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 166,
+    "latitude": 79.99973291570879,
+    "longitude": 20.938667033190598,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 167,
+    "latitude": 80.01411637571329,
+    "longitude": 21.160568817087835,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 168,
+    "latitude": 80.02828361477546,
+    "longitude": 21.38294802199553,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 169,
+    "latitude": 80.04222267529698,
+    "longitude": 21.605722889010025,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 170,
+    "latitude": 80.05592196675494,
+    "longitude": 21.828811620489205,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 171,
+    "latitude": 80.06937027595359,
+    "longitude": 22.05213241498953,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 172,
+    "latitude": 80.08255677585382,
+    "longitude": 22.275603502168252,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 173,
+    "latitude": 80.09547103299622,
+    "longitude": 22.499143177610108,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 174,
+    "latitude": 80.10810301354101,
+    "longitude": 22.722669837536245,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 175,
+    "latitude": 80.12044308795709,
+    "longitude": 22.946102013355073,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 176,
+    "latitude": 80.13248203439835,
+    "longitude": 23.1693584060136,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 177,
+    "latitude": 80.14421104081237,
+    "longitude": 23.392357920109646,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 178,
+    "latitude": 80.15562170583183,
+    "longitude": 23.615019697725074,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 179,
+    "latitude": 80.16670603850395,
+    "longitude": 23.837263151941613,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 180,
+    "latitude": 80.1774564569161,
+    "longitude": 24.059008000000006,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 181,
+    "latitude": 80.1880225330938,
+    "longitude": 24.281439557357828,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 182,
+    "latitude": 80.19855618029504,
+    "longitude": 24.505760582387268,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 183,
+    "latitude": 80.20905357496594,
+    "longitude": 24.7319178348408,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 184,
+    "latitude": 80.21951081750277,
+    "longitude": 24.959858884542683,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 185,
+    "latitude": 80.22992393568677,
+    "longitude": 25.189532074510765,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 186,
+    "latitude": 80.24028888847596,
+    "longitude": 25.420886485290282,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 187,
+    "latitude": 80.25060157015602,
+    "longitude": 25.65387190042648,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 188,
+    "latitude": 80.2608578148504,
+    "longitude": 25.888438773006072,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 189,
+    "latitude": 80.2710534013861,
+    "longitude": 26.12453819320399,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 190,
+    "latitude": 80.28118405851095,
+    "longitude": 26.36212185677158,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 191,
+    "latitude": 80.29124547045402,
+    "longitude": 26.601142034408326,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 192,
+    "latitude": 80.30123328281871,
+    "longitude": 26.841551541958523,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 193,
+    "latitude": 80.31114310879545,
+    "longitude": 27.083303711382,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 194,
+    "latitude": 80.32097053567753,
+    "longitude": 27.32635236244397,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 195,
+    "latitude": 80.33071113166139,
+    "longitude": 27.570651775076584,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 196,
+    "latitude": 80.34036045290924,
+    "longitude": 27.81615666236391,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 197,
+    "latitude": 80.34991405084969,
+    "longitude": 28.06282214410487,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 198,
+    "latitude": 80.35936747968884,
+    "longitude": 28.310603720909597,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 199,
+    "latitude": 80.36871630410252,
+    "longitude": 28.559457248787197,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 200,
+    "latitude": 80.37795610707704,
+    "longitude": 28.8093389141834,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 201,
+    "latitude": 80.38708249786478,
+    "longitude": 29.06020520942755,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 202,
+    "latitude": 80.39609112001776,
+    "longitude": 29.312012908552248,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 203,
+    "latitude": 80.4049776594625,
+    "longitude": 29.564719043444143,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 204,
+    "latitude": 80.41373785257605,
+    "longitude": 29.818280880292775,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 205,
+    "latitude": 80.42236749422429,
+    "longitude": 30.072655896298187,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 206,
+    "latitude": 80.43086244572126,
+    "longitude": 30.327801756603463,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 207,
+    "latitude": 80.43921864266932,
+    "longitude": 30.58367629141651,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 208,
+    "latitude": 80.44743210263934,
+    "longitude": 30.840237473286237,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 209,
+    "latitude": 80.4554989326515,
+    "longitude": 31.09744339449952,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 210,
+    "latitude": 80.46341533641726,
+    "longitude": 31.355252244563815,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 211,
+    "latitude": 80.47117762130574,
+    "longitude": 31.61362228774317,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 212,
+    "latitude": 80.47878220499803,
+    "longitude": 31.872511840611594,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 213,
+    "latitude": 80.48622562179682,
+    "longitude": 32.13187924959132,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 214,
+    "latitude": 80.49350452855947,
+    "longitude": 32.39168286844168,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 215,
+    "latitude": 80.50061571022667,
+    "longitude": 32.65188103566342,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 216,
+    "latitude": 80.50755608492133,
+    "longitude": 32.91243205178412,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 217,
+    "latitude": 80.51432270859559,
+    "longitude": 33.1732941564897,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 218,
+    "latitude": 80.52091277920724,
+    "longitude": 33.434425505565,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 219,
+    "latitude": 80.52732364041111,
+    "longitude": 33.695784147608435,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 220,
+    "latitude": 80.53355278475323,
+    "longitude": 33.95732800048185,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 221,
+    "latitude": 80.53959785636076,
+    "longitude": 34.21901482745801,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 222,
+    "latitude": 80.54545665312318,
+    "longitude": 34.48080221302567,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 223,
+    "latitude": 80.55112712836512,
+    "longitude": 34.74264753831207,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 224,
+    "latitude": 80.55660739201295,
+    "longitude": 35.004507956080744,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 225,
+    "latitude": 80.56189571126276,
+    "longitude": 35.26634036526028,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 226,
+    "latitude": 80.56699051075884,
+    "longitude": 35.52810138496065,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 227,
+    "latitude": 80.5718903722958,
+    "longitude": 35.78974732792747,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 228,
+    "latitude": 80.57659403405998,
+    "longitude": 36.05123417338814,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 229,
+    "latitude": 80.581100389428,
+    "longitude": 36.312517539236495,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 230,
+    "latitude": 80.58540848534312,
+    "longitude": 36.57355265350262,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 231,
+    "latitude": 80.58951752029193,
+    "longitude": 36.83429432505355,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 232,
+    "latitude": 80.59342684190477,
+    "longitude": 37.094696913462826,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 233,
+    "latitude": 80.59713594420597,
+    "longitude": 37.35471429798966,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 234,
+    "latitude": 80.6006444645403,
+    "longitude": 37.614299845601124,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 235,
+    "latitude": 80.6039521802023,
+    "longitude": 37.87340637796726,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 236,
+    "latitude": 80.60705900479729,
+    "longitude": 38.13198613735838,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 237,
+    "latitude": 80.60996498436097,
+    "longitude": 38.38999075136505,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 238,
+    "latitude": 80.61267029326669,
+    "longitude": 38.647371196361405,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 239,
+    "latitude": 80.61517522994708,
+    "longitude": 38.90407775962154,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 240,
+    "latitude": 80.61748021245833,
+    "longitude": 39.16005999999999,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 241,
+    "latitude": 80.61959487761465,
+    "longitude": 39.41624600101491,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 242,
+    "latitude": 80.62152774310692,
+    "longitude": 39.67355719671701,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 243,
+    "latitude": 80.62327770043646,
+    "longitude": 39.93193341005906,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 244,
+    "latitude": 80.62484373165677,
+    "longitude": 40.191315495933054,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 245,
+    "latitude": 80.62622491395229,
+    "longitude": 40.45164528485685,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 246,
+    "latitude": 80.6274204241474,
+    "longitude": 40.71286552896731,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 247,
+    "latitude": 80.62842954312185,
+    "longitude": 40.97491985016356,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 248,
+    "latitude": 80.62925166010783,
+    "longitude": 41.23775269025458,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 249,
+    "latitude": 80.62988627684413,
+    "longitude": 41.5013092629722,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 250,
+    "latitude": 80.63033301156054,
+    "longitude": 41.765535507724394,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 251,
+    "latitude": 80.63059160276728,
+    "longitude": 42.0303780449637,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 252,
+    "latitude": 80.63066191282286,
+    "longitude": 42.29578413306183,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 253,
+    "latitude": 80.63054393125446,
+    "longitude": 42.56170162657972,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 254,
+    "latitude": 80.63023777780523,
+    "longitude": 42.82807893583424,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 255,
+    "latitude": 80.62974370518347,
+    "longitude": 43.09486498766407,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 256,
+    "latitude": 80.6290621014897,
+    "longitude": 43.36200918730722,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 257,
+    "latitude": 80.628193492299,
+    "longitude": 43.62946138130013,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 258,
+    "latitude": 80.62713854237691,
+    "longitude": 43.89717182132051,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 259,
+    "latitude": 80.62589805700958,
+    "longitude": 44.16509112889321,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 260,
+    "latitude": 80.62447298293063,
+    "longitude": 44.433170260886044,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 261,
+    "latitude": 80.62286440882914,
+    "longitude": 44.701360475724016,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 262,
+    "latitude": 80.62107356542637,
+    "longitude": 44.96961330025266,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 263,
+    "latitude": 80.61910182511062,
+    "longitude": 45.23788049718533,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 264,
+    "latitude": 80.61695070112361,
+    "longitude": 45.506114033071384,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 265,
+    "latitude": 80.61462184629352,
+    "longitude": 45.77426604672158,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 266,
+    "latitude": 80.61211705131433,
+    "longitude": 46.04228881803277,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 267,
+    "latitude": 80.60943824257319,
+    "longitude": 46.31013473715362,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 268,
+    "latitude": 80.60658747953153,
+    "longitude": 46.577756273932664,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 269,
+    "latitude": 80.60356695166871,
+    "longitude": 46.84510594759499,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 270,
+    "latitude": 80.6003789750001,
+    "longitude": 47.112136296591814,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 271,
+    "latitude": 80.5970259881849,
+    "longitude": 47.37879984856838,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 272,
+    "latitude": 80.59351054824162,
+    "longitude": 47.6450490903982,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 273,
+    "latitude": 80.58983532589255,
+    "longitude": 47.91083643822884,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 274,
+    "latitude": 80.58600310056096,
+    "longitude": 48.17611420748685,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 275,
+    "latitude": 80.58201675504651,
+    "longitude": 48.440834582789904,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 276,
+    "latitude": 80.57787926990821,
+    "longitude": 48.7049495877107,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 277,
+    "latitude": 80.57359371758409,
+    "longitude": 48.96841105434143,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 278,
+    "latitude": 80.56916325627975,
+    "longitude": 49.23117059260335,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 279,
+    "latitude": 80.56459112365863,
+    "longitude": 49.49317955924684,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 280,
+    "latitude": 80.55988063036779,
+    "longitude": 49.754389026485796,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 281,
+    "latitude": 80.5550351534333,
+    "longitude": 50.01474975021071,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 282,
+    "latitude": 80.55005812956023,
+    "longitude": 50.2742121377201,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 283,
+    "latitude": 80.5449530483711,
+    "longitude": 50.532726214912515,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 284,
+    "latitude": 80.53972344561714,
+    "longitude": 50.79024159287562,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 285,
+    "latitude": 80.53437289639533,
+    "longitude": 51.046707433809985,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 286,
+    "latitude": 80.52890500840337,
+    "longitude": 51.30207241622094,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 287,
+    "latitude": 80.52332341526349,
+    "longitude": 51.55628469931074,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 288,
+    "latitude": 80.51763176994422,
+    "longitude": 51.80929188649901,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 289,
+    "latitude": 80.51183373830756,
+    "longitude": 52.06104098799713,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 290,
+    "latitude": 80.50593299280783,
+    "longitude": 52.31147838236106,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 291,
+    "latitude": 80.49993320636443,
+    "longitude": 52.56054977693762,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 292,
+    "latitude": 80.4938380464313,
+    "longitude": 52.80820016712187,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 293,
+    "latitude": 80.48765116928112,
+    "longitude": 53.05437379433465,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 294,
+    "latitude": 80.48137621452139,
+    "longitude": 53.29901410262565,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 295,
+    "latitude": 80.47501679985712,
+    "longitude": 53.54206369380236,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 296,
+    "latitude": 80.46857651611168,
+    "longitude": 53.78346428097868,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 297,
+    "latitude": 80.46205892251632,
+    "longitude": 54.02315664043246,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 298,
+    "latitude": 80.45546754227527,
+    "longitude": 54.26108056165279,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 299,
+    "latitude": 80.44880585841275,
+    "longitude": 54.49717479545069,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 300,
+    "latitude": 80.44207730990445,
+    "longitude": 54.73137700000001,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 301,
+    "latitude": 80.43514974142002,
+    "longitude": 54.965114784774784,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 302,
+    "latitude": 80.4278928524534,
+    "longitude": 55.19979243841695,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 303,
+    "latitude": 80.42031311204488,
+    "longitude": 55.435311689919104,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 304,
+    "latitude": 80.41241736898246,
+    "longitude": 55.67157416342144,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 305,
+    "latitude": 80.40421285396602,
+    "longitude": 55.908481405497895,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 306,
+    "latitude": 80.39570718077815,
+    "longitude": 56.14593491247706,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 307,
+    "latitude": 80.3869083464057,
+    "longitude": 56.38383615777744,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 308,
+    "latitude": 80.37782473005674,
+    "longitude": 56.62208661923563,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 309,
+    "latitude": 80.36846509102298,
+    "longitude": 56.86058780640596,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 310,
+    "latitude": 80.35883856534255,
+    "longitude": 57.09924128781046,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 311,
+    "latitude": 80.35883856534255,
+    "longitude": 57.09924128781046,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 312,
+    "latitude": 80.3388232531922,
+    "longitude": 57.576611865236146,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 313,
+    "latitude": 80.32845457494557,
+    "longitude": 57.81513263727874,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 314,
+    "latitude": 80.31785921087899,
+    "longitude": 58.053413109417505,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 315,
+    "latitude": 80.31785921087899,
+    "longitude": 58.053413109417505,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 316,
+    "latitude": 80.2960324562332,
+    "longitude": 58.52886244990415,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 317,
+    "latitude": 80.28482389308647,
+    "longitude": 58.76583654318736,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 318,
+    "latitude": 80.28482389308647,
+    "longitude": 58.76583654318736,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 319,
+    "latitude": 80.26187575964931,
+    "longitude": 59.23779864398418,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 320,
+    "latitude": 80.25016079035095,
+    "longitude": 59.472593589755064,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 321,
+    "latitude": 80.25016079035095,
+    "longitude": 59.472593589755064,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 322,
+    "latitude": 80.22631248436957,
+    "longitude": 59.9393312010632,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 323,
+    "latitude": 80.21420521867685,
+    "longitude": 60.171082976843905,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 324,
+    "latitude": 80.21420521867685,
+    "longitude": 60.171082976843905,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 325,
+    "latitude": 80.18969113653478,
+    "longitude": 60.63087838609158,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 326,
+    "latitude": 80.17731149799789,
+    "longitude": 60.8587337444923,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 327,
+    "latitude": 80.17731149799789,
+    "longitude": 60.8587337444923,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 328,
+    "latitude": 80.15237596710699,
+    "longitude": 61.30989275884858,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 329,
+    "latitude": 80.13984794981894,
+    "longitude": 61.53301117843873,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 330,
+    "latitude": 80.13984794981894,
+    "longitude": 61.53301117843873,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 331,
+    "latitude": 80.11474155182466,
+    "longitude": 61.97386693925088,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 332,
+    "latitude": 80.10219130349094,
+    "longitude": 62.19142248563966,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 333,
+    "latitude": 80.10219130349094,
+    "longitude": 62.19142248563966,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 334,
+    "latitude": 80.07716692847507,
+    "longitude": 62.620339092439536,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 335,
+    "latitude": 80.06472074069367,
+    "longitude": 62.831522178989644,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 336,
+    "latitude": 80.06472074069367,
+    "longitude": 62.831522178989644,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 337,
+    "latitude": 80.04002954361613,
+    "longitude": 63.24689810317446,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 338,
+    "latitude": 80.02781183811078,
+    "longitude": 63.45091714205094,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 339,
+    "latitude": 80.02781183811078,
+    "longitude": 63.45091714205094,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 340,
+    "latitude": 80.00369927696767,
+    "longitude": 63.851188412984925,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 341,
+    "latitude": 79.9918306767733,
+    "longitude": 64.0472713485982,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 342,
+    "latitude": 79.98010433555677,
+    "longitude": 64.24054092993754,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 343,
+    "latitude": 79.98010433555677,
+    "longitude": 64.24054092993754,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 344,
+    "latitude": 79.95712837196302,
+    "longitude": 64.61831021596166,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 345,
+    "latitude": 79.94590304456625,
+    "longitude": 64.80264708737488,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 346,
+    "latitude": 79.93486853404278,
+    "longitude": 64.98384496685586,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 347,
+    "latitude": 79.93486853404278,
+    "longitude": 64.98384496685586,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 348,
+    "latitude": 79.91341724707036,
+    "longitude": 65.33650751326854,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 349,
+    "latitude": 79.90302229382607,
+    "longitude": 65.50781627212388,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 350,
+    "latitude": 79.89286178211918,
+    "longitude": 65.67567424732493,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 351,
+    "latitude": 79.89286178211918,
+    "longitude": 65.67567424732493,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 352,
+    "latitude": 79.8732839082075,
+    "longitude": 66.00073601350246,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 353,
+    "latitude": 79.86388554968906,
+    "longitude": 66.1577912124514,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 354,
+    "latitude": 79.86388554968906,
+    "longitude": 66.1577912124514,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 355,
+    "latitude": 79.84591471550985,
+    "longitude": 66.46058583955568,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 356,
+    "latitude": 79.83735900114104,
+    "longitude": 66.60618237610296,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 357,
+    "latitude": 79.82910029710965,
+    "longitude": 66.74781808061195,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 358,
+    "latitude": 79.82910029710965,
+    "longitude": 66.74781808061195,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 359,
+    "latitude": 79.81350326526137,
+    "longitude": 67.01893192434605,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 360,
+    "latitude": 79.80617866318167,
+    "longitude": 67.14827500000001,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 361,
+    "latitude": 79.80617866318167,
+    "longitude": 67.14827500000001,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 362,
+    "latitude": 79.79202299658661,
+    "longitude": 67.3961254127189,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 363,
+    "latitude": 79.78507661881886,
+    "longitude": 67.51509188640495,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 364,
+    "latitude": 79.77822065140151,
+    "longitude": 67.6307650811458,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 365,
+    "latitude": 79.77822065140151,
+    "longitude": 67.6307650811458,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 366,
+    "latitude": 79.76478822810523,
+    "longitude": 67.85228097366007,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 367,
+    "latitude": 79.75821588397392,
+    "longitude": 67.95815332837509,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 368,
+    "latitude": 79.75821588397392,
+    "longitude": 67.95815332837509,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 369,
+    "latitude": 79.7453690867367,
+    "longitude": 68.16021622051196,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 370,
+    "latitude": 79.7390986309722,
+    "longitude": 68.25644867561786,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 371,
+    "latitude": 79.73293275688314,
+    "longitude": 68.34951320900777,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 372,
+    "latitude": 79.73293275688314,
+    "longitude": 68.34951320900777,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 373,
+    "latitude": 79.7209224175063,
+    "longitude": 68.52624524143428,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 374,
+    "latitude": 79.71508168865219,
+    "longitude": 68.60997132068152,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 375,
+    "latitude": 79.71508168865219,
+    "longitude": 68.60997132068152,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 376,
+    "latitude": 79.70373812517451,
+    "longitude": 68.76830562202616,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 377,
+    "latitude": 79.69823874736969,
+    "longitude": 68.84298481676473,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 378,
+    "latitude": 79.69285651851416,
+    "longitude": 68.91472273129432,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 379,
+    "latitude": 79.69285651851416,
+    "longitude": 68.91472273129432,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 380,
+    "latitude": 79.68244978469951,
+    "longitude": 69.04953869390624,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 381,
+    "latitude": 79.6774282544317,
+    "longitude": 69.1127035602994,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 382,
+    "latitude": 79.6774282544317,
+    "longitude": 69.1127035602994,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 383,
+    "latitude": 79.66775577529614,
+    "longitude": 69.23077813491082,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 384,
+    "latitude": 79.66310736425697,
+    "longitude": 69.285785666398,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 385,
+    "latitude": 79.65858573168404,
+    "longitude": 69.33817477133613,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 386,
+    "latitude": 79.65858573168404,
+    "longitude": 69.33817477133613,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 387,
+    "latitude": 79.64992698016033,
+    "longitude": 69.43531169063596,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 388,
+    "latitude": 79.64579173328963,
+    "longitude": 69.48017031741915,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 389,
+    "latitude": 79.64178700476938,
+    "longitude": 69.52263199032473,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 390,
+    "latitude": 79.64178700476938,
+    "longitude": 69.52263199032473,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 391,
+    "latitude": 79.63417184882547,
+    "longitude": 69.60060121428882,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 392,
+    "latitude": 79.63056255983074,
+    "longitude": 69.63623014380963,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 393,
+    "latitude": 79.63056255983074,
+    "longitude": 69.63623014380963,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 394,
+    "latitude": 79.62374269194325,
+    "longitude": 69.70108817343151,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 395,
+    "latitude": 79.62053267795835,
+    "longitude": 69.73044473672934,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 396,
+    "latitude": 79.62053267795835,
+    "longitude": 69.73044473672934,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 397,
+    "latitude": 79.61451318092449,
+    "longitude": 69.7833376062724,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 398,
+    "latitude": 79.6117036871891,
+    "longitude": 69.80700576213988,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 399,
+    "latitude": 79.6117036871891,
+    "longitude": 69.80700576213988,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 400,
+    "latitude": 79.60648447411745,
+    "longitude": 69.84911895525772,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 401,
+    "latitude": 79.60407418236167,
+    "longitude": 69.86769848755299,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 402,
+    "latitude": 79.60407418236167,
+    "longitude": 69.86769848755299,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 403,
+    "latitude": 79.59965012061627,
+    "longitude": 69.90024130909515,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 404,
+    "latitude": 79.5976352450692,
+    "longitude": 69.91434001613675,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 405,
+    "latitude": 79.5976352450692,
+    "longitude": 69.91434001613675,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 406,
+    "latitude": 79.59399641226256,
+    "longitude": 69.93853012585492,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 407,
+    "latitude": 79.59237085760421,
+    "longitude": 69.94875622119173,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 408,
+    "latitude": 79.59087335221224,
+    "longitude": 69.95782563487438,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 409,
+    "latitude": 79.59087335221224,
+    "longitude": 69.95782563487438,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 410,
+    "latitude": 79.58825848217634,
+    "longitude": 69.97275979705407,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 411,
+    "latitude": 79.58713894555618,
+    "longitude": 69.97875592701743,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 412,
+    "latitude": 79.58713894555618,
+    "longitude": 69.97875592701743,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 413,
+    "latitude": 79.58526976916102,
+    "longitude": 69.98813005869474,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 414,
+    "latitude": 79.5845175959214,
+    "longitude": 69.99163541634442,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 415,
+    "latitude": 79.58388525550305,
+    "longitude": 69.99443653096995,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 416,
+    "latitude": 79.58388525550305,
+    "longitude": 69.99443653096995,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 417,
+    "latitude": 79.58388525550305,
+    "longitude": 69.99443653096995,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 418,
+    "latitude": 79.58269307603322,
+    "longitude": 69.99922548646177,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 419,
+    "latitude": 79.58252570390096,
+    "longitude": 69.99981582780487,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 420,
+    "latitude": 79.58252570390096,
+    "longitude": 69.99981582780487,
+    "altitude": 302660.9790011767,
+    "pan_deg": 0,
+    "tilt_deg": 18.626658837521447,
+    "fov_deg": 20
+  },
+  {
+    "frame": 421,
+    "latitude": 79.58247878745945,
+    "longitude": 70,
+    "altitude": 302656.16797048086,
+    "pan_deg": 0,
+    "tilt_deg": 18.626778590614478,
+    "fov_deg": 20
+  },
+  {
+    "frame": 422,
+    "latitude": 79.58253578742779,
+    "longitude": 70,
+    "altitude": 302622.89460074174,
+    "pan_deg": 0,
+    "tilt_deg": 18.627606880144825,
+    "fov_deg": 20
+  },
+  {
+    "frame": 423,
+    "latitude": 79.58253578742779,
+    "longitude": 70,
+    "altitude": 302622.89460074174,
+    "pan_deg": 0,
+    "tilt_deg": 18.627606880144825,
+    "fov_deg": 20
+  },
+  {
+    "frame": 424,
+    "latitude": 79.58298178718002,
+    "longitude": 70,
+    "altitude": 302362.8056581825,
+    "pan_deg": 0,
+    "tilt_deg": 18.634085621689877,
+    "fov_deg": 20
+  },
+  {
+    "frame": 425,
+    "latitude": 79.583458786915,
+    "longitude": 70,
+    "altitude": 302085.0427233809,
+    "pan_deg": 0,
+    "tilt_deg": 18.641012903874696,
+    "fov_deg": 20
+  },
+  {
+    "frame": 426,
+    "latitude": 79.5841587865261,
+    "longitude": 70,
+    "altitude": 301677.02021949243,
+    "pan_deg": 0,
+    "tilt_deg": 18.65120435867232,
+    "fov_deg": 20
+  },
+  {
+    "frame": 427,
+    "latitude": 79.5841587865261,
+    "longitude": 70,
+    "altitude": 301677.02021949243,
+    "pan_deg": 0,
+    "tilt_deg": 18.65120435867232,
+    "fov_deg": 20
+  },
+  {
+    "frame": 428,
+    "latitude": 79.58638178529111,
+    "longitude": 70,
+    "altitude": 300383.28656410845,
+    "pan_deg": 0,
+    "tilt_deg": 18.68364184792625,
+    "fov_deg": 20
+  },
+  {
+    "frame": 429,
+    "latitude": 79.58797478440613,
+    "longitude": 70,
+    "altitude": 299457.915818444,
+    "pan_deg": 0,
+    "tilt_deg": 18.7069589758163,
+    "fov_deg": 20
+  },
+  {
+    "frame": 430,
+    "latitude": 79.58797478440613,
+    "longitude": 70,
+    "altitude": 299457.915818444,
+    "pan_deg": 0,
+    "tilt_deg": 18.7069589758163,
+    "fov_deg": 20
+  },
+  {
+    "frame": 431,
+    "latitude": 79.592278782015,
+    "longitude": 70,
+    "altitude": 296963.3273304944,
+    "pan_deg": 0,
+    "tilt_deg": 18.770302373791814,
+    "fov_deg": 20
+  },
+  {
+    "frame": 432,
+    "latitude": 79.59504578047779,
+    "longitude": 70,
+    "altitude": 295364.6690533747,
+    "pan_deg": 0,
+    "tilt_deg": 18.811273418651208,
+    "fov_deg": 20
+  },
+  {
+    "frame": 433,
+    "latitude": 79.59504578047779,
+    "longitude": 70,
+    "altitude": 295364.6690533747,
+    "pan_deg": 0,
+    "tilt_deg": 18.811273418651208,
+    "fov_deg": 20
+  },
+  {
+    "frame": 434,
+    "latitude": 79.60192577665555,
+    "longitude": 70,
+    "altitude": 291405.24908945226,
+    "pan_deg": 0,
+    "tilt_deg": 18.914042897257737,
+    "fov_deg": 20
+  },
+  {
+    "frame": 435,
+    "latitude": 79.60607877434836,
+    "longitude": 70,
+    "altitude": 289026.7230252625,
+    "pan_deg": 0,
+    "tilt_deg": 18.976685448166663,
+    "fov_deg": 20
+  },
+  {
+    "frame": 436,
+    "latitude": 79.60607877434836,
+    "longitude": 70,
+    "altitude": 289026.7230252625,
+    "pan_deg": 0,
+    "tilt_deg": 18.976685448166663,
+    "fov_deg": 20
+  },
+  {
+    "frame": 437,
+    "latitude": 79.61588676889946,
+    "longitude": 70,
+    "altitude": 283443.22212228784,
+    "pan_deg": 0,
+    "tilt_deg": 19.126494400836656,
+    "fov_deg": 20
+  },
+  {
+    "frame": 438,
+    "latitude": 79.62156276574609,
+    "longitude": 70,
+    "altitude": 280233.0854689478,
+    "pan_deg": 0,
+    "tilt_deg": 19.214428668694367,
+    "fov_deg": 20
+  },
+  {
+    "frame": 439,
+    "latitude": 79.62776476230056,
+    "longitude": 70,
+    "altitude": 276744.1368052963,
+    "pan_deg": 0,
+    "tilt_deg": 19.31154449419403,
+    "fov_deg": 20
+  },
+  {
+    "frame": 440,
+    "latitude": 79.62776476230056,
+    "longitude": 70,
+    "altitude": 276744.1368052963,
+    "pan_deg": 0,
+    "tilt_deg": 19.31154449419403,
+    "fov_deg": 20
+  },
+  {
+    "frame": 441,
+    "latitude": 79.64175675452722,
+    "longitude": 70,
+    "altitude": 268942.75895437726,
+    "pan_deg": 0,
+    "tilt_deg": 19.534754246750147,
+    "fov_deg": 20
+  },
+  {
+    "frame": 442,
+    "latitude": 79.64954475020053,
+    "longitude": 70,
+    "altitude": 264641.90270559554,
+    "pan_deg": 0,
+    "tilt_deg": 19.66154674729511,
+    "fov_deg": 20
+  },
+  {
+    "frame": 443,
+    "latitude": 79.64954475020053,
+    "longitude": 70,
+    "altitude": 264641.90270559554,
+    "pan_deg": 0,
+    "tilt_deg": 19.66154674729511,
+    "fov_deg": 20
+  },
+  {
+    "frame": 444,
+    "latitude": 79.66668574067779,
+    "longitude": 70,
+    "altitude": 255283.27984852175,
+    "pan_deg": 0,
+    "tilt_deg": 19.9472076168781,
+    "fov_deg": 20
+  },
+  {
+    "frame": 445,
+    "latitude": 79.67602073549165,
+    "longitude": 70,
+    "altitude": 250248.2584174881,
+    "pan_deg": 0,
+    "tilt_deg": 20.10674074985476,
+    "fov_deg": 20
+  },
+  {
+    "frame": 446,
+    "latitude": 79.6858497300311,
+    "longitude": 70,
+    "altitude": 244993.95939213096,
+    "pan_deg": 0,
+    "tilt_deg": 20.277844807769583,
+    "fov_deg": 20
+  },
+  {
+    "frame": 447,
+    "latitude": 79.6858497300311,
+    "longitude": 70,
+    "altitude": 244993.95939213096,
+    "pan_deg": 0,
+    "tilt_deg": 20.277844807769583,
+    "fov_deg": 20
+  },
+  {
+    "frame": 448,
+    "latitude": 79.70692871832054,
+    "longitude": 70,
+    "altitude": 233889.60899067044,
+    "pan_deg": 0,
+    "tilt_deg": 20.656049321043465,
+    "fov_deg": 20
+  },
+  {
+    "frame": 449,
+    "latitude": 79.7181417120911,
+    "longitude": 70,
+    "altitude": 228073.57012159505,
+    "pan_deg": 0,
+    "tilt_deg": 20.863782246350343,
+    "fov_deg": 20
+  },
+  {
+    "frame": 450,
+    "latitude": 79.72977770562667,
+    "longitude": 70,
+    "altitude": 222105.92999651257,
+    "pan_deg": 0,
+    "tilt_deg": 21.084350980374776,
+    "fov_deg": 20
+  },
+  {
+    "frame": 451,
+    "latitude": 79.72977770562667,
+    "longitude": 70,
+    "altitude": 222105.92999651257,
+    "pan_deg": 0,
+    "tilt_deg": 21.084350980374776,
+    "fov_deg": 20
+  },
+  {
+    "frame": 452,
+    "latitude": 79.75422269204611,
+    "longitude": 70,
+    "altitude": 209793.11729100533,
+    "pan_deg": 0,
+    "tilt_deg": 21.565217440507148,
+    "fov_deg": 20
+  },
+  {
+    "frame": 453,
+    "latitude": 79.76698268495721,
+    "longitude": 70,
+    "altitude": 203487.74174414892,
+    "pan_deg": 0,
+    "tilt_deg": 21.826114210920718,
+    "fov_deg": 20
+  },
+  {
+    "frame": 454,
+    "latitude": 79.78006467768944,
+    "longitude": 70,
+    "altitude": 197109.98895187327,
+    "pan_deg": 0,
+    "tilt_deg": 22.10104357453869,
+    "fov_deg": 20
+  },
+  {
+    "frame": 455,
+    "latitude": 79.78006467768944,
+    "longitude": 70,
+    "altitude": 197109.98895187327,
+    "pan_deg": 0,
+    "tilt_deg": 22.10104357453869,
+    "fov_deg": 20
+  },
+  {
+    "frame": 456,
+    "latitude": 79.80708366267888,
+    "longitude": 70,
+    "altitude": 184218.10389582865,
+    "pan_deg": 0,
+    "tilt_deg": 22.69413052717627,
+    "fov_deg": 20
+  },
+  {
+    "frame": 457,
+    "latitude": 79.82096265496833,
+    "longitude": 70,
+    "altitude": 177743.72813597522,
+    "pan_deg": 0,
+    "tilt_deg": 23.01283266855056,
+    "fov_deg": 20
+  },
+  {
+    "frame": 458,
+    "latitude": 79.83504764714334,
+    "longitude": 70,
+    "altitude": 171276.17210507282,
+    "pan_deg": 0,
+    "tilt_deg": 23.346653799343425,
+    "fov_deg": 20
+  },
+  {
+    "frame": 459,
+    "latitude": 79.83504764714334,
+    "longitude": 70,
+    "altitude": 171276.17210507282,
+    "pan_deg": 0,
+    "tilt_deg": 23.346653799343425,
+    "fov_deg": 20
+  },
+  {
+    "frame": 460,
+    "latitude": 79.8637166312161,
+    "longitude": 70,
+    "altitude": 158435.02478331944,
+    "pan_deg": 0,
+    "tilt_deg": 24.060619881308597,
+    "fov_deg": 20
+  },
+  {
+    "frame": 461,
+    "latitude": 79.87823962314778,
+    "longitude": 70,
+    "altitude": 152096.15940827873,
+    "pan_deg": 0,
+    "tilt_deg": 24.44121148253005,
+    "fov_deg": 20
+  },
+  {
+    "frame": 462,
+    "latitude": 79.89284961503111,
+    "longitude": 70,
+    "altitude": 145833.3561451242,
+    "pan_deg": 0,
+    "tilt_deg": 24.837811208114555,
+    "fov_deg": 20
+  },
+  {
+    "frame": 463,
+    "latitude": 79.89284961503111,
+    "longitude": 70,
+    "altitude": 145833.3561451242,
+    "pan_deg": 0,
+    "tilt_deg": 24.837811208114555,
+    "fov_deg": 20
+  },
+  {
+    "frame": 464,
+    "latitude": 79.92221259871832,
+    "longitude": 70,
+    "altitude": 133594.3812896001,
+    "pan_deg": 0,
+    "tilt_deg": 25.67971960391435,
+    "fov_deg": 20
+  },
+  {
+    "frame": 465,
+    "latitude": 79.93690759055445,
+    "longitude": 70,
+    "altitude": 127644.57653664883,
+    "pan_deg": 0,
+    "tilt_deg": 26.125310600385994,
+    "fov_deg": 20
+  },
+  {
+    "frame": 466,
+    "latitude": 79.95157658240498,
+    "longitude": 70,
+    "altitude": 121823.48300336993,
+    "pan_deg": 0,
+    "tilt_deg": 26.587468938466255,
+    "fov_deg": 20
+  },
+  {
+    "frame": 467,
+    "latitude": 79.95157658240498,
+    "longitude": 70,
+    "altitude": 121823.48300336993,
+    "pan_deg": 0,
+    "tilt_deg": 26.587468938466255,
+    "fov_deg": 20
+  },
+  {
+    "frame": 468,
+    "latitude": 79.98072856620942,
+    "longitude": 70,
+    "altitude": 110606.85123524295,
+    "pan_deg": 0,
+    "tilt_deg": 27.561728457489806,
+    "fov_deg": 20
+  },
+  {
+    "frame": 469,
+    "latitude": 79.99516255819054,
+    "longitude": 70,
+    "altitude": 105227.94942877343,
+    "pan_deg": 0,
+    "tilt_deg": 28.07386141670275,
+    "fov_deg": 20
+  },
+  {
+    "frame": 470,
+    "latitude": 80.0094715502411,
+    "longitude": 70,
+    "altitude": 100011.05811444858,
+    "pan_deg": 0,
+    "tilt_deg": 28.602619169239897,
+    "fov_deg": 20
+  },
+  {
+    "frame": 471,
+    "latitude": 80.0094715502411,
+    "longitude": 70,
+    "altitude": 100011.05811444858,
+    "pan_deg": 0,
+    "tilt_deg": 28.602619169239897,
+    "fov_deg": 20
+  },
+  {
+    "frame": 472,
+    "latitude": 80.03763053459721,
+    "longitude": 70,
+    "altitude": 90083.4628565893,
+    "pan_deg": 0,
+    "tilt_deg": 29.70961674578517,
+    "fov_deg": 20
+  },
+  {
+    "frame": 473,
+    "latitude": 80.05144052692498,
+    "longitude": 70,
+    "altitude": 85380.04354995061,
+    "pan_deg": 0,
+    "tilt_deg": 30.28754156890158,
+    "fov_deg": 20
+  },
+  {
+    "frame": 474,
+    "latitude": 80.06504751936552,
+    "longitude": 70,
+    "altitude": 80853.30699956023,
+    "pan_deg": 0,
+    "tilt_deg": 30.881455565410555,
+    "fov_deg": 20
+  },
+  {
+    "frame": 475,
+    "latitude": 80.06504751936552,
+    "longitude": 70,
+    "altitude": 80853.30699956023,
+    "pan_deg": 0,
+    "tilt_deg": 30.881455565410555,
+    "fov_deg": 20
+  },
+  {
+    "frame": 476,
+    "latitude": 80.09158950461998,
+    "longitude": 70,
+    "altitude": 72333.34163796184,
+    "pan_deg": 0,
+    "tilt_deg": 32.116039674096626,
+    "fov_deg": 20
+  },
+  {
+    "frame": 477,
+    "latitude": 80.10449749744888,
+    "longitude": 70,
+    "altitude": 68339.64225049951,
+    "pan_deg": 0,
+    "tilt_deg": 32.75596023774627,
+    "fov_deg": 20
+  },
+  {
+    "frame": 478,
+    "latitude": 80.11714649042167,
+    "longitude": 70,
+    "altitude": 64521.82365762272,
+    "pan_deg": 0,
+    "tilt_deg": 33.410367424566665,
+    "fov_deg": 20
+  },
+  {
+    "frame": 479,
+    "latitude": 80.12952748354331,
+    "longitude": 70,
+    "altitude": 60877.76613675797,
+    "pan_deg": 0,
+    "tilt_deg": 34.07873558254771,
+    "fov_deg": 20
+  },
+  {
+    "frame": 480,
+    "latitude": 80.14163047681944,
+    "longitude": 70,
+    "altitude": 57404.72525800686,
+    "pan_deg": 0,
+    "tilt_deg": 34.760477168042,
+    "fov_deg": 20
+  },
+  {
+    "frame": 481,
+    "latitude": 80.15344847025392,
+    "longitude": 70,
+    "altitude": 54099.40301645233,
+    "pan_deg": 0,
+    "tilt_deg": 35.45494271723284,
+    "fov_deg": 20
+  },
+  {
+    "frame": 482,
+    "latitude": 80.16497446385057,
+    "longitude": 70,
+    "altitude": 50958.01745141464,
+    "pan_deg": 0,
+    "tilt_deg": 36.16142141699904,
+    "fov_deg": 20
+  },
+  {
+    "frame": 483,
+    "latitude": 80.17620345761222,
+    "longitude": 70,
+    "altitude": 47976.37009001741,
+    "pan_deg": 0,
+    "tilt_deg": 36.87914231225007,
+    "fov_deg": 20
+  },
+  {
+    "frame": 484,
+    "latitude": 80.18713245154055,
+    "longitude": 70,
+    "altitude": 45149.91065581897,
+    "pan_deg": 0,
+    "tilt_deg": 37.60727617690703,
+    "fov_deg": 20
+  },
+  {
+    "frame": 485,
+    "latitude": 80.19775644563833,
+    "longitude": 70,
+    "altitude": 42473.798584162185,
+    "pan_deg": 0,
+    "tilt_deg": 38.3449380641613,
+    "fov_deg": 20
+  },
+  {
+    "frame": 486,
+    "latitude": 80.20807443990611,
+    "longitude": 70,
+    "altitude": 39942.96098259447,
+    "pan_deg": 0,
+    "tilt_deg": 39.09119053868849,
+    "fov_deg": 20
+  },
+  {
+    "frame": 487,
+    "latitude": 80.21808643434389,
+    "longitude": 70,
+    "altitude": 37552.146765844744,
+    "pan_deg": 0,
+    "tilt_deg": 39.845047579448554,
+    "fov_deg": 20
+  },
+  {
+    "frame": 488,
+    "latitude": 80.22779242895169,
+    "longitude": 70,
+    "altitude": 35295.97677934059,
+    "pan_deg": 0,
+    "tilt_deg": 40.60547912696647,
+    "fov_deg": 20
+  },
+  {
+    "frame": 489,
+    "latitude": 80.23719142373,
+    "longitude": 70,
+    "altitude": 33168.98980232736,
+    "pan_deg": 0,
+    "tilt_deg": 41.37141623403028,
+    "fov_deg": 20
+  },
+  {
+    "frame": 490,
+    "latitude": 80.24628741867664,
+    "longitude": 70,
+    "altitude": 31165.684390811242,
+    "pan_deg": 0,
+    "tilt_deg": 42.14175676407853,
+    "fov_deg": 20
+  },
+  {
+    "frame": 491,
+    "latitude": 80.25508141379112,
+    "longitude": 70,
+    "altitude": 29280.556581517794,
+    "pan_deg": 0,
+    "tilt_deg": 42.915371567724286,
+    "fov_deg": 20
+  },
+  {
+    "frame": 492,
+    "latitude": 80.2635774090711,
+    "longitude": 70,
+    "altitude": 27508.13353080011,
+    "pan_deg": 0,
+    "tilt_deg": 43.691111055408236,
+    "fov_deg": 20
+  },
+  {
+    "frame": 493,
+    "latitude": 80.271778404515,
+    "longitude": 70,
+    "altitude": 25843.003207073332,
+    "pan_deg": 0,
+    "tilt_deg": 44.46781207360199,
+    "fov_deg": 20
+  },
+  {
+    "frame": 494,
+    "latitude": 80.27968840012056,
+    "longitude": 70,
+    "altitude": 24279.840292198212,
+    "pan_deg": 0,
+    "tilt_deg": 45.24430498373098,
+    "fov_deg": 20
+  },
+  {
+    "frame": 495,
+    "latitude": 80.28731239588501,
+    "longitude": 70,
+    "altitude": 22813.428476692752,
+    "pan_deg": 0,
+    "tilt_deg": 46.019420837413435,
+    "fov_deg": 20
+  },
+  {
+    "frame": 496,
+    "latitude": 80.294656391805,
+    "longitude": 70,
+    "altitude": 21438.679356235127,
+    "pan_deg": 0,
+    "tilt_deg": 46.791998538957316,
+    "fov_deg": 20
+  },
+  {
+    "frame": 497,
+    "latitude": 80.30172438787832,
+    "longitude": 70,
+    "altitude": 20150.64815320858,
+    "pan_deg": 0,
+    "tilt_deg": 47.560891886440714,
+    "fov_deg": 20
+  },
+  {
+    "frame": 498,
+    "latitude": 80.30852338410111,
+    "longitude": 70,
+    "altitude": 18944.546497654203,
+    "pan_deg": 0,
+    "tilt_deg": 48.3249763861035,
+    "fov_deg": 20
+  },
+  {
+    "frame": 499,
+    "latitude": 80.31505938047002,
+    "longitude": 70,
+    "altitude": 17815.752507582918,
+    "pan_deg": 0,
+    "tilt_deg": 49.08315574105069,
+    "fov_deg": 20
+  },
+  {
+    "frame": 500,
+    "latitude": 80.32133837698169,
+    "longitude": 70,
+    "altitude": 16759.81840980251,
+    "pan_deg": 0,
+    "tilt_deg": 49.83436792413914,
+    "fov_deg": 20
+  },
+  {
+    "frame": 501,
+    "latitude": 80.32736737363223,
+    "longitude": 70,
+    "altitude": 15772.475939874157,
+    "pan_deg": 0,
+    "tilt_deg": 50.57759075600644,
+    "fov_deg": 20
+  },
+  {
+    "frame": 502,
+    "latitude": 80.3331513704189,
+    "longitude": 70,
+    "altitude": 14849.639754135807,
+    "pan_deg": 0,
+    "tilt_deg": 51.31184692204797,
+    "fov_deg": 20
+  },
+  {
+    "frame": 503,
+    "latitude": 80.33869936733666,
+    "longitude": 70,
+    "altitude": 13987.409078492752,
+    "pan_deg": 0,
+    "tilt_deg": 52.036208376233546,
+    "fov_deg": 20
+  },
+  {
+    "frame": 504,
+    "latitude": 80.34401636438278,
+    "longitude": 70,
+    "altitude": 13182.067808412463,
+    "pan_deg": 0,
+    "tilt_deg": 52.74980009444312,
+    "fov_deg": 20
+  },
+  {
+    "frame": 505,
+    "latitude": 80.34911036155276,
+    "longitude": 70,
+    "altitude": 12430.08326275892,
+    "pan_deg": 0,
+    "tilt_deg": 53.45180315494829,
+    "fov_deg": 20
+  },
+  {
+    "frame": 506,
+    "latitude": 80.35398835884277,
+    "longitude": 70,
+    "altitude": 11728.103781197242,
+    "pan_deg": 0,
+    "tilt_deg": 54.14145713827157,
+    "fov_deg": 20
+  },
+  {
+    "frame": 507,
+    "latitude": 80.35865635624944,
+    "longitude": 70,
+    "altitude": 11072.955341280393,
+    "pan_deg": 0,
+    "tilt_deg": 54.8180618524616,
+    "fov_deg": 20
+  },
+  {
+    "frame": 508,
+    "latitude": 80.36312135376889,
+    "longitude": 70,
+    "altitude": 10461.637357330645,
+    "pan_deg": 0,
+    "tilt_deg": 55.48097840245125,
+    "fov_deg": 20
+  },
+  {
+    "frame": 509,
+    "latitude": 80.3673903513972,
+    "longitude": 70,
+    "altitude": 9891.31780913703,
+    "pan_deg": 0,
+    "tilt_deg": 56.12962963331567,
+    "fov_deg": 20
+  },
+  {
+    "frame": 510,
+    "latitude": 80.37147034913056,
+    "longitude": 70,
+    "altitude": 9359.32783454631,
+    "pan_deg": 0,
+    "tilt_deg": 56.763499986710315,
+    "fov_deg": 20
+  },
+  {
+    "frame": 511,
+    "latitude": 80.37536734696553,
+    "longitude": 70,
+    "altitude": 8863.15590642683,
+    "pan_deg": 0,
+    "tilt_deg": 57.38213481742042,
+    "fov_deg": 20
+  },
+  {
+    "frame": 512,
+    "latitude": 80.37908734489889,
+    "longitude": 70,
+    "altitude": 8400.441701386853,
+    "pan_deg": 0,
+    "tilt_deg": 57.9851392227582,
+    "fov_deg": 20
+  },
+  {
+    "frame": 513,
+    "latitude": 80.3826383429261,
+    "longitude": 70,
+    "altitude": 7968.96975515538,
+    "pan_deg": 0,
+    "tilt_deg": 58.57217644153177,
+    "fov_deg": 20
+  },
+  {
+    "frame": 514,
+    "latitude": 80.38602434104499,
+    "longitude": 70,
+    "altitude": 7566.66298777057,
+    "pan_deg": 0,
+    "tilt_deg": 59.142965881584665,
+    "fov_deg": 20
+  },
+  {
+    "frame": 515,
+    "latitude": 80.3892533392511,
+    "longitude": 70,
+    "altitude": 7191.576170731138,
+    "pan_deg": 0,
+    "tilt_deg": 59.69728083560799,
+    "fov_deg": 20
+  },
+  {
+    "frame": 516,
+    "latitude": 80.39232933754221,
+    "longitude": 70,
+    "altitude": 6841.889398084343,
+    "pan_deg": 0,
+    "tilt_deg": 60.23494594424776,
+    "fov_deg": 20
+  },
+  {
+    "frame": 517,
+    "latitude": 80.39525933591443,
+    "longitude": 70,
+    "altitude": 6515.9016140690255,
+    "pan_deg": 0,
+    "tilt_deg": 60.75583446366486,
+    "fov_deg": 20
+  },
+  {
+    "frame": 518,
+    "latitude": 80.398048334365,
+    "longitude": 70,
+    "altitude": 6212.024241398332,
+    "pan_deg": 0,
+    "tilt_deg": 61.25986539187987,
+    "fov_deg": 20
+  },
+  {
+    "frame": 519,
+    "latitude": 80.40070233289057,
+    "longitude": 70,
+    "altitude": 5928.774946544385,
+    "pan_deg": 0,
+    "tilt_deg": 61.74700050465326,
+    "fov_deg": 20
+  },
+  {
+    "frame": 520,
+    "latitude": 80.40322633148833,
+    "longitude": 70,
+    "altitude": 5664.771571445132,
+    "pan_deg": 0,
+    "tilt_deg": 62.21724134752874,
+    "fov_deg": 20
+  },
+  {
+    "frame": 521,
+    "latitude": 80.40562433015612,
+    "longitude": 70,
+    "altitude": 5418.726254860799,
+    "pan_deg": 0,
+    "tilt_deg": 62.67062622618622,
+    "fov_deg": 20
+  },
+  {
+    "frame": 522,
+    "latitude": 80.40790232889054,
+    "longitude": 70,
+    "altitude": 5189.439761120637,
+    "pan_deg": 0,
+    "tilt_deg": 63.10722723258697,
+    "fov_deg": 20
+  },
+  {
+    "frame": 523,
+    "latitude": 80.41006432768944,
+    "longitude": 70,
+    "altitude": 4975.796029176467,
+    "pan_deg": 0,
+    "tilt_deg": 63.527147339688725,
+    "fov_deg": 20
+  },
+  {
+    "frame": 524,
+    "latitude": 80.41211532655001,
+    "longitude": 70,
+    "altitude": 4776.756950668153,
+    "pan_deg": 0,
+    "tilt_deg": 63.93051759288842,
+    "fov_deg": 20
+  },
+  {
+    "frame": 525,
+    "latitude": 80.41405932546999,
+    "longitude": 70,
+    "altitude": 4591.357382059909,
+    "pan_deg": 0,
+    "tilt_deg": 64.31749442191357,
+    "fov_deg": 20
+  },
+  {
+    "frame": 526,
+    "latitude": 80.41590132444668,
+    "longitude": 70,
+    "altitude": 4418.700392775467,
+    "pan_deg": 0,
+    "tilt_deg": 64.68825709270038,
+    "fov_deg": 20
+  },
+  {
+    "frame": 527,
+    "latitude": 80.41764332347887,
+    "longitude": 70,
+    "altitude": 4257.952748595297,
+    "pan_deg": 0,
+    "tilt_deg": 65.0430053149304,
+    "fov_deg": 20
+  },
+  {
+    "frame": 528,
+    "latitude": 80.41929132256334,
+    "longitude": 70,
+    "altitude": 4108.340627334665,
+    "pan_deg": 0,
+    "tilt_deg": 65.38195701737232,
+    "fov_deg": 20
+  },
+  {
+    "frame": 529,
+    "latitude": 80.42084832169832,
+    "longitude": 70,
+    "altitude": 3969.1455619519593,
+    "pan_deg": 0,
+    "tilt_deg": 65.70534630001883,
+    "fov_deg": 20
+  },
+  {
+    "frame": 530,
+    "latitude": 80.42231732088223,
+    "longitude": 70,
+    "altitude": 3839.7006046995302,
+    "pan_deg": 0,
+    "tilt_deg": 66.01342156921898,
+    "fov_deg": 20
+  },
+  {
+    "frame": 531,
+    "latitude": 80.42370232011277,
+    "longitude": 70,
+    "altitude": 3719.386704685761,
+    "pan_deg": 0,
+    "tilt_deg": 66.3064438595812,
+    "fov_deg": 20
+  },
+  {
+    "frame": 532,
+    "latitude": 80.4250063193883,
+    "longitude": 70,
+    "altitude": 3607.6292902307555,
+    "pan_deg": 0,
+    "tilt_deg": 66.5846853443436,
+    "fov_deg": 20
+  },
+  {
+    "frame": 533,
+    "latitude": 80.42623231870724,
+    "longitude": 70,
+    "altitude": 3503.89504663486,
+    "pan_deg": 0,
+    "tilt_deg": 66.84842803415451,
+    "fov_deg": 20
+  },
+  {
+    "frame": 534,
+    "latitude": 80.4273833180678,
+    "longitude": 70,
+    "altitude": 3407.688879410045,
+    "pan_deg": 0,
+    "tilt_deg": 67.09796266275191,
+    "fov_deg": 20
+  },
+  {
+    "frame": 535,
+    "latitude": 80.42846331746779,
+    "longitude": 70,
+    "altitude": 3318.551052622722,
+    "pan_deg": 0,
+    "tilt_deg": 67.33358775684188,
+    "fov_deg": 20
+  },
+  {
+    "frame": 536,
+    "latitude": 80.4294733169067,
+    "longitude": 70,
+    "altitude": 3236.05449173649,
+    "pan_deg": 0,
+    "tilt_deg": 67.5556088865279,
+    "fov_deg": 20
+  },
+  {
+    "frame": 537,
+    "latitude": 80.4304173163822,
+    "longitude": 70,
+    "altitude": 3159.802240208979,
+    "pan_deg": 0,
+    "tilt_deg": 67.76433809189201,
+    "fov_deg": 20
+  },
+  {
+    "frame": 538,
+    "latitude": 80.43129731589335,
+    "longitude": 70,
+    "altitude": 3089.425059065473,
+    "pan_deg": 0,
+    "tilt_deg": 67.96009348075494,
+    "fov_deg": 20
+  },
+  {
+    "frame": 539,
+    "latitude": 80.43211531543889,
+    "longitude": 70,
+    "altitude": 3024.579158733321,
+    "pan_deg": 0,
+    "tilt_deg": 68.14319899220386,
+    "fov_deg": 20
+  },
+  {
+    "frame": 540,
+    "latitude": 80.43287531501667,
+    "longitude": 70,
+    "altitude": 2964.9440525611153,
+    "pan_deg": 0,
+    "tilt_deg": 68.31398432014787,
+    "fov_deg": 20
+  },
+  {
+    "frame": 541,
+    "latitude": 80.43357731462666,
+    "longitude": 70,
+    "altitude": 2910.2205216577922,
+    "pan_deg": 0,
+    "tilt_deg": 68.47278499091155,
+    "fov_deg": 20
+  },
+  {
+    "frame": 542,
+    "latitude": 80.43422631426611,
+    "longitude": 70,
+    "altitude": 2860.128680962108,
+    "pan_deg": 0,
+    "tilt_deg": 68.61994258868236,
+    "fov_deg": 20
+  },
+  {
+    "frame": 543,
+    "latitude": 80.43482231393497,
+    "longitude": 70,
+    "altitude": 2814.406136789714,
+    "pan_deg": 0,
+    "tilt_deg": 68.75580512245743,
+    "fov_deg": 20
+  },
+  {
+    "frame": 544,
+    "latitude": 80.43536831363167,
+    "longitude": 70,
+    "altitude": 2772.806226502985,
+    "pan_deg": 0,
+    "tilt_deg": 68.88072752796977,
+    "fov_deg": 20
+  },
+  {
+    "frame": 545,
+    "latitude": 80.43586631335504,
+    "longitude": 70,
+    "altitude": 2735.0963314064165,
+    "pan_deg": 0,
+    "tilt_deg": 68.9950722978946,
+    "fov_deg": 20
+  },
+  {
+    "frame": 546,
+    "latitude": 80.4363183131039,
+    "longitude": 70,
+    "altitude": 2701.0562544973473,
+    "pan_deg": 0,
+    "tilt_deg": 69.09921023341444,
+    "fov_deg": 20
+  },
+  {
+    "frame": 547,
+    "latitude": 80.43672731287666,
+    "longitude": 70,
+    "altitude": 2670.476655298113,
+    "pan_deg": 0,
+    "tilt_deg": 69.19352130995098,
+    "fov_deg": 20
+  },
+  {
+    "frame": 548,
+    "latitude": 80.43709331267331,
+    "longitude": 70,
+    "altitude": 2643.1575346750824,
+    "pan_deg": 0,
+    "tilt_deg": 69.27839564952768,
+    "fov_deg": 20
+  },
+  {
+    "frame": 549,
+    "latitude": 80.4374203124917,
+    "longitude": 70,
+    "altitude": 2618.906763319935,
+    "pan_deg": 0,
+    "tilt_deg": 69.35423459180076,
+    "fov_deg": 20
+  },
+  {
+    "frame": 550,
+    "latitude": 80.4377093123311,
+    "longitude": 70,
+    "altitude": 2597.53864844298,
+    "pan_deg": 0,
+    "tilt_deg": 69.42145185527423,
+    "fov_deg": 20
+  },
+  {
+    "frame": 551,
+    "latitude": 80.43796231219056,
+    "longitude": 70,
+    "altitude": 2578.8725342206594,
+    "pan_deg": 0,
+    "tilt_deg": 69.48047477958468,
+    "fov_deg": 20
+  },
+  {
+    "frame": 552,
+    "latitude": 80.43818231206834,
+    "longitude": 70,
+    "altitude": 2562.731432664907,
+    "pan_deg": 0,
+    "tilt_deg": 69.53174563900016,
+    "fov_deg": 20
+  },
+  {
+    "frame": 553,
+    "latitude": 80.4383703119639,
+    "longitude": 70,
+    "altitude": 2548.9406828569954,
+    "pan_deg": 0,
+    "tilt_deg": 69.57572301641034,
+    "fov_deg": 20
+  },
+  {
+    "frame": 554,
+    "latitude": 80.43852931187556,
+    "longitude": 70,
+    "altitude": 2537.326637927727,
+    "pan_deg": 0,
+    "tilt_deg": 69.61288322609809,
+    "fov_deg": 20
+  },
+  {
+    "frame": 555,
+    "latitude": 80.43866031180278,
+    "longitude": 70,
+    "altitude": 2527.7153807862223,
+    "pan_deg": 0,
+    "tilt_deg": 69.64372177245946,
+    "fov_deg": 20
+  },
+  {
+    "frame": 556,
+    "latitude": 80.43876731174333,
+    "longitude": 70,
+    "altitude": 2519.931471412791,
+    "pan_deg": 0,
+    "tilt_deg": 69.66875483059071,
+    "fov_deg": 20
+  },
+  {
+    "frame": 557,
+    "latitude": 80.43885131169665,
+    "longitude": 70,
+    "altitude": 2513.7967305484003,
+    "pan_deg": 0,
+    "tilt_deg": 69.68852073328229,
+    "fov_deg": 20
+  },
+  {
+    "frame": 558,
+    "latitude": 80.4389153116611,
+    "longitude": 70,
+    "altitude": 2509.129066840492,
+    "pan_deg": 0,
+    "tilt_deg": 69.70358144745212,
+    "fov_deg": 20
+  },
+  {
+    "frame": 559,
+    "latitude": 80.43896231163498,
+    "longitude": 70,
+    "altitude": 2505.74135694127,
+    "pan_deg": 0,
+    "tilt_deg": 69.71452402142232,
+    "fov_deg": 20
+  },
+  {
+    "frame": 560,
+    "latitude": 80.43899431161722,
+    "longitude": 70,
+    "altitude": 2503.440390690912,
+    "pan_deg": 0,
+    "tilt_deg": 69.72196198269904,
+    "fov_deg": 20
+  },
+  {
+    "frame": 561,
+    "latitude": 80.43901331160666,
+    "longitude": 70,
+    "altitude": 2502.0258963366296,
+    "pan_deg": 0,
+    "tilt_deg": 69.72653666406059,
+    "fov_deg": 20
+  },
+  {
+    "frame": 562,
+    "latitude": 80.43902331160112,
+    "longitude": 70,
+    "altitude": 2501.2896637056856,
+    "pan_deg": 0,
+    "tilt_deg": 69.72891843380286,
+    "fov_deg": 20
+  },
+  {
+    "frame": 563,
+    "latitude": 80.43902731159889,
+    "longitude": 70,
+    "altitude": 2501.0147863163743,
+    "pan_deg": 0,
+    "tilt_deg": 69.72980780395342,
+    "fov_deg": 20
+  }
+]
