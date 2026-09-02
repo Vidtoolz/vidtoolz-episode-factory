@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "authority_commit": "818db55f1e88c1b014cfb5b1f1a0509e31e31a0e",
+  "generated_at": "2026-09-02T15:00:00.000Z",
+  "semantic_rule": "A non-opening hold owns time, not camera motion. Omitted camera fields inherit the incoming canonical camera state; explicit altitude_m or tilt_deg is invalid.",
+  "positive": [
+    { "id": "opening-hold-explicit-tilt", "scenario": "opening", "fields": { "tilt_deg": 30 } },
+    { "id": "opening-hold-explicit-altitude", "scenario": "opening", "fields": { "altitude_m": 3000 } },
+    { "id": "opening-hold-explicit-both", "scenario": "opening", "fields": { "altitude_m": 3000, "tilt_deg": 30 } },
+    { "id": "mid-hold-after-travel-omitted", "scenario": "mid_after_travel", "fields": {} },
+    { "id": "mid-hold-after-orbit-omitted", "scenario": "mid_after_orbit", "fields": {} },
+    { "id": "hold-before-travel-omitted", "scenario": "hold_before_travel", "fields": {} },
+    { "id": "movement-hold-movement-omitted", "scenario": "movement_hold_movement", "fields": {} },
+    { "id": "pause-in-travel-omitted", "scenario": "pause_travel", "fields": {} },
+    { "id": "repeated-mid-holds-omitted", "scenario": "repeated_holds", "fields": {} },
+    { "id": "settle-launch-orbit-hold-travel", "scenario": "settle_launch", "fields": {} },
+    { "id": "continuation-opening-hold-omitted", "scenario": "continuation", "fields": {} },
+    { "id": "terrain-matterhorn-hold-omitted", "scenario": "terrain", "fields": {} },
+    { "id": "orbit-staging-fly-hold-orbit", "scenario": "settle_launch_orbit", "fields": {} },
+    { "id": "mid-hold-null-camera-fields", "scenario": "mid_after_travel", "fields": { "altitude_m": null, "tilt_deg": null } },
+    { "id": "short-mid-hold", "scenario": "mid_after_travel", "duration_seconds": 0.5, "fields": {} },
+    { "id": "long-mid-hold", "scenario": "mid_after_travel", "duration_seconds": 60, "fields": {} }
+  ],
+  "negative": [
+    { "id": "destination-hold-tilt-30", "scenario": "mid_after_travel", "fields": { "tilt_deg": 30 }, "expected_fields": ["tilt_deg"] },
+    { "id": "destination-hold-tilt-zero", "scenario": "mid_after_travel", "fields": { "tilt_deg": 0 }, "expected_fields": ["tilt_deg"] },
+    { "id": "destination-hold-altitude", "scenario": "mid_after_travel", "fields": { "altitude_m": 3000 }, "expected_fields": ["altitude_m"] },
+    { "id": "destination-hold-altitude-zero", "scenario": "mid_after_travel", "fields": { "altitude_m": 0 }, "expected_fields": ["altitude_m"] },
+    { "id": "destination-hold-altitude-and-tilt", "scenario": "mid_after_travel", "fields": { "altitude_m": 3000, "tilt_deg": 30 }, "expected_fields": ["altitude_m", "tilt_deg"] },
+    { "id": "start-hold-after-orbit-tilt", "scenario": "mid_after_orbit", "fields": { "tilt_deg": 30 }, "expected_fields": ["tilt_deg"] },
+    { "id": "start-hold-after-orbit-altitude", "scenario": "mid_after_orbit", "fields": { "altitude_m": 3000 }, "expected_fields": ["altitude_m"] },
+    { "id": "repeated-second-hold-tilt", "scenario": "repeated_holds", "fields": { "tilt_deg": 30 }, "expected_fields": ["tilt_deg"] },
+    { "id": "travel-pause-tilt-30", "scenario": "pause_travel", "fields": { "tilt_deg": 30 }, "expected_fields": ["tilt_deg"] },
+    { "id": "travel-pause-tilt-zero", "scenario": "pause_travel", "fields": { "tilt_deg": 0 }, "expected_fields": ["tilt_deg"] },
+    { "id": "travel-pause-altitude", "scenario": "pause_travel", "fields": { "altitude_m": 3000 }, "expected_fields": ["altitude_m"] },
+    { "id": "travel-pause-altitude-and-tilt", "scenario": "pause_travel", "fields": { "altitude_m": 3000, "tilt_deg": 30 }, "expected_fields": ["altitude_m", "tilt_deg"] },
+    { "id": "numeric-string-hold-tilt", "scenario": "mid_after_travel", "fields": { "tilt_deg": "30" }, "expected_fields": ["tilt_deg"] },
+    { "id": "numeric-string-hold-altitude", "scenario": "mid_after_travel", "fields": { "altitude_m": "3000" }, "expected_fields": ["altitude_m"] },
+    { "id": "terrain-hold-explicit-tilt", "scenario": "terrain", "fields": { "tilt_deg": 30 }, "expected_fields": ["tilt_deg"] },
+    { "id": "continuation-second-hold-tilt", "scenario": "continuation_second_hold", "fields": { "tilt_deg": 30 }, "expected_fields": ["tilt_deg"] }
+  ],
+  "existing_invalid_hold_fixtures": [
+    {
+      "file": "tests/earth-studio-path-equivalence.test.js",
+      "test": "path-equivalence adversarial: mid-journey hold with explicit tilt (known leak preserved, not repaired)",
+      "construction": "ADVERSARIAL mid-journey hold uses tilt_deg: 30",
+      "semantically_invalid": true,
+      "classification": "path-equivalence coverage built from invalid raw Journey intent",
+      "restatement": "Make lane and Direct Journey IR both assert raw rejection for this input; keep positive path equivalence on the adjacent omitted-field hold fixture. No orbit geometry assertion is lost."
+    },
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "staging: explicit hold geometry keeps the acquisition fallback",
+      "construction": "midJourney hold uses altitude_m: 3000",
+      "semantically_invalid": true,
+      "classification": "genuine acquisition-fallback assertion carried by invalid raw Journey setup",
+      "restatement": "Build the already-applied 3000 m pre-orbit state at planner-fixture level, then use a static hold; retain the no-read-through and bounded-acquisition assertions."
+    },
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "top-down hold: the hold stays exactly as asked for",
+      "construction": "topDownJourney mid-hold uses tilt_deg: 0",
+      "semantically_invalid": true,
+      "classification": "asserts forbidden re-tilt semantics on a non-opening hold",
+      "restatement": "Move the legal explicit top-down framing case to the opening hold; for the mid hold assert exact inheritance from the incoming planner state."
+    },
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "top-down hold: the following orbit keeps its own tilt and a real ring",
+      "construction": "topDownJourney mid-hold uses tilt_deg: 0",
+      "semantically_invalid": true,
+      "classification": "genuine orbit contract carried by an invalid hold fixture",
+      "restatement": "Construct the top-down incoming camera at planner-fixture level, keep the hold static, and leave the orbit's oblique tilt and real-ring assertions unchanged."
+    },
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "top-down hold: the requested orbit actually orbits",
+      "construction": "topDownJourney mid-hold uses tilt_deg: 0",
+      "semantically_invalid": true,
+      "classification": "genuine orbit-displacement contract carried by invalid raw Journey setup",
+      "restatement": "Seed the same top-down pre-orbit planner state without a hold camera override; retain the displacement-versus-ring assertion verbatim."
+    },
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "top-down hold: the bounded acquisition carries the entry, monotonically",
+      "construction": "topDownJourney mid-hold uses tilt_deg: 0",
+      "semantically_invalid": true,
+      "classification": "genuine acquisition monotonicity contract carried by invalid raw Journey setup",
+      "restatement": "Induce the same off-ring/top-down incoming state in a planner-level fixture; retain every acquisition bound and monotonicity assertion."
+    },
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "top-down hold: the subject stays framed through acquisition and sweep",
+      "construction": "topDownJourney mid-hold uses tilt_deg: 0",
+      "semantically_invalid": true,
+      "classification": "genuine aim contract carried by invalid raw Journey setup",
+      "restatement": "Use the planner-level top-down incoming state and static hold; preserve the post-acquisition aim checks."
+    },
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "top-down hold: the orbit keeps its whole arc, duration and no roll",
+      "construction": "topDownJourney mid-hold uses tilt_deg: 0",
+      "semantically_invalid": true,
+      "classification": "genuine arc/duration/roll contract carried by invalid raw Journey setup",
+      "restatement": "Use the same planner-level incoming state and keep the arc, duration and no-roll assertions unchanged."
+    },
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "dead-orbit gate: a healthy orbit and an ordinary hold are not flagged",
+      "construction": "one loop branch passes altitude_m: 3000 to a mid-hold",
+      "semantically_invalid": true,
+      "classification": "genuine quality-gate contract with one invalid explicit-altitude subfixture",
+      "restatement": "Replace the explicit-altitude branch with an equivalent planner-level applied state; retain the healthy-orbit finding count."
+    },
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "duration: an acquisition compresses the sweep, and the amount is reported",
+      "construction": "topDownJourney mid-hold uses tilt_deg: 0",
+      "semantically_invalid": true,
+      "classification": "genuine timing contract carried by an invalid hold fixture",
+      "restatement": "Induce acquisition with the same planner-level incoming geometry rather than a raw hold override; preserve every timing assertion."
+    },
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "duration: total shot time still equals the sum of segment durations",
+      "construction": "topDownJourney mid-hold uses tilt_deg: 0",
+      "semantically_invalid": true,
+      "classification": "genuine duration-accounting contract carried by invalid raw Journey setup",
+      "restatement": "Use the planner-level acquisition fixture and retain the total-duration sum assertion unchanged."
+    },
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "duration: the compression is stated in the plan the operator reads",
+      "construction": "both topDownJourney and an inline Journey use tilt_deg: 0 on the same mid-hold",
+      "semantically_invalid": true,
+      "classification": "genuine operator-note contract carried by two invalid raw Journey constructions",
+      "restatement": "Generate the same acquisition from a planner-level incoming state and preserve the rate-note, requested-rate and segment-duration assertions."
+    }
+  ],
+  "nearby_valid_hold_fixtures": [
+    {
+      "file": "tests/earth-studio-orbit-staging.test.js",
+      "test": "staging: an explicit top-down hold before an oblique orbit is NOT restaged",
+      "reason": "the explicit hold is the first movement, so opening framing remains valid"
+    },
+    {
+      "file": "tests/earth-studio-journey.test.js",
+      "test": "framing/import-regression: an explicit operator tilt stays authoritative but is warned about",
+      "reason": "the explicit hold is the first movement, so opening framing remains valid"
+    },
+    {
+      "file": "tests/earth-studio-journey-validation-authority.test.js",
+      "test": "journey validation compatibility cases",
+      "reason": "null altitude_m and tilt_deg mean omitted fields, not explicit camera instructions"
+    },
+    {
+      "file": "tests/earth-studio-path-equivalence.test.js",
+      "test": "path-equivalence adversarial: explicit altitude equal to the calibrated default vs omitted (Eiffel Tower)",
+      "reason": "altitude_m is on the opening place and the hold itself omits camera fields"
+    }
+  ]
+}
