@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "authority": {
+    "baseline_commit": "f8eb499d4891ac087bf8986a92f1a7319cae6b2a",
+    "generated_at": "2026-09-02T12:00:00.000Z",
+    "contract": "raw Journey input must be validated before compatibility normalization can erase semantic identity"
+  },
+  "compatibility_valid": [
+    {
+      "id": "bare-string-at-movement",
+      "reason": "documented v1 shorthand",
+      "journey": { "start": "Helsinki", "start_movements": ["hold"], "legs": [] }
+    },
+    {
+      "id": "bare-string-travel-movement",
+      "reason": "documented v1 shorthand",
+      "journey": {
+        "start": "Helsinki",
+        "start_movements": ["hold"],
+        "legs": [{ "destination": "Stockholm", "travel_style": "direct", "travel": ["fly"], "movements": ["hold"] }]
+      }
+    },
+    {
+      "id": "finite-numeric-strings",
+      "reason": "numOrNull intentionally accepts finite numeric strings and direction Number(-1)",
+      "journey": {
+        "journey_version": 1,
+        "pace": "calm",
+        "aspect": "16:9",
+        "start": { "location": "Helsinki", "altitude_m": "1200", "tilt_deg": "0" },
+        "start_movements": [{ "type": "orbit", "duration_seconds": "12.5", "direction": "-1", "revolutions": "1" }],
+        "legs": []
+      }
+    },
+    {
+      "id": "optional-fields-omitted",
+      "reason": "v1 migration supplies version, pace, aspect and optional step defaults",
+      "journey": { "start": { "location": "Helsinki" }, "start_movements": [{ "type": "hold" }] }
+    },
+    {
+      "id": "optional-fields-null",
+      "reason": "null optional numeric and editor fields intentionally mean absent",
+      "journey": {
+        "journey_version": null,
+        "pace": null,
+        "aspect": null,
+        "start": { "location": "Helsinki", "altitude_m": null, "tilt_deg": null },
+        "start_movements": [{ "type": "hold", "duration_seconds": null, "pace": null, "emphasis": null, "altitude_m": null, "tilt_deg": null, "framing": null }],
+        "legs": []
+      }
+    },
+    {
+      "id": "explicit-zero-tilt",
+      "reason": "zero is a meaningful explicit camera value",
+      "journey": {
+        "journey_version": 1,
+        "pace": "calm",
+        "aspect": "16:9",
+        "start": { "location": "Helsinki" },
+        "start_movements": [{ "type": "orbit", "duration_seconds": 12, "tilt_deg": 0 }],
+        "legs": []
+      }
+    },
+    {
+      "id": "empty-travel-array-style-fallback",
+      "reason": "an empty travel array intentionally expands from the named travel style",
+      "journey": {
+        "journey_version": 1,
+        "pace": "calm",
+        "aspect": "16:9",
+        "start": { "location": "Helsinki" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 4 }],
+        "legs": [{ "destination": { "location": "Stockholm" }, "travel_style": "cinematic", "travel": [], "movements": [{ "type": "hold", "duration_seconds": 4 }] }]
+      }
+    },
+    {
+      "id": "missing-travel-array-style-fallback",
+      "reason": "an omitted travel array intentionally expands from the named travel style",
+      "journey": {
+        "journey_version": 1,
+        "pace": "calm",
+        "aspect": "16:9",
+        "start": { "location": "Helsinki" },
+        "start_movements": [{ "type": "hold", "duration_seconds": 4 }],
+        "legs": [{ "destination": { "location": "Stockholm" }, "travel_style": "high_transit", "movements": [{ "type": "slow_orbit", "duration_seconds": 14 }] }]
+      }
+    },
+    {
+      "id": "normal-orbit-to-travel",
+      "reason": "preserved transition authority",
+      "journey": {
+        "journey_version": 1,
+        "pace": "calm",
+        "aspect": "16:9",
+        "start": { "location": "Helsinki" },
+        "start_movements": [{ "type": "half_orbit", "duration_seconds": 14 }],
+        "legs": [{ "destination": { "location": "Stockholm" }, "travel_style": "direct", "travel": [{ "type": "fly" }], "movements": [{ "type": "hold", "duration_seconds": 4 }] }]
+      }
+    },
+    {
+      "id": "terrain-morphology-location",
+      "reason": "tracked terrain/morphology lookup remains a valid Journey input",
+      "journey": {
+        "journey_version": 1,
+        "pace": "calm",
+        "aspect": "16:9",
+        "start": { "location": "Matterhorn" },
+        "start_movements": [{ "type": "slow_orbit", "duration_seconds": 18 }],
+        "legs": [{ "destination": { "location": "Grand Canyon" }, "travel_style": "high_transit", "travel": [], "movements": [{ "type": "reveal", "duration_seconds": 8 }] }]
+      }
+    }
+  ],
+  "directorial_intents": [
+    {
+      "id": "director-city-to-city",
+      "intent": { "stops": [{ "location": "Helsinki" }, { "location": "Stockholm", "role": "PRIMARY_SUBJECT", "importance": "HIGH" }] }
+    },
+    {
+      "id": "director-terrain",
+      "intent": { "stops": [{ "location": "Matterhorn", "role": "PRIMARY_SUBJECT", "importance": "HIGH", "purposes": ["INSPECT"] }] }
+    },
+    {
+      "id": "director-multi-stop",
+      "intent": { "stops": [{ "location": "Scandinavia" }, { "location": "Helsinki", "purposes": ["INSPECT"] }, { "location": "Stockholm", "purposes": ["COMPARE"] }] }
+    }
+  ],
+  "invalid": [
+    { "id": "dollyzoom-start", "category": "unsupported-placement", "evidence_pattern": "dollyzoom", "journey_patch": { "surface": "start", "movement": { "type": "dollyzoom", "duration_seconds": 4 } } },
+    { "id": "dollyzoom-travel", "category": "unsupported-placement", "evidence_pattern": "dollyzoom", "journey_patch": { "surface": "travel", "movement": { "type": "dollyzoom", "duration_seconds": 4 } } },
+    { "id": "dollyzoom-destination", "category": "unsupported-placement", "evidence_pattern": "dollyzoom", "journey_patch": { "surface": "destination", "movement": { "type": "dollyzoom", "duration_seconds": 4 } } },
+    { "id": "unknown-at-alpha", "category": "unknown-movement", "evidence_pattern": "teleport", "journey_patch": { "surface": "start", "movement": { "type": "teleport" } } },
+    { "id": "unknown-at-random", "category": "unknown-movement", "evidence_pattern": "xqz_9", "journey_patch": { "surface": "destination", "movement": { "type": "xqz_9" } } },
+    { "id": "unknown-travel-random", "category": "unknown-movement", "evidence_pattern": "warp_to", "journey_patch": { "surface": "travel", "movement": { "type": "warp_to" } } },
+    { "id": "blank-type", "category": "malformed-movement-type", "evidence_pattern": "movement|type", "journey_patch": { "surface": "start", "movement": { "type": "" } } },
+    { "id": "null-type", "category": "malformed-movement-type", "evidence_pattern": "movement|type", "journey_patch": { "surface": "start", "movement": { "type": null } } },
+    { "id": "numeric-type", "category": "malformed-movement-type", "evidence_pattern": "42|movement|type", "journey_patch": { "surface": "travel", "movement": { "type": 42 } } },
+    { "id": "object-type", "category": "malformed-movement-type", "evidence_pattern": "movement|type", "journey_patch": { "surface": "destination", "movement": { "type": { "name": "orbit" } } } },
+    { "id": "null-movement-record", "category": "malformed-movement-record", "evidence_pattern": "movement|record|type", "journey_patch": { "surface": "start", "movement": null } },
+    { "id": "array-movement-record", "category": "malformed-movement-record", "evidence_pattern": "movement|record|type", "journey_patch": { "surface": "travel", "movement": [] } },
+    { "id": "wrong-slot-at-in-travel", "category": "wrong-slot", "evidence_pattern": "orbit", "journey_patch": { "surface": "travel", "movement": { "type": "orbit" } } },
+    { "id": "wrong-slot-travel-at-start", "category": "wrong-slot", "evidence_pattern": "fly", "journey_patch": { "surface": "start", "movement": { "type": "fly" } } },
+    { "id": "unknown-travel-style", "category": "unsupported-enum", "evidence_pattern": "cinematik|travel.style|travel style", "journey_patch": { "surface": "travel_style", "value": "cinematik" } },
+    { "id": "direction-zero", "category": "invalid-direction", "evidence_pattern": "direction|0", "journey_patch": { "surface": "start", "movement": { "type": "orbit", "direction": 0 } } },
+    { "id": "direction-two", "category": "invalid-direction", "evidence_pattern": "direction|2", "journey_patch": { "surface": "start", "movement": { "type": "orbit", "direction": 2 } } },
+    { "id": "direction-word", "category": "invalid-direction", "evidence_pattern": "direction|left", "journey_patch": { "surface": "start", "movement": { "type": "orbit", "direction": "left" } } },
+    { "id": "direction-object", "category": "invalid-direction", "evidence_pattern": "direction", "journey_patch": { "surface": "start", "movement": { "type": "orbit", "direction": { "value": -1 } } } },
+    { "id": "revolutions-negative", "category": "invalid-revolutions", "evidence_pattern": "revolutions|-1", "journey_patch": { "surface": "start", "movement": { "type": "orbit", "revolutions": -1 } } },
+    { "id": "revolutions-nan", "category": "invalid-revolutions", "evidence_pattern": "revolutions|NaN", "journey_patch": { "surface": "start", "movement": { "type": "orbit", "revolutions": { "$number": "NaN" } } } },
+    { "id": "revolutions-infinity", "category": "invalid-revolutions", "evidence_pattern": "revolutions|Infinity", "journey_patch": { "surface": "start", "movement": { "type": "orbit", "revolutions": { "$number": "Infinity" } } } },
+    { "id": "revolutions-word", "category": "invalid-revolutions", "evidence_pattern": "revolutions|many", "journey_patch": { "surface": "start", "movement": { "type": "orbit", "revolutions": "many" } } },
+    { "id": "duration-negative", "category": "invalid-timing", "evidence_pattern": "duration|negative", "journey_patch": { "surface": "start", "movement": { "type": "hold", "duration_seconds": -1 } } },
+    { "id": "duration-zero", "category": "invalid-timing", "evidence_pattern": "duration|0 seconds", "journey_patch": { "surface": "start", "movement": { "type": "hold", "duration_seconds": 0 } } },
+    { "id": "duration-nan", "category": "invalid-timing", "evidence_pattern": "duration|NaN", "journey_patch": { "surface": "start", "movement": { "type": "hold", "duration_seconds": { "$number": "NaN" } } } },
+    { "id": "duration-infinity", "category": "invalid-timing", "evidence_pattern": "duration|Infinity", "journey_patch": { "surface": "start", "movement": { "type": "hold", "duration_seconds": { "$number": "Infinity" } } } },
+    { "id": "duration-word", "category": "invalid-timing", "evidence_pattern": "duration|soon", "journey_patch": { "surface": "start", "movement": { "type": "hold", "duration_seconds": "soon" } } },
+    { "id": "latitude-overflow", "category": "malformed-coordinate", "evidence_pattern": "91|location|coordinate|place", "journey_patch": { "surface": "start_location", "value": "91,24" } },
+    { "id": "latitude-underflow", "category": "malformed-coordinate", "evidence_pattern": "-91|location|coordinate|place", "journey_patch": { "surface": "start_location", "value": "-91,24" } },
+    { "id": "longitude-overflow", "category": "malformed-coordinate", "evidence_pattern": "181|location|coordinate|place", "journey_patch": { "surface": "start_location", "value": "60,181" } },
+    { "id": "coordinate-nonnumeric", "category": "malformed-coordinate", "evidence_pattern": "north|location|coordinate|place", "journey_patch": { "surface": "start_location", "value": "north,east" } },
+    { "id": "coordinate-object", "category": "malformed-coordinate", "evidence_pattern": "location|coordinate|place", "journey_patch": { "surface": "start_location", "value": { "latitude": 60, "longitude": 24 } } },
+    { "id": "unsupported-version-two", "category": "unsupported-version", "evidence_pattern": "version|2", "journey_patch": { "surface": "journey_version", "value": 2 } },
+    { "id": "unsupported-version-zero", "category": "unsupported-version", "evidence_pattern": "version|0", "journey_patch": { "surface": "journey_version", "value": 0 } },
+    { "id": "unsupported-version-word", "category": "unsupported-version", "evidence_pattern": "version|future", "journey_patch": { "surface": "journey_version", "value": "future" } },
+    { "id": "altitude-nan", "category": "invalid-numeric", "evidence_pattern": "altitude|NaN", "journey_patch": { "surface": "start_place_field", "field": "altitude_m", "value": { "$number": "NaN" } } },
+    { "id": "altitude-infinity", "category": "invalid-numeric", "evidence_pattern": "altitude|Infinity", "journey_patch": { "surface": "start_place_field", "field": "altitude_m", "value": { "$number": "Infinity" } } },
+    { "id": "tilt-nan", "category": "invalid-numeric", "evidence_pattern": "tilt|NaN", "journey_patch": { "surface": "start", "movement": { "type": "orbit", "tilt_deg": { "$number": "NaN" } } } },
+    {
+      "id": "tilt-infinity",
+      "category": "invalid-numeric",
+      "evidence_pattern": "tilt|Infinity",
+      "journey_patch": {
+        "surface": "start",
+        "movement": { "type": "orbit", "tilt_deg": { "$number": "Infinity" } }
+      }
+    }
+  ],
+  "movement_mutations": {
+    "hold": "hol",
+    "slow_orbit": "slow_orbt",
+    "orbit": "orbt",
+    "orbit_twice": "orbit_twic",
+    "half_orbit": "half_orbt",
+    "zoom_in": "zoominn",
+    "zoom_out": "zoomout_invalid",
+    "reveal": "revea1",
+    "spiral_in": "spiralin_invalid",
+    "spiral_out": "spiralout_invalid",
+    "fly": "fliy",
+    "cruise": "crusie",
+    "fly_high": "fly_hgh",
+    "fly_low": "fly_lwo",
+    "pull_back": "pullbak",
+    "climb_to_transit": "climb_to_translt",
+    "descend": "desend",
+    "pause": "paus"
+  },
+  "documented_ambiguities": [
+    "Only canonical movement keys are supported; natural-language synonyms belong to upstream parser/director adapters.",
+    "Missing/null direction and numeric/string 1 or -1 are compatibility; other direction coercions are incidental and must be rejected at raw authority.",
+    "Zero revolutions is not promoted as compatibility: it fails the current compile/parse verification contract; negative, non-finite and non-numeric revolutions are invalid.",
+    "Missing/null Journey version migrates to v1; an explicit value other than numeric 1 is not an alias.",
+    "Dynamic reclassification of already-accepted valid movements to hover remains legitimate downstream semantic behavior."
+  ]
+}

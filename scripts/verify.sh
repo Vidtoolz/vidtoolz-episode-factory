@@ -111,6 +111,10 @@ node --check music-cue-generator.js
 node --check supervised-capture.js
 node --check earth-studio-job-planner.js
 node --check earth-studio-journey.js
+node --check tests/earth-studio-journey-validation-hostile-oracle-lib.js
+node --check tests/earth-studio-journey-validation-hostile-oracle.test.js
+node --check scripts/run-earth-studio-journey-validation-hostile-oracle.js
+node --check scripts/earth-studio-journey-validation-candidate-adapter.js
 node --check earth-studio-director.js
 node --check earth-studio-lane.js
 node --check earth-studio-native-template-profiles.js
