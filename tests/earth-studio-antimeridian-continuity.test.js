@@ -23,30 +23,31 @@ const buildLng = (description, extra = {}) => {
   return { plan, tracks, options, lng: tracks.lng, pan: tracks.pan, final: planner.finalCameraState(plan, options) };
 };
 
-function isSeamPair(a, b) {
-  return b.time - a.time === 1 && Math.abs(Math.abs(a.value) - 180) < 1e-9
-    && Math.abs(Math.abs(b.value) - 180) < 1e-9 && Math.abs(Math.abs(b.value - a.value) - 360) < 1e-9;
-}
-
-// Scalar playback accounting over the exported (wrapped) longitude keys.
+// The .esp longitude track is CONTINUOUS (2026-09-03 physical-equivalence
+// contract): it may run past ±180°, and a seam crossing is simply the track
+// passing an odd multiple of 180° between two authored keys. Scalar playback
+// accounting: every consecutive step must stay below 180° (no wrong-way lap) and
+// no key may be a serializer-pinned exact ±180.
 function playback(lng) {
   let total = 0; let wrongWay = 0; let maxStep = 0; let seams = 0;
   const laps = [];
   for (let i = 1; i < lng.length; i += 1) {
     const a = lng[i - 1]; const b = lng[i];
     if (a.time === b.time) continue;
-    if (isSeamPair(a, b)) { seams += 1; continue; }
     const d = b.value - a.value;
     total += Math.abs(d);
     maxStep = Math.max(maxStep, Math.abs(d));
     if (Math.abs(d) > 180) { wrongWay += Math.abs(d); laps.push(`${a.time}:${a.value}→${b.time}:${b.value}`); }
+    // crossings of the seam meridian (odd multiples of 180°) inside this step
+    const lo = Math.min(a.value, b.value); const hi = Math.max(a.value, b.value);
+    for (let s = 180 + Math.ceil((lo - 180) / 360) * 360; s <= hi; s += 360) if (s > lo && s <= hi) seams += 1;
   }
   return { total, wrongWay, maxStep, seams, laps };
 }
 
 function assertContinuous(label, lng, maxTotalDeg) {
   const p = playback(lng);
-  assert.ok(lng.every((k) => k.value >= -180 && k.value <= 180), `${label}: every exported longitude stays inside ±180`);
+  assert.ok(lng.every((k) => Number.isFinite(k.value)), `${label}: finite longitude`);
   assert.equal(p.wrongWay, 0, `${label}: wrong-way laps ${p.laps.join(" | ")}`);
   assert.ok(p.total <= maxTotalDeg, `${label}: ${p.total.toFixed(3)}° of longitude playback exceeds ${maxTotalDeg}°`);
   return p;
@@ -90,7 +91,8 @@ test("fly → orbit across the seam approaches the ring locally instead of lappi
     // 20° of travel plus the ring's own ≤0.3° of longitude breathing.
     const p = assertContinuous(label, r.lng, 20.5);
     assert.equal(p.seams, 1, `${label}: one seam pair`);
-    assert.ok(p.maxStep <= 10.1, `${label}: largest non-seam interval ${p.maxStep}° (approach shaping point preserved at 80%)`);
+    // One continuous flight: the largest interval is the 20° leg up to the 80 % approach shaping point.
+    assert.ok(p.maxStep <= 20.1, `${label}: largest interval ${p.maxStep}° (approach shaping point preserved at 80%)`);
     assert.equal(Math.round(panSweep(r.pan)), 360, `${label}: the orbit's intentional 360° sweep is unchanged`);
     // The approach shaping point still exists: a fly annotated to land on the
     // ring entry emits its 80% key (production staging semantics preserved).
@@ -208,20 +210,14 @@ test("non-seam control is untouched by the authority: no seam keys, ring local, 
   assert.equal(r.final.longitude, 30);
 });
 
-test("wrapped track: a key exactly on ±180 carries the representative of its arrival side and pairs when it departs to the other side", () => {
+test("continuous track: a ring sample exactly on the ±180 meridian is an ordinary authored key (no serializer pair)", () => {
   const r = buildLng("orbit 45, 180 once clockwise tilted 60 degrees for 20 seconds");
-  const exact = r.lng.filter((k) => Math.abs(k.value) === 180);
-  assert.ok(exact.length >= 2, "the ring sample at bearing 180 lands exactly on the meridian");
-  // Every ±180 key is either half of a legal one-frame pair or the terminal key
-  // approached from its own side.
-  for (let i = 0; i < r.lng.length; i += 1) {
-    const k = r.lng[i];
-    if (Math.abs(k.value) !== 180) continue;
-    const prev = r.lng[i - 1]; const next = r.lng[i + 1];
-    const paired = (prev && isSeamPair(prev, k)) || (next && isSeamPair(k, next));
-    const sameSidePrev = !prev || Math.abs(prev.value - k.value) < 1;
-    const sameSideNext = !next || Math.abs(next.value - k.value) < 1;
-    assert.ok(paired || (sameSidePrev && sameSideNext), `key ${k.time}:${k.value} between ${prev && prev.value} and ${next && next.value}`);
-  }
-  assert.equal(r.final.longitude, 180, "finalCameraState reports the meridian as 180");
+  const p = assertContinuous("exact 180", r.lng, 5);
+  assert.ok(p.seams >= 1, "the ring crosses the meridian");
+  // Every longitude key is planner-authored: it sits on a latitude key frame.
+  const latTimes = new Set(r.tracks.lat.map((k) => k.time));
+  r.lng.forEach((k) => assert.ok(latTimes.has(k.time), `longitude key at ${k.time} is authored`));
+  // No adjacent-frame ±180 pair exists any more.
+  for (let i = 1; i < r.lng.length; i += 1) assert.ok(r.lng[i].time - r.lng[i - 1].time > 1 || Math.abs(r.lng[i].value - r.lng[i - 1].value) < 180);
+  assert.equal(r.final.longitude, 180, "finalCameraState reports the meridian canonically as 180");
 });

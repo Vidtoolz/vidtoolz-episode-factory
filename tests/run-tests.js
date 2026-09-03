@@ -93,6 +93,7 @@ require("./earth-studio-journey-validation-authority.test.js");
 require("./earth-studio-hold-camera-state.test.js");
 require("./earth-studio-antimeridian-continuity.test.js");
 require("./earth-studio-heading-authority.test.js");
+require("./earth-studio-antimeridian-physical-equivalence.test.js");
 require("./earth-studio-camera-quality.test.js");
 require("./earth-studio-camera-quality-truth.test.js");
 require("./earth-studio-orbit-geometry.test.js");

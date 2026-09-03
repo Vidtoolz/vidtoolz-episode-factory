@@ -1638,7 +1638,7 @@ This checklist is technical planning support only. It is not creative approval, 
   // MOTION longitude is a continuous real number (congruent mod 360° to the
   // geographic longitude, free to sit outside ±180 after a crossing); WRAPPED
   // ±180 longitude is a SERIALIZATION representation only — offsetPoint's public
-  // return, wrapLngTrack's export, finalCameraState's continuation seed. The two
+  // return, finalCameraState's continuation seed. The two
   // must never be mixed inside one interpolation: a wrapped -179.99 placed next
   // to a continuous 179.99 reads as 359.98° of travel the wrong way round the
   // globe. Measured on main (2026-09-03, independent oracle): every fly→orbit
@@ -1693,100 +1693,42 @@ This checklist is technical planning support only. It is not creative approval, 
     return continuousLng(referencePan, bearing);
   }
 
-  // Re-emit an UNWRAPPED piecewise-linear longitude track as wrapped [-180,180]
-  // keyframes. At each antimeridian crossing a one-frame keyframe pair is
-  // inserted (+180 then -180, or the reverse): both sides name the same
-  // physical meridian and no frame is rendered between two adjacent integer
-  // frames, so the wrap is visually seamless while every exported value stays
-  // inside the ±180 contract real Earth Studio has already accepted.
-  function wrapLngTrack(track, claimedFrames = null) {
-    if (track.length < 2) {
-      return track.map((k) => espKeyframe(k.time, round6(wrapLng(k.value))));
-    }
+  // ── Longitude export: CONTINUOUS ────────────────────────────────────────
+  // The .esp longitude track is emitted exactly as the camera state machine
+  // authored it: a continuous scalar, free to run past ±180° across the
+  // antimeridian. Earth Studio imports and plays longitude beyond ±180° and
+  // reproduces the longitude-translated non-seam trajectory (authenticated
+  // import readback, oracle v2 real-import evidence, 2026-09-03: 0.0004–0.098 m
+  // from the translated twin at the sampled frames).
+  //
+  // Until 2026-09-03 the export wrapped into [-180, 180) and spliced a one-frame
+  // "+180 / -180" seam pair into every crossing. That pair was serializer
+  // scaffolding, not camera motion: it pinned two rendered frames onto the
+  // meridian (266–568 m off the authored path on a 60°N / 80 km ring), claimed
+  // the opening key's easing when the crossing fell inside frame 1 (HARD_START),
+  // and left a heading authored for the un-pinned position on a frame Earth
+  // Studio rendered elsewhere. Physical equivalence with the translated twin —
+  // every rendered frame within 0.2 m, identical key topology and easing,
+  // identical target-residual profile — is the contract; longitude bytes are
+  // not. Public coordinates (shot-plan, continuation, finalCameraState) stay
+  // canonically wrapped; only the .esp motion track is continuous.
+  //
+  // Keys are re-created here exactly as the old export did for a non-crossing
+  // track (value rounded to six decimals, the interior-sample marker and the
+  // settle/launch handoff markers carried, nothing else), so every plan that
+  // never crossed the seam serializes byte-for-byte as before.
+  function exportLongitudeTrack(track) {
     const out = [];
-    const push = (frame, value, sampledInterior = false) => {
-      const kf = espKeyframe(frame, round6(value));
-      if (sampledInterior) kf.sampledInterior = sampledInterior === "in" ? "in"
-        : sampledInterior === "out" ? "out" : true;
+    for (const cur of track) {
+      const kf = espKeyframe(cur.time, round6(cur.value));
+      if (cur.sampledInterior) kf.sampledInterior = cur.sampledInterior === "in" ? "in"
+        : cur.sampledInterior === "out" ? "out" : true;
+      if (cur.orbitTravelHandoff) {
+        kf.orbitTravelHandoff = cur.orbitTravelHandoff;
+        if (cur.semanticBoundary) kf.semanticBoundary = true;
+      }
       if (out.length && out[out.length - 1].time === kf.time) out[out.length - 1] = kf;
       else if (!out.length || out[out.length - 1].time < kf.time) out.push(kf);
-    };
-    // A key sitting EXACTLY on a seam (value ≡ 180 mod 360) belongs to two
-    // wrapped representations at once: wrapLng() alone always answers -180,
-    // which is right only when the neighbouring keys sit on the -180 side.
-    // Measured on an orbit centred at 180° (ring sample at bearing 180 lands on
-    // the meridian exactly): 179.99 → -180 read as a 359.99° lap in playback.
-    // The key takes the representative of the side it ARRIVES from; if it then
-    // departs to the other side, the seam pair's second half sits one frame
-    // later, exactly as for a crossing strictly inside an interval.
-    const onSeam = (value) => wrapLng(value) === -180;
-    for (let i = 0; i < track.length; i += 1) {
-      const cur = track[i];
-      const next = track[i + 1];
-      let seamClaimedCur = false;
-      if (i > 0) {
-        const prev = track[i - 1];
-        const lo = Math.min(prev.value, cur.value);
-        const hi = Math.max(prev.value, cur.value);
-        // Seam values s = 180 + k*360 strictly inside (lo, hi). A single
-        // interval spans at most 180° (flights) or ~30° (orbit samples), so at
-        // most one seam — the loop stays for safety.
-        let s = 180 + Math.ceil((lo - 180) / 360) * 360;
-        if (s <= lo) s += 360;
-        for (; s < hi; s += 360) {
-          const t = (s - prev.value) / (cur.value - prev.value);
-          const f = prev.time + (cur.time - prev.time) * t;
-          if (cur.time - prev.time < 2) break; // sub-frame interval: wrap lands within one frame anyway
-          const before = Math.min(Math.max(Math.floor(f), prev.time), cur.time - 1);
-          const eastward = cur.value > prev.value;
-          push(before, eastward ? 180 : -180, cur.sampledInterior);
-          push(before + 1, eastward ? -180 : 180, cur.sampledInterior);
-          // The pair may CLAIM an existing key (crossing inside the first frame
-          // after prev, or the last frame before cur): that camera position now
-          // sits on the meridian, and a heading authored for the unclaimed
-          // position must be re-aimed from the position Earth Studio renders.
-          if (claimedFrames && before === prev.time) claimedFrames.push(prev.time);
-          // A crossing inside the LAST frame before this key: the pair's second
-          // half lands on the key's own frame and must keep its ±180 value —
-          // overwriting it with the key's wrapped value (0.00025° past the
-          // seam) leaves a 359.9997° adjacent-frame jump that is neither a
-          // seam pair nor motion. The key is within one frame of the meridian,
-          // so ±180 is its own value to sub-frame precision; the mirror case
-          // (crossing inside the first frame after the previous key) already
-          // claims that key the same way via the clamp above.
-          if (before + 1 === cur.time) { seamClaimedCur = true; if (claimedFrames) claimedFrames.push(cur.time); }
-        }
-      }
-      if (seamClaimedCur) {
-        // keep the seam pair's value on this frame
-      } else if (onSeam(cur.value)) {
-        const prev = i > 0 ? track[i - 1] : null;
-        const lastPushed = out.length ? out[out.length - 1].value : null;
-        // Arrival side: from below the seam value the wrapped run approaches
-        // +180, from above it approaches -180. A flat arrival keeps the
-        // representative already in use. A seam-exact OPENING key takes the
-        // side it departs towards (legacy -180 when departing eastward).
-        const arrival = prev
-          ? (prev.value < cur.value ? 180 : prev.value > cur.value ? -180
-            : (lastPushed === 180 || lastPushed === -180 ? lastPushed : -180))
-          : (next && next.value < cur.value ? 180 : -180);
-        push(cur.time, arrival, cur.sampledInterior);
-        const departure = next
-          ? (next.value > cur.value ? -180 : next.value < cur.value ? 180 : arrival)
-          : arrival;
-        if (departure !== arrival && next.time > cur.time + 1) {
-          push(cur.time + 1, departure, cur.sampledInterior);
-        }
-      } else {
-        push(cur.time, wrapLng(cur.value), cur.sampledInterior);
-      }
-      // SETTLE-THEN-LAUNCH handoff markers must survive the wrap — the
-      // serializer keys its easing off them.
-      const last = out[out.length - 1];
-      if (cur.orbitTravelHandoff && last && last.time === cur.time) {
-        last.orbitTravelHandoff = cur.orbitTravelHandoff;
-        if (cur.semanticBoundary) last.semanticBoundary = true;
-      }
     }
     return out;
   }
@@ -2057,8 +1999,7 @@ This checklist is technical planning support only. It is not creative approval, 
     const last = (trackName) => (tracks[trackName].length ? tracks[trackName][tracks[trackName].length - 1] : null);
     // Mark the newest pan key as an AIMED heading at `subject`. Internal only
     // (the serializer ignores it): dedupe keeps aimed keys even when their
-    // values coincide, and a key later claimed by a longitude seam pair is
-    // re-aimed from the meridian position Earth Studio will render.
+    // values coincide (a ring around the pole aims due north at every key).
     const tagAim = (subject) => { const kf = last("pan"); if (kf) kf.aimAt = { latitude: subject.latitude, longitude: subject.longitude }; };
     const locationOf = (segment) => {
       const orbitSeg = resolved.find((s) => s && s.segment_id === segment.stages_orbit_entry);
@@ -2233,8 +2174,20 @@ This checklist is technical planning support only. It is not creative approval, 
           }
           state = { ...state, facingFromSeed: false };
         }
+        // GEOMETRIC AGREEMENT. The carried ring state says the camera stands at
+        // ring bearing `facing − 180`; if the camera physically sits on that ring
+        // point (within the ring tolerance) the state is self-consistent and
+        // authoritative, whatever the planar bearing above makes of it. The
+        // planar test breaks where the ring crosses a pole: the camera due
+        // north of an 89.9°N subject sits at the antipodal longitude, and the
+        // equirectangular bearing reads −109.5° for a camera that is exactly at
+        // ring bearing 0 — the opening then slid 56 km around the ring (oracle
+        // v2 pole_enclosing). Away from the poles the two tests agree.
+        const carriedRingPoint = offsetPoint(locRef, state.facing - 180, radius);
+        const ringStateConsistent = preRadiusM > 1
+          && haversineMeters(state, carriedRingPoint) <= Math.max(radius * ORBIT_ENTRY_RING_TOLERANCE_FRACTION, ORBIT_ENTRY_RING_TOLERANCE_M);
         const panAgreesWithPosition = preRadiusM > 1
-          && Math.abs(shortestLngDelta(state.facing - 180, preBearingDeg)) < 1;
+          && (Math.abs(shortestLngDelta(state.facing - 180, preBearingDeg)) < 1 || ringStateConsistent);
         const enterWhereItStands = policy.coherentTrajectory
           && thetaEnd === null
           && preRadiusM > 1
@@ -3000,35 +2953,9 @@ This checklist is technical planning support only. It is not creative approval, 
     // ending frame's camera, in real-world units (longitude still unwrapped —
     // finalCameraState wraps it for export). Purely additive: callers that do
     // not pass captureState see byte-identical behavior.
-    // Emit-time wrap: the state machine runs unwrapped; the exported track
-    // stays inside the ±180 contract, with seam pairs at crossings.
-    const claimedFrames = [];
-    tracks.lng = wrapLngTrack(tracks.lng, claimedFrames);
-    // A seam pair that claimed a position key moved that rendered camera onto
-    // the ±180 meridian (one frame of motion). An aimed heading on the same
-    // frame is re-derived from the rendered position, so the camera still
-    // looks at its subject there; the surrounding chain stays continuous
-    // because the correction is a fraction of one sample step.
-    if (claimedFrames.length) {
-      const valueOn = (track, frame) => {
-        const exact = track.find((k) => k.time === frame);
-        if (exact) return exact.value;
-        let before = null; let after = null;
-        for (const k of track) { if (k.time <= frame) before = k; else if (!after) after = k; }
-        if (!before) return after ? after.value : null;
-        if (!after) return before.value;
-        return before.value + (after.value - before.value) * ((frame - before.time) / (after.time - before.time));
-      };
-      tracks.pan.forEach((kf, index) => {
-        if (!kf.aimAt || !claimedFrames.includes(kf.time)) return;
-        const camera = { latitude: valueOn(tracks.lat, kf.time), longitude: valueOn(tracks.lng, kf.time) };
-        if (!Number.isFinite(camera.latitude) || !Number.isFinite(camera.longitude)) return;
-        const reference = index > 0 ? tracks.pan[index - 1].value : kf.value;
-        const reaimed = aimHeading(camera, kf.aimAt, reference, kf.value);
-        if (state && state.pan === kf.value) state = { ...state, pan: reaimed };
-        kf.value = reaimed;
-      });
-    }
+    // Longitude is exported as the continuous scalar the state machine
+    // authored (see exportLongitudeTrack); no seam scaffolding is added.
+    tracks.lng = exportLongitudeTrack(tracks.lng);
     if (options.captureState && typeof options.captureState === "object") {
       options.captureState.final = state ? { ...state } : null;
     }

@@ -38,6 +38,38 @@ test("gate3 BYTE-STABILITY: regenerated untemplated plans are byte-identical to 
     for (const artifact of ["earth-studio.esp", "shot-plan.json"]) {
       const expected = MANIFEST.controls.find((c) => c.plan === plan && c.artifact === artifact);
       assert.ok(expected, `${plan}/${artifact} in manifest`);
+      if (artifact === "earth-studio.esp" && /antimeridian/.test(plan)) {
+        // EXPECTED_BYTE_CHANGE_NOT_REPINNED (2026-09-03, antimeridian physical-
+        // equivalence contract, oracle v2): the frozen v0.9.4 control serialized
+        // its seam as a one-frame "+180 / -180" pair pinned onto the meridian;
+        // the .esp longitude is now the continuous authored track and that pair
+        // no longer exists. The frozen control stays byte-frozen on disk as
+        // provenance (checked above) and is NOT re-pinned here — re-earning a
+        // byte control is a Gate-3 human decision. What is asserted instead is
+        // the structural equivalence that the contract change implies: every
+        // authored key is unchanged, longitude values are congruent mod 360°,
+        // only the two serializer pair keys are gone, every other track is
+        // byte-identical.
+        const frozen = JSON.parse(fs.readFileSync(path.join(dir, "earth-studio.esp"), "utf8"));
+        const fresh = JSON.parse(artifacts[artifact]);
+        const leaf = (esp, type) => { let found = null; (function walk(node) { if (!node || typeof node !== "object" || found) return; if (node.type === type && Array.isArray(node.keyframes)) { found = node; return; } for (const v of Object.values(node)) Array.isArray(v) ? v.forEach(walk) : walk(v); }(esp)); return found; };
+        for (const type of ["latitude", "altitude", "rotationX", "rotationY"]) {
+          assert.equal(JSON.stringify(leaf(fresh, type)), JSON.stringify(leaf(frozen, type)), `${plan}: ${type} track byte-identical`);
+        }
+        const decode = (l) => l.keyframes.map((k) => ({ time: k.time, value: k.value * (180 - l.value.minValueRange) + l.value.minValueRange }));
+        const frozenLng = decode(leaf(frozen, "longitude")); const freshLng = decode(leaf(fresh, "longitude"));
+        const pair = frozenLng.filter((k) => Math.abs(Math.abs(k.value) - 180) < 1e-9);
+        assert.equal(pair.length, 2, `${plan}: the frozen control carries exactly one serializer seam pair`);
+        const authored = frozenLng.filter((k) => !pair.includes(k));
+        assert.equal(freshLng.length, authored.length, `${plan}: only the pair keys are gone`);
+        authored.forEach((k, i) => {
+          assert.ok(Math.abs(k.time - freshLng[i].time) < 1e-12, `${plan}: authored longitude key time ${k.time}`);
+          const d = ((freshLng[i].value - k.value) % 360 + 540) % 360 - 180;
+          assert.ok(Math.abs(d) < 1e-6, `${plan}: longitude congruent mod 360 at ${k.time} (${freshLng[i].value} vs ${k.value})`);
+        });
+        assert.ok(freshLng.some((k) => k.value > 180), `${plan}: the regenerated track is continuous past +180`);
+        continue;
+      }
       assert.equal(shaStr(artifacts[artifact]), expected.sha256, `BYTE IDENTICAL: ${plan}/${artifact}`);
     }
   }

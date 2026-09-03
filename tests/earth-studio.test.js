@@ -715,30 +715,33 @@ test("earth-studio planner v0.7: doubled duration phrases do not leak into the l
   assert.equal(seg.resolution_status, "resolved");
 });
 
-test("earth-studio esp v0.7: antimeridian flights take the short arc with an in-contract seam pair", () => {
+test("earth-studio esp: antimeridian flights take the short arc as one CONTINUOUS longitude track (no seam pair)", () => {
+  // Physical-equivalence contract (2026-09-03, oracle v2): the .esp longitude is
+  // the continuous scalar the camera state machine authored, free to run past
+  // ±180° across the seam. Earth Studio imports and plays longitude beyond ±180°
+  // and reproduces the longitude-translated non-seam trajectory (authenticated
+  // import readback). The old "+180 / -180" one-frame pair was serializer
+  // scaffolding that pinned two rendered frames onto the meridian.
   const plan = planner.buildShotPlan("T", "fly to Tokyo, then fly to Los Angeles in 12 seconds");
   const lng = planner.buildEspKeyframes(plan).lng;
-  assert.ok(lng.every((k) => k.value >= -180 && k.value <= 180), "every exported longitude stays inside ±180");
-  // The eastward crossing emits +180 / -180 on ADJACENT integer frames: the
-  // same physical meridian, and no frame is ever rendered between them.
-  const i = lng.findIndex((k) => k.value === 180);
-  assert.ok(i >= 0, "crossing emits a +180 keyframe");
-  assert.equal(lng[i + 1].value, -180);
-  assert.equal(lng[i + 1].time, lng[i].time + 1);
-  // Net sweep (seam jump contributes 0) = the short eastward Pacific route.
-  let sweep = 0;
-  for (let j = 1; j < lng.length; j += 1) {
-    let d = lng[j].value - lng[j - 1].value;
-    if (d > 180) d -= 360;
-    if (d < -180) d += 360;
-    sweep += d;
-  }
+  assert.ok(lng.every((k) => Number.isFinite(k.value)));
+  // No consecutive keys are more than 180° apart: the short eastward Pacific
+  // route is one continuous move, and no key is pinned to exactly ±180.
+  for (let j = 1; j < lng.length; j += 1) assert.ok(Math.abs(lng[j].value - lng[j - 1].value) < 180, `step ${j}`);
+  assert.equal(lng.some((k) => Math.abs(k.value) === 180), false, "no serializer-created seam key");
+  assert.ok(lng.some((k) => k.value > 180), "the continuous track runs past +180 on its way to Los Angeles");
+  const sweep = lng[lng.length - 1].value - lng[0].value;
   assert.ok(sweep > 90 && sweep < 115, `expected ~+102° short-arc sweep, got ${sweep}`);
-  // Exported .esp normalization contract intact (values in [0,1] against minValueRange).
+  // Every key is planner-authored: the longitude key frames are exactly the latitude key frames.
+  const lat = planner.buildEspKeyframes(plan).lat;
+  assert.deepEqual(lng.map((k) => k.time), lat.map((k) => k.time));
+  // Exported .esp normalization: v = (lon − minValueRange) / (180 − minValueRange) decodes back
+  // exactly; values past +180 are legitimately > 1 in normalized space.
   const esp = planner.buildEsp(plan);
   const lon = esp.scenes[0].attributes[0].attributes[0].attributes[0];
   assert.equal(lon.type, "longitude");
-  assert.ok(lon.keyframes.every((k) => k.value >= 0 && k.value <= 1));
+  const min = lon.value.minValueRange;
+  lon.keyframes.forEach((k, idx) => assert.ok(Math.abs(k.value * (180 - min) + min - lng[idx].value) < 1e-6));
   // Non-crossing plans are unaffected: plain short-range longitudes, no seam keyframes.
   const london = planner.buildEspKeyframes(planner.buildShotPlan("T", "fly to London in 7 seconds, then orbit London for 10 seconds"));
   assert.ok(london.lng.every((k) => Math.abs(k.value) < 1));

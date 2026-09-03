@@ -96,16 +96,16 @@ test("heading authority: seam-centred ring is representation-independent and con
   const control = build("orbit 60, 20 once clockwise at 200000m tilted 30 degrees for 20 seconds");
   const orbit = orbitOf(seam);
   const worst = Math.max(...headingErrors(seam, orbit).map((r) => r.error));
-  assert.ok(worst <= precisionDeg(80000), `seam ring worst authored-key heading error ${worst}° (includes the seam-pair-claimed key)`);
-  // The pair's serialization-only frame pins the rendered camera on the meridian
-  // for one frame (at most one frame of ring motion); its residual is bounded by that.
-  const residual = pairResidual(seam, orbit);
-  assert.ok(residual.length >= 1 && Math.max(...residual) < 1, `pair-frame residual ${residual}`);
+  assert.ok(worst <= precisionDeg(80000), `seam ring worst authored-key heading error ${worst}°`);
+  // Continuous longitude export (2026-09-03): no serializer seam pair exists, so
+  // the seam ring is the off-seam twin translated by 159.99° — same key frames on
+  // every track, same pan values, exact commanded sweep.
+  assert.equal(pairResidual(seam, orbit).length, 0, "no serializer-created seam frames");
   assert.ok(maxStep(seam.tracks.pan) < 15);
-  // The pair claims the opening key (the north point is 0.01° from the meridian),
-  // so frame 0 is aimed from the rendered meridian position: 180.40°, not 180°.
-  assert.ok(Math.abs(panSweep(seam, orbit) - 360) < 1, `seam sweep ${panSweep(seam, orbit)}`);
+  assert.ok(Math.abs(panSweep(seam, orbit) - 360) < 1e-6, `seam sweep ${panSweep(seam, orbit)}`);
   assert.deepEqual(seam.tracks.pan.map((k) => k.time), control.tracks.pan.map((k) => k.time), "same pan key frames as the off-seam twin");
+  assert.deepEqual(seam.tracks.lng.map((k) => k.time), control.tracks.lng.map((k) => k.time), "same longitude key frames as the off-seam twin");
+  seam.tracks.pan.forEach((k, i) => assert.ok(Math.abs(k.value - control.tracks.pan[i].value) < 1e-6, `pan value at ${k.time}`));
 });
 
 test("heading authority: a zero-radius declared spin keeps its authored pan sweep", () => {
