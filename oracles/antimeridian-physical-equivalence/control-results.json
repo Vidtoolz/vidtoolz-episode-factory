@@ -1,0 +1,309 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-03T00:00:00.000Z",
+  "controls": {
+    "c115ce471084175285cbf3440506373264081c79": {
+      "verdict": "FAIL",
+      "failed_acceptance": [
+        "every_rendered_frame_within_0_2m",
+        "authoritative_heading_tau_pass",
+        "planner_authored_topology_and_easing",
+        "no_serializer_created_longitude_scaffolding",
+        "continuous_unwrapped_longitude_present",
+        "command_revolutions_preserved",
+        "finite_pole_behavior",
+        "acquisition_continuity",
+        "acquisition_representative_continuity",
+        "opening_hard_start_eliminated",
+        "all_cases_pass"
+      ],
+      "case_count": 15,
+      "rendered_frames": 10650,
+      "cases_pass": 1,
+      "cases_red": 14,
+      "max_physical_delta_m": 6823282.568749429,
+      "max_target_profile_delta_deg": 179.62605260267964,
+      "max_authoritative_heading_error_deg": 179.6260436767526,
+      "opening_hard_start_cases": [
+        "seam_centered_cw",
+        "seam_centered_ccw",
+        "twice_clockwise",
+        "twice_counterclockwise",
+        "high_85",
+        "high_89",
+        "long_radius"
+      ],
+      "pan_scaffolding_cases": [],
+      "longitude_scaffolding_cases": [
+        "seam_centered_cw",
+        "seam_centered_ccw",
+        "exact_pos_180",
+        "exact_neg_180",
+        "half_clockwise",
+        "twice_clockwise",
+        "twice_counterclockwise",
+        "high_85",
+        "high_89",
+        "pole_enclosing",
+        "short_radius",
+        "long_radius",
+        "acquisition_orbit",
+        "seeded_continuation"
+      ],
+      "diagnostic_suppression_cases": [],
+      "acquisition_representative": {
+        "largest_step": {
+          "delta_deg": -710.2173913043479,
+          "from_frame": 48,
+          "to_frame": 63
+        },
+        "pass": false
+      },
+      "inverse_authority": {
+        "final_position_delta_m": 0,
+        "pass": true,
+        "position_tracks_equal_with_pan_plus_360": true
+      },
+      "public_coordinates": {
+        "final_longitude_deg": -179.9,
+        "initial_longitude_deg": 179.9,
+        "pass": true
+      }
+    },
+    "cad68e9425ce295ab8c998cc58865669a827feec": {
+      "verdict": "FAIL",
+      "failed_acceptance": [
+        "every_rendered_frame_within_0_2m",
+        "planner_authored_topology_and_easing",
+        "no_serializer_created_longitude_scaffolding",
+        "continuous_unwrapped_longitude_present",
+        "command_revolutions_preserved",
+        "finite_pole_behavior",
+        "acquisition_continuity",
+        "opening_hard_start_eliminated",
+        "all_cases_pass"
+      ],
+      "case_count": 15,
+      "rendered_frames": 10650,
+      "cases_pass": 1,
+      "cases_red": 14,
+      "max_physical_delta_m": 6823282.568749429,
+      "max_target_profile_delta_deg": 83.92852737105557,
+      "max_authoritative_heading_error_deg": 2.830802259268239e-10,
+      "opening_hard_start_cases": [
+        "seam_centered_cw",
+        "seam_centered_ccw",
+        "twice_clockwise",
+        "twice_counterclockwise",
+        "high_85",
+        "high_89",
+        "long_radius"
+      ],
+      "pan_scaffolding_cases": [],
+      "longitude_scaffolding_cases": [
+        "seam_centered_cw",
+        "seam_centered_ccw",
+        "exact_pos_180",
+        "exact_neg_180",
+        "half_clockwise",
+        "twice_clockwise",
+        "twice_counterclockwise",
+        "high_85",
+        "high_89",
+        "pole_enclosing",
+        "short_radius",
+        "long_radius",
+        "acquisition_orbit",
+        "seeded_continuation"
+      ],
+      "diagnostic_suppression_cases": [],
+      "acquisition_representative": {
+        "largest_step": {
+          "delta_deg": 10.466570645882939,
+          "from_frame": 293,
+          "to_frame": 309
+        },
+        "pass": true
+      },
+      "inverse_authority": {
+        "final_position_delta_m": 0,
+        "pass": true,
+        "position_tracks_equal_with_pan_plus_360": true
+      },
+      "public_coordinates": {
+        "final_longitude_deg": -179.9,
+        "initial_longitude_deg": 179.9,
+        "pass": true
+      }
+    },
+    "bbf88d263a43bf7f8e93786843f4408cd923faf0": {
+      "verdict": "FAIL",
+      "failed_acceptance": [
+        "every_rendered_frame_within_0_2m",
+        "planner_authored_topology_and_easing",
+        "no_serializer_created_pan_scaffolding",
+        "no_serializer_created_longitude_scaffolding",
+        "continuous_unwrapped_longitude_present",
+        "command_revolutions_preserved",
+        "finite_pole_behavior",
+        "acquisition_continuity",
+        "opening_hard_start_eliminated",
+        "camera_quality_diagnostic_unsuppressed",
+        "camera_quality_source_unchanged",
+        "all_cases_pass"
+      ],
+      "case_count": 15,
+      "rendered_frames": 10650,
+      "cases_pass": 1,
+      "cases_red": 14,
+      "max_physical_delta_m": 6823282.568749429,
+      "max_target_profile_delta_deg": 83.92852737105557,
+      "max_authoritative_heading_error_deg": 2.830802259268239e-10,
+      "opening_hard_start_cases": [
+        "seam_centered_cw",
+        "seam_centered_ccw",
+        "twice_clockwise",
+        "twice_counterclockwise",
+        "high_85",
+        "high_89",
+        "long_radius"
+      ],
+      "pan_scaffolding_cases": [
+        "seam_centered_cw",
+        "seam_centered_ccw",
+        "exact_pos_180",
+        "exact_neg_180",
+        "twice_clockwise",
+        "twice_counterclockwise",
+        "high_85",
+        "high_89",
+        "pole_enclosing",
+        "short_radius",
+        "long_radius",
+        "acquisition_orbit",
+        "seeded_continuation"
+      ],
+      "longitude_scaffolding_cases": [
+        "seam_centered_cw",
+        "seam_centered_ccw",
+        "exact_pos_180",
+        "exact_neg_180",
+        "half_clockwise",
+        "twice_clockwise",
+        "twice_counterclockwise",
+        "high_85",
+        "high_89",
+        "pole_enclosing",
+        "short_radius",
+        "long_radius",
+        "acquisition_orbit",
+        "seeded_continuation"
+      ],
+      "diagnostic_suppression_cases": [
+        "twice_clockwise",
+        "twice_counterclockwise",
+        "pole_enclosing",
+        "acquisition_orbit",
+        "seeded_continuation"
+      ],
+      "acquisition_representative": {
+        "largest_step": {
+          "delta_deg": 10.466570645882939,
+          "from_frame": 293,
+          "to_frame": 309
+        },
+        "pass": true
+      },
+      "inverse_authority": {
+        "final_position_delta_m": 0,
+        "pass": true,
+        "position_tracks_equal_with_pan_plus_360": true
+      },
+      "public_coordinates": {
+        "final_longitude_deg": -179.9,
+        "initial_longitude_deg": 179.9,
+        "pass": true
+      }
+    },
+    "historical-model-a-fixture": {
+      "verdict": "FAIL",
+      "failed_acceptance": [
+        "every_rendered_frame_within_0_2m",
+        "planner_authored_topology_and_easing",
+        "no_serializer_created_longitude_scaffolding",
+        "continuous_unwrapped_longitude_present",
+        "zero_radius_spin_preserved",
+        "finite_pole_behavior",
+        "acquisition_continuity",
+        "opening_hard_start_eliminated",
+        "all_cases_pass"
+      ],
+      "case_count": 1,
+      "rendered_frames": 600,
+      "cases_pass": 0,
+      "cases_red": 1,
+      "max_physical_delta_m": 1571.6846764100585,
+      "max_target_profile_delta_deg": 1.1519069725821964,
+      "max_authoritative_heading_error_deg": 2.2737367544323206e-12,
+      "opening_hard_start_cases": [
+        "seam_centered_cw"
+      ],
+      "pan_scaffolding_cases": [],
+      "longitude_scaffolding_cases": [
+        "seam_centered_cw"
+      ],
+      "diagnostic_suppression_cases": [],
+      "acquisition_representative": {
+        "largest_step": {
+          "delta_deg": 10.466570645882939,
+          "from_frame": 293,
+          "to_frame": 309
+        },
+        "pass": true
+      },
+      "inverse_authority": {
+        "final_position_delta_m": 0,
+        "pass": true,
+        "position_tracks_equal_with_pan_plus_360": true
+      },
+      "public_coordinates": {
+        "final_longitude_deg": -179.9,
+        "initial_longitude_deg": 179.9,
+        "pass": true
+      }
+    },
+    "compliant-continuous-unwrapped": {
+      "verdict": "PASS",
+      "failed_acceptance": [],
+      "case_count": 15,
+      "rendered_frames": 10650,
+      "cases_pass": 15,
+      "cases_red": 0,
+      "max_physical_delta_m": 0,
+      "max_target_profile_delta_deg": 0,
+      "max_authoritative_heading_error_deg": 0.000027534746493529383,
+      "opening_hard_start_cases": [],
+      "pan_scaffolding_cases": [],
+      "longitude_scaffolding_cases": [],
+      "diagnostic_suppression_cases": [],
+      "acquisition_representative": {
+        "largest_step": {
+          "delta_deg": 10.466570645882939,
+          "from_frame": 293,
+          "to_frame": 309
+        },
+        "pass": true
+      },
+      "inverse_authority": {
+        "final_position_delta_m": 0,
+        "pass": true,
+        "position_tracks_equal_with_pan_plus_360": true
+      },
+      "public_coordinates": {
+        "final_longitude_deg": -179.9,
+        "initial_longitude_deg": 179.9,
+        "pass": true
+      }
+    }
+  }
+}

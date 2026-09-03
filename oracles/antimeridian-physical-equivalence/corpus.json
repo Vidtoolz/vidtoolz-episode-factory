@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "oracle": "antimeridian-physical-equivalence-v2",
+  "production_sha": "c115ce471084175285cbf3440506373264081c79",
+  "heading_authority_sha": "cad68e9425ce295ab8c998cc58865669a827feec",
+  "first_serializer_attempt_sha": "bbf88d263a43bf7f8e93786843f4408cd923faf0",
+  "historical_oracle_sha": "c604b2cfa467630f6b0fb8747e2c34204e5d04c0",
+  "semantic_contract": "Authored camera states must satisfy strict spherical camera-to-subject bearing precision. At every rendered frame, antimeridian serialization must preserve the same physical camera trajectory and targeting-residual profile as an equivalent longitude-translated non-seam trajectory. Longitude representation is judged physically, not by wrapped scalar bytes. All camera-track timestamps and easing are planner-authored; serializers may add neither longitude seam keys nor co-authored pan keys.",
+  "precision": {
+    "serialized_position_uncertainty_m": 0.2,
+    "angular_floor_deg": 0.000001,
+    "physical_equivalence_m": 0.2,
+    "target_profile_position_uncertainty_m": 0.2,
+    "numerical_deg": 0.000001,
+    "maximum_uncommanded_pan_step_deg": 180
+  },
+  "protected_tracks": ["latitude", "longitude", "altitude", "rotationX", "rotationY"],
+  "authored_topology_tracks": ["latitude", "longitude", "altitude", "rotationX", "rotationY"],
+  "cases": [
+    {
+      "id": "seam_centered_cw",
+      "categories": ["eastward", "westward", "opening", "full", "60n", "long_radius"],
+      "description": "orbit 60, 179.99 once clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "twin_description": "orbit 60, 20 once clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "longitude_shift_deg": 159.99,
+      "expected_pan_sweep_deg": 360,
+      "hostile_frames": [0, 1, 2, 298, 299, 300]
+    },
+    {
+      "id": "seam_centered_ccw",
+      "categories": ["eastward", "westward", "full", "60n"],
+      "description": "orbit 60, -179.99 once counterclockwise at 200000m tilted 30 degrees for 20 seconds",
+      "twin_description": "orbit 60, 20 once counterclockwise at 200000m tilted 30 degrees for 20 seconds",
+      "longitude_shift_deg": -199.99,
+      "expected_pan_sweep_deg": -360
+    },
+    {
+      "id": "exact_pos_180",
+      "categories": ["exact_180", "full"],
+      "description": "orbit 60, 180 once clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "twin_description": "orbit 60, 20 once clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "longitude_shift_deg": 160,
+      "expected_pan_sweep_deg": 360
+    },
+    {
+      "id": "exact_neg_180",
+      "categories": ["exact_minus_180", "full"],
+      "description": "orbit 60, -180 once counterclockwise at 200000m tilted 30 degrees for 20 seconds",
+      "twin_description": "orbit 60, 20 once counterclockwise at 200000m tilted 30 degrees for 20 seconds",
+      "longitude_shift_deg": -200,
+      "expected_pan_sweep_deg": -360
+    },
+    {
+      "id": "half_clockwise",
+      "categories": ["half", "60n"],
+      "description": "orbit 60, 179.99 half clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "twin_description": "orbit 60, 20 half clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "longitude_shift_deg": 159.99,
+      "expected_pan_sweep_deg": 180
+    },
+    {
+      "id": "twice_clockwise",
+      "categories": ["twice", "multiple_crossings", "60n"],
+      "description": "orbit 60, 179.99 twice clockwise at 200000m tilted 30 degrees for 40 seconds",
+      "twin_description": "orbit 60, 20 twice clockwise at 200000m tilted 30 degrees for 40 seconds",
+      "longitude_shift_deg": 159.99,
+      "expected_pan_sweep_deg": 720
+    },
+    {
+      "id": "twice_counterclockwise",
+      "categories": ["twice", "multiple_crossings", "60n"],
+      "description": "orbit 60, -179.99 twice counterclockwise at 200000m tilted 30 degrees for 40 seconds",
+      "twin_description": "orbit 60, 20 twice counterclockwise at 200000m tilted 30 degrees for 40 seconds",
+      "longitude_shift_deg": -199.99,
+      "expected_pan_sweep_deg": -720
+    },
+    {
+      "id": "high_85",
+      "categories": ["high_latitude", "85n"],
+      "description": "orbit 85, 179.99 once clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "twin_description": "orbit 85, 20 once clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "longitude_shift_deg": 159.99,
+      "expected_pan_sweep_deg": 360
+    },
+    {
+      "id": "high_89",
+      "categories": ["high_latitude", "89n"],
+      "description": "orbit 89, 179.99 once clockwise at 20000m tilted 60 degrees for 20 seconds",
+      "twin_description": "orbit 89, 20 once clockwise at 20000m tilted 60 degrees for 20 seconds",
+      "longitude_shift_deg": 159.99,
+      "expected_pan_sweep_deg": 360
+    },
+    {
+      "id": "pole_enclosing",
+      "categories": ["high_latitude", "89_9n", "pole_enclosing", "physical_revolution"],
+      "description": "orbit 89.9, 179.99 once clockwise at 20000m tilted 60 degrees for 20 seconds",
+      "reference_kind": "pole_geometry",
+      "expected_pan_sweep_deg": 0,
+      "pole_enclosing": true
+    },
+    {
+      "id": "short_radius",
+      "categories": ["short_radius", "near_seam"],
+      "description": "orbit 60, 179.99 once clockwise at 3000m tilted 45 degrees for 20 seconds",
+      "twin_description": "orbit 60, 20 once clockwise at 3000m tilted 45 degrees for 20 seconds",
+      "longitude_shift_deg": 159.99,
+      "expected_pan_sweep_deg": 360
+    },
+    {
+      "id": "long_radius",
+      "categories": ["long_radius", "near_seam"],
+      "description": "orbit 60, 179.99 once clockwise at 866025m tilted 30 degrees for 30 seconds",
+      "twin_description": "orbit 60, 20 once clockwise at 866025m tilted 30 degrees for 30 seconds",
+      "longitude_shift_deg": 159.99,
+      "expected_pan_sweep_deg": 360
+    },
+    {
+      "id": "zero_radius_spin",
+      "categories": ["zero_radius", "spin"],
+      "description": "orbit 60, 179.99 once clockwise at 6500m tilted 0 degrees for 20 seconds",
+      "twin_description": "orbit 60, 20 once clockwise at 6500m tilted 0 degrees for 20 seconds",
+      "longitude_shift_deg": 159.99,
+      "expected_pan_sweep_deg": 360,
+      "zero_radius": true
+    },
+    {
+      "id": "acquisition_orbit",
+      "categories": ["acquisition", "opening"],
+      "description": "fly to 60, 179.4 at 200000m tilted 30 degrees for 5 seconds then orbit 60, 179.99 once clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "twin_description": "fly to 60, 19.41 at 200000m tilted 30 degrees for 5 seconds then orbit 60, 20 once clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "longitude_shift_deg": 159.99,
+      "expected_pan_sweep_deg": 360
+    },
+    {
+      "id": "seeded_continuation",
+      "categories": ["continuation", "acquisition", "crossing"],
+      "description": "orbit 45, -179.9 once clockwise at 20000m tilted 60 degrees for 20 seconds",
+      "twin_description": "orbit 45, 20.1 once clockwise at 20000m tilted 60 degrees for 20 seconds",
+      "longitude_shift_deg": -200,
+      "expected_pan_sweep_deg": 360,
+      "options": {
+        "initialCamera": {"latitude": 45.2, "longitude": 179.9, "altitude_m": 20000, "pan_deg": 100, "tilt_deg": 60}
+      },
+      "twin_options": {
+        "initialCamera": {"latitude": 45.2, "longitude": 19.9, "altitude_m": 20000, "pan_deg": 100, "tilt_deg": 60}
+      }
+    }
+  ]
+}

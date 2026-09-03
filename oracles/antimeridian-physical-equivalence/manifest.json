@@ -1,0 +1,363 @@
+{
+  "schema_version": 1,
+  "oracle": "antimeridian-physical-equivalence-v2",
+  "branch": "codex/antimeridian-physical-equivalence-oracle-v2-20260903",
+  "parent_sha": "c604b2cfa467630f6b0fb8747e2c34204e5d04c0",
+  "historical_authorities": {
+    "production": "c115ce471084175285cbf3440506373264081c79",
+    "heading": "cad68e9425ce295ab8c998cc58865669a827feec",
+    "first_serializer_attempt": "bbf88d263a43bf7f8e93786843f4408cd923faf0",
+    "historical_oracle": "c604b2cfa467630f6b0fb8747e2c34204e5d04c0",
+    "historical_corpus_sha256": "dda71428bc4d325e28cffe67d4a7bb3f0899a1658782054c2ab8f4a88f4f83f7",
+    "historical_comparator_sha256": "fb1d83ab88cebdcd2126c0fd657eb85790317138653599abd7a1e84dc9b9c4cd",
+    "historical_manifest_sha256": "9d65c72892f73a9c44d9db7d874e5cbd757ea669f1f440d9c5d4874a50b580de"
+  },
+  "independence": "NO FUTURE ANTIMERIDIAN SERIALIZER REPAIR INSPECTED BEFORE ORACLE V2 FREEZE",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "4ec381b4a2cffe800a99f3da15ae86831bee381b55276c56ead8ca746b09edcc",
+      "bytes": 4293
+    },
+    {
+      "path": "REPORT.md",
+      "sha256": "9d57f0940319a1a83ac8455ed8665fe8eb376d3aa78d78d2c3fa798368be6b12",
+      "bytes": 5798
+    },
+    {
+      "path": "comparator.js",
+      "sha256": "0522835184fcca4a80175c79c5902e5c02b03fae329326d0d8e45f8c77419614",
+      "bytes": 19790
+    },
+    {
+      "path": "control-results.json",
+      "sha256": "4d3202b76140369bca42f399227b32231ab5aac0d4234f297014de24020bddad",
+      "bytes": 9200
+    },
+    {
+      "path": "corpus.json",
+      "sha256": "911bf0383aee889fbf2b03be5232815dc348884c050f4c37593485badce39668",
+      "bytes": 7400
+    },
+    {
+      "path": "fixtures/automated/acquisition_orbit.continuous.esp",
+      "sha256": "87bce87022c0d0919ce42455ab857d4883c22f1eb677f01dc8c7fb4489eb52fc",
+      "bytes": 64472
+    },
+    {
+      "path": "fixtures/automated/acquisition_orbit.continuous.shot-plan.json",
+      "sha256": "2610d16c2dc3f5f4c7273d304ce6960d77e2cf425e3e491e27aa6edf8b845961",
+      "bytes": 4676
+    },
+    {
+      "path": "fixtures/automated/acquisition_orbit.twin.esp",
+      "sha256": "41970551cbd0595356412808db8698888849a0d3985c36cb550e5e14409175ea",
+      "bytes": 64523
+    },
+    {
+      "path": "fixtures/automated/acquisition_orbit.twin.shot-plan.json",
+      "sha256": "aefc6f33642963767014b518fad5086063a222ff061c4896d83dadae4d87373e",
+      "bytes": 4649
+    },
+    {
+      "path": "fixtures/automated/exact_neg_180.continuous.esp",
+      "sha256": "70bf0adf6c4ad02acb0927a2a13d306db8fd9c9757af8614203fbc80fb1d865b",
+      "bytes": 58650
+    },
+    {
+      "path": "fixtures/automated/exact_neg_180.continuous.shot-plan.json",
+      "sha256": "91719d59d9019b4ae0b626fa9b3fbe8ac3afce6ed5a7e027cc4ba29f052ba935",
+      "bytes": 3371
+    },
+    {
+      "path": "fixtures/automated/exact_neg_180.twin.esp",
+      "sha256": "cb060bb393a62076929aa7d4436bf73632d52dadcdac4a5eddac68b45ed2063d",
+      "bytes": 58686
+    },
+    {
+      "path": "fixtures/automated/exact_neg_180.twin.shot-plan.json",
+      "sha256": "55595d2af256b1955bb2616139673b1480197c372f573f0778f75c1d6071b92b",
+      "bytes": 3352
+    },
+    {
+      "path": "fixtures/automated/exact_pos_180.continuous.esp",
+      "sha256": "85be8d3aca955687a05994ddeaf1896ddb988767d0e0812eea381cf52bd01ef7",
+      "bytes": 58572
+    },
+    {
+      "path": "fixtures/automated/exact_pos_180.continuous.shot-plan.json",
+      "sha256": "b1ed2671b859020e9a296ca51ebe6cf572924094593c5631f6dd974fb0bf7d46",
+      "bytes": 3349
+    },
+    {
+      "path": "fixtures/automated/exact_pos_180.twin.esp",
+      "sha256": "f1eb3e1a2fe57e2ee1732eab5616884e3eaa5d8ed483d487f070f63b5de9768a",
+      "bytes": 58685
+    },
+    {
+      "path": "fixtures/automated/exact_pos_180.twin.shot-plan.json",
+      "sha256": "190720f43f335400e2589b7c6d1b57da2877e72ca8a15b71e0123564339e25f4",
+      "bytes": 3337
+    },
+    {
+      "path": "fixtures/automated/half_clockwise.continuous.esp",
+      "sha256": "6ec9767100957b56d7e0794f5a3641eaa44310ecf7b513db16dbda7009b5af0a",
+      "bytes": 32507
+    },
+    {
+      "path": "fixtures/automated/half_clockwise.continuous.shot-plan.json",
+      "sha256": "434b8823aee701be04f74fe626d0ff57a5e2d5ad1a37e872fe31ce6bc710aaeb",
+      "bytes": 3362
+    },
+    {
+      "path": "fixtures/automated/half_clockwise.twin.esp",
+      "sha256": "497baf395b68dde1876d6675e79cf0e16f7fcc7f59b48d14c3fbd5454cdad629",
+      "bytes": 32584
+    },
+    {
+      "path": "fixtures/automated/half_clockwise.twin.shot-plan.json",
+      "sha256": "4deddf0dd725b4feb5be4560ead3d742e08a7c9a57c439e06538189d00cc95fd",
+      "bytes": 3338
+    },
+    {
+      "path": "fixtures/automated/high_85.continuous.esp",
+      "sha256": "bbc9bf44d0a685287b0d6348d775872e513f88d70347f012d36722fc71c6e6ed",
+      "bytes": 58596
+    },
+    {
+      "path": "fixtures/automated/high_85.continuous.shot-plan.json",
+      "sha256": "48db095d2cb2c041ba66e8dc7ef38d57d0e8c35c2fb1a5b3bca6fd3504133e56",
+      "bytes": 3355
+    },
+    {
+      "path": "fixtures/automated/high_85.twin.esp",
+      "sha256": "243a3a32f56a76867da5af4c4f71fbc39327067b3e4ecc02aa1ad64345e9d0f8",
+      "bytes": 58635
+    },
+    {
+      "path": "fixtures/automated/high_85.twin.shot-plan.json",
+      "sha256": "3d01a3cb3bad7cc69c36fde5d3f80ac4afb74ce2b1b7069a22d5d6b1b1fcb23a",
+      "bytes": 3331
+    },
+    {
+      "path": "fixtures/automated/high_89.continuous.esp",
+      "sha256": "c12554ca68801ef22ac34c3a7af53806c13e8d54389c98b293cb031d089fe0f2",
+      "bytes": 58588
+    },
+    {
+      "path": "fixtures/automated/high_89.continuous.shot-plan.json",
+      "sha256": "db7271beeb6d9d70b42f23a276f5db1ae153d26ec7ca1925c7146a4ce9ad9973",
+      "bytes": 3352
+    },
+    {
+      "path": "fixtures/automated/high_89.twin.esp",
+      "sha256": "fd57e31e81df8173d9e7f0f903d525f53441b6c2d430da3eeeb1492f08c7170c",
+      "bytes": 58611
+    },
+    {
+      "path": "fixtures/automated/high_89.twin.shot-plan.json",
+      "sha256": "dbfcab3ee9296a541f49adb1ce5b5a58a2d73891babc493ea9ad4204e1046a0c",
+      "bytes": 3328
+    },
+    {
+      "path": "fixtures/automated/long_radius.continuous.esp",
+      "sha256": "89af373f4f079c5e846afe62e3c2b4f4a917ac515b1e21834c5afe7dfe5c7ae7",
+      "bytes": 58923
+    },
+    {
+      "path": "fixtures/automated/long_radius.continuous.shot-plan.json",
+      "sha256": "b77a1d237fb5c01c80b9db70a58e7b029fb2e267ced2772d9a5c384bca3374db",
+      "bytes": 3359
+    },
+    {
+      "path": "fixtures/automated/long_radius.twin.esp",
+      "sha256": "461662bd93a7e813190a1971fad09c7b6fd5a8df171f6d9d0b041a1de6d8ba6e",
+      "bytes": 58993
+    },
+    {
+      "path": "fixtures/automated/long_radius.twin.shot-plan.json",
+      "sha256": "d28c73cdf3aed0a7141783c021177a8c09c0a53a4f4ce365de461272f860dcf4",
+      "bytes": 3335
+    },
+    {
+      "path": "fixtures/automated/pole_enclosing.continuous.esp",
+      "sha256": "7bc4d4c458dd34229a44f9a8e3a0533f57ef020d47ee4d65d26ede2444a6214c",
+      "bytes": 58763
+    },
+    {
+      "path": "fixtures/automated/pole_enclosing.continuous.shot-plan.json",
+      "sha256": "5e4c3f2d3d14f5988096cafaa4eb0e0e5679d4545ff7dc8850dce4eead0cbd4e",
+      "bytes": 3367
+    },
+    {
+      "path": "fixtures/automated/seam_centered_ccw.continuous.esp",
+      "sha256": "6a4c447f96334ef8a4e40369b13e132c9de434cd43476c4c6e59f157d7cdbb26",
+      "bytes": 58659
+    },
+    {
+      "path": "fixtures/automated/seam_centered_ccw.continuous.shot-plan.json",
+      "sha256": "04012d090083a529a031ba4478d19efc4b5e918bf9cc94c5e37c2adb5eaba514",
+      "bytes": 3387
+    },
+    {
+      "path": "fixtures/automated/seam_centered_ccw.twin.esp",
+      "sha256": "a5d2bb6465f91885da019ba4e09e8368955b0f144d88bf5da98052d3579311d6",
+      "bytes": 58690
+    },
+    {
+      "path": "fixtures/automated/seam_centered_ccw.twin.shot-plan.json",
+      "sha256": "de4b768f9c35bad15ace97a6bb6a58be4a9f6ab32d40acbcc18b01f67d81aa97",
+      "bytes": 3356
+    },
+    {
+      "path": "fixtures/automated/seam_centered_cw.continuous.esp",
+      "sha256": "ce66726acbd3b2ba7f3a851e0cdf479e2f931ca3256e00380c470ae203f051ed",
+      "bytes": 58621
+    },
+    {
+      "path": "fixtures/automated/seam_centered_cw.continuous.shot-plan.json",
+      "sha256": "76d43454c3ac630646a4e7135f3c30bc27bff4787b0307377866f0ac1172211a",
+      "bytes": 3364
+    },
+    {
+      "path": "fixtures/automated/seam_centered_cw.twin.esp",
+      "sha256": "07807c1aac558ac09f342e6b41ea04902cb584cda1ae10bd06d9b9663dd348b5",
+      "bytes": 58688
+    },
+    {
+      "path": "fixtures/automated/seam_centered_cw.twin.shot-plan.json",
+      "sha256": "1bfc8a11e183f95b098069457c0988a846931a0bfe4aa2e5fa4c396f38d90d9f",
+      "bytes": 3340
+    },
+    {
+      "path": "fixtures/automated/seeded_continuation.continuous.esp",
+      "sha256": "59959269f24cebf36ff0fb38965f19fe2869cb051f69a254148dc8427124fefd",
+      "bytes": 61815
+    },
+    {
+      "path": "fixtures/automated/seeded_continuation.continuous.shot-plan.json",
+      "sha256": "eb9e651ddc7eee0791dc06af4b4bb4345c88a90e2287106565613ca6d07e68fa",
+      "bytes": 3858
+    },
+    {
+      "path": "fixtures/automated/seeded_continuation.twin.esp",
+      "sha256": "ef5369637d223d10ebda69df500fdd1fc5944adb51b09687f924354f8e515a7e",
+      "bytes": 61870
+    },
+    {
+      "path": "fixtures/automated/seeded_continuation.twin.shot-plan.json",
+      "sha256": "78db110e64fadb0258089b75b7193a57d7c06c1f7a9e5fe63c28012109f9839d",
+      "bytes": 3838
+    },
+    {
+      "path": "fixtures/automated/short_radius.continuous.esp",
+      "sha256": "f5dcb5e3eb60ffae7eb67c2b98b6fc19dd5472487d040ded0b7942c0e2871af9",
+      "bytes": 58660
+    },
+    {
+      "path": "fixtures/automated/short_radius.continuous.shot-plan.json",
+      "sha256": "893230571c84446f6f1ab152f6ad29ba7fc5bc531fa04d28e7bde60f6fb13ce4",
+      "bytes": 3354
+    },
+    {
+      "path": "fixtures/automated/short_radius.twin.esp",
+      "sha256": "726e28138069de4947cc741134053c0d0f34c8498b36158964deb5be4c215252",
+      "bytes": 58777
+    },
+    {
+      "path": "fixtures/automated/short_radius.twin.shot-plan.json",
+      "sha256": "2db8d0d027fa27a2c525df3e764c1c2c6d8cc0dcf00eeaf7a1e4da51e8256680",
+      "bytes": 3330
+    },
+    {
+      "path": "fixtures/automated/twice_clockwise.continuous.esp",
+      "sha256": "fb280be05c451a26846c8eef11974fde6b8bb1299125a1018cfc6161370a9f7d",
+      "bytes": 110746
+    },
+    {
+      "path": "fixtures/automated/twice_clockwise.continuous.shot-plan.json",
+      "sha256": "1d3b4613c8887a042a973f9ca6ac05d1e173454106ac0f9a592022ec6c8610f9",
+      "bytes": 3367
+    },
+    {
+      "path": "fixtures/automated/twice_clockwise.twin.esp",
+      "sha256": "911ce228beac950e91a57d6246e04e0b044c4b4aa7f93e731c0addd6ac06e1cb",
+      "bytes": 110878
+    },
+    {
+      "path": "fixtures/automated/twice_clockwise.twin.shot-plan.json",
+      "sha256": "079d75d926ce56d6e953539f398f0fdb127921bb240635dfd8c01663d4edd638",
+      "bytes": 3343
+    },
+    {
+      "path": "fixtures/automated/twice_counterclockwise.continuous.esp",
+      "sha256": "6d662e6bfd946c1dd513588b64505eb30ad5b0303b45a6cf1fc650ed21184ec7",
+      "bytes": 110822
+    },
+    {
+      "path": "fixtures/automated/twice_counterclockwise.continuous.shot-plan.json",
+      "sha256": "2d302cee43bd0102f29d9e41fb360cdbbf4cb4fc5ee2d1611f5156a7e9d3c4a2",
+      "bytes": 3396
+    },
+    {
+      "path": "fixtures/automated/twice_counterclockwise.twin.esp",
+      "sha256": "bb2ea945935746c88beaee2166ddf67bdb488ce72ed4a45ab992cd5747d9c5b9",
+      "bytes": 110884
+    },
+    {
+      "path": "fixtures/automated/twice_counterclockwise.twin.shot-plan.json",
+      "sha256": "f4b12519c4bd58847713ac258df68fcad8bdb68fc3ecf9c49540dd6d87a58edb",
+      "bytes": 3365
+    },
+    {
+      "path": "fixtures/automated/zero_radius_spin.continuous.esp",
+      "sha256": "1293a83b71c0418f38e12ff18a5cb5180915365f49c99a23c0989f7c9ebd3d1e",
+      "bytes": 24684
+    },
+    {
+      "path": "fixtures/automated/zero_radius_spin.continuous.shot-plan.json",
+      "sha256": "37610124f4379353e379cdb7b62f4cbfbb8230f50a30b4a5ddb758bd376f1684",
+      "bytes": 3355
+    },
+    {
+      "path": "fixtures/automated/zero_radius_spin.twin.esp",
+      "sha256": "38b3f8423151659b5ceecec8cd133e17ac1a26991f99808f28425e19ffe562ee",
+      "bytes": 24668
+    },
+    {
+      "path": "fixtures/automated/zero_radius_spin.twin.shot-plan.json",
+      "sha256": "fe5ecbca0f647551c1a95dd26b170f57c4d0dccfa850cf0ae8637819575facce",
+      "bytes": 3331
+    },
+    {
+      "path": "fixtures/fixture-index.json",
+      "sha256": "53460bee6563e4c5dd33d987def82ef634a1efe90f0531a0b0174fc487065fe4",
+      "bytes": 10840
+    },
+    {
+      "path": "fixtures/model-a-seam-centered.esp",
+      "sha256": "2777b550feb4021abb96aea874a261597f99b7fcb832960e6e202eecbe8eb914",
+      "bytes": 59794
+    },
+    {
+      "path": "fixtures/model-a-seam-centered.shot-plan.json",
+      "sha256": "5827dd2a8b621672ea51c7e620989d8fd6fe00186edb1b31db93b04976d83673",
+      "bytes": 3359
+    },
+    {
+      "path": "oracle.test.js",
+      "sha256": "02be7e0f32ddec5258d1ecd4aab246c17330ca185668f79e936e97694c0cffc3",
+      "bytes": 4695
+    },
+    {
+      "path": "real-import-evidence.json",
+      "sha256": "6453394d8fa1e887e281da8b759c799fa566ec79665399ca4293f37bba65de78",
+      "bytes": 3536
+    },
+    {
+      "path": "run.js",
+      "sha256": "501da016ce4e8fffba1acc3dbe3b97e3de50d8f66fbb03548beacbfecd1ed878",
+      "bytes": 8871
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "authority": "frozen readback from authenticated Google Earth Studio imports completed during independent seam-topology adjudication on 2026-09-03",
+  "boundary": "These observations establish import/playback semantics. The automated oracle is deterministic repository-side evidence and does not claim to execute Google Earth Studio.",
+  "method": {
+    "application": "Google Earth Studio",
+    "access": "authenticated browser session driven through Chrome DevTools Protocol",
+    "operation": "scratch project import and scene-model frame readback; no save, publish, or production mutation",
+    "time_sampling": "integer-frame scene-model evaluation; attempted fractional frame assignments were rounded by Earth Studio to integer frames"
+  },
+  "seam_centered_60n": {
+    "subject": {"latitude": 60, "longitude": 179.99},
+    "continuous_unwrapped_input_longitude_range_deg": [178.551312, 181.428688],
+    "translated_twin_subject_longitude": 20,
+    "observations": [
+      {"frame": 1, "latitude": 60.71938799019277, "longitude": 179.99278587599872, "pan": 180.143538198, "signed_target_residual_deg": 0.032594632, "position_delta_from_translated_twin_m": 0.04583},
+      {"frame": 2, "signed_target_residual_deg": 0.068160009, "position_delta_from_translated_twin_m": 0.09776},
+      {"frame": 299, "latitude": 59.28057769037556, "longitude": 180.00468614846858, "pan": 359.4126637376, "signed_target_residual_deg": -0.002529364, "position_delta_from_translated_twin_m": 0.000363}
+    ],
+    "result": "continuous unwrapped import reproduced the translated non-seam twin within the 0.2 m serialization contract at sampled frames"
+  },
+  "historical_model_a": {
+    "observations": [
+      {"case": "seam_centered_60n", "frame": 1, "signed_target_residual_deg": -0.466499197, "position_delta_from_translated_twin_m": 681.53},
+      {"case": "seam_centered_60n", "frame": 299, "signed_target_residual_deg": -0.002706773, "position_delta_from_translated_twin_m": 36.32},
+      {"case": "pole_89_9n", "frame": 482, "signed_target_residual_deg": 0.000331792, "position_delta_from_translated_twin_m": 3.33}
+    ],
+    "result": "wrapped polygon-valued seam representation was physically non-equivalent after real import"
+  },
+  "historical_bbf88d2": {
+    "observations": [
+      {"case": "seam_centered_60n", "frame": 299, "signed_target_residual_deg": -0.000161903},
+      {"case": "pole_89_9n", "frame": 482, "signed_target_residual_deg": 0}
+    ],
+    "result": "inserted pan keys corrected selected target samples but retained pinned-meridian position distortion"
+  },
+  "coverage": {
+    "real_import": ["eastward seam", "westward seam within full orbit", "exact meridian crossing", "opening departure", "full orbit", "60N high-latitude orbit", "89.9N pole-enclosing orbit", "translated non-seam twins"],
+    "frozen_automated_fixtures": ["exact +180 start", "exact -180 start", "half clockwise", "full clockwise", "full counterclockwise", "twice clockwise", "twice counterclockwise", "85N", "89N", "short radius", "long radius", "zero-radius spin", "fly-to acquisition", "seeded continuation"],
+    "limitation": "Twice-orbit, acquisition, and continuation fixtures are automated controls, not separate real-import sessions. They do not replace the recorded real-import evidence."
+  },
+  "source_artifact_note": "The imported scratch files were intentionally not saved as Earth Studio projects. The oracle freezes the accepted readback observations and independently regenerated semantic fixtures."
+}

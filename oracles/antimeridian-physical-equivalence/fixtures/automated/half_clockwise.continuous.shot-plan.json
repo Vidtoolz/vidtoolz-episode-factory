@@ -1,0 +1,91 @@
+{
+  "aspect": "16:9",
+  "frame_convention": {
+    "end_frame": "exclusive",
+    "start_frame": "inclusive"
+  },
+  "frame_rate": 30,
+  "generated_at": "2026-09-03T00:00:00.000Z",
+  "job_name": "half_clockwise-seam-plan",
+  "locations": [
+    {
+      "latitude": 60,
+      "longitude": 179.99,
+      "name": "60.0000, 179.9900",
+      "resolution_status": "resolved_fixture"
+    }
+  ],
+  "manual_earth_studio_steps": [
+    "Open Google Earth Studio manually.",
+    "Create or open the project manually; this planner does not log in, automate a browser, or control Earth Studio.",
+    "Use shot-plan.json coordinates as manual camera/search references.",
+    "Use route.kml only as a placemark/path reference asset.",
+    "Manually create, review, and adjust all camera keyframes.",
+    "Render manually only after Mikko reviews the camera move."
+  ],
+  "motion_policy": {
+    "coherent_trajectory": true,
+    "dedupe_keyframes": true,
+    "source": "journey"
+  },
+  "motion_profile": {
+    "profile_version": 4,
+    "references": [
+      "darien-gap",
+      "mountkinabalu",
+      "radiator-untitled",
+      "servyx"
+    ],
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold",
+    "source": "config/earth-studio-motion/motion-profile.json"
+  },
+  "notes": [
+    "camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
+  ],
+  "parser_strategy": "offline_regex_with_manual_review_fallback",
+  "render_dimensions": {
+    "height": 1080,
+    "width": 1920
+  },
+  "segments": [
+    {
+      "action": "orbit",
+      "altitude_m": 200000,
+      "altitude_source": "explicit",
+      "duration_seconds": 20,
+      "duration_source": "explicit",
+      "end_frame": 600,
+      "end_seconds": 20,
+      "location": {
+        "latitude": 60,
+        "longitude": 179.99,
+        "name": "60.0000, 179.9900",
+        "source": "explicit_coordinates"
+      },
+      "location_name": "60.0000, 179.9900",
+      "notes": [],
+      "orbit_degrees": 180,
+      "orbit_direction": 1,
+      "requested_action": "orbit",
+      "resolution_status": "resolved",
+      "segment_id": 1,
+      "source_text": "orbit 60, 179.99 half clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "start_frame": 0,
+      "start_seconds": 0,
+      "tilt_deg": 30,
+      "tilt_source": "explicit",
+      "warnings": []
+    }
+  ],
+  "source_description": "orbit 60, 179.99 half clockwise at 200000m tilted 30 degrees for 20 seconds",
+  "total_duration_seconds": 20,
+  "total_frames": 600,
+  "unresolved_items": [],
+  "version": "0.9.4",
+  "warnings": [
+    "KML is a reference asset only and does not create a finished Google Earth Studio camera animation.",
+    "Placemark use as camera targets is unverified in v1; manually search or set camera targets from shot-plan.json if needed.",
+    "This planner does not render video, manipulate .esp files, control Google Earth Studio, or approve footage.",
+    "Technical planning artifacts are not creative approval, rights clearance, or package-run evidence approval."
+  ]
+}
