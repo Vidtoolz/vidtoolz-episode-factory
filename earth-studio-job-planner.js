@@ -1634,6 +1634,33 @@ This checklist is technical planning support only. It is not creative approval, 
     return ((((value + 180) % 360) + 360) % 360) - 180;
   }
 
+  // ── Continuous-longitude authority ──────────────────────────────────────
+  // MOTION longitude is a continuous real number (congruent mod 360° to the
+  // geographic longitude, free to sit outside ±180 after a crossing); WRAPPED
+  // ±180 longitude is a SERIALIZATION representation only — offsetPoint's public
+  // return, wrapLngTrack's export, finalCameraState's continuation seed. The two
+  // must never be mixed inside one interpolation: a wrapped -179.99 placed next
+  // to a continuous 179.99 reads as 359.98° of travel the wrong way round the
+  // globe. Measured on main (2026-09-03, independent oracle): every fly→orbit
+  // ring entry across the seam lapped 350° in the last 20% of the move, a ring
+  // straddling ±180° lapped the globe twice per orbit, a seeded continuation
+  // lapped 359.9° during acquisition — and every FINAL state was still correct,
+  // so endpoint checks and continuation checks could not see it.
+  //
+  // Rule: every geographic value entering the camera state machine or the
+  // position track is expressed as the representative nearest the PRECEDING
+  // motion longitude. Orbit revolutions are not longitude: an intentional
+  // sweep lives in the pan track and the ring position, both of which stay
+  // within the ring's own longitude extent — only a ring enclosing a pole
+  // legitimately accumulates longitude, and sample-to-sample anchoring gives
+  // exactly that. Returns `lng` itself, bit-exact, when it is already the
+  // nearest representative, so every non-seam artifact is byte-identical by
+  // construction. Ties at exactly 180° resolve eastward, like shortestLngDelta.
+  function continuousLng(referenceLng, lng) {
+    const turns = Math.round((Number(referenceLng) - Number(lng)) / 360);
+    return turns === 0 ? lng : lng + turns * 360;
+  }
+
   // Re-emit an UNWRAPPED piecewise-linear longitude track as wrapped [-180,180]
   // keyframes. At each antimeridian crossing a one-frame keyframe pair is
   // inserted (+180 then -180, or the reverse): both sides name the same
@@ -1652,8 +1679,19 @@ This checklist is technical planning support only. It is not creative approval, 
       if (out.length && out[out.length - 1].time === kf.time) out[out.length - 1] = kf;
       else if (!out.length || out[out.length - 1].time < kf.time) out.push(kf);
     };
+    // A key sitting EXACTLY on a seam (value ≡ 180 mod 360) belongs to two
+    // wrapped representations at once: wrapLng() alone always answers -180,
+    // which is right only when the neighbouring keys sit on the -180 side.
+    // Measured on an orbit centred at 180° (ring sample at bearing 180 lands on
+    // the meridian exactly): 179.99 → -180 read as a 359.99° lap in playback.
+    // The key takes the representative of the side it ARRIVES from; if it then
+    // departs to the other side, the seam pair's second half sits one frame
+    // later, exactly as for a crossing strictly inside an interval.
+    const onSeam = (value) => wrapLng(value) === -180;
     for (let i = 0; i < track.length; i += 1) {
       const cur = track[i];
+      const next = track[i + 1];
+      let seamClaimedCur = false;
       if (i > 0) {
         const prev = track[i - 1];
         const lo = Math.min(prev.value, cur.value);
@@ -1671,9 +1709,40 @@ This checklist is technical planning support only. It is not creative approval, 
           const eastward = cur.value > prev.value;
           push(before, eastward ? 180 : -180, cur.sampledInterior);
           push(before + 1, eastward ? -180 : 180, cur.sampledInterior);
+          // A crossing inside the LAST frame before this key: the pair's second
+          // half lands on the key's own frame and must keep its ±180 value —
+          // overwriting it with the key's wrapped value (0.00025° past the
+          // seam) leaves a 359.9997° adjacent-frame jump that is neither a
+          // seam pair nor motion. The key is within one frame of the meridian,
+          // so ±180 is its own value to sub-frame precision; the mirror case
+          // (crossing inside the first frame after the previous key) already
+          // claims that key the same way via the clamp above.
+          if (before + 1 === cur.time) seamClaimedCur = true;
         }
       }
-      push(cur.time, wrapLng(cur.value), cur.sampledInterior);
+      if (seamClaimedCur) {
+        // keep the seam pair's value on this frame
+      } else if (onSeam(cur.value)) {
+        const prev = i > 0 ? track[i - 1] : null;
+        const lastPushed = out.length ? out[out.length - 1].value : null;
+        // Arrival side: from below the seam value the wrapped run approaches
+        // +180, from above it approaches -180. A flat arrival keeps the
+        // representative already in use. A seam-exact OPENING key takes the
+        // side it departs towards (legacy -180 when departing eastward).
+        const arrival = prev
+          ? (prev.value < cur.value ? 180 : prev.value > cur.value ? -180
+            : (lastPushed === 180 || lastPushed === -180 ? lastPushed : -180))
+          : (next && next.value < cur.value ? 180 : -180);
+        push(cur.time, arrival, cur.sampledInterior);
+        const departure = next
+          ? (next.value > cur.value ? -180 : next.value < cur.value ? 180 : arrival)
+          : arrival;
+        if (departure !== arrival && next.time > cur.time + 1) {
+          push(cur.time + 1, departure, cur.sampledInterior);
+        }
+      } else {
+        push(cur.time, wrapLng(cur.value), cur.sampledInterior);
+      }
       // SETTLE-THEN-LAUNCH handoff markers must survive the wrap — the
       // serializer keys its easing off them.
       const last = out[out.length - 1];
@@ -2013,7 +2082,7 @@ This checklist is technical planning support only. It is not creative approval, 
               const thetaEndStaged = orbitExitTheta(orbitSeg.location, orbitRadius, orbitSweep, dest.location);
               const theta0Staged = thetaEndStaged - orbitSweep;
               const staged = offsetPoint(orbitSeg.location, theta0Staged, orbitRadius);
-              state = { ...state, latitude: staged.latitude, longitude: staged.longitude, pan: theta0Staged + 180 };
+              state = { ...state, latitude: staged.latitude, longitude: continuousLng(state.longitude, staged.longitude), pan: theta0Staged + 180 };
             }
           }
         }
@@ -2027,6 +2096,10 @@ This checklist is technical planning support only. It is not creative approval, 
       // The segment's target longitude expressed in the camera's UNWRAPPED
       // frame: continue along the shortest arc from wherever the camera is
       // (state.longitude may legitimately sit outside ±180 after a crossing).
+      // This is the continuous-longitude rule (see continuousLng) in its
+      // original arithmetic — kept verbatim because the planar entry bearing
+      // below feeds ulps of this value into the pan track of every tracked
+      // hold→orbit canary.
       const targetLng = state.longitude + shortestLngDelta(state.longitude, location.longitude);
       const locRef = { ...location, longitude: targetLng };
 
@@ -2196,6 +2269,7 @@ This checklist is technical planning support only. It is not creative approval, 
         // With theta0 === 0 this reproduces the old values exactly.
         if (idx === 0 && !openedFromSeed) {
           const opening = offsetPoint(locRef, theta0, radius);
+          opening.longitude = continuousLng(state.longitude, opening.longitude);
           state = { ...state, latitude: opening.latitude, longitude: opening.longitude, pan: orbitStartPan };
           put("lng", sf, opening.longitude);
           put("lat", sf, opening.latitude);
@@ -2359,6 +2433,7 @@ This checklist is technical planning support only. It is not creative approval, 
           // clamp and rounding).
           const couplingScale = coupleRadius
             ? radius / Math.max(1e-6, endAltitude * Math.tan(toRadians(tilt))) : 1;
+          let acquisitionLng = state.longitude;
           for (let i = 1; i <= entrySamples; i += 1) {
             const u = i / entrySamples;
             const altAtU = state.altitude + (endAltitude - state.altitude) * u;
@@ -2367,6 +2442,8 @@ This checklist is technical planning support only. It is not creative approval, 
               ? altAtU * Math.tan(toRadians(tiltAtU)) * couplingScale
               : startRadius + (radius - startRadius) * u;
             const pt = offsetPoint(locRef, startBearing + bearingDelta * u, radiusAtU);
+            pt.longitude = continuousLng(acquisitionLng, pt.longitude);
+            acquisitionLng = pt.longitude;
             const frame = sf + entryFrames * u;
             const interior = i < entrySamples;
             // Altitude has to be sampled on the same time base or the coupling is
@@ -2401,6 +2478,7 @@ This checklist is technical planning support only. It is not creative approval, 
           if (!coupleRadius && !densifyAltitude && state.altitude !== endAltitude) change("alt", sf, sweepStart, endAltitude);
           if (needsRing) {
             lastPoint = offsetPoint(locRef, theta0, radius);
+            lastPoint.longitude = continuousLng(acquisitionLng, lastPoint.longitude);
             state = { ...state, latitude: lastPoint.latitude, longitude: lastPoint.longitude, pan: theta0 + 180 };
           }
           state = { ...state, altitude: endAltitude, tilt };
@@ -2453,7 +2531,9 @@ This checklist is technical planning support only. It is not creative approval, 
           const t = policy.coherentTrajectory && spanFrames > 0
             ? (frame - sweepStart) / spanFrames
             : i / sampleCount;
-          lastPoint = offsetPoint(locRef, theta0 + sweep * t, radius);
+          const ringSample = offsetPoint(locRef, theta0 + sweep * t, radius);
+          ringSample.longitude = continuousLng(lastPoint.longitude, ringSample.longitude);
+          lastPoint = ringSample;
           // Interior samples sweep at a constant rate; the closing sample keeps
           // its normal arrival easing so the orbit settles rather than stopping
           // dead.
@@ -2695,6 +2775,7 @@ This checklist is technical planning support only. It is not creative approval, 
         const nextTilt = typeof orbitEntrySeg.tilt_deg === "number" ? orbitEntrySeg.tilt_deg : 45;
         const entry = offsetPoint({ latitude: location.latitude, longitude: targetLng },
           state.pan - 180, orbitRadiusMeters(nextAlt, nextTilt));
+        entry.longitude = continuousLng(state.longitude, entry.longitude);
         destLat = entry.latitude;
         destLng = entry.longitude;
         if (policy.coherentTrajectory) {
@@ -3447,6 +3528,7 @@ This checklist is technical planning support only. It is not creative approval, 
     normalizeInitialCamera,
     finalCameraState,
     offsetPoint,
+    continuousLng,
     motionPolicy,
     dropRedundantKeyframes,
     expectedFiles,
