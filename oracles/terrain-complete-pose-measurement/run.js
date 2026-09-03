@@ -163,7 +163,9 @@ function main() {
   }
   const payload = roundObject({
     schema_version: 1,
-    production_sha: childProcess.execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(),
+    production_sha: live
+      ? childProcess.execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim()
+      : corpus.production_sha,
     measurement_authority: {
       primary_physical_model: 'WGS84 geodetic ECEF',
       historical_compatibility_model: 'sphere, radius 6371000 m',
