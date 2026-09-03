@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "oracle": "terrain-complete-pose-measurement",
+  "production_sha": "7b63c6b430f964087665a6c9a4626b79e42bcad9",
+  "branch": "codex/terrain-complete-pose-measurement-oracle-20260903",
+  "independence": "CLAUDE LIVE TERRAIN CONCLUSIONS INSPECTED BEFORE ORACLE FREEZE: NO",
+  "scope": "measurement-only; no production geometry or policy change",
+  "files": {
+    "corpus.json": "0d3b26729edc860e3baf50f2023b8c572d61dd24b37025e1f902ed68c0d123d2",
+    "comparator.js": "b1fe43e695458ab6ffa8efd8bd63e479b2535f9864cc65664df0a38b61a56bc6",
+    "run.js": "8eb2e6b884861413aeceda490241c09bbc0eab24695658d9e5045bf9dbf32b46",
+    "oracle.test.js": "822bbe24f91a6540bf83637b7241ed779553d5ba6fa0c8844ba95c9a9f0cbe08",
+    "production-results.json": "a83b9353be98b734dba3bccfa14b2c9be3a3a3057d8a6170933b79f1891b72b9",
+    "README.md": "0a322a25d730e5c738c33c568a86844a15be567cbaeb1e5358f37cba61ee84af",
+    "REPORT.md": "2cf45e6839c5b481c70ec3d951aff54a32a3de904a2669bcb1b5441f2d652ede"
+  },
+  "fixtures": {
+    "fuji/earth-studio.esp": "48bca3fdbe00c96fb04c36e4841a7a3bc65c7e743dc6e02b39414e702c26cb9b",
+    "fuji/shot-plan.json": "8bf1b6997cedc871ee7d0cb55d28acd7fb42f572dd777b4aa4a85d9f97f0caa3",
+    "geirangerfjord/earth-studio.esp": "a19bd8e1c9732371ab2129d6105c3bd1c6cf69d491328fe5975c9c334e8ba712",
+    "geirangerfjord/shot-plan.json": "018df5edd715e97499f2526d12d2a1b49cb2886404fae495c672b36d41d46100",
+    "grand_canyon/earth-studio.esp": "04ab55b7c057787746fa1e183c683020fdf07056bcd765c40c323ce62c0c0a89",
+    "grand_canyon/shot-plan.json": "0fe6726c1558115a2bada72324b809278d15ae3fb1ed7d17bd6e7ef4cd8f4aa5",
+    "matterhorn/earth-studio.esp": "dab62612fce16b520692aadef7dfe3bce64a180798ca8cdfba72c3f73ab98b86",
+    "matterhorn/shot-plan.json": "bd4f769a7ad0229c430b58d80632b14cd354cdeb337da6c08371d4136edfb0ef"
+  },
+  "measurement_contract": {
+    "primary_earth_model": "WGS84 geodetic ECEF",
+    "historical_compatibility_model": "sphere radius 6371000 m",
+    "target_elevation_m": 0,
+    "target_elevation_status": "explicit compatibility assumption; not production authority",
+    "full_error": "angle(optical_ray, normalize(target_ecef-camera_ecef))",
+    "horizontal_error": "wrap-safe pan minus target-ray ENU azimuth",
+    "grand_canyon": "observation-only; current director emits no orbit"
+  }
+}

@@ -1,0 +1,929 @@
+{
+  "schema_version": 1,
+  "production_sha": "7b63c6b430f964087665a6c9a4626b79e42bcad9",
+  "measurement_authority": {
+    "primary_physical_model": "WGS84 geodetic ECEF",
+    "historical_compatibility_model": "sphere, radius 6371000 m",
+    "pan_semantics": "clockwise azimuth from local north",
+    "tilt_semantics": "degrees from local nadir",
+    "target_elevation_m": 0,
+    "target_elevation_status": "explicit compatibility assumption; production has no target-elevation field",
+    "full_error": "angle between serialized optical ray and camera-to-target ECEF unit vector"
+  },
+  "cases": [
+    {
+      "id": "matterhorn",
+      "classification": "staged_terrain_orbit_boundary",
+      "source_description": "hover over Zurich at 34028m tilted 0 degrees for 4 seconds then zoom out from Zurich at 155960m tilted 0 degrees for 1.4 seconds then fly to Matterhorn at 155960m tilted 0 degrees for 4.2 seconds then zoom in on Matterhorn tilted 74 degrees for 1.4 seconds then orbit Matterhorn once clockwise at 5736m tilted 74 degrees for 77 seconds",
+      "selected_frame": 330,
+      "total_frames": 2640,
+      "camera": {
+        "latitude": 45.796701,
+        "longitude": 7.6585,
+        "altitude_m": 6500,
+        "pan_deg": 0,
+        "tilt_deg": 74
+      },
+      "target": {
+        "latitude": 45.9766,
+        "longitude": 7.6585,
+        "elevation_m": 0
+      },
+      "production_target_elevation_field": null,
+      "boundary_provenance": {
+        "incoming_segment_id": 4,
+        "incoming_action": "zoom_in",
+        "camera_altitude_m": 6500,
+        "camera_altitude_source": "gazetteer",
+        "tilt_deg": 74,
+        "tilt_source": "explicit",
+        "orbit_segment_id": 5,
+        "orbit_altitude_m": 5736,
+        "orbit_altitude_source": "explicit",
+        "orbit_tilt_deg": 74
+      },
+      "morphology_policy": {
+        "fixture_altitude_m": 6500,
+        "fixture_min_altitude_m": 5500,
+        "morphology": "sharp_peak",
+        "morphology_source": "curated_gazetteer",
+        "derived_tilt_deg": 74,
+        "derived_orbit_altitude_m": 5736.325095,
+        "preserved_reference_radius_m": 20004.942992
+      },
+      "measurements": {
+        "sphere_6371000": {
+          "earth_model": "sphere_6371000",
+          "camera_ecef_m": [
+            4406771.44614708,
+            592568.9687309157,
+            4571841.389278499
+          ],
+          "target_ecef_m": [
+            4388046.093020753,
+            590051.011236004,
+            4581106.011616046
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            -0.710475971304,
+            -0.095536158108,
+            0.697206380273
+          ],
+          "local_nadir_direction_ecef_unit": [
+            -0.690987290654,
+            -0.092915557621,
+            -0.716870464803
+          ],
+          "optical_ray_ecef_unit": [
+            -0.873415246798,
+            -0.117446247983,
+            0.472601508139
+          ],
+          "target_ray_ecef_unit": [
+            -0.889857026612,
+            -0.119657138343,
+            0.440268828596
+          ],
+          "target_distance_m": 21043.10306749389,
+          "target_bearing_deg": 0,
+          "horizontal_bearing_error_deg": 0,
+          "expected_tilt_from_nadir_deg": 71.917735714407,
+          "vertical_elevation_component_deg": 2.082264285593,
+          "complete_3d_angular_error_deg": 2.082264285593,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.950611854924,
+            "up": -0.310382185827
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": 794.688749880676,
+            "ray_distance_m": 20812.561769856497,
+            "closest_line_miss_m": 1.16e-10,
+            "forward_intersection": true
+          }
+        },
+        "wgs84": {
+          "earth_model": "wgs84",
+          "camera_ecef_m": [
+            4419303.624230054,
+            594254.1434519858,
+            4554181.5130903525
+          ],
+          "target_ecef_m": [
+            4400584.136697196,
+            591736.9746906662,
+            4563440.397208371
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            -0.710475971304,
+            -0.095536158108,
+            0.697206380273
+          ],
+          "local_nadir_direction_ecef_unit": [
+            -0.690987290654,
+            -0.092915557621,
+            -0.716870464803
+          ],
+          "optical_ray_ecef_unit": [
+            -0.873415246798,
+            -0.117446247983,
+            0.472601508139
+          ],
+          "target_ray_ecef_unit": [
+            -0.889909842419,
+            -0.11966424037,
+            0.44016013216
+          ],
+          "target_distance_m": 21035.262945270744,
+          "target_bearing_deg": 0,
+          "horizontal_bearing_error_deg": 0,
+          "expected_tilt_from_nadir_deg": 71.910799643594,
+          "vertical_elevation_component_deg": 2.089200356406,
+          "complete_3d_angular_error_deg": 2.089200356406,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.950574273937,
+            "up": -0.310497262031
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": 797.037638735808,
+            "ray_distance_m": 20803.993797164258,
+            "closest_line_miss_m": 1.16e-10,
+            "forward_intersection": true
+          }
+        }
+      },
+      "orbit_altitude_sensitivity_only": {
+        "note": "measurement-only counterfactual; this does not select the orbit altitude as boundary authority",
+        "camera_altitude_m": 5736,
+        "sphere_6371000": {
+          "earth_model": "sphere_6371000",
+          "camera_ecef_m": [
+            4406243.531857019,
+            592497.9812448929,
+            4571293.70024339
+          ],
+          "target_ecef_m": [
+            4388046.093020753,
+            590051.011236004,
+            4581106.011616046
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            -0.710475971304,
+            -0.095536158108,
+            0.697206380273
+          ],
+          "local_nadir_direction_ecef_unit": [
+            -0.690987290654,
+            -0.092915557621,
+            -0.716870464803
+          ],
+          "optical_ray_ecef_unit": [
+            -0.873415246798,
+            -0.117446247983,
+            0.472601508139
+          ],
+          "target_ray_ecef_unit": [
+            -0.874093418337,
+            -0.117537440234,
+            0.471323292617
+          ],
+          "target_distance_m": 20818.643012886263,
+          "target_bearing_deg": 0,
+          "horizontal_bearing_error_deg": 0,
+          "expected_tilt_from_nadir_deg": 73.91692965621,
+          "vertical_elevation_component_deg": 0.08307034379,
+          "complete_3d_angular_error_deg": 0.083070343785,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.960861052661,
+            "up": -0.277030751865
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": 31.372224250445,
+            "ray_distance_m": 20810.06850491033,
+            "closest_line_miss_m": 0,
+            "forward_intersection": true
+          }
+        },
+        "wgs84": {
+          "earth_model": "wgs84",
+          "camera_ecef_m": [
+            4418775.709939995,
+            594183.155965963,
+            4553633.824055243
+          ],
+          "target_ecef_m": [
+            4400584.136697196,
+            591736.9746906662,
+            4563440.397208371
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            -0.710475971304,
+            -0.095536158108,
+            0.697206380273
+          ],
+          "local_nadir_direction_ecef_unit": [
+            -0.690987290654,
+            -0.092915557621,
+            -0.716870464803
+          ],
+          "optical_ray_ecef_unit": [
+            -0.873415246798,
+            -0.117446247983,
+            0.472601508139
+          ],
+          "target_ray_ecef_unit": [
+            -0.874144397386,
+            -0.117544295276,
+            0.471227027204
+          ],
+          "target_distance_m": 20810.71879795031,
+          "target_bearing_deg": 0,
+          "horizontal_bearing_error_deg": 0,
+          "expected_tilt_from_nadir_deg": 73.910676041719,
+          "vertical_elevation_component_deg": 0.089323958281,
+          "complete_3d_angular_error_deg": 0.089323958279,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.960830810094,
+            "up": -0.277135624512
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": 33.72111310603,
+            "ray_distance_m": 20801.500532218786,
+            "closest_line_miss_m": 0,
+            "forward_intersection": true
+          }
+        }
+      },
+      "current_camera_quality": {
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "orbit_findings": [],
+        "limitation": "Production camera quality measures horizontal orbit aim, not complete camera-to-target ECEF ray error."
+      },
+      "fixture_sha256": {
+        "shot_plan_json": "bd4f769a7ad0229c430b58d80632b14cd354cdeb337da6c08371d4136edfb0ef",
+        "earth_studio_esp": "dab62612fce16b520692aadef7dfe3bce64a180798ca8cdfba72c3f73ab98b86"
+      }
+    },
+    {
+      "id": "fuji",
+      "classification": "staged_terrain_orbit_boundary",
+      "source_description": "hover over Tokyo at 34028m tilted 0 degrees for 4 seconds then zoom out from Tokyo at 155960m tilted 0 degrees for 1 seconds then fly to Mount Fuji at 155960m tilted 0 degrees for 3 seconds then zoom in on Mount Fuji tilted 45 degrees for 1 seconds then orbit Mount Fuji once clockwise at 16927m tilted 45 degrees for 26 seconds",
+      "selected_frame": 270,
+      "total_frames": 1050,
+      "camera": {
+        "latitude": 35.208372,
+        "longitude": 138.7274,
+        "altitude_m": 5500,
+        "pan_deg": 0,
+        "tilt_deg": 45
+      },
+      "target": {
+        "latitude": 35.3606,
+        "longitude": 138.7274,
+        "elevation_m": 0
+      },
+      "production_target_elevation_field": null,
+      "boundary_provenance": {
+        "incoming_segment_id": 4,
+        "incoming_action": "zoom_in",
+        "camera_altitude_m": 5500,
+        "camera_altitude_source": "gazetteer",
+        "tilt_deg": 45,
+        "tilt_source": "explicit",
+        "orbit_segment_id": 5,
+        "orbit_altitude_m": 16927,
+        "orbit_altitude_source": "explicit",
+        "orbit_tilt_deg": 45
+      },
+      "morphology_policy": {
+        "fixture_altitude_m": 5500,
+        "fixture_min_altitude_m": 4300,
+        "morphology": "volcanic_cone",
+        "morphology_source": "curated_gazetteer",
+        "derived_tilt_deg": 45,
+        "derived_orbit_altitude_m": 16927.259454,
+        "preserved_reference_radius_m": 16927.259454
+      },
+      "measurements": {
+        "sphere_6371000": {
+          "earth_model": "sphere_6371000",
+          "camera_ecef_m": [
+            -3915720.563111157,
+            3436728.1314556208,
+            3676381.9812541236
+          ],
+          "target_ecef_m": [
+            -3904994.412601855,
+            3427314.062549678,
+            3687028.336505907
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            0.433324546375,
+            -0.380317909457,
+            0.817060661919
+          ],
+          "local_nadir_direction_ecef_unit": [
+            0.614086185699,
+            -0.538967792905,
+            -0.576551710383
+          ],
+          "optical_ray_ecef_unit": [
+            0.740631231338,
+            -0.650033153987,
+            0.170065510567
+          ],
+          "target_ray_ecef_unit": [
+            0.602421744305,
+            -0.528730210004,
+            0.597940136651
+          ],
+          "target_distance_m": 17805.052043204312,
+          "target_bearing_deg": 360,
+          "horizontal_bearing_error_deg": 0,
+          "expected_tilt_from_nadir_deg": 71.930884809907,
+          "vertical_elevation_component_deg": -26.930884809907,
+          "complete_3d_angular_error_deg": 26.930884809907,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.950683061052,
+            "up": -0.310164016978
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": -11374.294960893187,
+            "ray_distance_m": 23895.60067738993,
+            "closest_line_miss_m": 0,
+            "forward_intersection": true
+          }
+        },
+        "wgs84": {
+          "earth_model": "wgs84",
+          "camera_ecef_m": [
+            -3924468.511127004,
+            3444405.982454948,
+            3659950.3804354095
+          ],
+          "target_ecef_m": [
+            -3913758.825330207,
+            3435006.3642075066,
+            3670565.7776570967
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            0.433324546375,
+            -0.380317909457,
+            0.817060661919
+          ],
+          "local_nadir_direction_ecef_unit": [
+            0.614086185699,
+            -0.538967792905,
+            -0.576551710383
+          ],
+          "optical_ray_ecef_unit": [
+            0.740631231338,
+            -0.650033153987,
+            0.170065510567
+          ],
+          "target_ray_ecef_unit": [
+            0.602717904343,
+            -0.528990142121,
+            0.597411547698
+          ],
+          "target_distance_m": 17768.98565585418,
+          "target_bearing_deg": 359.999999999999,
+          "horizontal_bearing_error_deg": 1e-12,
+          "expected_tilt_from_nadir_deg": 71.89310947304,
+          "vertical_elevation_component_deg": -26.89310947304,
+          "complete_3d_angular_error_deg": 26.89310947304,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.950478362067,
+            "up": -0.31079073867
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": -11336.520479652812,
+            "ray_distance_m": 23842.108565959432,
+            "closest_line_miss_m": 4.66e-10,
+            "forward_intersection": true
+          }
+        }
+      },
+      "orbit_altitude_sensitivity_only": {
+        "note": "measurement-only counterfactual; this does not select the orbit altitude as boundary authority",
+        "camera_altitude_m": 16927,
+        "sphere_6371000": {
+          "earth_model": "sphere_6371000",
+          "camera_ecef_m": [
+            -3922737.725955142,
+            3442886.9164251406,
+            3682970.2376486645
+          ],
+          "target_ecef_m": [
+            -3904994.412601855,
+            3427314.062549678,
+            3687028.336505907
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            0.433324546375,
+            -0.380317909457,
+            0.817060661919
+          ],
+          "local_nadir_direction_ecef_unit": [
+            0.614086185699,
+            -0.538967792905,
+            -0.576551710383
+          ],
+          "optical_ray_ecef_unit": [
+            0.740631231338,
+            -0.650033153987,
+            0.170065510567
+          ],
+          "target_ray_ecef_unit": [
+            0.740716056036,
+            -0.650107602463,
+            0.169410240393
+          ],
+          "target_distance_m": 23954.271287488456,
+          "target_bearing_deg": 360,
+          "horizontal_bearing_error_deg": 0,
+          "expected_tilt_from_nadir_deg": 44.961902967116,
+          "vertical_elevation_component_deg": 0.038097032884,
+          "complete_3d_angular_error_deg": 0.038097032877,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.706636456417,
+            "up": -0.707576793333
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": 22.465476883096,
+            "ray_distance_m": 23938.42276300759,
+            "closest_line_miss_m": 4.66e-10,
+            "forward_intersection": true
+          }
+        },
+        "wgs84": {
+          "earth_model": "wgs84",
+          "camera_ecef_m": [
+            -3931485.673970989,
+            3450564.767424468,
+            3666538.6368299504
+          ],
+          "target_ecef_m": [
+            -3913758.825330207,
+            3435006.3642075066,
+            3670565.7776570967
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            0.433324546375,
+            -0.380317909457,
+            0.817060661919
+          ],
+          "local_nadir_direction_ecef_unit": [
+            0.614086185699,
+            -0.538967792905,
+            -0.576551710383
+          ],
+          "optical_ray_ecef_unit": [
+            0.740631231338,
+            -0.650033153987,
+            0.170065510567
+          ],
+          "target_ray_ecef_unit": [
+            0.740858198787,
+            -0.650232357533,
+            0.168306299666
+          ],
+          "target_distance_m": 23927.451528242815,
+          "target_bearing_deg": 360,
+          "horizontal_bearing_error_deg": 0,
+          "expected_tilt_from_nadir_deg": 44.897730321819,
+          "vertical_elevation_component_deg": 0.102269678181,
+          "complete_3d_angular_error_deg": 0.102269678183,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.705843510406,
+            "up": -0.708367799111
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": 60.239958123475,
+            "ray_distance_m": 23884.930651577084,
+            "closest_line_miss_m": 0,
+            "forward_intersection": true
+          }
+        }
+      },
+      "current_camera_quality": {
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "orbit_findings": [],
+        "limitation": "Production camera quality measures horizontal orbit aim, not complete camera-to-target ECEF ray error."
+      },
+      "fixture_sha256": {
+        "shot_plan_json": "8bf1b6997cedc871ee7d0cb55d28acd7fb42f572dd777b4aa4a85d9f97f0caa3",
+        "earth_studio_esp": "48bca3fdbe00c96fb04c36e4841a7a3bc65c7e743dc6e02b39414e702c26cb9b"
+      }
+    },
+    {
+      "id": "grand_canyon",
+      "classification": "pure_travel_hold_observation",
+      "source_description": "hover over Las Vegas at 34028m tilted 0 degrees for 4 seconds then fly to Grand Canyon at 48194m tilted 72 degrees for 8 seconds then hover over Grand Canyon for 6 seconds",
+      "selected_frame": 540,
+      "total_frames": 540,
+      "camera": {
+        "latitude": 36.0544,
+        "longitude": -112.1401,
+        "altitude_m": 48194,
+        "pan_deg": 0,
+        "tilt_deg": 72
+      },
+      "target": {
+        "latitude": 36.0544,
+        "longitude": -112.1401,
+        "elevation_m": 0
+      },
+      "production_target_elevation_field": null,
+      "boundary_provenance": null,
+      "morphology_policy": {
+        "fixture_altitude_m": 4000,
+        "fixture_min_altitude_m": 2700,
+        "morphology": "canyon",
+        "morphology_source": "curated_gazetteer",
+        "derived_tilt_deg": 74,
+        "derived_orbit_altitude_m": 3530.046212,
+        "preserved_reference_radius_m": 12310.734149
+      },
+      "measurements": {
+        "sphere_6371000": {
+          "earth_model": "sphere_6371000",
+          "camera_ecef_m": [
+            -1955837.8899693582,
+            -4806993.75733573,
+            3778036.629617496
+          ],
+          "target_ecef_m": [
+            -1941153.8577888098,
+            -4770903.828110809,
+            3749671.9007546846
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            0.22180955891,
+            0.54515620669,
+            0.808458551741
+          ],
+          "local_nadir_direction_ecef_unit": [
+            0.304685898256,
+            0.74884693582,
+            -0.588553115799
+          ],
+          "optical_ray_ecef_unit": [
+            0.305106546885,
+            0.749880792126,
+            0.587016858914
+          ],
+          "target_ray_ecef_unit": [
+            0.304685898256,
+            0.74884693582,
+            -0.588553115799
+          ],
+          "target_distance_m": 48193.999999999505,
+          "target_bearing_deg": null,
+          "horizontal_bearing_error_deg": null,
+          "expected_tilt_from_nadir_deg": 0,
+          "vertical_elevation_component_deg": 72,
+          "complete_3d_angular_error_deg": 72,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0,
+            "up": -1
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": 48193.999999999614,
+            "ray_distance_m": -3.38e-10,
+            "closest_line_miss_m": 2.33e-10,
+            "forward_intersection": false
+          }
+        },
+        "wgs84": {
+          "earth_model": "wgs84",
+          "camera_ecef_m": [
+            -1960269.5498853659,
+            -4817885.744683013,
+            3761438.105636179
+          ],
+          "target_ecef_m": [
+            -1945585.5177048175,
+            -4781795.815458093,
+            3733073.3767733676
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            0.22180955891,
+            0.54515620669,
+            0.808458551741
+          ],
+          "local_nadir_direction_ecef_unit": [
+            0.304685898256,
+            0.74884693582,
+            -0.588553115799
+          ],
+          "optical_ray_ecef_unit": [
+            0.305106546885,
+            0.749880792126,
+            0.587016858914
+          ],
+          "target_ray_ecef_unit": [
+            0.304685898256,
+            0.74884693582,
+            -0.588553115799
+          ],
+          "target_distance_m": 48193.999999999505,
+          "target_bearing_deg": null,
+          "horizontal_bearing_error_deg": null,
+          "expected_tilt_from_nadir_deg": 0,
+          "vertical_elevation_component_deg": 72,
+          "complete_3d_angular_error_deg": 72,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0,
+            "up": -1
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": 48193.999999999614,
+            "ray_distance_m": -3.38e-10,
+            "closest_line_miss_m": 2.33e-10,
+            "forward_intersection": false
+          }
+        }
+      },
+      "orbit_altitude_sensitivity_only": null,
+      "current_camera_quality": {
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "orbit_findings": [],
+        "limitation": "Production camera quality measures horizontal orbit aim, not complete camera-to-target ECEF ray error."
+      },
+      "fixture_sha256": {
+        "shot_plan_json": "0fe6726c1558115a2bada72324b809278d15ae3fb1ed7d17bd6e7ef4cd8f4aa5",
+        "earth_studio_esp": "04ab55b7c057787746fa1e183c683020fdf07056bcd765c40c323ce62c0c0a89"
+      }
+    },
+    {
+      "id": "geirangerfjord",
+      "classification": "staged_terrain_orbit_boundary",
+      "source_description": "hover over Oslo at 34028m tilted 0 degrees for 4 seconds then zoom out from Oslo at 155960m tilted 0 degrees for 1.6 seconds then fly to Geirangerfjord at 155960m tilted 0 degrees for 5.8 seconds then zoom in on Geirangerfjord tilted 65 degrees for 1.6 seconds then orbit Geirangerfjord once clockwise at 3588m tilted 65 degrees for 54 seconds",
+      "selected_frame": 390,
+      "total_frames": 2010,
+      "camera": {
+        "latitude": 62.035702,
+        "longitude": 7.2054,
+        "altitude_m": 2500,
+        "pan_deg": 0,
+        "tilt_deg": 65
+      },
+      "target": {
+        "latitude": 62.1049,
+        "longitude": 7.2054,
+        "elevation_m": 0
+      },
+      "production_target_elevation_field": null,
+      "boundary_provenance": {
+        "incoming_segment_id": 4,
+        "incoming_action": "zoom_in",
+        "camera_altitude_m": 2500,
+        "camera_altitude_source": "gazetteer",
+        "tilt_deg": 65,
+        "tilt_source": "explicit",
+        "orbit_segment_id": 5,
+        "orbit_altitude_m": 3588,
+        "orbit_altitude_source": "explicit",
+        "orbit_tilt_deg": 65
+      },
+      "morphology_policy": {
+        "fixture_altitude_m": 2500,
+        "fixture_min_altitude_m": 1000,
+        "morphology": "fjord_channel",
+        "morphology_source": "curated_gazetteer",
+        "derived_tilt_deg": 65,
+        "derived_orbit_altitude_m": 3587.868507,
+        "preserved_reference_radius_m": 7694.208843
+      },
+      "measurements": {
+        "sphere_6371000": {
+          "earth_model": "sphere_6371000",
+          "camera_ecef_m": [
+            2965067.981259412,
+            374859.1093687191,
+            5629329.868166683
+          ],
+          "target_ecef_m": [
+            2957160.384859484,
+            373859.39045419183,
+            5630725.762669225
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            -0.876264909418,
+            -0.110781906382,
+            0.468921291627
+          ],
+          "local_nadir_direction_ecef_unit": [
+            -0.465218166041,
+            -0.058815267807,
+            -0.883239957349
+          ],
+          "optical_ray_ecef_unit": [
+            -0.990775403575,
+            -0.125258910661,
+            0.051713682634
+          ],
+          "target_ray_ecef_unit": [
+            -0.977229702993,
+            -0.123546393684,
+            0.172506220745
+          ],
+          "target_distance_m": 8091.850233070581,
+          "target_bearing_deg": 0,
+          "horizontal_bearing_error_deg": 0,
+          "expected_tilt_from_nadir_deg": 71.969270111278,
+          "vertical_elevation_component_deg": -6.969270111278,
+          "complete_3d_angular_error_deg": 6.969270111278,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.950890642038,
+            "up": -0.309527037405
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": -1082.732390037713,
+            "ray_distance_m": 8488.459574317953,
+            "closest_line_miss_m": 5.8e-11,
+            "forward_intersection": true
+          }
+        },
+        "wgs84": {
+          "earth_model": "wgs84",
+          "camera_ecef_m": [
+            2976166.6994981454,
+            376262.26628127624,
+            5612590.188068589
+          ],
+          "target_ecef_m": [
+            2968243.830681234,
+            375260.61654942384,
+            5613994.243476958
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            -0.876264909418,
+            -0.110781906382,
+            0.468921291627
+          ],
+          "local_nadir_direction_ecef_unit": [
+            -0.465218166041,
+            -0.058815267807,
+            -0.883239957349
+          ],
+          "optical_ray_ecef_unit": [
+            -0.990775403575,
+            -0.125258910661,
+            0.051713682634
+          ],
+          "target_ray_ecef_unit": [
+            -0.977115868979,
+            -0.123532002204,
+            0.173160108055
+          ],
+          "target_distance_m": 8108.423031951052,
+          "target_bearing_deg": 360,
+          "horizontal_bearing_error_deg": 0,
+          "expected_tilt_from_nadir_deg": 72.007307515728,
+          "vertical_elevation_component_deg": -7.007307515728,
+          "complete_3d_angular_error_deg": 7.007307515728,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.951095920652,
+            "up": -0.308895693915
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": -1090.841966878177,
+            "ray_distance_m": 8507.673368194784,
+            "closest_line_miss_m": 0,
+            "forward_intersection": true
+          }
+        }
+      },
+      "orbit_altitude_sensitivity_only": {
+        "note": "measurement-only counterfactual; this does not select the orbit altitude as boundary authority",
+        "camera_altitude_m": 3588,
+        "sphere_6371000": {
+          "earth_model": "sphere_6371000",
+          "camera_ecef_m": [
+            2965574.138624064,
+            374923.10038009327,
+            5630290.833240279
+          ],
+          "target_ecef_m": [
+            2957160.384859484,
+            373859.39045419183,
+            5630725.762669225
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            -0.876264909418,
+            -0.110781906382,
+            0.468921291627
+          ],
+          "local_nadir_direction_ecef_unit": [
+            -0.465218166041,
+            -0.058815267807,
+            -0.883239957349
+          ],
+          "optical_ray_ecef_unit": [
+            -0.990775403575,
+            -0.125258910661,
+            0.051713682634
+          ],
+          "target_ray_ecef_unit": [
+            -0.990800790075,
+            -0.125262120153,
+            0.051217142061
+          ],
+          "target_distance_m": 8491.872280340122,
+          "target_bearing_deg": 0,
+          "horizontal_bearing_error_deg": 0,
+          "expected_tilt_from_nadir_deg": 64.971512568327,
+          "vertical_elevation_component_deg": 0.028487431673,
+          "complete_3d_angular_error_deg": 0.028487431647,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.906097549443,
+            "up": -0.423068825244
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": 4.656013062078,
+            "ray_distance_m": 8489.908612368909,
+            "closest_line_miss_m": 0,
+            "forward_intersection": true
+          }
+        },
+        "wgs84": {
+          "earth_model": "wgs84",
+          "camera_ecef_m": [
+            2976672.856862798,
+            376326.2572926504,
+            5613551.153142185
+          ],
+          "target_ecef_m": [
+            2968243.830681234,
+            375260.61654942384,
+            5613994.243476958
+          ],
+          "pan_horizontal_direction_ecef_unit": [
+            -0.876264909418,
+            -0.110781906382,
+            0.468921291627
+          ],
+          "local_nadir_direction_ecef_unit": [
+            -0.465218166041,
+            -0.058815267807,
+            -0.883239957349
+          ],
+          "optical_ray_ecef_unit": [
+            -0.990775403575,
+            -0.125258910661,
+            0.051713682634
+          ],
+          "target_ray_ecef_unit": [
+            -0.990756450487,
+            -0.125256514514,
+            0.052081295973
+          ],
+          "target_distance_m": 8507.667224796742,
+          "target_bearing_deg": 0,
+          "horizontal_bearing_error_deg": 0,
+          "expected_tilt_from_nadir_deg": 65.021091114944,
+          "vertical_elevation_component_deg": -0.021091114944,
+          "complete_3d_angular_error_deg": 0.021091114923,
+          "target_ray_enu_unit": {
+            "east": 0,
+            "north": 0.906463295383,
+            "up": -0.4222846127
+          },
+          "optical_intersection_with_target_vertical": {
+            "target_elevation_m": -3.45356377836,
+            "ray_distance_m": 8509.122406246192,
+            "closest_line_miss_m": 0,
+            "forward_intersection": true
+          }
+        }
+      },
+      "current_camera_quality": {
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "errors": [],
+        "orbit_findings": [],
+        "limitation": "Production camera quality measures horizontal orbit aim, not complete camera-to-target ECEF ray error."
+      },
+      "fixture_sha256": {
+        "shot_plan_json": "018df5edd715e97499f2526d12d2a1b49cb2886404fae495c672b36d41d46100",
+        "earth_studio_esp": "a19bd8e1c9732371ab2129d6105c3bd1c6cf69d491328fe5975c9c334e8ba712"
+      }
+    }
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "job_name": "terrain-pose-geirangerfjord",
+  "version": "0.9.4",
+  "generated_at": "2026-09-03T00:00:00.000Z",
+  "source_description": "hover over Oslo at 34028m tilted 0 degrees for 4 seconds then zoom out from Oslo at 155960m tilted 0 degrees for 1.6 seconds then fly to Geirangerfjord at 155960m tilted 0 degrees for 5.8 seconds then zoom in on Geirangerfjord tilted 65 degrees for 1.6 seconds then orbit Geirangerfjord once clockwise at 3588m tilted 65 degrees for 54 seconds",
+  "parser_strategy": "offline_regex_with_manual_review_fallback",
+  "frame_rate": 30,
+  "frame_convention": {
+    "start_frame": "inclusive",
+    "end_frame": "exclusive"
+  },
+  "aspect": "16:9",
+  "render_dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "total_duration_seconds": 67,
+  "total_frames": 2010,
+  "motion_policy": {
+    "coherent_trajectory": true,
+    "dedupe_keyframes": true,
+    "source": "journey"
+  },
+  "locations": [
+    {
+      "name": "Oslo",
+      "latitude": 59.9139,
+      "longitude": 10.7522,
+      "resolution_status": "resolved_fixture"
+    },
+    {
+      "name": "Geirangerfjord",
+      "latitude": 62.1049,
+      "longitude": 7.2054,
+      "resolution_status": "resolved_fixture"
+    }
+  ],
+  "segments": [
+    {
+      "segment_id": 1,
+      "source_text": "hover over Oslo at 34028m tilted 0 degrees for 4 seconds",
+      "action": "hover",
+      "requested_action": "hover",
+      "location_name": "Oslo",
+      "location": {
+        "name": "Oslo",
+        "latitude": 59.9139,
+        "longitude": 10.7522,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 34028,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 0,
+      "end_seconds": 4,
+      "duration_seconds": 4,
+      "start_frame": 0,
+      "end_frame": 120,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 2,
+      "source_text": "zoom out from Oslo at 155960m tilted 0 degrees for 1.6 seconds",
+      "action": "zoom_out",
+      "requested_action": "zoom_out",
+      "location_name": "Oslo",
+      "location": {
+        "name": "Oslo",
+        "latitude": 59.9139,
+        "longitude": 10.7522,
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 155960,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 4,
+      "end_seconds": 5.6,
+      "duration_seconds": 1.6,
+      "start_frame": 120,
+      "end_frame": 168,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 3,
+      "source_text": "fly to Geirangerfjord at 155960m tilted 0 degrees for 5.8 seconds",
+      "action": "fly_to",
+      "requested_action": "fly_to",
+      "location_name": "Geirangerfjord",
+      "location": {
+        "name": "Geirangerfjord",
+        "latitude": 62.1049,
+        "longitude": 7.2054,
+        "altitude_m": 2500,
+        "min_altitude_m": 1000,
+        "terrain_morphology": "fjord_channel",
+        "morphology_source": "curated_gazetteer",
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 155960,
+      "altitude_source": "explicit",
+      "tilt_deg": 0,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 5.6,
+      "end_seconds": 11.399999999999999,
+      "duration_seconds": 5.8,
+      "start_frame": 168,
+      "end_frame": 342,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": []
+    },
+    {
+      "segment_id": 4,
+      "source_text": "zoom in on Geirangerfjord tilted 65 degrees for 1.6 seconds",
+      "action": "zoom_in",
+      "requested_action": "zoom_in",
+      "location_name": "Geirangerfjord",
+      "location": {
+        "name": "Geirangerfjord",
+        "latitude": 62.1049,
+        "longitude": 7.2054,
+        "altitude_m": 2500,
+        "min_altitude_m": 1000,
+        "terrain_morphology": "fjord_channel",
+        "morphology_source": "curated_gazetteer",
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 2500,
+      "altitude_source": "gazetteer",
+      "tilt_deg": 65,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 11.399999999999999,
+      "end_seconds": 12.999999999999998,
+      "duration_seconds": 1.6,
+      "start_frame": 342,
+      "end_frame": 390,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": [
+        "pacing: very large zoom in 1.6s — likely too fast to read; consider ~7s."
+      ],
+      "ends_at_orbit_entry": 5
+    },
+    {
+      "segment_id": 5,
+      "source_text": "orbit Geirangerfjord once clockwise at 3588m tilted 65 degrees for 54 seconds",
+      "action": "orbit",
+      "requested_action": "orbit",
+      "location_name": "Geirangerfjord",
+      "location": {
+        "name": "Geirangerfjord",
+        "latitude": 62.1049,
+        "longitude": 7.2054,
+        "altitude_m": 2500,
+        "min_altitude_m": 1000,
+        "terrain_morphology": "fjord_channel",
+        "morphology_source": "curated_gazetteer",
+        "source": "gazetteer_fixture"
+      },
+      "altitude_m": 3588,
+      "altitude_source": "explicit",
+      "tilt_deg": 65,
+      "tilt_source": "explicit",
+      "duration_source": "explicit",
+      "start_seconds": 12.999999999999998,
+      "end_seconds": 67,
+      "duration_seconds": 54,
+      "start_frame": 390,
+      "end_frame": 2010,
+      "resolution_status": "resolved",
+      "warnings": [],
+      "notes": [],
+      "orbit_degrees": 360,
+      "orbit_direction": 1
+    }
+  ],
+  "unresolved_items": [],
+  "motion_profile": {
+    "profile_version": 4,
+    "source": "config/earth-studio-motion/motion-profile.json",
+    "references": [
+      "darien-gap",
+      "mountkinabalu",
+      "radiator-untitled",
+      "servyx"
+    ],
+    "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
+  },
+  "notes": [
+    "segment 4: pacing: very large zoom in 1.6s — likely too fast to read; consider ~7s.",
+    "segment 4: endpoint set to segment 5's orbit ring entry (same target — the move lands on the ring the orbit starts from).",
+    "camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
+  ],
+  "manual_earth_studio_steps": [
+    "Open Google Earth Studio manually.",
+    "Create or open the project manually; this planner does not log in, automate a browser, or control Earth Studio.",
+    "Use shot-plan.json coordinates as manual camera/search references.",
+    "Use route.kml only as a placemark/path reference asset.",
+    "Manually create, review, and adjust all camera keyframes.",
+    "Render manually only after Mikko reviews the camera move."
+  ],
+  "warnings": [
+    "KML is a reference asset only and does not create a finished Google Earth Studio camera animation.",
+    "Placemark use as camera targets is unverified in v1; manually search or set camera targets from shot-plan.json if needed.",
+    "This planner does not render video, manipulate .esp files, control Google Earth Studio, or approve footage.",
+    "Technical planning artifacts are not creative approval, rights clearance, or package-run evidence approval."
+  ]
+}

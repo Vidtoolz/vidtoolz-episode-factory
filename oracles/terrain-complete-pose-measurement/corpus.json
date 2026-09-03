@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "production_sha": "7b63c6b430f964087665a6c9a4626b79e42bcad9",
+  "generated_at": "2026-09-03T00:00:00.000Z",
+  "motion_policy": {
+    "coherent_trajectory": true,
+    "dedupe_keyframes": true,
+    "source": "journey"
+  },
+  "target_elevation_authority": {
+    "production_field": null,
+    "compatibility_assumption_m": 0,
+    "note": "Production serializes subject latitude/longitude but no target elevation. Zero metres is an explicit measurement assumption, not terrain truth or an altitude-owner decision."
+  },
+  "cases": [
+    {
+      "id": "matterhorn",
+      "start": "Zurich",
+      "subject": "Matterhorn",
+      "selector": "arrival_boundary_before_target_orbit",
+      "classification": "staged_terrain_orbit_boundary"
+    },
+    {
+      "id": "fuji",
+      "start": "Tokyo",
+      "subject": "Mount Fuji",
+      "selector": "arrival_boundary_before_target_orbit",
+      "classification": "staged_terrain_orbit_boundary"
+    },
+    {
+      "id": "grand_canyon",
+      "start": "Las Vegas",
+      "subject": "Grand Canyon",
+      "selector": "final_serialized_state",
+      "classification": "pure_travel_hold_observation",
+      "note": "Current director output has no Grand Canyon orbit. This case is descriptive and must not be counted as an orbit-boundary defect."
+    },
+    {
+      "id": "geirangerfjord",
+      "start": "Oslo",
+      "subject": "Geirangerfjord",
+      "selector": "arrival_boundary_before_target_orbit",
+      "classification": "staged_terrain_orbit_boundary"
+    }
+  ]
+}
