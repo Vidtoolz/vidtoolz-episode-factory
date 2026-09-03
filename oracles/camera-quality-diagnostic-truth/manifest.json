@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "oracle": "camera-quality-diagnostic-truth",
+  "branch": "codex/camera-quality-diagnostic-truth-oracle-20260903",
+  "production_sha": "00bba82faa1a31f3db3d16c68c991765ae1b6d3a",
+  "reported_candidate_branch": "claude/camera-quality-diagnostic-truth-repair-20260903",
+  "reported_candidate_opaque_sha": "c115ce471084175285cbf3440506373264081c79",
+  "semantic_rule": "CAMERA QUALITY MUST MEASURE THE PHYSICAL CAMERA GEOMETRY ACTUALLY PRODUCED.",
+  "independence": "FABLE DIAGNOSTIC REPAIR INSPECTED BEFORE ORACLE FREEZE: NO",
+  "human_authority": "NO HUMAN AUTHORITY DECISION INFERRED",
+  "files": {
+    "corpus.json": "5f678a46267de998d072852f44baecfb6e4699a14a2055619e541b296de6a375",
+    "comparator.js": "66f47043f37ad1d47639788aceff50f6d8f84d076d508e4ff1ff2bb1328a5979",
+    "oracle.test.js": "885c431bd434e2d39a1ebd4f368335dbe862fbdfb896917cb278457e11a42862",
+    "results-production.json": "ca4edf6b771a448759fe7cb09ff7e96c827592fa8e1a6936b63fc580e4063e8b"
+  },
+  "adapter_constraints": [
+    "transport only",
+    "no expected values",
+    "no candidate-specific normalization",
+    "no geometry correction",
+    "no threshold or tolerance override"
+  ]
+}

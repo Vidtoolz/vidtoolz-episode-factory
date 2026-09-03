@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "production_sha": "00bba82faa1a31f3db3d16c68c991765ae1b6d3a",
+  "semantic_rule": "CAMERA QUALITY MUST MEASURE THE PHYSICAL CAMERA GEOMETRY ACTUALLY PRODUCED.",
+  "earth_radius_m": 6371000,
+  "precision": {
+    "radius_absolute_m": 0.1,
+    "radius_relative_pct": 0.001,
+    "aim_deg": 0.001
+  },
+  "thresholds": {
+    "POSITION_DIRECTION_TOLERANCE": 1,
+    "ORBIT_RADIUS_BREATHING_TOLERANCE_PCT": 2,
+    "ORBIT_AIM_TOLERANCE_DEG": 2,
+    "ORBIT_TILT_TOLERANCE_DEG": 1,
+    "ORBIT_ENTRY_MAX_FRACTION": 0.4,
+    "DEAD_ORBIT_MIN_ARC_DEG": 15,
+    "DEAD_ORBIT_MIN_DISPLACEMENT_M": 5,
+    "DEAD_MOVE_DEGENERATE_FRACTION": 0.005,
+    "DEAD_MOVE_WEAK_FRACTION": 0.05,
+    "DEAD_FLY_DEGENERATE_M": 25,
+    "smoothness": {
+      "altitude_noise_m": 0.5,
+      "altitude_reversal_fraction": 0.0025,
+      "tilt_noise_deg": 0.02,
+      "tilt_reversal_fraction": 0.005,
+      "radius_breathing_hard_pct": 4,
+      "radius_reversal_noise_m": 5,
+      "target_drift_hard_deg": 5,
+      "angular_reversal_noise_deg": 0.001,
+      "heading_speed_noise_dps": 0.05,
+      "heading_speed_pulse_fraction": 0.12,
+      "heading_speed_pulse_changes": 2,
+      "boundary_velocity_discontinuity": 0.65,
+      "boundary_position_floor_mps": 1,
+      "boundary_altitude_floor_mps": 0.5,
+      "boundary_angle_floor_dps": 0.05,
+      "boundary_direction_snap_deg": 30,
+      "boundary_direction_speed_floor_mps": 1,
+      "boundary_channel_phase_warning_frames": 8,
+      "roll_noise_deg": 0.01
+    }
+  },
+  "schema": {
+    "top_level": ["schema_version", "verdict", "scope", "errors", "warnings", "tracks", "segments", "coherence", "orbit_geometry", "roll", "smoothness", "motion_policy"],
+    "defect_fields": ["defect_class", "parameter", "segment_id", "primitive_before", "primitive_after", "frame_start", "frame_end", "measured_value", "threshold", "explanation", "severity"]
+  },
+  "matrix": {
+    "latitudes_deg": [0, 30, 60, 80, 85, 89],
+    "radii_m": [1000, 10000, 100000, 1000000],
+    "ordinary_longitude_deg": 20
+  },
+  "seam_cases": [
+    {"id": "seam_equator_100km_east", "latitude": 0, "longitude": 179.99, "radius_m": 100000, "direction": 1},
+    {"id": "seam_equator_100km_west", "latitude": 0, "longitude": -179.99, "radius_m": 100000, "direction": -1},
+    {"id": "seam_60n_80km", "latitude": 60, "longitude": 179.99, "radius_m": 80000, "direction": 1},
+    {"id": "seam_80n_100km", "latitude": 80, "longitude": 179.99, "radius_m": 100000, "direction": 1},
+    {"id": "seam_85n_35km", "latitude": 85, "longitude": -179.99, "radius_m": 35000, "direction": -1},
+    {"id": "seam_89n_35km", "latitude": 89, "longitude": 179.99, "radius_m": 35000, "direction": 1},
+    {"id": "exact_plus_180", "latitude": 30, "longitude": 180, "radius_m": 10000, "direction": 1},
+    {"id": "exact_minus_180", "latitude": 30, "longitude": -180, "radius_m": 10000, "direction": -1}
+  ],
+  "true_failure_controls": {
+    "radius_breathing": "RADIUS_BREATHING",
+    "target_drift": "TARGET_DRIFT",
+    "dead_orbit": "orbit geometry:",
+    "dead_fly": "movement intent:",
+    "true_reversal": "TRAJECTORY_REVERSAL",
+    "hard_start": "HARD_START"
+  }
+}

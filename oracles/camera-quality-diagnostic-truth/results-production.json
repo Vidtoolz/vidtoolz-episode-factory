@@ -1,0 +1,2413 @@
+{
+  "acceptance": {
+    "camera_output_differences": 0,
+    "correct_geometry_false_findings": 17,
+    "false_failures": 14,
+    "schema_compatible": true,
+    "thresholds_unchanged": true,
+    "true_failure_controls_passed": 6,
+    "true_failure_controls_total": 6
+  },
+  "continuation": {
+    "exported": {
+      "altitude_m": 2500,
+      "heading_deg": 180,
+      "latitude": 45.038942,
+      "longitude": -179.95,
+      "pan_deg": 540,
+      "tilt_deg": 60
+    },
+    "public_longitude_legal": true,
+    "report": {
+      "codes": [
+        "orbit geometry"
+      ],
+      "defects": [],
+      "errors": 0,
+      "orbit_findings": [
+        "segment 1 45.0000, -179.9000 — its orbit radius breathes 3.5% of 4237m during the sweep, so the camera visibly pulses closer and further while circling",
+        "segment 1 45.0000, -179.9000 — while moving onto the orbit ring its radius reverses 7 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+        "segment 1 45.0000, -179.9000 — while moving onto the orbit ring the camera is up to 42.2° off the subject, so it loses what it is circling before it starts circling"
+      ],
+      "verdict": "PASS_FOR_HUMAN_REVIEW",
+      "warnings": 3
+    },
+    "start_distance_m": 0
+  },
+  "generated_at": "2026-09-03T05:12:48.998Z",
+  "heading_convention": [
+    {
+      "id": "heading_60n_80km",
+      "latitude": 60,
+      "physical_sweep_after_40pct": {
+        "max_aim_error_deg": 1.3496703044304468,
+        "max_radius_m": 80000.01392983325,
+        "mean_radius_m": 78222.45564931912,
+        "min_radius_m": 77212.7112617969,
+        "radius_breathing_pct": 3.5633024364923735
+      },
+      "radius_m": 80000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 4.188011090295942,
+            "threshold": 4
+          }
+        ],
+        "errors": 1,
+        "orbit_findings": [
+          "segment 1 60.0000, 20.0000 — its orbit radius breathes 4.2% of 78234m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment 1 60.0000, 20.0000 — while moving onto the orbit ring its radius reverses 5 time(s), so the camera overshoots the ring and springs back instead of settling onto it"
+        ],
+        "verdict": "FAIL",
+        "warnings": 2
+      }
+    },
+    {
+      "id": "heading_85n_35km",
+      "latitude": 85,
+      "physical_sweep_after_40pct": {
+        "max_aim_error_deg": 3.6617077230017117,
+        "max_radius_m": 35000.04869542237,
+        "mean_radius_m": 34227.02460696931,
+        "min_radius_m": 33726.61413122815,
+        "radius_breathing_pct": 3.720552922192726
+      },
+      "radius_m": 35000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 5.5018938039492005,
+            "threshold": 4
+          }
+        ],
+        "errors": 1,
+        "orbit_findings": [
+          "segment 1 85.0000, 20.0000 — its orbit radius breathes 5.5% of 34192m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment 1 85.0000, 20.0000 — its look direction drifts 2.1° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment 1 85.0000, 20.0000 — while moving onto the orbit ring its radius reverses 4 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment 1 85.0000, 20.0000 — while moving onto the orbit ring the camera is up to 2.1° off the subject, so it loses what it is circling before it starts circling"
+        ],
+        "verdict": "FAIL",
+        "warnings": 4
+      }
+    },
+    {
+      "id": "heading_89n_35km",
+      "latitude": 89,
+      "physical_sweep_after_40pct": {
+        "max_aim_error_deg": 17.897944656334687,
+        "max_radius_m": 35000.04869542237,
+        "mean_radius_m": 34249.83747349932,
+        "min_radius_m": 33261.553551761346,
+        "radius_breathing_pct": 5.0759223164377785
+      },
+      "radius_m": 35000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 13.137998031304567,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 10.031593936133731,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment 1 89.0000, 20.0000 — its orbit radius breathes 13.1% of 34326m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment 1 89.0000, 20.0000 — its look direction drifts 10.0° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment 1 89.0000, 20.0000 — while moving onto the orbit ring its radius reverses 4 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment 1 89.0000, 20.0000 — while moving onto the orbit ring the camera is up to 10.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment 1 89.0000, 20.0000 — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    }
+  ],
+  "matrix": [
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_0n_1000m",
+      "latitude": 0,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.000004874255978393194,
+        "max_radius_m": 1000.0000000072512,
+        "mean_radius_m": 999.9757117999861,
+        "min_radius_m": 999.9634461615218,
+        "radius_breathing_pct": 0.003655473357805297
+      },
+      "planar": {
+        "max_aim_error_deg": 0.000005058527676737867,
+        "mean_radius_m": 1001.1004967010441,
+        "radius_breathing_pct": 0.003655573009272539
+      },
+      "radius_m": 1000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_0n_10000m",
+      "latitude": 0,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.0000048750512178230565,
+        "max_radius_m": 10000.000000004984,
+        "mean_radius_m": 9999.757118021847,
+        "min_radius_m": 9999.634461394191,
+        "radius_breathing_pct": 0.003655474892827404
+      },
+      "planar": {
+        "max_aim_error_deg": 0.000023331724946729082,
+        "mean_radius_m": 10011.00547401289,
+        "radius_breathing_pct": 0.0036655562677916443
+      },
+      "radius_m": 10000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_0n_100000m",
+      "latitude": 0,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.0000049851145149659715,
+        "max_radius_m": 100000.00000000218,
+        "mean_radius_m": 99997.57120489904,
+        "min_radius_m": 99996.3443166911,
+        "radius_breathing_pct": 0.0036557721022945156
+      },
+      "planar": {
+        "max_aim_error_deg": 0.0018510465433791978,
+        "mean_radius_m": 100110.56177131347,
+        "radius_breathing_pct": 0.004663969024099759
+      },
+      "radius_m": 100000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_0n_1000000m",
+      "latitude": 0,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.00001895231002890796,
+        "max_radius_m": 1000000.0000000035,
+        "mean_radius_m": 999975.73660824,
+        "min_radius_m": 999963.1429572161,
+        "radius_breathing_pct": 0.0036857937085930732
+      },
+      "planar": {
+        "max_aim_error_deg": 0.18589483757853031,
+        "mean_radius_m": 1001615.3832886823,
+        "radius_breathing_pct": 0.10509779852175631
+      },
+      "radius_m": 1000000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_30n_1000m",
+      "latitude": 30,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.000004923358346786699,
+        "max_radius_m": 1000.0000000066195,
+        "mean_radius_m": 999.9757117996371,
+        "min_radius_m": 999.9634425630348,
+        "radius_breathing_pct": 0.003655833152076473
+      },
+      "planar": {
+        "max_aim_error_deg": 0.0025992003527335328,
+        "mean_radius_m": 1001.1004970209316,
+        "radius_breathing_pct": 0.00713787071628911
+      },
+      "radius_m": 1000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_30n_10000m",
+      "latitude": 30,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.0000053656434602089575,
+        "max_radius_m": 10000.000000006059,
+        "mean_radius_m": 9999.757118021871,
+        "min_radius_m": 9999.634100605603,
+        "radius_breathing_pct": 0.0036590828770920155
+      },
+      "planar": {
+        "max_aim_error_deg": 0.02596114835910157,
+        "mean_radius_m": 10011.00579403237,
+        "radius_breathing_pct": 0.03848177653214086
+      },
+      "radius_m": 10000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_30n_100000m",
+      "latitude": 30,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.00000976108515260421,
+        "max_radius_m": 100000.00000000614,
+        "mean_radius_m": 99997.5712048992,
+        "min_radius_m": 99996.30805701383,
+        "radius_breathing_pct": 0.0036920326642230486
+      },
+      "planar": {
+        "max_aim_error_deg": 0.25960486550434325,
+        "mean_radius_m": 100110.88184762502,
+        "radius_breathing_pct": 0.35214625014109646
+      },
+      "radius_m": 100000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": [
+          "segment S1 matrix_30n_1000000m — its orbit radius breathes 3.5% of 1000088m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_30n_1000000m — its look direction drifts 2.6° off the subject during the sweep, so the subject slides across frame instead of staying put"
+        ]
+      },
+      "id": "matrix_30n_1000000m",
+      "latitude": 30,
+      "measurement_error_but_verdict_unchanged": true,
+      "physical": {
+        "max_aim_error_deg": 0.00007937565510474087,
+        "max_radius_m": 1000000.0000000057,
+        "mean_radius_m": 999975.7366091256,
+        "min_radius_m": 999959.2456536288,
+        "radius_breathing_pct": 0.0040755335239496164
+      },
+      "planar": {
+        "max_aim_error_deg": 2.6276792541108307,
+        "mean_radius_m": 1001941.2384883154,
+        "radius_breathing_pct": 3.519018867982055
+      },
+      "radius_m": 1000000,
+      "report": {
+        "codes": [
+          "orbit geometry"
+        ],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [
+          "segment S1 matrix_30n_1000000m — its orbit radius breathes 3.5% of 1000088m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_30n_1000000m — its look direction drifts 2.6° off the subject during the sweep, so the subject slides across frame instead of staying put"
+        ],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 2
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_60n_1000m",
+      "latitude": 60,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.000005021504762225959,
+        "max_radius_m": 1000.0000000025526,
+        "mean_radius_m": 999.9757118000753,
+        "min_radius_m": 999.9634353465441,
+        "radius_breathing_pct": 0.003656554411976837
+      },
+      "planar": {
+        "max_aim_error_deg": 0.007788353138380444,
+        "mean_radius_m": 1001.1004995813238,
+        "radius_breathing_pct": 0.014102777024451238
+      },
+      "radius_m": 1000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_60n_10000m",
+      "latitude": 60,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.000006352010473165137,
+        "max_radius_m": 10000.000000003673,
+        "mean_radius_m": 9999.757118021727,
+        "min_radius_m": 9999.633377164506,
+        "radius_breathing_pct": 0.003666317439909942
+      },
+      "planar": {
+        "max_aim_error_deg": 0.07788310396153975,
+        "mean_radius_m": 10011.00835419591,
+        "radius_breathing_pct": 0.10814508618503595
+      },
+      "radius_m": 10000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_60n_100000m",
+      "latitude": 60,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.00002483144885445654,
+        "max_radius_m": 100000.00000000387,
+        "mean_radius_m": 99997.57120490602,
+        "min_radius_m": 99996.23366189256,
+        "radius_breathing_pct": 0.003766429590165973
+      },
+      "planar": {
+        "max_aim_error_deg": 0.7789267323028071,
+        "mean_radius_m": 100113.44330558077,
+        "radius_breathing_pct": 1.0499140932500088
+      },
+      "radius_m": 100000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 10.785739231077464,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 7.906696277470644,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 matrix_60n_1000000m — its orbit radius breathes 10.8% of 1002537m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_60n_1000000m — its look direction drifts 7.9° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_60n_1000000m — while moving onto the orbit ring the camera is up to 7.9° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 matrix_60n_1000000m — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "matrix_60n_1000000m",
+      "latitude": 60,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.00028330351881322713,
+        "max_radius_m": 1000000.0000000035,
+        "mean_radius_m": 999975.7366173211,
+        "min_radius_m": 999948.6944490994,
+        "radius_breathing_pct": 0.0051306795780549684
+      },
+      "planar": {
+        "max_aim_error_deg": 7.906696277470701,
+        "mean_radius_m": 1004639.2267033111,
+        "radius_breathing_pct": 10.785739231077454
+      },
+      "radius_m": 1000000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 10.785739231077464,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 7.906696277470644,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 matrix_60n_1000000m — its orbit radius breathes 10.8% of 1002537m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_60n_1000000m — its look direction drifts 7.9° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_60n_1000000m — while moving onto the orbit ring the camera is up to 7.9° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 matrix_60n_1000000m — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 4
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_80n_1000m",
+      "latitude": 80,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.000005357553163776174,
+        "max_radius_m": 1000.000000001899,
+        "mean_radius_m": 999.9757117996028,
+        "min_radius_m": 999.9634107205693,
+        "radius_breathing_pct": 0.0036590170039107533
+      },
+      "planar": {
+        "max_aim_error_deg": 0.025501517723569123,
+        "mean_radius_m": 1001.1005275795761,
+        "radius_breathing_pct": 0.03786458262000794
+      },
+      "radius_m": 1000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_80n_10000m",
+      "latitude": 80,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.000009734392619975551,
+        "max_radius_m": 10000.000000002303,
+        "mean_radius_m": 9999.757118021867,
+        "min_radius_m": 9999.63089220579,
+        "radius_breathing_pct": 0.003691167616931773
+      },
+      "planar": {
+        "max_aim_error_deg": 0.25500168565736203,
+        "mean_radius_m": 10011.036353868987,
+        "radius_breathing_pct": 0.3459105073788683
+      },
+      "radius_m": 10000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": [
+          "segment S1 matrix_80n_100000m — its orbit radius breathes 3.4% of 100142m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_80n_100000m — its look direction drifts 2.6° off the subject during the sweep, so the subject slides across frame instead of staying put"
+        ]
+      },
+      "id": "matrix_80n_100000m",
+      "latitude": 80,
+      "measurement_error_but_verdict_unchanged": true,
+      "physical": {
+        "max_aim_error_deg": 0.00008023279167446162,
+        "max_radius_m": 100000.00000000244,
+        "mean_radius_m": 99997.57120498034,
+        "min_radius_m": 99995.9619755943,
+        "radius_breathing_pct": 0.004038122485863982
+      },
+      "planar": {
+        "max_aim_error_deg": 2.5525378885542978,
+        "mean_radius_m": 100141.55491452728,
+        "radius_breathing_pct": 3.434801502045528
+      },
+      "radius_m": 100000,
+      "report": {
+        "codes": [
+          "orbit geometry"
+        ],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [
+          "segment S1 matrix_80n_100000m — its orbit radius breathes 3.4% of 100142m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_80n_100000m — its look direction drifts 2.6° off the subject during the sweep, so the subject slides across frame instead of staying put"
+        ],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 2
+      }
+    },
+    {
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 51.50587647543099,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 29.347032280399162,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 matrix_80n_1000000m — its orbit radius breathes 52.1% of 1043922m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_80n_1000000m — its look direction drifts 29.3° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_80n_1000000m — while moving onto the orbit ring its radius reverses 1 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 matrix_80n_1000000m — while moving onto the orbit ring the camera is up to 29.3° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 matrix_80n_1000000m — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "matrix_80n_1000000m",
+      "latitude": 80,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.005932205584485928,
+        "max_radius_m": 1000000.0000000027,
+        "mean_radius_m": 999975.7026262752,
+        "min_radius_m": 999647.022234603,
+        "radius_breathing_pct": 0.03529863420408021
+      },
+      "planar": {
+        "max_aim_error_deg": 29.347032280398935,
+        "mean_radius_m": 1055237.326774788,
+        "radius_breathing_pct": 51.505876475430846
+      },
+      "radius_m": 1000000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 51.50587647543099,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 29.347032280399162,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 matrix_80n_1000000m — its orbit radius breathes 52.1% of 1043922m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_80n_1000000m — its look direction drifts 29.3° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_80n_1000000m — while moving onto the orbit ring its radius reverses 1 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 matrix_80n_1000000m — while moving onto the orbit ring the camera is up to 29.3° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 matrix_80n_1000000m — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_85n_1000m",
+      "latitude": 85,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.000005849166996085842,
+        "max_radius_m": 1000.0000000046571,
+        "mean_radius_m": 999.9757117996218,
+        "min_radius_m": 999.9633746665469,
+        "radius_breathing_pct": 0.0036626227695341564
+      },
+      "planar": {
+        "max_aim_error_deg": 0.05139635446471402,
+        "mean_radius_m": 1001.1006221285874,
+        "radius_breathing_pct": 0.07260533631024917
+      },
+      "radius_m": 1000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_85n_10000m",
+      "latitude": 85,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.0000171277661138447,
+        "max_radius_m": 10000.00000000541,
+        "mean_radius_m": 9999.757118022386,
+        "min_radius_m": 9999.627211846686,
+        "radius_breathing_pct": 0.0037279721329622033
+      },
+      "planar": {
+        "max_aim_error_deg": 0.513917896663088,
+        "mean_radius_m": 10011.130919895628,
+        "radius_breathing_pct": 0.69376743641802
+      },
+      "radius_m": 10000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 6.974693981032557,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 5.159004783663278,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 matrix_85n_100000m — its orbit radius breathes 7.0% of 100078m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_85n_100000m — its look direction drifts 5.2° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_85n_100000m — while moving onto the orbit ring the camera is up to 5.2° off the subject, so it loses what it is circling before it starts circling"
+        ]
+      },
+      "id": "matrix_85n_100000m",
+      "latitude": 85,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.000173062020735415,
+        "max_radius_m": 100000.00000001224,
+        "mean_radius_m": 99997.57120524712,
+        "min_radius_m": 99995.49958538475,
+        "radius_breathing_pct": 0.00450052393597698
+      },
+      "planar": {
+        "max_aim_error_deg": 5.159004783663249,
+        "mean_radius_m": 100237.8471812662,
+        "radius_breathing_pct": 6.974693981033463
+      },
+      "radius_m": 100000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 6.974693981032557,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 5.159004783663278,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 matrix_85n_100000m — its orbit radius breathes 7.0% of 100078m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_85n_100000m — its look direction drifts 5.2° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_85n_100000m — while moving onto the orbit ring the camera is up to 5.2° off the subject, so it loses what it is circling before it starts circling"
+        ],
+        "verdict": "FAIL",
+        "warnings": 3
+      }
+    },
+    {
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 172.2685223204814,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 111.73538991973103,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 matrix_85n_1000000m — its orbit radius breathes 90.4% of 1013996m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_85n_1000000m — its look direction drifts 93.7° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_85n_1000000m — while moving onto the orbit ring its radius reverses 3 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 matrix_85n_1000000m — while moving onto the orbit ring the camera is up to 111.7° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 matrix_85n_1000000m — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "matrix_85n_1000000m",
+      "latitude": 85,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.0013269752059841267,
+        "max_radius_m": 1000045.4574774827,
+        "mean_radius_m": 1000003.7205572649,
+        "min_radius_m": 999986.8863653847,
+        "radius_breathing_pct": 0.005857089418169003
+      },
+      "planar": {
+        "max_aim_error_deg": 111.735389919731,
+        "mean_radius_m": 1019551.2101839117,
+        "radius_breathing_pct": 172.2685223204814
+      },
+      "radius_m": 1000000,
+      "report": {
+        "codes": [
+          "HEADING_REVERSAL",
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness HEADING_REVERSAL",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 172.2685223204814,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 111.73538991973103,
+            "threshold": 5
+          },
+          {
+            "defect_class": "HEADING_REVERSAL",
+            "measured_value": 67.77160168839328,
+            "threshold": 0.001
+          }
+        ],
+        "errors": 3,
+        "orbit_findings": [
+          "segment S1 matrix_85n_1000000m — its orbit radius breathes 90.4% of 1013996m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_85n_1000000m — its look direction drifts 93.7° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_85n_1000000m — while moving onto the orbit ring its radius reverses 3 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 matrix_85n_1000000m — while moving onto the orbit ring the camera is up to 111.7° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 matrix_85n_1000000m — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": []
+      },
+      "id": "matrix_89n_1000m",
+      "latitude": 89,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.000009784769645193592,
+        "max_radius_m": 1000.0000000139784,
+        "mean_radius_m": 999.9757117986642,
+        "min_radius_m": 999.9630855857117,
+        "radius_breathing_pct": 0.0036915324873484055
+      },
+      "planar": {
+        "max_aim_error_deg": 0.2575966134952523,
+        "mean_radius_m": 1001.1036478534855,
+        "radius_breathing_pct": 0.3493946063205449
+      },
+      "radius_m": 1000,
+      "report": {
+        "codes": [],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 0
+      }
+    },
+    {
+      "false_verdict_impact": false,
+      "geometry": {
+        "defects": [],
+        "warnings": [
+          "segment S1 matrix_89n_10000m — its orbit radius breathes 3.5% of 10014m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_89n_10000m — its look direction drifts 2.6° off the subject during the sweep, so the subject slides across frame instead of staying put"
+        ]
+      },
+      "id": "matrix_89n_10000m",
+      "latitude": 89,
+      "measurement_error_but_verdict_unchanged": true,
+      "physical": {
+        "max_aim_error_deg": 0.00008116455285289703,
+        "max_radius_m": 10000.000000016693,
+        "mean_radius_m": 9999.757118030218,
+        "min_radius_m": 9999.595803092185,
+        "radius_breathing_pct": 0.004042067419611104
+      },
+      "planar": {
+        "max_aim_error_deg": 2.578414452402967,
+        "mean_radius_m": 10014.167972274894,
+        "radius_breathing_pct": 3.469692634806435
+      },
+      "radius_m": 10000,
+      "report": {
+        "codes": [
+          "orbit geometry"
+        ],
+        "defects": [],
+        "errors": 0,
+        "orbit_findings": [
+          "segment S1 matrix_89n_10000m — its orbit radius breathes 3.5% of 10014m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_89n_10000m — its look direction drifts 2.6° off the subject during the sweep, so the subject slides across frame instead of staying put"
+        ],
+        "verdict": "PASS_FOR_HUMAN_REVIEW",
+        "warnings": 2
+      }
+    },
+    {
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 51.96875282926487,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 29.493375229692447,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 matrix_89n_100000m — its orbit radius breathes 52.5% of 104404m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_89n_100000m — its look direction drifts 29.5° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_89n_100000m — while moving onto the orbit ring its radius reverses 1 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 matrix_89n_100000m — while moving onto the orbit ring the camera is up to 29.5° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 matrix_89n_100000m — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "matrix_89n_100000m",
+      "latitude": 89,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.006052309804090328,
+        "max_radius_m": 100000.00000039002,
+        "mean_radius_m": 99997.56771632461,
+        "min_radius_m": 99964.39033792137,
+        "radius_breathing_pct": 0.035610528617721286
+      },
+      "planar": {
+        "max_aim_error_deg": 29.49337522969313,
+        "mean_radius_m": 105538.84994232064,
+        "radius_breathing_pct": 51.96875282926569
+      },
+      "radius_m": 100000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 51.96875282926487,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 29.493375229692447,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 matrix_89n_100000m — its orbit radius breathes 52.5% of 104404m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_89n_100000m — its look direction drifts 29.5° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_89n_100000m — while moving onto the orbit ring its radius reverses 1 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 matrix_89n_100000m — while moving onto the orbit ring the camera is up to 29.5° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 matrix_89n_100000m — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 17.21754455093004,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 28.30361517046191,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 matrix_89n_1000000m — its orbit radius breathes 17.0% of 929569m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_89n_1000000m — its look direction drifts 24.2° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_89n_1000000m — while moving onto the orbit ring the camera is up to 28.3° off the subject, so it loses what it is circling before it starts circling"
+        ]
+      },
+      "id": "matrix_89n_1000000m",
+      "latitude": 89,
+      "measurement_error_but_verdict_unchanged": false,
+      "physical": {
+        "max_aim_error_deg": 0.0002337516187935762,
+        "max_radius_m": 1000004.5641280254,
+        "mean_radius_m": 1000000.1489144863,
+        "min_radius_m": 999996.3418178037,
+        "radius_breathing_pct": 0.0008222308997333094
+      },
+      "planar": {
+        "max_aim_error_deg": 28.303615170461853,
+        "mean_radius_m": 915998.2436871511,
+        "radius_breathing_pct": 17.217544550930032
+      },
+      "radius_m": 1000000,
+      "report": {
+        "codes": [
+          "HEADING_REVERSAL",
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness HEADING_REVERSAL",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 17.21754455093004,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 28.30361517046191,
+            "threshold": 5
+          },
+          {
+            "defect_class": "HEADING_REVERSAL",
+            "measured_value": 12.819675647439453,
+            "threshold": 0.001
+          }
+        ],
+        "errors": 3,
+        "orbit_findings": [
+          "segment S1 matrix_89n_1000000m — its orbit radius breathes 17.0% of 929569m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 matrix_89n_1000000m — its look direction drifts 24.2° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 matrix_89n_1000000m — while moving onto the orbit ring the camera is up to 28.3° off the subject, so it loses what it is circling before it starts circling"
+        ],
+        "verdict": "FAIL",
+        "warnings": 3
+      }
+    }
+  ],
+  "oracle": "camera-quality-diagnostic-truth",
+  "planner_seam_cases": [
+    {
+      "description": "hover over 0, 179.9 at 6500m for 3 seconds then fly to 0, -179.9 at 6500m for 5 seconds then orbit 0, -179.9 once clockwise at 6500m tilted 60 degrees for 20 seconds",
+      "final_camera": {
+        "altitude_m": 6500,
+        "heading_deg": 0,
+        "latitude": -0.101249,
+        "longitude": -179.9,
+        "pan_deg": 360,
+        "tilt_deg": 60
+      },
+      "id": "planner_seam_fly_orbit",
+      "report": {
+        "codes": [
+          "movement coherence",
+          "orbit geometry"
+        ],
+        "defects": [],
+        "errors": 1,
+        "orbit_findings": [
+          "segment 3 0.0000, -179.9000 — its orbit radius breathes 3.5% of 11020m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment 3 0.0000, -179.9000 — its tilt moves 9.0° during the sweep; once circling, an orbit should hold its pitch",
+          "segment 3 0.0000, -179.9000 — while moving onto the orbit ring its radius reverses 10 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment 3 0.0000, -179.9000 — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment 3 0.0000, -179.9000 — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "description": "hover over Tokyo at 12000m for 3 seconds then fly to Los Angeles at 12000m for 8 seconds then orbit Los Angeles once clockwise at 6500m tilted 60 degrees for 20 seconds",
+      "final_camera": {
+        "altitude_m": 6500,
+        "heading_deg": 0,
+        "latitude": 33.950951,
+        "longitude": -118.2437,
+        "pan_deg": 360,
+        "tilt_deg": 60
+      },
+      "id": "planner_tokyo_la_orbit",
+      "report": {
+        "codes": [
+          "ALTITUDE_PUMP",
+          "movement coherence",
+          "orbit geometry",
+          "smoothness ALTITUDE_PUMP",
+          "smoothness BOUNDARY_VELOCITY_DISCONTINUITY"
+        ],
+        "defects": [
+          {
+            "defect_class": "ALTITUDE_PUMP",
+            "measured_value": 732233,
+            "threshold": 6250
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment 3 Los Angeles — its orbit radius breathes 3.5% of 11020m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment 3 Los Angeles — its tilt moves 9.0° during the sweep; once circling, an orbit should hold its pitch",
+          "segment 3 Los Angeles — while moving onto the orbit ring its radius reverses 8 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment 3 Los Angeles — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "description": "orbit 30, 180 once clockwise at 6500m tilted 60 degrees for 20 seconds",
+      "final_camera": {
+        "altitude_m": 6500,
+        "heading_deg": 180,
+        "latitude": 30.101249,
+        "longitude": 180,
+        "pan_deg": 540,
+        "tilt_deg": 60
+      },
+      "id": "planner_exact_plus",
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 598.9176523105727,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 124.78496960143099,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment 1 30.0000, 180.0000 — its orbit radius breathes 598.9% of 5792995m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment 1 30.0000, 180.0000 — its look direction drifts 124.8° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment 1 30.0000, 180.0000 — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment 1 30.0000, 180.0000 — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 4
+      }
+    },
+    {
+      "description": "orbit 30, -180 once counterclockwise at 6500m tilted 60 degrees for 20 seconds",
+      "final_camera": {
+        "altitude_m": 6500,
+        "heading_deg": 180,
+        "latitude": 30.101249,
+        "longitude": 180,
+        "pan_deg": -180,
+        "tilt_deg": 60
+      },
+      "id": "planner_exact_minus",
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 598.9176523105727,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 124.78496960143099,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment 1 30.0000, -180.0000 — its orbit radius breathes 598.9% of 5792995m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment 1 30.0000, -180.0000 — its look direction drifts 124.8° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment 1 30.0000, -180.0000 — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment 1 30.0000, -180.0000 — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 4
+      }
+    },
+    {
+      "description": "fly to 80, 179.9 at 6500m for 5 seconds then orbit 80, -179.9 once clockwise at 6500m tilted 85 degrees for 20 seconds",
+      "final_camera": {
+        "altitude_m": 6500,
+        "heading_deg": 0,
+        "latitude": 79.66848,
+        "longitude": -179.9,
+        "pan_deg": 360,
+        "tilt_deg": 85
+      },
+      "id": "planner_high_latitude",
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness BOUNDARY_VELOCITY_DISCONTINUITY",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 645.2291616885955,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 124.55559713395323,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment 2 80.0000, -179.9000 — its orbit radius breathes 645.2% of 1072743m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment 2 80.0000, -179.9000 — its look direction drifts 124.6° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment 2 80.0000, -179.9000 — its tilt moves 23.9° during the sweep; once circling, an orbit should hold its pitch",
+          "segment 2 80.0000, -179.9000 — while moving onto the orbit ring its radius reverses 1 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment 2 80.0000, -179.9000 — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment 2 80.0000, -179.9000 — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 7
+      }
+    }
+  ],
+  "production_sha": "00bba82faa1a31f3db3d16c68c991765ae1b6d3a",
+  "ref": "00bba82faa1a31f3db3d16c68c991765ae1b6d3a",
+  "schema": {
+    "defect_fields_equal": true,
+    "top_level": [
+      "schema_version",
+      "verdict",
+      "scope",
+      "errors",
+      "warnings",
+      "tracks",
+      "segments",
+      "coherence",
+      "orbit_geometry",
+      "roll",
+      "smoothness",
+      "motion_policy"
+    ],
+    "top_level_equal": true
+  },
+  "schema_version": 1,
+  "seam": [
+    {
+      "direction": 1,
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 201.30781884346186,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 180,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 seam_equator_100km_east — its orbit radius breathes 611.6% of 6535651m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_equator_100km_east — its look direction drifts 124.7° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_equator_100km_east — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_equator_100km_east — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_equator_100km_east — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "seam_equator_100km_east",
+      "latitude": 0,
+      "longitude": 179.99,
+      "physical": {
+        "max_aim_error_deg": 0.0000049851145149659715,
+        "max_radius_m": 100000.00000001414,
+        "mean_radius_m": 99997.57120489869,
+        "min_radius_m": 99996.3443166911,
+        "radius_breathing_pct": 0.0036557721142564934
+      },
+      "planar": {
+        "max_aim_error_deg": 180,
+        "mean_radius_m": 19856714.79759791,
+        "radius_breathing_pct": 201.30781884346186
+      },
+      "radius_m": 100000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 201.30781884346186,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 180,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 seam_equator_100km_east — its orbit radius breathes 611.6% of 6535651m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_equator_100km_east — its look direction drifts 124.7° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_equator_100km_east — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_equator_100km_east — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_equator_100km_east — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "direction": -1,
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 201.30781884346186,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 180,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 seam_equator_100km_west — its orbit radius breathes 611.6% of 6535651m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_equator_100km_west — its look direction drifts 124.7° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_equator_100km_west — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_equator_100km_west — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_equator_100km_west — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "seam_equator_100km_west",
+      "latitude": 0,
+      "longitude": -179.99,
+      "physical": {
+        "max_aim_error_deg": 0.0000049851145149659715,
+        "max_radius_m": 100000.00000000904,
+        "mean_radius_m": 99997.57120489872,
+        "min_radius_m": 99996.3443166911,
+        "radius_breathing_pct": 0.003655772109148646
+      },
+      "planar": {
+        "max_aim_error_deg": 180,
+        "mean_radius_m": 19856714.79759791,
+        "radius_breathing_pct": 201.30781884346186
+      },
+      "radius_m": 100000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 201.30781884346186,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 180,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 seam_equator_100km_west — its orbit radius breathes 611.6% of 6535651m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_equator_100km_west — its look direction drifts 124.7° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_equator_100km_west — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_equator_100km_west — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_equator_100km_west — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "direction": 1,
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 200.8890955977308,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 179.9560491223719,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 seam_60n_80km — its orbit radius breathes 606.3% of 3291639m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_60n_80km — its look direction drifts 123.9° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_60n_80km — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_60n_80km — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_60n_80km — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "seam_60n_80km",
+      "latitude": 60,
+      "longitude": 179.99,
+      "physical": {
+        "max_aim_error_deg": 0.00002026926586040645,
+        "max_radius_m": 80000.00000000634,
+        "mean_radius_m": 79998.056956743,
+        "min_radius_m": 79997.00504128545,
+        "radius_breathing_pct": 0.003743789330429623
+      },
+      "planar": {
+        "max_aim_error_deg": 179.95604912237195,
+        "mean_radius_m": 9934019.302514326,
+        "radius_breathing_pct": 200.8890955977308
+      },
+      "radius_m": 80000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 200.8890955977308,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 179.9560491223719,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 seam_60n_80km — its orbit radius breathes 606.3% of 3291639m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_60n_80km — its look direction drifts 123.9° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_60n_80km — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_60n_80km — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_60n_80km — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "direction": 1,
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 198.0297462238949,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 179.72556218363587,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 seam_80n_100km — its orbit radius breathes 571.3% of 1200741m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_80n_100km — its look direction drifts 121.4° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_80n_100km — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_80n_100km — while moving onto the orbit ring the camera is up to 179.7° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_80n_100km — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "seam_80n_100km",
+      "latitude": 80,
+      "longitude": 179.99,
+      "physical": {
+        "max_aim_error_deg": 0.00008023279224289581,
+        "max_radius_m": 100000.00000000244,
+        "mean_radius_m": 99997.57120498036,
+        "min_radius_m": 99995.9619755943,
+        "radius_breathing_pct": 0.004038122485863981
+      },
+      "planar": {
+        "max_aim_error_deg": 179.72556218363582,
+        "mean_radius_m": 3463773.217832306,
+        "radius_breathing_pct": 198.0297462238949
+      },
+      "radius_m": 100000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 198.0297462238949,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 179.72556218363587,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 seam_80n_100km — its orbit radius breathes 571.3% of 1200741m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_80n_100km — its look direction drifts 121.4° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_80n_100km — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_80n_100km — while moving onto the orbit ring the camera is up to 179.7° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_80n_100km — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "direction": -1,
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 199.21806343555866,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 179.9817796890527,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 seam_85n_35km — its orbit radius breathes 585.5% of 590525m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_85n_35km — its look direction drifts 122.4° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_85n_35km — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_85n_35km — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_85n_35km — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "seam_85n_35km",
+      "latitude": 85,
+      "longitude": -179.99,
+      "physical": {
+        "max_aim_error_deg": 0.00005608836295323272,
+        "max_radius_m": 35000.000000003805,
+        "mean_radius_m": 34999.149914072026,
+        "min_radius_m": 34998.62832194192,
+        "radius_breathing_pct": 0.003919175366409885
+      },
+      "planar": {
+        "max_aim_error_deg": 179.9817796890527,
+        "mean_radius_m": 1735605.415139624,
+        "radius_breathing_pct": 199.2180634355587
+      },
+      "radius_m": 35000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 199.21806343555866,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 179.9817796890527,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 seam_85n_35km — its orbit radius breathes 585.5% of 590525m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_85n_35km — its look direction drifts 122.4° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_85n_35km — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_85n_35km — while moving onto the orbit ring the camera is up to 180.0° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_85n_35km — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "direction": 1,
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 188.8280730685987,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 179.87422309414836,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 seam_89n_35km — its orbit radius breathes 472.7% of 140992m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_89n_35km — its look direction drifts 114.1° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_89n_35km — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_89n_35km — while moving onto the orbit ring the camera is up to 179.9° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_89n_35km — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "seam_89n_35km",
+      "latitude": 89,
+      "longitude": 179.99,
+      "physical": {
+        "max_aim_error_deg": 0.0003493717460969492,
+        "max_radius_m": 35000.00000003197,
+        "mean_radius_m": 34999.14991448887,
+        "min_radius_m": 34998.11091902865,
+        "radius_breathing_pct": 0.005397505390657985
+      },
+      "planar": {
+        "max_aim_error_deg": 179.87422309414853,
+        "mean_radius_m": 352960.06758158177,
+        "radius_breathing_pct": 188.82807306859854
+      },
+      "radius_m": 35000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 188.8280730685987,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 179.87422309414836,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 seam_89n_35km — its orbit radius breathes 472.7% of 140992m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 seam_89n_35km — its look direction drifts 114.1° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 seam_89n_35km — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 seam_89n_35km — while moving onto the orbit ring the camera is up to 179.9° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 seam_89n_35km — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "direction": 1,
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 197.94910857178556,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 179.94807018755284,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 exact_plus_180 — its orbit radius breathes 579.7% of 5984965m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 exact_plus_180 — its look direction drifts 124.8° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 exact_plus_180 — while moving onto the orbit ring its radius reverses 1 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 exact_plus_180 — while moving onto the orbit ring the camera is up to 179.9° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 exact_plus_180 — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "exact_plus_180",
+      "latitude": 30,
+      "longitude": 180,
+      "physical": {
+        "max_aim_error_deg": 0.0000053656434602089575,
+        "max_radius_m": 10000.000000007192,
+        "mean_radius_m": 9999.757118021776,
+        "min_radius_m": 9999.634100599545,
+        "radius_breathing_pct": 0.0036590829489984477
+      },
+      "planar": {
+        "max_aim_error_deg": 179.94807018755284,
+        "mean_radius_m": 17527804.905647155,
+        "radius_breathing_pct": 197.94910857178556
+      },
+      "radius_m": 10000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 197.94910857178556,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 179.94807018755284,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 exact_plus_180 — its orbit radius breathes 579.7% of 5984965m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 exact_plus_180 — its look direction drifts 124.8° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 exact_plus_180 — while moving onto the orbit ring its radius reverses 1 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 exact_plus_180 — while moving onto the orbit ring the camera is up to 179.9° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 exact_plus_180 — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    },
+    {
+      "direction": -1,
+      "false_verdict_impact": true,
+      "geometry": {
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "explanation": "constant-radius orbit departs materially from its planned ring",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 201.9318565756436,
+            "parameter": "camera_target_radius",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "explanation": "camera heading drifts materially away from the fixed orbit target",
+            "frame_end": 3600,
+            "frame_start": 0,
+            "measured_value": 179.94807018755284,
+            "parameter": "pan_target_alignment",
+            "primitive_after": "orbit",
+            "primitive_before": "orbit",
+            "segment_id": "S1",
+            "severity": "error",
+            "threshold": 5
+          }
+        ],
+        "warnings": [
+          "segment S1 exact_minus_180 — its orbit radius breathes 619.6% of 5599453m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 exact_minus_180 — its look direction drifts 124.8° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 exact_minus_180 — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 exact_minus_180 — while moving onto the orbit ring the camera is up to 179.9° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 exact_minus_180 — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ]
+      },
+      "id": "exact_minus_180",
+      "latitude": 30,
+      "longitude": -180,
+      "physical": {
+        "max_aim_error_deg": 0.0000053656434602089575,
+        "max_radius_m": 10000.000000015212,
+        "mean_radius_m": 9999.757118021724,
+        "min_radius_m": 9999.634100599545,
+        "radius_breathing_pct": 0.003659083029199658
+      },
+      "planar": {
+        "max_aim_error_deg": 179.94807018755284,
+        "mean_radius_m": 17181996.28646907,
+        "radius_breathing_pct": 201.9318565756436
+      },
+      "radius_m": 10000,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 201.9318565756436,
+            "threshold": 4
+          },
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 179.94807018755284,
+            "threshold": 5
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [
+          "segment S1 exact_minus_180 — its orbit radius breathes 619.6% of 5599453m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 exact_minus_180 — its look direction drifts 124.8° off the subject during the sweep, so the subject slides across frame instead of staying put",
+          "segment S1 exact_minus_180 — while moving onto the orbit ring its radius reverses 2 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 exact_minus_180 — while moving onto the orbit ring the camera is up to 179.9° off the subject, so it loses what it is circling before it starts circling",
+          "segment S1 exact_minus_180 — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 5
+      }
+    }
+  ],
+  "semantic_rule": "CAMERA QUALITY MUST MEASURE THE PHYSICAL CAMERA GEOMETRY ACTUALLY PRODUCED.",
+  "terrain": {
+    "camera": {
+      "altitude_m": 6500,
+      "latitude": 45.796701,
+      "longitude": 7.658500000000004,
+      "pan_deg": 0,
+      "tilt_deg": 74
+    },
+    "camera_quality": {
+      "codes": [
+        "ALTITUDE_PUMP",
+        "orbit geometry",
+        "smoothness ALTITUDE_PUMP",
+        "smoothness BOUNDARY_CHANNEL_PHASE_UNCERTAIN",
+        "smoothness BOUNDARY_DIRECTION_SNAP_UNCALIBRATED",
+        "smoothness BOUNDARY_VELOCITY_DISCONTINUITY"
+      ],
+      "defects": [
+        {
+          "defect_class": "ALTITUDE_PUMP",
+          "measured_value": 17392,
+          "threshold": 148.45000000000002
+        }
+      ],
+      "errors": 1,
+      "orbit_findings": [
+        "segment 5 Matterhorn — its orbit radius breathes 3.6% of 19575m during the sweep, so the camera visibly pulses closer and further while circling",
+        "segment 5 Matterhorn — while moving onto the orbit ring its radius reverses 3 time(s), so the camera overshoots the ring and springs back instead of settling onto it"
+      ],
+      "verdict": "FAIL",
+      "warnings": 9
+    },
+    "complete_pose_aim_error_deg": 2.0822642855928044,
+    "horizontal_distance_m": 20003.856108429798,
+    "orbit_altitude_m": 5736,
+    "target": {
+      "altitude_m": 0,
+      "latitude": 45.9766,
+      "longitude": 7.6585
+    }
+  },
+  "thresholds": {
+    "scalar_equal": true,
+    "scalar_observed": {
+      "DEAD_FLY_DEGENERATE_M": 25,
+      "DEAD_MOVE_DEGENERATE_FRACTION": 0.005,
+      "DEAD_MOVE_WEAK_FRACTION": 0.05,
+      "DEAD_ORBIT_MIN_ARC_DEG": 15,
+      "DEAD_ORBIT_MIN_DISPLACEMENT_M": 5,
+      "ORBIT_AIM_TOLERANCE_DEG": 2,
+      "ORBIT_ENTRY_MAX_FRACTION": 0.4,
+      "ORBIT_RADIUS_BREATHING_TOLERANCE_PCT": 2,
+      "ORBIT_TILT_TOLERANCE_DEG": 1,
+      "POSITION_DIRECTION_TOLERANCE": 1
+    },
+    "smoothness_equal": true
+  },
+  "tracked": {
+    "camera_output_differences": 0,
+    "changed": [],
+    "counts": {
+      "fail_to_pass": 0,
+      "identical": 196,
+      "same_verdict_numeric_or_finding_change": 0,
+      "total": 196,
+      "verdict_changed": 0
+    }
+  },
+  "true_failures": [
+    {
+      "expected": "RADIUS_BREATHING",
+      "id": "radius_breathing",
+      "present": true,
+      "report": {
+        "codes": [
+          "RADIUS_BREATHING",
+          "orbit geometry",
+          "smoothness RADIUS_BREATHING"
+        ],
+        "defects": [
+          {
+            "defect_class": "RADIUS_BREATHING",
+            "measured_value": 24.02377282655236,
+            "threshold": 4
+          }
+        ],
+        "errors": 1,
+        "orbit_findings": [
+          "segment S1 radius_breathing — its orbit radius breathes 24.2% of 9904m during the sweep, so the camera visibly pulses closer and further while circling",
+          "segment S1 radius_breathing — while moving onto the orbit ring its radius reverses 1 time(s), so the camera overshoots the ring and springs back instead of settling onto it",
+          "segment S1 radius_breathing — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 3
+      }
+    },
+    {
+      "expected": "TARGET_DRIFT",
+      "id": "target_drift",
+      "present": true,
+      "report": {
+        "codes": [
+          "TARGET_DRIFT",
+          "orbit geometry",
+          "smoothness TARGET_DRIFT"
+        ],
+        "defects": [
+          {
+            "defect_class": "TARGET_DRIFT",
+            "measured_value": 12.025961148365923,
+            "threshold": 5
+          }
+        ],
+        "errors": 1,
+        "orbit_findings": [
+          "segment S1 target_drift — its look direction drifts 12.0° off the subject during the sweep, so the subject slides across frame instead of staying put"
+        ],
+        "verdict": "FAIL",
+        "warnings": 1
+      }
+    },
+    {
+      "expected": "orbit geometry:",
+      "id": "dead_orbit",
+      "present": true,
+      "report": {
+        "codes": [
+          "orbit geometry"
+        ],
+        "defects": [],
+        "errors": 1,
+        "orbit_findings": [
+          "segment S1 dead_orbit — moving onto the orbit ring takes 40% of the shot, so most of what was asked for as an orbit is spent getting into position"
+        ],
+        "verdict": "FAIL",
+        "warnings": 1
+      }
+    },
+    {
+      "expected": "HARD_START",
+      "id": "hard_start",
+      "present": true,
+      "report": {
+        "codes": [
+          "HARD_START",
+          "HARD_STOP",
+          "smoothness HARD_START",
+          "smoothness HARD_STOP"
+        ],
+        "defects": [
+          {
+            "defect_class": "HARD_START",
+            "measured_value": "linear",
+            "threshold": "non-linear eased endpoint"
+          },
+          {
+            "defect_class": "HARD_START",
+            "measured_value": "linear",
+            "threshold": "non-linear eased endpoint"
+          },
+          {
+            "defect_class": "HARD_START",
+            "measured_value": "linear",
+            "threshold": "non-linear eased endpoint"
+          },
+          {
+            "defect_class": "HARD_STOP",
+            "measured_value": "linear",
+            "threshold": "non-linear eased endpoint"
+          },
+          {
+            "defect_class": "HARD_STOP",
+            "measured_value": "linear",
+            "threshold": "non-linear eased endpoint"
+          },
+          {
+            "defect_class": "HARD_STOP",
+            "measured_value": "linear",
+            "threshold": "non-linear eased endpoint"
+          }
+        ],
+        "errors": 6,
+        "orbit_findings": [],
+        "verdict": "FAIL",
+        "warnings": 0
+      }
+    },
+    {
+      "expected": "movement intent:",
+      "id": "dead_fly",
+      "present": true,
+      "report": {
+        "codes": [
+          "movement intent"
+        ],
+        "defects": [],
+        "errors": 1,
+        "orbit_findings": [],
+        "verdict": "FAIL",
+        "warnings": 0
+      }
+    },
+    {
+      "expected": "TRAJECTORY_REVERSAL",
+      "id": "true_reversal",
+      "present": true,
+      "report": {
+        "codes": [
+          "TRAJECTORY_REVERSAL",
+          "movement coherence",
+          "smoothness TRAJECTORY_REVERSAL"
+        ],
+        "defects": [
+          {
+            "defect_class": "TRAJECTORY_REVERSAL",
+            "measured_value": 4,
+            "threshold": 1
+          }
+        ],
+        "errors": 2,
+        "orbit_findings": [],
+        "verdict": "FAIL",
+        "warnings": 0
+      }
+    }
+  ]
+}
