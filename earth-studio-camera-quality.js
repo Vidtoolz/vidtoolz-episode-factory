@@ -97,9 +97,14 @@ function coherenceReport({ plan, tracks }) {
     const t0 = seg.start_frame / totalFrames;
     const t1 = seg.end_frame / totalFrames;
     POSITION_TRACKS.forEach((name) => {
-      const keyframes = ((tracks[name] || {}).keyframes || [])
+      // Real units, and CONTINUOUS longitude: the exported track wraps at ±180°
+      // with a one-frame +180/-180 seam pair, which is one meridian, not a
+      // reversal. Counting sign changes on the wrapped values reported a
+      // correct seam flight as "reverses 2 times".
+      const decoded = denormalized(tracks[name], name)
         .filter((k) => k.time >= t0 - 1e-9 && k.time <= t1 + 1e-9)
-        .map((k) => Number(k.value));
+        .map((k) => k.value);
+      const keyframes = name === 'longitude' ? motionContinuity.unwrapDegrees(decoded) : decoded;
       if (keyframes.length < 2) return;
       const changes = directionChanges(keyframes);
       if (changes > POSITION_DIRECTION_TOLERANCE) {
@@ -128,7 +133,32 @@ const ORBIT_RADIUS_BREATHING_TOLERANCE_PCT = 2;
 const ORBIT_AIM_TOLERANCE_DEG = 2;
 const ORBIT_TILT_TOLERANCE_DEG = 1;
 const ORBIT_ENTRY_MAX_FRACTION = 0.40;
-const EARTH_M_PER_DEG = 111320;
+// ── Geometric truth authority ──────────────────────────────────────────────
+// Every ground quantity in this module is measured on the sphere with the
+// shared primitives in earth-studio-motion-continuity.js (haversine distance,
+// spherical initial bearing, wrap-safe angle deltas), on CONTINUOUS longitude.
+// The former `Δ° × 111320 × cos(lat)` tangent-plane arithmetic on wrapped
+// longitude measured a correct ring straddling ±180° as 600% radius breathing
+// and 125° of heading drift, and at high latitude its reverse-bearing
+// convention (centre→camera + 180) could not see the real camera→subject
+// heading error of a large ring (r·tan(lat)/R: 1.2° at 60°N / 80 km, 8.2° at
+// 85°N). The diagnostic observes production; it must measure the geometry that
+// actually exists, so real error stays visible and representation artifacts do
+// not become verdicts. Thresholds are unchanged.
+//
+// AIM ERROR here is one specific quantity: the HORIZONTAL heading-to-subject
+// error — |camera pan − spherical initial bearing from the camera to the orbit
+// subject|. It is not the 3-D camera-ray error and does not include tilt.
+const groundDistanceM = (a, b) => motionContinuity.haversineMeters(a, b);
+const headingToSubjectErrorDeg = (camera, subject, panDeg) => Math.abs(motionContinuity.angleDeltaDeg(
+  motionContinuity.initialBearing(camera, subject), panDeg));
+// Decoded longitude keys re-expressed as one continuous sequence, so that
+// interpolating across a serialization seam pair never passes through the far
+// side of the globe.
+const continuousLongitudeKeys = (keys) => {
+  const values = motionContinuity.unwrapDegrees(keys.map((key) => key.value));
+  return keys.map((key, index) => ({ time: key.time, value: values[index] }));
+};
 // Earth Studio's altitude encoding. Without this, `denormalized(..., 'altitude')`
 // silently returned the RAW normalized value: ratios still came out right because
 // both ends scale identically, but any figure reported in metres read as 0, and an
@@ -186,9 +216,8 @@ function valueAt(keyframes, time) {
 function orbitPhases({ plan, tracks, segment }) {
   const total = plan.total_frames;
   const centre = segment.location;
-  const cosLat = Math.cos((centre.latitude * Math.PI) / 180) || 1e-6;
   const lat = denormalized(tracks.latitude, 'latitude');
-  const lng = denormalized(tracks.longitude, 'longitude');
+  const lng = continuousLongitudeKeys(denormalized(tracks.longitude, 'longitude'));
   const pan = denormalized(tracks.rotationX, 'pan');
   const tilt = denormalized(tracks.rotationY, 'tilt');
   if (lat.length < 2 || lng.length < 2) return null;
@@ -199,21 +228,16 @@ function orbitPhases({ plan, tracks, segment }) {
   const rows = [];
   for (let i = 0; i <= SAMPLES; i += 1) {
     const time = t0 + (t1 - t0) * (i / SAMPLES);
-    const dy = (valueAt(lat, time) - centre.latitude) * EARTH_M_PER_DEG;
-    const dx = (valueAt(lng, time) - centre.longitude) * EARTH_M_PER_DEG * cosLat;
-    const radius = Math.hypot(dx, dy);
+    const camera = { latitude: valueAt(lat, time), longitude: valueAt(lng, time) };
+    const radius = groundDistanceM(centre, camera);
     let aim = null;
     if (pan.length) {
-      const bearingToCamera = (Math.atan2(dx, dy) * 180) / Math.PI;
-      let err = valueAt(pan, time) - (bearingToCamera + 180);
-      while (err > 180) err -= 360;
-      while (err < -180) err += 360;
       // At the ring's centre the bearing is undefined; an aim error there is a
       // measurement artifact, not a camera defect.
-      aim = radius > 10 ? Math.abs(err) : null;
+      aim = radius > 10 ? headingToSubjectErrorDeg(camera, centre, valueAt(pan, time)) : null;
     }
     rows.push({ radius, aim, tilt: tilt.length ? valueAt(tilt, time) : null,
-      point: { lat: valueAt(lat, time), lng: valueAt(lng, time) } });
+      point: { lat: camera.latitude, lng: camera.longitude } });
   }
   const ring = Number(segment.orbit_ring_radius_m);
   const target = Number.isFinite(ring) && ring > 0
@@ -239,7 +263,7 @@ function deadOrbitReport({ plan, tracks }) {
   const total = plan && plan.total_frames;
   const segments = (plan && plan.segments || []).filter((s) => s && s.location && s.duration_seconds > 0);
   const lat = denormalized(tracks.latitude, 'latitude');
-  const lng = denormalized(tracks.longitude, 'longitude');
+  const lng = continuousLongitudeKeys(denormalized(tracks.longitude, 'longitude'));
   const alt = denormalized(tracks.altitude, 'altitude');
   if (!total || lat.length < 2 || lng.length < 2) return out;
   for (const segment of segments) {
@@ -249,18 +273,15 @@ function deadOrbitReport({ plan, tracks }) {
     const t0 = segment.start_frame / total;
     const t1 = segment.end_frame / total;
     if (!(t1 > t0)) continue;
-    const cosLat = Math.cos((segment.location.latitude * Math.PI) / 180) || 1e-6;
-    const lat0 = valueAt(lat, t0);
-    const lng0 = valueAt(lng, t0);
+    const start = { latitude: valueAt(lat, t0), longitude: valueAt(lng, t0) };
     const alt0 = alt.length ? valueAt(alt, t0) : 0;
     const SAMPLES = 300;
     let moved = 0;
     for (let i = 0; i <= SAMPLES; i += 1) {
       const time = t0 + (t1 - t0) * (i / SAMPLES);
-      const dy = (valueAt(lat, time) - lat0) * EARTH_M_PER_DEG;
-      const dx = (valueAt(lng, time) - lng0) * EARTH_M_PER_DEG * cosLat;
+      const ground = groundDistanceM(start, { latitude: valueAt(lat, time), longitude: valueAt(lng, time) });
       const dz = alt.length ? valueAt(alt, time) - alt0 : 0;
-      moved = Math.max(moved, Math.hypot(Math.hypot(dx, dy), dz));
+      moved = Math.max(moved, Math.hypot(ground, dz));
     }
     if (moved >= DEAD_ORBIT_MIN_DISPLACEMENT_M) continue;
     const ring = Number.isFinite(segment.altitude_m) && Number.isFinite(segment.tilt_deg)
@@ -313,7 +334,7 @@ function deadMovementReport({ plan, tracks }) {
   const total = plan && plan.total_frames;
   const segments = (plan && plan.segments || []).filter((s) => s && s.location && s.duration_seconds > 0);
   const lat = denormalized(tracks.latitude, 'latitude');
-  const lng = denormalized(tracks.longitude, 'longitude');
+  const lng = continuousLongitudeKeys(denormalized(tracks.longitude, 'longitude'));
   const alt = denormalized(tracks.altitude, 'altitude');
   if (!total || !alt.length) return { errors, warnings };
   const sameResolved = (a, b) => a && b
@@ -347,10 +368,8 @@ function deadMovementReport({ plan, tracks }) {
     const previous = segments[index - 1];
     if (!previous || !previous.location) return;
     if (sameResolved(previous.location, segment.location)) return;
-    const cosLat = Math.cos((segment.location.latitude * Math.PI) / 180) || 1e-6;
-    const dy = (valueAt(lat, t1) - valueAt(lat, t0)) * EARTH_M_PER_DEG;
-    const dx = (valueAt(lng, t1) - valueAt(lng, t0)) * EARTH_M_PER_DEG * cosLat;
-    const travelled = Math.hypot(dx, dy);
+    const travelled = groundDistanceM({ latitude: valueAt(lat, t0), longitude: valueAt(lng, t0) },
+      { latitude: valueAt(lat, t1), longitude: valueAt(lng, t1) });
     if (travelled < DEAD_FLY_DEGENERATE_M) {
       errors.push(`segment ${segment.segment_id || '?'} (fly_to) names `
         + `${segment.location.name || 'another place'} but the camera travels ${travelled.toFixed(1)} m `
@@ -460,20 +479,11 @@ function orbitReport({ plan, tracks }) {
         if (!cand.location || !(cand.duration_seconds > 0)) continue;
         if (cand.action === 'orbit') break;
         if (!TRAVEL_ACTIONS.includes(cand.action)) continue;
-        const dy = (cand.location.latitude - segment.location.latitude) * EARTH_M_PER_DEG;
-        const dx = (cand.location.longitude - segment.location.longitude) * EARTH_M_PER_DEG
-          * Math.cos((segment.location.latitude * Math.PI) / 180);
-        if (Math.hypot(dx, dy) > 5000) { destination = cand; break; }
+        if (groundDistanceM(segment.location, cand.location) > 5000) { destination = cand; break; }
       }
       if (destination && !seededOpeningState) {
-        const bearing = (from, to) => {
-          const la1 = (from.lat * Math.PI) / 180;
-          const la2 = (to.lat * Math.PI) / 180;
-          const dlo = ((to.lng - from.lng) * Math.PI) / 180;
-          const y = Math.sin(dlo) * Math.cos(la2);
-          const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dlo);
-          return (Math.atan2(y, x) * 180) / Math.PI;
-        };
+        const bearing = (from, to) => motionContinuity.initialBearing(
+          { latitude: from.lat, longitude: from.lng }, { latitude: to.lat, longitude: to.lng });
         const n = rows.length;
         const a = rows[n - 4];
         const b = rows[n - 1];
