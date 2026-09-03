@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "oracle": "terrain-complete-pose-acceptance",
+  "branch": "codex/terrain-complete-pose-acceptance-oracle-20260903",
+  "production_authority_sha": "7b63c6b430f964087665a6c9a4626b79e42bcad9",
+  "prior_measurement_authority_sha": "78ab128faa823da3fcdc612f115ff4f8618961f9",
+  "prior_measurement_authority_mutated": false,
+  "scope": "independent acceptance oracle only; no production, package-run, state, approval, or publishing mutation",
+  "expected_controls": {
+    "production": "RED",
+    "compliant_mathematical_reference": "GREEN"
+  },
+  "frozen_results": {
+    "production_complete_pose": {
+      "cases": 4,
+      "checks": 68,
+      "passed": 36,
+      "failed": 32
+    },
+    "production_retained_motion_authorities": {
+      "cases": 12,
+      "checks": 12,
+      "passed": 12,
+      "failed": 0
+    },
+    "compliant_reference": {
+      "cases": 6,
+      "checks": 102,
+      "passed": 102,
+      "failed": 0
+    }
+  },
+  "coverage": {
+    "explicit_target_elevation": true,
+    "target_anchor_semantics": true,
+    "exact_ecef_optical_ray": true,
+    "vertical_fov_normalization": true,
+    "calibrated_ground_footprint": true,
+    "preferred_morphology_rakes": true,
+    "derived_camera_altitude": true,
+    "safety_floor_conflict": true,
+    "staged_boundary_consistency": true,
+    "heading_authority_cad68e9": true,
+    "antimeridian_physical_equivalence_7b63c6b": true,
+    "signed_revolution_authority": true,
+    "zero_radius_spin": true,
+    "finite_pole_behavior": true,
+    "continuation_correctness": true,
+    "orbit_wobble_regression": true
+  },
+  "files": {
+    "corpus.json": "97e28c611b5206aae955df811950b8e52cc5a119c45701e060b706a217eaf8af",
+    "comparator.js": "d7402b652e7e5961832fd4867cbd0f5c6c66e9003a8c1f9842d123b78b58d864",
+    "run.js": "f8d32c49bff64f3f022edbbbd0174a3210c212bc029ca938d752a7a7b07430b6",
+    "oracle.test.js": "fe1fe5d310acc89c4287043774722a4311052d14239d939bbd0ec0c52c64b7b4",
+    "README.md": "b5746f9065e8d66692223653af4a383c477a0bf546c30ca2db8c9e62acd29ae4",
+    "control-results.json": "fc59ddb401eb9bf501a6da9d01b2f90beeed8e1903af4dc4fb7dc747c212c7c7"
+  }
+}

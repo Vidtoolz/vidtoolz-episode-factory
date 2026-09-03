@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "oracle": "terrain-complete-pose-acceptance",
+  "production_authority_sha": "7b63c6b430f964087665a6c9a4626b79e42bcad9",
+  "prior_measurement_authority_sha": "78ab128faa823da3fcdc612f115ff4f8618961f9",
+  "heading_authority_sha": "cad68e9425ce295ab8c998cc58865669a827feec",
+  "generated_at": "2026-09-03T00:00:00.000Z",
+  "earth_model": "wgs84",
+  "vertical_fov_deg": 20,
+  "authority_hierarchy": [
+    "declared_terrain_focal_point_lat_lng_elevation",
+    "calibrated_footprint_radius",
+    "morphology_preferred_rake",
+    "derived_camera_altitude"
+  ],
+  "tolerances": {
+    "target_coordinate_deg": 0.0000001,
+    "ground_radius_m": 5,
+    "preferred_tilt_deg": 0.01,
+    "derived_altitude_m": 1,
+    "optical_center_error_deg": 0.1,
+    "optical_center_error_vertical_fov_fraction": 0.005,
+    "heading_error_deg": 0.1,
+    "boundary_position_m": 0.2,
+    "boundary_altitude_m": 0.01,
+    "boundary_angle_deg": 0.000001,
+    "orbit_radius_breathing_fraction": 0.005,
+    "orbit_playback_heading_error_deg": 0.7,
+    "continuation_position_m": 0.2
+  },
+  "complete_pose_cases": [
+    {
+      "id": "matterhorn_summit",
+      "production_input": {
+        "mode": "auto_direct",
+        "start": "Zurich",
+        "subject": "Matterhorn"
+      },
+      "target": {
+        "name": "Matterhorn",
+        "latitude": 45.9766,
+        "longitude": 7.6585,
+        "target_elevation_m": 4478,
+        "target_anchor_kind": "SUMMIT",
+        "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+        "target_anchor_confidence": "HIGH"
+      },
+      "terrain_morphology": "SHARP_PEAK",
+      "preferred_tilt_deg": 74,
+      "calibrated_radius_m": 20004.942991639142,
+      "min_altitude_m": 5500,
+      "reference_camera_bearing_from_target_deg": 225
+    },
+    {
+      "id": "fuji_summit",
+      "production_input": {
+        "mode": "auto_direct",
+        "start": "Tokyo",
+        "subject": "Mount Fuji"
+      },
+      "target": {
+        "name": "Mount Fuji",
+        "latitude": 35.3606,
+        "longitude": 138.7274,
+        "target_elevation_m": 3776,
+        "target_anchor_kind": "SUMMIT",
+        "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+        "target_anchor_confidence": "HIGH"
+      },
+      "terrain_morphology": "VOLCANIC_CONE",
+      "preferred_tilt_deg": 45,
+      "calibrated_radius_m": 16927.25945446389,
+      "min_altitude_m": 4300,
+      "reference_camera_bearing_from_target_deg": 225
+    },
+    {
+      "id": "geirangerfjord_waterline",
+      "production_input": {
+        "mode": "auto_direct",
+        "start": "Oslo",
+        "subject": "Geirangerfjord"
+      },
+      "target": {
+        "name": "Geirangerfjord",
+        "latitude": 62.1049,
+        "longitude": 7.2054,
+        "target_elevation_m": 0,
+        "target_anchor_kind": "WATERLINE",
+        "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+        "target_anchor_confidence": "HIGH"
+      },
+      "terrain_morphology": "FJORD_CHANNEL",
+      "preferred_tilt_deg": 65,
+      "calibrated_radius_m": 7694.208842938132,
+      "min_altitude_m": 1000,
+      "reference_camera_bearing_from_target_deg": 225
+    },
+    {
+      "id": "grand_canyon_interior",
+      "production_input": {
+        "mode": "description",
+        "subject": "Grand Canyon",
+        "description": "fly to Grand Canyon at 48194m tilted 0 degrees for 8 seconds then zoom in on Grand Canyon at 4000m tilted 74 degrees for 2 seconds then orbit Grand Canyon once clockwise at 3529m tilted 74 degrees for 20 seconds"
+      },
+      "target": {
+        "name": "Grand Canyon",
+        "latitude": 36.0544,
+        "longitude": -112.1401,
+        "target_elevation_m": 1200,
+        "target_anchor_kind": "CANYON_INTERIOR_POI_SURFACE",
+        "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+        "target_anchor_confidence": "MEDIUM"
+      },
+      "terrain_morphology": "CANYON",
+      "preferred_tilt_deg": 74,
+      "calibrated_radius_m": 12310.73414870101,
+      "min_altitude_m": 2700,
+      "reference_camera_bearing_from_target_deg": 225
+    },
+    {
+      "id": "generic_terrain_surface",
+      "production_input": null,
+      "target": {
+        "name": "Declared generic terrain POI",
+        "latitude": -12.25,
+        "longitude": 179.95,
+        "target_elevation_m": 850,
+        "target_anchor_kind": "SURFACE_POI",
+        "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+        "target_anchor_confidence": "MEDIUM"
+      },
+      "terrain_morphology": "GENERIC_TERRAIN",
+      "preferred_tilt_deg": 65,
+      "calibrated_radius_m": 9233.050611525758,
+      "min_altitude_m": 0,
+      "reference_camera_bearing_from_target_deg": 100
+    }
+  ],
+  "safety_floor_case": {
+    "id": "safety_floor_conflict",
+    "target": {
+      "name": "High terrain safety canary",
+      "latitude": 27.9881,
+      "longitude": 86.925,
+      "target_elevation_m": 4000,
+      "target_anchor_kind": "SURFACE_POI",
+      "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+      "target_anchor_confidence": "HIGH"
+    },
+    "terrain_morphology": "SHARP_PEAK",
+    "preferred_tilt_deg": 74,
+    "calibrated_radius_m": 5000,
+    "min_altitude_m": 7000,
+    "reference_camera_bearing_from_target_deg": 35,
+    "expected_behavior": "hold radius and target; clamp camera altitude to safety floor and reduce tilt"
+  },
+  "motion_cases": {
+    "revolutions": [
+      { "id": "cw_180", "degrees": 180, "direction": 1 },
+      { "id": "ccw_180", "degrees": 180, "direction": -1 },
+      { "id": "cw_360", "degrees": 360, "direction": 1 },
+      { "id": "ccw_360", "degrees": 360, "direction": -1 },
+      { "id": "cw_720", "degrees": 720, "direction": 1 },
+      { "id": "ccw_720", "degrees": 720, "direction": -1 }
+    ],
+    "zero_radius_spin": {
+      "description": "orbit 60, 179.99 once clockwise at 6500m tilted 0 degrees for 20 seconds",
+      "expected_pan_sweep_deg": 360
+    },
+    "finite_pole": {
+      "description": "orbit 89.9, 179.99 once clockwise at 20000m tilted 60 degrees for 20 seconds",
+      "expected_position_revolution_deg": 360
+    },
+    "antimeridian": {
+      "seam_description": "orbit 60, 179.99 once clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "twin_description": "orbit 60, 20 once clockwise at 200000m tilted 30 degrees for 20 seconds",
+      "longitude_shift_deg": 159.99
+    },
+    "heading": {
+      "description": "orbit 85, 20 once clockwise at 200000m tilted 30 degrees for 20 seconds"
+    },
+    "wobble": {
+      "description": "fly to Matterhorn at 120000m tilted 0 degrees for 8 seconds then orbit Matterhorn once clockwise at 6500m tilted 74 degrees for 24 seconds"
+    },
+    "continuation": {
+      "first_description": "hover over 45, 179 for 1 seconds then fly to 45, 179.95 for 6 seconds",
+      "second_description": "orbit 45, -179.95 once clockwise at 20000m tilted 60 degrees for 12 seconds"
+    }
+  }
+}

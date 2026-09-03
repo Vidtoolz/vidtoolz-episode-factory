@@ -1,0 +1,2737 @@
+{
+  "schema_version": 1,
+  "oracle": "terrain-complete-pose-acceptance",
+  "production_authority_sha": "7b63c6b430f964087665a6c9a4626b79e42bcad9",
+  "prior_measurement_authority_sha": "78ab128faa823da3fcdc612f115ff4f8618961f9",
+  "comparator_authority": {
+    "earth_model": "WGS84 geodetic ECEF",
+    "optical_error": "angle(optical_ray_ecef, normalize(target_ecef-camera_ecef))",
+    "footprint": "6371000m spherical great-circle ground radius",
+    "altitude": "A = target_elevation_m + radius_m / tan(applied_tilt_deg)",
+    "safety": "minimum camera altitude only; reduce rake if and only if the derived altitude conflicts"
+  },
+  "controls": {
+    "production": {
+      "kind": "production",
+      "verdict": "RED",
+      "complete_pose_summary": {
+        "cases": 4,
+        "checks": 68,
+        "passed": 36,
+        "failed": 32
+      },
+      "regression_summary": {
+        "cases": 12,
+        "checks": 12,
+        "passed": 12,
+        "failed": 0
+      },
+      "complete_pose_cases": [
+        {
+          "id": "matterhorn_summit",
+          "verdict": "RED",
+          "expected": {
+            "target": {
+              "name": "Matterhorn",
+              "latitude": 45.9766,
+              "longitude": 7.6585,
+              "target_elevation_m": 4478,
+              "target_anchor_kind": "SUMMIT",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "HIGH"
+            },
+            "camera": {
+              "latitude": 45.84923959791,
+              "longitude": 7.475864221564,
+              "altitude_m": 10214.325095220527,
+              "pan_deg": 44.962058395156,
+              "tilt_deg": 74
+            },
+            "declared_radius_m": 20004.942991639142,
+            "declared_preferred_tilt_deg": 74,
+            "applied_tilt_deg": 74,
+            "derived_camera_altitude_m": 10214.325095220527,
+            "unclamped_camera_altitude_m": 10214.325095220527,
+            "safety_clamped": false,
+            "min_altitude_m": 5500,
+            "boundary": null
+          },
+          "observation": {
+            "target": {
+              "name": "Matterhorn",
+              "latitude": 45.9766,
+              "longitude": 7.6585
+            },
+            "camera": {
+              "latitude": 45.796701,
+              "longitude": 7.6585,
+              "altitude_m": 6500,
+              "pan_deg": 0,
+              "tilt_deg": 74
+            },
+            "declared_radius_m": null,
+            "declared_preferred_tilt_deg": 74,
+            "applied_tilt_deg": 74,
+            "derived_camera_altitude_m": 5736,
+            "safety_clamped": false,
+            "min_altitude_m": 5500,
+            "boundary": {
+              "frame": 330,
+              "incoming_segment_id": 4,
+              "orbit_segment_id": 5,
+              "incoming": {
+                "latitude": 45.796701,
+                "longitude": 7.6585,
+                "altitude_m": 6500,
+                "pan_deg": 0,
+                "tilt_deg": 74
+              },
+              "orbit": {
+                "latitude": 45.796701,
+                "longitude": 7.6585,
+                "altitude_m": 5736,
+                "pan_deg": 0,
+                "tilt_deg": 74
+              }
+            },
+            "plan_provenance": {
+              "incoming_altitude_m": 6500,
+              "incoming_altitude_source": "gazetteer",
+              "incoming_tilt_deg": 74,
+              "orbit_altitude_m": 5736,
+              "orbit_altitude_source": "explicit",
+              "orbit_tilt_deg": 74
+            }
+          },
+          "pose_measurement": {
+            "earth_model": "wgs84",
+            "camera_ecef_m": [
+              4419303.624230054,
+              594254.1434519858,
+              4554181.5130903525
+            ],
+            "target_ecef_m": [
+              4403668.373144308,
+              592151.7052554622,
+              4566660.330141979
+            ],
+            "target_distance_m": 20114.72589652905,
+            "target_bearing_deg": 0,
+            "horizontal_bearing_error_deg": 0,
+            "expected_tilt_from_nadir_deg": 84.140748020805,
+            "vertical_tilt_error_deg": -10.140748020805,
+            "complete_3d_angular_error_deg": 10.140748020805,
+            "complete_3d_error_vertical_fov_fraction": 0.50703740104,
+            "optical_ray_ecef_unit": [
+              -0.873415246798,
+              -0.117446247983,
+              0.472601508139
+            ],
+            "target_ray_ecef_unit": [
+              -0.777303711031,
+              -0.104522338874,
+              0.62038215762
+            ],
+            "target_ray_enu_unit": {
+              "east": 0,
+              "north": 0.994775670286,
+              "up": -0.102085091013
+            }
+          },
+          "checks": [
+            {
+              "id": "target.latitude",
+              "pass": true,
+              "measured": 45.9766,
+              "expected": 45.9766,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.longitude",
+              "pass": true,
+              "measured": 7.6585,
+              "expected": 7.6585,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.target_elevation_m",
+              "pass": false,
+              "measured": null,
+              "expected": 4478,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_kind",
+              "pass": false,
+              "measured": null,
+              "expected": "SUMMIT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_source",
+              "pass": false,
+              "measured": null,
+              "expected": "DECLARED_TERRAIN_FOCAL_POINT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_confidence",
+              "pass": false,
+              "measured": null,
+              "expected": "HIGH",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "footprint.radius_m",
+              "pass": true,
+              "measured": 20003.856108429798,
+              "expected": 20004.942991639142,
+              "tolerance": 5,
+              "detail": null
+            },
+            {
+              "id": "composition.preferred_tilt_deg",
+              "pass": true,
+              "measured": 74,
+              "expected": 74,
+              "tolerance": 0.01,
+              "detail": "preferred rake preserved"
+            },
+            {
+              "id": "camera.derived_altitude_m",
+              "pass": false,
+              "measured": 6500,
+              "expected": 10214.325095220527,
+              "tolerance": 1,
+              "detail": "A = target_elevation_m + radius_m / tan(applied_tilt_deg), unless the safety floor conflicts"
+            },
+            {
+              "id": "safety.floor",
+              "pass": true,
+              "measured": 6500,
+              "expected": 5500,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "safety.conflict_semantics",
+              "pass": true,
+              "measured": false,
+              "expected": false,
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.complete_3d_error_deg",
+              "pass": false,
+              "measured": 10.140748020805,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.vertical_fov_fraction",
+              "pass": false,
+              "measured": 0.50703740104,
+              "expected": 0,
+              "tolerance": 0.005,
+              "detail": null
+            },
+            {
+              "id": "heading.target_authority",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.position",
+              "pass": false,
+              "measured": 764,
+              "expected": 0,
+              "tolerance": 0.2,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.pan_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.tilt_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            }
+          ],
+          "failures": [
+            "target.target_elevation_m",
+            "target.target_anchor_kind",
+            "target.target_anchor_source",
+            "target.target_anchor_confidence",
+            "camera.derived_altitude_m",
+            "optical_ray.complete_3d_error_deg",
+            "optical_ray.vertical_fov_fraction",
+            "staged_boundary.position"
+          ]
+        },
+        {
+          "id": "fuji_summit",
+          "verdict": "RED",
+          "expected": {
+            "target": {
+              "name": "Mount Fuji",
+              "latitude": 35.3606,
+              "longitude": 138.7274,
+              "target_elevation_m": 3776,
+              "target_anchor_kind": "SUMMIT",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "HIGH"
+            },
+            "camera": {
+              "latitude": 35.252885183843,
+              "longitude": 138.595583270032,
+              "altitude_m": 20703.259454463892,
+              "pan_deg": 45.052032508038,
+              "tilt_deg": 45
+            },
+            "declared_radius_m": 16927.25945446389,
+            "declared_preferred_tilt_deg": 45,
+            "applied_tilt_deg": 45,
+            "derived_camera_altitude_m": 20703.259454463892,
+            "unclamped_camera_altitude_m": 20703.259454463892,
+            "safety_clamped": false,
+            "min_altitude_m": 4300,
+            "boundary": null
+          },
+          "observation": {
+            "target": {
+              "name": "Mount Fuji",
+              "latitude": 35.3606,
+              "longitude": 138.7274
+            },
+            "camera": {
+              "latitude": 35.208372,
+              "longitude": 138.7274,
+              "altitude_m": 5500,
+              "pan_deg": 0,
+              "tilt_deg": 45
+            },
+            "declared_radius_m": null,
+            "declared_preferred_tilt_deg": 45,
+            "applied_tilt_deg": 45,
+            "derived_camera_altitude_m": 16927,
+            "safety_clamped": false,
+            "min_altitude_m": 4300,
+            "boundary": {
+              "frame": 270,
+              "incoming_segment_id": 4,
+              "orbit_segment_id": 5,
+              "incoming": {
+                "latitude": 35.208372,
+                "longitude": 138.7274,
+                "altitude_m": 5500,
+                "pan_deg": 0,
+                "tilt_deg": 45
+              },
+              "orbit": {
+                "latitude": 35.208372,
+                "longitude": 138.7274,
+                "altitude_m": 16927,
+                "pan_deg": 0,
+                "tilt_deg": 45
+              }
+            },
+            "plan_provenance": {
+              "incoming_altitude_m": 5500,
+              "incoming_altitude_source": "gazetteer",
+              "incoming_tilt_deg": 45,
+              "orbit_altitude_m": 16927,
+              "orbit_altitude_source": "explicit",
+              "orbit_tilt_deg": 45
+            }
+          },
+          "pose_measurement": {
+            "earth_model": "wgs84",
+            "camera_ecef_m": [
+              -3924468.511127004,
+              3444405.982454948,
+              3659950.3804354095
+            ],
+            "target_ecef_m": [
+              -3916073.2593126246,
+              3437037.683921866,
+              3672751.0262834737
+            ],
+            "target_distance_m": 16989.073265691157,
+            "target_bearing_deg": 360,
+            "horizontal_bearing_error_deg": 0,
+            "expected_tilt_from_nadir_deg": 84.099662424038,
+            "vertical_tilt_error_deg": -39.099662424038,
+            "complete_3d_angular_error_deg": 39.099662424038,
+            "complete_3d_error_vertical_fov_fraction": 1.954983121202,
+            "optical_ray_ecef_unit": [
+              0.740631231338,
+              -0.650033153987,
+              0.170065510567
+            ],
+            "target_ray_ecef_unit": [
+              0.49415596031,
+              -0.433708090951,
+              0.753463455474
+            ],
+            "target_ray_enu_unit": {
+              "east": 0,
+              "north": 0.994702211466,
+              "up": -0.102798397387
+            }
+          },
+          "checks": [
+            {
+              "id": "target.latitude",
+              "pass": true,
+              "measured": 35.3606,
+              "expected": 35.3606,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.longitude",
+              "pass": true,
+              "measured": 138.7274,
+              "expected": 138.7274,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.target_elevation_m",
+              "pass": false,
+              "measured": null,
+              "expected": 3776,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_kind",
+              "pass": false,
+              "measured": null,
+              "expected": "SUMMIT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_source",
+              "pass": false,
+              "measured": null,
+              "expected": "DECLARED_TERRAIN_FOCAL_POINT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_confidence",
+              "pass": false,
+              "measured": null,
+              "expected": "HIGH",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "footprint.radius_m",
+              "pass": true,
+              "measured": 16926.98129324749,
+              "expected": 16927.25945446389,
+              "tolerance": 5,
+              "detail": null
+            },
+            {
+              "id": "composition.preferred_tilt_deg",
+              "pass": true,
+              "measured": 45,
+              "expected": 45,
+              "tolerance": 0.01,
+              "detail": "preferred rake preserved"
+            },
+            {
+              "id": "camera.derived_altitude_m",
+              "pass": false,
+              "measured": 5500,
+              "expected": 20703.259454463892,
+              "tolerance": 1,
+              "detail": "A = target_elevation_m + radius_m / tan(applied_tilt_deg), unless the safety floor conflicts"
+            },
+            {
+              "id": "safety.floor",
+              "pass": true,
+              "measured": 5500,
+              "expected": 4300,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "safety.conflict_semantics",
+              "pass": true,
+              "measured": false,
+              "expected": false,
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.complete_3d_error_deg",
+              "pass": false,
+              "measured": 39.099662424038,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.vertical_fov_fraction",
+              "pass": false,
+              "measured": 1.954983121202,
+              "expected": 0,
+              "tolerance": 0.005,
+              "detail": null
+            },
+            {
+              "id": "heading.target_authority",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.position",
+              "pass": false,
+              "measured": 11427,
+              "expected": 0,
+              "tolerance": 0.2,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.pan_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.tilt_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            }
+          ],
+          "failures": [
+            "target.target_elevation_m",
+            "target.target_anchor_kind",
+            "target.target_anchor_source",
+            "target.target_anchor_confidence",
+            "camera.derived_altitude_m",
+            "optical_ray.complete_3d_error_deg",
+            "optical_ray.vertical_fov_fraction",
+            "staged_boundary.position"
+          ]
+        },
+        {
+          "id": "geirangerfjord_waterline",
+          "verdict": "RED",
+          "expected": {
+            "target": {
+              "name": "Geirangerfjord",
+              "latitude": 62.1049,
+              "longitude": 7.2054,
+              "target_elevation_m": 0,
+              "target_anchor_kind": "WATERLINE",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "HIGH"
+            },
+            "camera": {
+              "latitude": 62.055931867313,
+              "longitude": 7.100987347395,
+              "altitude_m": 3587.868506905962,
+              "pan_deg": 44.950038488473,
+              "tilt_deg": 65
+            },
+            "declared_radius_m": 7694.208842938132,
+            "declared_preferred_tilt_deg": 65,
+            "applied_tilt_deg": 65,
+            "derived_camera_altitude_m": 3587.868506905962,
+            "unclamped_camera_altitude_m": 3587.868506905962,
+            "safety_clamped": false,
+            "min_altitude_m": 1000,
+            "boundary": null
+          },
+          "observation": {
+            "target": {
+              "name": "Geirangerfjord",
+              "latitude": 62.1049,
+              "longitude": 7.2054
+            },
+            "camera": {
+              "latitude": 62.035702,
+              "longitude": 7.2054,
+              "altitude_m": 2500,
+              "pan_deg": 0,
+              "tilt_deg": 65
+            },
+            "declared_radius_m": null,
+            "declared_preferred_tilt_deg": 65,
+            "applied_tilt_deg": 65,
+            "derived_camera_altitude_m": 3588,
+            "safety_clamped": false,
+            "min_altitude_m": 1000,
+            "boundary": {
+              "frame": 390,
+              "incoming_segment_id": 4,
+              "orbit_segment_id": 5,
+              "incoming": {
+                "latitude": 62.035702,
+                "longitude": 7.2054,
+                "altitude_m": 2500,
+                "pan_deg": 0,
+                "tilt_deg": 65
+              },
+              "orbit": {
+                "latitude": 62.035702,
+                "longitude": 7.2054,
+                "altitude_m": 3588,
+                "pan_deg": 0,
+                "tilt_deg": 65
+              }
+            },
+            "plan_provenance": {
+              "incoming_altitude_m": 2500,
+              "incoming_altitude_source": "gazetteer",
+              "incoming_tilt_deg": 65,
+              "orbit_altitude_m": 3588,
+              "orbit_altitude_source": "explicit",
+              "orbit_tilt_deg": 65
+            }
+          },
+          "pose_measurement": {
+            "earth_model": "wgs84",
+            "camera_ecef_m": [
+              2976166.6994981454,
+              376262.26628127624,
+              5612590.188068589
+            ],
+            "target_ecef_m": [
+              2968243.830681234,
+              375260.61654942384,
+              5613994.243476958
+            ],
+            "target_distance_m": 8108.423031951052,
+            "target_bearing_deg": 360,
+            "horizontal_bearing_error_deg": 0,
+            "expected_tilt_from_nadir_deg": 72.007307515728,
+            "vertical_tilt_error_deg": -7.007307515728,
+            "complete_3d_angular_error_deg": 7.007307515728,
+            "complete_3d_error_vertical_fov_fraction": 0.350365375786,
+            "optical_ray_ecef_unit": [
+              -0.990775403575,
+              -0.125258910661,
+              0.051713682634
+            ],
+            "target_ray_ecef_unit": [
+              -0.977115868979,
+              -0.123532002204,
+              0.173160108055
+            ],
+            "target_ray_enu_unit": {
+              "east": 0,
+              "north": 0.951095920652,
+              "up": -0.308895693915
+            }
+          },
+          "checks": [
+            {
+              "id": "target.latitude",
+              "pass": true,
+              "measured": 62.1049,
+              "expected": 62.1049,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.longitude",
+              "pass": true,
+              "measured": 7.2054,
+              "expected": 7.2054,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.target_elevation_m",
+              "pass": false,
+              "measured": null,
+              "expected": 0,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_kind",
+              "pass": false,
+              "measured": null,
+              "expected": "WATERLINE",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_source",
+              "pass": false,
+              "measured": null,
+              "expected": "DECLARED_TERRAIN_FOCAL_POINT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_confidence",
+              "pass": false,
+              "measured": null,
+              "expected": "HIGH",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "footprint.radius_m",
+              "pass": true,
+              "measured": 7694.466533949327,
+              "expected": 7694.208842938132,
+              "tolerance": 5,
+              "detail": null
+            },
+            {
+              "id": "composition.preferred_tilt_deg",
+              "pass": true,
+              "measured": 65,
+              "expected": 65,
+              "tolerance": 0.01,
+              "detail": "preferred rake preserved"
+            },
+            {
+              "id": "camera.derived_altitude_m",
+              "pass": false,
+              "measured": 2500,
+              "expected": 3587.868506905962,
+              "tolerance": 1,
+              "detail": "A = target_elevation_m + radius_m / tan(applied_tilt_deg), unless the safety floor conflicts"
+            },
+            {
+              "id": "safety.floor",
+              "pass": true,
+              "measured": 2500,
+              "expected": 1000,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "safety.conflict_semantics",
+              "pass": true,
+              "measured": false,
+              "expected": false,
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.complete_3d_error_deg",
+              "pass": false,
+              "measured": 7.007307515728,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.vertical_fov_fraction",
+              "pass": false,
+              "measured": 0.350365375786,
+              "expected": 0,
+              "tolerance": 0.005,
+              "detail": null
+            },
+            {
+              "id": "heading.target_authority",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.position",
+              "pass": false,
+              "measured": 1088,
+              "expected": 0,
+              "tolerance": 0.2,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.pan_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.tilt_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            }
+          ],
+          "failures": [
+            "target.target_elevation_m",
+            "target.target_anchor_kind",
+            "target.target_anchor_source",
+            "target.target_anchor_confidence",
+            "camera.derived_altitude_m",
+            "optical_ray.complete_3d_error_deg",
+            "optical_ray.vertical_fov_fraction",
+            "staged_boundary.position"
+          ]
+        },
+        {
+          "id": "grand_canyon_interior",
+          "verdict": "RED",
+          "expected": {
+            "target": {
+              "name": "Grand Canyon",
+              "latitude": 36.0544,
+              "longitude": -112.1401,
+              "target_elevation_m": 1200,
+              "target_anchor_kind": "CANYON_INTERIOR_POI_SURFACE",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "MEDIUM"
+            },
+            "camera": {
+              "latitude": 35.97607514959,
+              "longitude": -112.236837436622,
+              "altitude_m": 4730.046212443402,
+              "pan_deg": 45.069135414418,
+              "tilt_deg": 74
+            },
+            "declared_radius_m": 12310.73414870101,
+            "declared_preferred_tilt_deg": 74,
+            "applied_tilt_deg": 74,
+            "derived_camera_altitude_m": 4730.046212443402,
+            "unclamped_camera_altitude_m": 4730.046212443402,
+            "safety_clamped": false,
+            "min_altitude_m": 2700,
+            "boundary": null
+          },
+          "observation": {
+            "target": {
+              "name": "Grand Canyon",
+              "latitude": 36.0544,
+              "longitude": -112.1401
+            },
+            "camera": {
+              "latitude": 35.94372,
+              "longitude": -112.1401,
+              "altitude_m": 4000,
+              "pan_deg": 0,
+              "tilt_deg": 74
+            },
+            "declared_radius_m": null,
+            "declared_preferred_tilt_deg": 74,
+            "applied_tilt_deg": 74,
+            "derived_camera_altitude_m": 3529,
+            "safety_clamped": false,
+            "min_altitude_m": 2700,
+            "boundary": {
+              "frame": 300,
+              "incoming_segment_id": 2,
+              "orbit_segment_id": 3,
+              "incoming": {
+                "latitude": 35.94372,
+                "longitude": -112.1401,
+                "altitude_m": 4000,
+                "pan_deg": 0,
+                "tilt_deg": 74
+              },
+              "orbit": {
+                "latitude": 35.94372,
+                "longitude": -112.1401,
+                "altitude_m": 3529,
+                "pan_deg": 0,
+                "tilt_deg": 74
+              }
+            },
+            "plan_provenance": {
+              "incoming_altitude_m": 4000,
+              "incoming_altitude_source": "explicit",
+              "incoming_tilt_deg": 74,
+              "orbit_altitude_m": 3529,
+              "orbit_altitude_source": "explicit",
+              "orbit_tilt_deg": 74
+            }
+          },
+          "pose_measurement": {
+            "earth_model": "wgs84",
+            "camera_ecef_m": [
+              -1949526.387089409,
+              -4791481.554049905,
+              3725485.731699425
+            ],
+            "target_ecef_m": [
+              -1945951.1407827246,
+              -4782694.431781077,
+              3733779.6405123263
+            ],
+            "target_distance_m": 12600.985172498516,
+            "target_bearing_deg": 1e-12,
+            "horizontal_bearing_error_deg": -1e-12,
+            "expected_tilt_from_nadir_deg": 77.106098486205,
+            "vertical_tilt_error_deg": -3.106098486205,
+            "complete_3d_angular_error_deg": 3.106098486205,
+            "complete_3d_error_vertical_fov_fraction": 0.15530492431,
+            "optical_ray_ecef_unit": [
+              0.296751627181,
+              0.729346346471,
+              0.616435218538
+            ],
+            "target_ray_ecef_unit": [
+              0.283727522709,
+              0.697336132734,
+              0.658195268018
+            ],
+            "target_ray_enu_unit": {
+              "east": 0,
+              "north": 0.974784951114,
+              "up": -0.223146362468
+            }
+          },
+          "checks": [
+            {
+              "id": "target.latitude",
+              "pass": true,
+              "measured": 36.0544,
+              "expected": 36.0544,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.longitude",
+              "pass": true,
+              "measured": -112.1401,
+              "expected": -112.1401,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.target_elevation_m",
+              "pass": false,
+              "measured": null,
+              "expected": 1200,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_kind",
+              "pass": false,
+              "measured": null,
+              "expected": "CANYON_INTERIOR_POI_SURFACE",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_source",
+              "pass": false,
+              "measured": null,
+              "expected": "DECLARED_TERRAIN_FOCAL_POINT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_confidence",
+              "pass": false,
+              "measured": null,
+              "expected": "MEDIUM",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "footprint.radius_m",
+              "pass": true,
+              "measured": 12307.054481020188,
+              "expected": 12310.73414870101,
+              "tolerance": 5,
+              "detail": null
+            },
+            {
+              "id": "composition.preferred_tilt_deg",
+              "pass": true,
+              "measured": 74,
+              "expected": 74,
+              "tolerance": 0.01,
+              "detail": "preferred rake preserved"
+            },
+            {
+              "id": "camera.derived_altitude_m",
+              "pass": false,
+              "measured": 4000,
+              "expected": 4730.046212443402,
+              "tolerance": 1,
+              "detail": "A = target_elevation_m + radius_m / tan(applied_tilt_deg), unless the safety floor conflicts"
+            },
+            {
+              "id": "safety.floor",
+              "pass": true,
+              "measured": 4000,
+              "expected": 2700,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "safety.conflict_semantics",
+              "pass": true,
+              "measured": false,
+              "expected": false,
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.complete_3d_error_deg",
+              "pass": false,
+              "measured": 3.106098486205,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.vertical_fov_fraction",
+              "pass": false,
+              "measured": 0.15530492431,
+              "expected": 0,
+              "tolerance": 0.005,
+              "detail": null
+            },
+            {
+              "id": "heading.target_authority",
+              "pass": true,
+              "measured": -1e-12,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.position",
+              "pass": false,
+              "measured": 471,
+              "expected": 0,
+              "tolerance": 0.2,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.pan_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.tilt_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            }
+          ],
+          "failures": [
+            "target.target_elevation_m",
+            "target.target_anchor_kind",
+            "target.target_anchor_source",
+            "target.target_anchor_confidence",
+            "camera.derived_altitude_m",
+            "optical_ray.complete_3d_error_deg",
+            "optical_ray.vertical_fov_fraction",
+            "staged_boundary.position"
+          ]
+        }
+      ],
+      "regression_checks": [
+        {
+          "id": "revolution.cw_180",
+          "pass": true,
+          "measured": 180,
+          "expected": 180,
+          "tolerance": 0.000001,
+          "detail": null
+        },
+        {
+          "id": "revolution.ccw_180",
+          "pass": true,
+          "measured": -180,
+          "expected": -180,
+          "tolerance": 0.000001,
+          "detail": null
+        },
+        {
+          "id": "revolution.cw_360",
+          "pass": true,
+          "measured": 360,
+          "expected": 360,
+          "tolerance": 0.000001,
+          "detail": null
+        },
+        {
+          "id": "revolution.ccw_360",
+          "pass": true,
+          "measured": -360,
+          "expected": -360,
+          "tolerance": 0.000001,
+          "detail": null
+        },
+        {
+          "id": "revolution.cw_720",
+          "pass": true,
+          "measured": 720,
+          "expected": 720,
+          "tolerance": 0.000001,
+          "detail": null
+        },
+        {
+          "id": "revolution.ccw_720",
+          "pass": true,
+          "measured": -720,
+          "expected": -720,
+          "tolerance": 0.000001,
+          "detail": null
+        },
+        {
+          "id": "zero_radius_spin",
+          "pass": true,
+          "measured": {
+            "maximum_radius_m": 1.415e-9,
+            "pan_sweep_deg": 360
+          },
+          "expected": {
+            "maximum_radius_m": 0,
+            "pan_sweep_deg": 360
+          },
+          "tolerance": {
+            "radius_m": 0.2,
+            "pan_deg": 0.000001
+          },
+          "detail": null
+        },
+        {
+          "id": "finite_pole",
+          "pass": true,
+          "measured": {
+            "all_finite": true,
+            "position_revolution_deg": 360
+          },
+          "expected": {
+            "all_finite": true,
+            "position_revolution_deg": 360
+          },
+          "tolerance": {
+            "position_revolution_deg": 0.001
+          },
+          "detail": null
+        },
+        {
+          "id": "heading_authority_cad68e9",
+          "pass": true,
+          "measured": {
+            "samples": 37,
+            "maximum_error_deg": 0
+          },
+          "expected": {
+            "samples_minimum": 4,
+            "maximum_error_deg": 0
+          },
+          "tolerance": {
+            "maximum_error_deg": 0.00001
+          },
+          "detail": null
+        },
+        {
+          "id": "antimeridian_physical_equivalence_7b63c6b",
+          "pass": true,
+          "measured": {
+            "maximum_physical_difference_m": 0,
+            "topology_equal": true,
+            "continuous_past_180": true
+          },
+          "expected": {
+            "maximum_physical_difference_m": 0.2,
+            "topology_equal": true,
+            "continuous_past_180": true
+          },
+          "tolerance": {
+            "maximum_physical_difference_m": 0.2
+          },
+          "detail": null
+        },
+        {
+          "id": "orbit_wobble_regression",
+          "pass": true,
+          "measured": {
+            "start_frame": 240,
+            "maximum_radius_deviation_m": 87.856676880692,
+            "breathing_fraction": 0.003875768724,
+            "maximum_heading_error_deg": 0.646076314372
+          },
+          "expected": {
+            "breathing_fraction": 0,
+            "maximum_heading_error_deg": 0
+          },
+          "tolerance": {
+            "breathing_fraction": 0.005,
+            "maximum_heading_error_deg": 0.7
+          },
+          "detail": null
+        },
+        {
+          "id": "continuation_correctness",
+          "pass": true,
+          "measured": {
+            "physical_position_m": 0,
+            "pan_deg": 0,
+            "tilt_deg": 0,
+            "public_longitudes_canonical": true
+          },
+          "expected": {
+            "physical_position_m": 0,
+            "pan_deg": 0,
+            "tilt_deg": 0,
+            "public_longitudes_canonical": true
+          },
+          "tolerance": {
+            "physical_position_m": 0.2,
+            "angle_deg": 0.000001
+          },
+          "detail": null
+        }
+      ]
+    },
+    "reference": {
+      "kind": "reference",
+      "verdict": "GREEN",
+      "complete_pose_summary": {
+        "cases": 6,
+        "checks": 102,
+        "passed": 102,
+        "failed": 0
+      },
+      "regression_summary": {
+        "cases": 0,
+        "checks": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      "complete_pose_cases": [
+        {
+          "id": "matterhorn_summit",
+          "verdict": "GREEN",
+          "expected": {
+            "target": {
+              "name": "Matterhorn",
+              "latitude": 45.9766,
+              "longitude": 7.6585,
+              "target_elevation_m": 4478,
+              "target_anchor_kind": "SUMMIT",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "HIGH"
+            },
+            "camera": {
+              "latitude": 45.84923959791,
+              "longitude": 7.475864221564,
+              "altitude_m": 10214.325095220527,
+              "pan_deg": 44.962058395156,
+              "tilt_deg": 74
+            },
+            "declared_radius_m": 20004.942991639142,
+            "declared_preferred_tilt_deg": 74,
+            "applied_tilt_deg": 74,
+            "derived_camera_altitude_m": 10214.325095220527,
+            "unclamped_camera_altitude_m": 10214.325095220527,
+            "safety_clamped": false,
+            "min_altitude_m": 5500,
+            "boundary": null
+          },
+          "observation": {
+            "target": {
+              "name": "Matterhorn",
+              "latitude": 45.9766,
+              "longitude": 7.6585,
+              "target_elevation_m": 4478,
+              "target_anchor_kind": "SUMMIT",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "HIGH"
+            },
+            "camera": {
+              "latitude": 45.84923959791,
+              "longitude": 7.475864221564,
+              "altitude_m": 10214.325095220527,
+              "pan_deg": 44.962058395156,
+              "tilt_deg": 74
+            },
+            "declared_radius_m": 20004.942991639142,
+            "declared_preferred_tilt_deg": 74,
+            "applied_tilt_deg": 74,
+            "derived_camera_altitude_m": 10214.325095220527,
+            "unclamped_camera_altitude_m": 10214.325095220527,
+            "safety_clamped": false,
+            "min_altitude_m": 5500,
+            "boundary": {
+              "frame": 0,
+              "incoming_segment_id": "reference-incoming",
+              "orbit_segment_id": "reference-orbit",
+              "incoming": {
+                "latitude": 45.84923959791,
+                "longitude": 7.475864221564,
+                "altitude_m": 10214.325095220527,
+                "pan_deg": 44.962058395156,
+                "tilt_deg": 74
+              },
+              "orbit": {
+                "latitude": 45.84923959791,
+                "longitude": 7.475864221564,
+                "altitude_m": 10214.325095220527,
+                "pan_deg": 44.962058395156,
+                "tilt_deg": 74
+              }
+            }
+          },
+          "pose_measurement": {
+            "earth_model": "wgs84",
+            "camera_ecef_m": [
+              4419583.920082454,
+              579955.3534066848,
+              4560920.183696583
+            ],
+            "target_ecef_m": [
+              4403668.373144308,
+              592151.7052554622,
+              4566660.330141979
+            ],
+            "target_distance_m": 20856.771417793447,
+            "target_bearing_deg": 44.962058395156,
+            "horizontal_bearing_error_deg": 0,
+            "expected_tilt_from_nadir_deg": 73.946014316988,
+            "vertical_tilt_error_deg": 0.053985683012,
+            "complete_3d_angular_error_deg": 0.053985682998,
+            "complete_3d_error_vertical_fov_fraction": 0.00269928415,
+            "optical_ray_ecef_unit": [
+              -0.762617187126,
+              0.585014160386,
+              0.275995394978
+            ],
+            "target_ray_ecef_unit": [
+              -0.763087757896,
+              0.584767009451,
+              0.275217402081
+            ],
+            "target_ray_enu_unit": {
+              "east": 0.679080578795,
+              "north": 0.679980557267,
+              "up": -0.276542960934
+            }
+          },
+          "checks": [
+            {
+              "id": "target.latitude",
+              "pass": true,
+              "measured": 45.9766,
+              "expected": 45.9766,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.longitude",
+              "pass": true,
+              "measured": 7.6585,
+              "expected": 7.6585,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.target_elevation_m",
+              "pass": true,
+              "measured": 4478,
+              "expected": 4478,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_kind",
+              "pass": true,
+              "measured": "SUMMIT",
+              "expected": "SUMMIT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_source",
+              "pass": true,
+              "measured": "DECLARED_TERRAIN_FOCAL_POINT",
+              "expected": "DECLARED_TERRAIN_FOCAL_POINT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_confidence",
+              "pass": true,
+              "measured": "HIGH",
+              "expected": "HIGH",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "footprint.radius_m",
+              "pass": true,
+              "measured": 20004.942991636428,
+              "expected": 20004.942991639142,
+              "tolerance": 5,
+              "detail": null
+            },
+            {
+              "id": "composition.preferred_tilt_deg",
+              "pass": true,
+              "measured": 74,
+              "expected": 74,
+              "tolerance": 0.01,
+              "detail": "preferred rake preserved"
+            },
+            {
+              "id": "camera.derived_altitude_m",
+              "pass": true,
+              "measured": 10214.325095220527,
+              "expected": 10214.325095220527,
+              "tolerance": 1,
+              "detail": "A = target_elevation_m + radius_m / tan(applied_tilt_deg), unless the safety floor conflicts"
+            },
+            {
+              "id": "safety.floor",
+              "pass": true,
+              "measured": 10214.325095220527,
+              "expected": 5500,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "safety.conflict_semantics",
+              "pass": true,
+              "measured": false,
+              "expected": false,
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.complete_3d_error_deg",
+              "pass": true,
+              "measured": 0.053985682998,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.vertical_fov_fraction",
+              "pass": true,
+              "measured": 0.00269928415,
+              "expected": 0,
+              "tolerance": 0.005,
+              "detail": null
+            },
+            {
+              "id": "heading.target_authority",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.position",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.2,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.pan_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.tilt_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            }
+          ],
+          "failures": []
+        },
+        {
+          "id": "fuji_summit",
+          "verdict": "GREEN",
+          "expected": {
+            "target": {
+              "name": "Mount Fuji",
+              "latitude": 35.3606,
+              "longitude": 138.7274,
+              "target_elevation_m": 3776,
+              "target_anchor_kind": "SUMMIT",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "HIGH"
+            },
+            "camera": {
+              "latitude": 35.252885183843,
+              "longitude": 138.595583270032,
+              "altitude_m": 20703.259454463892,
+              "pan_deg": 45.052032508038,
+              "tilt_deg": 45
+            },
+            "declared_radius_m": 16927.25945446389,
+            "declared_preferred_tilt_deg": 45,
+            "applied_tilt_deg": 45,
+            "derived_camera_altitude_m": 20703.259454463892,
+            "unclamped_camera_altitude_m": 20703.259454463892,
+            "safety_clamped": false,
+            "min_altitude_m": 4300,
+            "boundary": null
+          },
+          "observation": {
+            "target": {
+              "name": "Mount Fuji",
+              "latitude": 35.3606,
+              "longitude": 138.7274,
+              "target_elevation_m": 3776,
+              "target_anchor_kind": "SUMMIT",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "HIGH"
+            },
+            "camera": {
+              "latitude": 35.252885183843,
+              "longitude": 138.595583270032,
+              "altitude_m": 20703.259454463892,
+              "pan_deg": 45.052032508038,
+              "tilt_deg": 45
+            },
+            "declared_radius_m": 16927.25945446389,
+            "declared_preferred_tilt_deg": 45,
+            "applied_tilt_deg": 45,
+            "derived_camera_altitude_m": 20703.259454463892,
+            "unclamped_camera_altitude_m": 20703.259454463892,
+            "safety_clamped": false,
+            "min_altitude_m": 4300,
+            "boundary": {
+              "frame": 0,
+              "incoming_segment_id": "reference-incoming",
+              "orbit_segment_id": "reference-orbit",
+              "incoming": {
+                "latitude": 35.252885183843,
+                "longitude": 138.595583270032,
+                "altitude_m": 20703.259454463892,
+                "pan_deg": 45.052032508038,
+                "tilt_deg": 45
+              },
+              "orbit": {
+                "latitude": 35.252885183843,
+                "longitude": 138.595583270032,
+                "altitude_m": 20703.259454463892,
+                "pan_deg": 45.052032508038,
+                "tilt_deg": 45
+              }
+            }
+          },
+          "pose_measurement": {
+            "earth_model": "wgs84",
+            "camera_ecef_m": [
+              -3923707.258999135,
+              3459750.862999418,
+              3672762.9369047796
+            ],
+            "target_ecef_m": [
+              -3916073.2593126246,
+              3437037.683921866,
+              3672751.0262834737
+            ],
+            "target_distance_m": 23961.773659006787,
+            "target_bearing_deg": 45.052032508038,
+            "horizontal_bearing_error_deg": 0,
+            "expected_tilt_from_nadir_deg": 44.978937746864,
+            "vertical_tilt_error_deg": 0.021062253136,
+            "complete_3d_angular_error_deg": 0.021062253127,
+            "complete_3d_error_vertical_fov_fraction": 0.001053112656,
+            "optical_ray_ecef_unit": [
+              0.318389396946,
+              -0.947959995503,
+              -0.000197076534
+            ],
+            "target_ray_ecef_unit": [
+              0.318590760231,
+              -0.947892230382,
+              -0.000497067599
+            ],
+            "target_ray_enu_unit": {
+              "east": 0.500269859565,
+              "north": 0.499362055005,
+              "up": -0.707366669862
+            }
+          },
+          "checks": [
+            {
+              "id": "target.latitude",
+              "pass": true,
+              "measured": 35.3606,
+              "expected": 35.3606,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.longitude",
+              "pass": true,
+              "measured": 138.7274,
+              "expected": 138.7274,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.target_elevation_m",
+              "pass": true,
+              "measured": 3776,
+              "expected": 3776,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_kind",
+              "pass": true,
+              "measured": "SUMMIT",
+              "expected": "SUMMIT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_source",
+              "pass": true,
+              "measured": "DECLARED_TERRAIN_FOCAL_POINT",
+              "expected": "DECLARED_TERRAIN_FOCAL_POINT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_confidence",
+              "pass": true,
+              "measured": "HIGH",
+              "expected": "HIGH",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "footprint.radius_m",
+              "pass": true,
+              "measured": 16927.25945446872,
+              "expected": 16927.25945446389,
+              "tolerance": 5,
+              "detail": null
+            },
+            {
+              "id": "composition.preferred_tilt_deg",
+              "pass": true,
+              "measured": 45,
+              "expected": 45,
+              "tolerance": 0.01,
+              "detail": "preferred rake preserved"
+            },
+            {
+              "id": "camera.derived_altitude_m",
+              "pass": true,
+              "measured": 20703.259454463892,
+              "expected": 20703.259454463892,
+              "tolerance": 1,
+              "detail": "A = target_elevation_m + radius_m / tan(applied_tilt_deg), unless the safety floor conflicts"
+            },
+            {
+              "id": "safety.floor",
+              "pass": true,
+              "measured": 20703.259454463892,
+              "expected": 4300,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "safety.conflict_semantics",
+              "pass": true,
+              "measured": false,
+              "expected": false,
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.complete_3d_error_deg",
+              "pass": true,
+              "measured": 0.021062253127,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.vertical_fov_fraction",
+              "pass": true,
+              "measured": 0.001053112656,
+              "expected": 0,
+              "tolerance": 0.005,
+              "detail": null
+            },
+            {
+              "id": "heading.target_authority",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.position",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.2,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.pan_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.tilt_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            }
+          ],
+          "failures": []
+        },
+        {
+          "id": "geirangerfjord_waterline",
+          "verdict": "GREEN",
+          "expected": {
+            "target": {
+              "name": "Geirangerfjord",
+              "latitude": 62.1049,
+              "longitude": 7.2054,
+              "target_elevation_m": 0,
+              "target_anchor_kind": "WATERLINE",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "HIGH"
+            },
+            "camera": {
+              "latitude": 62.055931867313,
+              "longitude": 7.100987347395,
+              "altitude_m": 3587.868506905962,
+              "pan_deg": 44.950038488473,
+              "tilt_deg": 65
+            },
+            "declared_radius_m": 7694.208842938132,
+            "declared_preferred_tilt_deg": 65,
+            "applied_tilt_deg": 65,
+            "derived_camera_altitude_m": 3587.868506905962,
+            "unclamped_camera_altitude_m": 3587.868506905962,
+            "safety_clamped": false,
+            "min_altitude_m": 1000,
+            "boundary": null
+          },
+          "observation": {
+            "target": {
+              "name": "Geirangerfjord",
+              "latitude": 62.1049,
+              "longitude": 7.2054,
+              "target_elevation_m": 0,
+              "target_anchor_kind": "WATERLINE",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "HIGH"
+            },
+            "camera": {
+              "latitude": 62.055931867313,
+              "longitude": 7.100987347395,
+              "altitude_m": 3587.868506905962,
+              "pan_deg": 44.950038488473,
+              "tilt_deg": 65
+            },
+            "declared_radius_m": 7694.208842938132,
+            "declared_preferred_tilt_deg": 65,
+            "applied_tilt_deg": 65,
+            "derived_camera_altitude_m": 3587.868506905962,
+            "unclamped_camera_altitude_m": 3587.868506905962,
+            "safety_clamped": false,
+            "min_altitude_m": 1000,
+            "boundary": {
+              "frame": 0,
+              "incoming_segment_id": "reference-incoming",
+              "orbit_segment_id": "reference-orbit",
+              "incoming": {
+                "latitude": 62.055931867313,
+                "longitude": 7.100987347395,
+                "altitude_m": 3587.868506905962,
+                "pan_deg": 44.950038488473,
+                "tilt_deg": 65
+              },
+              "orbit": {
+                "latitude": 62.055931867313,
+                "longitude": 7.100987347395,
+                "altitude_m": 3587.868506905962,
+                "pan_deg": 44.950038488473,
+                "tilt_deg": 65
+              }
+            }
+          },
+          "pose_measurement": {
+            "earth_model": "wgs84",
+            "camera_ecef_m": [
+              2975376.323271573,
+              370654.7806724693,
+              5614608.483071261
+            ],
+            "target_ecef_m": [
+              2968243.830681234,
+              375260.61654942384,
+              5613994.243476958
+            ],
+            "target_distance_m": 8512.547500947698,
+            "target_bearing_deg": 44.950038488473,
+            "horizontal_bearing_error_deg": 0,
+            "expected_tilt_from_nadir_deg": 65.037345696868,
+            "vertical_tilt_error_deg": -0.037345696868,
+            "complete_3d_angular_error_deg": 0.037345696858,
+            "complete_3d_error_vertical_fov_fraction": 0.001867284843,
+            "optical_ray_ecef_unit": [
+              -0.837959836678,
+              0.540858401555,
+              -0.072770197074
+            ],
+            "target_ray_ecef_unit": [
+              -0.837879916622,
+              0.541064337843,
+              -0.07215696526
+            ],
+            "target_ray_enu_unit": {
+              "east": 0.640491793396,
+              "north": 0.641609777114,
+              "up": -0.422027435724
+            }
+          },
+          "checks": [
+            {
+              "id": "target.latitude",
+              "pass": true,
+              "measured": 62.1049,
+              "expected": 62.1049,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.longitude",
+              "pass": true,
+              "measured": 7.2054,
+              "expected": 7.2054,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.target_elevation_m",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_kind",
+              "pass": true,
+              "measured": "WATERLINE",
+              "expected": "WATERLINE",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_source",
+              "pass": true,
+              "measured": "DECLARED_TERRAIN_FOCAL_POINT",
+              "expected": "DECLARED_TERRAIN_FOCAL_POINT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_confidence",
+              "pass": true,
+              "measured": "HIGH",
+              "expected": "HIGH",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "footprint.radius_m",
+              "pass": true,
+              "measured": 7694.208842940083,
+              "expected": 7694.208842938132,
+              "tolerance": 5,
+              "detail": null
+            },
+            {
+              "id": "composition.preferred_tilt_deg",
+              "pass": true,
+              "measured": 65,
+              "expected": 65,
+              "tolerance": 0.01,
+              "detail": "preferred rake preserved"
+            },
+            {
+              "id": "camera.derived_altitude_m",
+              "pass": true,
+              "measured": 3587.868506905962,
+              "expected": 3587.868506905962,
+              "tolerance": 1,
+              "detail": "A = target_elevation_m + radius_m / tan(applied_tilt_deg), unless the safety floor conflicts"
+            },
+            {
+              "id": "safety.floor",
+              "pass": true,
+              "measured": 3587.868506905962,
+              "expected": 1000,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "safety.conflict_semantics",
+              "pass": true,
+              "measured": false,
+              "expected": false,
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.complete_3d_error_deg",
+              "pass": true,
+              "measured": 0.037345696858,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.vertical_fov_fraction",
+              "pass": true,
+              "measured": 0.001867284843,
+              "expected": 0,
+              "tolerance": 0.005,
+              "detail": null
+            },
+            {
+              "id": "heading.target_authority",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.position",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.2,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.pan_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.tilt_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            }
+          ],
+          "failures": []
+        },
+        {
+          "id": "grand_canyon_interior",
+          "verdict": "GREEN",
+          "expected": {
+            "target": {
+              "name": "Grand Canyon",
+              "latitude": 36.0544,
+              "longitude": -112.1401,
+              "target_elevation_m": 1200,
+              "target_anchor_kind": "CANYON_INTERIOR_POI_SURFACE",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "MEDIUM"
+            },
+            "camera": {
+              "latitude": 35.97607514959,
+              "longitude": -112.236837436622,
+              "altitude_m": 4730.046212443402,
+              "pan_deg": 45.069135414418,
+              "tilt_deg": 74
+            },
+            "declared_radius_m": 12310.73414870101,
+            "declared_preferred_tilt_deg": 74,
+            "applied_tilt_deg": 74,
+            "derived_camera_altitude_m": 4730.046212443402,
+            "unclamped_camera_altitude_m": 4730.046212443402,
+            "safety_clamped": false,
+            "min_altitude_m": 2700,
+            "boundary": null
+          },
+          "observation": {
+            "target": {
+              "name": "Grand Canyon",
+              "latitude": 36.0544,
+              "longitude": -112.1401,
+              "target_elevation_m": 1200,
+              "target_anchor_kind": "CANYON_INTERIOR_POI_SURFACE",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "MEDIUM"
+            },
+            "camera": {
+              "latitude": 35.97607514959,
+              "longitude": -112.236837436622,
+              "altitude_m": 4730.046212443402,
+              "pan_deg": 45.069135414418,
+              "tilt_deg": 74
+            },
+            "declared_radius_m": 12310.73414870101,
+            "declared_preferred_tilt_deg": 74,
+            "applied_tilt_deg": 74,
+            "derived_camera_altitude_m": 4730.046212443402,
+            "unclamped_camera_altitude_m": 4730.046212443402,
+            "safety_clamped": false,
+            "min_altitude_m": 2700,
+            "boundary": {
+              "frame": 0,
+              "incoming_segment_id": "reference-incoming",
+              "orbit_segment_id": "reference-orbit",
+              "incoming": {
+                "latitude": 35.97607514959,
+                "longitude": -112.236837436622,
+                "altitude_m": 4730.046212443402,
+                "pan_deg": 45.069135414418,
+                "tilt_deg": 74
+              },
+              "orbit": {
+                "latitude": 35.97607514959,
+                "longitude": -112.236837436622,
+                "altitude_m": 4730.046212443402,
+                "pan_deg": 45.069135414418,
+                "tilt_deg": 74
+              }
+            }
+          },
+          "pose_measurement": {
+            "earth_model": "wgs84",
+            "camera_ecef_m": [
+              -1957038.7536383995,
+              -4786777.435177277,
+              3728822.328461993
+            ],
+            "target_ecef_m": [
+              -1945951.1407827246,
+              -4782694.431781077,
+              3733779.6405123263
+            ],
+            "target_distance_m": 12813.314104285748,
+            "target_bearing_deg": 45.069135414418,
+            "horizontal_bearing_error_deg": 0,
+            "expected_tilt_from_nadir_deg": 73.952939537766,
+            "vertical_tilt_error_deg": 0.047060462234,
+            "complete_3d_angular_error_deg": 0.047060462227,
+            "complete_3d_error_vertical_fov_fraction": 0.002353023111,
+            "optical_ray_ecef_unit": [
+              0.865262077156,
+              0.318088157192,
+              0.387480918355
+            ],
+            "target_ray_ecef_unit": [
+              0.865319679627,
+              0.318653188626,
+              0.386887577249
+            ],
+            "target_ray_enu_unit": {
+              "east": 0.680373830188,
+              "north": 0.67873387484,
+              "up": -0.276426804671
+            }
+          },
+          "checks": [
+            {
+              "id": "target.latitude",
+              "pass": true,
+              "measured": 36.0544,
+              "expected": 36.0544,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.longitude",
+              "pass": true,
+              "measured": -112.1401,
+              "expected": -112.1401,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.target_elevation_m",
+              "pass": true,
+              "measured": 1200,
+              "expected": 1200,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_kind",
+              "pass": true,
+              "measured": "CANYON_INTERIOR_POI_SURFACE",
+              "expected": "CANYON_INTERIOR_POI_SURFACE",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_source",
+              "pass": true,
+              "measured": "DECLARED_TERRAIN_FOCAL_POINT",
+              "expected": "DECLARED_TERRAIN_FOCAL_POINT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_confidence",
+              "pass": true,
+              "measured": "MEDIUM",
+              "expected": "MEDIUM",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "footprint.radius_m",
+              "pass": true,
+              "measured": 12310.734148698597,
+              "expected": 12310.73414870101,
+              "tolerance": 5,
+              "detail": null
+            },
+            {
+              "id": "composition.preferred_tilt_deg",
+              "pass": true,
+              "measured": 74,
+              "expected": 74,
+              "tolerance": 0.01,
+              "detail": "preferred rake preserved"
+            },
+            {
+              "id": "camera.derived_altitude_m",
+              "pass": true,
+              "measured": 4730.046212443402,
+              "expected": 4730.046212443402,
+              "tolerance": 1,
+              "detail": "A = target_elevation_m + radius_m / tan(applied_tilt_deg), unless the safety floor conflicts"
+            },
+            {
+              "id": "safety.floor",
+              "pass": true,
+              "measured": 4730.046212443402,
+              "expected": 2700,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "safety.conflict_semantics",
+              "pass": true,
+              "measured": false,
+              "expected": false,
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.complete_3d_error_deg",
+              "pass": true,
+              "measured": 0.047060462227,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.vertical_fov_fraction",
+              "pass": true,
+              "measured": 0.002353023111,
+              "expected": 0,
+              "tolerance": 0.005,
+              "detail": null
+            },
+            {
+              "id": "heading.target_authority",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.position",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.2,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.pan_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.tilt_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            }
+          ],
+          "failures": []
+        },
+        {
+          "id": "generic_terrain_surface",
+          "verdict": "GREEN",
+          "expected": {
+            "target": {
+              "name": "Declared generic terrain POI",
+              "latitude": -12.25,
+              "longitude": 179.95,
+              "target_elevation_m": 850,
+              "target_anchor_kind": "SURFACE_POI",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "MEDIUM"
+            },
+            "camera": {
+              "latitude": -12.264406169523,
+              "longitude": 180.033683174282,
+              "altitude_m": 5155.442208287153,
+              "pan_deg": 279.919628556846,
+              "tilt_deg": 65
+            },
+            "declared_radius_m": 9233.050611525758,
+            "declared_preferred_tilt_deg": 65,
+            "applied_tilt_deg": 65,
+            "derived_camera_altitude_m": 5155.442208287153,
+            "unclamped_camera_altitude_m": 5155.442208287153,
+            "safety_clamped": false,
+            "min_altitude_m": 0,
+            "boundary": null
+          },
+          "observation": {
+            "target": {
+              "name": "Declared generic terrain POI",
+              "latitude": -12.25,
+              "longitude": 179.95,
+              "target_elevation_m": 850,
+              "target_anchor_kind": "SURFACE_POI",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "MEDIUM"
+            },
+            "camera": {
+              "latitude": -12.264406169523,
+              "longitude": 180.033683174282,
+              "altitude_m": 5155.442208287153,
+              "pan_deg": 279.919628556846,
+              "tilt_deg": 65
+            },
+            "declared_radius_m": 9233.050611525758,
+            "declared_preferred_tilt_deg": 65,
+            "applied_tilt_deg": 65,
+            "derived_camera_altitude_m": 5155.442208287153,
+            "unclamped_camera_altitude_m": 5155.442208287153,
+            "safety_clamped": false,
+            "min_altitude_m": 0,
+            "boundary": {
+              "frame": 0,
+              "incoming_segment_id": "reference-incoming",
+              "orbit_segment_id": "reference-orbit",
+              "incoming": {
+                "latitude": -12.264406169523,
+                "longitude": 180.033683174282,
+                "altitude_m": 5155.442208287153,
+                "pan_deg": 279.919628556846,
+                "tilt_deg": 65
+              },
+              "orbit": {
+                "latitude": -12.264406169523,
+                "longitude": 180.033683174282,
+                "altitude_m": 5155.442208287153,
+                "pan_deg": 279.919628556846,
+                "tilt_deg": 65
+              }
+            }
+          },
+          "pose_measurement": {
+            "earth_model": "wgs84",
+            "camera_ecef_m": [
+              -6238551.685287485,
+              -3667.534496852922,
+              -1347093.8562207075
+            ],
+            "target_ecef_m": [
+              -6234681.59009053,
+              5440.787459160454,
+              -1344621.726516054
+            ],
+            "target_distance_m": 10200.519151715715,
+            "target_bearing_deg": 279.919628556846,
+            "horizontal_bearing_error_deg": 0,
+            "expected_tilt_from_nadir_deg": 64.992469334992,
+            "vertical_tilt_error_deg": 0.007530665008,
+            "complete_3d_angular_error_deg": 0.007530664995,
+            "complete_3d_error_vertical_fov_fraction": 0.00037653325,
+            "optical_ray_ecef_unit": [
+              0.379283323851,
+              0.892981947725,
+              0.242337370799
+            ],
+            "target_ray_ecef_unit": [
+              0.379401787242,
+              0.892927293262,
+              0.242353322207
+            ],
+            "target_ray_enu_unit": {
+              "east": -0.892704095382,
+              "north": 0.156116965299,
+              "up": -0.422737378563
+            }
+          },
+          "checks": [
+            {
+              "id": "target.latitude",
+              "pass": true,
+              "measured": -12.25,
+              "expected": -12.25,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.longitude",
+              "pass": true,
+              "measured": 179.95,
+              "expected": 179.95,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.target_elevation_m",
+              "pass": true,
+              "measured": 850,
+              "expected": 850,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_kind",
+              "pass": true,
+              "measured": "SURFACE_POI",
+              "expected": "SURFACE_POI",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_source",
+              "pass": true,
+              "measured": "DECLARED_TERRAIN_FOCAL_POINT",
+              "expected": "DECLARED_TERRAIN_FOCAL_POINT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_confidence",
+              "pass": true,
+              "measured": "MEDIUM",
+              "expected": "MEDIUM",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "footprint.radius_m",
+              "pass": true,
+              "measured": 9233.050611531386,
+              "expected": 9233.050611525758,
+              "tolerance": 5,
+              "detail": null
+            },
+            {
+              "id": "composition.preferred_tilt_deg",
+              "pass": true,
+              "measured": 65,
+              "expected": 65,
+              "tolerance": 0.01,
+              "detail": "preferred rake preserved"
+            },
+            {
+              "id": "camera.derived_altitude_m",
+              "pass": true,
+              "measured": 5155.442208287153,
+              "expected": 5155.442208287153,
+              "tolerance": 1,
+              "detail": "A = target_elevation_m + radius_m / tan(applied_tilt_deg), unless the safety floor conflicts"
+            },
+            {
+              "id": "safety.floor",
+              "pass": true,
+              "measured": 5155.442208287153,
+              "expected": 0,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "safety.conflict_semantics",
+              "pass": true,
+              "measured": false,
+              "expected": false,
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.complete_3d_error_deg",
+              "pass": true,
+              "measured": 0.007530664995,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.vertical_fov_fraction",
+              "pass": true,
+              "measured": 0.00037653325,
+              "expected": 0,
+              "tolerance": 0.005,
+              "detail": null
+            },
+            {
+              "id": "heading.target_authority",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.position",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.2,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.pan_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.tilt_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            }
+          ],
+          "failures": []
+        },
+        {
+          "id": "safety_floor_conflict",
+          "verdict": "GREEN",
+          "expected": {
+            "target": {
+              "name": "High terrain safety canary",
+              "latitude": 27.9881,
+              "longitude": 86.925,
+              "target_elevation_m": 4000,
+              "target_anchor_kind": "SURFACE_POI",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "HIGH"
+            },
+            "camera": {
+              "latitude": 28.024930969288,
+              "longitude": 86.954217423263,
+              "altitude_m": 7000,
+              "pan_deg": 215.15482291785,
+              "tilt_deg": 59.036243467926
+            },
+            "declared_radius_m": 5000,
+            "declared_preferred_tilt_deg": 74,
+            "applied_tilt_deg": 59.036243467926,
+            "derived_camera_altitude_m": 7000,
+            "unclamped_camera_altitude_m": 5433.72692879404,
+            "safety_clamped": true,
+            "min_altitude_m": 7000,
+            "boundary": null
+          },
+          "observation": {
+            "target": {
+              "name": "High terrain safety canary",
+              "latitude": 27.9881,
+              "longitude": 86.925,
+              "target_elevation_m": 4000,
+              "target_anchor_kind": "SURFACE_POI",
+              "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+              "target_anchor_confidence": "HIGH"
+            },
+            "camera": {
+              "latitude": 28.024930969288,
+              "longitude": 86.954217423263,
+              "altitude_m": 7000,
+              "pan_deg": 215.15482291785,
+              "tilt_deg": 59.036243467926
+            },
+            "declared_radius_m": 5000,
+            "declared_preferred_tilt_deg": 74,
+            "applied_tilt_deg": 59.036243467926,
+            "derived_camera_altitude_m": 7000,
+            "unclamped_camera_altitude_m": 5433.72692879404,
+            "safety_clamped": true,
+            "min_altitude_m": 7000,
+            "boundary": {
+              "frame": 0,
+              "incoming_segment_id": "reference-incoming",
+              "orbit_segment_id": "reference-orbit",
+              "incoming": {
+                "latitude": 28.024930969288,
+                "longitude": 86.954217423263,
+                "altitude_m": 7000,
+                "pan_deg": 215.15482291785,
+                "tilt_deg": 59.036243467926
+              },
+              "orbit": {
+                "latitude": 28.024930969288,
+                "longitude": 86.954217423263,
+                "altitude_m": 7000,
+                "pan_deg": 215.15482291785,
+                "tilt_deg": 59.036243467926
+              }
+            }
+          },
+          "pose_measurement": {
+            "earth_model": "wgs84",
+            "camera_ecef_m": [
+              299707.1619069974,
+              5632633.563208676,
+              2982233.4291541814
+            ],
+            "target_ecef_m": [
+              302540.24722396414,
+              5631750.628504354,
+              2977217.978302603
+            ],
+            "target_distance_m": 5827.580402697726,
+            "target_bearing_deg": 215.15482291785,
+            "horizontal_bearing_error_deg": 0,
+            "expected_tilt_from_nadir_deg": 58.993872330348,
+            "vertical_tilt_error_deg": 0.042371137579,
+            "complete_3d_angular_error_deg": 0.042371137561,
+            "complete_3d_error_vertical_fov_fraction": 0.002118556878,
+            "optical_ray_ecef_unit": [
+              0.486407626158,
+              -0.150816399624,
+              -0.860617240601
+            ],
+            "target_ray_ecef_unit": [
+              0.486151219064,
+              -0.151509656377,
+              -0.860640352428
+            ],
+            "target_ray_enu_unit": {
+              "east": -0.493514779271,
+              "north": -0.700774221256,
+              "up": -0.515129744302
+            }
+          },
+          "checks": [
+            {
+              "id": "target.latitude",
+              "pass": true,
+              "measured": 27.9881,
+              "expected": 27.9881,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.longitude",
+              "pass": true,
+              "measured": 86.925,
+              "expected": 86.925,
+              "tolerance": 1e-7,
+              "detail": null
+            },
+            {
+              "id": "target.target_elevation_m",
+              "pass": true,
+              "measured": 4000,
+              "expected": 4000,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_kind",
+              "pass": true,
+              "measured": "SURFACE_POI",
+              "expected": "SURFACE_POI",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_source",
+              "pass": true,
+              "measured": "DECLARED_TERRAIN_FOCAL_POINT",
+              "expected": "DECLARED_TERRAIN_FOCAL_POINT",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "target.target_anchor_confidence",
+              "pass": true,
+              "measured": "HIGH",
+              "expected": "HIGH",
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "footprint.radius_m",
+              "pass": true,
+              "measured": 5000.000000003923,
+              "expected": 5000,
+              "tolerance": 5,
+              "detail": null
+            },
+            {
+              "id": "composition.preferred_tilt_deg",
+              "pass": true,
+              "measured": 59.036243467926,
+              "expected": 59.036243467926,
+              "tolerance": 0.01,
+              "detail": "preferred rake reduced only by safety-floor conflict"
+            },
+            {
+              "id": "camera.derived_altitude_m",
+              "pass": true,
+              "measured": 7000,
+              "expected": 7000,
+              "tolerance": 1,
+              "detail": "A = target_elevation_m + radius_m / tan(applied_tilt_deg), unless the safety floor conflicts"
+            },
+            {
+              "id": "safety.floor",
+              "pass": true,
+              "measured": 7000,
+              "expected": 7000,
+              "tolerance": 1,
+              "detail": null
+            },
+            {
+              "id": "safety.conflict_semantics",
+              "pass": true,
+              "measured": true,
+              "expected": true,
+              "tolerance": 0,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.complete_3d_error_deg",
+              "pass": true,
+              "measured": 0.042371137561,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "optical_ray.vertical_fov_fraction",
+              "pass": true,
+              "measured": 0.002118556878,
+              "expected": 0,
+              "tolerance": 0.005,
+              "detail": null
+            },
+            {
+              "id": "heading.target_authority",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.1,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.position",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.2,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.pan_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            },
+            {
+              "id": "staged_boundary.tilt_deg",
+              "pass": true,
+              "measured": 0,
+              "expected": 0,
+              "tolerance": 0.000001,
+              "detail": null
+            }
+          ],
+          "failures": []
+        }
+      ],
+      "regression_checks": []
+    }
+  }
+}
