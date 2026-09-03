@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "mission": "trajectory-arrival-hostile-oracle-20260902",
+  "production_sha": "6e71c5b39a3c15c656b77548f139e5cf44fb2bbf",
+  "candidate_refs": {
+    "production": "6e71c5b39a3c15c656b77548f139e5cf44fb2bbf",
+    "dirty_archive": "7aeda9dbd8b0c5db45cdfcfb9142a721ed357cf7",
+    "codex_chain": "54a63d2e65f0bb1b9f833e17a3c88acd1b5ad07e",
+    "wip_diagnostic": "d977eb34b1c8f3753bb184af2dfc876ff60eef57",
+    "review_evidence": "8439c88657e9a7c2dc2155a1aa8f1d19252ddbeb"
+  },
+  "motion_policy": {
+    "coherent_trajectory": true,
+    "dedupe_keyframes": true,
+    "source": "journey"
+  },
+  "primitive_cases": [
+    { "id": "equator-east", "center": [0, 0], "bearing_deg": 90, "distance_m": 1000000 },
+    { "id": "midlat-diagonal", "center": [45, 12], "bearing_deg": 37, "distance_m": 250000 },
+    { "id": "east-seam", "center": [45, 179.9], "bearing_deg": 90, "distance_m": 20000 },
+    { "id": "west-seam", "center": [45, -179.9], "bearing_deg": 270, "distance_m": 20000 },
+    { "id": "near-pole", "center": [89.9, 0], "bearing_deg": 90, "distance_m": 20000 },
+    { "id": "zero", "center": [60, 24], "bearing_deg": 123, "distance_m": 0 }
+  ],
+  "antimeridian_cases": [
+    {
+      "id": "fly-179-to-minus179",
+      "description": "hover over 45, 179 for 1 seconds then fly to 45, -179 for 10 seconds",
+      "expected_non_orbit_arc_deg": 2,
+      "kind": "fly_only"
+    },
+    {
+      "id": "fly-1799-to-minus1799",
+      "description": "hover over 45, 179.9 for 1 seconds then fly to 45, -179.9 for 10 seconds",
+      "expected_non_orbit_arc_deg": 0.2,
+      "kind": "fly_only"
+    },
+    {
+      "id": "fly-minus1799-to-1799",
+      "description": "hover over 45, -179.9 for 1 seconds then fly to 45, 179.9 for 10 seconds",
+      "expected_non_orbit_arc_deg": 0.2,
+      "kind": "fly_only"
+    },
+    {
+      "id": "fly-to-orbit-eastbound",
+      "description": "hover over 45, 170 for 2 seconds then fly to 45, -170 for 10 seconds then orbit 45, -170 once clockwise tilted 60 degrees for 20 seconds",
+      "expected_non_orbit_arc_deg": 20,
+      "kind": "fly_orbit"
+    },
+    {
+      "id": "zoom-to-orbit-eastbound",
+      "description": "hover over 45, 170 for 2 seconds then fly to 45, -170 for 10 seconds then zoom in on 45, -170 tilted 60 degrees for 3 seconds then orbit 45, -170 once clockwise tilted 60 degrees for 20 seconds",
+      "expected_non_orbit_arc_deg": 20,
+      "kind": "fly_zoom_orbit"
+    },
+    {
+      "id": "zoom-to-orbit-westbound",
+      "description": "hover over 45, -170 for 2 seconds then fly to 45, 170 for 10 seconds then zoom in on 45, 170 tilted 60 degrees for 3 seconds then orbit 45, 170 once clockwise tilted 60 degrees for 20 seconds",
+      "expected_non_orbit_arc_deg": 20,
+      "kind": "fly_zoom_orbit"
+    },
+    {
+      "id": "orbit-ring-seam",
+      "description": "orbit 45, 179.99 once clockwise tilted 60 degrees for 20 seconds",
+      "expected_non_orbit_arc_deg": 0,
+      "kind": "orbit_only"
+    },
+    {
+      "id": "orbit-to-travel-seam",
+      "description": "orbit 45, 179.99 once clockwise tilted 60 degrees for 20 seconds then fly to 45, -170 for 10 seconds",
+      "expected_non_orbit_arc_deg": 10.01,
+      "kind": "orbit_travel"
+    },
+    {
+      "id": "travel-hold-orbit",
+      "description": "hover over 45, 170 for 2 seconds then fly to 45, -170 for 10 seconds then hover over 45, -170 for 2 seconds then orbit 45, -170 once clockwise tilted 60 degrees for 20 seconds",
+      "expected_non_orbit_arc_deg": 20,
+      "kind": "travel_hold_orbit"
+    },
+    {
+      "id": "seeded-continuation",
+      "description": "orbit 45, -179.9 once clockwise tilted 60 degrees for 20 seconds",
+      "initial_camera": {
+        "latitude": 45.2,
+        "longitude": 179.9,
+        "altitude_m": 20000,
+        "pan_deg": 100,
+        "tilt_deg": 60
+      },
+      "expected_non_orbit_arc_deg": 0.2,
+      "kind": "continuation_orbit"
+    },
+    {
+      "id": "tokyo-los-angeles-orbit",
+      "description": "hover over Tokyo for 2 seconds then fly to Los Angeles for 20 seconds then orbit Los Angeles once clockwise tilted 60 degrees for 20 seconds",
+      "expected_non_orbit_arc_deg": 102.1,
+      "kind": "fly_orbit"
+    },
+    {
+      "id": "control-no-seam",
+      "description": "hover over 45, 10 for 2 seconds then fly to 45, 30 for 10 seconds then zoom in on 45, 30 tilted 60 degrees for 3 seconds then orbit 45, 30 once clockwise tilted 60 degrees for 20 seconds",
+      "expected_non_orbit_arc_deg": 20,
+      "kind": "control"
+    }
+  ],
+  "terrain_cases": [
+    { "id": "matterhorn", "subject": "Matterhorn", "start": "Zurich" },
+    { "id": "geirangerfjord", "subject": "Geirangerfjord", "start": "Oslo" },
+    { "id": "mount-fuji", "subject": "Mount Fuji", "start": "Tokyo" },
+    { "id": "grand-canyon", "subject": "Grand Canyon", "start": "Las Vegas" },
+    { "id": "yosemite", "subject": "Yosemite", "start": "San Francisco" }
+  ],
+  "diagnostic_cases": [
+    { "id": "landmark-60n", "scale": "landmark", "latitude": 60, "altitude_m": 600, "tilt_deg": 60 },
+    { "id": "terrain-46n", "scale": "terrain", "latitude": 46, "altitude_m": 6500, "tilt_deg": 74 },
+    { "id": "city-60n", "scale": "city", "latitude": 60, "altitude_m": 20000, "tilt_deg": 45 },
+    { "id": "region-60n", "scale": "region", "latitude": 60, "altitude_m": 300000, "tilt_deg": 30 },
+    { "id": "region-80n", "scale": "region", "latitude": 80, "altitude_m": 300000, "tilt_deg": 30 },
+    { "id": "country-60n", "scale": "country", "latitude": 60, "altitude_m": 1500000, "tilt_deg": 20 },
+    { "id": "polar-85n", "scale": "polar", "latitude": 85, "altitude_m": 20000, "tilt_deg": 60 },
+    { "id": "polar-89n", "scale": "polar", "latitude": 89, "altitude_m": 20000, "tilt_deg": 60 }
+  ],
+  "pure_travel_cases": [
+    { "id": "helsinki-stockholm", "description": "hover over Helsinki for 1 seconds then fly to Stockholm for 12 seconds", "subject": "Stockholm" },
+    { "id": "helsinki-stockholm-explicit-tilt", "description": "hover over Helsinki for 1 seconds then fly to Stockholm tilted 45 degrees for 12 seconds", "subject": "Stockholm" },
+    { "id": "helsinki-new-york", "description": "hover over Helsinki for 1 seconds then fly to New York for 20 seconds", "subject": "New York" },
+    { "id": "high-latitude", "description": "hover over 80, 10 for 1 seconds then fly to 80.5, 70 for 12 seconds", "subject": "80.5, 70" }
+  ],
+  "path_cases": [
+    { "id": "threshold-99km", "start": [60, 0], "bearing_deg": 45, "distance_m": 99000 },
+    { "id": "threshold-100km", "start": [60, 0], "bearing_deg": 45, "distance_m": 100000 },
+    { "id": "threshold-101km", "start": [60, 0], "bearing_deg": 45, "distance_m": 101000 },
+    { "id": "parallel-60n-1000km", "start": [60, 0], "end": [60, 17.98] },
+    { "id": "parallel-45n-5000km", "start": [45, 0], "end": [45, 63.6] },
+    { "id": "polar-parallel", "start": [89.9, 0], "end": [89.9, 180] }
+  ],
+  "authority_evidence": {
+    "settle_then_launch": {
+      "ref": "6e71c5b39a3c15c656b77548f139e5cf44fb2bbf",
+      "review": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/human-review.json",
+      "artifact": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-SETTLE-THEN-LAUNCH/earth-studio.esp"
+    },
+    "new_better": {
+      "ref": "54a63d2e65f0bb1b9f833e17a3c88acd1b5ad07e",
+      "review": "package-runs/2026-08-25-dirn17-smooth-calm-byte-review/review-session.json",
+      "contract": "package-runs/2026-08-25-dirn17-smooth-calm-byte-review/accepted-contract.json",
+      "artifact": "package-runs/2026-08-25-dirn17-smooth-calm-byte-review/projects/NEW-SMOOTH-CALM-DIRN17/earth-studio.esp",
+      "old_artifact": "package-runs/2026-08-25-dirn17-smooth-calm-byte-review/projects/OLD-LOCKED-DIRN17/earth-studio.esp",
+      "semantic_diff": "package-runs/2026-08-25-dirn17-smooth-calm-byte-review/semantic-diff.json"
+    },
+    "terrain_review": {
+      "ref": "54a63d2e65f0bb1b9f833e17a3c88acd1b5ad07e",
+      "manifest": "package-runs/2026-08-25-earth-studio-terrain-flyto-zoomin-boundary/manifest.json",
+      "matterhorn_artifact": "package-runs/2026-08-25-earth-studio-terrain-flyto-zoomin-boundary/projects/matterhorn/earth-studio/earth-studio.esp"
+    },
+    "terrain_canary": {
+      "ref": "6e71c5b39a3c15c656b77548f139e5cf44fb2bbf",
+      "plan": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/shot-plan.json",
+      "manifest": "package-runs/2026-08-19-earth-studio-director-acceptance/canary-manifest.json"
+    }
+  }
+}

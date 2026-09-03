@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "oracle_id": "trajectory-arrival-hostile-oracle-20260902",
+  "authority": "independent test/probe/documentation oracle",
+  "production_base": "6e71c5b39a3c15c656b77548f139e5cf44fb2bbf",
+  "production_files_modified": false,
+  "repair_implemented": false,
+  "preserved_branch_adopted": false,
+  "repair_inspected_before_freeze": false,
+  "command": "node oracles/trajectory-arrival-hostile/run.js --write",
+  "expected_exit_on_production": 1,
+  "expected_result_file": "oracles/trajectory-arrival-hostile/results-main.json",
+  "groups": {
+    "A_geometric_primitives": {
+      "mode": "pass_fail",
+      "purpose": "Compare forward-geodesic endpoints against independent spherical math and identify actual endpoint constructors."
+    },
+    "B_antimeridian": {
+      "mode": "pass_fail",
+      "purpose": "Reject non-serialization longitude intervals that interpolate more than 180 degrees."
+    },
+    "C_terrain_complete_pose": {
+      "mode": "pass_fail_without_altitude_owner",
+      "purpose": "Reject a boundary whose camera position is built from one altitude/tilt pose while the emitted camera carries another."
+    },
+    "D_diagnostic_truth": {
+      "mode": "pass_fail",
+      "purpose": "Reject a planar diagnostic that creates at least one degree of false error on a spherically correct camera."
+    },
+    "E_pure_travel_semantic_observation": {
+      "mode": "observation_only",
+      "purpose": "Measure over-destination and offset-look-at arrival semantics without selecting one."
+    },
+    "F_DIRN17_evidence_package": {
+      "mode": "observation_only",
+      "purpose": "Freeze hashes, verdict sources, shared behavior, and changed dimensions without choosing a byte contract."
+    },
+    "G_canary_freshness": {
+      "mode": "pass_fail",
+      "purpose": "Detect when a frozen historical fixture is incorrectly treated as coverage of fresh director output."
+    }
+  },
+  "deterministic_invariants": [
+    "Longitude used for motion is a continuous quantity modulo 360 degrees; wrapping is an external serialization representation.",
+    "A staged boundary cannot combine a camera position constructed from one altitude/tilt pair with a different emitted altitude/tilt pair.",
+    "A diagnostic must not create threshold-crossing error on a camera generated from its authoritative spherical geometry.",
+    "A current-output canary must exercise current generator output; frozen historical approval must be labeled separately."
+  ],
+  "human_authority_exclusions": [
+    "No altitude owner is selected.",
+    "No pure-travel arrival semantic is selected.",
+    "No DIRN17 byte contract is selected.",
+    "No target-elevation/framing policy is selected."
+  ],
+  "independence_statement": "TRAJECTORY / ARRIVAL REPAIR INSPECTED BEFORE ORACLE FREEZE: NO"
+}
