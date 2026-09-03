@@ -9,7 +9,6 @@
         "authoritative_heading_tau_pass",
         "planner_authored_topology_and_easing",
         "no_serializer_created_longitude_scaffolding",
-        "continuous_unwrapped_longitude_present",
         "command_revolutions_preserved",
         "finite_pole_behavior",
         "acquisition_continuity",
@@ -51,6 +50,10 @@
         "seeded_continuation"
       ],
       "diagnostic_suppression_cases": [],
+      "representation_observation": {
+        "acceptance_authority": "physical equivalence, not longitude scalar representation",
+        "all_nonzero_cases_use_unwrapped_longitude": false
+      },
       "acquisition_representative": {
         "largest_step": {
           "delta_deg": -710.2173913043479,
@@ -76,7 +79,6 @@
         "every_rendered_frame_within_0_2m",
         "planner_authored_topology_and_easing",
         "no_serializer_created_longitude_scaffolding",
-        "continuous_unwrapped_longitude_present",
         "command_revolutions_preserved",
         "finite_pole_behavior",
         "acquisition_continuity",
@@ -117,6 +119,10 @@
         "seeded_continuation"
       ],
       "diagnostic_suppression_cases": [],
+      "representation_observation": {
+        "acceptance_authority": "physical equivalence, not longitude scalar representation",
+        "all_nonzero_cases_use_unwrapped_longitude": false
+      },
       "acquisition_representative": {
         "largest_step": {
           "delta_deg": 10.466570645882939,
@@ -143,7 +149,6 @@
         "planner_authored_topology_and_easing",
         "no_serializer_created_pan_scaffolding",
         "no_serializer_created_longitude_scaffolding",
-        "continuous_unwrapped_longitude_present",
         "command_revolutions_preserved",
         "finite_pole_behavior",
         "acquisition_continuity",
@@ -206,6 +211,10 @@
         "acquisition_orbit",
         "seeded_continuation"
       ],
+      "representation_observation": {
+        "acceptance_authority": "physical equivalence, not longitude scalar representation",
+        "all_nonzero_cases_use_unwrapped_longitude": false
+      },
       "acquisition_representative": {
         "largest_step": {
           "delta_deg": 10.466570645882939,
@@ -231,7 +240,6 @@
         "every_rendered_frame_within_0_2m",
         "planner_authored_topology_and_easing",
         "no_serializer_created_longitude_scaffolding",
-        "continuous_unwrapped_longitude_present",
         "zero_radius_spin_preserved",
         "finite_pole_behavior",
         "acquisition_continuity",
@@ -253,6 +261,10 @@
         "seam_centered_cw"
       ],
       "diagnostic_suppression_cases": [],
+      "representation_observation": {
+        "acceptance_authority": "physical equivalence, not longitude scalar representation",
+        "all_nonzero_cases_use_unwrapped_longitude": false
+      },
       "acquisition_representative": {
         "largest_step": {
           "delta_deg": 10.466570645882939,
@@ -286,6 +298,10 @@
       "pan_scaffolding_cases": [],
       "longitude_scaffolding_cases": [],
       "diagnostic_suppression_cases": [],
+      "representation_observation": {
+        "acceptance_authority": "physical equivalence, not longitude scalar representation",
+        "all_nonzero_cases_use_unwrapped_longitude": true
+      },
       "acquisition_representative": {
         "largest_step": {
           "delta_deg": 10.466570645882939,

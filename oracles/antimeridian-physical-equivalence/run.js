@@ -117,7 +117,6 @@ function evaluate(repo, targetRef) {
       planner_authored_topology_and_easing: cases.every((row) => row.planner_authored_topology_pass),
       no_serializer_created_pan_scaffolding: cases.every((row) => row.pan_key_count === row.reference_pan_key_count),
       no_serializer_created_longitude_scaffolding: cases.every((row) => row.longitude_key_count === row.reference_longitude_key_count),
-      continuous_unwrapped_longitude_present: shiftedNonzero.every((row) => row.has_unwrapped_longitude),
       command_revolutions_preserved: cases.every((row) => row.revolution_pass),
       zero_radius_spin_preserved: byCategory('zero_radius').length === 1 && byCategory('zero_radius').every((row) => row.revolution_pass),
       finite_pole_behavior: byCategory('pole_enclosing').length === 1 && byCategory('pole_enclosing').every((row) => row.all_finite && row.pass),
@@ -145,6 +144,10 @@ function evaluate(repo, targetRef) {
         rendered_frame_count: cases.reduce((sum, row) => sum + row.total_frames, 0),
         position_tolerance_m: corpus.precision.physical_equivalence_m,
         heading_tau: 'atan2(0.2m, authoritative_state_radius_m) + 0.000001deg',
+      },
+      representation_observation: {
+        all_nonzero_cases_use_unwrapped_longitude: shiftedNonzero.every((row) => row.has_unwrapped_longitude),
+        acceptance_authority: 'physical equivalence, not longitude scalar representation',
       },
       cases,
       acquisition_representative: acquisitionRepresentative,

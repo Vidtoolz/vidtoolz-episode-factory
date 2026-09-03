@@ -15,7 +15,7 @@ This frozen oracle replaces the historical wrapped-seam model. It treats longitu
 - Adding 360° to an incoming pan representative must not move the ring. This guards the architectural rule `PAN NO LONGER DEFINES RING POSITION`.
 - Initial and final camera coordinates exposed through shot-plan/continuation APIs remain canonically wrapped even though `.esp` longitude may be continuous and unwrapped.
 
-The positive control is not a repair candidate. It is a test adapter: it takes the independently planned non-seam twin and emits the longitude-translated values unchanged, including values outside ±180°. This establishes that the comparator accepts the authorized physical representation without changing planner-authored topology or easing. It contains no serializer implementation.
+The positive control is not a repair candidate. It is a test adapter: it takes the independently planned non-seam twin and emits the longitude-translated values unchanged, including values outside ±180°. This establishes that the comparator accepts the authorized physical representation without changing planner-authored topology or easing. It contains no serializer implementation. Unwrapped-longitude presence is recorded as an observation, not an acceptance gate: another representation can pass if it proves the same physical contract.
 
 `fixtures/automated/` freezes every continuous control and translated twin. `fixtures/fixture-index.json` freezes their hashes. `real-import-evidence.json` separately records the completed authenticated Earth Studio observations and states which hostile cases remain repository-only fixtures. The two evidence classes are deliberately not conflated.
 

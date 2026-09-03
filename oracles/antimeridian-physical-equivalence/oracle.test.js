@@ -67,6 +67,8 @@ assert.equal(compliant.public_coordinates.pass, true);
 assert.equal(compliant.acceptance.camera_quality_source_unchanged, true);
 assert.ok(compliant.cases.every((row) => row.max_physical_delta_m <= corpus.precision.physical_equivalence_m));
 assert.ok(compliant.cases.filter((row) => !row.categories.includes('zero_radius')).every((row) => row.has_unwrapped_longitude));
+assert.equal(compliant.representation_observation.acceptance_authority,
+  'physical equivalence, not longitude scalar representation');
 assert.deepEqual(compliant.cases.map((row) => row.expected_pan_sweep_deg),
   [360, -360, 360, -360, 180, 720, -720, 360, 360, 0, 360, 360, 360, 360, 360]);
 
