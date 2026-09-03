@@ -80,14 +80,29 @@ function referenceRadius(altitudeM, baselineTiltDeg = LEGACY_TILT_DEG) {
 }
 
 // Preserve the current 72-degree orbit footprint while changing the view
-// angle, exactly as the authorized visual calibration did. A terrain floor may
-// make the desired angle infeasible at that radius; in that case reduce tilt
-// to the highest legal angle and record the clamp.
+// angle, exactly as the authorized visual calibration did.
+//
+// COMPLETE-POSE AUTHORITY. The footprint and the rake are the composition; the
+// camera altitude is DERIVED from them and from the focal point's own terrain
+// elevation, never inherited:
+//
+//   A = z_t + r / tan(theta)
+//
+// Leaving z_t out of that solve is what aimed a 74-degree Matterhorn orbit at
+// sea level under the summit: the ground footprint was right and the pitch was
+// right, but the camera sat 4,478 m too low, so the optical centre missed the
+// declared focal point by about 10 degrees of a 20-degree vertical field.
+//
+// A terrain floor may make the preferred angle infeasible at that radius; in
+// that case the target and the footprint are held, the camera altitude is
+// clamped to the floor, and the rake is reduced to the highest angle that is
+// still legal ABOVE THE TARGET — atan2(r, floor - z_t), not atan2(r, floor).
 function terrainTiltDecision({
   terrain_morphology,
   morphology_source = null,
   altitude_m = null,
   min_altitude_m = null,
+  target_elevation_m = null,
   baseline_tilt_deg = LEGACY_TILT_DEG,
 } = {}) {
   const classified = classifyMorphology(terrain_morphology);
@@ -96,23 +111,27 @@ function terrainTiltDecision({
   const radius = referenceRadius(altitude_m, baseline_tilt_deg);
   const floor = typeof min_altitude_m === "number" && Number.isFinite(min_altitude_m)
     ? Math.max(0, min_altitude_m) : null;
+  const elevationDeclared = typeof target_elevation_m === "number"
+    && Number.isFinite(target_elevation_m);
+  const targetElevation = elevationDeclared ? target_elevation_m : 0;
   let finalTilt = requestedTilt;
-  let altitude = radius === null ? null : radius / Math.tan(radians(finalTilt));
+  let altitude = radius === null ? null : targetElevation + radius / Math.tan(radians(finalTilt));
   let clamp = null;
   if (radius !== null && floor !== null && altitude < floor) {
-    const legalTilt = degrees(Math.atan2(radius, floor));
+    const legalTilt = degrees(Math.atan2(radius, floor - targetElevation));
     // Journey descriptions preserve two decimal places. Quantize DOWN so the
     // serialized angle remains on the safe side of the exact geometric limit,
     // then recompute altitude to preserve the accepted orbit footprint.
     const serializedSafeTilt = Math.floor((legalTilt + 1e-9) * 100) / 100;
     finalTilt = Math.min(requestedTilt, serializedSafeTilt);
-    altitude = radius / Math.tan(radians(finalTilt));
+    altitude = targetElevation + radius / Math.tan(radians(finalTilt));
     clamp = {
       code: "TERRAIN_SAFETY_FLOOR",
       requested_tilt_deg: requestedTilt,
       highest_legal_tilt_deg: round(legalTilt),
       applied_tilt_deg: round(finalTilt),
       min_altitude_m: floor,
+      target_elevation_m: targetElevation,
       reason: "the preferred rake at the preserved orbit radius would put the camera below the terrain safety floor",
     };
   }
@@ -127,6 +146,11 @@ function terrainTiltDecision({
     baseline_tilt_deg,
     altitude_m: altitude === null ? null : round(altitude),
     reference_orbit_radius_m: radius === null ? null : round(radius),
+    // The declared 3-D focal point this pose was solved against. An undeclared
+    // elevation is reported as such rather than silently read as sea level.
+    target_elevation_m: targetElevation,
+    target_elevation_declared: elevationDeclared,
+    derived_altitude_formula: "target_elevation_m + reference_orbit_radius_m / tan(final_tilt_deg)",
     treatment: policy.treatment,
     reason: policy.reason,
     confidence: policy.confidence,
@@ -136,12 +160,23 @@ function terrainTiltDecision({
   };
 }
 
+// The complete-pose camera altitude for a declared focal point: A = z_t + r/tan(theta).
+// Exposed so the planner solves the same equation the policy does instead of
+// re-deriving it, and so the two can never drift apart.
+function completePoseAltitudeM(targetElevationM, radiusM, tiltDeg) {
+  const tangent = Math.tan(radians(tiltDeg));
+  if (!Number.isFinite(radiusM) || !(tangent > 1e-12)) return null;
+  const elevation = Number.isFinite(Number(targetElevationM)) ? Number(targetElevationM) : 0;
+  return elevation + Number(radiusM) / tangent;
+}
+
 const api = {
   POLICY_VERSION,
   LEGACY_TILT_DEG,
   MORPHOLOGIES,
   TILT_POLICY,
   classifyMorphology,
+  completePoseAltitudeM,
   referenceRadius,
   terrainTiltDecision,
 };

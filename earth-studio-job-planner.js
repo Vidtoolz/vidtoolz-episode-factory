@@ -31,6 +31,11 @@
   // degrees from straight-down (0 = top-down map view, ~70 = horizon).
   const DEFAULT_DURATION_S = { fly_to: 4, hover: 3, orbit: 10, zoom_in: 3, zoom_out: 4 };
   const DEFAULT_TILT_DEG = { fly_to: 45, hover: 50, orbit: 60, zoom_in: 45, zoom_out: 35 };
+  // The visual calibration that froze the current orbit footprints authored
+  // them at 72 degrees (LEGACY_TILT_DEG in earth-studio-terrain-morphology.js).
+  // A terrain focal point's calibrated ground footprint is its gazetteer camera
+  // altitude read at that baseline, and it survives every later rake change.
+  const LEGACY_ORBIT_BASELINE_TILT_DEG = 72;
   // Fraction of a move that ends on an orbit ring during which the camera tips
   // from its travelling angle into the orbit's angle. Concentrating the tip near
   // the ring entry keeps the earlier part of the move a single clean intention.
@@ -270,7 +275,7 @@
     // is a multi-country geographic subject. Its physical north/south extent
     // must drive AUTO framing or a vertical shot only shows central Sweden.
     "scandinavia": { name: "Scandinavia", latitude: 63, longitude: 15, scale: "region", frame_span_m: 1600000 },
-    "the alps": { name: "The Alps", latitude: 46.6, longitude: 10.2, scale: "region", terrain_morphology: "mountain_range", morphology_source: "curated_gazetteer" },
+    "the alps": { name: "The Alps", latitude: 46.6, longitude: 10.2, scale: "region", terrain_morphology: "mountain_range", morphology_source: "curated_gazetteer", target_elevation_m: 2500, target_anchor_kind: "RANGE_REPRESENTATIVE_SURFACE", target_anchor_source: "DECLARED_TERRAIN_FOCAL_POINT", target_anchor_confidence: "LOW" },
     "the sahara": { name: "The Sahara", latitude: 23.4, longitude: 12.6, scale: "region" },
     "the himalayas": { name: "The Himalayas", latitude: 29.3, longitude: 84.5, scale: "region" },
     "the amazon": { name: "The Amazon", latitude: -4.4, longitude: -61.5, scale: "region" },
@@ -319,7 +324,7 @@
     "bergen": { name: "Bergen", latitude: 60.3913, longitude: 5.3221 },
     "trondheim": { name: "Trondheim", latitude: 63.4305, longitude: 10.3951 },
     "lofoten": { name: "Lofoten", latitude: 68.2094, longitude: 13.6, altitude_m: 3000 },
-    "geirangerfjord": { name: "Geirangerfjord", latitude: 62.1049, longitude: 7.2054, altitude_m: 2500, min_altitude_m: 1000, terrain_morphology: "fjord_channel", morphology_source: "curated_gazetteer" },
+    "geirangerfjord": { name: "Geirangerfjord", latitude: 62.1049, longitude: 7.2054, altitude_m: 2500, min_altitude_m: 1000, terrain_morphology: "fjord_channel", morphology_source: "curated_gazetteer", target_elevation_m: 0, target_anchor_kind: "WATERLINE", target_anchor_source: "DECLARED_TERRAIN_FOCAL_POINT", target_anchor_confidence: "HIGH" },
     "copenhagen": { name: "Copenhagen", latitude: 55.6761, longitude: 12.5683 },
     "reykjavik": { name: "Reykjavik", latitude: 64.1466, longitude: -21.9426 },
     "tallinn": { name: "Tallinn", latitude: 59.437, longitude: 24.7536 },
@@ -361,8 +366,8 @@
     "st petersburg": { name: "St. Petersburg", latitude: 59.9311, longitude: 30.3609 },
     "kyiv": { name: "Kyiv", latitude: 50.4501, longitude: 30.5234 },
     "santorini": { name: "Santorini", latitude: 36.3932, longitude: 25.4615, altitude_m: 3000 },
-    "matterhorn": { name: "Matterhorn", latitude: 45.9766, longitude: 7.6585, altitude_m: 6500, min_altitude_m: 5500, terrain_morphology: "sharp_peak", morphology_source: "curated_gazetteer" },
-    "mont blanc": { name: "Mont Blanc", latitude: 45.8326, longitude: 6.8652, altitude_m: 7000, min_altitude_m: 6000, terrain_morphology: "sharp_peak", morphology_source: "curated_gazetteer" },
+    "matterhorn": { name: "Matterhorn", latitude: 45.9766, longitude: 7.6585, altitude_m: 6500, min_altitude_m: 5500, terrain_morphology: "sharp_peak", morphology_source: "curated_gazetteer", target_elevation_m: 4478, target_anchor_kind: "SUMMIT", target_anchor_source: "DECLARED_TERRAIN_FOCAL_POINT", target_anchor_confidence: "HIGH" },
+    "mont blanc": { name: "Mont Blanc", latitude: 45.8326, longitude: 6.8652, altitude_m: 7000, min_altitude_m: 6000, terrain_morphology: "sharp_peak", morphology_source: "curated_gazetteer", target_elevation_m: 4806, target_anchor_kind: "SUMMIT", target_anchor_source: "DECLARED_TERRAIN_FOCAL_POINT", target_anchor_confidence: "HIGH" },
     "neuschwanstein castle": { name: "Neuschwanstein Castle", latitude: 47.5576, longitude: 10.7498, altitude_m: 1800, min_altitude_m: 1400 },
     "eiffel tower": { name: "Eiffel Tower", latitude: 48.8584, longitude: 2.2945, altitude_m: 1000 },
     "louvre": { name: "Louvre", latitude: 48.8606, longitude: 2.3376, altitude_m: 700 },
@@ -385,7 +390,7 @@
     "johannesburg": { name: "Johannesburg", latitude: -26.2041, longitude: 28.0473, min_altitude_m: 2400 },
     "nairobi": { name: "Nairobi", latitude: -1.2921, longitude: 36.8219, min_altitude_m: 2500 },
     "lagos": { name: "Lagos", latitude: 6.5244, longitude: 3.3792 },
-    "kilimanjaro": { name: "Kilimanjaro", latitude: -3.0674, longitude: 37.3556, altitude_m: 7000, min_altitude_m: 6300, terrain_morphology: "volcanic_cone", morphology_source: "curated_gazetteer" },
+    "kilimanjaro": { name: "Kilimanjaro", latitude: -3.0674, longitude: 37.3556, altitude_m: 7000, min_altitude_m: 6300, terrain_morphology: "volcanic_cone", morphology_source: "curated_gazetteer", target_elevation_m: 5895, target_anchor_kind: "SUMMIT", target_anchor_source: "DECLARED_TERRAIN_FOCAL_POINT", target_anchor_confidence: "HIGH" },
     "victoria falls": { name: "Victoria Falls", latitude: -17.9243, longitude: 25.8572, altitude_m: 1800, min_altitude_m: 1200 },
     "dubai": { name: "Dubai", latitude: 25.2048, longitude: 55.2708 },
     "burj khalifa": { name: "Burj Khalifa", latitude: 25.1972, longitude: 55.2744, altitude_m: 1100 },
@@ -402,7 +407,7 @@
     "bangalore": { name: "Bangalore", latitude: 12.9716, longitude: 77.5946, min_altitude_m: 1700 },
     "taj mahal": { name: "Taj Mahal", latitude: 27.1751, longitude: 78.0421, altitude_m: 800 },
     "kathmandu": { name: "Kathmandu", latitude: 27.7172, longitude: 85.324, min_altitude_m: 2200 },
-    "mount everest": { name: "Mount Everest", latitude: 27.9881, longitude: 86.925, altitude_m: 10000, min_altitude_m: 9200, terrain_morphology: "sharp_peak", morphology_source: "curated_gazetteer" },
+    "mount everest": { name: "Mount Everest", latitude: 27.9881, longitude: 86.925, altitude_m: 10000, min_altitude_m: 9200, terrain_morphology: "sharp_peak", morphology_source: "curated_gazetteer", target_elevation_m: 8849, target_anchor_kind: "SUMMIT", target_anchor_source: "DECLARED_TERRAIN_FOCAL_POINT", target_anchor_confidence: "HIGH" },
     "bangkok": { name: "Bangkok", latitude: 13.7563, longitude: 100.5018 },
     "hanoi": { name: "Hanoi", latitude: 21.0278, longitude: 105.8342 },
     "ho chi minh city": { name: "Ho Chi Minh City", latitude: 10.8231, longitude: 106.6297 },
@@ -424,7 +429,7 @@
     "shibuya crossing": { name: "Shibuya Crossing", latitude: 35.6595, longitude: 139.7005, altitude_m: 500 },
     "osaka": { name: "Osaka", latitude: 34.6937, longitude: 135.5023 },
     "kyoto": { name: "Kyoto", latitude: 35.0116, longitude: 135.7681 },
-    "mount fuji": { name: "Mount Fuji", latitude: 35.3606, longitude: 138.7274, altitude_m: 5500, min_altitude_m: 4300, terrain_morphology: "volcanic_cone", morphology_source: "curated_gazetteer" },
+    "mount fuji": { name: "Mount Fuji", latitude: 35.3606, longitude: 138.7274, altitude_m: 5500, min_altitude_m: 4300, terrain_morphology: "volcanic_cone", morphology_source: "curated_gazetteer", target_elevation_m: 3776, target_anchor_kind: "SUMMIT", target_anchor_source: "DECLARED_TERRAIN_FOCAL_POINT", target_anchor_confidence: "HIGH" },
     "angkor wat": { name: "Angkor Wat", latitude: 13.4125, longitude: 103.867, altitude_m: 1000 },
     // Oceania
     "sydney": { name: "Sydney", latitude: -33.8688, longitude: 151.2093 },
@@ -474,9 +479,9 @@
     "new orleans": { name: "New Orleans", latitude: 29.9511, longitude: -90.0715 },
     "honolulu": { name: "Honolulu", latitude: 21.3069, longitude: -157.8583 },
     "anchorage": { name: "Anchorage", latitude: 61.2181, longitude: -149.9003 },
-    "grand canyon": { name: "Grand Canyon", latitude: 36.0544, longitude: -112.1401, altitude_m: 4000, min_altitude_m: 2700, terrain_morphology: "canyon", morphology_source: "curated_gazetteer" },
+    "grand canyon": { name: "Grand Canyon", latitude: 36.0544, longitude: -112.1401, altitude_m: 4000, min_altitude_m: 2700, terrain_morphology: "canyon", morphology_source: "curated_gazetteer", target_elevation_m: 1200, target_anchor_kind: "CANYON_INTERIOR_POI_SURFACE", target_anchor_source: "DECLARED_TERRAIN_FOCAL_POINT", target_anchor_confidence: "MEDIUM" },
     "niagara falls": { name: "Niagara Falls", latitude: 43.0962, longitude: -79.0377, altitude_m: 1200 },
-    "yosemite": { name: "Yosemite", latitude: 37.8651, longitude: -119.5383, altitude_m: 4500, min_altitude_m: 2800, terrain_morphology: "valley", morphology_source: "curated_gazetteer" },
+    "yosemite": { name: "Yosemite", latitude: 37.8651, longitude: -119.5383, altitude_m: 4500, min_altitude_m: 2800, terrain_morphology: "valley", morphology_source: "curated_gazetteer", target_elevation_m: 1200, target_anchor_kind: "VALLEY_FLOOR", target_anchor_source: "DECLARED_TERRAIN_FOCAL_POINT", target_anchor_confidence: "MEDIUM" },
     "yellowstone": { name: "Yellowstone", latitude: 44.428, longitude: -110.5885, altitude_m: 5000, min_altitude_m: 3200 },
     "monument valley": { name: "Monument Valley", latitude: 36.998, longitude: -110.0985, altitude_m: 3200, min_altitude_m: 2400 },
     "mount rushmore": { name: "Mount Rushmore", latitude: 43.8791, longitude: -103.4591, altitude_m: 2200, min_altitude_m: 1800 },
@@ -1238,6 +1243,94 @@
       notes.push(`segment ${seg.segment_id}: endpoint set to segment ${orbit.segment_id}'s orbit ring entry${through} (same target — the move lands on the ring the orbit starts from).`);
     }
 
+    // TERRAIN COMPLETE POSE: a declared focal point owns its own 3-D anchor.
+    //
+    // When an orbit around a declared terrain focal point is entered by a move
+    // that is ALREADY HOLDING THE ORBIT'S RAKE, the incoming terminal camera
+    // and the orbit's opening camera are not two poses meeting at a boundary —
+    // they are one pose, held across the handoff. That pose has no incoming
+    // altitude to inherit, so it is solved outright:
+    //
+    //   r = gazetteer_altitude * tan(72 deg)      the calibrated footprint
+    //   A = target_elevation_m + r / tan(rake)    the complete pose
+    //
+    // Leaving the focal point's OWN elevation out of that solve is what aimed a
+    // 74-degree Matterhorn orbit at sea level UNDER the summit: the footprint
+    // was right and the pitch was right, but the camera sat 4,478 m too low, so
+    // the optical centre missed the declared summit by about 10 degrees of a
+    // 20-degree vertical field — half the frame.
+    //
+    // An entry that approaches at a DIFFERENT pitch is carrying its own framing.
+    // Its boundary with the orbit is a real transition rather than a shared
+    // pose, nothing is unified across it, and the authored orbit altitude stays
+    // the operator's camera altitude exactly as before.
+    for (let i = 0; i < segments.length; i += 1) {
+      const orbit = segments[i];
+      if (orbit.action !== "orbit" || orbit.duration_seconds <= 0) continue;
+      const elevation = declaredFocalElevationM(orbit.location);
+      if (elevation === null) continue;
+      const stagingIndex = segments.findIndex((s) => s.ends_at_orbit_entry === orbit.segment_id);
+      if (stagingIndex < 0 || stagingIndex >= i) continue;
+      const staging = segments[stagingIndex];
+      const rake = Number(orbit.tilt_deg);
+      if (!(rake > 0)) continue;
+      if (Math.abs(Number(staging.tilt_deg || 0) - rake) > 0.5) continue;
+      // The calibrated footprint belongs to the FOCAL POINT, not to whatever
+      // camera altitude the description happens to carry: a description is a
+      // lossy serialization of a pose, and re-reading its rounded altitude as
+      // authority would re-inherit the error the round trip introduced.
+      const calibrated = Number(orbit.location.altitude_m);
+      const footprint = Number.isFinite(calibrated) && calibrated > 0
+        ? calibrated * Math.tan(toRadians(LEGACY_ORBIT_BASELINE_TILT_DEG))
+        : Number(orbit.altitude_m) * Math.tan(toRadians(rake));
+      const pose = terrainCompletePose(footprint, elevation, rake,
+        (orbit.location && orbit.location.min_altitude_m) || 0);
+      if (!pose) continue;
+      const inheritedAltitudeM = orbit.altitude_m;
+      const inheritedEntryAltitudeM = staging.altitude_m;
+      orbit.altitude_m = pose.camera_altitude_m;
+      orbit.altitude_source = "terrain_complete_pose";
+      orbit.tilt_deg = pose.applied_tilt_deg;
+      orbit.orbit_ring_radius_m = pose.ring_radius_m;
+      orbit.target_elevation_m = pose.target_elevation_m;
+      orbit.terrain_policy = {
+        rule: "terrain_complete_pose",
+        target_elevation_m: pose.target_elevation_m,
+        target_anchor_kind: orbit.location.target_anchor_kind || null,
+        target_anchor_source: orbit.location.target_anchor_source,
+        target_anchor_confidence: orbit.location.target_anchor_confidence || null,
+        requested_tilt_deg: pose.requested_tilt_deg,
+        applied_tilt_deg: pose.applied_tilt_deg,
+        reference_orbit_radius_m: pose.reference_orbit_radius_m,
+        orbit_ring_radius_m: pose.ring_radius_m,
+        derived_camera_altitude_m: pose.camera_altitude_m,
+        unclamped_camera_altitude_m: pose.unclamped_camera_altitude_m,
+        min_altitude_m: pose.min_altitude_m,
+        derived_altitude_formula: "target_elevation_m + reference_orbit_radius_m / tan(applied_tilt_deg)",
+        // Retained so the discarded authority stays visible as evidence: these
+        // are what the pose would have INHERITED, and inheriting them is the
+        // defect. They are provenance, never inputs.
+        inherited_orbit_altitude_m: inheritedAltitudeM,
+        inherited_entry_altitude_m: inheritedEntryAltitudeM,
+        safety_clamp: pose.safety_clamped ? {
+          code: "TERRAIN_SAFETY_FLOOR",
+          requested_tilt_deg: pose.requested_tilt_deg,
+          applied_tilt_deg: pose.applied_tilt_deg,
+          min_altitude_m: pose.min_altitude_m,
+          target_elevation_m: pose.target_elevation_m,
+          reason: "the preferred rake at the preserved footprint would put the camera below the terrain safety floor",
+        } : null,
+      };
+      // The handoff carries the SAME pose, so everything from the staging move
+      // to the orbit ends on it — including a held segment staged through.
+      for (let j = stagingIndex; j < i; j += 1) {
+        segments[j].altitude_m = pose.camera_altitude_m;
+        segments[j].altitude_source = "terrain_complete_pose_entry";
+        segments[j].tilt_deg = pose.applied_tilt_deg;
+      }
+      notes.push(`segment ${orbit.segment_id}: terrain complete pose — ${orbit.location.name} declares its focal anchor at ${pose.target_elevation_m} m (${orbit.location.target_anchor_kind || "declared"}), so the camera altitude is derived as ${pose.target_elevation_m} + ${Math.round(pose.reference_orbit_radius_m)}/tan(${pose.applied_tilt_deg}°) = ${pose.camera_altitude_m} m instead of inheriting ${inheritedAltitudeM} m; segment ${staging.segment_id} now ends on that pose.`);
+    }
+
     // OPENING-HOLD STAGING: the shot's first movement is a hover whose next
     // movement orbits the SAME target at the SAME altitude and tilt. That is the
     // directorial layer saying "establish from where the orbit begins", so the
@@ -1845,7 +1938,7 @@ This checklist is technical planning support only. It is not creative approval, 
       state.altitude = clampAltitude(Math.min(DEFAULT_ALTITUDE_M, Math.max(600, endAltitude / 3)), minAlt);
     } else if (segment.action === "orbit") {
       // Begin already on the orbit circle, facing the target.
-      const radius = orbitRadiusMeters(endAltitude, tilt);
+      const radius = orbitRingRadiusMeters(segment, endAltitude, tilt);
       const start = offsetPoint(location, 0, radius);
       state.latitude = start.latitude;
       state.longitude = start.longitude;
@@ -1868,10 +1961,80 @@ This checklist is technical planning support only. It is not creative approval, 
   // A tilted camera at altitude A looking at the target sits roughly
   // A*tan(tilt) away on the ground. Top-down (tilt 0) degenerates to a
   // spin-in-place, which is exactly the top-down orbit look.
+  //
+  // That reads A against the ELLIPSOID, so it is only the ring an orbit rides
+  // when the thing being looked at is at sea level. A declared terrain focal
+  // point is not: see terrainCompletePose and orbitRingRadiusMeters.
   function orbitRadiusMeters(altitude, tiltDeg) {
     const safeAltitude = Number.isFinite(Number(altitude)) ? Math.max(0, Number(altitude)) : 0;
     const tilt = Math.min(Math.max(Number(tiltDeg) || 0, 0), 80);
     return Math.min(safeAltitude * Math.tan(toRadians(tilt)), 80000);
+  }
+
+  // The ring an orbit actually rides. A terrain complete pose carries its own
+  // calibrated footprint, measured from the FOCAL POINT rather than from the
+  // ellipsoid; every other orbit keeps the altitude*tan(tilt) look unchanged.
+  function orbitRingRadiusMeters(segment, altitude, tiltDeg) {
+    const declared = segment ? Number(segment.orbit_ring_radius_m) : NaN;
+    if (Number.isFinite(declared) && declared >= 0) return Math.min(declared, 80000);
+    return orbitRadiusMeters(altitude, tiltDeg);
+  }
+
+  // A location that declares its own 3-D anchor: latitude, longitude AND the
+  // terrain elevation the camera is supposed to be looking AT. Anything else
+  // (a bare gazetteer entry, a raw lat/lng) has no declared elevation and is
+  // still read at sea level, exactly as before.
+  function declaredFocalElevationM(location) {
+    if (!location || location.target_anchor_source !== "DECLARED_TERRAIN_FOCAL_POINT") return null;
+    const elevation = Number(location.target_elevation_m);
+    return Number.isFinite(elevation) ? elevation : null;
+  }
+
+  // COMPLETE POSE. Authority is ordered focal point -> calibrated footprint ->
+  // rake, and the camera altitude is the last thing solved, never inherited:
+  //
+  //   A = target_elevation_m + r / tan(rake)
+  //
+  // `min_altitude_m` is a SAFETY constraint, not target authority. When the
+  // preferred rake at the preserved footprint would put the camera below the
+  // floor, the target and the footprint are held, the altitude is clamped to
+  // the floor, and the rake is reduced to the highest angle still legal ABOVE
+  // THE TARGET -- atan2(r, floor - z_t), not atan2(r, floor).
+  function terrainCompletePose(footprintRadiusM, targetElevationM, rakeDeg, minAltitudeM) {
+    const radius = Math.min(Number(footprintRadiusM), 80000);
+    const elevation = Number(targetElevationM);
+    const rake = Number(rakeDeg);
+    if (!Number.isFinite(radius) || radius <= 0) return null;
+    if (!Number.isFinite(elevation)) return null;
+    if (!(rake > 0) || rake >= 90) return null;
+    const floor = Number.isFinite(Number(minAltitudeM)) ? Math.max(0, Number(minAltitudeM)) : 0;
+    const preferredAltitude = elevation + radius / Math.tan(toRadians(rake));
+    const safetyClamped = preferredAltitude < floor;
+    let tilt = rake;
+    let altitude = preferredAltitude;
+    if (safetyClamped) {
+      const legalTilt = (Math.atan2(radius, floor - elevation) * 180) / Math.PI;
+      // Quantize DOWN: the journey description carries two decimals, so the
+      // serialized angle has to stay on the safe side of the geometric limit.
+      tilt = Math.min(rake, Math.floor((legalTilt + 1e-9) * 100) / 100);
+      altitude = Math.max(floor, elevation + radius / Math.tan(toRadians(tilt)));
+    }
+    // The .esp altitude channel is authored in whole metres, so the pose the
+    // export can actually hold is the rounded one. Re-derive the ring from THAT
+    // altitude rather than from the unrounded solve, or the ring and the pitch
+    // disagree by the rounding and the optical centre drifts off the summit.
+    const cameraAltitude = Math.max(Math.round(altitude), Math.ceil(floor));
+    return {
+      applied_tilt_deg: tilt,
+      requested_tilt_deg: rake,
+      camera_altitude_m: cameraAltitude,
+      unclamped_camera_altitude_m: preferredAltitude,
+      ring_radius_m: Math.max(0, cameraAltitude - elevation) * Math.tan(toRadians(tilt)),
+      reference_orbit_radius_m: radius,
+      target_elevation_m: elevation,
+      min_altitude_m: floor,
+      safety_clamped: safetyClamped,
+    };
   }
 
   // Operator directive (2026-08-19): "the camera movement must always follow a
@@ -2059,7 +2222,8 @@ This checklist is technical planning support only. It is not creative approval, 
         if (policy.coherentTrajectory && !openedFromSeed && segment.stages_orbit_entry) {
           const orbitSeg = resolved[idx + 1];
           if (orbitSeg && orbitSeg.action === "orbit" && orbitSeg.segment_id === segment.stages_orbit_entry) {
-            const orbitRadius = orbitRadiusMeters(
+            const orbitRadius = orbitRingRadiusMeters(
+              orbitSeg,
               clampAltitude(orbitSeg.altitude_m || DEFAULT_ALTITUDE_M, (orbitSeg.location && orbitSeg.location.min_altitude_m) || 0),
               typeof orbitSeg.tilt_deg === "number" ? orbitSeg.tilt_deg : 45,
             );
@@ -2102,7 +2266,7 @@ This checklist is technical planning support only. It is not creative approval, 
 
       if (segment.action === "orbit") {
         const sweep = (segment.orbit_degrees || 360) * (segment.orbit_direction || 1);
-        const radius = orbitRadiusMeters(endAltitude, tilt);
+        const radius = orbitRingRadiusMeters(segment, endAltitude, tilt);
         // Enter the circle at the bearing the camera is already facing away
         // from, so the pan track stays continuous (fixes the orbit-after-orbit
         // static bug: each orbit adds its sweep to the accumulated pan).
@@ -2823,12 +2987,12 @@ This checklist is technical planning support only. It is not creative approval, 
         const nextAlt = clampAltitude(orbitEntrySeg.altitude_m || DEFAULT_ALTITUDE_M, nextMinAlt);
         const nextTilt = typeof orbitEntrySeg.tilt_deg === "number" ? orbitEntrySeg.tilt_deg : 45;
         const entry = offsetPoint({ latitude: location.latitude, longitude: targetLng },
-          state.facing - 180, orbitRadiusMeters(nextAlt, nextTilt));
+          state.facing - 180, orbitRingRadiusMeters(orbitEntrySeg, nextAlt, nextTilt));
         entry.longitude = continuousLng(state.longitude, entry.longitude);
         destLat = entry.latitude;
         destLng = entry.longitude;
         if (policy.coherentTrajectory) {
-          const entryRadius = orbitRadiusMeters(nextAlt, nextTilt);
+          const entryRadius = orbitRingRadiusMeters(orbitEntrySeg, nextAlt, nextTilt);
           const entryBearing = state.facing - 180;
           const orbitTangent = entryBearing + 90 * (orbitEntrySeg.orbit_direction || 1);
           const approachDistance = Math.min(
@@ -3584,6 +3748,9 @@ This checklist is technical planning support only. It is not creative approval, 
     validateShotPlanPayload,
     haversineMeters,
     orbitRadiusMeters,
+    orbitRingRadiusMeters,
+    declaredFocalElevationM,
+    terrainCompletePose,
     globeAngularRadiusDeg,
     spaceZoomComposition,
     maxDerivedSpaceZoomTiltDeg,

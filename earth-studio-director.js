@@ -835,6 +835,10 @@
       morphology_source: raw.morphology_source || null,
       terrain_altitude_m: Number.isFinite(raw.terrain_altitude_m) ? raw.terrain_altitude_m : null,
       terrain_min_altitude_m: Number.isFinite(raw.terrain_min_altitude_m) ? raw.terrain_min_altitude_m : null,
+      // The declared focal point's OWN terrain elevation. The rake and the
+      // footprint are the composition; the camera altitude is derived from
+      // them AND from this, so it has to travel with the rest of the context.
+      target_elevation_m: Number.isFinite(raw.target_elevation_m) ? raw.target_elevation_m : null,
       // Whether the operator actually stated purposes/role (as opposed to the
       // Director inferring them from position) — earned-intent evidence for the
       // orbit-restraint rule. Direct recommend()/scoreCandidate() callers state
@@ -883,6 +887,7 @@
         morphology_source: ctx.morphology_source,
         altitude_m: ctx.terrain_altitude_m,
         min_altitude_m: ctx.terrain_min_altitude_m,
+        target_elevation_m: ctx.target_elevation_m,
       }) : null;
     return {
       key: s.key, label: g.label, kind: g.kind,
@@ -1222,6 +1227,7 @@
         morphology_source: first.resolved && first.resolved.morphology_source,
         terrain_altitude_m: first.resolved && first.resolved.altitude_m,
         terrain_min_altitude_m: first.resolved && first.resolved.min_altitude_m,
+        target_elevation_m: first.resolved && first.resolved.target_elevation_m,
       };
       opening = recommend(openCtx);
       openDec = opening.recommended;
@@ -1247,6 +1253,7 @@
             morphology_source: first.resolved && first.resolved.morphology_source,
             altitude_m: first.resolved && first.resolved.altitude_m,
             min_altitude_m: first.resolved && first.resolved.min_altitude_m,
+            target_elevation_m: first.resolved && first.resolved.target_elevation_m,
           }) : null;
         openingObliquity = OCO.planOpeningObliquity({
           opening_beat: openDec.movement,
@@ -1422,6 +1429,7 @@
         morphology_source: to.resolved && to.resolved.morphology_source,
         terrain_altitude_m: to.resolved && to.resolved.altitude_m,
         terrain_min_altitude_m: to.resolved && to.resolved.min_altitude_m,
+        target_elevation_m: to.resolved && to.resolved.target_elevation_m,
       };
       const arrival = recommend(atCtx);
       let atDec = arrival.recommended;
