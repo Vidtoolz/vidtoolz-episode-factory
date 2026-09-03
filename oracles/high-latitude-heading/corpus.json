@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "oracle": "high-latitude-heading",
+  "production_sha": "c115ce471084175285cbf3440506373264081c79",
+  "earth_radius_m": 6371000,
+  "semantic_rule": "For every non-zero-radius orbit camera position C around declared subject S, horizontal pan must equal the local spherical camera-to-subject bearing, represented continuously with the accumulated commanded sweep. Zero-radius declared spins retain their authored pan sweep because target bearing is undefined.",
+  "latitudes_deg": [0, 30, 45, 60, 65, 70, 80, 85, 89],
+  "radii_m": [1000, 3000, 10000, 35000, 80000, 100000, 500000],
+  "bearings_deg": [0, 45, 90, 135, 180, 225, 270, 315],
+  "reference_contract": {
+    "enu_bearing_agreement_deg": 1e-9,
+    "serialized_position_uncertainty_m": 0.2,
+    "serialized_pan_uncertainty_deg": 0.000001,
+    "pan_continuity_max_uncommanded_step_deg": 180,
+    "position_change_default_m": 0.2,
+    "timing_change_frames": 0
+  },
+  "planner_cases": [
+    {"id":"local_equator","description":"orbit 0, 20 once clockwise at 1000m tilted 45 degrees for 20 seconds"},
+    {"id":"local_midlat","description":"orbit 45, 20 once clockwise at 3000m tilted 45 degrees for 20 seconds"},
+    {"id":"high_60n_80km","description":"orbit 60, 20 once clockwise at 200000m tilted 30 degrees for 20 seconds"},
+    {"id":"high_85n_80km","description":"orbit 85, 20 once clockwise at 200000m tilted 30 degrees for 20 seconds"},
+    {"id":"high_89n_35km","description":"orbit 89, 20 once clockwise at 20000m tilted 60 degrees for 20 seconds"},
+    {"id":"half_clockwise","description":"orbit 60, 20 half clockwise at 200000m tilted 30 degrees for 20 seconds"},
+    {"id":"full_counterclockwise","description":"orbit 60, 20 once counterclockwise at 200000m tilted 30 degrees for 20 seconds"},
+    {"id":"twice_clockwise","description":"orbit 60, 20 twice clockwise at 200000m tilted 30 degrees for 40 seconds"},
+    {"id":"twice_counterclockwise","description":"orbit 60, 20 twice counterclockwise at 200000m tilted 30 degrees for 40 seconds"},
+    {"id":"slow_orbit","description":"orbit 65, 20 once clockwise at 200000m tilted 30 degrees for 120 seconds"},
+    {"id":"seam_centered","description":"orbit 60, 179.99 once clockwise at 200000m tilted 30 degrees for 20 seconds"},
+    {"id":"pole_899","description":"orbit 89.9, 179.99 once clockwise at 20000m tilted 60 degrees for 20 seconds"},
+    {"id":"pole_exact","description":"orbit 90, 0 once clockwise at 20000m tilted 60 degrees for 20 seconds"},
+    {"id":"zero_spin","description":"orbit 60, 20 once clockwise at 6500m tilted 0 degrees for 20 seconds"},
+    {"id":"terrain_horizontal","description":"orbit Matterhorn once clockwise at 5736m tilted 74 degrees for 77 seconds"},
+    {"id":"fly_orbit","description":"hover over Helsinki at 12000m for 2 seconds then fly to Stockholm at 12000m for 8 seconds then orbit Stockholm once clockwise at 6500m tilted 60 degrees for 20 seconds"},
+    {"id":"orbit_then_travel","description":"orbit Helsinki once clockwise at 6500m tilted 60 degrees for 20 seconds then fly to Stockholm at 12000m for 8 seconds"}
+  ],
+  "allowed_future_changes": ["pan_track", "final_pan", "continuation_pan"],
+  "disallowed_future_changes": ["latitude", "longitude", "altitude", "tilt", "timing", "easing", "segment_count", "ring_radius", "approach_position"]
+}

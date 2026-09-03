@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "production_sha": "c115ce471084175285cbf3440506373264081c79",
+  "independent_reference": {
+    "cases": 504,
+    "maximum_bearing_vs_enu_difference_deg": 2.6261659513693303e-11
+  },
+  "error_envelope": {
+    "pass": 167,
+    "red": 337
+  },
+  "planner_targeted_cases": {
+    "non_zero_radius": 16,
+    "pass": 1,
+    "red": 15,
+    "zero_radius_spin_pass": 1
+  },
+  "high_latitude": {
+    "60n_80km_max_error_deg": 1.2459251289538997,
+    "85n_80km_max_error_deg": 8.247727040322161,
+    "89n_34641m_max_error_deg": 18.142089179850245
+  },
+  "acquisition_continuity": {
+    "status": "RED",
+    "from_frame": 48,
+    "to_frame": 63,
+    "from_pan_deg": 729.9552300865257,
+    "to_pan_deg": 19.73783878217789,
+    "delta_deg": -710.2173913043479
+  },
+  "tracked": {
+    "plans": 199,
+    "orbit_plans": 106,
+    "non_zero_radius_orbit_segments": 115,
+    "zero_radius_declared_spin_segments": 1,
+    "indeterminate_legacy_segments": 1,
+    "classifications": {
+      "IDENTICAL": 96,
+      "HEADING_ONLY": 93,
+      "SECONDARY_POSITION_RISK": 9,
+      "ZERO_RADIUS_SPIN": 1
+    },
+    "simulated_pan_key_changes": 1101,
+    "inverse_risk_events": 11
+  },
+  "inverse_hostile_control": {
+    "pan_correction_deg": 1.2544808501349962,
+    "unintended_entry_shift_if_naively_inverted_m": 645.2057606987016
+  }
+}

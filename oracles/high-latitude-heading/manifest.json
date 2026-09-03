@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "oracle": "high-latitude-heading",
+  "production_sha": "c115ce471084175285cbf3440506373264081c79",
+  "independence": "HIGH-LATITUDE HEADING REPAIR INSPECTED BEFORE ORACLE FREEZE: NO",
+  "files": {
+    "corpus.json": "dda71428bc4d325e28cffe67d4a7bb3f0899a1658782054c2ab8f4a88f4f83f7",
+    "comparator.js": "fb1d83ab88cebdcd2126c0fd657eb85790317138653599abd7a1e84dc9b9c4cd",
+    "run.js": "c352021ad1e1ab15e007c01fb828a68edbffc1cfc5e997c5f6ffe535d2074e15",
+    "oracle.test.js": "5623664b71116cd71f4cc35176667556f7faef4469abe6f0ac92b701de0f095f",
+    "INVENTORY.md": "8f84d0467eded11dd923348d94aefd1c958a31ab81a208d39ae77b5d45df4051",
+    "README.md": "307a7bf5b1cb665485970104962a12a12c36824565eb242ca10da9934ec62aa1",
+    "REPORT.md": "c45b4e0b1878a12c33d6fc146645e9fdacb8e4bd52e89707a3ea3a203fee32fd",
+    "results-production-summary.json": "8644d6fec9d68029ffbd97ab3acf1479f930cc794591b95a15864681ea80e796"
+  }
+}
