@@ -1661,13 +1661,45 @@ This checklist is technical planning support only. It is not creative approval, 
     return turns === 0 ? lng : lng + turns * 360;
   }
 
+  // ── Heading authority ────────────────────────────────────────────────────
+  // For a targeted orbit the camera looks at its declared subject: the
+  // horizontal pan at every authoritative orbit camera state is the SPHERICAL
+  // INITIAL BEARING FROM THE CAMERA TO THE SUBJECT, as a scalar representative
+  // continuous with the preceding pan (the same rule continuousLng applies to
+  // longitude). Until 2026-09-03 pan was authored as `ring bearing + 180`:
+  // the reverse of the geodesic's azimuth AT THE SUBJECT, which on a sphere
+  // differs from its azimuth at the camera by the meridian convergence,
+  // ≈ (r/R)·tan(lat)·|sin θ| — measured 1.25° at 60°N / 80 km, 8.25° at 85°N,
+  // 18.1° at 89°N / 35 km, and pointing away from the subject on a ring that
+  // encloses a pole (independent oracle c604b2c). Production doctrine already
+  // says an orbit "points back at the centre"; this makes the pan value do so.
+  //
+  // RING POSITION IS NOT PAN − 180. The ring bearing θ the camera stands at is
+  // carried as geometric state (`state.facing` = θ + 180, exactly the quantity
+  // the old pan used to be) and every ring-placement decision — orbit phase,
+  // acquisition duration, successor ring entry, key structure — reads that
+  // state, never the emitted heading. Only pan VALUES change; positions,
+  // timing, easing and key sets are unchanged by construction.
+  //
+  // Camera and subject coincide on a declared zero-radius spin (tilt 0), where
+  // a bearing is undefined: the authored pan sweep stays authoritative. The
+  // same fallback covers any non-finite bearing.
+  const AIM_UNDEFINED_M = 0.2; // six-decimal geographic serialization uncertainty
+  function aimHeading(camera, subject, referencePan, fallbackPan) {
+    const distance = haversineMeters(camera, subject);
+    if (!(distance > AIM_UNDEFINED_M)) return fallbackPan;
+    const bearing = bearingDeg(camera, subject);
+    if (!Number.isFinite(bearing)) return fallbackPan;
+    return continuousLng(referencePan, bearing);
+  }
+
   // Re-emit an UNWRAPPED piecewise-linear longitude track as wrapped [-180,180]
   // keyframes. At each antimeridian crossing a one-frame keyframe pair is
   // inserted (+180 then -180, or the reverse): both sides name the same
   // physical meridian and no frame is rendered between two adjacent integer
   // frames, so the wrap is visually seamless while every exported value stays
   // inside the ±180 contract real Earth Studio has already accepted.
-  function wrapLngTrack(track) {
+  function wrapLngTrack(track, claimedFrames = null) {
     if (track.length < 2) {
       return track.map((k) => espKeyframe(k.time, round6(wrapLng(k.value))));
     }
@@ -1709,6 +1741,11 @@ This checklist is technical planning support only. It is not creative approval, 
           const eastward = cur.value > prev.value;
           push(before, eastward ? 180 : -180, cur.sampledInterior);
           push(before + 1, eastward ? -180 : 180, cur.sampledInterior);
+          // The pair may CLAIM an existing key (crossing inside the first frame
+          // after prev, or the last frame before cur): that camera position now
+          // sits on the meridian, and a heading authored for the unclaimed
+          // position must be re-aimed from the position Earth Studio renders.
+          if (claimedFrames && before === prev.time) claimedFrames.push(prev.time);
           // A crossing inside the LAST frame before this key: the pair's second
           // half lands on the key's own frame and must keep its ±180 value —
           // overwriting it with the key's wrapped value (0.00025° past the
@@ -1717,7 +1754,7 @@ This checklist is technical planning support only. It is not creative approval, 
           // so ±180 is its own value to sub-frame precision; the mirror case
           // (crossing inside the first frame after the previous key) already
           // claims that key the same way via the clamp above.
-          if (before + 1 === cur.time) seamClaimedCur = true;
+          if (before + 1 === cur.time) { seamClaimedCur = true; if (claimedFrames) claimedFrames.push(cur.time); }
         }
       }
       if (seamClaimedCur) {
@@ -1845,13 +1882,18 @@ This checklist is technical planning support only. It is not creative approval, 
         (segment.location && segment.location.min_altitude_m) || 0),
       pan: num(seed.pan_deg, num(seed.pan, derived.pan)),
       tilt: num(seed.tilt_deg, num(seed.tilt, derived.tilt)),
+      // A seed carries no ring state; its pan is read as the ring-facing
+      // convention (pan − 180 = ring bearing) exactly as before, and refined
+      // from the camera's real position once an orbit names the subject.
+      facing: num(seed.pan_deg, num(seed.pan, derived.pan)),
+      facingFromSeed: true,
     };
   }
 
   function initialCameraState(segment, endAltitude, tilt) {
     const location = segment.location;
     const minAlt = location.min_altitude_m || 0;
-    const state = { latitude: location.latitude, longitude: location.longitude, altitude: endAltitude, pan: 0, tilt };
+    const state = { latitude: location.latitude, longitude: location.longitude, altitude: endAltitude, pan: 0, tilt, facing: 0 };
     if (segment.action === "fly_to") {
       // Establishing dive: begin high above the target and descend into it.
       state.altitude = clampAltitude(Math.min(Math.max(endAltitude * 4, 10000), 2500000), minAlt);
@@ -1865,7 +1907,8 @@ This checklist is technical planning support only. It is not creative approval, 
       const start = offsetPoint(location, 0, radius);
       state.latitude = start.latitude;
       state.longitude = start.longitude;
-      state.pan = 180;
+      state.pan = 180; // due north of the subject: the meridian is a geodesic, so 180 IS the camera→subject bearing
+      state.facing = 180;
     } else if (segment.action === "hover" && segment.stages_orbit_entry) {
       // A staged establishing hold opens ON the ring the following orbit will
       // ride, facing the subject — the same opening geometry an orbit-first shot
@@ -1875,6 +1918,7 @@ This checklist is technical planning support only. It is not creative approval, 
       state.latitude = start.latitude;
       state.longitude = start.longitude;
       state.pan = 180;
+      state.facing = 180;
     }
     return state;
   }
@@ -1912,7 +1956,7 @@ This checklist is technical planning support only. It is not creative approval, 
     for (let pass = 0; pass < 64; pass += 1) {
       const next = out.filter((kf, i) => {
         if (i === 0 || i === out.length - 1) return true;
-        return kf.semanticBoundary
+        return kf.semanticBoundary || kf.aimAt
           || !(same(kf.value, out[i - 1].value) && same(out[i + 1].value, kf.value));
       });
       if (next.length === out.length) return next;
@@ -2011,6 +2055,15 @@ This checklist is technical planning support only. It is not creative approval, 
       kf.sampledInterior = (kf.sampledInterior === "in" || kf.sampledInterior === true) ? true : "out";
     };
     const last = (trackName) => (tracks[trackName].length ? tracks[trackName][tracks[trackName].length - 1] : null);
+    // Mark the newest pan key as an AIMED heading at `subject`. Internal only
+    // (the serializer ignores it): dedupe keeps aimed keys even when their
+    // values coincide, and a key later claimed by a longitude seam pair is
+    // re-aimed from the meridian position Earth Studio will render.
+    const tagAim = (subject) => { const kf = last("pan"); if (kf) kf.aimAt = { latitude: subject.latitude, longitude: subject.longitude }; };
+    const locationOf = (segment) => {
+      const orbitSeg = resolved.find((s) => s && s.segment_id === segment.stages_orbit_entry);
+      return orbitSeg && orbitSeg.location ? orbitSeg.location : segment.location;
+    };
     // Move a track to `value` across [startFrame, endFrame], anchoring the old
     // value at startFrame so the change does not bleed back through a hold.
     const change = (trackName, startFrame, endFrame, value) => {
@@ -2082,7 +2135,9 @@ This checklist is technical planning support only. It is not creative approval, 
               const thetaEndStaged = orbitExitTheta(orbitSeg.location, orbitRadius, orbitSweep, dest.location);
               const theta0Staged = thetaEndStaged - orbitSweep;
               const staged = offsetPoint(orbitSeg.location, theta0Staged, orbitRadius);
-              state = { ...state, latitude: staged.latitude, longitude: continuousLng(state.longitude, staged.longitude), pan: theta0Staged + 180 };
+              const stagedLng = continuousLng(state.longitude, staged.longitude);
+              state = { ...state, latitude: staged.latitude, longitude: stagedLng, facing: theta0Staged + 180,
+                pan: aimHeading({ latitude: staged.latitude, longitude: stagedLng }, orbitSeg.location, theta0Staged + 180, theta0Staged + 180) };
             }
           }
         }
@@ -2090,6 +2145,7 @@ This checklist is technical planning support only. It is not creative approval, 
         put("lat", sf, state.latitude);
         put("alt", sf, state.altitude);
         put("pan", sf, state.pan);
+        if (segment.stages_orbit_entry && state.facing !== state.pan) tagAim(locationOf(segment));
         put("tilt", sf, state.tilt);
       }
 
@@ -2164,16 +2220,29 @@ This checklist is technical planning support only. It is not creative approval, 
         ) * 180) / Math.PI;
         // "Already facing the target" means pan agrees with the geometry; then
         // pan is authoritative and this changes nothing.
+        // A CONTINUATION SEED has no carried ring state. Its inherited pan is
+        // trusted as the ring-facing convention only within six-decimal
+        // serialization precision; a camera that actually sits on this ring
+        // gets its ring bearing from where it physically is.
+        if (state.facingFromSeed && preRadiusM > 1) {
+          const seedRingBearing = bearingDeg(locRef, state);
+          const precisionDeg = (Math.atan2(AIM_UNDEFINED_M, preRadiusM) * 180) / Math.PI + 0.000001;
+          const onThisRing = Math.abs(haversineMeters(state, locRef) - radius) <= Math.max(radius * ORBIT_ENTRY_RING_TOLERANCE_FRACTION, ORBIT_ENTRY_RING_TOLERANCE_M);
+          if (onThisRing && Math.abs(shortestLngDelta(seedRingBearing, state.facing - 180)) > precisionDeg) {
+            state = { ...state, facing: seedRingBearing + 180 };
+          }
+          state = { ...state, facingFromSeed: false };
+        }
         const panAgreesWithPosition = preRadiusM > 1
-          && Math.abs(shortestLngDelta(state.pan - 180, preBearingDeg)) < 1;
+          && Math.abs(shortestLngDelta(state.facing - 180, preBearingDeg)) < 1;
         const enterWhereItStands = policy.coherentTrajectory
           && thetaEnd === null
           && preRadiusM > 1
           && !panAgreesWithPosition;
         const theta0 = thetaEnd !== null ? thetaEnd - sweep
           : enterWhereItStands ? preBearingDeg
-          : state.pan - 180;
-        const orbitStartPan = thetaEnd === null && !enterWhereItStands ? state.pan : theta0 + 180;
+          : state.facing - 180;
+        const orbitStartFacing = thetaEnd === null && !enterWhereItStands ? state.facing : theta0 + 180;
         // ORBIT BEARING AS A DIRECTORIAL VARIABLE.
         //
         // Which side of the subject an orbit starts on has always existed, but only
@@ -2270,10 +2339,12 @@ This checklist is technical planning support only. It is not creative approval, 
         if (idx === 0 && !openedFromSeed) {
           const opening = offsetPoint(locRef, theta0, radius);
           opening.longitude = continuousLng(state.longitude, opening.longitude);
-          state = { ...state, latitude: opening.latitude, longitude: opening.longitude, pan: orbitStartPan };
+          const openingPan = aimHeading(opening, locRef, orbitStartFacing, orbitStartFacing);
+          state = { ...state, latitude: opening.latitude, longitude: opening.longitude, pan: openingPan, facing: orbitStartFacing };
           put("lng", sf, opening.longitude);
           put("lat", sf, opening.latitude);
-          put("pan", sf, orbitStartPan);
+          put("pan", sf, openingPan);
+          tagAim(locRef);
         }
         const stepDeg = policy.coherentTrajectory ? ORBIT_SAMPLE_STEP_DEG : ORBIT_LEGACY_SAMPLE_STEP_DEG;
         const sampleCount = Math.max(4, Math.ceil(Math.abs(sweep) / stepDeg));
@@ -2317,7 +2388,7 @@ This checklist is technical planning support only. It is not creative approval, 
         // off — and sizing the phase from pitch and distance alone whipped that
         // turn through in about 0.7 s. Heading gets the same calm rotation rate
         // as pitch.
-        const panDeltaDeg = Math.abs(shortestLngDelta(state.pan, theta0 + 180));
+        const panDeltaDeg = Math.abs(shortestLngDelta(state.facing, theta0 + 180));
         const panSeconds = panDeltaDeg / tiltRate;
         const needsPan = panDeltaDeg > 1;
         let entryFrames = 0;
@@ -2382,7 +2453,7 @@ This checklist is technical planning support only. It is not creative approval, 
           // Heading turns with the camera so it keeps facing the subject. Near
           // the centre at a top-down pitch heading is not visually meaningful,
           // so a smooth turn beats snapping to the ring's aim.
-          const panTarget = state.pan + shortestLngDelta(state.pan, theta0 + 180);
+          const panTarget = aimHeading(ringEntry, locRef, state.pan, state.facing + shortestLngDelta(state.facing, theta0 + 180));
           const bearingSamples = Math.max(2, Math.ceil(Math.abs(bearingDelta) / stepDeg));
           // See ORBIT_ENTRY_DENSITY_DEFAULT. Gated on coherentTrajectory so the
           // legacy/freeform paths — including the byte-frozen controls — keep the
@@ -2460,6 +2531,7 @@ This checklist is technical planning support only. It is not creative approval, 
             }
             if (needsRing || needsPan) {
               put("pan", frame, state.pan + (panTarget - state.pan) * u, interior);
+              if (i === entrySamples) tagAim(locRef);
             }
             if (needsTilt) {
               let tiltValue = state.tilt + (tilt - state.tilt) * u;
@@ -2479,7 +2551,12 @@ This checklist is technical planning support only. It is not creative approval, 
           if (needsRing) {
             lastPoint = offsetPoint(locRef, theta0, radius);
             lastPoint.longitude = continuousLng(acquisitionLng, lastPoint.longitude);
-            state = { ...state, latitude: lastPoint.latitude, longitude: lastPoint.longitude, pan: theta0 + 180 };
+            state = { ...state, latitude: lastPoint.latitude, longitude: lastPoint.longitude, pan: panTarget, facing: theta0 + 180 };
+          } else {
+            // Heading was acquired without re-placing position: the sweep
+            // continues from the acquired heading, never from a fresh base
+            // representative (measured: 729.96° → 19.74° in 15 frames).
+            state = { ...state, pan: needsPan ? panTarget : state.pan, facing: theta0 + 180 };
           }
           state = { ...state, altitude: endAltitude, tilt };
         }
@@ -2488,11 +2565,17 @@ This checklist is technical planning support only. It is not creative approval, 
         // the boundary and the heading dipped and came back (measured 170.5 ->
         // 85.3 -> 170.5 within 15 frames) — a pan wobble at the very moment the
         // orbit starts.
-        if (policy.coherentTrajectory && entryFrames === 0 && orbitStartPan !== state.pan) {
-          put("pan", sf, orbitStartPan);
+        if (policy.coherentTrajectory && entryFrames === 0 && orbitStartFacing !== state.facing) {
+          const snapped = aimHeading(state, locRef, state.pan, orbitStartFacing);
+          put("pan", sf, snapped);
+          tagAim(locRef);
+          state = { ...state, pan: snapped, facing: orbitStartFacing };
         }
         // After an acquisition the sweep continues from the pan the entry left.
-        const sweepPanBase = entryFrames > 0 ? theta0 + 180 : orbitStartPan;
+        // `sweepFacingBase` is the ring-facing shadow (θ + 180) the old pan was;
+        // `sweepPan` is the emitted heading, aimed from each ring sample.
+        const sweepFacingBase = entryFrames > 0 ? theta0 + 180 : orbitStartFacing;
+        let sweepPan = state.pan;
         const spanFrames = ef - sweepStart;
         for (let i = 1; i <= sampleCount; i += 1) {
           // TIME-QUANTIZED SAMPLING: take the ANGLE at the frame this sample
@@ -2549,13 +2632,25 @@ This checklist is technical planning support only. It is not creative approval, 
           // multi-sample ground path gives look direction and position two
           // different velocity profiles, and the subject slides across frame
           // through the middle of the orbit (measured: 28 deg off-target).
-          if (policy.coherentTrajectory) put("pan", frame, sweepPanBase + sweep * t, interior);
+          if (policy.coherentTrajectory) {
+            sweepPan = aimHeading(lastPoint, locRef, sweepPan, sweepFacingBase + sweep * t);
+            put("pan", frame, sweepPan, interior);
+            tagAim(locRef);
+          }
         }
         // Phase C holds radius, altitude and pitch — acquisition already put the
         // camera in orbit geometry, so these are no-ops after a real entry.
         change("alt", sweepStart, ef, endAltitude);
         change("tilt", sweepStart, ef, tilt);
-        if (!policy.coherentTrajectory) change("pan", sf, ef, orbitStartPan + sweep);
+        let legacyEndPan = null;
+        if (!policy.coherentTrajectory) {
+          // A two-key legacy sweep has no interior samples to accumulate the
+          // winding through, so the end representative is chosen relative to
+          // the commanded sweep from the current heading.
+          legacyEndPan = aimHeading(lastPoint, locRef, state.pan + sweep, orbitStartFacing + sweep);
+          change("pan", sf, ef, legacyEndPan);
+          if (last("pan") && last("pan").time === ef) tagAim(locRef);
+        }
         // ── SETTLE-THEN-LAUNCH orbit→travel handoff (human-approved DIRN17) ──
         // If the next playable segment travels somewhere materially different
         // from this orbit's exit tangent, the boundary keyframe would redirect
@@ -2657,7 +2752,8 @@ This checklist is technical planning support only. It is not creative approval, 
             }
           }
         }
-        state = { latitude: lastPoint.latitude, longitude: lastPoint.longitude, altitude: endAltitude, pan: sweepPanBase + sweep, tilt };
+        state = { latitude: lastPoint.latitude, longitude: lastPoint.longitude, altitude: endAltitude,
+          pan: policy.coherentTrajectory ? sweepPan : legacyEndPan, facing: sweepFacingBase + sweep, tilt };
         return;
       }
 
@@ -2774,13 +2870,13 @@ This checklist is technical planning support only. It is not creative approval, 
         const nextAlt = clampAltitude(orbitEntrySeg.altitude_m || DEFAULT_ALTITUDE_M, nextMinAlt);
         const nextTilt = typeof orbitEntrySeg.tilt_deg === "number" ? orbitEntrySeg.tilt_deg : 45;
         const entry = offsetPoint({ latitude: location.latitude, longitude: targetLng },
-          state.pan - 180, orbitRadiusMeters(nextAlt, nextTilt));
+          state.facing - 180, orbitRadiusMeters(nextAlt, nextTilt));
         entry.longitude = continuousLng(state.longitude, entry.longitude);
         destLat = entry.latitude;
         destLng = entry.longitude;
         if (policy.coherentTrajectory) {
           const entryRadius = orbitRadiusMeters(nextAlt, nextTilt);
-          const entryBearing = state.pan - 180;
+          const entryBearing = state.facing - 180;
           const orbitTangent = entryBearing + 90 * (orbitEntrySeg.orbit_direction || 1);
           const approachDistance = Math.min(
             haversineMeters(state, entry) * 0.25,
@@ -2898,18 +2994,44 @@ This checklist is technical planning support only. It is not creative approval, 
         }
         change("tilt", sf, em, tilt);
       }
-      state = { latitude: destLat, longitude: destLng, altitude: endAltitude, pan: state.pan, tilt };
+      state = { latitude: destLat, longitude: destLng, altitude: endAltitude, pan: state.pan, tilt, facing: state.facing };
     });
     // Terminal camera state out-channel: the state machine's last state IS the
     // ending frame's camera, in real-world units (longitude still unwrapped —
     // finalCameraState wraps it for export). Purely additive: callers that do
     // not pass captureState see byte-identical behavior.
+    // Emit-time wrap: the state machine runs unwrapped; the exported track
+    // stays inside the ±180 contract, with seam pairs at crossings.
+    const claimedFrames = [];
+    tracks.lng = wrapLngTrack(tracks.lng, claimedFrames);
+    // A seam pair that claimed a position key moved that rendered camera onto
+    // the ±180 meridian (one frame of motion). An aimed heading on the same
+    // frame is re-derived from the rendered position, so the camera still
+    // looks at its subject there; the surrounding chain stays continuous
+    // because the correction is a fraction of one sample step.
+    if (claimedFrames.length) {
+      const valueOn = (track, frame) => {
+        const exact = track.find((k) => k.time === frame);
+        if (exact) return exact.value;
+        let before = null; let after = null;
+        for (const k of track) { if (k.time <= frame) before = k; else if (!after) after = k; }
+        if (!before) return after ? after.value : null;
+        if (!after) return before.value;
+        return before.value + (after.value - before.value) * ((frame - before.time) / (after.time - before.time));
+      };
+      tracks.pan.forEach((kf, index) => {
+        if (!kf.aimAt || !claimedFrames.includes(kf.time)) return;
+        const camera = { latitude: valueOn(tracks.lat, kf.time), longitude: valueOn(tracks.lng, kf.time) };
+        if (!Number.isFinite(camera.latitude) || !Number.isFinite(camera.longitude)) return;
+        const reference = index > 0 ? tracks.pan[index - 1].value : kf.value;
+        const reaimed = aimHeading(camera, kf.aimAt, reference, kf.value);
+        if (state && state.pan === kf.value) state = { ...state, pan: reaimed };
+        kf.value = reaimed;
+      });
+    }
     if (options.captureState && typeof options.captureState === "object") {
       options.captureState.final = state ? { ...state } : null;
     }
-    // Emit-time wrap: the state machine runs unwrapped; the exported track
-    // stays inside the ±180 contract, with seam pairs at crossings.
-    tracks.lng = wrapLngTrack(tracks.lng);
     if (policy.dedupeKeyframes) {
       Object.keys(tracks).forEach((k) => { tracks[k] = dropRedundantKeyframes(tracks[k]); });
     }

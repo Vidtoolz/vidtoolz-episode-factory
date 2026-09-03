@@ -92,8 +92,17 @@ test('settle-then-launch: serialized handles match the human-approved candidate'
     const pk = findAttr(prod.scenes[0].attributes, t).keyframes;
     const ck = findAttr(clean.scenes[0].attributes, t).keyframes;
     for (let i = 0; i < Math.max(pk.length, ck.length); i += 1) {
-      const a = pk[i];
-      const b = ck[i];
+      // Heading authority (2026-09-03): pan VALUES are the spherical camera→
+      // subject bearing and legitimately differ from the reviewed candidate by
+      // the meridian-convergence correction (≤ 0.47° on the Helsinki/Stockholm
+      // rings). The reviewed settle/launch contract — key times, handles,
+      // easing and every position/altitude/tilt value — must still match.
+      const strip = (k) => (t === 'rotationX' && k ? { ...k, value: undefined } : k);
+      const a = strip(pk[i]);
+      const b = strip(ck[i]);
+      if (t === 'rotationX' && pk[i] && ck[i]) {
+        assert.ok(Math.abs(pk[i].value - ck[i].value) < 0.5 / 360, `rotationX value at frame ${Math.round(pk[i].time * plan.total_frames)} differs by more than the heading correction`);
+      }
       if (JSON.stringify(a) !== JSON.stringify(b)) {
         const frame = a ? Math.round(a.time * plan.total_frames) : null;
         const frameB = b ? Math.round(b.time * plan.total_frames) : null;

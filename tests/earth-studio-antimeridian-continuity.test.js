@@ -178,7 +178,11 @@ test("high-latitude and polar rings: seam crossing at 80°N, a pole-enclosing ri
   const p = assertContinuous("polar ring @89.99,179", polar.lng, 361);
   assert.ok(p.total > 359 && p.total < 361, `one physical lap of longitude around the pole, got ${p.total}`);
   assert.ok(p.maxStep < 30, `largest ring step ${p.maxStep}°`);
-  assert.equal(Math.round(panSweep(polar.pan)), -360);
+  // Heading authority (2026-09-03): pan faces the subject. A ring that encloses
+  // the pole completes its revolution in POSITION (asserted above); the
+  // target-facing pan has no full winding and stays finite and continuous.
+  assert.ok(polar.pan.every((k) => Number.isFinite(k.value)));
+  assert.ok(Math.abs(panSweep(polar.pan)) < 180, `pole-enclosing ring pan sweep ${panSweep(polar.pan)}`);
   const plain = buildLng("orbit 89.9, 0 once clockwise tilted 60 degrees for 20 seconds");
   assertContinuous("polar ring @89.9,0", plain.lng, 100);
 });
