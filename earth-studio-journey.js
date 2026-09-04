@@ -209,7 +209,10 @@
   function orbitCanFaceTarget(altitudeM, tiltDeg, options = {}) {
     const planner = loadPlanner(options.planner);
     const rad = (d) => (d * Math.PI) / 180;
-    const needed = Math.abs(Number(altitudeM)) * Math.tan(rad(Math.min(89.9, Math.abs(tiltDeg))));
+    // A terrain focal point's ring is measured from its declared elevation, not
+    // from sea level (the same law the planner's engine rides).
+    const focal = Number.isFinite(options.focalElevationM) ? options.focalElevationM : 0;
+    const needed = Math.max(0, Math.abs(Number(altitudeM)) - focal) * Math.tan(rad(Math.min(89.9, Math.abs(tiltDeg))));
     return needed <= orbitRingCapM(planner) + 1;
   }
 
@@ -1202,13 +1205,73 @@
       }
       if (Number.isFinite(step.altitude_m)) { altitude = step.altitude_m; altitudeSource = "manual_altitude"; }
 
+      // TERRAIN COMPLETE POSE (single authority: planner.resolveTerrainPose →
+      // earth-studio-terrain-morphology completePose). An orbit-family movement
+      // around a declared terrain focal point on its plain AUTO framing takes
+      // the complete-pose altitude A = z_t + r / tan θ instead of the place's
+      // camera altitude; the phrase stays implicit, exactly like the calibrated
+      // gazetteer altitude it replaces, and the planner resolves the identical
+      // value from the same authority. A manual altitude, or a framing the
+      // operator chose, is honoured unchanged — the planner then measures the
+      // orbit ring from the focal elevation so the aim still holds.
+      const focalZ = targetInfo.resolved && typeof planner.focalElevationM === "function"
+        ? planner.focalElevationM(targetInfo.resolved) : null;
+      let terrainPose = null;
+      if (action === "orbit" && focalZ !== null && altitudeSource === "gazetteer_calibrated") {
+        // The compiled phrase always STATES the tilt, so the planner will read it
+        // as authored; lock it here too, so a safety-floor conflict resolves the
+        // same way on both sides (altitude clamped to the floor, tilt kept). The
+        // rake itself is reduced where the rake is decided — the morphology
+        // decision the director emits — never re-decided downstream.
+        terrainPose = planner.resolveTerrainPose(targetInfo.resolved, { tilt_deg: baseTilt, tilt_locked: true });
+        if (terrainPose) {
+          altitude = terrainPose.camera_altitude_m;
+          altitudeSource = "terrain_complete_pose";
+        }
+      }
+      // The movement that delivers the camera onto a terrain orbit lands on the
+      // orbit's pose: a staged approach (or an opening hold staged on the ring)
+      // whose altitude was inferred takes the successor orbit's complete-pose
+      // altitude, so compiler cursor, planner and engine agree on one camera at
+      // the handoff. A manual altitude on the approach is the operator's and is
+      // kept. Mirrors the planner's own chain rule (assembleParsedDescription).
+      if ((endsAtOrbitEntry || stagesOrbitEntry) && orbitAhead && !Number.isFinite(step.altitude_m)) {
+        const orbitFocal = orbitAhead.targetInfo && orbitAhead.targetInfo.resolved
+          && typeof planner.focalElevationM === "function"
+          ? planner.focalElevationM(orbitAhead.targetInfo.resolved) : null;
+        if (orbitFocal !== null) {
+          const orbitStep = orbitAhead.step;
+          const orbitPlace = orbitAhead.targetPlace || {};
+          const orbitFraming = orbitStep.framing || orbitPlace.framing || "auto";
+          const orbitManual = Number.isFinite(orbitStep.altitude_m) ? orbitStep.altitude_m
+            : Number.isFinite(orbitPlace.altitude_m) ? orbitPlace.altitude_m : null;
+          // The tilt the orbit will actually ride: its own explicit tilt, else the
+          // tilt it inherits from this staging camera (the planner's inheritance
+          // rule: a usable ring, not flattened), else the orbit default.
+          const orbitTilt = Number.isFinite(orbitStep.tilt_deg) ? orbitStep.tilt_deg
+            : Number.isFinite(orbitPlace.tilt_deg) ? orbitPlace.tilt_deg
+            : (Number.isFinite(baseTilt) && !tiltCapped && baseTilt > maxTargetFramingTiltDeg({ planner })) ? baseTilt
+            : planner.DEFAULT_TILT_DEG.orbit;
+          let landing = null;
+          if (orbitManual !== null) landing = Math.round(orbitManual);
+          else if (orbitFraming === "auto") {
+            const pose = planner.resolveTerrainPose(orbitAhead.targetInfo.resolved, { tilt_deg: orbitTilt, tilt_locked: true });
+            if (pose) landing = pose.camera_altitude_m;
+          }
+          if (landing !== null) {
+            altitude = landing;
+            altitudeSource = "terrain_complete_pose_entry";
+          }
+        }
+      }
+
       // An orbit only frames its target because the engine puts the camera on a
       // ring of altitude*tan(tilt) facing inward. Past the generator's ring cap
       // that placement is impossible and the orbit points at empty sky, so a
       // DERIVED tilt goes top-down — which the planner documents as the top-down
       // orbit look (a spin in place) and which keeps the target centred.
       let orbitFlattened = false;
-      if (action === "orbit" && !orbitCanFaceTarget(altitude, baseTilt, { planner })) {
+      if (action === "orbit" && !orbitCanFaceTarget(altitude, baseTilt, { planner, focalElevationM: focalZ })) {
         if (tiltIntentional) {
           warnings.push(`${def.label} around ${compiledLocationLabel(targetInfo)} needs the camera ${Math.round(altitude * Math.tan((baseTilt * Math.PI) / 180) / 1000)} km out to face it at ${round2(baseTilt)}\u00b0, but the generator holds an orbit within ${Math.round(orbitRingCapM(planner) / 1000)} km. At this framing the orbit will point at empty sky instead of ${compiledLocationLabel(targetInfo)} — lower the tilt, or orbit a smaller target.`);
         } else {
@@ -1271,7 +1334,8 @@
         // Only an UNSHIFTED auto framing may stay implicit (letting the planner
         // apply its own hand-validated gazetteer altitude, which keeps the exact
         // proven path). Anything that moved the altitude must say so.
-        emit_altitude: (!isHold || openingHold) && altitudeSource !== "gazetteer_calibrated",
+        emit_altitude: (!isHold || openingHold)
+          && !["gazetteer_calibrated", "terrain_complete_pose", "terrain_complete_pose_entry"].includes(altitudeSource),
         emit_tilt: !isHold || openingHold,
         orbit_degrees: orbitDegrees,
         orbit_direction: action === "orbit" ? (step.direction === -1 ? -1 : 1) : null,
@@ -1837,6 +1901,25 @@
     };
     checkSteps(j.start_movements.map((s) => ({ ...s, slot: "at" })), "Start");
 
+    // TERRAIN FOCAL POINT CONTRACT: an authored orbit altitude is honoured, so
+    // it must be physically able to look down at the declared focal point.
+    const checkTerrainOrbitAltitude = (steps, place, info, label) => {
+      const resolved = info && info.resolved;
+      const focalZ = resolved && typeof planner.focalElevationM === "function" ? planner.focalElevationM(resolved) : null;
+      if (focalZ === null) return;
+      steps.forEach((step, i) => {
+        const def = MOVEMENTS[step.type];
+        if (!def || def.primitive !== "orbit") return;
+        const authored = Number.isFinite(step.altitude_m) ? step.altitude_m
+          : Number.isFinite(place && place.altitude_m) ? place.altitude_m : null;
+        if (authored === null) return;
+        if (authored <= focalZ) {
+          errors.push(`${label} movement ${i + 1} (${def.label}) sets the camera at ${formatAltitude(authored)}, which is not above ${resolved.name}'s declared focal point at ${formatAltitude(focalZ)}. An orbit looks down at its subject, so the camera altitude must be higher than the terrain it frames.`);
+        }
+      });
+    };
+    checkTerrainOrbitAltitude(j.start_movements, j.start, startInfo, "Start");
+
     j.legs.forEach((leg, i) => {
       const label = `Destination ${i + 1}`;
       const info = resolvePlace(planner, leg.destination);
@@ -1855,6 +1938,7 @@
       }
       checkSteps(leg.travel.map((s) => ({ ...s, slot: "travel" })), `${label} travel`);
       checkSteps(leg.movements.map((s) => ({ ...s, slot: "at" })), label);
+      checkTerrainOrbitAltitude(leg.movements, leg.destination, info, label);
     });
 
     // Only compile when the shape is sound; a compile of a broken journey is

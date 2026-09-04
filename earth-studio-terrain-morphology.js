@@ -79,43 +79,178 @@ function referenceRadius(altitudeM, baselineTiltDeg = LEGACY_TILT_DEG) {
   return Math.min(altitudeM * Math.tan(radians(baselineTiltDeg)), MAX_ORBIT_RADIUS_M);
 }
 
-// Preserve the current 72-degree orbit footprint while changing the view
-// angle, exactly as the authorized visual calibration did. A terrain floor may
-// make the desired angle infeasible at that radius; in that case reduce tilt
-// to the highest legal angle and record the clamp.
+// ── COMPLETE-POSE AUTHORITY ──────────────────────────────────────────────────
+// A declared terrain focal point is a 3-D anchor: latitude, longitude AND the
+// terrain elevation the camera is meant to look AT (`target_elevation_m`, metres
+// above sea level, the same datum as every other altitude in this system). The
+// camera pose that frames it is solved ONCE, here, from three authorities in
+// this order:
+//
+//   1. the declared focal point owns latitude/longitude/z_t;
+//   2. the calibrated footprint owns the ground ring radius r — the place's
+//      hand-validated gazetteer altitude read at the legacy 72° baseline
+//      (referenceRadius), which is the footprint the human review accepted;
+//   3. the rake θ owns the view angle (morphology policy, or an authored tilt).
+//
+// The camera altitude is DERIVED, never inherited:  A = z_t + r / tan θ.
+// The ring the orbit rides is measured from the focal point, not from sea
+// level: ring = (A − z_t) · tan θ. That second equation is what makes the aim
+// hold for ANY camera altitude — an authored one included — because a camera
+// on that ring at altitude A with pitch θ has its optical centre on the focal
+// point by construction. Leaving z_t out of both equations is what aimed a
+// 74° Matterhorn orbit at sea level 4,478 m under the summit (~10° of a 20°
+// vertical field), and re-deriving the ring from an already-raised altitude
+// as A·tan θ is what inflated a corrected orbit's footprint by 1.78×.
+//
+// `min_altitude_m` is a SAFETY floor, not target authority. When the derived
+// altitude would sit below it, target and footprint are held, the camera is
+// clamped to the floor and the rake is reduced to the highest angle still legal
+// ABOVE THE TARGET — atan2(r, floor − z_t), not atan2(r, floor). An authored
+// (locked) tilt is never changed: the altitude is clamped to the floor and the
+// clamp is recorded.
+//
+// Undeclared places (no finite `target_elevation_m`) are not terrain focal
+// points and keep every legacy sea-level behaviour untouched; callers must
+// check `declaredFocalElevationM` (or the null return) rather than assume 0.
+const FOCAL_ANCHOR_SOURCE = "DECLARED_TERRAIN_FOCAL_POINT";
+
+function declaredFocalElevationM(location) {
+  if (!location || typeof location !== "object") return null;
+  const z = location.target_elevation_m;
+  return typeof z === "number" && Number.isFinite(z) ? z : null;
+}
+
+function completePose({
+  target_elevation_m,
+  footprint_altitude_m = null,
+  min_altitude_m = null,
+  tilt_deg,
+  camera_altitude_m = null,
+  fallback_altitude_m = null,
+  tilt_locked = false,
+  baseline_tilt_deg = LEGACY_TILT_DEG,
+} = {}) {
+  const z = Number(target_elevation_m);
+  const requestedTilt = Number(tilt_deg);
+  if (!Number.isFinite(z) || !Number.isFinite(requestedTilt)) return null;
+  const radius = referenceRadius(
+    typeof footprint_altitude_m === "number" ? footprint_altitude_m : Number(footprint_altitude_m),
+    baseline_tilt_deg,
+  );
+  const floor = typeof min_altitude_m === "number" && Number.isFinite(min_altitude_m)
+    ? Math.max(0, min_altitude_m) : null;
+  const engineTilt = (deg) => Math.min(Math.max(deg, 0), MAX_ENGINE_TILT_DEG);
+  const tangent = (deg) => Math.tan(radians(engineTilt(deg)));
+  const explicit = typeof camera_altitude_m === "number" && Number.isFinite(camera_altitude_m)
+    ? camera_altitude_m : null;
+  const fallback = typeof fallback_altitude_m === "number" && Number.isFinite(fallback_altitude_m)
+    ? fallback_altitude_m : null;
+
+  let tilt = requestedTilt;
+  let altitude;
+  let source;
+  let clamp = null;
+  if (explicit !== null) {
+    altitude = explicit;
+    source = "explicit";
+  } else if (radius !== null && radius > 0 && tangent(requestedTilt) > 1e-9) {
+    altitude = z + radius / tangent(requestedTilt);
+    source = "derived_footprint";
+  } else if (fallback !== null) {
+    // No calibrated footprint (or a top-down rake with no ring): the caller's
+    // legacy altitude stands, and only the aim is made elevation-aware.
+    altitude = fallback;
+    source = radius !== null && radius > 0 ? "derived_top_down_fallback" : "legacy_no_footprint";
+  } else {
+    return null;
+  }
+  if (floor !== null && altitude < floor) {
+    if (source === "derived_footprint" && !tilt_locked) {
+      const legalTilt = degrees(Math.atan2(radius, floor - z));
+      // Journey descriptions preserve two decimal places. Quantize DOWN so the
+      // serialized angle remains on the safe side of the exact geometric limit,
+      // then recompute the altitude to preserve the accepted footprint.
+      const serializedSafeTilt = Math.floor((legalTilt + 1e-9) * 100) / 100;
+      tilt = Math.min(requestedTilt, serializedSafeTilt);
+      altitude = z + radius / tangent(tilt);
+      clamp = {
+        code: "TERRAIN_SAFETY_FLOOR",
+        requested_tilt_deg: requestedTilt,
+        highest_legal_tilt_deg: round(legalTilt),
+        applied_tilt_deg: round(tilt),
+        min_altitude_m: floor,
+        target_elevation_m: z,
+        tilt_locked: false,
+        reason: "the preferred rake at the preserved orbit radius would put the camera below the terrain safety floor",
+      };
+    } else {
+      altitude = floor;
+      clamp = {
+        code: "TERRAIN_SAFETY_FLOOR",
+        requested_tilt_deg: requestedTilt,
+        highest_legal_tilt_deg: radius !== null && radius > 0 && floor > z ? round(degrees(Math.atan2(radius, floor - z))) : null,
+        applied_tilt_deg: round(tilt),
+        min_altitude_m: floor,
+        target_elevation_m: z,
+        tilt_locked: true,
+        reason: source === "explicit"
+          ? "the authored camera altitude is below the terrain safety floor; the floor is applied and the authored tilt is kept"
+          : "the rake is authored, so the camera altitude is clamped to the terrain safety floor instead of reducing the tilt",
+      };
+    }
+  }
+  // Earth Studio's altitude channel is authored in whole metres, so the pose
+  // the export can actually hold is the rounded one; the ring is derived from
+  // THAT altitude so ring and pitch agree exactly on the exported camera.
+  let cameraAltitude = Math.round(altitude);
+  if (floor !== null && cameraAltitude < floor) cameraAltitude = Math.ceil(floor);
+  const ring = Math.min(Math.max(0, cameraAltitude - z) * tangent(tilt), MAX_ORBIT_RADIUS_M);
+  return {
+    anchor_source: FOCAL_ANCHOR_SOURCE,
+    target_elevation_m: z,
+    footprint_altitude_m: radius === null ? null : Number(footprint_altitude_m),
+    footprint_radius_m: radius === null ? null : round(radius),
+    requested_tilt_deg: requestedTilt,
+    applied_tilt_deg: round(tilt),
+    camera_altitude_m: cameraAltitude,
+    camera_altitude_exact_m: round(altitude),
+    camera_altitude_source: source,
+    ring_radius_m: round(ring),
+    min_altitude_m: floor,
+    safety_clamp: clamp,
+    camera_below_target: cameraAltitude <= z,
+    formula: "camera_altitude_m = target_elevation_m + footprint_radius_m / tan(applied_tilt_deg); ring_radius_m = (camera_altitude_m - target_elevation_m) * tan(applied_tilt_deg)",
+  };
+}
+
+// Morphology → rake → complete pose. The rake policy is human-calibrated per
+// landform; the pose is solved by completePose so this module, the planner,
+// the journey compiler and the director never carry a second copy of the
+// equations. An undeclared focal elevation is solved at sea level exactly as
+// before and reported as such (`target_elevation_declared: false`), never
+// silently.
 function terrainTiltDecision({
   terrain_morphology,
   morphology_source = null,
   altitude_m = null,
   min_altitude_m = null,
+  target_elevation_m = null,
   baseline_tilt_deg = LEGACY_TILT_DEG,
 } = {}) {
   const classified = classifyMorphology(terrain_morphology);
   const policy = TILT_POLICY[classified.morphology];
   const requestedTilt = Math.min(policy.tilt_deg, MAX_ENGINE_TILT_DEG);
+  const elevationDeclared = typeof target_elevation_m === "number" && Number.isFinite(target_elevation_m);
+  const pose = completePose({
+    target_elevation_m: elevationDeclared ? target_elevation_m : 0,
+    footprint_altitude_m: altitude_m,
+    min_altitude_m,
+    tilt_deg: requestedTilt,
+    baseline_tilt_deg,
+  });
   const radius = referenceRadius(altitude_m, baseline_tilt_deg);
-  const floor = typeof min_altitude_m === "number" && Number.isFinite(min_altitude_m)
-    ? Math.max(0, min_altitude_m) : null;
-  let finalTilt = requestedTilt;
-  let altitude = radius === null ? null : radius / Math.tan(radians(finalTilt));
-  let clamp = null;
-  if (radius !== null && floor !== null && altitude < floor) {
-    const legalTilt = degrees(Math.atan2(radius, floor));
-    // Journey descriptions preserve two decimal places. Quantize DOWN so the
-    // serialized angle remains on the safe side of the exact geometric limit,
-    // then recompute altitude to preserve the accepted orbit footprint.
-    const serializedSafeTilt = Math.floor((legalTilt + 1e-9) * 100) / 100;
-    finalTilt = Math.min(requestedTilt, serializedSafeTilt);
-    altitude = radius / Math.tan(radians(finalTilt));
-    clamp = {
-      code: "TERRAIN_SAFETY_FLOOR",
-      requested_tilt_deg: requestedTilt,
-      highest_legal_tilt_deg: round(legalTilt),
-      applied_tilt_deg: round(finalTilt),
-      min_altitude_m: floor,
-      reason: "the preferred rake at the preserved orbit radius would put the camera below the terrain safety floor",
-    };
-  }
+  const finalTilt = pose ? pose.applied_tilt_deg : requestedTilt;
+  const clamp = pose ? pose.safety_clamp : null;
   const source = morphology_source || (classified.metadata_value ? "terrain_morphology_metadata" : "generic_fallback");
   return {
     policy_version: POLICY_VERSION,
@@ -125,8 +260,11 @@ function terrainTiltDecision({
     requested_tilt_deg: requestedTilt,
     final_tilt_deg: round(finalTilt),
     baseline_tilt_deg,
-    altitude_m: altitude === null ? null : round(altitude),
+    altitude_m: pose ? pose.camera_altitude_m : null,
     reference_orbit_radius_m: radius === null ? null : round(radius),
+    target_elevation_m: elevationDeclared ? target_elevation_m : 0,
+    target_elevation_declared: elevationDeclared,
+    complete_pose: pose,
     treatment: policy.treatment,
     reason: policy.reason,
     confidence: policy.confidence,
@@ -141,7 +279,10 @@ const api = {
   LEGACY_TILT_DEG,
   MORPHOLOGIES,
   TILT_POLICY,
+  FOCAL_ANCHOR_SOURCE,
   classifyMorphology,
+  completePose,
+  declaredFocalElevationM,
   referenceRadius,
   terrainTiltDecision,
 };

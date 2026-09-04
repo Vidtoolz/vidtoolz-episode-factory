@@ -371,6 +371,22 @@ answers), apply only to `SHOW_TERRAIN` orbit-family shots, preserve the previous
 coupling altitude to tilt, and reduce the angle when a terrain safety floor makes it infeasible.
 Explicit operator tilt remains authoritative.
 
+**Terrain complete pose (2026-09-04).** A gazetteer place that declares `target_elevation_m` is a
+*terrain focal point*: a 3-D anchor (latitude, longitude, elevation), not a sea-level coordinate.
+Every orbit-family movement around it — bare orbit, staged fly/zoom, hover or hold read-through,
+director one-stop or two-stop, journey IR, freeform text, continuation — resolves ONE complete
+camera pose through a single authority (`earth-studio-terrain-morphology.js` `completePose`,
+consumed by the planner, the journey compiler, the director and the keyframe engine): the calibrated
+footprint `r = altitude_m · tan 72°` is held, the rake `θ` comes from morphology or the authored
+tilt, the camera altitude is *derived* as `A = z_t + r / tan θ`, and the ring the orbit rides is
+measured from the focal elevation, `(A − z_t) · tan θ`, so the optical centre sits on the declared
+point for any altitude. An authored orbit altitude is honoured (operator authority) and the ring
+follows from it; an authored altitude that is not above the focal point is refused at validation.
+Movements whose inferred altitude only delivers the camera onto such an orbit land on the orbit's
+pose, so the handoff is one camera on one frame. The safety floor clamps a *derived* pose by
+reducing the rake to `atan2(r, floor − z_t)`; a stated rake is kept and the altitude is floored.
+Places without a declared elevation keep the legacy sea-level behaviour unchanged.
+
 **Calm pacing.** Suggested durations are the planner's magnitude-scaled `defaultDuration()` — the
 law real Earth Studio playback validated across acceptance rounds 2–4 — multiplied by a pace
 preset: **Calm ×1.35 (the default)**, Relaxed ×1.15, Standard ×1.0 (the validated baseline), Quick

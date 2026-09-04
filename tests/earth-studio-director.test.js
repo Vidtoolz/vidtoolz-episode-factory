@@ -706,9 +706,23 @@ test("terrain morphology: terrain rake is semantic, human-calibrated, and preser
   const orbit = c.steps[c.steps.length - 1];
   assert.equal(orbit.action, "orbit");
   assert.ok(journey.orbitCanFaceTarget(orbit.altitude_m, orbit.tilt_deg), "the raking orbit must still face the mountain");
-  const legacyRadius = terrainMorphology.referenceRadius(planner.resolveLocation("Matterhorn").altitude_m);
-  assert.ok(Math.abs(planner.orbitRadiusMeters(orbit.altitude_m, orbit.tilt_deg) - legacyRadius) < 2,
-    "the morphology angle must preserve the accepted 72-degree orbit footprint");
+  // CONTRACT CHANGE (2026-09-04, terrain complete pose). The footprint law is
+  // unchanged — the accepted 72-degree ground ring is preserved to the metre —
+  // but the ring is now measured from the DECLARED FOCAL ELEVATION, not from sea
+  // level: ring = (A − z_t)·tan θ. The old assertion read the ring as A·tan θ,
+  // which is only the ring when the thing being looked at is at sea level; on
+  // the Matterhorn that law aimed the optical centre 4,478 m under the summit
+  // (~10° of a 20° vertical field). The camera altitude therefore rises to
+  // z_t + r/tan θ (10 214 m at 74°) while the ring stays 20 005 m.
+  const resolved = planner.resolveLocation("Matterhorn");
+  const legacyRadius = terrainMorphology.referenceRadius(resolved.altitude_m);
+  assert.ok(Math.abs(planner.orbitRingRadiusMeters(resolved, orbit.altitude_m, orbit.tilt_deg) - legacyRadius) < 2,
+    "the morphology angle must preserve the accepted 72-degree orbit footprint (measured from the focal elevation)");
+  // A = z_t + r / tan θ = 4478 + 20004.94 / tan 74° = 10214.3 → whole metres.
+  assert.equal(orbit.altitude_m, Math.round(resolved.target_elevation_m + legacyRadius / Math.tan((74 * Math.PI) / 180)));
+  assert.equal(orbit.altitude_m, 10214);
+  assert.ok(planner.orbitRadiusMeters(orbit.altitude_m, orbit.tilt_deg) > legacyRadius * 1.5,
+    "the sea-level ring law is no longer what a terrain orbit rides — if this ever equals the footprint again, the focal elevation was lost");
 });
 
 test("terrain morphology: policy maps semantic form rather than place names", () => {
@@ -770,13 +784,37 @@ test("terrain morphology: unseen fixtures generalize and unknown terrain uses th
 });
 
 test("terrain morphology: safety floor reduces an infeasible rake and records why", () => {
+  // CONTRACT CHANGE (2026-09-04, terrain complete pose). The OLD expectation
+  // (Everest clamped to 73.35°) encoded the sea-level pose: r/tan 74° = 8,825 m
+  // sat below the 9,200 m floor. With the declared summit at 8,849 m the
+  // complete pose is 8,849 + 8,825 = 17,674 m, well above the floor, so Everest
+  // is legitimately NOT clamped any more. The safety semantics themselves are
+  // unchanged and are exercised on a real conflict below: target and footprint
+  // are held, the camera is clamped to the floor, and the rake is reduced to
+  // the highest angle still legal ABOVE THE TARGET — atan2(r, floor − z_t).
   const r = director.autoDirect(director.parseIntent("Show the terrain of Mount Everest."));
   const d = r.decisions[0].decision;
   assert.equal(d.terrain_policy.requested_tilt_deg, 74);
-  assert.equal(d.tilt_deg, 73.35);
-  assert.ok(d.altitude_m >= 9200);
-  assert.equal(d.terrain_policy.safety_clamp.code, "TERRAIN_SAFETY_FLOOR");
-  assert.equal(d.terrain_policy.safety_clamp.min_altitude_m, 9200);
+  assert.equal(d.tilt_deg, 74, "the complete pose sits above the floor, so the preferred rake is preserved");
+  assert.equal(d.altitude_m, 17674);
+  assert.equal(d.terrain_policy.safety_clamp, null);
+  assert.equal(d.terrain_policy.target_elevation_declared, true);
+
+  const conflict = terrainMorphology.terrainTiltDecision({
+    terrain_morphology: "sharp_peak", altitude_m: 5000 / Math.tan((72 * Math.PI) / 180),
+    min_altitude_m: 7000, target_elevation_m: 4000,
+  });
+  assert.equal(conflict.requested_tilt_deg, 74);
+  assert.equal(conflict.safety_clamp.code, "TERRAIN_SAFETY_FLOOR");
+  assert.equal(conflict.safety_clamp.min_altitude_m, 7000);
+  assert.equal(conflict.safety_clamp.target_elevation_m, 4000);
+  assert.equal(conflict.safety_clamp.highest_legal_tilt_deg, Number(((Math.atan2(5000, 3000) * 180) / Math.PI).toFixed(6)));
+  assert.equal(conflict.final_tilt_deg, 59.03, "quantized DOWN to the two decimals a journey phrase carries");
+  assert.ok(conflict.altitude_m >= 7000 && conflict.altitude_m <= 7001, "camera held at the floor (whole metres)");
+  assert.ok(Math.abs(conflict.complete_pose.ring_radius_m - 5000) < 1, "footprint held");
+  // The pre-repair law (floor measured from sea level) would have reduced the
+  // rake to atan2(5000, 7000) = 35.5°, pointing the camera 4 km under the target.
+  assert.ok(conflict.final_tilt_deg > 50);
 });
 
 test("terrain morphology: explicit tilt wins and non-terrain intent does not activate morphology", () => {

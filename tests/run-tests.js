@@ -104,6 +104,7 @@ require("./earth-studio-orbit-staging.test.js");
 require("./earth-studio-orbit-exit.test.js");
 require("./earth-studio-visual-review.test.js");
 require("./earth-studio-terrain-motion.test.js");
+require("./earth-studio-terrain-complete-pose.test.js");
 require("./earth-studio-smoothness-doctrine.test.js");
 require("./earth-studio-orbit-travel-handoff.test.js");
 require("./earth-studio-path-equivalence.test.js");

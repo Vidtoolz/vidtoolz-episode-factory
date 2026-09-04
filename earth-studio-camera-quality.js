@@ -284,8 +284,13 @@ function deadOrbitReport({ plan, tracks }) {
       moved = Math.max(moved, Math.hypot(ground, dz));
     }
     if (moved >= DEAD_ORBIT_MIN_DISPLACEMENT_M) continue;
-    const ring = Number.isFinite(segment.altitude_m) && Number.isFinite(segment.tilt_deg)
-      ? segment.altitude_m * Math.tan((segment.tilt_deg * Math.PI) / 180) : null;
+    // The ring the engine actually rode: a terrain focal point's ring is
+    // measured from its declared elevation (plan.terrain_pose), others from
+    // sea level.
+    const ring = segment.terrain_pose && Number.isFinite(segment.terrain_pose.ring_radius_m)
+      ? segment.terrain_pose.ring_radius_m
+      : Number.isFinite(segment.altitude_m) && Number.isFinite(segment.tilt_deg)
+        ? segment.altitude_m * Math.tan((segment.tilt_deg * Math.PI) / 180) : null;
     out.push(`segment ${segment.segment_id || '?'} requests a ${Math.round(arc)}\u00b0 orbit but the camera never moves `
       + `(${moved.toFixed(1)} m of travel across the whole movement`
       + (Number.isFinite(segment.tilt_deg) ? `, tilt ${segment.tilt_deg}\u00b0` : '')
