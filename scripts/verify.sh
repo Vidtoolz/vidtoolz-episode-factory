@@ -116,6 +116,9 @@ node --check earth-studio-lane.js
 node --check earth-studio-native-template-profiles.js
 node --check scripts/earth-studio-journey-browser-smoke.js
 node --check earth-studio-super-focus.js
+node --check earth-studio-frame-manifest.js
+node --check earth-studio-export-adapter.js
+node --check tests/_earth-studio-fake-export.js
 node --check scripts/earth-studio-super-focus-browser-smoke.js
 node --check scripts/earth-studio-journey-import-gate.js
 node --check scripts/earth-studio-journey-canaries.js

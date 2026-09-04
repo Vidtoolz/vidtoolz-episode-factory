@@ -428,29 +428,37 @@ function startRender(packageDir, projectId, options = {}) {
   if (current.active) { const e = new Error('An Earth Studio render is already running.'); e.statusCode = 409; e.active = current; throw e; }
   const job = readJob(packageDir);
   if (!job) { const e = new Error('No Earth Studio job in this project. Generate the plan first.'); e.statusCode = 400; throw e; }
-  const frames = frameGlob(packageDir);
+  // A job-scoped frame source (Super Focus) names the exact directory, image
+  // pattern, first frame and frame count it has already validated; the
+  // shared frames/ folder discovery below stays the expert-page behaviour.
+  const scoped = options.frames && options.frames.dir ? options.frames : null;
+  const frames = scoped
+    ? { dir: scoped.dir, ext: scoped.ext, glob: scoped.pattern ? null : path.join(scoped.dir, `*.${scoped.ext}`), pattern: scoped.pattern || null, start_number: scoped.start_number || 0, limit: scoped.limit || null, count: scoped.count, mixed: false, counts: { [scoped.ext]: scoped.count } }
+    : frameGlob(packageDir);
   if (!frames) { const e = new Error('No exported frames found in earth-studio/frames/. Export the image sequence from Earth Studio into that folder first.'); e.statusCode = 400; throw e; }
   // Advisory only — Mikko may legitimately adjust keyframes/length inside
   // Earth Studio, so a count mismatch or stale export warns but never blocks.
-  const frameCount = countFrames(packageDir);
+  const frameCount = scoped ? scoped.count : countFrames(packageDir);
   const warnings = [];
   if (frames.mixed) {
     const perExt = Object.entries(frames.counts).map(([e, n]) => `${n} .${e}`).join(', ');
     warnings.push(`frames/ mixes image types (${perExt}) — this render uses only the ${frames.count} .${frames.ext} frame(s); remove the others or re-export one format.`);
   }
-  if (job.total_frames && frames.count !== job.total_frames) {
+  if (!scoped && job.total_frames && frames.count !== job.total_frames) {
     warnings.push(`Rendered frame count (${frames.count} .${frames.ext}) differs from the plan (${job.total_frames} frames).`);
   }
-  if (framesStale(packageDir, job, frameCount)) {
+  if (!scoped && framesStale(packageDir, job, frameCount)) {
     warnings.push('Frames were exported before the current plan was generated — they may belong to an older camera move. Re-export from Earth Studio if unsure.');
   }
   const out = renderPath(packageDir);
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const fps = (job.frame_rate || 30);
-  const args = [
-    '-y', '-framerate', String(fps), '-pattern_type', 'glob', '-i', frames.glob,
-    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out,
-  ];
+  const args = frames.pattern
+    ? ['-y', '-framerate', String(fps), '-start_number', String(frames.start_number), '-i', frames.pattern,
+      ...(frames.limit ? ['-frames:v', String(frames.limit)] : []),
+      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out]
+    : ['-y', '-framerate', String(fps), '-pattern_type', 'glob', '-i', frames.glob,
+      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out];
   const spawnFn = options.spawn || childProcess.spawn;
   const child = spawnFn(options.ffmpegBin || 'ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
   const rec = {
@@ -465,7 +473,7 @@ function startRender(packageDir, projectId, options = {}) {
     child.on('error', (e) => { rec.stderr = tail(rec.stderr + `${e.message}\n`, 8192); rec.exitCode = 1; rec.exitState = 'failed'; rec.completedAt = rec.completedAt || new Date().toISOString(); });
     child.on('close', (code) => { rec.exitCode = code; if (rec.exitState !== 'cancelled') rec.exitState = code === 0 ? 'completed' : 'failed'; rec.completedAt = rec.completedAt || new Date().toISOString(); });
   }
-  return { ok: true, job_id: rec.jobId, project_id: projectId, frame_glob: frames.glob, fps, output: rec.output, frame_count: frameCount, rendered_frame_count: frames.count, frames_expected: job.total_frames || null, warnings };
+  return { ok: true, job_id: rec.jobId, pid: child.pid || null, project_id: projectId, frame_glob: frames.glob || frames.pattern, fps, output: rec.output, frame_count: frameCount, rendered_frame_count: frames.count, frames_expected: job.total_frames || null, warnings, args };
 }
 
 function cancelRender(options = {}) {

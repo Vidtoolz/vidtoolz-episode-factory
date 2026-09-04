@@ -84,16 +84,21 @@ class Cdp {
   close() { try { this.ws.close(); } catch (_) {} }
 }
 
-async function launch({ port = 9222, headless = true, display = ':1', width = 1600, height = 1000 } = {}) {
+// gl: 'swiftshader' (default — the historical gate behaviour, CPU only) or
+// 'gpu' (ANGLE over EGL on the workstation GPU; Earth Studio's native local
+// render needs it to be usable — 61 × 1080p frames in 12 s vs. never finishing
+// under SwiftShader, measured 2026-09-04). Both work without a DISPLAY.
+async function launch({ port = 9222, headless = true, display = ':1', width = 1600, height = 1000, gl = 'swiftshader', profile = PROFILE } = {}) {
   const args = [
     `--remote-debugging-port=${port}`,
-    `--user-data-dir=${PROFILE}`,
+    `--user-data-dir=${profile}`,
     '--no-first-run', '--no-default-browser-check',
     '--disable-features=Translate,MediaRouter',
     `--window-size=${width},${height}`,
     'about:blank',
   ];
-  if (headless) args.unshift('--headless=new', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader');
+  if (headless && gl === 'gpu') args.unshift('--headless=new', '--use-gl=angle', '--use-angle=gl-egl', '--enable-gpu', '--ignore-gpu-blocklist');
+  else if (headless) args.unshift('--headless=new', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader');
   const env = { ...process.env };
   if (!headless) env.DISPLAY = display;
   const chrome = cp.spawn('/usr/bin/google-chrome', args, { stdio: ['ignore', 'ignore', 'pipe'], env, detached: false });
@@ -305,4 +310,4 @@ if (require.main === module) {
   main().catch((e) => { console.error('GATE ERROR:', e.message); process.exitCode = 1; });
 }
 
-module.exports = { launch, attach, newTab, importEsp, projectInfo, renderRect, gotoFrame, watchFrames, observe };
+module.exports = { PROFILE, Cdp, delay, getJson, launch, attach, newTab, importEsp, projectInfo, renderRect, gotoFrame, watchFrames, observe };

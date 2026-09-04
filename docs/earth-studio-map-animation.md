@@ -3,53 +3,88 @@
 An optional per-project tool to produce Google Earth Studio map fly-overs, operable from the
 cockpit GUI and run entirely on **vidnux** (no PRESTO required).
 
-## Super Focus one-shot (one instruction → one video) — 2026-09-04
+## Super Focus one-shot (one instruction → one video) — 2026-09-04, terminal repair
 
 `earth-studio-super-focus.html?id=<project>` is the Super Focus surface: one
 textarea, one **Create map animation** button, no Director role / purpose /
 treatment / movement controls (those stay in the expert workspace
-`project-earth-studio.html`, which links to Super Focus and back). It does not
-plan anything itself. `earth-studio-super-focus.js` is the single job
-authority: it drives the canonical stack — `director.parseIntent` →
-`director.autoDirect` → `journey.validateJourney` → `lane.writeJob` →
-`lane.startRender` — and records durable state in
-`<package>/earth-studio/super-focus-job.json`.
+`project-earth-studio.html`, which links to Super Focus and back). The normal
+path is `Describe → Create → Wait → Play`; nothing is opened, imported,
+rendered or copied by hand.
 
-Stages (real pipeline state, never simulated):
-`QUEUED → PLANNING → VALIDATING → GENERATING_PROJECT →
-WAITING_FOR_EARTH_STUDIO_EXPORT → RENDERING → FINALIZING → READY | FAILED`.
+`earth-studio-super-focus.js` is the single job authority. It plans nothing
+itself: `director.parseIntent → director.autoDirect → journey.validateJourney →
+lane.writeJob → earth-studio-export-adapter → lane.startRender → ffprobe`. State
+lives in `<package>/earth-studio/super-focus-job.json`, written atomically
+(temp file + fsync + rename); an unparsable file is reported as
+`job_file_corrupt`, never as "no job".
 
-- **Durations are authoritative.** "circle there for 3 minutes" → a 180 s orbit
-  (`stop.duration_seconds`, `duration_source: "manual"`); travel legs between
-  stops are timed automatically. Only stated durations are emitted, so every
-  existing Director phrasing produces the same journey as before.
-- **Locations are resolved automatically**, including `place, City` qualifiers
-  (the trailing city collapses into the place when it is within 60 km) and
-  gazetteer aliases, accent-insensitively ("jätkänsaari, Helsinki" → Jätkäsaari).
-  An unknown place fails the job with `Could not resolve location`.
-- **READY = the MP4 exists** at `earth-studio/renders/<slug>.mp4`, served from
-  `/aigen-assets/script-packages/<id>/…`. Play is disabled until then.
-- **The one step no API can automate** is Google Earth Studio's own render
-  (browser-only, Google login). The job waits, counts frames arriving in
-  `earth-studio/frames/` every 5 s, derives the ETA from the observed export
-  rate (nothing is invented before frames arrive), and starts ffmpeg by itself
-  when the count reaches the plan (or stays unchanged for 30 s). Render
-  progress comes from ffmpeg's `frame=` stderr; the measured seconds-per-frame
-  is stored in `super-focus-timing.json` for the next ETA.
-- **Reload / restart safe**: `GET …/status` re-attaches the watcher; a job
-  that died mid-planning fails honestly with Retry. Retry resumes at the export
-  boundary when the project exists, otherwise re-runs the pipeline.
+Stages (only executable ones):
+`QUEUED → PLANNING → VALIDATING → GENERATING_PROJECT → LAUNCHING_EARTH_STUDIO →
+IMPORTING_PROJECT → EXPORTING_EARTH_STUDIO_FRAMES → RENDERING → FINALIZING →
+READY | FAILED`, plus the blocking status `WAITING_FOR_EARTH_STUDIO_AUTH`
+when the automation browser profile needs a Google sign-in (surfaced with
+Retry, never a generic wait).
 
-Routes (nonce-gated writes, VIDNAS mount probed):
-`POST /api/earth-studio/super-focus/create` (202, returns the QUEUED job at
-once; 409 while a job is running unless `replace: true`),
-`GET /api/earth-studio/super-focus/status?id=`,
-`POST /api/earth-studio/super-focus/retry`.
+**Earth Studio automation (`earth-studio-export-adapter.js`).** Reuses the
+authenticated-profile CDP harness of `scripts/earth-studio-journey-import-gate.js`
+(launch with `gl: 'gpu'`, tab, `.esp` import, project inspection) and drives
+Earth Studio's OWN local render: "Image sequence (.jpeg) — renders locally".
+Headless Chrome cannot show the OS folder chooser that `showDirectoryPicker()`
+opens, so a page shim installed before the app loads answers the picker with a
+real origin-private-file-system directory (a cloneable handle — Earth Studio
+persists it in IndexedDB; a Proxy fails with DataCloneError). Frames are pulled
+from OPFS to the job's own directory the moment Earth Studio closes each file
+(temp + rename), then deleted from OPFS. Measured 2026-09-04: 61 × 1920×1080
+JPEG in ~19 s on the RTX 5070 Ti (never finishes under SwiftShader). Only one
+Chrome per profile runs at a time; the profile (`ES_PROFILE`, default
+`~/.chrome-earthstudio-debug`) holds the Google session; no credential is in
+the repository.
 
-Tests: `tests/earth-studio-super-focus.test.js` (the exact mission instruction
-is the regression fixture) and the headless-Chrome
-`scripts/earth-studio-super-focus-browser-smoke.js` (surface, lifecycle,
-disabled→enabled Play with a real ffmpeg render of synthetic frames, reload).
+**Frame manifest (`earth-studio-frame-manifest.js`).** Every job owns
+`earth-studio/frames/<job-id>[-a<attempt>]/` (must be absent or empty) and a
+manifest: prefix `<render name>_`, `.jpeg`, frames `0..N` INCLUSIVE (Earth
+Studio's "Frames 0 TO N" renders N+1 files for an N-frame project), zero-padded
+to the digit count of N (`earth-studio_06.jpeg` … `earth-studio_60.jpeg`;
+`earth-studio_00000.jpeg` … `earth-studio_11250.jpeg`). Completion = Earth
+Studio finished AND exactly the expected contiguous set is present, nothing
+else (no other extension, no wrong width, no out-of-range or duplicate frame,
+no empty or temp file) and unchanged between two inspections. Elapsed time
+never means complete: a silent export is noted STALLED and eventually FAILS
+(retryable). The MP4 encodes exactly the planned N frames (`-start_number 0
+-frames:v N`), so the planned duration is exact.
+
+**READY = validated.** After ffmpeg exits 0, ffprobe must parse the container,
+find an h264 stream with even dimensions, a positive duration matching N/fps,
+and decode exactly N frames. A corrupt, truncated, empty or non-video output
+FAILS (`Rendered video failed validation`), Play stays disabled, Retry
+re-encodes from the verified frames.
+
+**Ownership / restart.** The export records its owner pid, token and Chrome
+pid; the encoder records its pid and lane job id. On restart: a live encoder
+pid is left alone (no second ffmpeg); a dead encoder with a valid output is
+validated; a dead export owner's orphan Chrome is killed and either the
+complete frame set on disk is encoded (no new Earth Studio session) or exactly
+one fresh attempt starts in a new directory. One active job per project: a
+second Create is 409 (`replace` is not honoured — this repository has no
+canonical cancel).
+
+**ETA.** Not measurable until the first Earth Studio frame arrives; then from
+the observed arrival rate (≥ 2 samples, ≥ 5 s), taking the longer of that and
+Earth Studio's own "remaining" estimate, plus the measured (or labelled
+default) encode rate.
+
+Routes (nonce-gated writes, VIDNAS mount probed): `POST
+/api/earth-studio/super-focus/create` (202 with the QUEUED job; 409 while a job
+is active), `GET …/status?id=` (re-attaches ownership), `POST …/retry`.
+
+Tests: `tests/earth-studio-super-focus.test.js` (exact instruction, 8 hostile
+parser variants, manifest, 6 hostile watcher cases, READY corruption cases,
+atomic state, restart/render ownership, routes) and the headless-Chrome
+`scripts/earth-studio-super-focus-browser-smoke.js` (fake exporter through the
+server's injectable runner; real ffmpeg/ffprobe). The launcher flag
+`~/bin/open-earth-studio --super-focus` is a workspace convenience outside this
+repository, not a requirement: the expert page links to Super Focus.
 
 ## Direct journey IR (structured path, shadow-only)
 

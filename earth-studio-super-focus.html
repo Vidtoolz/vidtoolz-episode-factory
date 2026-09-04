@@ -15,6 +15,7 @@
       .btn:hover { border-color: #58a6ff; }
       .btn-go { background: #2ea043; color: #fff; border-color: #2ea043; font-weight: 600; padding: 10px 22px; font-size: 15px; }
       .btn:disabled { opacity: .45; cursor: not-allowed; }
+      [hidden] { display: none !important; } /* author .btn display must not defeat hidden */
       .btn-play { background: #1f6feb; color: #fff; border-color: #1f6feb; font-weight: 600; }
       .stages { list-style: none; margin: 12px 0 0; padding: 0; }
       .stages li { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border,#30363d); font-size: 14px; }
@@ -41,8 +42,9 @@
       details.adv summary { cursor: pointer; color: var(--muted,#8b949e); font-size: 13px; }
       details.adv .row { margin: 8px 0; font-size: 13px; }
       select { background: #0d1117; color: #e6edf3; border: 1px solid var(--border,#30363d); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
-      .manual { border-left: 3px solid #58a6ff; padding: 8px 12px; background: rgba(88,166,255,.06); border-radius: 6px; margin-top: 10px; font-size: 13px; }
-      .manual ol { margin: 6px 0 0 18px; padding: 0; }
+      .auto { border-left: 3px solid #58a6ff; padding: 8px 12px; background: rgba(88,166,255,.06); border-radius: 6px; margin-top: 10px; font-size: 13px; }
+      .auto.blocked { border-left-color: #d29922; background: rgba(210,153,34,.08); }
+      .auto.stalled { border-left-color: #d29922; }
     </style>
     <script src="ef-nav.js"></script>
   </head>
@@ -52,7 +54,7 @@
       <details class="page-guide">
         <summary>Earth Studio Super Focus — one instruction, one video</summary>
         <div class="page-guide-body">
-          <div class="page-guide-row"><span class="page-guide-label">What</span><span>Describe the map animation in plain language. The system plans the cameras, creates the Earth Studio project, waits for Earth Studio's frames, renders the video and hands you a Play button.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">What</span><span>Describe the map animation in plain language. The system plans the cameras, creates the Earth Studio project, drives Earth Studio's own render automatically, encodes and validates the video and hands you a Play button.</span></div>
           <div class="page-guide-row"><span class="page-guide-label">Next</span><span>Write where to start, where to go, and how long to stay at each place. Press <b>Create map animation</b>. Come back any time — the job keeps running and this page picks it up.</span></div>
           <div class="page-guide-row"><span class="page-guide-label">Expert</span><span>Need manual camera control? <a id="sf-expert-link" href="project-earth-studio.html">Open the expert workspace</a>.</span></div>
         </div>
@@ -64,7 +66,7 @@
       <section class="card" id="sf-compose">
         <label for="sf-instruction" style="font-weight:600;font-size:14px;">What should the map animation do?</label>
         <textarea id="sf-instruction" data-sf="instruction" placeholder="start in korkeasaari, Helsinki. circle there for 3 minutes. then move to linnanmäki, helsinki, circle there for 3 minutes. then move to jätkänsaari, Helsinki. circle there for 4 seconds."></textarea>
-        <div class="meta" style="margin:6px 0 10px;">Places are resolved automatically. Durations you state are used exactly; travel between places is timed for you.</div>
+        <div class="meta" style="margin:6px 0 10px;">Places are resolved automatically. Durations you state are used exactly; travel between places is timed for you. Earth Studio renders the frames by itself.</div>
         <button class="btn btn-go" id="sf-create" data-sf="create">Create map animation</button>
         <span class="meta" id="sf-compose-note"></span>
         <details class="adv" id="sf-advanced">
@@ -82,13 +84,13 @@
         <div class="bar" id="sf-bar"><div id="sf-bar-fill"></div></div>
         <div class="eta" id="sf-eta" data-sf="eta">—</div>
         <ul class="stages" id="sf-stages"></ul>
-        <div id="sf-manual" class="manual" hidden></div>
+        <div id="sf-auto" class="auto" hidden></div>
         <div id="sf-error" class="err" hidden></div>
         <div style="margin-top:14px;">
           <button class="btn btn-play" id="sf-play" data-sf="play" disabled>▶ Play</button>
           <button class="btn" id="sf-view-plan" data-sf="view-plan">View plan</button>
           <button class="btn" id="sf-retry" data-sf="retry" hidden>Retry</button>
-          <button class="btn" id="sf-another" data-sf="another">Create another</button>
+          <button class="btn" id="sf-another" data-sf="another" hidden>Create another</button>
           <a class="btn" id="sf-expert" href="project-earth-studio.html">Expert workspace</a>
         </div>
         <div id="sf-result" hidden>
@@ -138,8 +140,9 @@
             li.className = cls; li.dataset.stage = s.name;
             const seconds = rec.seconds != null ? ' · ' + fmtSec(rec.seconds) : '';
             let extra = '';
-            if (s.name === 'WAITING_FOR_EARTH_STUDIO_EXPORT' && job.progress && job.progress.frames_total) extra = ' · ' + (job.progress.frames_exported || 0) + ' / ' + job.progress.frames_total + ' frames';
+            if (s.name === 'EXPORTING_EARTH_STUDIO_FRAMES' && job.progress && job.progress.frames_expected && (rec.started_at || job.status === 'EXPORTING_EARTH_STUDIO_FRAMES')) extra = ' · ' + (job.export && job.export.files_on_disk || 0) + ' / ' + job.progress.frames_expected + ' frames';
             if (s.name === 'RENDERING' && job.status === 'RENDERING' && job.progress) extra = ' · ' + (job.progress.frames_rendered || 0) + ' / ' + (job.progress.frames_total || '?') + ' frames';
+            if (job.status === 'WAITING_FOR_EARTH_STUDIO_AUTH' && job.blocked && s.name === job.blocked.stage) cls = 'stage-failed';
             li.innerHTML = '<span class="dot"></span><span>' + s.label + '</span><span class="meta">' + seconds + extra + (rec.note ? ' · ' + rec.note : '') + '</span>';
             ul.appendChild(li);
           });
@@ -150,9 +153,9 @@
           const job = payload && payload.job;
           if (!job) { $('sf-job').hidden = true; $('sf-compose').hidden = false; return; }
           $('sf-job').hidden = false; $('sf-compose').hidden = true;
-          const label = job.status === 'FAILED' ? 'Failed' : (payload.stages || []).concat(job.stages).find((s) => s.name === job.status);
+          const label = job.status === 'FAILED' ? 'Failed' : job.status === 'WAITING_FOR_EARTH_STUDIO_AUTH' ? 'Earth Studio sign-in needed' : (payload.stages || []).concat(job.stages).find((s) => s.name === job.status);
           $('sf-status-label').textContent = typeof label === 'string' ? label : (label ? label.label : job.status);
-          $('sf-status-label').className = job.status === 'READY' ? 'ok' : job.status === 'FAILED' ? 'blk' : '';
+          $('sf-status-label').className = job.status === 'READY' ? 'ok' : job.status === 'FAILED' ? 'blk' : job.status === 'WAITING_FOR_EARTH_STUDIO_AUTH' ? 'warn' : '';
           $('sf-status-label').dataset.state = job.status;
           $('sf-job-meta').textContent = 'instruction: “' + job.instruction + '”';
           const pct = job.progress && job.progress.percent;
@@ -163,28 +166,31 @@
           const eta = job.eta || {};
           if (job.status === 'READY') $('sf-eta').innerHTML = '<span class="ok">Ready.</span> <small>rendered ' + fmtSec((job.result || {}).duration_seconds) + ' of animation</small>';
           else if (job.status === 'FAILED') $('sf-eta').textContent = 'Stopped.';
+          else if (job.status === 'WAITING_FOR_EARTH_STUDIO_AUTH') $('sf-eta').innerHTML = '<b class="warn">Blocked</b> <small>' + (eta.text || '') + '</small>';
           else if (eta.seconds_remaining != null) $('sf-eta').innerHTML = '<b>ETA ' + fmtSec(eta.seconds_remaining) + '</b> <small>(' + (eta.range_seconds ? fmtSec(eta.range_seconds[0]) + '–' + fmtSec(eta.range_seconds[1]) : '') + ', basis: ' + String(eta.basis || '').replace(/_/g, ' ') + ')</small>';
           else $('sf-eta').innerHTML = '<b>ETA: not yet measurable</b> <small>' + (eta.text || '') + '</small>';
           renderStages(job, payload.stages);
-          // manual Earth Studio step — the one thing this repository cannot automate
-          const manual = $('sf-manual');
-          if (job.status === 'WAITING_FOR_EARTH_STUDIO_EXPORT' && job.project) {
-            manual.hidden = false;
-            manual.innerHTML = '<b>Earth Studio renders the frames (browser-only, Google login — no API exists).</b>'
-              + '<ol><li>Open <a href="' + job.project.earth_studio_url + '" target="_blank" rel="noopener">Google Earth Studio</a> and import <code>' + job.project.esp + '</code> from this project’s <code>' + ID + '</code> package.</li>'
-              + '<li>Render all ' + job.project.total_frames + ' frames as an image sequence into <code>' + job.project.frames_dir + '</code>.</li>'
-              + '<li>Leave this page open or come back later: frames are counted every few seconds, the ETA appears from the observed export rate, and the video renders itself when the frames are complete.</li></ol>';
-          } else manual.hidden = true;
+          // automation status: Earth Studio is driven for you; only a sign-in can block it
+          const auto = $('sf-auto'); const ex = job.export || {};
+          if (job.status === 'WAITING_FOR_EARTH_STUDIO_AUTH' && job.blocked) {
+            auto.hidden = false; auto.className = 'auto blocked';
+            auto.innerHTML = '<b>Earth Studio needs a Google sign-in.</b> ' + job.blocked.message + '<div class="meta" style="margin-top:6px;">The automation browser profile signs in once; nothing is stored in this project. Press <b>Retry</b> after signing in.</div>';
+          } else if (['LAUNCHING_EARTH_STUDIO', 'IMPORTING_PROJECT', 'EXPORTING_EARTH_STUDIO_FRAMES'].includes(job.status)) {
+            auto.hidden = false; auto.className = 'auto' + (ex.stalled_since ? ' stalled' : '');
+            const reported = ex.rendered_reported != null ? 'Earth Studio reports ' + ex.rendered_reported + ' / ' + (ex.total_reported || job.progress.frames_expected) + ' frames rendered' + (ex.remaining_text ? ' (' + ex.remaining_text + ' remaining by its own estimate)' : '') : 'Earth Studio has not reported a rendered frame yet';
+            auto.innerHTML = '<b>Earth Studio is running automatically</b> — the project was imported and its own local render is producing the frames. ' + reported + '; ' + (ex.files_on_disk || 0) + ' verified on disk.' + (ex.stalled_since ? ' <b class="warn">Stalled:</b> no new frame recently — still waiting, not complete.' : '') + (ex.attempt > 1 ? ' <span class="meta">(attempt ' + ex.attempt + ')</span>' : '');
+          } else auto.hidden = true;
           const err = $('sf-error');
           if (job.status === 'FAILED' && job.error) { err.hidden = false; err.innerHTML = '<b>' + job.error.cause + '</b>' + (job.error.failed_stage ? ' <span class="meta">(' + job.error.failed_stage.replace(/_/g, ' ').toLowerCase() + ')</span>' : '') + (job.error.detail ? '<pre>' + String(job.error.detail).replace(/</g, '&lt;') + '</pre>' : ''); }
           else err.hidden = true;
-          $('sf-retry').hidden = job.status !== 'FAILED';
+          $('sf-retry').hidden = !(job.status === 'FAILED' || job.status === 'WAITING_FOR_EARTH_STUDIO_AUTH');
+          $('sf-another').hidden = !(job.status === 'READY' || job.status === 'FAILED');
           const play = $('sf-play');
           if (job.status === 'READY' && job.result && job.result.url) {
             play.disabled = false; play.dataset.url = job.result.url;
             $('sf-result').hidden = false;
             const v = $('sf-video'); if (v.getAttribute('src') !== job.result.url) v.src = job.result.url;
-            $('sf-result-meta').textContent = job.result.mp4 + ' · ' + Math.round(job.result.bytes / 1024) + ' KB · ' + (job.result.total_frames || '?') + ' frames';
+            $('sf-result-meta').textContent = job.result.mp4 + ' · ' + Math.round(job.result.bytes / 1024) + ' KB · ' + (job.result.total_frames || '?') + ' frames · ' + (job.result.width || '?') + '×' + (job.result.height || '?') + ' ' + (job.result.codec || '') + ' · validated with ffprobe' + (job.result.imagery_sources ? ' · imagery: ' + job.result.imagery_sources : '');
           } else { play.disabled = true; delete play.dataset.url; $('sf-result').hidden = true; }
           if (job.parsed) renderPlan(job);
         }
@@ -206,7 +212,7 @@
             const payload = await fetchJson(STATUS_API + '?id=' + encodeURIComponent(ID));
             render(payload);
             const job = payload.job;
-            const active = job && job.status !== 'READY' && job.status !== 'FAILED';
+            const active = job && job.status !== 'READY' && job.status !== 'FAILED' && job.status !== 'WAITING_FOR_EARTH_STUDIO_AUTH';
             clearTimeout(pollTimer);
             if (active) pollTimer = setTimeout(refresh, job.status === 'RENDERING' ? 1000 : 3000);
           } catch (e) {
@@ -220,7 +226,7 @@
           if (!instruction) { $('sf-compose-note').textContent = 'Describe the map animation first.'; return; }
           $('sf-create').disabled = true; $('sf-compose-note').textContent = 'Starting…';
           try {
-            const res = await post(CREATE_API, { id: ID, instruction, aspect: $('sf-aspect').value, replace: lastStatus && lastStatus.job && (lastStatus.job.status === 'READY' || lastStatus.job.status === 'FAILED') });
+            const res = await post(CREATE_API, { id: ID, instruction, aspect: $('sf-aspect').value });
             render({ job: res.job, stages: lastStatus && lastStatus.stages });
             refresh();
           } catch (e) { $('sf-compose-note').textContent = e.message; }

@@ -2077,6 +2077,15 @@
       let previousClauseLastHit = null;
       clauses.forEach((clause) => {
         let hits = findHits(clause);
+        // "Korkeasaari Helsinki" / "korkeasaari helsinki" / "Jatkasaari Helsinki":
+        // a known city written directly after a place it contains (only
+        // whitespace or a comma between them) qualifies that place — one stop,
+        // never a second one. Same gazetteer-distance rule as the comma form.
+        for (let i = hits.length - 1; i >= 1; i -= 1) {
+          const a = hits[i - 1]; const b = hits[i];
+          const between = stripAccents(clause).slice(a.idx + a.len, b.idx);
+          if (/^[\s,]*$/.test(between) && isQualifierOf(a.name, b.name)) hits.splice(i, 1);
+        }
         const bareQualifier = hits.length === 1 && previousClauseLastHit
           && stripAccents(clause.trim()).replace(/[.!?]+$/, "") === hits[0].needleText
           && isQualifierOf(previousClauseLastHit, hits[0].name);
