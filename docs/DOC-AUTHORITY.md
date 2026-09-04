@@ -31,6 +31,7 @@ beat hand-maintained prose.
 - `config/production-stages.json` — generated stage data (mirror of the canonical spec).
 - `docs/production-mode.md` — run-level production mode (DRAFT / REVIEW / PRODUCTION) and gate-7/8 semantics per mode.
 - `docs/draft-bespoke-successor-authority.md` — immutable current-Story Draft successor and registry-to-Directed-Draft assembly authority.
+- `docs/screen-capture-v1.md` — Screen Capture V1 / Stage 7 execution authority (CaptureSpec, adapters, privacy BLOCK, finalizer, QC, handoff, deployment step); activation state lives in `config/screen-capture-policy.json`.
 
 ## Historical / reference docs (snapshots, not current truth)
 

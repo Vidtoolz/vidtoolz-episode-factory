@@ -1,0 +1,28 @@
+[Unit]
+Description=VIDTOOLZ Screen Capture V1 evidence finalizer (create-once protected store, signed receipts)
+Documentation=file:///home/vidtoolz/vidtoolz-episode-factory/deploy/screen-capture/README.md
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=vidtoolz-evidence
+Group=vidtoolz-evidence
+# The finalizer is a library invoked over a narrow create-only IPC by the capture
+# worker in a later revision; this unit reserves the identity and hardening now.
+ExecStart=/usr/bin/true
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ReadWritePaths=/var/lib/vidtoolz-evidence
+InaccessiblePaths=/var/run/docker.sock
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

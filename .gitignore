@@ -73,3 +73,6 @@ package-runs/2026-08-19-earth-studio-director-acceptance/rounds/**/*.png
 package-runs/*/media/draft-narration/
 package-runs/*/media/draft-proxy-presenter/
 package-runs/*/media/draft-assembly/
+
+# Screen Capture V1 runtime state (spool, evidence, keys, receipts, browser profiles) — never committed
+/media/screen-capture/

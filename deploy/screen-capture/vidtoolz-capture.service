@@ -1,0 +1,29 @@
+[Unit]
+Description=VIDTOOLZ Screen Capture V1 capture worker (bounded source adapters, transient spool, privacy gate)
+Documentation=file:///home/vidtoolz/vidtoolz-episode-factory/deploy/screen-capture/README.md
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=vidtoolz-capture
+Group=vidtoolz-capture
+# Request-driven: Episode Factory submits CaptureSpecs; the worker never starts
+# captures on its own. Reserved identity + hardening; entry point in a later revision.
+ExecStart=/usr/bin/true
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ReadWritePaths=/run/vidtoolz-capture /var/lib/vidtoolz-capture
+ReadOnlyPaths=/var/lib/vidtoolz-evidence
+InaccessiblePaths=/var/run/docker.sock /var/lib/vidtoolz-evidence/keys
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

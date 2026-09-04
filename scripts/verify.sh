@@ -115,6 +115,8 @@ node --check earth-studio-director.js
 node --check earth-studio-lane.js
 node --check earth-studio-native-template-profiles.js
 node --check scripts/earth-studio-journey-browser-smoke.js
+for f in screen-capture/*.js screen-capture/adapters/*.js scripts/screen-capture-run.js scripts/screen-capture-canaries.js scripts/screen-capture-oracle-conformance.js tests/_screen-capture-fixture.js; do node --check "$f"; done
+node -e 'JSON.parse(require("fs").readFileSync("config/screen-capture-policy.json","utf8"))'
 node --check scripts/earth-studio-journey-import-gate.js
 node --check scripts/earth-studio-journey-canaries.js
 node --check scripts/earth-studio-director-canaries.js

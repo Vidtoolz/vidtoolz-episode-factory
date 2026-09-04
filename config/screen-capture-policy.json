@@ -1,0 +1,38 @@
+{
+  "schema": "vidtoolz.screen-capture-policy.v1",
+  "_doc": "Screen Capture V1 / Stage 7 policy. Default = MERGED BUT DISABLED: feature flag off, every source class off. Activation is a configuration change reviewed by Mikko, never a code change. DESKTOP_APPLICATION cannot be enabled here (generic desktop is not a V1 authority). Stores default to a same-authority development layout; production requires deploy/screen-capture (vidtoolz-capture / vidtoolz-evidence identities, /var/lib/vidtoolz-evidence) and describeProtection() reports SAME_AUTHORITY_SOFTWARE_ONLY until then.",
+  "feature_flag": false,
+  "source_gates": {
+    "TERMINAL": false,
+    "FILE_OR_CODE": false,
+    "BROWSER": false,
+    "DESKTOP_APPLICATION": false,
+    "DAVINCI_RESOLVE": false
+  },
+  "machine": { "id": "vidnux", "session_id": "logind-session-3" },
+  "approved": {
+    "terminal_root": "/home/vidtoolz/vidtoolz-episode-factory",
+    "repositories": {
+      "vidtoolz-episode-factory": { "root": "/home/vidtoolz/vidtoolz-episode-factory" }
+    },
+    "output_roots": {
+      "evidence": "/home/vidtoolz/vidtoolz-episode-factory/media/screen-capture/evidence"
+    },
+    "local_fixture_ports": [],
+    "terminal_authorities": {},
+    "browser_profile_root": "/home/vidtoolz/vidtoolz-episode-factory/media/screen-capture/browser-profiles"
+  },
+  "stores": {
+    "spool_root": "/home/vidtoolz/vidtoolz-episode-factory/media/screen-capture/spool",
+    "evidence_root": "/home/vidtoolz/vidtoolz-episode-factory/media/screen-capture/evidence",
+    "signing_key_path": "/home/vidtoolz/vidtoolz-episode-factory/media/screen-capture/keys/evidence-finalizer-ed25519.pem",
+    "presentation_root": "/home/vidtoolz/vidtoolz-episode-factory/media/screen-capture/evidence",
+    "receipts_root": "/home/vidtoolz/vidtoolz-episode-factory/media/screen-capture/receipts"
+  },
+  "idle": { "minimum_idle_seconds": 60, "sample_gap_seconds": 5, "samples": 2 },
+  "limits": { "terminal_timeout_ms": 15000, "browser_timeout_ms": 30000, "max_stdout_bytes": 1048576 },
+  "deployment": {
+    "target_layout": "deploy/screen-capture/README.md",
+    "presto": { "machine_uuid_sha256": "bbb75fc75c06e0999d64765ad997cb7c90d1efbc3fbdfc47b83be5b0abf675bd", "address_role": "control", "control_address": "192.168.50.187", "registry_bulk_address": "192.168.61.185", "console_session_id": "1" }
+  }
+}
