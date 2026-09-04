@@ -202,7 +202,10 @@ test("terrain complete pose: a continuation after a corrected terrain orbit keep
 test("terrain complete pose: the director's one-stop terrain grammar rides the calibrated footprint and aims at the summit", () => {
   const r = director.autoDirect(director.parseIntent("Show the terrain of Matterhorn."));
   const compiled = journey.compileJourney(journey.normalizeJourney(r.journey), { planner });
-  assert.match(compiled.description, /orbit Matterhorn half clockwise at 10214m tilted 74 degrees/);
+  // The director states the rake and leaves the altitude to the authority; a
+  // derived altitude is never serialized as if it were authored (policy A).
+  assert.match(compiled.description, /orbit Matterhorn half clockwise tilted 74 degrees/);
+  assert.equal(r.journey.start_movements[0].altitude_m, null);
   const m = measure(build(compiled.description), "Matterhorn");
   assertCompletePose(m, "director one-stop", { aimTol: 0.1 });
   assert.equal(r.decisions[0].decision.altitude_m, 10214);
@@ -237,41 +240,77 @@ test("terrain complete pose: the director's two-stop form stages the zoom onto t
 });
 
 // ── 11. explicit orbit altitude contract ─────────────────────────────────────
-test("terrain complete pose: an authored orbit altitude is honoured identically in every topology, and the ring is measured from the focal point so the aim holds", () => {
-  const forms = [
+test("terrain complete pose: an authored orbit altitude must restate the calibrated pose — a conflict is refused identically in every topology (policy A)", () => {
+  // POLICY A. A calibrated terrain orbit binds focal elevation, footprint, rake
+  // and therefore camera altitude. An authored altitude either restates that
+  // altitude (accepted, to the metre) or conflicts with it. A conflict is
+  // REFUSED in every topology: the journey path fails validation before
+  // anything compiles; the text path refuses the description before any plan
+  // exists, with the same words. Nothing is honoured, rewritten or sent
+  // downstream, and the calibrated footprint is never shrunk to "honour" the
+  // number.
+  const conflictForms = [
     "orbit Matterhorn once clockwise at 8000m tilted 74 degrees for 20 seconds",
     "fly to Matterhorn tilted 74 degrees for 8 seconds then orbit Matterhorn once clockwise at 8000m tilted 74 degrees for 20 seconds",
     "hover over Matterhorn tilted 74 degrees for 3 seconds then orbit Matterhorn once clockwise at 8000m tilted 74 degrees for 20 seconds",
     "fly to Matterhorn tilted 74 degrees for 8 seconds then hover over Matterhorn for 2 seconds then orbit Matterhorn once clockwise at 8000m tilted 74 degrees for 20 seconds",
   ];
-  const expectedRing = (8000 - 4478) * tan(74);
-  forms.forEach((d) => {
-    const m = measure(build(d), "Matterhorn");
-    assert.equal(m.orbit.altitude_m, 8000, d);
-    assert.equal(m.orbit.altitude_source, "explicit", d);
-    assert.ok(Math.abs(m.ring_m - expectedRing) < 5, `${d}: ring ${m.ring_m} vs ${expectedRing}`);
-    assert.ok(m.aim_deg < 0.1, `${d}: aim ${m.aim_deg}`);
-    assert.equal(m.orbit.terrain_pose.camera_altitude_source, "explicit");
-    // the approach lands on the authored pose too
-    m.orbit && m.orbit.segment_id > 1 && assert.equal(measure(build(d), "Matterhorn").orbit.altitude_m, 8000);
+  conflictForms.forEach((d) => {
+    let error = null;
+    try { build(d); } catch (e) { error = e; }
+    assert.ok(error, `${d}: must be refused`);
+    assert.match(error.message, /Matterhorn is a calibrated terrain focal point: its focal elevation \(4478 m\), calibrated footprint \(20005 m\) and 74° rake fix the camera at 10214 m/);
+    assert.equal(error.statusCode, 400); assert.equal(error.code, "TERRAIN_COMPLETE_POSE_ALTITUDE_CONFLICT");
+    assert.throws(() => planner.parseDescription(d, { aspect: "16:9" }), /calibrated terrain focal point/, `${d}: refused at parse, before any plan`);
   });
-  // journey path: same contract, explicit stays explicit
-  const r = viaJourney(J("Zurich", [leg("Matterhorn", [st("fly", { duration_seconds: 8 })], [st("orbit", { altitude_m: 8000, tilt_deg: 74, duration_seconds: 20 })])]));
-  const m = measure(r.built, "Matterhorn");
-  assert.equal(m.orbit.altitude_m, 8000);
-  assert.equal(r.built.plan.segments[0].altitude_m, 8000, "the staged approach lands on the authored orbit altitude");
-  // an authored altitude that cannot look down at the focal point is refused at validation
+  // restating the calibrated altitude is not a conflict
+  const restated = measure(build("orbit Matterhorn once clockwise at 10214m tilted 74 degrees for 20 seconds"), "Matterhorn");
+  assert.equal(restated.orbit.resolution_status, "resolved");
+  assert.equal(restated.orbit.altitude_source, "explicit");
+  assert.equal(restated.orbit.terrain_pose.authored_altitude_m, 10214);
+  assertCompletePose(restated, "restated", { aimTol: 0.1 });
+  // a different authored TILT is allowed to move the rake (footprint preserved)
+  const otherRake = measure(build("orbit Matterhorn once clockwise tilted 60 degrees for 20 seconds"), "Matterhorn");
+  assert.equal(otherRake.orbit.tilt_deg, 60); assert.equal(otherRake.orbit.resolution_status, "resolved");
+  assertCompletePose(otherRake, "authored rake 60", { aimTol: 0.1 });
+  // journey path: refused at validation, before compilation, in every staging form
+  const journeys = {
+    "structured orbit": J("Zurich", [leg("Matterhorn", [st("fly", { duration_seconds: 8 })], [st("orbit", { altitude_m: 8000, duration_seconds: 20 })])]),
+    "fly_low journey": J("Zurich", [leg("Matterhorn", [st("fly_low", { duration_seconds: 8 })], [st("orbit", { altitude_m: 8000, duration_seconds: 20 })])]),
+    "hold → orbit": J("Zurich", [leg("Matterhorn", [st("fly", { duration_seconds: 8 })], [st("hold", { duration_seconds: 3 }), st("orbit", { altitude_m: 8000, duration_seconds: 20 })])]),
+    "start orbit": J("Matterhorn", [], { start_movements: [st("orbit", { altitude_m: 8000, tilt_deg: 74, duration_seconds: 20 })] }),
+    "place altitude": { ...J("Zurich", [leg("Matterhorn", [st("fly", { duration_seconds: 8 })], [st("orbit", { duration_seconds: 20 })])]) },
+  };
+  journeys["place altitude"].legs[0].destination.altitude_m = 8000;
+  Object.entries(journeys).forEach(([label, raw]) => {
+    const check = journey.validateJourney(raw, { planner });
+    assert.equal(check.ok, false, `${label}: must be refused`);
+    assert.ok(check.errors.some((e) => /is a calibrated terrain focal point: its focal elevation/.test(e)), `${label}: ${check.errors.join(" | ")}`);
+    assert.throws(() => journey.compileJourneyToParsed(raw, { planner, aspect: "16:9" }), /calibrated terrain focal point/);
+  });
+  // compile without validation never emits the conflicting number as authority
+  const compiled = journey.compileJourney(journeys["structured orbit"], { planner });
+  const orbitStep = compiled.steps.find((s) => s.action === "orbit");
+  assert.equal(orbitStep.altitude_m, 10214); assert.equal(orbitStep.altitude_rejected_m, 8000); assert.equal(orbitStep.emit_altitude, false);
+  // restated altitude validates and compiles
+  const ok = viaJourney(J("Zurich", [leg("Matterhorn", [st("fly", { duration_seconds: 8 })], [st("orbit", { altitude_m: 10214, tilt_deg: 74, duration_seconds: 20 })])]));
+  assert.equal(orbitOf(ok.built, "Matterhorn").altitude_m, 10214);
+  // an authored altitude at or below the focal point is refused with the elevation message
   const bad = journey.validateJourney(J("Zurich", [leg("Matterhorn", [st("fly", { duration_seconds: 8 })], [st("orbit", { altitude_m: 4000, duration_seconds: 20 })])]), { planner });
   assert.equal(bad.ok, false);
   assert.ok(bad.errors.some((e) => /not above Matterhorn's declared focal point/.test(e)), bad.errors.join(" | "));
-  const badStart = journey.validateJourney(J("Matterhorn", [], { start_movements: [st("orbit", { altitude_m: 4478, duration_seconds: 10 })] }), { planner });
-  assert.equal(badStart.ok, false);
-  // text path: an authored altitude below the focal point is a manual-review warning
-  withFixtures({ "low floor peak": { name: "Low Floor Peak", latitude: 46, longitude: 8, altitude_m: 6500, min_altitude_m: 0, target_elevation_m: 4478, target_anchor_kind: "SUMMIT", target_anchor_source: "DECLARED_TERRAIN_FOCAL_POINT", target_anchor_confidence: "HIGH" } }, () => {
-    const seg = build("orbit Low Floor Peak once clockwise at 4000m tilted 74 degrees for 20 seconds").plan.segments[0];
-    assert.equal(seg.resolution_status, "manual_review");
-    assert.ok(seg.warnings.some((w) => /not above Low Floor Peak's declared focal elevation/.test(w)));
+  assert.equal(journey.validateJourney(J("Matterhorn", [], { start_movements: [st("orbit", { altitude_m: 4478, duration_seconds: 10 })] }), { planner }).ok, false);
+  // text path, focal point without a floor above it: refused with the elevation message
+  withFixtures({ "low floor peak": { name: "Low Floor Peak", latitude: 46, longitude: 8, altitude_m: 6500, min_altitude_m: 0, terrain_morphology: "sharp_peak", morphology_source: "curated_gazetteer", target_elevation_m: 4478, target_anchor_kind: "SUMMIT", target_anchor_source: "DECLARED_TERRAIN_FOCAL_POINT", target_anchor_confidence: "HIGH" } }, () => {
+    assert.throws(() => build("orbit Low Floor Peak once clockwise at 4000m tilted 74 degrees for 20 seconds"), /not above Low Floor Peak's declared focal point/);
   });
+  // Matterhorn's own floor (5,500 m) already lifts a too-low authored altitude above the summit,
+  // so the text path reports the calibrated-pose conflict for it, exactly like the journey path's message class
+  assert.throws(() => build("orbit Matterhorn once clockwise at 4000m tilted 74 degrees for 20 seconds"), /calibrated terrain focal point/);
+  // the director never serializes a derived altitude as authored
+  const directed = director.autoDirect({ aspect: "16:9", stops: [{ location: "Zurich", role: "STARTING_CONTEXT" }, { location: "Matterhorn", role: "FINAL_REVEAL", importance: "HERO", purposes: ["SHOW_TERRAIN", "REVEAL"] }] });
+  directed.journey.legs.forEach((l) => l.movements.forEach((mv) => assert.equal(mv.altitude_m, null)));
+  assert.equal(journey.validateJourney(directed.journey, { planner }).ok, true);
 });
 
 // ── 12–14. below sea level, zero, unknown ───────────────────────────────────
@@ -411,9 +450,10 @@ test("terrain complete pose: serialize → parse → continue cycles reach a fix
   let built = r.built; let lastEsp = null; let identicalCycles = 0;
   for (let i = 0; i < 4; i += 1) {
     const seed = planner.finalCameraState(built.plan, OPT);
-    assert.equal(seed.altitude_m, 10978, `cycle ${i}: seed altitude`);
-    built = build("orbit Matterhorn once clockwise tilted 72 degrees for 14 seconds", { initialCamera: seed });
-    assert.equal(orbitOf(built, "Matterhorn").altitude_m, 10978);
+    assert.equal(seed.altitude_m, 10214, `cycle ${i}: seed altitude (canonical rake, whatever the approach was)`);
+    assert.equal(seed.tilt_deg, 74);
+    built = build("orbit Matterhorn once clockwise tilted 74 degrees for 14 seconds", { initialCamera: seed });
+    assert.equal(orbitOf(built, "Matterhorn").altitude_m, 10214);
     if (lastEsp === built.artifacts["earth-studio.esp"]) identicalCycles += 1;
     lastEsp = built.artifacts["earth-studio.esp"];
   }

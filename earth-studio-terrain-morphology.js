@@ -120,19 +120,37 @@ function declaredFocalElevationM(location) {
   return typeof z === "number" && Number.isFinite(z) ? z : null;
 }
 
+// The human-calibrated rake for a landform, in engine range. This is the ONLY
+// place the morphology → rake table is read for a pose.
+function morphologyRakeDeg(terrain_morphology) {
+  const classified = classifyMorphology(terrain_morphology);
+  return Math.min(TILT_POLICY[classified.morphology].tilt_deg, MAX_ENGINE_TILT_DEG);
+}
+
+// The tolerance within which an authored camera altitude is the calibrated
+// pose rather than a conflict with it: the export authors whole metres.
+const AUTHORED_ALTITUDE_TOLERANCE_M = 1;
+
 function completePose({
   target_elevation_m,
   footprint_altitude_m = null,
   min_altitude_m = null,
-  tilt_deg,
+  tilt_deg = null,
+  terrain_morphology = null,
   camera_altitude_m = null,
   fallback_altitude_m = null,
   tilt_locked = false,
   baseline_tilt_deg = LEGACY_TILT_DEG,
 } = {}) {
   const z = Number(target_elevation_m);
-  const requestedTilt = Number(tilt_deg);
-  if (!Number.isFinite(z) || !Number.isFinite(requestedTilt)) return null;
+  if (!Number.isFinite(z)) return null;
+  // The rake: an AUTHORED tilt when one was stated, otherwise the landform's
+  // calibrated rake. Nothing else — never a previous movement's attitude, never
+  // a generic action default — decides a terrain orbit's rake.
+  const authoredTilt = tilt_deg === null || tilt_deg === undefined || !Number.isFinite(Number(tilt_deg))
+    ? null : Number(tilt_deg);
+  const requestedTilt = authoredTilt !== null ? authoredTilt : morphologyRakeDeg(terrain_morphology);
+  const rakeSource = authoredTilt !== null ? "authored" : "morphology";
   const radius = referenceRadius(
     typeof footprint_altitude_m === "number" ? footprint_altitude_m : Number(footprint_altitude_m),
     baseline_tilt_deg,
@@ -205,13 +223,31 @@ function completePose({
   let cameraAltitude = Math.round(altitude);
   if (floor !== null && cameraAltitude < floor) cameraAltitude = Math.ceil(floor);
   const ring = Math.min(Math.max(0, cameraAltitude - z) * tangent(tilt), MAX_ORBIT_RADIUS_M);
+  // AUTHORED-ALTITUDE CONTRACT (policy A). A calibrated terrain orbit already
+  // binds target elevation, footprint, rake and therefore camera altitude. An
+  // authored altitude is reported against that canonical altitude: equal (to
+  // the metre) means the author restated the pose; different means a conflict
+  // the caller must refuse — never a silently shrunken or inflated footprint.
+  let canonical = null;
+  if (explicit !== null) {
+    canonical = completePose({
+      target_elevation_m: z, footprint_altitude_m, min_altitude_m, tilt_deg: authoredTilt,
+      terrain_morphology, fallback_altitude_m, tilt_locked, baseline_tilt_deg,
+    });
+  }
+  const conflict = canonical !== null
+    && Math.abs(cameraAltitude - canonical.camera_altitude_m) > AUTHORED_ALTITUDE_TOLERANCE_M;
   return {
     anchor_source: FOCAL_ANCHOR_SOURCE,
     target_elevation_m: z,
     footprint_altitude_m: radius === null ? null : Number(footprint_altitude_m),
     footprint_radius_m: radius === null ? null : round(radius),
+    rake_source: rakeSource,
     requested_tilt_deg: requestedTilt,
     applied_tilt_deg: round(tilt),
+    authored_altitude_m: explicit,
+    canonical_camera_altitude_m: canonical ? canonical.camera_altitude_m : cameraAltitude,
+    authored_altitude_conflict: conflict,
     camera_altitude_m: cameraAltitude,
     camera_altitude_exact_m: round(altitude),
     camera_altitude_source: source,
@@ -246,6 +282,7 @@ function terrainTiltDecision({
     footprint_altitude_m: altitude_m,
     min_altitude_m,
     tilt_deg: requestedTilt,
+    terrain_morphology,
     baseline_tilt_deg,
   });
   const radius = referenceRadius(altitude_m, baseline_tilt_deg);
@@ -280,8 +317,10 @@ const api = {
   MORPHOLOGIES,
   TILT_POLICY,
   FOCAL_ANCHOR_SOURCE,
+  AUTHORED_ALTITUDE_TOLERANCE_M,
   classifyMorphology,
   completePose,
+  morphologyRakeDeg,
   declaredFocalElevationM,
   referenceRadius,
   terrainTiltDecision,

@@ -48,8 +48,16 @@ function candidateAltitude(referenceRadiusM, tiltDeg) {
   return referenceRadiusM / Math.tan(tiltDeg * Math.PI / 180);
 }
 
-function describe(subject, tiltDeg, altitudeM) {
-  return `orbit ${subject.name} half clockwise tilted ${tiltDeg} degrees at ${round(altitudeM, 6)} meters for 30 seconds`;
+// The experiment's altitude is NOT authored into the description. Since the
+// terrain complete-pose contract (2026-09-04, policy A) an authored altitude on
+// a calibrated terrain orbit is refused at parse unless it restates the
+// calibrated pose, and this historical experiment deliberately authors the
+// pre-repair sea-level fixed-ring altitudes instead. The experiment therefore
+// parses the movement alone and applies its altitude to the parsed plan below,
+// exactly where it already restored decimal precision — production planning
+// paths are untouched.
+function describe(subject, tiltDeg) {
+  return `orbit ${subject.name} half clockwise tilted ${tiltDeg} degrees for 30 seconds`;
 }
 
 function technicalResult(plan, esp) {
@@ -114,13 +122,19 @@ function buildCandidate(subject, tiltDeg) {
     throw new Error(`${subject.name} ${tiltDeg}° requires ${altitudeM} m, below ${fixture.min_altitude_m} m safety floor`);
   }
   const id = `TERRAIN-${subject.slug.toUpperCase()}-${tiltDeg}`;
-  const plan = planner.buildShotPlan(id, describe(subject, tiltDeg, altitudeM), NOW, { motionPolicy: POLICY });
-  // Preserve sub-metre equality of the experiment's orbit radius. The parser's
-  // ordinary explicit-altitude route is retained; only its decimal precision
-  // is restored after parsing.
+  const plan = planner.buildShotPlan(id, describe(subject, tiltDeg), NOW, { motionPolicy: POLICY });
+  // Apply the experiment's altitude to the parsed plan (sub-metre precision).
+  // This is the 2026-08-21 sea-level fixed-ring experiment: the ring it models
+  // is altitude·tan(tilt) over sea level. Production now measures a terrain
+  // orbit's ring from the declared focal elevation, so the calibrated pose the
+  // planner resolved for this segment is removed rather than left contradicting
+  // the experiment's altitude, and the production ring is recorded alongside.
   plan.segments[0].altitude_m = altitudeM;
   plan.segments[0].altitude_source = 'experiment_fixed_current_72_radius';
-  plan.segments[0].notes.push('Experiment only: altitude derived from the current 72° ground radius; production policy unchanged.');
+  plan.segments[0].experiment_ring_law = 'sea_level_altitude_tan_tilt_2026_08_21';
+  plan.segments[0].production_ring_radius_m = planner.orbitRingRadiusMeters(plan.segments[0].location, altitudeM, tiltDeg);
+  delete plan.segments[0].terrain_pose;
+  plan.segments[0].notes.push('Experiment only: altitude derived from the current 72° ground radius over sea level; production policy unchanged (production measures terrain rings from the declared focal elevation).');
   const espObject = planner.buildEsp(plan);
   const espBytes = Buffer.from(`${JSON.stringify(espObject, null, 2)}\n`);
   const actualRadiusM = planner.orbitRadiusMeters(altitudeM, tiltDeg);

@@ -156,7 +156,11 @@ function buildCandidate(out, subject, treatment) {
     authored: {
       movement: movement.action,
       tilt_deg: movement.tilt_deg,
-      altitude_m: movement.altitude_m,
+      // A declared terrain focal point's altitude is derived by the complete-pose
+      // authority at compile/plan time; serializing the derived number as an
+      // authored altitude would conflict with that authority (policy A). Same
+      // rule as the director's journeyAltitudeFor.
+      altitude_m: movement.terrain_policy && movement.terrain_policy.target_elevation_declared ? null : movement.altitude_m,
       orbit_degrees: movement.orbit_degrees == null ? null : movement.orbit_degrees,
       orbit_direction: movement.orbit_direction == null ? null : movement.orbit_direction,
       duration_seconds: movement.duration_seconds,

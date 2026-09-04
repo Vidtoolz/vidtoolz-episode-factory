@@ -1033,33 +1033,57 @@
     // TERRAIN COMPLETE POSE. An orbit-family movement around a declared terrain
     // focal point resolves its camera through the single authority
     // (earth-studio-terrain-morphology.js: completePose), independent of what
-    // preceded it, how the request was built, or whether an altitude was
-    // inferred. An AUTHORED altitude stays operator authority; the ring the
-    // engine rides is then derived from the focal elevation so the aim still
-    // lands on the declared point. A derived altitude comes from the calibrated
-    // footprint and the rake: A = z_t + r / tan θ.
+    // preceded it, how the request was built, or whether values were inferred:
+    //   rake      — the AUTHORED tilt if one was stated, else the landform's
+    //               calibrated rake; never a previous movement's attitude and
+    //               never the generic orbit default;
+    //   altitude  — derived, A = z_t + r / tan θ;
+    //   ring      — (A − z_t)·tan θ, measured from the focal point.
+    // An AUTHORED altitude is checked against that canonical altitude (policy
+    // A): equal to the metre restates the pose and is accepted; different is a
+    // conflict and the description is REFUSED here, before any plan exists —
+    // the same outcome, with the same words, as validateJourney gives the
+    // journey path. Nothing is honoured, rewritten or sent downstream for review:
+    // a calibrated terrain orbit has exactly one altitude, and a description
+    // that states another is contradicting itself.
     let terrainPose = null;
     if (actionInfo.action === "orbit" && location) {
       const authoredAltitude = altitude.source === "explicit" ? altitude.value : null;
-      terrainPose = resolveTerrainPose(location, {
-        tilt_deg: tiltDeg,
-        altitude_m: authoredAltitude,
+      const authoredTilt = tiltSource === "explicit" ? tiltDeg : null;
+      const canonical = resolveTerrainPose(location, {
+        tilt_deg: authoredTilt,
         fallback_altitude_m: altitude.value,
-        tilt_locked: tiltSource === "explicit",
+        tilt_locked: authoredTilt !== null,
       });
-      if (terrainPose) {
+      if (canonical) {
         const minAlt = (location && location.min_altitude_m) || 0;
+        if (authoredTilt === null) {
+          tiltDeg = canonical.applied_tilt_deg;
+          tiltSource = canonical.safety_clamp ? "terrain_safety_floor" : "terrain_morphology_rake";
+        }
+        terrainPose = canonical;
         if (authoredAltitude === null) {
-          altitude = { value: clampAltitude(terrainPose.camera_altitude_m, minAlt), source: "terrain_complete_pose" };
-          if (terrainPose.safety_clamp && !terrainPose.safety_clamp.tilt_locked && tiltSource !== "explicit") {
-            tiltDeg = terrainPose.applied_tilt_deg;
-            tiltSource = "terrain_safety_floor";
-          }
-          notes.push(`terrain complete pose: ${location.name} declares its focal point at ${terrainPose.target_elevation_m} m (${location.target_anchor_kind || "declared"}); camera altitude ${altitude.value} m = ${terrainPose.target_elevation_m} + ${Math.round(terrainPose.footprint_radius_m || 0)} / tan(${tiltDeg}°), ring ${Math.round(terrainPose.ring_radius_m)} m${terrainPose.safety_clamp ? " (terrain safety floor applied)" : ""}.`);
-        } else if (terrainPose.camera_below_target) {
-          warnings.push(`camera altitude ${altitude.value} m is not above ${location.name}'s declared focal elevation (${terrainPose.target_elevation_m} m) — an orbit cannot look down at a point it is not above; raise the altitude.`);
+          altitude = { value: clampAltitude(canonical.camera_altitude_m, minAlt), source: "terrain_complete_pose" };
+          notes.push(`terrain complete pose: ${location.name} declares its focal point at ${canonical.target_elevation_m} m (${location.target_anchor_kind || "declared"}); rake ${tiltDeg}° (${canonical.rake_source}), camera altitude ${altitude.value} m = ${canonical.target_elevation_m} + ${Math.round(canonical.footprint_radius_m || 0)} / tan(${tiltDeg}°), ring ${Math.round(canonical.ring_radius_m)} m${canonical.safety_clamp ? " (terrain safety floor applied)" : ""}.`);
         } else {
-          notes.push(`terrain complete pose: authored altitude ${altitude.value} m kept; ${location.name} declares its focal point at ${terrainPose.target_elevation_m} m, so the orbit ring is ${Math.round(terrainPose.ring_radius_m)} m (measured from the focal point, not sea level).`);
+          const authored = resolveTerrainPose(location, {
+            tilt_deg: authoredTilt,
+            altitude_m: authoredAltitude,
+            fallback_altitude_m: altitude.value,
+            tilt_locked: authoredTilt !== null,
+          });
+          if (authored && authored.authored_altitude_conflict) {
+            const error = new Error(authored.camera_below_target
+              ? `segment ${segmentId} sets the camera at ${authoredAltitude} m, which is not above ${location.name}'s declared focal point at ${canonical.target_elevation_m} m. An orbit looks down at its subject, so the camera altitude must be higher than the terrain it frames.`
+              : `segment ${segmentId} sets the camera at ${authoredAltitude} m, but ${location.name} is a calibrated terrain focal point: its focal elevation (${canonical.target_elevation_m} m), calibrated footprint (${Math.round(canonical.footprint_radius_m || 0)} m) and ${tiltDeg}° rake fix the camera at ${canonical.camera_altitude_m} m. Remove the altitude to use the calibrated pose, change the tilt instead, or orbit a place without a declared focal point.`);
+            error.statusCode = 400;
+            error.code = "TERRAIN_COMPLETE_POSE_ALTITUDE_CONFLICT";
+            error.segment_id = segmentId;
+            throw error;
+          } else {
+            terrainPose = authored || canonical;
+            notes.push(`terrain complete pose: authored altitude ${authoredAltitude} m restates ${location.name}'s calibrated pose (${canonical.camera_altitude_m} m); ring ${Math.round(terrainPose.ring_radius_m)} m measured from the focal point.`);
+          }
         }
       }
     }
@@ -1162,6 +1186,8 @@
         camera_altitude_m: segment.altitude_m,
         camera_altitude_source: segment.altitude_source,
         ring_radius_m: orbitRingRadiusMeters(location, segment.altitude_m, segment.tilt_deg),
+        rake_source: terrainPose.rake_source,
+        authored_altitude_m: terrainPose.authored_altitude_m,
         safety_clamp: terrainPose.safety_clamp,
         formula: terrainPose.formula,
       };
@@ -1269,14 +1295,37 @@
         break;
       }
       chain.forEach((s) => {
-        if (s.altitude_m === orbit.altitude_m) return;
+        // KEYFRAME OWNERSHIP AT THE HANDOFF. The staged approach's end frame IS
+        // the orbit's first frame, and the orbit owns it: the approach ARRIVES
+        // at the orbit's pose — altitude and rake — whatever attitude it was
+        // asked to travel at. The engine's existing entry tip carries the camera
+        // from the incoming attitude into that arrival tilt inside the approach,
+        // so the orbit opens canonical instead of spending its first frames
+        // acquiring a rake the approach leaked into it (measured: an approach at
+        // 73.4° opened a 74° Matterhorn orbit at 73.4°, 0.52° off the summit).
+        // A transparent hold in the chain holds what the approach delivers
+        // (provenance stays `carried_over`); a hold with its own stated tilt is
+        // the operator's composition and keeps it (it then is not staged, exactly
+        // as before). An authored approach tilt is recorded, not silently lost.
+        const isHold = s.action === "hover";
+        // An inferred hold tilt (carried from the approach, or the hover's own
+        // action default when it opens the shot) is transparent; a stated one
+        // is the operator's composition.
+        const holdTiltTransparent = isHold && ["carried_over", "action_default"].includes(s.tilt_source);
+        const tiltChanged = (!isHold || holdTiltTransparent) && s.tilt_deg !== orbit.tilt_deg;
+        if (s.altitude_m === orbit.altitude_m && !tiltChanged) return;
         const inherited = s.altitude_m;
+        const inheritedTilt = s.tilt_deg;
         s.altitude_m = orbit.altitude_m;
-        // A hold still INHERITS its camera (now from an approach that lands on
-        // the pose), so its provenance stays `carried_over`; only the approach
-        // itself changes provenance.
-        if (s.action !== "hover") s.altitude_source = "terrain_complete_pose_entry";
-        notes.push(`segment ${s.segment_id}: lands on segment ${orbit.segment_id}'s terrain complete pose at ${orbit.altitude_m} m (was ${inherited} m ${s.action === "hover" ? "carried" : "inferred"}; ${orbit.location.name} declares its focal point at ${orbit.terrain_pose.target_elevation_m} m).`);
+        if (!isHold) s.altitude_source = "terrain_complete_pose_entry";
+        if (tiltChanged) {
+          s.tilt_deg = orbit.tilt_deg;
+          if (!isHold) {
+            s.approach_tilt_deg = inheritedTilt;
+            s.tilt_source = "terrain_complete_pose_entry";
+          }
+        }
+        notes.push(`segment ${s.segment_id}: lands on segment ${orbit.segment_id}'s terrain complete pose at ${orbit.altitude_m} m${tiltChanged ? ` / ${orbit.tilt_deg}° (arrival tilt; travel tilt ${inheritedTilt}° recorded)` : ""} (was ${inherited} m ${isHold ? "carried" : "inferred"}; ${orbit.location.name} declares its focal point at ${orbit.terrain_pose.target_elevation_m} m).`);
       });
     }
 
@@ -1994,7 +2043,9 @@ This checklist is technical planning support only. It is not creative approval, 
       target_elevation_m: z,
       footprint_altitude_m: typeof location.altitude_m === "number" ? location.altitude_m : null,
       min_altitude_m: typeof location.min_altitude_m === "number" ? location.min_altitude_m : null,
-      tilt_deg: options.tilt_deg,
+      // null → the landform's calibrated rake (the authority owns that table)
+      tilt_deg: Number.isFinite(options.tilt_deg) ? options.tilt_deg : null,
+      terrain_morphology: location.terrain_morphology || null,
       camera_altitude_m: Number.isFinite(options.altitude_m) ? options.altitude_m : null,
       fallback_altitude_m: Number.isFinite(options.fallback_altitude_m) ? options.fallback_altitude_m : null,
       tilt_locked: !!options.tilt_locked,

@@ -380,12 +380,20 @@ consumed by the planner, the journey compiler, the director and the keyframe eng
 footprint `r = altitude_m · tan 72°` is held, the rake `θ` comes from morphology or the authored
 tilt, the camera altitude is *derived* as `A = z_t + r / tan θ`, and the ring the orbit rides is
 measured from the focal elevation, `(A − z_t) · tan θ`, so the optical centre sits on the declared
-point for any altitude. An authored orbit altitude is honoured (operator authority) and the ring
-follows from it; an authored altitude that is not above the focal point is refused at validation.
-Movements whose inferred altitude only delivers the camera onto such an orbit land on the orbit's
-pose, so the handoff is one camera on one frame. The safety floor clamps a *derived* pose by
+point for any altitude. The rake is the tilt stated on the orbit itself, else the landform's
+calibrated rake — never the previous movement's attitude and never the generic orbit default.
+An authored orbit altitude must restate the calibrated altitude (to the metre); anything else
+conflicts with the calibrated pose and is refused at validation before compilation (the text
+path marks the segment for manual review, applies the calibrated pose and spells out the
+conflict). A framing scale or spiral shift on such an orbit likewise yields to the calibrated
+pose with a warning. **The approach controls the approach, not the orbit:** a movement that
+delivers the camera onto a terrain orbit — fly, zoom, low approach, cruise, or a transparent hold
+after one — arrives at the orbit's altitude *and* rake, because its end frame is the orbit's first
+frame and the orbit owns it; the approach's own travelling tilt is recorded as `approach_tilt_deg`.
+A continuation inherits the terminal pose exactly. The safety floor clamps a *derived* pose by
 reducing the rake to `atan2(r, floor − z_t)`; a stated rake is kept and the altitude is floored.
-Places without a declared elevation keep the legacy sea-level behaviour unchanged.
+Places without a declared elevation keep the legacy sea-level behaviour unchanged, including the
+legacy rule that an approach keeps its own tilt and the orbit acquires its pitch after the boundary.
 
 **Calm pacing.** Suggested durations are the planner's magnitude-scaled `defaultDuration()` — the
 law real Earth Studio playback validated across acceptance rounds 2–4 — multiplied by a pace

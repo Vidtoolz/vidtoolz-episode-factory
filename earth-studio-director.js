@@ -1103,6 +1103,19 @@
   }
 
   // ── Auto-direct: structured intent -> an intentional journey ───────────────
+  // What a decision writes into the journey as camera altitude. A declared
+  // terrain focal point's altitude is DERIVED by the complete-pose authority
+  // wherever the journey is compiled or planned, so the director does not
+  // serialize that derived number as if it were authored: an authored altitude
+  // at a calibrated terrain orbit is a contract conflict (policy A), and a
+  // frozen journey must not carry yesterday's derivation as today's authority.
+  // The decision itself keeps `altitude_m` and `terrain_policy` as provenance.
+  function journeyAltitudeFor(dec) {
+    if (!dec) return null;
+    if (dec.terrain_policy && dec.terrain_policy.target_elevation_declared) return null;
+    return dec.altitude_m || null;
+  }
+
   function autoDirect(intent = {}, options = {}) {
     const J = loadJourney(options.journey);
     const planner = loadPlanner(options.planner);
@@ -1443,7 +1456,7 @@
           if (anchor && anchor.key !== atDec.key && !(to.explicit_grammar)) {
             atDec = { ...atDec, key: anchor.key, movement: anchor.movement,
               label: anchor.label, rarity: anchor.rarity,
-              tilt_deg: anchor.tilt_deg || null, altitude_m: anchor.altitude_m || null,
+              tilt_deg: anchor.tilt_deg || null, altitude_m: journeyAltitudeFor(anchor),
               terrain_policy: anchor.terrain_policy || null, compare_mirrored: true };
           }
           atDec.emphasis = compareEmphasis;
@@ -1472,7 +1485,7 @@
         movements: atDec
           ? [J.normalizeStep({ type: atDec.movement, emphasis: atDec.emphasis,
               tilt_deg: atDec.tilt_deg || null,
-              altitude_m: atDec.altitude_m || null,
+              altitude_m: journeyAltitudeFor(atDec),
               revolutions: orbitRevolutionsFor(atDec, to) }, "at")]
           : [],
       });
@@ -1554,7 +1567,7 @@
       start_movements: openDec
         ? [J.normalizeStep({ type: openDec.movement, emphasis: openDec.emphasis,
             tilt_deg: openDec.tilt_deg || null,
-            altitude_m: openDec.altitude_m || null,
+            altitude_m: journeyAltitudeFor(openDec),
             revolutions: orbitRevolutionsFor(openDec, first) }, "at")]
         : [],
       legs,

@@ -971,9 +971,30 @@
         && !Number.isFinite(targetPlace && targetPlace.tilt_deg)
         && !Number.isFinite(step.altitude_m)
         && !step.framing);
+      // TERRAIN COMPLETE POSE — rake authority. An orbit around a declared
+      // terrain focal point takes its rake from the single authority
+      // (planner.resolveTerrainPose → completePose): the AUTHORED tilt if the
+      // orbit states one, else the landform's calibrated rake. It never inherits
+      // the previous movement's attitude and never falls to the generic orbit
+      // default — the approach controls the approach, not the orbit's pose.
+      const focalZ = targetInfo.resolved && typeof planner.focalElevationM === "function"
+        ? planner.focalElevationM(targetInfo.resolved) : null;
+      const terrainRakeFor = (info, stepTilt, placeTilt) => {
+        const resolved = info && info.resolved;
+        if (!resolved || typeof planner.focalElevationM !== "function" || planner.focalElevationM(resolved) === null) return null;
+        const authored = Number.isFinite(stepTilt) ? stepTilt : Number.isFinite(placeTilt) ? placeTilt : null;
+        const pose = planner.resolveTerrainPose(resolved, { tilt_deg: authored, tilt_locked: authored !== null });
+        return pose ? pose.applied_tilt_deg : null;
+      };
+      const orbitAheadTerrainTilt = orbitAhead
+        ? terrainRakeFor(orbitAhead.targetInfo, orbitAhead.step.tilt_deg, orbitAhead.targetPlace && orbitAhead.targetPlace.tilt_deg)
+        : null;
+      const ownTerrainRake = action === "orbit"
+        ? terrainRakeFor(targetInfo, step.tilt_deg, targetPlace && targetPlace.tilt_deg) : null;
       const successorOrbitTilt = (endsAtOrbitEntry || stagesOrbitEntry)
         ? (Number.isFinite(orbitAhead.step.tilt_deg) ? orbitAhead.step.tilt_deg
           : Number.isFinite(orbitAhead.targetPlace && orbitAhead.targetPlace.tilt_deg) ? orbitAhead.targetPlace.tilt_deg
+          : orbitAheadTerrainTilt !== null ? orbitAheadTerrainTilt
           // matches the orbit's own derivation below: a flattened carried tilt is
           // not inheritable by an orbit, so it takes the oblique orbit default.
           : (Number.isFinite(cursor.tilt_deg) && !cursor.tilt_capped) ? cursor.tilt_deg
@@ -1025,12 +1046,25 @@
       // refused at raw validation; this keeps compile itself coherent when it is
       // called without validation.
       const heldCamera = !!def.holdsCamera && cursor.started;
+      // A hold that reads through to a TERRAIN orbit holds what the staged
+      // approach delivers: the orbit's pose (the engine makes the approach arrive
+      // at the orbit's tilt), not the approach's travelling attitude.
+      // A staged approach into a TERRAIN orbit arrives at the orbit's canonical
+      // rake: its end frame is the orbit's first frame and the orbit owns it.
+      // This outranks the approach's own tilt (Low Approach's 72°, or a stated
+      // tilt), which is recorded on the step as `approach_tilt_deg` instead of
+      // leaking into the orbit. Mirrors the planner's chain rule so cursor and
+      // plan agree.
+      const arrivesAtTerrainOrbit = (endsAtOrbitEntry || stagesOrbitEntry) && orbitAheadTerrainTilt !== null;
       let baseTilt = heldCamera
-        ? (Number.isFinite(cursor.tilt_deg) ? cursor.tilt_deg
+        ? ((holdsOrbitEntryGeometry && orbitAheadTerrainTilt !== null) ? orbitAheadTerrainTilt
+          : Number.isFinite(cursor.tilt_deg) ? cursor.tilt_deg
           : (planner.DEFAULT_TILT_DEG.hover != null ? planner.DEFAULT_TILT_DEG.hover : 45))
+        : arrivesAtTerrainOrbit ? orbitAheadTerrainTilt
         : Number.isFinite(step.tilt_deg) ? step.tilt_deg
         : Number.isFinite(def.tiltDeg) ? def.tiltDeg
         : Number.isFinite(targetPlace && targetPlace.tilt_deg) ? targetPlace.tilt_deg
+        : ownTerrainRake !== null ? ownTerrainRake
         : (endsAtOrbitEntry || stagesOrbitEntry) ? successorOrbitTilt
         : inheritable ? cursor.tilt_deg
         : (planner.DEFAULT_TILT_DEG[action] != null ? planner.DEFAULT_TILT_DEG[action] : 45);
@@ -1207,34 +1241,68 @@
 
       // TERRAIN COMPLETE POSE (single authority: planner.resolveTerrainPose →
       // earth-studio-terrain-morphology completePose). An orbit-family movement
-      // around a declared terrain focal point on its plain AUTO framing takes
-      // the complete-pose altitude A = z_t + r / tan θ instead of the place's
-      // camera altitude; the phrase stays implicit, exactly like the calibrated
-      // gazetteer altitude it replaces, and the planner resolves the identical
-      // value from the same authority. A manual altitude, or a framing the
-      // operator chose, is honoured unchanged — the planner then measures the
-      // orbit ring from the focal elevation so the aim still holds.
-      const focalZ = targetInfo.resolved && typeof planner.focalElevationM === "function"
-        ? planner.focalElevationM(targetInfo.resolved) : null;
+      // around a declared terrain focal point rides the calibrated pose: rake
+      // from the authority (authored, else morphology), camera altitude
+      // A = z_t + r / tan θ, implicit in the phrase exactly like the calibrated
+      // gazetteer altitude it replaces — the planner resolves the identical
+      // value from the same authority. A framing the operator chose (non-auto)
+      // is still theirs.
+      //
+      // AUTHORED ALTITUDE (policy A): a manual altitude on such an orbit either
+      // restates the calibrated altitude (accepted) or conflicts with it. A
+      // conflict is refused at validation (validateJourney) before anything is
+      // compiled; compile itself, when called without validation, resolves the
+      // calibrated pose, records the refusal and warns — it never emits the
+      // conflicting number as authority.
       let terrainPose = null;
-      if (action === "orbit" && focalZ !== null && altitudeSource === "gazetteer_calibrated") {
-        // The compiled phrase always STATES the tilt, so the planner will read it
-        // as authored; lock it here too, so a safety-floor conflict resolves the
-        // same way on both sides (altitude clamped to the floor, tilt kept). The
-        // rake itself is reduced where the rake is decided — the morphology
-        // decision the director emits — never re-decided downstream.
-        terrainPose = planner.resolveTerrainPose(targetInfo.resolved, { tilt_deg: baseTilt, tilt_locked: true });
-        if (terrainPose) {
-          altitude = terrainPose.camera_altitude_m;
-          altitudeSource = "terrain_complete_pose";
+      let rejectedAltitude = null;
+      const manualOrbitAltitude = action === "orbit" && focalZ !== null
+        ? (Number.isFinite(step.altitude_m) ? step.altitude_m
+          : Number.isFinite(targetPlace && targetPlace.altitude_m) ? targetPlace.altitude_m : null)
+        : null;
+      // A framing SCALE (a non-auto framing, or a spiral's scale shift) derives an
+      // altitude from the framing ladder; on a calibrated terrain orbit that
+      // altitude would be refused downstream as an authored conflict, so the
+      // framing yields to the calibrated pose here, with a warning.
+      const framingDerived = action === "orbit" && focalZ !== null
+        && String(altitudeSource).startsWith("derived_optical") && manualOrbitAltitude === null;
+      if (action === "orbit" && focalZ !== null && (altitudeSource === "gazetteer_calibrated" || framingDerived || manualOrbitAltitude !== null)) {
+        const authoredTilt = Number.isFinite(step.tilt_deg) ? step.tilt_deg
+          : Number.isFinite(targetPlace && targetPlace.tilt_deg) ? targetPlace.tilt_deg : null;
+        const canonical = planner.resolveTerrainPose(targetInfo.resolved, { tilt_deg: authoredTilt, tilt_locked: authoredTilt !== null });
+        if (canonical) {
+          baseTilt = canonical.applied_tilt_deg;
+          if (manualOrbitAltitude !== null) {
+            const authored = planner.resolveTerrainPose(targetInfo.resolved, {
+              tilt_deg: authoredTilt, altitude_m: manualOrbitAltitude, tilt_locked: authoredTilt !== null,
+            });
+            if (authored && authored.authored_altitude_conflict) {
+              rejectedAltitude = manualOrbitAltitude;
+              terrainPose = canonical;
+              altitude = canonical.camera_altitude_m;
+              altitudeSource = "terrain_complete_pose";
+              warnings.push(`${def.label} around ${compiledLocationLabel(targetInfo)} sets the camera at ${formatAltitude(manualOrbitAltitude)}, which conflicts with ${compiledLocationLabel(targetInfo)}'s calibrated terrain pose (focal point ${formatAltitude(focalZ)}, footprint ${Math.round(canonical.footprint_radius_m || 0)} m, ${round2(canonical.applied_tilt_deg)}\u00b0 rake → camera ${formatAltitude(canonical.camera_altitude_m)}). The calibrated pose is used; remove the altitude or change the tilt.`);
+            } else {
+              terrainPose = authored || canonical;
+              // restates the pose: keep it authored (manual_altitude, emitted)
+            }
+          } else {
+            if (framingDerived) {
+              warnings.push(`${def.label} around ${compiledLocationLabel(targetInfo)}: the ${(scaleOf(scale) || {}).label || scale} framing would put the camera at ${formatAltitude(altitude)}, but ${compiledLocationLabel(targetInfo)} is a calibrated terrain focal point whose footprint and rake fix the camera at ${formatAltitude(canonical.camera_altitude_m)}; the calibrated pose is used.`);
+            }
+            terrainPose = canonical;
+            altitude = canonical.camera_altitude_m;
+            altitudeSource = "terrain_complete_pose";
+          }
         }
       }
       // The movement that delivers the camera onto a terrain orbit lands on the
       // orbit's pose: a staged approach (or an opening hold staged on the ring)
       // whose altitude was inferred takes the successor orbit's complete-pose
-      // altitude, so compiler cursor, planner and engine agree on one camera at
-      // the handoff. A manual altitude on the approach is the operator's and is
-      // kept. Mirrors the planner's own chain rule (assembleParsedDescription).
+      // altitude at the orbit's canonical rake, so compiler cursor, planner and
+      // engine agree on one camera at the handoff. A manual altitude on the
+      // approach is the operator's and is kept. Mirrors the planner's own chain
+      // rule (assembleParsedDescription).
       if ((endsAtOrbitEntry || stagesOrbitEntry) && orbitAhead && !Number.isFinite(step.altitude_m)) {
         const orbitFocal = orbitAhead.targetInfo && orbitAhead.targetInfo.resolved
           && typeof planner.focalElevationM === "function"
@@ -1245,22 +1313,16 @@
           const orbitFraming = orbitStep.framing || orbitPlace.framing || "auto";
           const orbitManual = Number.isFinite(orbitStep.altitude_m) ? orbitStep.altitude_m
             : Number.isFinite(orbitPlace.altitude_m) ? orbitPlace.altitude_m : null;
-          // The tilt the orbit will actually ride: its own explicit tilt, else the
-          // tilt it inherits from this staging camera (the planner's inheritance
-          // rule: a usable ring, not flattened), else the orbit default.
-          const orbitTilt = Number.isFinite(orbitStep.tilt_deg) ? orbitStep.tilt_deg
-            : Number.isFinite(orbitPlace.tilt_deg) ? orbitPlace.tilt_deg
-            : (Number.isFinite(baseTilt) && !tiltCapped && baseTilt > maxTargetFramingTiltDeg({ planner })) ? baseTilt
-            : planner.DEFAULT_TILT_DEG.orbit;
-          let landing = null;
-          if (orbitManual !== null) landing = Math.round(orbitManual);
-          else if (orbitFraming === "auto") {
-            const pose = planner.resolveTerrainPose(orbitAhead.targetInfo.resolved, { tilt_deg: orbitTilt, tilt_locked: true });
-            if (pose) landing = pose.camera_altitude_m;
-          }
-          if (landing !== null) {
-            altitude = landing;
-            altitudeSource = "terrain_complete_pose_entry";
+          const orbitAuthoredTilt = Number.isFinite(orbitStep.tilt_deg) ? orbitStep.tilt_deg
+            : Number.isFinite(orbitPlace.tilt_deg) ? orbitPlace.tilt_deg : null;
+          if (orbitFraming === "auto" || orbitManual !== null) {
+            const pose = planner.resolveTerrainPose(orbitAhead.targetInfo.resolved, {
+              tilt_deg: orbitAuthoredTilt, tilt_locked: orbitAuthoredTilt !== null,
+            });
+            if (pose) {
+              altitude = pose.camera_altitude_m;
+              altitudeSource = "terrain_complete_pose_entry";
+            }
           }
         }
       }
@@ -1351,6 +1413,11 @@
         ends_at_orbit_entry: endsAtOrbitEntry,
         stages_orbit_entry: stagesOrbitEntry ? (next && next.step ? next.step.id : true) : false,
         tilt_intentional: heldCamera ? false : tiltIntentional,
+        tilt_source: terrainPose && action === "orbit" ? `terrain_${terrainPose.rake_source}_rake`
+          : arrivesAtTerrainOrbit ? "terrain_complete_pose_entry" : null,
+        approach_tilt_deg: arrivesAtTerrainOrbit
+          ? (Number.isFinite(step.tilt_deg) ? step.tilt_deg : Number.isFinite(def.tiltDeg) ? def.tiltDeg : null) : null,
+        altitude_rejected_m: rejectedAltitude,
         tilt_capped: tiltCapped,
         orbit_flattened: orbitFlattened,
         target_offset_half_frames: action === "orbit" || endsAtOrbitEntry || stagesOrbitEntry
@@ -1901,8 +1968,11 @@
     };
     checkSteps(j.start_movements.map((s) => ({ ...s, slot: "at" })), "Start");
 
-    // TERRAIN FOCAL POINT CONTRACT: an authored orbit altitude is honoured, so
-    // it must be physically able to look down at the declared focal point.
+    // TERRAIN FOCAL POINT CONTRACT (policy A): a calibrated terrain orbit binds
+    // focal elevation, footprint, rake and therefore camera altitude. An
+    // authored altitude on such an orbit must restate that altitude; anything
+    // else is a conflict, refused HERE — before compilation, on every path —
+    // never silently rewritten downstream.
     const checkTerrainOrbitAltitude = (steps, place, info, label) => {
       const resolved = info && info.resolved;
       const focalZ = resolved && typeof planner.focalElevationM === "function" ? planner.focalElevationM(resolved) : null;
@@ -1913,8 +1983,14 @@
         const authored = Number.isFinite(step.altitude_m) ? step.altitude_m
           : Number.isFinite(place && place.altitude_m) ? place.altitude_m : null;
         if (authored === null) return;
+        const authoredTilt = Number.isFinite(step.tilt_deg) ? step.tilt_deg
+          : Number.isFinite(place && place.tilt_deg) ? place.tilt_deg : null;
+        const pose = planner.resolveTerrainPose(resolved, { tilt_deg: authoredTilt, altitude_m: authored, tilt_locked: authoredTilt !== null });
+        if (!pose || !pose.authored_altitude_conflict) return;
         if (authored <= focalZ) {
           errors.push(`${label} movement ${i + 1} (${def.label}) sets the camera at ${formatAltitude(authored)}, which is not above ${resolved.name}'s declared focal point at ${formatAltitude(focalZ)}. An orbit looks down at its subject, so the camera altitude must be higher than the terrain it frames.`);
+        } else {
+          errors.push(`${label} movement ${i + 1} (${def.label}) sets the camera at ${formatAltitude(authored)}, but ${resolved.name} is a calibrated terrain focal point: its focal elevation (${formatAltitude(focalZ)}), calibrated footprint (${Math.round(pose.footprint_radius_m || 0)} m) and ${round2(pose.applied_tilt_deg)}\u00b0 rake fix the camera at ${formatAltitude(pose.canonical_camera_altitude_m)}. Remove the altitude to use the calibrated pose, change the tilt instead, or orbit a place without a declared focal point.`);
         }
       });
     };
