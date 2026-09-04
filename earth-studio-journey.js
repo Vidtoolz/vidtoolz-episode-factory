@@ -1248,14 +1248,12 @@
       // value from the same authority. A framing the operator chose (non-auto)
       // is still theirs.
       //
-      // AUTHORED ALTITUDE (policy A): a manual altitude on such an orbit either
-      // restates the calibrated altitude (accepted) or conflicts with it. A
-      // conflict is refused at validation (validateJourney) before anything is
-      // compiled; compile itself, when called without validation, resolves the
-      // calibrated pose, records the refusal and warns — it never emits the
-      // conflicting number as authority.
+      // AUTHORED ALTITUDE (policy B — explicit operator authority): a manual
+      // altitude on such an orbit is kept exactly as the operator wrote it; the
+      // calibrated footprint yields and the ring is derived from the focal
+      // point, r = (A − z_t)·tan θ. Only a camera at or below the focal point is
+      // refused, at validation (validateJourney), before anything is compiled.
       let terrainPose = null;
-      let rejectedAltitude = null;
       const manualOrbitAltitude = action === "orbit" && focalZ !== null
         ? (Number.isFinite(step.altitude_m) ? step.altitude_m
           : Number.isFinite(targetPlace && targetPlace.altitude_m) ? targetPlace.altitude_m : null)
@@ -1276,16 +1274,9 @@
             const authored = planner.resolveTerrainPose(targetInfo.resolved, {
               tilt_deg: authoredTilt, altitude_m: manualOrbitAltitude, tilt_locked: authoredTilt !== null,
             });
-            if (authored && authored.authored_altitude_conflict) {
-              rejectedAltitude = manualOrbitAltitude;
-              terrainPose = canonical;
-              altitude = canonical.camera_altitude_m;
-              altitudeSource = "terrain_complete_pose";
-              warnings.push(`${def.label} around ${compiledLocationLabel(targetInfo)} sets the camera at ${formatAltitude(manualOrbitAltitude)}, which conflicts with ${compiledLocationLabel(targetInfo)}'s calibrated terrain pose (focal point ${formatAltitude(focalZ)}, footprint ${Math.round(canonical.footprint_radius_m || 0)} m, ${round2(canonical.applied_tilt_deg)}\u00b0 rake → camera ${formatAltitude(canonical.camera_altitude_m)}). The calibrated pose is used; remove the altitude or change the tilt.`);
-            } else {
-              terrainPose = authored || canonical;
-              // restates the pose: keep it authored (manual_altitude, emitted)
-            }
+            // the authored altitude stays (manual_altitude, emitted); the pose
+            // record carries the elevation-aware ring the engine will ride
+            terrainPose = authored || canonical;
           } else {
             if (framingDerived) {
               warnings.push(`${def.label} around ${compiledLocationLabel(targetInfo)}: the ${(scaleOf(scale) || {}).label || scale} framing would put the camera at ${formatAltitude(altitude)}, but ${compiledLocationLabel(targetInfo)} is a calibrated terrain focal point whose footprint and rake fix the camera at ${formatAltitude(canonical.camera_altitude_m)}; the calibrated pose is used.`);
@@ -1316,8 +1307,10 @@
           const orbitAuthoredTilt = Number.isFinite(orbitStep.tilt_deg) ? orbitStep.tilt_deg
             : Number.isFinite(orbitPlace.tilt_deg) ? orbitPlace.tilt_deg : null;
           if (orbitFraming === "auto" || orbitManual !== null) {
+            // the orbit's pose: authored altitude when the operator gave one,
+            // else the calibrated altitude at the orbit's canonical rake
             const pose = planner.resolveTerrainPose(orbitAhead.targetInfo.resolved, {
-              tilt_deg: orbitAuthoredTilt, tilt_locked: orbitAuthoredTilt !== null,
+              tilt_deg: orbitAuthoredTilt, altitude_m: orbitManual, tilt_locked: orbitAuthoredTilt !== null,
             });
             if (pose) {
               altitude = pose.camera_altitude_m;
@@ -1417,7 +1410,6 @@
           : arrivesAtTerrainOrbit ? "terrain_complete_pose_entry" : null,
         approach_tilt_deg: arrivesAtTerrainOrbit
           ? (Number.isFinite(step.tilt_deg) ? step.tilt_deg : Number.isFinite(def.tiltDeg) ? def.tiltDeg : null) : null,
-        altitude_rejected_m: rejectedAltitude,
         tilt_capped: tiltCapped,
         orbit_flattened: orbitFlattened,
         target_offset_half_frames: action === "orbit" || endsAtOrbitEntry || stagesOrbitEntry
@@ -1968,11 +1960,10 @@
     };
     checkSteps(j.start_movements.map((s) => ({ ...s, slot: "at" })), "Start");
 
-    // TERRAIN FOCAL POINT CONTRACT (policy A): a calibrated terrain orbit binds
-    // focal elevation, footprint, rake and therefore camera altitude. An
-    // authored altitude on such an orbit must restate that altitude; anything
-    // else is a conflict, refused HERE — before compilation, on every path —
-    // never silently rewritten downstream.
+    // TERRAIN FOCAL POINT SAFETY (policy B): an authored orbit altitude is the
+    // operator's and is honoured; the one thing it cannot do is put the camera
+    // at or below the declared focal point, because an orbit looks down at its
+    // subject. That geometric impossibility is refused HERE, before compilation.
     const checkTerrainOrbitAltitude = (steps, place, info, label) => {
       const resolved = info && info.resolved;
       const focalZ = resolved && typeof planner.focalElevationM === "function" ? planner.focalElevationM(resolved) : null;
@@ -1986,12 +1977,9 @@
         const authoredTilt = Number.isFinite(step.tilt_deg) ? step.tilt_deg
           : Number.isFinite(place && place.tilt_deg) ? place.tilt_deg : null;
         const pose = planner.resolveTerrainPose(resolved, { tilt_deg: authoredTilt, altitude_m: authored, tilt_locked: authoredTilt !== null });
-        if (!pose || !pose.authored_altitude_conflict) return;
-        if (authored <= focalZ) {
-          errors.push(`${label} movement ${i + 1} (${def.label}) sets the camera at ${formatAltitude(authored)}, which is not above ${resolved.name}'s declared focal point at ${formatAltitude(focalZ)}. An orbit looks down at its subject, so the camera altitude must be higher than the terrain it frames.`);
-        } else {
-          errors.push(`${label} movement ${i + 1} (${def.label}) sets the camera at ${formatAltitude(authored)}, but ${resolved.name} is a calibrated terrain focal point: its focal elevation (${formatAltitude(focalZ)}), calibrated footprint (${Math.round(pose.footprint_radius_m || 0)} m) and ${round2(pose.applied_tilt_deg)}\u00b0 rake fix the camera at ${formatAltitude(pose.canonical_camera_altitude_m)}. Remove the altitude to use the calibrated pose, change the tilt instead, or orbit a place without a declared focal point.`);
-        }
+        // judged on the value the operator wrote, before any safety floor lifts it
+        if (!(authored <= focalZ) && !(pose && pose.camera_below_target)) return;
+        errors.push(`${label} movement ${i + 1} (${def.label}) sets the camera at ${formatAltitude(authored)}, which is not above ${resolved.name}'s declared focal point at ${formatAltitude(focalZ)}. An orbit looks down at its subject, so the camera altitude must be higher than the terrain it frames.`);
       });
     };
     checkTerrainOrbitAltitude(j.start_movements, j.start, startInfo, "Start");

@@ -189,19 +189,21 @@ test("heading authority: continuation carries the corrected pan without moving t
 });
 
 test("heading authority: terrain orbit horizontal aim (Matterhorn) is corrected; altitude and tilt untouched", () => {
-  // CONTRACT CHANGE (2026-09-04, terrain complete pose policy A). The old form
-  // authored 5,736 m — the pre-repair sea-level derivation — which now conflicts
-  // with Matterhorn's calibrated pose (10,214 m at 74°) and is refused (manual
-  // review, calibrated pose applied). The heading property under test is
-  // unchanged: the orbit faces its subject at every ring key, and the altitude
-  // and tilt tracks stay constant through the whole orbit.
-  const b = build("orbit Matterhorn once clockwise tilted 74 degrees for 77 seconds"); const orbit = orbitOf(b);
-  assert.equal(orbit.altitude_m, 10214);
-  assert.ok(Math.max(...headingErrors(b, orbit).map((r) => r.error)) <= precisionDeg(planner.orbitRingRadiusMeters(orbit.location, orbit.altitude_m, orbit.tilt_deg)));
-  assert.ok(b.tracks.alt.every((k) => k.value === 10214));
+  // Explicit operator authority (policy B, 2026-09-04): the authored 5,736 m
+  // and 74° are kept exactly, and the ring is measured from the declared
+  // summit — (5736 − 4478)·tan 74° ≈ 4,387 m — so the orbit faces and aims at
+  // the mountain instead of sea level. The heading property is unchanged.
+  const b = build("orbit Matterhorn once clockwise at 5736m tilted 74 degrees for 77 seconds"); const orbit = orbitOf(b);
+  assert.equal(orbit.altitude_m, 5736); assert.equal(orbit.altitude_source, "explicit");
+  const ring = planner.orbitRingRadiusMeters(orbit.location, orbit.altitude_m, orbit.tilt_deg);
+  assert.ok(Math.abs(ring - (5736 - 4478) * Math.tan((74 * Math.PI) / 180)) < 1, `ring ${ring}`);
+  assert.ok(Math.max(...headingErrors(b, orbit).map((r) => r.error)) <= precisionDeg(ring));
+  assert.ok(b.tracks.alt.every((k) => k.value === 5736));
   assert.ok(b.tracks.tilt.every((k) => k.value === 74));
-  assert.throws(() => build("orbit Matterhorn once clockwise at 5736m tilted 74 degrees for 77 seconds"),
-    /calibrated terrain focal point/, "an authored sea-level altitude on a calibrated terrain orbit is refused");
+  // and the AUTO form rides the calibrated pose
+  const auto = build("orbit Matterhorn once clockwise tilted 74 degrees for 77 seconds"); const autoOrbit = orbitOf(auto);
+  assert.equal(autoOrbit.altitude_m, 10214);
+  assert.ok(auto.tracks.alt.every((k) => k.value === 10214));
 });
 
 test("heading authority: continuous pan representative — 359→361, 1→−1, tie eastward", () => {

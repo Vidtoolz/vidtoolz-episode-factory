@@ -6,8 +6,8 @@
 // else the landform's calibrated rake) — never from the previous movement's
 // attitude, never from a generic default; the approach ARRIVES at that pose
 // (altitude and rake) because its end frame is the orbit's first frame and the
-// orbit owns it. Authored altitudes that conflict with the calibrated pose are
-// refused at validation (policy A). Continuations inherit the terminal pose
+// orbit owns it. An authored altitude is explicit operator authority (policy B):
+// kept, with the ring measured from the focal point. Continuations inherit the terminal pose
 // exactly. Everything here is measured on generated geometry with an
 // independent WGS84 optical check.
 const { assert, test } = require("./_helpers.js");
@@ -266,9 +266,12 @@ test("terrain handoff: hostile combinations cannot move the terminal pose", () =
     "two orbits in a row": build("orbit Matterhorn half clockwise for 10 seconds then orbit Matterhorn once counterclockwise for 20 seconds"),
   };
   Object.entries(combos).forEach(([label, built]) => assertSamePose(terminalPose(built, "Matterhorn"), bare, label));
-  // authored conflict + hold → orbit: refused at validation like every other form
-  const bad = journey.validateJourney(J("Zurich", [leg("Matterhorn", [st("fly_low", { duration_seconds: 8 })], [st("hold", { duration_seconds: 2 }), st("orbit", { altitude_m: 8000, duration_seconds: 20 })])]), { planner });
-  assert.equal(bad.ok, false); assert.ok(/calibrated terrain focal point/.test(bad.errors[0]));
+  // authored altitude + hold → orbit: explicit operator authority, honoured like every other form
+  const authored = viaJourney(J("Zurich", [leg("Matterhorn", [st("fly_low", { duration_seconds: 8 })], [st("hold", { duration_seconds: 2 }), st("orbit", { altitude_m: 8000, duration_seconds: 20 })])]));
+  const ap = terminalPose(authored.built, "Matterhorn");
+  assert.equal(ap.altitude_m, 8000); assert.equal(ap.tilt_deg, 74);
+  assert.ok(Math.abs(ap.ring_m - (8000 - 4478) * Math.tan(RAD(74))) < 5); assert.ok(ap.aim_deg < 0.1);
+  authored.built.plan.segments.filter((s) => s.action !== "orbit").forEach((s) => assert.equal(s.altitude_m, 8000, "approach and hold land on the authored pose"));
   // fly_low → orbit → continuation and fly_high → orbit → continuation
   ["fly_low", "fly_high"].forEach((verb) => {
     const first = viaJourney(APPROACHES[verb]("Zurich", "Matterhorn")).built;

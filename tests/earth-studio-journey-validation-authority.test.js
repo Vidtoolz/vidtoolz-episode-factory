@@ -168,32 +168,16 @@ test("validation authority: every tracked journey canary validates in every orde
   catch (e) { assert.ok(true, "skipped: not a git checkout"); return; }
   const files = out.trim().split("\n").filter(Boolean);
   assert.ok(files.length >= 148, `expected >=148 tracked journeys, found ${files.length}`);
-  // CONTRACT CHANGE (2026-09-04, terrain complete pose policy A): twelve frozen
-  // review references carry a stale director-authored sea-level altitude on a
-  // calibrated terrain orbit and are now refused, deliberately and in every
-  // order, with the calibrated-pose conflict error. See tests/_terrain-stale-canaries.js.
-  const stale = require("./_terrain-stale-canaries.js");
-  const staleSeen = new Set();
   const failures = [];
   for (const rel of files) {
     const raw = JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
     const v = verdicts(raw);
-    const dir = path.dirname(rel);
-    if (stale.dirs.includes(dir)) {
-      staleSeen.add(dir);
-      Object.entries(v).forEach(([order, r]) => {
-        if (r.ok) failures.push(`${rel} (${order}): stale authored terrain altitude must be refused, but validated`);
-        else if (!stale.errorPattern.test(r.errors[0])) failures.push(`${rel} (${order}): refused for an unexpected reason: ${r.errors[0]}`);
-      });
-      continue;
-    }
     Object.entries(v).forEach(([order, r]) => { if (!r.ok) failures.push(`${rel} (${order}): ${r.errors[0]}`); });
     if (JSON.stringify(v.raw.journey) !== JSON.stringify(journey.normalizeJourney(raw))) failures.push(`${rel}: canonical journey differs`);
     if (v.raw.compiled.description !== journey.compileJourney(journey.normalizeJourney(raw), { planner }).description) failures.push(`${rel}: compiled description differs`);
     if (JSON.stringify(v.raw.journey).includes("invalid_fields") || JSON.stringify(v.raw.journey).includes("unsupported_type")) failures.push(`${rel}: valid canary carries evidence fields`);
   }
   assert.deepEqual(failures, [], failures.join("\n"));
-  assert.deepEqual([...staleSeen].sort(), [...stale.dirs].sort(), "the stale-reference set must match the documented list exactly");
 });
 
 test("validation authority: validateJourneyInput is the single raw stage and agrees with validateJourney", () => {

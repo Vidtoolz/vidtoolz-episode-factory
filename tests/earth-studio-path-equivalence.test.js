@@ -68,28 +68,12 @@ test("path-equivalence: every tracked journey canary is byte-identical through T
   const dirs = trackedJourneyCanaries();
   if (dirs === null) { assert.ok(true, "skipped: not a git checkout"); return; }
   assert.ok(dirs.length >= 148, `expected the tracked corpus (>=148 journeys), found ${dirs.length}`);
-  // CONTRACT CHANGE (2026-09-04, terrain complete pose policy A): twelve frozen
-  // review references carry a stale director-authored sea-level altitude on a
-  // calibrated terrain orbit; the DIRECT path (validate → compile) refuses them
-  // with the calibrated-pose conflict, so path equivalence has nothing to
-  // compare. They are counted, checked for exactly that refusal, and reported —
-  // see tests/_terrain-stale-canaries.js. Any other divergence still fails.
-  const stale = require("./_terrain-stale-canaries.js");
-  const staleSeen = [];
   const failures = [];
   let count = 0;
   for (const dir of dirs) {
     const plan = readJson(path.join(dir, "shot-plan.json"));
     const journey = readJson(path.join(dir, "journey.json"));
     count += 1;
-    const rel = path.relative(ROOT, dir);
-    if (stale.dirs.includes(rel)) {
-      const check = journeyModel.validateJourney(journey, { planner });
-      if (check.ok) failures.push(`${rel}: stale authored terrain altitude must be refused, but validated`);
-      else if (!stale.errorPattern.test(check.errors[0])) failures.push(`${rel}: refused for an unexpected reason: ${check.errors[0]}`);
-      else staleSeen.push(rel);
-      continue;
-    }
     try {
       const compiled = journeyModel.compileJourney(journeyModel.normalizeJourney(journey), { planner });
       const r = runBothPaths(journey, plan.job_name, plan.generated_at, laneOptionsFromPlan(plan, compiled));
@@ -100,7 +84,6 @@ test("path-equivalence: every tracked journey canary is byte-identical through T
   }
   assert.deepEqual(failures, [], `${failures.length}/${count} journeys diverge:\n${failures.join("\n")}`);
   assert.equal(count, dirs.length);
-  assert.deepEqual(staleSeen.sort(), [...stale.dirs].sort(), "the stale-reference set must match the documented list exactly");
 });
 
 // ── 2. Freeform plans: the tail extraction changed nothing (execution vs execution)

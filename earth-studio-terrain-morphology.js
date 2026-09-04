@@ -223,11 +223,13 @@ function completePose({
   let cameraAltitude = Math.round(altitude);
   if (floor !== null && cameraAltitude < floor) cameraAltitude = Math.ceil(floor);
   const ring = Math.min(Math.max(0, cameraAltitude - z) * tangent(tilt), MAX_ORBIT_RADIUS_M);
-  // AUTHORED-ALTITUDE CONTRACT (policy A). A calibrated terrain orbit already
-  // binds target elevation, footprint, rake and therefore camera altitude. An
-  // authored altitude is reported against that canonical altitude: equal (to
-  // the metre) means the author restated the pose; different means a conflict
-  // the caller must refuse — never a silently shrunken or inflated footprint.
+  // AUTHORED ALTITUDE (policy B — explicit operator authority). An authored
+  // camera altitude is kept and the ring follows from it (above). For
+  // provenance the pose also reports what the calibrated AUTO pose would have
+  // been at the same rake, and whether the authored value differs from it by
+  // more than the export's whole-metre resolution. Nothing treats that
+  // difference as an error: the only refusal is a camera at or below the focal
+  // point (`camera_below_target`), which the callers enforce.
   let canonical = null;
   if (explicit !== null) {
     canonical = completePose({
@@ -235,7 +237,7 @@ function completePose({
       terrain_morphology, fallback_altitude_m, tilt_locked, baseline_tilt_deg,
     });
   }
-  const conflict = canonical !== null
+  const differs = canonical !== null
     && Math.abs(cameraAltitude - canonical.camera_altitude_m) > AUTHORED_ALTITUDE_TOLERANCE_M;
   return {
     anchor_source: FOCAL_ANCHOR_SOURCE,
@@ -247,7 +249,7 @@ function completePose({
     applied_tilt_deg: round(tilt),
     authored_altitude_m: explicit,
     canonical_camera_altitude_m: canonical ? canonical.camera_altitude_m : cameraAltitude,
-    authored_altitude_conflict: conflict,
+    authored_altitude_differs_from_calibrated: differs,
     camera_altitude_m: cameraAltitude,
     camera_altitude_exact_m: round(altitude),
     camera_altitude_source: source,

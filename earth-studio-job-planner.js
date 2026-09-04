@@ -1039,13 +1039,15 @@
     //               never the generic orbit default;
     //   altitude  — derived, A = z_t + r / tan θ;
     //   ring      — (A − z_t)·tan θ, measured from the focal point.
-    // An AUTHORED altitude is checked against that canonical altitude (policy
-    // A): equal to the metre restates the pose and is accepted; different is a
-    // conflict and the description is REFUSED here, before any plan exists —
-    // the same outcome, with the same words, as validateJourney gives the
-    // journey path. Nothing is honoured, rewritten or sent downstream for review:
-    // a calibrated terrain orbit has exactly one altitude, and a description
-    // that states another is contradicting itself.
+    // AUTHORED ALTITUDE — EXPLICIT OPERATOR AUTHORITY (policy B, Hermes contract
+    // adjudication 2026-09-04). Authority order: safety floor → authored camera
+    // fields (altitude, tilt) → declared focal geometry → elevation-aware aim →
+    // calibrated morphology → generic defaults. An authored altitude is kept;
+    // the calibrated footprint yields and the ring is derived from the focal
+    // point, r = (A − z_t)·tan θ, so the optical centre still sits on the
+    // declared summit. Only a camera at or below the focal elevation is refused
+    // (a geometric impossibility, not a framing conflict). The same authority
+    // applies the same rule on the journey path.
     let terrainPose = null;
     if (actionInfo.action === "orbit" && location) {
       const authoredAltitude = altitude.source === "explicit" ? altitude.value : null;
@@ -1072,18 +1074,20 @@
             fallback_altitude_m: altitude.value,
             tilt_locked: authoredTilt !== null,
           });
-          if (authored && authored.authored_altitude_conflict) {
-            const error = new Error(authored.camera_below_target
-              ? `segment ${segmentId} sets the camera at ${authoredAltitude} m, which is not above ${location.name}'s declared focal point at ${canonical.target_elevation_m} m. An orbit looks down at its subject, so the camera altitude must be higher than the terrain it frames.`
-              : `segment ${segmentId} sets the camera at ${authoredAltitude} m, but ${location.name} is a calibrated terrain focal point: its focal elevation (${canonical.target_elevation_m} m), calibrated footprint (${Math.round(canonical.footprint_radius_m || 0)} m) and ${tiltDeg}° rake fix the camera at ${canonical.camera_altitude_m} m. Remove the altitude to use the calibrated pose, change the tilt instead, or orbit a place without a declared focal point.`);
+          // The refusal is judged on the value the operator WROTE (before the
+          // safety floor lifts it): a camera authored at or below the summit is
+          // a geometric impossibility the operator must hear about, not a value
+          // the floor should quietly repair.
+          const writtenAltitude = typeof altitudeSpec.altitude_m === "number" ? altitudeSpec.altitude_m : authoredAltitude;
+          if ((authored && authored.camera_below_target) || writtenAltitude <= canonical.target_elevation_m) {
+            const error = new Error(`segment ${segmentId} sets the camera at ${writtenAltitude} m, which is not above ${location.name}'s declared focal point at ${canonical.target_elevation_m} m. An orbit looks down at its subject, so the camera altitude must be higher than the terrain it frames.`);
             error.statusCode = 400;
-            error.code = "TERRAIN_COMPLETE_POSE_ALTITUDE_CONFLICT";
+            error.code = "TERRAIN_CAMERA_BELOW_FOCAL_POINT";
             error.segment_id = segmentId;
             throw error;
-          } else {
-            terrainPose = authored || canonical;
-            notes.push(`terrain complete pose: authored altitude ${authoredAltitude} m restates ${location.name}'s calibrated pose (${canonical.camera_altitude_m} m); ring ${Math.round(terrainPose.ring_radius_m)} m measured from the focal point.`);
           }
+          terrainPose = authored || canonical;
+          notes.push(`terrain complete pose: authored altitude ${authoredAltitude} m kept (explicit operator authority); ${location.name} declares its focal point at ${canonical.target_elevation_m} m, so the orbit ring is ${Math.round(terrainPose.ring_radius_m)} m = (${authoredAltitude} − ${canonical.target_elevation_m})·tan(${tiltDeg}°), measured from the focal point${terrainPose.authored_altitude_differs_from_calibrated ? ` (the calibrated AUTO pose would be ${canonical.camera_altitude_m} m / ${Math.round(canonical.ring_radius_m)} m)` : ""}.`);
         }
       }
     }
@@ -1188,6 +1192,7 @@
         ring_radius_m: orbitRingRadiusMeters(location, segment.altitude_m, segment.tilt_deg),
         rake_source: terrainPose.rake_source,
         authored_altitude_m: terrainPose.authored_altitude_m,
+        canonical_camera_altitude_m: terrainPose.canonical_camera_altitude_m,
         safety_clamp: terrainPose.safety_clamp,
         formula: terrainPose.formula,
       };

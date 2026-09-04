@@ -48,14 +48,13 @@ function candidateAltitude(referenceRadiusM, tiltDeg) {
   return referenceRadiusM / Math.tan(tiltDeg * Math.PI / 180);
 }
 
-// The experiment's altitude is NOT authored into the description. Since the
-// terrain complete-pose contract (2026-09-04, policy A) an authored altitude on
-// a calibrated terrain orbit is refused at parse unless it restates the
-// calibrated pose, and this historical experiment deliberately authors the
-// pre-repair sea-level fixed-ring altitudes instead. The experiment therefore
-// parses the movement alone and applies its altitude to the parsed plan below,
-// exactly where it already restored decimal precision — production planning
-// paths are untouched.
+// The experiment's altitude is applied to the parsed plan below (where it
+// already restored decimal precision) rather than authored into the
+// description: this historical experiment models the pre-2026-09-04 sea-level
+// fixed-ring altitudes, and an authored altitude on a calibrated terrain orbit
+// now resolves an elevation-aware ring (terrain complete pose, policy B), which
+// is not what the experiment is measuring. Production planning paths are
+// untouched.
 function describe(subject, tiltDeg) {
   return `orbit ${subject.name} half clockwise tilted ${tiltDeg} degrees for 30 seconds`;
 }

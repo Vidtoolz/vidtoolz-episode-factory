@@ -1106,9 +1106,10 @@
   // What a decision writes into the journey as camera altitude. A declared
   // terrain focal point's altitude is DERIVED by the complete-pose authority
   // wherever the journey is compiled or planned, so the director does not
-  // serialize that derived number as if it were authored: an authored altitude
-  // at a calibrated terrain orbit is a contract conflict (policy A), and a
-  // frozen journey must not carry yesterday's derivation as today's authority.
+  // serialize that derived number as if it were authored: under explicit
+  // operator authority (policy B) an authored altitude is honoured verbatim, so
+  // a frozen journey must not carry yesterday's derivation as today's authored
+  // value — AUTO stays AUTO and re-derives.
   // The decision itself keeps `altitude_m` and `terrain_policy` as provenance.
   function journeyAltitudeFor(dec) {
     if (!dec) return null;

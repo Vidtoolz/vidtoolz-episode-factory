@@ -382,11 +382,15 @@ tilt, the camera altitude is *derived* as `A = z_t + r / tan θ`, and the ring t
 measured from the focal elevation, `(A − z_t) · tan θ`, so the optical centre sits on the declared
 point for any altitude. The rake is the tilt stated on the orbit itself, else the landform's
 calibrated rake — never the previous movement's attitude and never the generic orbit default.
-An authored orbit altitude must restate the calibrated altitude (to the metre); anything else
-conflicts with the calibrated pose and is refused at validation before compilation (the text
-path marks the segment for manual review, applies the calibrated pose and spells out the
-conflict). A framing scale or spiral shift on such an orbit likewise yields to the calibrated
-pose with a warning. **The approach controls the approach, not the orbit:** a movement that
+**Explicit operator authority (policy B).** The authority order is: safety floor → authored
+camera altitude / authored orbit tilt → declared focal geometry → elevation-aware aim →
+calibrated morphology footprint → generic defaults. An authored orbit altitude `A` (and rake `θ`)
+is kept exactly; the calibrated footprint yields and the ring is `(A − z_t) · tan θ`, so
+`orbit Matterhorn at 8000m tilted 74 degrees` rides a ≈12.3 km ring aimed at the summit instead
+of the automatic ≈20 km footprint. The one refusal is a camera at or below the focal elevation
+(refused at journey validation, and before any plan on the text path): an orbit cannot look down
+at a point it is not above. A framing scale or spiral shift on such an orbit yields to the
+calibrated pose with a warning (framing scales rank below the calibrated landform). **The approach controls the approach, not the orbit:** a movement that
 delivers the camera onto a terrain orbit — fly, zoom, low approach, cruise, or a transparent hold
 after one — arrives at the orbit's altitude *and* rake, because its end frame is the orbit's first
 frame and the orbit owns it; the approach's own travelling tilt is recorded as `approach_tilt_deg`.
