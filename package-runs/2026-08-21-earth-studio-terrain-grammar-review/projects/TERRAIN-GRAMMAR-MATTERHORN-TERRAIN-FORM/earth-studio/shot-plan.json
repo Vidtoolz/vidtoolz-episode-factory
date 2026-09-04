@@ -2,7 +2,7 @@
   "job_name": "TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM",
   "version": "0.9.4",
   "generated_at": "2026-08-21T18:00:00.000Z",
-  "source_description": "orbit Matterhorn half clockwise at 5736m tilted 74 degrees for 30 seconds",
+  "source_description": "orbit Matterhorn half clockwise tilted 74 degrees for 30 seconds",
   "parser_strategy": "offline_regex_with_manual_review_fallback",
   "frame_rate": 30,
   "frame_convention": {
@@ -32,7 +32,7 @@
   "segments": [
     {
       "segment_id": 1,
-      "source_text": "orbit Matterhorn half clockwise at 5736m tilted 74 degrees for 30 seconds",
+      "source_text": "orbit Matterhorn half clockwise tilted 74 degrees for 30 seconds",
       "action": "orbit",
       "requested_action": "orbit",
       "location_name": "Matterhorn",
@@ -44,10 +44,14 @@
         "min_altitude_m": 5500,
         "terrain_morphology": "sharp_peak",
         "morphology_source": "curated_gazetteer",
+        "target_elevation_m": 4478,
+        "target_anchor_kind": "SUMMIT",
+        "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+        "target_anchor_confidence": "HIGH",
         "source": "gazetteer_fixture"
       },
-      "altitude_m": 5736,
-      "altitude_source": "explicit",
+      "altitude_m": 10214,
+      "altitude_source": "terrain_complete_pose",
       "tilt_deg": 74,
       "tilt_source": "explicit",
       "duration_source": "explicit",
@@ -58,9 +62,27 @@
       "end_frame": 900,
       "resolution_status": "resolved",
       "warnings": [],
-      "notes": [],
+      "notes": [
+        "terrain complete pose: Matterhorn declares its focal point at 4478 m (SUMMIT); rake 74° (authored), camera altitude 10214 m = 4478 + 20005 / tan(74°), ring 20004 m."
+      ],
       "orbit_degrees": 180,
-      "orbit_direction": 1
+      "orbit_direction": 1,
+      "terrain_pose": {
+        "target_elevation_m": 4478,
+        "target_anchor_kind": "SUMMIT",
+        "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+        "target_anchor_confidence": "HIGH",
+        "footprint_radius_m": 20004.942992,
+        "applied_tilt_deg": 74,
+        "camera_altitude_m": 10214,
+        "camera_altitude_source": "terrain_complete_pose",
+        "ring_radius_m": 20003.80925,
+        "rake_source": "authored",
+        "authored_altitude_m": null,
+        "canonical_camera_altitude_m": 10214,
+        "safety_clamp": null,
+        "formula": "camera_altitude_m = target_elevation_m + footprint_radius_m / tan(applied_tilt_deg); ring_radius_m = (camera_altitude_m - target_elevation_m) * tan(applied_tilt_deg)"
+      }
     }
   ],
   "unresolved_items": [],
@@ -76,6 +98,7 @@
     "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
   },
   "notes": [
+    "segment 1: terrain complete pose: Matterhorn declares its focal point at 4478 m (SUMMIT); rake 74° (authored), camera altitude 10214 m = 4478 + 20005 / tan(74°), ring 20004 m.",
     "camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
   ],
   "manual_earth_studio_steps": [

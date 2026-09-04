@@ -2,7 +2,7 @@
   "job_name": "MORPH-CAL-GRAND-CANYON",
   "version": "0.9.4",
   "generated_at": "2026-08-21T15:00:00.000Z",
-  "source_description": "orbit Grand Canyon once clockwise at 3530m tilted 74 degrees for 75 seconds",
+  "source_description": "orbit Grand Canyon once clockwise tilted 74 degrees for 75 seconds",
   "parser_strategy": "offline_regex_with_manual_review_fallback",
   "frame_rate": 30,
   "frame_convention": {
@@ -32,7 +32,7 @@
   "segments": [
     {
       "segment_id": 1,
-      "source_text": "orbit Grand Canyon once clockwise at 3530m tilted 74 degrees for 75 seconds",
+      "source_text": "orbit Grand Canyon once clockwise tilted 74 degrees for 75 seconds",
       "action": "orbit",
       "requested_action": "orbit",
       "location_name": "Grand Canyon",
@@ -44,10 +44,14 @@
         "min_altitude_m": 2700,
         "terrain_morphology": "canyon",
         "morphology_source": "curated_gazetteer",
+        "target_elevation_m": 1200,
+        "target_anchor_kind": "CANYON_INTERIOR_POI_SURFACE",
+        "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+        "target_anchor_confidence": "MEDIUM",
         "source": "gazetteer_fixture"
       },
-      "altitude_m": 3530,
-      "altitude_source": "explicit",
+      "altitude_m": 4730,
+      "altitude_source": "terrain_complete_pose",
       "tilt_deg": 74,
       "tilt_source": "explicit",
       "duration_source": "explicit",
@@ -58,9 +62,27 @@
       "end_frame": 2250,
       "resolution_status": "resolved",
       "warnings": [],
-      "notes": [],
+      "notes": [
+        "terrain complete pose: Grand Canyon declares its focal point at 1200 m (CANYON_INTERIOR_POI_SURFACE); rake 74° (authored), camera altitude 4730 m = 1200 + 12311 / tan(74°), ring 12311 m."
+      ],
       "orbit_degrees": 360,
-      "orbit_direction": 1
+      "orbit_direction": 1,
+      "terrain_pose": {
+        "target_elevation_m": 1200,
+        "target_anchor_kind": "CANYON_INTERIOR_POI_SURFACE",
+        "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+        "target_anchor_confidence": "MEDIUM",
+        "footprint_radius_m": 12310.734149,
+        "applied_tilt_deg": 74,
+        "camera_altitude_m": 4730,
+        "camera_altitude_source": "terrain_complete_pose",
+        "ring_radius_m": 12310.572987,
+        "rake_source": "authored",
+        "authored_altitude_m": null,
+        "canonical_camera_altitude_m": 4730,
+        "safety_clamp": null,
+        "formula": "camera_altitude_m = target_elevation_m + footprint_radius_m / tan(applied_tilt_deg); ring_radius_m = (camera_altitude_m - target_elevation_m) * tan(applied_tilt_deg)"
+      }
     }
   ],
   "unresolved_items": [],
@@ -76,6 +98,7 @@
     "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
   },
   "notes": [
+    "segment 1: terrain complete pose: Grand Canyon declares its focal point at 1200 m (CANYON_INTERIOR_POI_SURFACE); rake 74° (authored), camera altitude 4730 m = 1200 + 12311 / tan(74°), ring 12311 m.",
     "camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
   ],
   "manual_earth_studio_steps": [

@@ -23,8 +23,8 @@
       "pace": null,
       "emphasis": 1.38,
       "direction": 1,
-      "altitude_m": 6177.580872,
-      "tilt_deg": 74,
+      "altitude_m": null,
+      "tilt_deg": null,
       "framing": null,
       "revolutions": null
     }

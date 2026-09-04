@@ -2,7 +2,7 @@
   "job_name": "MORPH-UNSEEN-EVEREST",
   "version": "0.9.4",
   "generated_at": "2026-08-21T15:00:00.000Z",
-  "source_description": "orbit Mount Everest once clockwise at 9204m tilted 73.35 degrees for 75 seconds",
+  "source_description": "orbit Mount Everest once clockwise tilted 74 degrees for 75 seconds",
   "parser_strategy": "offline_regex_with_manual_review_fallback",
   "frame_rate": 30,
   "frame_convention": {
@@ -32,7 +32,7 @@
   "segments": [
     {
       "segment_id": 1,
-      "source_text": "orbit Mount Everest once clockwise at 9204m tilted 73.35 degrees for 75 seconds",
+      "source_text": "orbit Mount Everest once clockwise tilted 74 degrees for 75 seconds",
       "action": "orbit",
       "requested_action": "orbit",
       "location_name": "Mount Everest",
@@ -44,11 +44,15 @@
         "min_altitude_m": 9200,
         "terrain_morphology": "sharp_peak",
         "morphology_source": "curated_gazetteer",
+        "target_elevation_m": 8849,
+        "target_anchor_kind": "SUMMIT",
+        "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+        "target_anchor_confidence": "HIGH",
         "source": "gazetteer_fixture"
       },
-      "altitude_m": 9204,
-      "altitude_source": "explicit",
-      "tilt_deg": 73.35,
+      "altitude_m": 17674,
+      "altitude_source": "terrain_complete_pose",
+      "tilt_deg": 74,
       "tilt_source": "explicit",
       "duration_source": "explicit",
       "start_seconds": 0,
@@ -58,9 +62,27 @@
       "end_frame": 2250,
       "resolution_status": "resolved",
       "warnings": [],
-      "notes": [],
+      "notes": [
+        "terrain complete pose: Mount Everest declares its focal point at 8849 m (SUMMIT); rake 74° (authored), camera altitude 17674 m = 8849 + 30777 / tan(74°), ring 30776 m."
+      ],
       "orbit_degrees": 360,
-      "orbit_direction": 1
+      "orbit_direction": 1,
+      "terrain_pose": {
+        "target_elevation_m": 8849,
+        "target_anchor_kind": "SUMMIT",
+        "target_anchor_source": "DECLARED_TERRAIN_FOCAL_POINT",
+        "target_anchor_confidence": "HIGH",
+        "footprint_radius_m": 30776.835372,
+        "applied_tilt_deg": 74,
+        "camera_altitude_m": 17674,
+        "camera_altitude_source": "terrain_complete_pose",
+        "ring_radius_m": 30776.432467,
+        "rake_source": "authored",
+        "authored_altitude_m": null,
+        "canonical_camera_altitude_m": 17674,
+        "safety_clamp": null,
+        "formula": "camera_altitude_m = target_elevation_m + footprint_radius_m / tan(applied_tilt_deg); ring_radius_m = (camera_altitude_m - target_elevation_m) * tan(applied_tilt_deg)"
+      }
     }
   ],
   "unresolved_items": [],
@@ -76,6 +98,7 @@
     "rule": "role-correct gap-relative easing (easeOut departure · auto interior · Google-template segment-boundary deceleration · gentle terminal arrival) + final settle-hold"
   },
   "notes": [
+    "segment 1: terrain complete pose: Mount Everest declares its focal point at 8849 m (SUMMIT); rake 74° (authored), camera altitude 17674 m = 8849 + 30777 / tan(74°), ring 30776 m.",
     "camera motion: internet-reference profile v4 (easeOut departures, auto interiors, Google-template deceleration on move-ending boundaries — altitude hardest, gentle terminal arrivals; the final move settles early and holds) — deterministically rebuilt from the approved internet reference corpus."
   ],
   "manual_earth_studio_steps": [
