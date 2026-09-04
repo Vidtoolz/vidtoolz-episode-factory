@@ -1,0 +1,50 @@
+{
+  "schema_version": 3,
+  "oracle": "terrain-complete-pose-successor-v2",
+  "generated_at": "2026-09-04T00:00:00.000Z",
+  "authority_report": "/home/vidtoolz/outputs/terrain-complete-pose-contract-adjudication-2026-09-04/TERRAIN-COMPLETE-POSE-CONTRACT-ADJUDICATION-2026-09-04.md",
+  "base_sha": "7b63c6b430f964087665a6c9a4626b79e42bcad9",
+  "authorized_historical_shas": {
+    "production": "7b63c6b430f964087665a6c9a4626b79e42bcad9",
+    "original_oracle": "eef86bc7ae6f70e98eccad97184ec7f0f4685da8",
+    "rejected_candidate": "ac0ee00cd270220265db870e4c9b360df5176364",
+    "topology_general": "9462e3a260f50c8401f47b0e78025000a9a1b05d",
+    "journey_handoff": "0fdbf65656945a381908592aa396e2b182b7bc5c",
+    "successor_oracle_v1": "16fbb018fb8dc9a51866203cc84604d9a843fdae"
+  },
+  "vertical_fov_deg": 20,
+  "tolerances": {
+    "coordinate_deg": 0.0000001,
+    "radius_m": 5,
+    "altitude_m": 1.1,
+    "rake_deg": 0.02,
+    "aim_deg": 0.25,
+    "acquisition_aim_deg": 1,
+    "heading_deg": 0.1,
+    "topology_radius_m": 10,
+    "topology_altitude_m": 2,
+    "topology_rake_deg": 0.02,
+    "acquisition_max_frames": 15,
+    "acquisition_max_fraction": 0.2,
+    "continuation_opening_m": 0.25,
+    "continuation_altitude_m": 1.1,
+    "continuation_rake_deg": 0.02,
+    "continuation_radius_fraction": 0.01,
+    "continuation_fresh_radius_m": 5,
+    "serialization_position_m": 0.01,
+    "serialization_angle_deg": 0.000001,
+    "playback_heading_deg": 0.75
+  },
+  "targets": [
+    {"id":"matterhorn","name":"Matterhorn","start":"Zurich","latitude":45.9766,"longitude":7.6585,"target_elevation_m":4478,"target_anchor_kind":"SUMMIT","target_anchor_source":"DECLARED_TERRAIN_FOCAL_POINT","target_anchor_confidence":"HIGH","morphology":"SHARP_PEAK","preferred_rake_deg":74,"calibration_altitude_m":6500,"min_altitude_m":5500,"director_orbit":true},
+    {"id":"fuji","name":"Mount Fuji","start":"Tokyo","latitude":35.3606,"longitude":138.7274,"target_elevation_m":3776,"target_anchor_kind":"SUMMIT","target_anchor_source":"DECLARED_TERRAIN_FOCAL_POINT","target_anchor_confidence":"HIGH","morphology":"VOLCANIC_CONE","preferred_rake_deg":45,"calibration_altitude_m":5500,"min_altitude_m":4300,"director_orbit":true},
+    {"id":"kilimanjaro","name":"Kilimanjaro","start":"Nairobi","latitude":-3.0674,"longitude":37.3556,"target_elevation_m":5895,"target_anchor_kind":"SUMMIT","target_anchor_source":"DECLARED_TERRAIN_FOCAL_POINT","target_anchor_confidence":"HIGH","morphology":"VOLCANIC_CONE","preferred_rake_deg":45,"calibration_altitude_m":7000,"min_altitude_m":6300,"director_orbit":true},
+    {"id":"everest","name":"Mount Everest","start":"Delhi","latitude":27.9881,"longitude":86.925,"target_elevation_m":8849,"target_anchor_kind":"SUMMIT","target_anchor_source":"DECLARED_TERRAIN_FOCAL_POINT","target_anchor_confidence":"HIGH","morphology":"SHARP_PEAK","preferred_rake_deg":74,"calibration_altitude_m":10000,"min_altitude_m":9200,"director_orbit":true},
+    {"id":"geirangerfjord","name":"Geirangerfjord","start":"Oslo","latitude":62.1049,"longitude":7.2054,"target_elevation_m":0,"target_anchor_kind":"WATERLINE","target_anchor_source":"DECLARED_TERRAIN_FOCAL_POINT","target_anchor_confidence":"HIGH","morphology":"FJORD_CHANNEL","preferred_rake_deg":65,"calibration_altitude_m":2500,"min_altitude_m":1000,"director_orbit":true},
+    {"id":"grand_canyon","name":"Grand Canyon","start":"Las Vegas","latitude":36.0544,"longitude":-112.1401,"target_elevation_m":1200,"target_anchor_kind":"CANYON_INTERIOR_POI_SURFACE","target_anchor_source":"DECLARED_TERRAIN_FOCAL_POINT","target_anchor_confidence":"MEDIUM","morphology":"CANYON","preferred_rake_deg":74,"calibration_altitude_m":4000,"min_altitude_m":2700,"director_orbit":false}
+  ],
+  "synthetic_targets": [
+    {"id":"dead_sea_below","name":"Oracle V2 Dead Sea Below","latitude":31.5,"longitude":35.47,"target_elevation_m":-430,"target_anchor_kind":"WATERLINE","target_anchor_source":"DECLARED_TERRAIN_FOCAL_POINT","target_anchor_confidence":"HIGH","morphology":"GENERIC_TERRAIN","preferred_rake_deg":65,"calibration_altitude_m":3000,"min_altitude_m":0},
+    {"id":"seam_generic","name":"Oracle V2 Seam Terrain","latitude":-12.25,"longitude":179.95,"target_elevation_m":850,"target_anchor_kind":"SURFACE_POI","target_anchor_source":"DECLARED_TERRAIN_FOCAL_POINT","target_anchor_confidence":"MEDIUM","morphology":"GENERIC_TERRAIN","preferred_rake_deg":65,"calibration_altitude_m":3000,"min_altitude_m":0}
+  ]
+}
