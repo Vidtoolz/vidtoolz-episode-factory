@@ -320,6 +320,12 @@
     "oulu": { name: "Oulu", latitude: 65.0121, longitude: 25.4651 },
     "rovaniemi": { name: "Rovaniemi", latitude: 66.5039, longitude: 25.7294 },
     "suomenlinna": { name: "Suomenlinna", latitude: 60.1454, longitude: 24.9881, altitude_m: 1200 },
+    // Helsinki districts/landmarks (curated 2026-09-04 for one-shot Super Focus
+    // journeys; coordinates are the visitor-facing centres, altitudes are
+    // landmark-scale framing like the other Helsinki entries).
+    "korkeasaari": { name: "Korkeasaari", latitude: 60.1755, longitude: 24.9856, altitude_m: 1100, scale: "landmark" },
+    "linnanmaki": { name: "Linnanmäki", latitude: 60.1878, longitude: 24.9401, altitude_m: 900, scale: "landmark" },
+    "jatkasaari": { name: "Jätkäsaari", latitude: 60.1580, longitude: 24.9160, altitude_m: 1500, scale: "district" },
     "helsinki cathedral": { name: "Helsinki Cathedral", latitude: 60.1704, longitude: 24.9522, altitude_m: 700 },
     "stockholm": { name: "Stockholm", latitude: 59.3293, longitude: 18.0686 },
     "gothenburg": { name: "Gothenburg", latitude: 57.7089, longitude: 11.9746 },
@@ -555,6 +561,10 @@
     "kiev": "kyiv",
     "yosemite valley": "yosemite",
     "helsinki cathedral church": "helsinki cathedral",
+    "korkeasaari zoo": "korkeasaari",
+    "helsinki zoo": "korkeasaari",
+    "jatkansaari": "jatkasaari",
+    "linnanmaki amusement park": "linnanmaki",
     "usa": "united states",
     "us": "united states",
     "united states of america": "united states",
@@ -614,6 +624,23 @@
     }
     const coords = parseExplicitCoords(value);
     if (coords) return coords;
+    // "Korkeasaari, Helsinki": a place qualified by the city/region it sits in.
+    // The head is the place; the qualifier only has to be a known place too,
+    // so a typo in either half still fails loudly instead of guessing.
+    const text = String(value == null ? "" : value);
+    const comma = text.indexOf(",");
+    if (comma > 0) {
+      const head = text.slice(0, comma).trim();
+      const qualifier = text.slice(comma + 1).trim();
+      if (head && qualifier && !parseExplicitCoords(text)) {
+        const headResolved = resolveLocation(head);
+        const qualifierResolved = resolveLocation(qualifier);
+        if (headResolved && headResolved.source === "gazetteer_fixture" && qualifierResolved
+          && haversineMeters(headResolved, qualifierResolved) <= 60000) {
+          return headResolved;
+        }
+      }
+    }
     return null;
   }
 

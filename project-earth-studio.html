@@ -136,7 +136,7 @@
         </div>
       </details>
       <div class="meta"><a href="projects.html">← Projects</a> · <a id="link-workspace" href="#">Workspace</a> · <a id="link-mediakit" href="#">Media kit</a> · <a href="production-pipeline.html">Pipeline</a></div>
-      <div class="es-id"><h1 id="es-title">Earth Studio — map animation</h1></div>
+      <div class="es-id"><h1 id="es-title">Earth Studio — map animation</h1><a class="btn" id="es-super-focus-link" href="earth-studio-super-focus.html" title="One instruction → one video. Cameras, project, render and ETA handled for you.">⚡ Super Focus one-shot</a></div>
       <div class="meta" id="es-meta">Loading…</div>
       <div id="es-steps"></div>
     </div>
@@ -148,6 +148,7 @@
     <script src="earth-studio-director.js"></script>
     <script>
       const ID = new URLSearchParams(location.search).get('id') || '';
+      if (ID) document.getElementById('es-super-focus-link').href = 'earth-studio-super-focus.html?id=' + encodeURIComponent(ID);
       const planner = window.EarthStudioJobPlanner;
       let ST = null;           // /api/earth-studio/status payload
       let PKG_PATH = '';       // absolute package path (from media-kit project info)

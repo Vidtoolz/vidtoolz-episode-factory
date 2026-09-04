@@ -115,6 +115,8 @@ node --check earth-studio-director.js
 node --check earth-studio-lane.js
 node --check earth-studio-native-template-profiles.js
 node --check scripts/earth-studio-journey-browser-smoke.js
+node --check earth-studio-super-focus.js
+node --check scripts/earth-studio-super-focus-browser-smoke.js
 node --check scripts/earth-studio-journey-import-gate.js
 node --check scripts/earth-studio-journey-canaries.js
 node --check scripts/earth-studio-director-canaries.js

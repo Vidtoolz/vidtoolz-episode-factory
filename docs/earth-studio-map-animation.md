@@ -3,6 +3,54 @@
 An optional per-project tool to produce Google Earth Studio map fly-overs, operable from the
 cockpit GUI and run entirely on **vidnux** (no PRESTO required).
 
+## Super Focus one-shot (one instruction → one video) — 2026-09-04
+
+`earth-studio-super-focus.html?id=<project>` is the Super Focus surface: one
+textarea, one **Create map animation** button, no Director role / purpose /
+treatment / movement controls (those stay in the expert workspace
+`project-earth-studio.html`, which links to Super Focus and back). It does not
+plan anything itself. `earth-studio-super-focus.js` is the single job
+authority: it drives the canonical stack — `director.parseIntent` →
+`director.autoDirect` → `journey.validateJourney` → `lane.writeJob` →
+`lane.startRender` — and records durable state in
+`<package>/earth-studio/super-focus-job.json`.
+
+Stages (real pipeline state, never simulated):
+`QUEUED → PLANNING → VALIDATING → GENERATING_PROJECT →
+WAITING_FOR_EARTH_STUDIO_EXPORT → RENDERING → FINALIZING → READY | FAILED`.
+
+- **Durations are authoritative.** "circle there for 3 minutes" → a 180 s orbit
+  (`stop.duration_seconds`, `duration_source: "manual"`); travel legs between
+  stops are timed automatically. Only stated durations are emitted, so every
+  existing Director phrasing produces the same journey as before.
+- **Locations are resolved automatically**, including `place, City` qualifiers
+  (the trailing city collapses into the place when it is within 60 km) and
+  gazetteer aliases, accent-insensitively ("jätkänsaari, Helsinki" → Jätkäsaari).
+  An unknown place fails the job with `Could not resolve location`.
+- **READY = the MP4 exists** at `earth-studio/renders/<slug>.mp4`, served from
+  `/aigen-assets/script-packages/<id>/…`. Play is disabled until then.
+- **The one step no API can automate** is Google Earth Studio's own render
+  (browser-only, Google login). The job waits, counts frames arriving in
+  `earth-studio/frames/` every 5 s, derives the ETA from the observed export
+  rate (nothing is invented before frames arrive), and starts ffmpeg by itself
+  when the count reaches the plan (or stays unchanged for 30 s). Render
+  progress comes from ffmpeg's `frame=` stderr; the measured seconds-per-frame
+  is stored in `super-focus-timing.json` for the next ETA.
+- **Reload / restart safe**: `GET …/status` re-attaches the watcher; a job
+  that died mid-planning fails honestly with Retry. Retry resumes at the export
+  boundary when the project exists, otherwise re-runs the pipeline.
+
+Routes (nonce-gated writes, VIDNAS mount probed):
+`POST /api/earth-studio/super-focus/create` (202, returns the QUEUED job at
+once; 409 while a job is running unless `replace: true`),
+`GET /api/earth-studio/super-focus/status?id=`,
+`POST /api/earth-studio/super-focus/retry`.
+
+Tests: `tests/earth-studio-super-focus.test.js` (the exact mission instruction
+is the regression fixture) and the headless-Chrome
+`scripts/earth-studio-super-focus-browser-smoke.js` (surface, lifecycle,
+disabled→enabled Play with a real ffmpeg render of synthetic frames, reload).
+
 ## Direct journey IR (structured path, shadow-only)
 
 Since 2026-09-02 the planner exposes a second input channel beside the description

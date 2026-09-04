@@ -1146,6 +1146,12 @@
         // authoritative — it wins over inferred direction below.
         explicit_grammar: src.explicit_grammar || src.grammar || null,
         explicit_travel_style: src.explicit_travel_style || src.travel_style || null,
+        // An operator-stated AT-movement duration (parseIntent or structured input)
+        // is authoritative: the journey step is emitted with it as a manual
+        // duration, which pace presets never stretch and the compiler never
+        // replaces with a suggestion.
+        duration_seconds: Number.isFinite(Number(src.duration_seconds)) && Number(src.duration_seconds) > 0
+          ? Number(src.duration_seconds) : null,
         framing: src.framing || "auto",
         scale: src.framing && src.framing !== "auto" ? src.framing : classified.scale,
         resolved,
@@ -1485,6 +1491,7 @@
           .map((s) => J.normalizeStep(s, "travel")),
         movements: atDec
           ? [J.normalizeStep({ type: atDec.movement, emphasis: atDec.emphasis,
+              duration_seconds: to.duration_seconds != null ? to.duration_seconds : undefined,
               tilt_deg: atDec.tilt_deg || null,
               altitude_m: journeyAltitudeFor(atDec),
               revolutions: orbitRevolutionsFor(atDec, to) }, "at")]
@@ -1567,6 +1574,7 @@
       start: startSpec,
       start_movements: openDec
         ? [J.normalizeStep({ type: openDec.movement, emphasis: openDec.emphasis,
+            duration_seconds: first.duration_seconds != null ? first.duration_seconds : undefined,
             tilt_deg: openDec.tilt_deg || null,
             altitude_m: journeyAltitudeFor(openDec),
             revolutions: orbitRevolutionsFor(openDec, first) }, "at")]
@@ -1897,6 +1905,22 @@
     [/\bno\s+(high\s+)?transit\b|\bdon'?t\s+climb\b/i, "high_transit"],
   ];
   const LEVEL_HORIZON_PHRASE = /\bkeep\s+the\s+horizon\s+level\b|\blevel\s+horizon\b/i;
+  // Explicit DURATION language ("circle there for 3 minutes", "orbit for 45
+  // seconds", "hold for half a minute"). An operator-stated duration is
+  // authoritative for the movement it belongs to: the Director never trades it
+  // for an editorial suggestion. Minutes and seconds only — Earth Studio jobs
+  // are counted in frames, and anything longer than an hour is a mistake.
+  const DURATION_PHRASE = /\b(?:for|lasting|during|over)\s+(?:about\s+|roughly\s+|around\s+)?(?:(\d+(?:[.,]\d+)?)|(a|an|one|half\s+a|half\s+an|two|three|four|five|six|seven|eight|nine|ten))\s*(seconds?|secs?|sec|s|minutes?|mins?|min)\b/i;
+  const DURATION_WORDS = { a: 1, an: 1, one: 1, "half a": 0.5, "half an": 0.5, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+  function parseDurationSeconds(clause) {
+    const m = DURATION_PHRASE.exec(clause);
+    if (!m) return null;
+    const amount = m[1] != null ? Number(String(m[1]).replace(",", ".")) : DURATION_WORDS[m[2].toLowerCase().replace(/\s+/g, " ")];
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+    const unit = m[3].toLowerCase();
+    const seconds = /^min/.test(unit) ? amount * 60 : amount;
+    return Math.round(seconds * 100) / 100;
+  }
   // Explicit OPENING-ORIENTATION language. The operator names the direction
   // the opening camera should take; it is authoritative and outranks every
   // automatic composition policy (see the USER_SPECIFIED branch in the
@@ -1998,10 +2022,20 @@
   function parseIntent(text, options = {}) {
     const planner = loadPlanner(options.planner);
     const raw = String(text == null ? "" : text);
-    const sentences = raw.split(/[\n.;]+/).map((x) => x.trim()).filter(Boolean);
-    const known = Object.values(planner.LOCATION_FIXTURES).map((l) => l.name);
-    // longest names first so "New York" wins over "York"
-    const byLength = known.slice().sort((a, b) => b.length - a.length);
+    // a period between digits is a decimal ("1.5 minutes"), not a sentence end
+    const sentences = raw.replace(/(\d)\.(\d)/g, "$1\u0000$2").split(/[\n.;]+/).map((x) => x.replace(/\u0000/g, ".").trim()).filter(Boolean);
+    // Every way a known place can be written: its canonical name and every
+    // gazetteer alias ("Helsinki Zoo" → Korkeasaari, Mikko's "jätkänsaari" →
+    // Jätkäsaari). Matching is accent-insensitive (NFD-stripped, lower-cased on
+    // both sides; the strip preserves string length so indices stay aligned).
+    const stripAccents = (str) => String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const needles = Object.values(planner.LOCATION_FIXTURES).map((l) => ({ name: l.name, needle: stripAccents(l.name) }));
+    Object.entries(planner.LOCATION_ALIASES || {}).forEach(([alias, key]) => {
+      const target = planner.LOCATION_FIXTURES[key];
+      if (target && alias.length >= 4) needles.push({ name: target.name, needle: stripAccents(alias) });
+    });
+    // longest needles first so "New York" wins over "York"
+    const byLength = needles.slice().sort((a, b) => b.needle.length - a.needle.length);
 
     const seen = new Map();     // canonical name -> stop
     const order = [];
@@ -2011,19 +2045,45 @@
     };
     const findHits = (clause) => {
       const hits = [];
-      byLength.forEach((name) => {
-        const idx = clause.toLowerCase().indexOf(name.toLowerCase());
+      const haystack = stripAccents(clause);
+      byLength.forEach(({ name, needle }) => {
+        const idx = haystack.indexOf(needle);
         if (idx < 0) return;
-        if (hits.some((h) => idx >= h.idx && idx + name.length <= h.idx + h.name.length)) return;
-        hits.push({ name, idx });
+        // whole-word: "york" inside "yorkshire" is not a hit
+        const before = idx === 0 ? " " : haystack[idx - 1];
+        const after = idx + needle.length >= haystack.length ? " " : haystack[idx + needle.length];
+        if (/[a-z0-9]/.test(before) || /[a-z0-9]/.test(after)) return;
+        if (hits.some((h) => idx >= h.idx && idx + needle.length <= h.idx + h.len)) return;
+        if (hits.some((h) => h.name === name)) return;
+        hits.push({ name, idx, len: needle.length, needleText: needle });
       });
       return hits.sort((a, b) => a.idx - b.idx);
     };
 
+    // "Korkeasaari, Helsinki" names ONE place: a clause that is nothing but a
+    // known city/region sitting right after a clause that ended in another
+    // known place within it is a QUALIFIER, not a new stop. Judged on the
+    // gazetteer alone (no scale is more specific than a city entry without a
+    // framing altitude; distance keeps "Paris, Helsinki" honest).
+    const fixtureOf = (name) => Object.values(planner.LOCATION_FIXTURES).find((l) => l.name === name) || null;
+    const isQualifierOf = (placeName, qualifierName) => {
+      const place = fixtureOf(placeName); const qualifier = fixtureOf(qualifierName);
+      if (!place || !qualifier || placeName === qualifierName) return false;
+      if (typeof qualifier.altitude_m === "number" && qualifier.scale !== "region") return false;
+      return planner.haversineMeters(place, qualifier) <= 60000;
+    };
     sentences.forEach((sentence) => {
       const clauses = sentence.split(/,(?=\s)/).map((x) => x.trim()).filter(Boolean);
+      let previousClauseLastHit = null;
       clauses.forEach((clause) => {
-        const hits = findHits(clause);
+        let hits = findHits(clause);
+        const bareQualifier = hits.length === 1 && previousClauseLastHit
+          && stripAccents(clause.trim()).replace(/[.!?]+$/, "") === hits[0].needleText
+          && isQualifierOf(previousClauseLastHit, hits[0].name);
+        if (bareQualifier) { hits = []; }
+        const durationSeconds = parseDurationSeconds(clause);
+        if (hits.length) previousClauseLastHit = hits[hits.length - 1].name;
+        else if (!bareQualifier && clause.trim()) previousClauseLastHit = previousClauseLastHit;
         const roleHit = ROLE_PHRASES.find(([re]) => re.test(clause));
         const purposeHits = PURPOSE_PHRASES
           .filter(([re]) => re.test(clause)).map(([, p]) => p)
@@ -2078,6 +2138,13 @@
           purposeHits.forEach((p) => { if (!stop.purposes.includes(p)) stop.purposes.push(p); });
           if (grammarHit && !stop.explicit_grammar) stop.explicit_grammar = grammarHit[1];
           if (styleHit && !stop.explicit_travel_style) stop.explicit_travel_style = styleHit[1];
+          // A stated duration belongs to the AT-movement of the place this clause
+          // is about ("circle there for 3 minutes"). Travel time stays the
+          // Director's (editorial pacing), so a clause that is pure travel
+          // ("fly to Berlin in 10 seconds") is not read as a stop duration.
+          if (durationSeconds !== null && !stop.duration_seconds && !(purposeHits.includes("TRAVEL") && !grammarHit)) {
+            stop.duration_seconds = durationSeconds;
+          }
         });
       });
     });

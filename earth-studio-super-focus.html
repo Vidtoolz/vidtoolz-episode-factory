@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Earth Studio Super Focus — VIDTOOLZ</title>
+    <link rel="stylesheet" href="styles.css?v=1.9.6">
+    <style>
+      .sf { max-width: 860px; margin: 0 auto; padding: 24px 20px 48px; }
+      .sf h1 { margin: 8px 0 4px; font-size: 24px; }
+      .meta { color: var(--muted,#8b949e); font-size: 12px; }
+      .card { background: var(--panel,#161b22); border: 1px solid var(--border,#30363d); border-radius: 10px; padding: 16px 18px; margin: 14px 0; }
+      textarea { width: 100%; box-sizing: border-box; min-height: 110px; background: #0d1117; color: #e6edf3; border: 1px solid var(--border,#30363d); border-radius: 8px; padding: 10px; font-size: 15px; font-family: inherit; line-height: 1.45; }
+      .btn { border: 1px solid var(--border,#30363d); border-radius: 6px; padding: 8px 16px; font-size: 14px; cursor: pointer; background: var(--panel-3,#21262d); color: inherit; margin: 3px 6px 3px 0; text-decoration: none; display: inline-block; }
+      .btn:hover { border-color: #58a6ff; }
+      .btn-go { background: #2ea043; color: #fff; border-color: #2ea043; font-weight: 600; padding: 10px 22px; font-size: 15px; }
+      .btn:disabled { opacity: .45; cursor: not-allowed; }
+      .btn-play { background: #1f6feb; color: #fff; border-color: #1f6feb; font-weight: 600; }
+      .stages { list-style: none; margin: 12px 0 0; padding: 0; }
+      .stages li { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border,#30363d); font-size: 14px; }
+      .stages li:last-child { border-bottom: none; }
+      .dot { width: 12px; height: 12px; border-radius: 99px; border: 2px solid var(--border,#30363d); flex: 0 0 auto; }
+      .stage-done .dot { background: #3fb950; border-color: #3fb950; }
+      .stage-active .dot { border-color: #58a6ff; box-shadow: 0 0 0 4px rgba(88,166,255,.25); animation: pulse 1.4s infinite; }
+      .stage-failed .dot { background: #f85149; border-color: #f85149; }
+      .stage-todo { color: var(--muted,#8b949e); }
+      @keyframes pulse { 0%,100% { box-shadow: 0 0 0 3px rgba(88,166,255,.15);} 50% { box-shadow: 0 0 0 6px rgba(88,166,255,.35);} }
+      .bar { height: 10px; background: #0d1117; border: 1px solid var(--border,#30363d); border-radius: 99px; overflow: hidden; margin: 10px 0 6px; }
+      .bar > div { height: 100%; background: linear-gradient(90deg,#1f6feb,#3fb950); width: 0; transition: width .6s ease; }
+      .bar.indeterminate > div { width: 30%; animation: slide 1.6s infinite linear; }
+      @keyframes slide { 0% { transform: translateX(-100%);} 100% { transform: translateX(400%);} }
+      .eta { font-size: 14px; }
+      .eta small { color: var(--muted,#8b949e); }
+      .ok { color: #3fb950; } .warn { color: #d29922; } .blk { color: #f85149; }
+      .err { background: rgba(248,81,73,.08); border: 1px solid rgba(248,81,73,.45); border-radius: 8px; padding: 10px 12px; margin-top: 10px; }
+      pre { background: #0d1117; border: 1px solid var(--border,#30363d); border-radius: 6px; padding: 8px; font-size: 12px; white-space: pre-wrap; max-height: 220px; overflow: auto; }
+      code { font-size: 12px; background: var(--panel-3,#21262d); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+      video { width: 100%; max-width: 820px; border-radius: 8px; border: 1px solid var(--border,#30363d); background: #000; margin-top: 10px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+      th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border,#30363d); }
+      details.adv summary { cursor: pointer; color: var(--muted,#8b949e); font-size: 13px; }
+      details.adv .row { margin: 8px 0; font-size: 13px; }
+      select { background: #0d1117; color: #e6edf3; border: 1px solid var(--border,#30363d); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
+      .manual { border-left: 3px solid #58a6ff; padding: 8px 12px; background: rgba(88,166,255,.06); border-radius: 6px; margin-top: 10px; font-size: 13px; }
+      .manual ol { margin: 6px 0 0 18px; padding: 0; }
+    </style>
+    <script src="ef-nav.js"></script>
+  </head>
+  <body>
+    <nav class="ef-nav" data-ef-nav></nav>
+    <main class="sf">
+      <details class="page-guide">
+        <summary>Earth Studio Super Focus — one instruction, one video</summary>
+        <div class="page-guide-body">
+          <div class="page-guide-row"><span class="page-guide-label">What</span><span>Describe the map animation in plain language. The system plans the cameras, creates the Earth Studio project, waits for Earth Studio's frames, renders the video and hands you a Play button.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Next</span><span>Write where to start, where to go, and how long to stay at each place. Press <b>Create map animation</b>. Come back any time — the job keeps running and this page picks it up.</span></div>
+          <div class="page-guide-row"><span class="page-guide-label">Expert</span><span>Need manual camera control? <a id="sf-expert-link" href="project-earth-studio.html">Open the expert workspace</a>.</span></div>
+        </div>
+      </details>
+
+      <h1 id="sf-title">Earth Studio — map animation</h1>
+      <div class="meta" id="sf-project">project: —</div>
+
+      <section class="card" id="sf-compose">
+        <label for="sf-instruction" style="font-weight:600;font-size:14px;">What should the map animation do?</label>
+        <textarea id="sf-instruction" data-sf="instruction" placeholder="start in korkeasaari, Helsinki. circle there for 3 minutes. then move to linnanmäki, helsinki, circle there for 3 minutes. then move to jätkänsaari, Helsinki. circle there for 4 seconds."></textarea>
+        <div class="meta" style="margin:6px 0 10px;">Places are resolved automatically. Durations you state are used exactly; travel between places is timed for you.</div>
+        <button class="btn btn-go" id="sf-create" data-sf="create">Create map animation</button>
+        <span class="meta" id="sf-compose-note"></span>
+        <details class="adv" id="sf-advanced">
+          <summary>Advanced settings</summary>
+          <div class="row"><label>Aspect <select id="sf-aspect" data-sf="aspect"><option value="16:9">16:9 (YouTube)</option><option value="9:16">9:16 (Shorts)</option></select></label></div>
+          <div class="row meta">Camera roles, purposes, treatments and movements are chosen for you. To hand-author them, use the <a href="project-earth-studio.html" id="sf-expert-link-2">expert workspace</a>.</div>
+        </details>
+      </section>
+
+      <section class="card" id="sf-job" hidden>
+        <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;">
+          <strong id="sf-status-label" data-sf="status" style="font-size:16px;">Queued</strong>
+          <span class="meta" id="sf-job-meta"></span>
+        </div>
+        <div class="bar" id="sf-bar"><div id="sf-bar-fill"></div></div>
+        <div class="eta" id="sf-eta" data-sf="eta">—</div>
+        <ul class="stages" id="sf-stages"></ul>
+        <div id="sf-manual" class="manual" hidden></div>
+        <div id="sf-error" class="err" hidden></div>
+        <div style="margin-top:14px;">
+          <button class="btn btn-play" id="sf-play" data-sf="play" disabled>▶ Play</button>
+          <button class="btn" id="sf-view-plan" data-sf="view-plan">View plan</button>
+          <button class="btn" id="sf-retry" data-sf="retry" hidden>Retry</button>
+          <button class="btn" id="sf-another" data-sf="another">Create another</button>
+          <a class="btn" id="sf-expert" href="project-earth-studio.html">Expert workspace</a>
+        </div>
+        <div id="sf-result" hidden>
+          <video id="sf-video" data-sf="video" controls playsinline preload="metadata"></video>
+          <div class="meta" id="sf-result-meta"></div>
+        </div>
+        <div id="sf-plan" hidden>
+          <table id="sf-plan-table"></table>
+          <pre id="sf-plan-text"></pre>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        const params = new URLSearchParams(location.search);
+        const ID = params.get('id') || '';
+        const $ = (id) => document.getElementById(id);
+        const STATUS_API = '/api/earth-studio/super-focus/status';
+        const CREATE_API = '/api/earth-studio/super-focus/create';
+        const RETRY_API = '/api/earth-studio/super-focus/retry';
+        let nonce = '', nonceHeader = 'x-vidtoolz-local-write-nonce';
+        let pollTimer = null, lastStatus = null;
+
+        ['sf-expert-link', 'sf-expert-link-2', 'sf-expert'].forEach((k) => { const a = $(k); if (a && ID) a.href = 'project-earth-studio.html?id=' + encodeURIComponent(ID); });
+        $('sf-project').textContent = ID ? 'project: ' + ID : 'project: none — open this page with ?id=<project> (from the project room)';
+        if (!ID) { $('sf-create').disabled = true; $('sf-compose-note').textContent = 'No project selected.'; }
+
+        // the server wraps every JSON reply as { ok, data }
+        const unwrap = (j) => (j && j.ok === true && j.data !== undefined ? j.data : j);
+        async function fetchJson(url) { const r = await fetch(url, { cache: 'no-store' }); const j = await r.json(); if (!r.ok || (j && j.ok === false)) { const e = new Error((j && j.error) || ('HTTP ' + r.status)); e.payload = j; throw e; } return unwrap(j); }
+        async function ensureNonce() { if (nonce) return nonce; try { const p = await fetchJson('/api/package-engine/status'); if (p && p.localWriteNonce) { nonce = p.localWriteNonce; nonceHeader = p.nonceHeader || nonceHeader; } } catch (e) {} return nonce; }
+        async function post(path, body) { await ensureNonce(); const headers = { 'Content-Type': 'application/json' }; headers[nonceHeader] = nonce; const r = await fetch(path, { method: 'POST', headers, body: JSON.stringify(body) }); const j = await r.json(); if (!r.ok || (j && j.ok === false)) { const e = new Error((j && j.error) || ('HTTP ' + r.status)); e.payload = j; throw e; } return unwrap(j); }
+
+        const fmtSec = (s) => (s == null ? '—' : s < 60 ? Math.round(s) + ' s' : (Math.round(s / 6) / 10) + ' min');
+
+        function renderStages(job, stages) {
+          const ul = $('sf-stages'); ul.innerHTML = '';
+          const failedAt = job.status === 'FAILED' ? job.error && job.error.failed_stage : null;
+          (stages || job.stages).forEach((s, i) => {
+            const rec = job.stages[i] || {};
+            const li = document.createElement('li');
+            let cls = 'stage-todo';
+            if (job.status === 'READY' || rec.completed_at) cls = 'stage-done';
+            else if (rec.started_at) cls = job.status === 'FAILED' ? 'stage-failed' : 'stage-active';
+            if (failedAt === s.name) cls = 'stage-failed';
+            li.className = cls; li.dataset.stage = s.name;
+            const seconds = rec.seconds != null ? ' · ' + fmtSec(rec.seconds) : '';
+            let extra = '';
+            if (s.name === 'WAITING_FOR_EARTH_STUDIO_EXPORT' && job.progress && job.progress.frames_total) extra = ' · ' + (job.progress.frames_exported || 0) + ' / ' + job.progress.frames_total + ' frames';
+            if (s.name === 'RENDERING' && job.status === 'RENDERING' && job.progress) extra = ' · ' + (job.progress.frames_rendered || 0) + ' / ' + (job.progress.frames_total || '?') + ' frames';
+            li.innerHTML = '<span class="dot"></span><span>' + s.label + '</span><span class="meta">' + seconds + extra + (rec.note ? ' · ' + rec.note : '') + '</span>';
+            ul.appendChild(li);
+          });
+        }
+
+        function render(payload) {
+          lastStatus = payload;
+          const job = payload && payload.job;
+          if (!job) { $('sf-job').hidden = true; $('sf-compose').hidden = false; return; }
+          $('sf-job').hidden = false; $('sf-compose').hidden = true;
+          const label = job.status === 'FAILED' ? 'Failed' : (payload.stages || []).concat(job.stages).find((s) => s.name === job.status);
+          $('sf-status-label').textContent = typeof label === 'string' ? label : (label ? label.label : job.status);
+          $('sf-status-label').className = job.status === 'READY' ? 'ok' : job.status === 'FAILED' ? 'blk' : '';
+          $('sf-status-label').dataset.state = job.status;
+          $('sf-job-meta').textContent = 'instruction: “' + job.instruction + '”';
+          const pct = job.progress && job.progress.percent;
+          const bar = $('sf-bar');
+          if (job.status === 'READY') { bar.classList.remove('indeterminate'); $('sf-bar-fill').style.width = '100%'; }
+          else if (pct == null) { bar.classList.add('indeterminate'); }
+          else { bar.classList.remove('indeterminate'); $('sf-bar-fill').style.width = pct + '%'; }
+          const eta = job.eta || {};
+          if (job.status === 'READY') $('sf-eta').innerHTML = '<span class="ok">Ready.</span> <small>rendered ' + fmtSec((job.result || {}).duration_seconds) + ' of animation</small>';
+          else if (job.status === 'FAILED') $('sf-eta').textContent = 'Stopped.';
+          else if (eta.seconds_remaining != null) $('sf-eta').innerHTML = '<b>ETA ' + fmtSec(eta.seconds_remaining) + '</b> <small>(' + (eta.range_seconds ? fmtSec(eta.range_seconds[0]) + '–' + fmtSec(eta.range_seconds[1]) : '') + ', basis: ' + String(eta.basis || '').replace(/_/g, ' ') + ')</small>';
+          else $('sf-eta').innerHTML = '<b>ETA: not yet measurable</b> <small>' + (eta.text || '') + '</small>';
+          renderStages(job, payload.stages);
+          // manual Earth Studio step — the one thing this repository cannot automate
+          const manual = $('sf-manual');
+          if (job.status === 'WAITING_FOR_EARTH_STUDIO_EXPORT' && job.project) {
+            manual.hidden = false;
+            manual.innerHTML = '<b>Earth Studio renders the frames (browser-only, Google login — no API exists).</b>'
+              + '<ol><li>Open <a href="' + job.project.earth_studio_url + '" target="_blank" rel="noopener">Google Earth Studio</a> and import <code>' + job.project.esp + '</code> from this project’s <code>' + ID + '</code> package.</li>'
+              + '<li>Render all ' + job.project.total_frames + ' frames as an image sequence into <code>' + job.project.frames_dir + '</code>.</li>'
+              + '<li>Leave this page open or come back later: frames are counted every few seconds, the ETA appears from the observed export rate, and the video renders itself when the frames are complete.</li></ol>';
+          } else manual.hidden = true;
+          const err = $('sf-error');
+          if (job.status === 'FAILED' && job.error) { err.hidden = false; err.innerHTML = '<b>' + job.error.cause + '</b>' + (job.error.failed_stage ? ' <span class="meta">(' + job.error.failed_stage.replace(/_/g, ' ').toLowerCase() + ')</span>' : '') + (job.error.detail ? '<pre>' + String(job.error.detail).replace(/</g, '&lt;') + '</pre>' : ''); }
+          else err.hidden = true;
+          $('sf-retry').hidden = job.status !== 'FAILED';
+          const play = $('sf-play');
+          if (job.status === 'READY' && job.result && job.result.url) {
+            play.disabled = false; play.dataset.url = job.result.url;
+            $('sf-result').hidden = false;
+            const v = $('sf-video'); if (v.getAttribute('src') !== job.result.url) v.src = job.result.url;
+            $('sf-result-meta').textContent = job.result.mp4 + ' · ' + Math.round(job.result.bytes / 1024) + ' KB · ' + (job.result.total_frames || '?') + ' frames';
+          } else { play.disabled = true; delete play.dataset.url; $('sf-result').hidden = true; }
+          if (job.parsed) renderPlan(job);
+        }
+
+        function renderPlan(job) {
+          const rows = [];
+          (job.parsed.sequence || []).forEach((entry) => {
+            if (entry.kind === 'stop') entry.movements.forEach((m) => rows.push(['<b>' + (entry.place || '') + '</b>', m.label, fmtSec(m.seconds)]));
+            else (entry.steps || []).forEach((m) => rows.push(['<span class="meta">travel</span>', m.label, fmtSec(m.seconds)]));
+          });
+          $('sf-plan-table').innerHTML = '<tr><th>Place</th><th>Camera</th><th>Duration</th></tr>' + rows.map((r) => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td></tr>').join('')
+            + '<tr><td></td><td><b>Total</b></td><td><b>' + fmtSec(job.parsed.total_duration_seconds) + '</b></td></tr>';
+          $('sf-plan-text').textContent = (job.parsed.description || '') + (job.plan && job.plan.explanation ? '\n\n' + job.plan.explanation : '');
+        }
+
+        async function refresh() {
+          if (!ID) return;
+          try {
+            const payload = await fetchJson(STATUS_API + '?id=' + encodeURIComponent(ID));
+            render(payload);
+            const job = payload.job;
+            const active = job && job.status !== 'READY' && job.status !== 'FAILED';
+            clearTimeout(pollTimer);
+            if (active) pollTimer = setTimeout(refresh, job.status === 'RENDERING' ? 1000 : 3000);
+          } catch (e) {
+            $('sf-compose-note').textContent = 'Could not reach the server: ' + e.message;
+            clearTimeout(pollTimer); pollTimer = setTimeout(refresh, 5000);
+          }
+        }
+
+        $('sf-create').addEventListener('click', async () => {
+          const instruction = $('sf-instruction').value.trim();
+          if (!instruction) { $('sf-compose-note').textContent = 'Describe the map animation first.'; return; }
+          $('sf-create').disabled = true; $('sf-compose-note').textContent = 'Starting…';
+          try {
+            const res = await post(CREATE_API, { id: ID, instruction, aspect: $('sf-aspect').value, replace: lastStatus && lastStatus.job && (lastStatus.job.status === 'READY' || lastStatus.job.status === 'FAILED') });
+            render({ job: res.job, stages: lastStatus && lastStatus.stages });
+            refresh();
+          } catch (e) { $('sf-compose-note').textContent = e.message; }
+          finally { $('sf-create').disabled = false; }
+        });
+        $('sf-retry').addEventListener('click', async () => { $('sf-retry').disabled = true; try { await post(RETRY_API, { id: ID }); await refresh(); } catch (e) { $('sf-error').hidden = false; $('sf-error').textContent = e.message; } finally { $('sf-retry').disabled = false; } });
+        $('sf-another').addEventListener('click', () => { $('sf-job').hidden = true; $('sf-compose').hidden = false; if (lastStatus && lastStatus.job) $('sf-instruction').value = lastStatus.job.instruction; });
+        $('sf-view-plan').addEventListener('click', () => { $('sf-plan').hidden = !$('sf-plan').hidden; });
+        $('sf-play').addEventListener('click', () => { const v = $('sf-video'); if (!$('sf-play').disabled && v.src) { $('sf-result').hidden = false; v.play().catch(() => {}); v.scrollIntoView({ behavior: 'smooth', block: 'center' }); } });
+
+        refresh();
+      })();
+    </script>
+  </body>
+</html>

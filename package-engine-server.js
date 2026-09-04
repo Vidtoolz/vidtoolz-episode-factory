@@ -281,6 +281,10 @@ const EARTH_STUDIO_RENDER_API = '/api/earth-studio/render';
 const EARTH_STUDIO_JOB_STATUS_API = '/api/earth-studio/job-status';
 const EARTH_STUDIO_CANCEL_API = '/api/earth-studio/cancel';
 const EARTH_STUDIO_STAGE_API = '/api/earth-studio/stage';
+// Super Focus one-shot: one instruction → one durable job → playable result.
+const EARTH_STUDIO_SUPER_FOCUS_CREATE_API = '/api/earth-studio/super-focus/create';
+const EARTH_STUDIO_SUPER_FOCUS_STATUS_API = '/api/earth-studio/super-focus/status';
+const EARTH_STUDIO_SUPER_FOCUS_RETRY_API = '/api/earth-studio/super-focus/retry';
 // ComfyUI Production Gateway (read-only introspection; production dispatch is
 // gated inline in the FLUX/PRESTO start paths — see comfyui-gateway/).
 const COMFYUI_WORKFLOWS_API = '/api/comfyui/workflows';
@@ -701,6 +705,7 @@ const { resolveProjectState } = require('./project-state-resolver.js');
 const { chooseNextTask } = require('./next-task-engine.js');
 const projectDiscovery = require('./project-discovery.js');
 const earthStudioLane = require('./earth-studio-lane.js');
+const earthStudioSuperFocus = require('./earth-studio-super-focus.js');
 const comfyuiGateway = require('./comfyui-gateway');
 const scoreLane = require('./score-engine/score-lane.js');
 const musicDispatch = require('./score-engine/music-dispatch.js');
@@ -17627,6 +17632,45 @@ function createServer(options = {}) {
       return;
     }
 
+    // ── Super Focus one-shot job lifecycle (durable, backend-authoritative) ──
+    if (req.method === 'GET' && url.pathname === EARTH_STUDIO_SUPER_FOCUS_STATUS_API) {
+      earthStudioLane.probeMount(aigenPaths({ root: serverOptions.root || ROOT }).scriptPackages)
+        .then(() => {
+          const { packageId, packageDir } = resolveAigenPackageDir(url.searchParams.get('id') || url.searchParams.get('package_id') || '', { root: serverOptions.root || ROOT });
+          sendJSON(res, 200, earthStudioSuperFocus.status(packageDir, packageId, serverOptions.earthStudio || {}));
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-super-focus-status-error'));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === EARTH_STUDIO_SUPER_FOCUS_CREATE_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Earth Studio Super Focus create API' });
+          return earthStudioLane.probeMount(aigenPaths({ root: serverOptions.root || ROOT }).scriptPackages).then(() => payload);
+        })
+        .then((payload) => {
+          const { packageId, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || '', { root: serverOptions.root || ROOT });
+          // returns immediately with the QUEUED job; the pipeline runs asynchronously
+          const job = earthStudioSuperFocus.createJob(packageDir, packageId, payload, serverOptions.earthStudio || {});
+          sendJSON(res, 202, { project_id: packageId, job });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-super-focus-create-error', { job: error.job || null }));
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === EARTH_STUDIO_SUPER_FOCUS_RETRY_API) {
+      readJsonBody(req)
+        .then((payload) => {
+          validateLocalWriteRequest(req, payload, { label: 'Earth Studio Super Focus retry API' });
+          return earthStudioLane.probeMount(aigenPaths({ root: serverOptions.root || ROOT }).scriptPackages).then(() => payload);
+        })
+        .then((payload) => {
+          const { packageId, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || '', { root: serverOptions.root || ROOT });
+          sendJSON(res, 202, { project_id: packageId, job: earthStudioSuperFocus.retry(packageDir, packageId, serverOptions.earthStudio || {}) });
+        })
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-super-focus-retry-error'));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === EARTH_STUDIO_STAGE_API) {
       readJsonBody(req)
         .then((payload) => {
@@ -20412,6 +20456,9 @@ module.exports = {
   EARTH_STUDIO_JOB_STATUS_API,
   EARTH_STUDIO_CANCEL_API,
   EARTH_STUDIO_STAGE_API,
+  EARTH_STUDIO_SUPER_FOCUS_CREATE_API,
+  EARTH_STUDIO_SUPER_FOCUS_STATUS_API,
+  EARTH_STUDIO_SUPER_FOCUS_RETRY_API,
   PROJECT_VIDEO_REVIEW_SAVE_API,
   IDEAS_TRIAGE_API,
   IDEAS_STATUS_API,
