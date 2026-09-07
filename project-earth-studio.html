@@ -168,7 +168,12 @@
 
       async function fetchJson(url, opts){ const r=await fetch(url, Object.assign({cache:'no-store'}, opts||{})); const j=await r.json(); if(!r.ok||(j&&j.ok===false)) throw new Error((j&&j.error)||('HTTP '+r.status)); return unwrap(j); }
       async function ensureNonce(){ if(nonce) return nonce; try{ const p=await fetchJson('/api/package-engine/status'); if(p&&p.localWriteNonce){nonce=p.localWriteNonce;nonceHeader=p.nonceHeader||nonceHeader;} }catch(e){} return nonce; }
-      async function post(path, body){ await ensureNonce(); const headers={'Content-Type':'application/json'}; headers[nonceHeader]=nonce; const r=await fetch(path,{method:'POST',headers,body:JSON.stringify(body)}); const j=await r.json(); if(!r.ok||(j&&j.ok===false)) throw new Error((j&&j.error)||('HTTP '+r.status)); return unwrap(j); }
+      async function post(path, body){ await ensureNonce(); const headers={'Content-Type':'application/json'}; headers[nonceHeader]=nonce; const r=await fetch(path,{method:'POST',headers,body:JSON.stringify(body)}); const j=await r.json(); if(!r.ok||(j&&j.ok===false)){ const e=new Error((j&&j.error)||('HTTP '+r.status)); e.status=r.status; e.payload=j; e.code=j&&j.code; throw e; } return unwrap(j); }
+      // Machine camera-quality verdicts (text-direction v2). The evaluator emits
+      // only FAIL or PASS_FOR_HUMAN_REVIEW — there is no machine PASS; a human
+      // visual review is what may approve an artifact. Render them so a FAIL
+      // never looks like success and PASS_FOR_HUMAN_REVIEW never looks approved.
+      function verdictBadge(q){ if(!q||!q.verdict) return ''; if(q.verdict==='FAIL') return `<span class="es-verdict es-verdict-fail" data-verdict="FAIL" style="color:#f85149;font-weight:600">Camera quality FAIL — not a successful generation</span>`; if(q.verdict==='PASS_FOR_HUMAN_REVIEW') return `<span class="es-verdict es-verdict-pfhr" data-verdict="PASS_FOR_HUMAN_REVIEW" style="color:#d29922;font-weight:600">Machine checks passed · requires human visual review</span> <span class="meta">(technical validation, not an aesthetic approval)</span>`; return `<span class="es-verdict" data-verdict="${esc(q.verdict)}">${esc(q.verdict)}</span>`; }
 
       // ── One-click preset moves (fill the description, then tweak freely).
       const PRESETS = [
@@ -710,9 +715,19 @@
         const el = document.getElementById('dir-intent');
         const status = document.getElementById('dir-status');
         DIRECTOR_INTENT = el ? el.value : '';
-        let intent, result;
-        try { intent = DIR.parseIntent(DIRECTOR_INTENT); }
+        let intent, result, brief = null;
+        try {
+          if (DIR.buildDirectorialBrief) { brief = DIR.buildDirectorialBrief(DIRECTOR_INTENT, { aspect: ASPECT, pace: (JOURNEY ? JOURNEY.pace : undefined) }); intent = brief.parsed_intent; }
+          else intent = DIR.parseIntent(DIRECTOR_INTENT);
+        }
         catch(e){ status.textContent = 'Could not read that: '+e.message; return; }
+        // Hard gate (text-direction v2): the Director never guesses geography.
+        // Ambiguous or unresolved references stop here with the exact reason.
+        if (intent.intent && intent.intent.state !== 'INTENT_RESOLVED') {
+          const rec = intent.intent;
+          status.innerHTML = '<span class="blk" data-intent-state="'+esc(rec.state)+'"><b>'+esc(rec.state)+'</b> — '+esc((rec.reasons||[]).join('; ') || 'the brief needs geography it does not give')+'. Name cities, landmarks, countries or seas the generator knows, or say which place you mean.</span>';
+          return;
+        }
         if (!intent.stops.length) {
           status.textContent = 'No known places found in that text. Name cities, landmarks, countries or seas the generator knows.';
           return;
@@ -731,14 +746,16 @@
         try {
           // Explicit pacing language wins over the journey's pace; otherwise the
           // journey keeps its own tempo. Aspect follows the current selector.
-          result = DIR.autoDirect({
-            ...intent,
-            pace: intent.pace || (JOURNEY ? JOURNEY.pace : undefined),
-            aspect: ASPECT,
-            continuation_from: continuationState,
-          });
+          result = brief && DIR.directFromBrief
+            ? DIR.directFromBrief(brief, { continuation_from: continuationState, pace: (JOURNEY ? JOURNEY.pace : undefined) })
+            : DIR.autoDirect({
+                ...intent,
+                pace: intent.pace || (JOURNEY ? JOURNEY.pace : undefined),
+                aspect: ASPECT,
+                continuation_from: continuationState,
+              });
         }
-        catch(e){ status.textContent = 'Could not direct that: '+e.message; return; }
+        catch(e){ status.innerHTML = '<span class="blk">Could not direct that'+(e.code?' (<b>'+esc(e.code)+'</b>)':'')+': '+esc(e.message)+'</span>'; return; }
         // carry the derived story intent onto the journey so the cards show it
         const stops = result.stops;
         result.journey.start.story = { role: stops[0].role, importance: stops[0].importance, purposes: stops[0].purposes };
@@ -754,8 +771,16 @@
         // operator edits the cards afterwards, the direction must not ride along.
         DIRECTOR_LAST.journey_fingerprint = JSON.stringify(JOURNEY);
         const auditN = (result.audit && result.audit.findings) ? result.audit.findings.length : 0;
-        status.textContent = `Directed ${stops.length} stop${stops.length===1?'':'s'}.` + (auditN ? ` ${auditN} coherence note${auditN===1?'':'s'} below.` : '');
+        const timingBits = (result.timing && result.timing.constraints || []).map((c)=>`${c.kind.replace(/_/g,' ')}${c.subject?' ('+esc(c.subject)+')':''}: ${c.requested_seconds}s → <b>${c.status}</b>${c.achieved_seconds!=null?' at '+c.achieved_seconds+'s':''}`);
+        const toneBits = (result.tone && result.tone.applied || []).filter((a)=>a.control!=='travel_style').map((a)=>`tone "${esc(a.from_tone)}" → ${esc(a.control)} ${a.value!=null?esc(String(a.value)):'×'+a.multiplier}`);
+        const limitBits = (result.plan && result.plan.brief && result.plan.brief.limitations || []).map((l)=>'limitation: '+esc(l));
+        const statusHtml = `Directed ${stops.length} stop${stops.length===1?'':'s'}.` + (auditN ? ` ${auditN} coherence note${auditN===1?'':'s'} below.` : '')
+          + (brief ? ` <span class="meta" data-brief-version="${esc(brief.brief_version)}">Structured brief · intent ${esc(brief.ambiguity_state)}.</span>` : '')
+          + (timingBits.length||toneBits.length||limitBits.length ? `<div class="meta" style="margin-top:4px;">${timingBits.concat(toneBits, limitBits).join('<br>')}</div>` : '');
+        // jbRerender() rebuilds the journey panel INCLUDING #dir-status, so the
+        // message is written afterwards onto the live element (it used to be lost).
         jbRerender();
+        const live = document.getElementById('dir-status'); if (live) live.innerHTML = statusHtml; else status.innerHTML = statusHtml;
       }
 
       // The Directorial Plan, beat by beat — what the operator reads BEFORE
@@ -1038,14 +1063,14 @@
         const active = !s.has_plan ? 1 : !hasFrames ? (s.has_esp ? 3 : 2) : !rendered ? 4 : 5;
 
         document.getElementById('es-meta').innerHTML =
-          `Project <code>${esc(ID)}</code>${job ? ` · job <b>${esc(job.jobName)}</b> · ${job.total_frames} frames planned${job.aspect?` · ${esc(job.aspect)}`:''}${job.motion_profile?` · <span title="Camera easing/settle derived from the approved Earth Studio reference corpus (${esc((job.motion_profile.references||[]).join(', '))})">motion profile v${esc(String(job.motion_profile.profile_version))} (corpus)</span>`:''}` : ' · no map-animation job yet'}`;
+          `Project <code>${esc(ID)}</code>${job ? ` · job <b>${esc(job.jobName)}</b> · ${job.total_frames} frames planned${job.aspect?` · ${esc(job.aspect)}`:''}${job.motion_profile?` · <span title="Camera easing/settle derived from the approved Earth Studio reference corpus (${esc((job.motion_profile.references||[]).join(', '))})">motion profile v${esc(String(job.motion_profile.profile_version))} (corpus)</span>`:''}${s.camera_quality&&s.camera_quality.verdict?` · ${verdictBadge(s.camera_quality)}`:''}` : ' · no map-animation job yet'}`;
 
         document.getElementById('es-steps').innerHTML = `
           <div class="step ${s.has_plan?'done':''} ${active===1?'active':''}">
             <div class="step-head">1 · Design the camera journey ${stepBadge(s.has_plan,false)}</div>
             <div class="jb-modes">
               <button type="button" class="jb-mode ${MODE==='journey'?'sel':''}" data-mode="journey">Journey builder</button>
-              <button type="button" class="jb-mode ${MODE==='freeform'?'sel':''}" data-mode="freeform">Freeform description</button>
+              <button type="button" class="jb-mode ${MODE==='freeform'?'sel':''}" data-mode="freeform" title="Expert mode: direct planner camera commands. Bypasses the Director — no story interpretation, no directorial decisions.">Advanced camera commands</button>
             </div>
             <input id="es-job" type="text" placeholder="Job name (e.g. Helsinki Flyover)" value="${esc(job?job.jobName:'')}">
             <div style="margin:6px 0 0;"><span class="meta">Aspect:</span> ${aspectRow()}</div>
@@ -1053,7 +1078,7 @@
             <div id="es-journey" style="display:${MODE==='journey'?'block':'none'}"></div>
 
             <div id="es-freeform" style="display:${MODE==='freeform'?'block':'none'}">
-              <div class="meta" style="margin:10px 0 6px;">Plain words: <b>fly to</b> / <b>hover over</b> / <b>orbit</b> / <b>zoom in on</b> / <b>zoom out from</b> a place. Chain with "then". Optional per segment: duration ("for 5 seconds" or "for 2 minutes"), altitude ("at 800m", "from space", "low", "high"), tilt ("top-down", "tilted", "toward the horizon"), orbit amount + direction ("twice", "180 degrees", "counterclockwise"). Skip the location to reuse the previous one; skip the duration for a sensible default.</div>
+              <div class="meta" style="margin:10px 0 6px;"><b>Expert mode — Advanced camera commands.</b> These go straight to the planner and <b>bypass the Director</b>: no story interpretation, no directorial choices. For ordinary text direction use <b>Auto-Direct</b> in the journey builder. Commands: <b>fly to</b> / <b>hover over</b> / <b>orbit</b> / <b>zoom in on</b> / <b>zoom out from</b> a place. Chain with "then". Optional per segment: duration ("for 5 seconds" or "for 2 minutes"), altitude ("at 800m", "from space", "low", "high"), tilt ("top-down", "tilted", "toward the horizon"), orbit amount + direction ("twice", "180 degrees", "counterclockwise"). Skip the location to reuse the previous one; skip the duration for a sensible default.</div>
               <div style="margin:4px 0;">${presetRow()}</div>
               <div style="margin:4px 0 8px;"><input id="es-loc-search" type="text" placeholder="Search ${Object.keys(planner.LOCATION_FIXTURES).length} known places…"><span id="es-loc-chips">${locChips('')}</span></div>
               <textarea id="es-desc" rows="2" style="margin-top:6px;" placeholder="fly to Helsinki in 4 seconds, then orbit Helsinki for 5 seconds">${esc(job?job.description:'')}</textarea>
@@ -1240,14 +1265,33 @@
           }
           const r = await post('/api/earth-studio/plan', body);
           toast('Plan + .esp generated');
-          if (r.unresolved_count) st.textContent = r.unresolved_count + ' unresolved segment(s) — fix the description or adjust manually in Earth Studio.';
+          // refresh() may re-render the whole step block (recreating #es-gen-status),
+          // so the verdict is written AFTER the refresh, onto the live element.
+          let statusHtml = verdictBadge(r.camera_quality);
+          if (r.unresolved_count) statusHtml += ' <span class="blk">' + r.unresolved_count + ' unresolved segment(s) — fix the description or adjust manually in Earth Studio.</span>';
           // Plan-level notes (applied defaults + motion provenance) below the preview.
           if (r.notes && r.notes.length) {
             const box = document.getElementById('es-preview');
             if (box) box.insertAdjacentHTML('beforeend', `<div class="meta" style="margin-top:6px;">${r.notes.map((n)=>'ℹ '+esc(n)).join('<br>')}</div>`);
           }
           await refresh();
-        }catch(e){ st.textContent='Failed: '+(e.message||e); toast('Generate failed', false); }
+          const stLive = document.getElementById('es-gen-status'); if (stLive) stLive.innerHTML = statusHtml;
+        }catch(e){
+          const p = e.payload || {};
+          let failHtml;
+          if (p.code === 'earth-studio-camera-quality-fail' && p.camera_quality) {
+            // The .esp exists on disk as evidence, but this is NOT a successful generation.
+            const errs = (p.camera_quality.errors||[]).slice(0,3).map((x)=>'<li>'+esc(x)+'</li>').join('');
+            failHtml = verdictBadge(p.camera_quality) + '<ul class="meta" style="margin:4px 0 0 16px;">' + errs + '</ul>';
+            toast('Camera quality FAIL — not generated as success', false);
+          } else if (p.code === 'INTENT_NOT_RESOLVED' && p.intent) {
+            failHtml = '<span class="blk">Not generated — directorial intent is <b>'+esc(p.intent.state)+'</b>: '+esc((p.intent.reasons||[]).join('; '))+'</span>';
+            toast('Intent not resolved', false);
+          } else { failHtml = '<span class="blk">Failed: '+esc(String(e.message||e))+'</span>'; toast('Generate failed', false); }
+          st.innerHTML = failHtml;
+          try { await refresh(); } catch (_) {}
+          const stLive = document.getElementById('es-gen-status'); if (stLive) stLive.innerHTML = failHtml;
+        }
       }
       async function startRender(){
         try{

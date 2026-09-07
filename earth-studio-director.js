@@ -1120,6 +1120,8 @@
   function autoDirect(intent = {}, options = {}) {
     const J = loadJourney(options.journey);
     const planner = loadPlanner(options.planner);
+    // Hard gate: unresolved or ambiguous geography never becomes a camera plan.
+    assertIntentResolved(intent);
     const stops = (Array.isArray(intent.stops) ? intent.stops : []).map((raw, i) => {
       const src = typeof raw === "string" ? { location: raw } : (raw || {});
       const role = LOCATION_ROLES[src.role] ? src.role
@@ -1151,7 +1153,12 @@
         resolved,
       };
     });
-    if (!stops.length) throw new Error("autoDirect needs at least one stop");
+    if (!stops.length) {
+      const e = new Error("autoDirect needs at least one stop");
+      e.code = "INTENT_INCOMPLETE"; e.statusCode = 422;
+      e.intent = intentRecord({ stops: [], mentions: [], unresolved: [], ambiguous: [] });
+      throw e;
+    }
 
     // total span drives the globe test: a declared global reason still has to be
     // applied to a journey big enough for the planet to mean anything.
@@ -1998,10 +2005,17 @@
   function parseIntent(text, options = {}) {
     const planner = loadPlanner(options.planner);
     const raw = String(text == null ? "" : text);
-    const sentences = raw.split(/[\n.;]+/).map((x) => x.trim()).filter(Boolean);
-    const known = Object.values(planner.LOCATION_FIXTURES).map((l) => l.name);
-    // longest names first so "New York" wins over "York"
-    const byLength = known.slice().sort((a, b) => b.length - a.length);
+    // Sentence/clause splitting must not shatter things that contain the
+    // separators themselves: decimals and "lat, lng" pairs (explicit
+    // coordinates) and the abbreviation "St." (St. Petersburg). Protect them
+    // with private-use placeholders, split, then restore inside each clause.
+    const DOT = "\uE000", COMMA = "\uE001";
+    const protectedText = raw
+      .replace(/-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?/g, (m) => m.replace(/\./g, DOT).replace(/,/g, COMMA))
+      .replace(/\d+\.\d+/g, (m) => m.replace(/\./g, DOT))
+      .replace(/\b(St|Mt|Ft)\./g, (m, a) => a + DOT);
+    const restore = (x) => x.split(DOT).join(".").split(COMMA).join(",");
+    const sentences = protectedText.split(/[\n.;]+/).map((x) => x.trim()).filter(Boolean);
 
     const seen = new Map();     // canonical name -> stop
     const order = [];
@@ -2009,19 +2023,33 @@
       if (!seen.has(name)) { const stop = { location: name, purposes: [] }; seen.set(name, stop); order.push(stop); }
       return seen.get(name);
     };
+    // ── ONE location authority (text-direction v2) ──────────────────────────
+    // Places are found by the planner's boundary-aware mention resolver — the
+    // same gazetteer, alias table, coordinate parser and capital table the
+    // planner itself resolves with. No substring matching: "climate" is not
+    // Lima and "chrome" is not Rome. Whatever the resolver cannot ground is
+    // carried out as explicit unresolved/ambiguous intent, never defaulted.
+    const realPlanner = (typeof require === "function") ? require("./earth-studio-job-planner.js")
+      : (globalScope && globalScope.EarthStudioJobPlanner) || planner;
+    const finder = planner.findLocationMentions || realPlanner.findLocationMentions;
+    if (typeof finder !== "function") throw new Error("earth-studio-director: planner.findLocationMentions unavailable");
+    const finderOptions = planner.findLocationMentions ? {} : { fixtures: planner.LOCATION_FIXTURES, aliases: planner.LOCATION_ALIASES };
+    const mentions = [], unresolved = [], ambiguous = [];
+    const countryContext = [];  // ordered country keys seen so far, grounds a bare "the capital"
     const findHits = (clause) => {
-      const hits = [];
-      byLength.forEach((name) => {
-        const idx = clause.toLowerCase().indexOf(name.toLowerCase());
-        if (idx < 0) return;
-        if (hits.some((h) => idx >= h.idx && idx + name.length <= h.idx + h.name.length)) return;
-        hits.push({ name, idx });
+      const found = finder(clause, { ...finderOptions, context: { countries: countryContext.slice() } });
+      found.mentions.forEach((m) => {
+        mentions.push(m);
+        if (m.scale === "country" && m.key && !countryContext.includes(m.key)) countryContext.push(m.key);
+        if (m.country_key && !countryContext.includes(m.country_key)) countryContext.push(m.country_key);
       });
-      return hits.sort((a, b) => a.idx - b.idx);
+      found.unresolved.forEach((u) => unresolved.push(u));
+      found.ambiguous.forEach((a) => ambiguous.push(a));
+      return found.mentions.map((m) => ({ name: m.name, idx: m.start }));
     };
 
     sentences.forEach((sentence) => {
-      const clauses = sentence.split(/,(?=\s)/).map((x) => x.trim()).filter(Boolean);
+      const clauses = sentence.split(/,(?=\s)/).map((x) => restore(x).trim()).filter(Boolean);
       clauses.forEach((clause) => {
         const hits = findHits(clause);
         const roleHit = ROLE_PHRASES.find(([re]) => re.test(clause));
@@ -2102,7 +2130,67 @@
       // "heading 220", "start top-down"). Authoritative for the opening frame.
       opening: parseExplicitOpening(raw) || undefined,
       source_text: raw,
+      // Machine-readable resolution state. Generation must not proceed on
+      // anything but INTENT_RESOLVED (see autoDirect / assertIntentResolved).
+      intent: intentRecord({ stops: order, mentions, unresolved, ambiguous, negatives, globe_justification: globeHit ? globeHit[1] : null }),
     };
+  }
+
+  // ── Intent resolution states (hard gate) ───────────────────────────────────
+  const INTENT_STATES = {
+    INTENT_RESOLVED: "every geographic reference in the brief is grounded",
+    INTENT_AMBIGUOUS: "a reference matches more than one known place; the brief must say which",
+    INTENT_INCOMPLETE: "the brief needs geography it does not give, or names a place the gazetteer cannot ground",
+    INTENT_INVALID: "the brief contradicts itself or asks for something the generator cannot represent",
+  };
+  // A brief that rules a movement out and asks for it in the same breath is
+  // INVALID: neither reading can be honoured without silently dropping the other.
+  const CONTRADICTIONS = [
+    { negative: "orbit", grammars: ["orbit", "slow_orbit"], label: "orbiting" },
+    { negative: "globe", globe: true, label: "a globe shot" },
+  ];
+  function findContradictions({ stops = [], negatives = [], globe_justification = null }) {
+    const out = [];
+    CONTRADICTIONS.forEach((c) => {
+      if (!negatives.includes(c.negative)) return;
+      if (c.grammars) {
+        stops.filter((s) => c.grammars.includes(s.explicit_grammar)).forEach((s) => out.push({
+          text: `no ${c.negative} … ${s.explicit_grammar} ${s.location}`, reason: `the brief rules out ${c.label} and also asks to ${s.explicit_grammar.replace(/_/g, " ")} ${s.location}` }));
+      }
+      if (c.globe && globe_justification) out.push({ text: `no globe … ${globe_justification}`, reason: `the brief rules out ${c.label} and also asks for global context (${globe_justification})` });
+    });
+    return out;
+  }
+  function intentRecord({ stops = [], mentions = [], unresolved = [], ambiguous = [], negatives = [], globe_justification = null } = {}) {
+    const invalid = findContradictions({ stops, negatives, globe_justification });
+    let state = "INTENT_RESOLVED";
+    if (invalid.length) state = "INTENT_INVALID";
+    else if (ambiguous.length) state = "INTENT_AMBIGUOUS";
+    else if (unresolved.length || !stops.length) state = "INTENT_INCOMPLETE";
+    const reasons = []
+      .concat(invalid.map((v) => `contradiction: ${v.reason}`))
+      .concat(ambiguous.map((a) => `"${a.text}" is ambiguous: ${a.candidates.join(" or ")}`))
+      .concat(unresolved.map((u) => `"${u.text}": ${u.reason}`))
+      .concat(!stops.length && !unresolved.length && !ambiguous.length ? ["no place the generator knows is named in the brief"] : []);
+    return {
+      state,
+      resolver: "earth-studio-job-planner.findLocationMentions",
+      mentions: mentions.map((m) => ({ text: m.text, name: m.name, source: m.source, latitude: m.latitude, longitude: m.longitude,
+        ...(m.key ? { key: m.key } : {}), ...(m.country_key ? { country_key: m.country_key } : {}) })),
+      unresolved: unresolved.map((u) => ({ text: u.text, reason: u.reason })),
+      ambiguous: ambiguous.map((a) => ({ text: a.text, candidates: a.candidates.slice(), reason: a.reason })),
+      invalid,
+      reasons,
+    };
+  }
+  // Throws a structured error (code = intent state, .intent = the record) unless resolved.
+  function assertIntentResolved(intent) {
+    const rec = intent && intent.intent;
+    if (!rec || !rec.state) return null;
+    if (rec.state === "INTENT_RESOLVED") return rec;
+    const e = new Error(`cannot direct this brief (${rec.state}): ${rec.reasons.join("; ") || INTENT_STATES[rec.state]}`);
+    e.code = rec.state; e.intent = rec; e.statusCode = 422;
+    throw e;
   }
 
   // A plain-language account of the whole direction, for the GUI and reports.
@@ -2120,6 +2208,396 @@
       result.audit.findings.forEach((f) => lines.push(`[${f.code}] ${f.message}`));
     }
     return lines;
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TEXT-DIRECTION V2 — Stage B: structured directorial brief, timing, tone.
+  //
+  // The brief makes every silent assumption inspectable: each field says
+  // whether it was EXPLICIT in the text, RESOLVED by the location authority,
+  // INFERRED by the Director, DEFAULTED, or is UNRESOLVED. Nothing is invented
+  // to fill the schema. Timing and tone map ONLY onto controls the camera model
+  // already has (pace, step durations, dwell emphasis); what they cannot express
+  // is recorded as a limitation, not claimed.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const BRIEF_VERSION = "EarthStudioDirectorialBriefV1";
+  const FIELD_PROVENANCE = { EXPLICIT: "EXPLICIT", RESOLVED: "RESOLVED", INFERRED: "INFERRED", DEFAULTED: "DEFAULTED", UNRESOLVED: "UNRESOLVED" };
+  // Documented tolerance for timing constraints (steps are stored to 0.1 s).
+  const TIMING_TOLERANCE_S = 0.5;
+  const MIN_STEP_SECONDS = 1; // the journey model rejects steps under 1 s
+
+  // Bounded tone vocabulary → existing controls. `pace` is the journey preset
+  // (quick/standard/relaxed/calm); `emphasis` multiplies the dwell of
+  // at-location movements. Nothing here inspects imagery.
+  const TONE_VOCABULARY = {
+    urgent:        { pace: "quick",    emphasis: 0.85, note: "urgency = quick pacing and shorter holds" },
+    tense:         { pace: "quick",    emphasis: 0.9,  note: "tension is expressed only through pacing and shorter holds",
+                     limitation: "tension beyond pacing (light, framing pressure, subject) is not representable — the Director cannot see imagery" },
+    energetic:     { pace: "quick",    emphasis: 1.0,  note: "energy = quick pacing" },
+    dramatic:      { pace: "calm",     emphasis: 1.25, note: "drama = longer holds at the subject",
+                     limitation: "drama beyond dwell/pacing (lighting, composition against imagery) is not representable" },
+    calm:          { pace: "calm",     emphasis: 1.0,  note: "calm = the calm preset" },
+    contemplative: { pace: "calm",     emphasis: 1.3,  note: "contemplation = calm pacing and longer holds" },
+    restrained:    { pace: "standard", emphasis: 0.9,  note: "restraint = baseline pacing and slightly shorter holds" },
+    relaxed:       { pace: "relaxed",  emphasis: 1.1,  note: "relaxed = the relaxed preset" },
+  };
+  const TONE_PHRASES = [
+    [/\burgent(?:ly)?\b/i, "urgent"], [/\btense(?:ly)?\b|\btension\b/i, "tense"], [/\benergetic(?:ally)?\b/i, "energetic"],
+    [/\bdramatic(?:ally)?\b/i, "dramatic"], [/\bcontemplative(?:ly)?\b/i, "contemplative"], [/\brestrained\b|\brestraint\b/i, "restrained"],
+    [/\brelaxed\b/i, "relaxed"], [/\bcalm(?:ly)?\b/i, "calm"],
+  ];
+  // Progression: a tone attached to the ending ("relaxed conclusion", "end calmly").
+  const CONCLUSION_TONE = /\b(relaxed|calm|gentle|quiet|contemplative|restrained)\s+(conclusion|ending|finish|close|final\s+shot)\b|\b(end|finish|conclude|close)\s+(?:it\s+)?(calmly|gently|quietly|relaxed)\b/i;
+  const CONCLUSION_TONE_MAP = { gentle: "calm", gently: "calm", quiet: "contemplative", quietly: "contemplative", calmly: "calm" };
+  // Words people use for tone that the camera vocabulary cannot carry at all.
+  const UNSUPPORTED_TONE = /\b(melancholic|melancholy|joyful|joyous|ominous|romantic|hopeful|nostalgic|playful|sad|happy|angry|eerie|funny|humorous)\b/i;
+
+  function parseTone(text) {
+    const raw = String(text == null ? "" : text);
+    const hit = TONE_PHRASES.find(([re]) => re.test(raw));
+    const primary = hit ? hit[1] : null;
+    const progression = [];
+    const c = raw.match(CONCLUSION_TONE);
+    if (c) {
+      const word = (c[1] || c[4] || "").toLowerCase();
+      const tone = TONE_VOCABULARY[word] ? word : (CONCLUSION_TONE_MAP[word] || "calm");
+      progression.push({ position: "conclusion", tone, text: c[0] });
+    }
+    const limitations = [];
+    const unsupported = raw.match(UNSUPPORTED_TONE);
+    if (unsupported) limitations.push(`"${unsupported[0]}" cannot be expressed by the available camera vocabulary (pace, duration, dwell); it is recorded, not fulfilled`);
+    if (primary && TONE_VOCABULARY[primary].limitation) limitations.push(TONE_VOCABULARY[primary].limitation);
+    return {
+      primary: primary ? { tone: primary, mapping: TONE_VOCABULARY[primary], provenance: FIELD_PROVENANCE.EXPLICIT }
+        : { tone: null, mapping: null, provenance: unsupported ? FIELD_PROVENANCE.UNRESOLVED : FIELD_PROVENANCE.DEFAULTED,
+            note: unsupported ? "requested tone is outside the camera vocabulary" : "no tone requested; the Director's editorial pacing applies" },
+      progression,
+      unsupported_terms: unsupported ? [unsupported[0]] : [],
+      limitations,
+    };
+  }
+
+  const SECS = "(\\d+(?:\\.\\d+)?)\\s*(?:s|sec|secs|second|seconds)\\b";
+  function parseTiming(text, stopNames = []) {
+    const raw = String(text == null ? "" : text);
+    const cues = [];
+    let runtime = null;
+    // total runtime: "20 seconds total", "keep the whole animation to 20 seconds", "a 30-second clip", "runtime 25 s", "under 40 seconds"
+    const totalRes = [
+      new RegExp(`\\b${SECS}\\s*(?:in\\s+)?(?:total|overall|long|altogether|runtime)`, "i"),
+      new RegExp(`\\b(?:total|overall|whole\\s+(?:animation|video|clip|sequence)|runtime|length)\\b[^.\\d]{0,40}?${SECS}`, "i"),
+      new RegExp(`\\bkeep\\s+(?:it|the\\s+\\w+)\\s+(?:to|at|under|within)\\s+${SECS}`, "i"),
+      new RegExp(`\\b(?:under|within|no\\s+longer\\s+than|at\\s+most)\\s+${SECS}`, "i"),
+      /\b(\d+(?:\.\d+)?)[- ]second\s+(?:clip|video|animation|sequence)\b/i,
+    ];
+    for (const re of totalRes) { const m = raw.match(re); if (m) { runtime = { seconds: Number(m[1]), text: m[0], provenance: FIELD_PROVENANCE.EXPLICIT }; break; } }
+    // arrive-at: "arrive at 12 seconds", "reach Stockholm at 12 s", "be over Stockholm by 12 seconds", "arrive at Stockholm at 12 seconds"
+    const arriveRe = new RegExp(`\\b(arriv(?:e|es|ing)|reach(?:es|ing)?|land(?:s|ing)?(?:\\s+on)?|be\\s+(?:at|over|on))\\s+(?:at\\s+|on\\s+|over\\s+|in\\s+)?([A-Z][\\w'’. -]{1,40}?)?\\s*(?:at|by)\\s+${SECS}`, "ig");
+    let m;
+    while ((m = arriveRe.exec(raw)) !== null) {
+      const subjectText = (m[2] || "").trim().replace(/[.,]$/, "");
+      const subject = subjectText ? (stopNames.find((n) => n.toLowerCase() === subjectText.toLowerCase()) || stopNames.find((n) => subjectText.toLowerCase().includes(n.toLowerCase())) || null) : null;
+      cues.push({ kind: "arrive_at", seconds: Number(m[3]), subject, subject_text: subjectText || null, text: m[0], provenance: FIELD_PROVENANCE.EXPLICIT,
+        subject_provenance: subject ? FIELD_PROVENANCE.RESOLVED : FIELD_PROVENANCE.INFERRED,
+        note: subject ? null : "no subject named with the arrival time; it applies to the final destination" });
+    }
+    // hold-until: "hold on Stockholm until 30 seconds", "stay there until 30 s"
+    const holdRe = new RegExp(`\\b(hold|stay|linger|remain)(?:\\s+(?:on|over|at|there))?\\s*([A-Z][\\w'’. -]{1,40}?)?\\s*(?:until|till|to)\\s+${SECS}`, "ig");
+    while ((m = holdRe.exec(raw)) !== null) {
+      const subjectText = (m[2] || "").trim().replace(/[.,]$/, "");
+      const subject = subjectText ? (stopNames.find((n) => n.toLowerCase() === subjectText.toLowerCase()) || null) : null;
+      cues.push({ kind: "hold_until", seconds: Number(m[3]), subject, subject_text: subjectText || null, text: m[0], provenance: FIELD_PROVENANCE.EXPLICIT,
+        subject_provenance: subject ? FIELD_PROVENANCE.RESOLVED : FIELD_PROVENANCE.INFERRED });
+    }
+    const narration = /\bnarration\b|\bvoice[- ]?over\b|\bVO\b/.test(raw);
+    return { runtime_target: runtime || { seconds: null, provenance: FIELD_PROVENANCE.DEFAULTED, note: "no runtime requested; durations come from the Director's editorial pacing" },
+      cues, narration_referenced: narration, tolerance_seconds: TIMING_TOLERANCE_S };
+  }
+
+  // ── the brief ─────────────────────────────────────────────────────────────
+  function buildDirectorialBrief(text, options = {}) {
+    const parsed = parseIntent(text, options);
+    const stopNames = parsed.stops.map((s) => s.location);
+    const timing = parseTiming(text, stopNames);
+    const tone = parseTone(text);
+    const P = FIELD_PROVENANCE;
+    const mentions = parsed.intent.mentions.map((m, i) => ({ order: i, name: m.name, text: m.text, source: m.source,
+      latitude: m.latitude, longitude: m.longitude,
+      provenance: m.source === "explicit_coordinates" ? P.EXPLICIT : P.RESOLVED }));
+    const geo = (name) => name ? { name, provenance: P.RESOLVED } : { name: null, provenance: P.UNRESOLVED };
+    const sentences = String(text == null ? "" : text).split(/(?<=[.!?;])\s+|\n+/).map((x) => x.trim()).filter(Boolean);
+    const beats = sentences.map((sentence, i) => ({ order: i, text: sentence,
+      places: parsed.intent.mentions.filter((m) => sentence.includes(m.text)).map((m) => m.name) }));
+    const requested = parsed.stops.filter((s) => s.explicit_grammar || s.explicit_travel_style)
+      .map((s) => ({ place: s.location, grammar: s.explicit_grammar || null, travel_style: s.explicit_travel_style || null, provenance: P.EXPLICIT }));
+    const explicitPace = parsed.pace && !options.pace ? { pace: parsed.pace, provenance: P.EXPLICIT } : (options.pace ? { pace: options.pace, provenance: P.DEFAULTED, note: "pace inherited from the journey preset" } : null);
+    const comparisons = parsed.stops.filter((s) => (s.purposes || []).includes("COMPARE")).map((s) => s.location);
+    const brief = {
+      brief_version: BRIEF_VERSION,
+      original_text: parsed.source_text,
+      intent: parsed.intent,
+      ambiguity_state: parsed.intent.state,
+      unresolved: parsed.intent.unresolved,
+      locations: mentions,
+      ordered_subjects: parsed.stops.map((s) => ({ location: s.location, role: s.role || null, importance: s.importance || null, purposes: s.purposes || [],
+        provenance: s.role ? P.EXPLICIT : P.INFERRED })),
+      start_geography: geo(stopNames[0] || null),
+      end_geography: geo(stopNames[stopNames.length - 1] || null),
+      explicit_coordinates: mentions.filter((m) => m.source === "explicit_coordinates").map((m) => ({ latitude: m.latitude, longitude: m.longitude, text: m.text })),
+      runtime_target: timing.runtime_target,
+      narration_cues: timing.cues,
+      narration_referenced: timing.narration_referenced,
+      timing_tolerance_seconds: timing.tolerance_seconds,
+      narrative_beats: beats,
+      tone,
+      pace: explicitPace || { pace: null, provenance: P.DEFAULTED, note: tone.primary.tone ? `tone "${tone.primary.tone}" selects the ${tone.primary.mapping.pace} preset` : "the Director's default pacing applies" },
+      requested_movement: requested,
+      prohibited_movement: (parsed.negatives || []).map((n) => ({ family: n, provenance: P.EXPLICIT })),
+      start_state: parsed.opening ? { ...parsed.opening, provenance: P.EXPLICIT } : { provenance: P.DEFAULTED, note: "opening composed by the Director" },
+      end_state: { closing_geography: stopNames[stopNames.length - 1] || null, provenance: stopNames.length ? P.INFERRED : P.UNRESOLVED },
+      comparison: comparisons.length ? { places: comparisons, provenance: P.EXPLICIT } : null,
+      globe_context: parsed.globe_justification ? { justification: parsed.globe_justification, provenance: P.EXPLICIT } : { justification: null, provenance: P.DEFAULTED, note: "globe use decided by the Director's span rule" },
+      continuation_requested: !!parsed.continuation_requested,
+      level_horizon: parsed.level_horizon || false,
+      aspect: options.aspect || null,
+      limitations: tone.limitations.slice(),
+      // the parsed intent the Director consumes (kept verbatim; the brief is its inspectable face)
+      parsed_intent: parsed,
+    };
+    return brief;
+  }
+
+  // ── timeline helpers ───────────────────────────────────────────────────────
+  function timelineOf(J, journey) {
+    return J.summarizeJourney(journey).timeline || [];
+  }
+  // seconds elapsed when the camera ARRIVES at stop k (k=0 → 0)
+  function arrivalSeconds(timeline, k) {
+    let t = 0;
+    for (let i = 0; i < Math.min(timeline.length, 2 * k); i += 1) {
+      const e = timeline[i];
+      t += e.kind === "stop" ? (e.movements || []).reduce((a, b) => a + (Number(b.seconds) || 0), 0)
+        : (e.steps || []).reduce((a, b) => a + (Number(b.seconds) || 0), 0);
+    }
+    return Math.round(t * 10) / 10;
+  }
+  const r1 = (x) => Math.round(x * 10) / 10;
+
+  // ── apply timing constraints by editing the Director's OWN durations ──────
+  function applyTiming(J, journey, brief, stops) {
+    const result = { tolerance_seconds: TIMING_TOLERANCE_S, constraints: [], limitations: [], conflicts: [], changed: false };
+    const names = stops.map((s) => s.location);
+    // Timeline entries up to and including lockedIndex are fixed by an earlier
+    // (narration) constraint; a later total-runtime constraint may only retime the tail.
+    let lockedIndex = -1;
+    const stopIndex = (subject) => { const i = subject ? names.indexOf(subject) : -1; return i >= 0 ? i : names.length - 1; };
+
+    for (const cue of brief.narration_cues.filter((c) => c.kind === "arrive_at")) {
+      const k = stopIndex(cue.subject);
+      const rec = { kind: "arrive_at", subject: names[k], requested_seconds: cue.seconds, stop_index: k };
+      if (k === 0) { rec.status = "NOT_APPLICABLE"; rec.limitation = "the opening stop is where the animation starts; there is no travel to time"; result.limitations.push(rec.limitation); result.constraints.push(rec); continue; }
+      let tl = timelineOf(J, journey);
+      rec.before_seconds = arrivalSeconds(tl, k);
+      // fixed = start movements + intermediate stop movements; adjustable = travel steps of legs 0..k-1
+      let fixed = 0, travelSteps = [];
+      for (let i = 0; i < 2 * k; i += 1) {
+        const e = tl[i];
+        if (e.kind === "stop") fixed += (e.movements || []).reduce((a, b) => a + (Number(b.seconds) || 0), 0);
+        else travelSteps.push({ leg: Math.floor(i / 2), steps: e.steps || [] });
+      }
+      const nSteps = travelSteps.reduce((a, t) => a + t.steps.length, 0);
+      const need = cue.seconds - fixed;
+      if (nSteps === 0) { rec.status = "UNMET"; rec.limitation = "no travel steps precede this stop to retime"; result.limitations.push(rec.limitation); result.constraints.push(rec); continue; }
+      const currentTravel = travelSteps.reduce((a, t) => a + t.steps.reduce((x, y) => x + (Number(y.seconds) || 0), 0), 0);
+      const factor = need > 0 && currentTravel > 0 ? need / currentTravel : 0;
+      travelSteps.forEach((t) => {
+        journey.legs[t.leg].travel.forEach((step, si) => {
+          const cur = Number(t.steps[si] && t.steps[si].seconds) || Number(step.duration_seconds) || MIN_STEP_SECONDS;
+          step.duration_seconds = Math.max(MIN_STEP_SECONDS, r1(cur * factor));
+        });
+      });
+      journey = J.normalizeJourney(journey);
+      tl = timelineOf(J, journey);
+      rec.achieved_seconds = arrivalSeconds(tl, k);
+      const delta = Math.abs(rec.achieved_seconds - cue.seconds);
+      rec.status = delta <= TIMING_TOLERANCE_S ? "MET" : (delta <= 1.5 ? "APPROXIMATE" : "UNMET");
+      if (rec.status !== "MET") {
+        rec.limitation = need < nSteps * MIN_STEP_SECONDS
+          ? `arrival at ${cue.seconds}s leaves ${r1(need)}s for ${nSteps} travel step(s); the model's ${MIN_STEP_SECONDS}s step minimum gives ${rec.achieved_seconds}s`
+          : `arrival retimed to ${rec.achieved_seconds}s (rounding to 0.1s steps)`;
+        result.limitations.push(rec.limitation);
+      }
+      result.changed = true;
+      if (rec.status !== "UNMET") lockedIndex = Math.max(lockedIndex, 2 * k - 1);
+      result.constraints.push(rec);
+    }
+
+    for (const cue of brief.narration_cues.filter((c) => c.kind === "hold_until")) {
+      const k = stopIndex(cue.subject);
+      const rec = { kind: "hold_until", subject: names[k], requested_seconds: cue.seconds, stop_index: k };
+      const tl = timelineOf(J, journey);
+      const arrive = arrivalSeconds(tl, k);
+      const movements = k === 0 ? journey.start_movements : journey.legs[k - 1].movements;
+      if (!movements.length) { rec.status = "UNMET"; rec.limitation = `no at-location movement at ${names[k]} to extend`; result.limitations.push(rec.limitation); result.constraints.push(rec); continue; }
+      const hold = cue.seconds - arrive;
+      if (hold < MIN_STEP_SECONDS) { rec.status = "UNMET"; rec.achieved_seconds = arrive; rec.limitation = `the camera only arrives at ${names[k]} at ${arrive}s; holding until ${cue.seconds}s is impossible`; result.limitations.push(rec.limitation); result.constraints.push(rec); continue; }
+      const others = movements.slice(1).reduce((a, m) => a + (Number(m.duration_seconds) || 0), 0);
+      movements[0].duration_seconds = Math.max(MIN_STEP_SECONDS, r1(hold - others));
+      journey = J.normalizeJourney(journey);
+      const tl2 = timelineOf(J, journey);
+      const stopEnd = arrivalSeconds(tl2, k) + (tl2[2 * k].movements || []).reduce((a, b) => a + (Number(b.seconds) || 0), 0);
+      rec.achieved_seconds = r1(stopEnd);
+      rec.status = Math.abs(rec.achieved_seconds - cue.seconds) <= TIMING_TOLERANCE_S ? "MET" : "APPROXIMATE";
+      result.changed = true; lockedIndex = Math.max(lockedIndex, 2 * k); result.constraints.push(rec);
+    }
+
+    if (brief.runtime_target && brief.runtime_target.seconds) {
+      const target = brief.runtime_target.seconds;
+      const rec = { kind: "total_runtime", requested_seconds: target };
+      let tl = timelineOf(J, journey);
+      rec.before_seconds = r1(tl.reduce((a, e) => a + (e.kind === "stop" ? (e.movements || []) : (e.steps || [])).reduce((x, y) => x + (Number(y.seconds) || 0), 0), 0));
+      const all = [], fixedEntries = [];
+      tl.forEach((e, i) => {
+        const list = e.kind === "stop" ? (i === 0 ? journey.start_movements : journey.legs[i / 2 - 1].movements) : journey.legs[(i - 1) / 2].travel;
+        const secs = e.kind === "stop" ? (e.movements || []) : (e.steps || []);
+        const entrySeconds = secs.reduce((a, b) => a + (Number(b.seconds) || 0), 0);
+        if (i <= lockedIndex) { fixedEntries.push(entrySeconds); return; }
+        list.forEach((step, si) => all.push({ step, cur: Number(secs[si] && secs[si].seconds) || Number(step.duration_seconds) || MIN_STEP_SECONDS }));
+      });
+      const fixed = r1(fixedEntries.reduce((a, b) => a + b, 0));
+      rec.locked_by_earlier_constraints_seconds = fixed;
+      if (!all.length) {
+        rec.status = "UNMET";
+        rec.limitation = lockedIndex >= 0 ? `every step is fixed by the narration cue(s); the total stays ${rec.before_seconds}s` : "the journey has no steps to retime";
+        result.limitations.push(rec.limitation); if (lockedIndex >= 0) result.conflicts.push(rec.limitation); result.constraints.push(rec);
+      } else {
+        const tail = all.reduce((a, x) => a + x.cur, 0);
+        const need = target - fixed;
+        const factor = need > 0 && tail > 0 ? need / tail : 0;
+        all.forEach((x) => { x.step.duration_seconds = Math.max(MIN_STEP_SECONDS, r1(x.cur * factor)); });
+        journey = J.normalizeJourney(journey);
+        rec.achieved_seconds = J.summarizeJourney(journey).total_duration_seconds;
+        const delta = Math.abs(rec.achieved_seconds - target);
+        rec.status = delta <= TIMING_TOLERANCE_S ? "MET" : (delta <= 1.5 ? "APPROXIMATE" : "UNMET");
+        if (rec.status !== "MET") {
+          rec.limitation = need < all.length * MIN_STEP_SECONDS
+            ? (lockedIndex >= 0
+              ? `conflict: ${target}s total leaves ${r1(need)}s after the narration cue(s) lock ${fixed}s; the ${all.length} remaining step(s) need ${all.length * MIN_STEP_SECONDS}s, so the total is ${rec.achieved_seconds}s — the arrival is kept, the total is not`
+              : `${target}s cannot hold ${all.length} steps at the ${MIN_STEP_SECONDS}s minimum; shortest achievable is ${rec.achieved_seconds}s`)
+            : `total retimed to ${rec.achieved_seconds}s (0.1s step rounding)`;
+          result.limitations.push(rec.limitation); if (lockedIndex >= 0 && need < all.length * MIN_STEP_SECONDS) result.conflicts.push(rec.limitation);
+        }
+        result.changed = true; result.constraints.push(rec);
+      }
+    }
+
+    // Final re-verification: every constraint is re-measured against the FINAL
+    // journey, so no status can survive from before a later edit changed it.
+    if (result.changed) {
+      const tlF = timelineOf(J, journey);
+      result.constraints.forEach((rec) => {
+        if (rec.kind === "arrive_at" && rec.status !== "NOT_APPLICABLE" && rec.stop_index != null) {
+          const achieved = arrivalSeconds(tlF, rec.stop_index);
+          const delta = Math.abs(achieved - rec.requested_seconds);
+          const status = delta <= TIMING_TOLERANCE_S ? "MET" : (delta <= 1.5 ? "APPROXIMATE" : "UNMET");
+          if (status !== rec.status || achieved !== rec.achieved_seconds) {
+            const note = `arrival at ${rec.subject} re-measured after later constraints: ${achieved}s (${status})`;
+            rec.achieved_seconds = achieved; rec.status = status; rec.limitation = rec.limitation ? `${rec.limitation}; ${note}` : note;
+            if (status !== "MET") { result.limitations.push(note); result.conflicts.push(note); }
+          }
+        }
+        if (rec.kind === "hold_until" && rec.stop_index != null && rec.status !== "UNMET") {
+          const e = tlF[2 * rec.stop_index];
+          const end = r1(arrivalSeconds(tlF, rec.stop_index) + ((e && e.movements) || []).reduce((a, b) => a + (Number(b.seconds) || 0), 0));
+          const status = Math.abs(end - rec.requested_seconds) <= TIMING_TOLERANCE_S ? "MET" : "APPROXIMATE";
+          if (end !== rec.achieved_seconds) { rec.achieved_seconds = end; rec.status = status; }
+        }
+      });
+    }
+    return { journey, timing: result };
+  }
+
+  // ── apply tone: pace + dwell emphasis only ────────────────────────────────
+  function applyTone(J, journey, brief, stops) {
+    const out = { applied: [], limitations: brief.tone.limitations.slice(), changed: false };
+    const primary = brief.tone.primary;
+    const explicitPace = brief.pace && brief.pace.provenance === FIELD_PROVENANCE.EXPLICIT;
+    if (primary.tone) {
+      const map = primary.mapping;
+      if (!explicitPace && map.pace) {
+        // directFromBrief already hands the tone's pace to autoDirect; record the
+        // application either way so the provenance says WHY the pace is what it is.
+        if (journey.pace !== map.pace) { journey.pace = map.pace; out.changed = true; }
+        out.applied.push({ control: "pace", value: map.pace, from_tone: primary.tone });
+      } else if (explicitPace && map.pace && brief.pace.pace !== map.pace) out.limitations.push(`explicit pacing "${brief.pace.pace}" wins over the ${map.pace} preset implied by "${primary.tone}"`);
+      if (map.emphasis && map.emphasis !== 1) {
+        const bump = (m) => { m.emphasis = r1((Number(m.emphasis) || 1) * map.emphasis); };
+        journey.start_movements.forEach(bump); journey.legs.forEach((l) => l.movements.forEach(bump));
+        out.applied.push({ control: "dwell_emphasis", multiplier: map.emphasis, from_tone: primary.tone }); out.changed = true;
+      }
+      out.applied.push({ control: "travel_style", value: "unchanged", note: "tone never overrides the Director's travel-style decision" });
+    }
+    for (const prog of brief.tone.progression) {
+      if (prog.position !== "conclusion") continue;
+      const lastMovements = journey.legs.length ? journey.legs[journey.legs.length - 1].movements : journey.start_movements;
+      if (!lastMovements.length) { out.limitations.push(`a ${prog.tone} conclusion was asked for, but the final stop has no at-location movement to slow down`); continue; }
+      const map = TONE_VOCABULARY[prog.tone] || TONE_VOCABULARY.calm;
+      lastMovements.forEach((m) => { m.emphasis = r1(Math.max(1.35, (Number(m.emphasis) || 1) * Math.max(1.35, map.emphasis))); });
+      out.applied.push({ control: "conclusion_dwell_emphasis", multiplier: 1.35, from_tone: prog.tone, stop: stops[stops.length - 1] ? stops[stops.length - 1].location : null });
+      out.changed = true;
+    }
+    return { journey: out.changed ? J.normalizeJourney(journey) : journey, tone: out };
+  }
+
+  // Re-read beat durations from the (re)normalized journey, exactly as buildPlan does.
+  function refreshPlanDurations(J, result) {
+    result.summary = J.summarizeJourney(result.journey);
+    const timeline = result.summary.timeline || [];
+    let ti = 0;
+    const sumSeconds = (items) => items.reduce((a, b) => a + (Number(b.seconds) || 0), 0);
+    const consumeStop = () => { const e = timeline[ti]; if (e && e.kind === "stop") { ti += 1; return sumSeconds(e.movements || []); } return null; };
+    const consumeTravel = () => { const e = timeline[ti]; if (e && e.kind === "travel") { ti += 1; return sumSeconds(e.steps || []); } return null; };
+    (result.plan.beats || []).forEach((beat) => {
+      if (beat.beat === "TRAVEL") beat.duration_seconds = consumeTravel();
+      else if (result.globe && result.globe.allowed && beat.beat === "GLOBE") beat.duration_seconds = (consumeTravel() || 0) + (consumeStop() || 0);
+      else beat.duration_seconds = consumeStop();
+    });
+    if (result.plan) result.plan.total_duration_seconds = result.summary.total_duration_seconds;
+  }
+
+  // ── the canonical text path: brief → Director → (tone, timing) → plan ──────
+  function directFromBrief(brief, options = {}) {
+    if (!brief || brief.brief_version !== BRIEF_VERSION) throw new Error(`directFromBrief needs a ${BRIEF_VERSION}`);
+    assertIntentResolved({ intent: brief.intent });
+    const J = loadJourney(options.journey);
+    const intent = brief.parsed_intent;
+    const tonePace = brief.tone.primary.tone && !(brief.pace && brief.pace.provenance === FIELD_PROVENANCE.EXPLICIT) ? brief.tone.primary.mapping.pace : null;
+    const result = autoDirect({
+      ...intent,
+      pace: intent.pace || tonePace || options.pace || undefined,
+      aspect: brief.aspect || intent.aspect || options.aspect || null,
+      continuation_from: options.continuation_from || intent.continuation_from || undefined,
+    }, options);
+    const toned = applyTone(J, result.journey, brief, result.stops);
+    result.journey = toned.journey;
+    const timed = applyTiming(J, result.journey, brief, result.stops);
+    result.journey = timed.journey;
+    if (toned.tone.changed || timed.timing.changed) refreshPlanDurations(J, result);
+    result.brief = brief;
+    result.tone = toned.tone;
+    result.timing = timed.timing;
+    if (result.plan) {
+      result.plan.brief_version = BRIEF_VERSION;
+      result.plan.brief = { original_text: brief.original_text, ambiguity_state: brief.ambiguity_state, runtime_target: brief.runtime_target,
+        narration_cues: brief.narration_cues, tone: { primary: brief.tone.primary.tone, provenance: brief.tone.primary.provenance, progression: brief.tone.progression },
+        limitations: [].concat(brief.limitations, toned.tone.limitations, timed.timing.limitations).filter((x, i, a) => a.indexOf(x) === i) };
+      result.plan.timing = timed.timing;
+      result.plan.tone = toned.tone;
+    }
+    const timingNotes = timed.timing.constraints.map((c) => `${c.kind.replace(/_/g, " ")}${c.subject ? ` (${c.subject})` : ""}: requested ${c.requested_seconds}s, ${c.status}${c.achieved_seconds != null ? ` at ${c.achieved_seconds}s` : ""}${c.limitation ? ` — ${c.limitation}` : ""}`);
+    result.notes = (result.notes || []).concat(timingNotes, toned.tone.applied.filter((a) => a.control !== "travel_style").map((a) => `Tone "${a.from_tone}": ${a.control} ${a.value != null ? a.value : "×" + a.multiplier}`), toned.tone.limitations.map((l) => `Tone limitation: ${l}`));
+    return result;
   }
 
   const api = {
@@ -2150,6 +2628,18 @@
     flourishBudgetFor,
     autoDirect,
     parseIntent,
+    INTENT_STATES,
+    assertIntentResolved,
+    BRIEF_VERSION,
+    FIELD_PROVENANCE,
+    TIMING_TOLERANCE_S,
+    TONE_VOCABULARY,
+    parseTiming,
+    parseTone,
+    buildDirectorialBrief,
+    directFromBrief,
+    applyTiming,
+    applyTone,
     parseExplicitOpening,
     explainDirection,
     decisionOf,

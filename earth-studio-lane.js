@@ -115,6 +115,15 @@ function writeJob(packageDir, payload = {}, options = {}) {
     journeyCompiled = check.compiled;
     journeySummary = journeyModel.summarizeJourney(journey);
   }
+  // Hard gate (text-direction v2): a Director result whose geographic intent
+  // was not fully resolved must never be generated. The GUI already refuses;
+  // the lane refuses too so no caller can bypass it.
+  if (payload.direction && typeof payload.direction === 'object' && payload.direction.intent
+      && payload.direction.intent.state && payload.direction.intent.state !== 'INTENT_RESOLVED') {
+    const rec = payload.direction.intent;
+    const e = new Error(`cannot generate: directorial intent is ${rec.state}${Array.isArray(rec.reasons) && rec.reasons.length ? ' — ' + rec.reasons.join('; ') : ''}`);
+    e.statusCode = 400; e.code = 'INTENT_NOT_RESOLVED'; e.intent = rec; throw e;
+  }
   const description = journeyCompiled ? journeyCompiled.description : String(payload.description || '');
   if (!description.trim()) {
     const e = new Error(journey ? 'this camera journey has no movements to generate.' : 'description is required.');
@@ -276,9 +285,31 @@ function writeJob(packageDir, payload = {}, options = {}) {
     ...(continuationState ? { continuation_state: 'continuation-state.json' } : {}),
   };
   fs.writeFileSync(path.join(dir, 'job.json'), `${JSON.stringify(meta, null, 2)}\n`);
+  // Camera-quality contract (text-direction v2). The evaluator emits only
+  // FAIL or PASS_FOR_HUMAN_REVIEW — there is deliberately no machine PASS; a
+  // human visual review is what may later approve an artifact. A FAIL is
+  // written to disk as evidence but is NOT a successful generation, and the
+  // verdict rides on the response so the API and GUI can show it. job.json
+  // keeps its byte-frozen field set; the full report is camera-quality.json.
+  const qualitySummary = {
+    verdict: quality.verdict,
+    scope: quality.scope,
+    errors: quality.errors || [],
+    warnings: quality.warnings || [],
+    report: 'camera-quality.json',
+  };
+  const qualityFailed = quality.verdict === 'FAIL';
   return {
-    ok: true,
+    ok: !qualityFailed,
+    status: qualityFailed ? 'CAMERA_QUALITY_FAIL' : quality.verdict,
+    ...(qualityFailed ? {
+      error: `camera quality FAIL — the generated movement does not perform what it names (${qualitySummary.errors.length} error${qualitySummary.errors.length === 1 ? '' : 's'}): ${qualitySummary.errors[0]}`,
+      code: 'earth-studio-camera-quality-fail',
+    } : {}),
     ...meta,
+    // Must follow ...meta: journey job.json metadata names the report FILE under
+    // the same key; on the response the verdict object is the contract.
+    camera_quality: qualitySummary,
     warnings: plan.warnings,
     // Plan-level informational notes (applied defaults, carry-over, easing/
     // settle provenance) — additive so the GUI can show them.

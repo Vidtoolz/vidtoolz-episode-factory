@@ -263,6 +263,14 @@ async function main() {
     const laneDir = path.join(pkgDir, 'earth-studio');
     const job = JSON.parse(fs.readFileSync(path.join(laneDir, 'job.json'), 'utf8'));
     check('generate wrote a real plan through the API', fs.existsSync(path.join(laneDir, 'earth-studio.esp')));
+    // ── text-direction v2: the machine verdict is surfaced, and it is honest
+    const genStatus = await cdp.evaluate(`document.getElementById('es-gen-status').textContent`);
+    check('the generate status shows the machine verdict as PASS_FOR_HUMAN_REVIEW (never a plain PASS)',
+      /requires human visual review/i.test(genStatus) && !/\bPASS\b(?!_FOR)/.test(genStatus), genStatus);
+    check('the verdict badge carries its machine state', await cdp.evaluate(`(document.querySelector('#es-gen-status .es-verdict')||{}).getAttribute && document.querySelector('#es-gen-status .es-verdict').getAttribute('data-verdict') === 'PASS_FOR_HUMAN_REVIEW'`));
+    check('the direct planner mode is labeled as an expert mode, not as text direction',
+      await cdp.evaluate(`/Advanced camera commands/.test(document.querySelector('[data-mode="freeform"]').textContent)`),
+      await cdp.evaluate(`document.querySelector('[data-mode="freeform"]').textContent`));
     check('job.json records the journey', job.journey && job.journey.journey_version === 1 && job.journey.stop_count === 3,
       JSON.stringify(job.journey && { v: job.journey.journey_version, stops: job.journey.stop_count }));
     check('the generated length matches what the UI promised', job.total_duration_seconds === expectedTotal,
@@ -388,6 +396,61 @@ async function main() {
     check('the directed journey is valid and generatable',
       await cdp.evaluate(`JB.summarizeJourney(JOURNEY).ok === true`),
       await cdp.evaluate(`JSON.stringify(JB.summarizeJourney(JOURNEY).errors)`));
+    // ── text-direction v2 Stage B: Auto-Direct runs through the structured brief
+    check('Auto-Direct went through the structured directorial brief (canonical text path)',
+      await cdp.evaluate(`Boolean(document.querySelector('#dir-status [data-brief-version="EarthStudioDirectorialBriefV1"]')) && DIRECTOR_LAST && DIRECTOR_LAST.plan && DIRECTOR_LAST.plan.brief_version === 'EarthStudioDirectorialBriefV1'`),
+      await cdp.evaluate(`document.getElementById('dir-status').textContent`));
+    await cdp.evaluate(`(()=>{const t=document.getElementById('dir-intent'); t.value='Start in Helsinki, then travel to Stockholm. Arrive at 12 seconds to match narration, with a relaxed conclusion.'; t.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+    await cdp.evaluate(`document.getElementById('dir-run').click()`);
+    await delay(800);
+    const dirStatusB = await cdp.evaluate(`document.getElementById('dir-status').textContent`);
+    check('a narration arrival cue is honored and reported in the UI',
+      dirStatusB.includes('arrive at (Stockholm): 12s') && dirStatusB.includes('MET at 12s'), dirStatusB);
+    check('the relaxed conclusion is applied as dwell emphasis on the final stop',
+      await cdp.evaluate(`JOURNEY.legs[JOURNEY.legs.length-1].movements[0].emphasis >= 1.35`),
+      await cdp.evaluate(`JSON.stringify(JOURNEY.legs[JOURNEY.legs.length-1].movements.map(m=>m.emphasis))`));
+
+    // ── text-direction v2: Auto-Direct refuses ungrounded geography with the reason
+    const journeyBefore = await cdp.evaluate(`JSON.stringify(JOURNEY)`);
+    await cdp.evaluate(`(()=>{const t=document.getElementById('dir-intent'); t.value='Make the climate dramatic'; t.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+    await cdp.evaluate(`document.getElementById('dir-run').click()`);
+    await delay(400);
+    const dirStatus = await cdp.evaluate(`document.getElementById('dir-status').textContent`);
+    check('Auto-Direct hard-gates a brief with no resolvable geography (no Lima from "climate")',
+      /INTENT_INCOMPLETE/.test(dirStatus) && !/Lima/.test(dirStatus), dirStatus);
+    check('the gated brief did not alter the journey', await cdp.evaluate(`JSON.stringify(JOURNEY)`) === journeyBefore);
+    await cdp.evaluate(`(()=>{const t=document.getElementById('dir-intent'); t.value='Show Finland and Sweden, then orbit the capital.'; t.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+    await cdp.evaluate(`document.getElementById('dir-run').click()`);
+    await delay(400);
+    const ambStatus = await cdp.evaluate(`document.getElementById('dir-status').textContent`);
+    check('Auto-Direct reports ambiguity instead of picking a capital', /INTENT_AMBIGUOUS/.test(ambStatus) && /Helsinki or Stockholm/.test(ambStatus), ambStatus);
+
+    // ── text-direction v2: a camera-quality FAIL is not a successful generation (real route, real UI)
+    // Drive the SAME generate() function through its direct-command branch with
+    // the stored OBQ-20 job's compiled description (a zoom_out that moves closer).
+    const obqDir = path.join(ROOT, 'package-runs', '2026-08-21-earth-studio-obliquity-ab', 'projects', 'OBQ-20-route-restraint-A-baseline', 'earth-studio');
+    const obq = JSON.parse(fs.readFileSync(path.join(obqDir, 'journey.json'), 'utf8'));
+    const obqJob = JSON.parse(fs.readFileSync(path.join(obqDir, 'job.json'), 'utf8'));
+    await cdp.evaluate(`document.querySelector('[data-mode="freeform"]').click()`);
+    await delay(200);
+    await cdp.evaluate(`(()=>{ const d=document.getElementById('es-desc'); d.value=${js(obqJob.description)}; d.dispatchEvent(new Event('input',{bubbles:true})); document.getElementById('es-job').value='OBQ-20 FAIL replay'; })()`);
+    await delay(400);
+    const genDisabled = await cdp.evaluate(`document.getElementById('es-generate').disabled`);
+    await cdp.evaluate(`document.getElementById('es-generate').click()`);
+    try { await cdp.waitFor(`/Camera quality FAIL|Failed|Fix the/.test(document.getElementById('es-gen-status').textContent)`, 20000); }
+    catch (error) { check('a FAIL verdict is shown as NOT a successful generation', false, `${error.message} :: disabled=${genDisabled} status=${await cdp.evaluate(`document.getElementById('es-gen-status').textContent`)}`); }
+    const failStatus = await cdp.evaluate(`document.getElementById('es-gen-status').textContent`);
+    check('a FAIL verdict is shown as NOT a successful generation', /Camera quality FAIL/.test(failStatus) && /not a successful generation/i.test(failStatus), `disabled=${genDisabled} :: ${failStatus}`);
+    check('the FAIL names the contradictory movement', /zoom_out/.test(failStatus), failStatus);
+    check('the FAIL badge carries its machine state', await cdp.evaluate(`Boolean(document.querySelector('#es-gen-status .es-verdict[data-verdict="FAIL"]'))`));
+    await delay(600);
+    check('the job header reflects the stored FAIL verdict after refresh',
+      await cdp.evaluate(`ST && ST.camera_quality && ST.camera_quality.verdict === 'FAIL' && /Camera quality FAIL/.test(document.getElementById('es-meta').textContent)`),
+      await cdp.evaluate(`JSON.stringify({ st: ST && ST.camera_quality && ST.camera_quality.verdict, meta: document.getElementById('es-meta').textContent.slice(-120) })`));
+    const apiFail = await cdp.evaluate(`(async()=>{ try { await post('/api/earth-studio/plan', { id: ID, jobName: 'OBQ-20 api', aspect: '16:9', journey: JSON.parse(${js(JSON.stringify(obq))}) }); return 'NO-ERROR'; } catch(e){ return JSON.stringify({ status: e.status, code: e.code, ok: e.payload && e.payload.ok, verdict: e.payload && e.payload.camera_quality && e.payload.camera_quality.verdict, message: String(e.message).slice(0,160) }); } })()`);
+    check('the plan API returns 422 + ok:false + verdict FAIL for the same journey', (() => { try { const j = JSON.parse(apiFail); return j.status === 422 && j.ok === false && j.verdict === 'FAIL' && j.code === 'earth-studio-camera-quality-fail'; } catch (_) { return false; } })(), apiFail);
+    check('the FAIL evidence is still written to disk for diagnosis',
+      fs.existsSync(path.join(laneDir, 'camera-quality.json')) && JSON.parse(fs.readFileSync(path.join(laneDir, 'camera-quality.json'), 'utf8')).verdict === 'FAIL');
 
     const jsErrors = await cdp.evaluate(`window.__errs || []`);
     check('no uncaught JavaScript errors on the page', jsErrors.length === 0, JSON.stringify(jsErrors));

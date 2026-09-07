@@ -617,6 +617,200 @@
     return null;
   }
 
+  // ── Shared location authority: boundary-aware MENTION resolution ──────────
+  // (text-direction v2). The Director used to scan free text with raw
+  // substring matching against fixture names, so "climate" resolved Lima and
+  // "chrome" resolved Rome, while aliases (NYC), explicit coordinates and
+  // conceptual references ("the Finnish capital") that the planner already
+  // understood were never consulted. This resolver is the ONE authority both
+  // layers use: it matches whole normalized TOKEN sequences (longest first),
+  // consults the same gazetteer + alias tables + coordinate parser as
+  // resolveLocation(), and reports what it could NOT ground instead of guessing.
+  //
+  // Conceptual capital references are grounded only through this verified,
+  // bounded table (country fixture -> capital fixture, both present in the
+  // gazetteer). A country without a known capital yields an explicit
+  // unresolved mention — never a silent substitution of the country.
+  const COUNTRY_CAPITALS = {
+    finland: "helsinki", sweden: "stockholm", norway: "oslo", denmark: "copenhagen",
+    iceland: "reykjavik", estonia: "tallinn", latvia: "riga", lithuania: "vilnius",
+    "united kingdom": "london", ireland: "dublin", france: "paris", germany: "berlin",
+    spain: "madrid", italy: "rome", portugal: "lisbon", netherlands: "amsterdam",
+    belgium: "brussels", austria: "vienna", poland: "warsaw", greece: "athens",
+    russia: "moscow", "united states": "washington dc", japan: "tokyo", china: "beijing",
+    "new zealand": "wellington", singapore: "singapore",
+  };
+  // Demonym/adjective -> country fixture key ("the Finnish capital").
+  const COUNTRY_DEMONYMS = {
+    finnish: "finland", swedish: "sweden", norwegian: "norway", danish: "denmark",
+    icelandic: "iceland", estonian: "estonia", latvian: "latvia", lithuanian: "lithuania",
+    british: "united kingdom", uk: "united kingdom", irish: "ireland", french: "france",
+    german: "germany", spanish: "spain", italian: "italy", portuguese: "portugal",
+    dutch: "netherlands", belgian: "belgium", swiss: "switzerland", austrian: "austria",
+    polish: "poland", greek: "greece", turkish: "turkey", russian: "russia",
+    american: "united states", us: "united states", japanese: "japan", chinese: "china",
+    canadian: "canada", indian: "india", brazilian: "brazil", taiwanese: "taiwan",
+    australian: "australia", "new zealand": "new zealand", singaporean: "singapore",
+  };
+
+  // Tokenize raw text into normalized tokens with raw offsets. Token
+  // normalization is normalizeLocationName's per-token equivalent, so
+  // gazetteer keys ("st petersburg", "new york") compare as token sequences.
+  function tokenizeForMentions(text) {
+    const raw = cleanString(text);
+    const tokens = [];
+    const re = /[\p{L}\p{N}]+(?:['’][\p{L}]+)?/gu;
+    let m;
+    while ((m = re.exec(raw)) !== null) {
+      let norm = m[0].toLowerCase();
+      if (typeof norm.normalize === "function") norm = norm.normalize("NFD").replace(/[̀-ͯ]/g, "");
+      // possessive / clitic: "sweden's" -> "sweden"
+      norm = norm.replace(/['’]s$/, "").replace(/['’]/g, "");
+      if (norm) tokens.push({ norm, start: m.index, end: m.index + m[0].length });
+    }
+    return { raw, tokens };
+  }
+
+  // Build (once) the phrase index: normalized token-string -> canonical key.
+  // A phrase that would point at two different canonical places is recorded as
+  // ambiguous rather than letting insertion order pick a winner.
+  // Cached for the module tables, but re-validated on a cheap signature so
+  // fixtures injected at runtime (tests do this via withFixtures) are seen —
+  // the resolver must never be staler than the gazetteer it speaks for.
+  let MENTION_INDEX = null;
+  let MENTION_INDEX_SIG = "";
+  function mentionIndex(fixtures, aliases) {
+    const useDefault = fixtures === LOCATION_FIXTURES && aliases === LOCATION_ALIASES;
+    const fk = Object.keys(fixtures), ak = Object.keys(aliases);
+    const sig = `${fk.length}:${fk[fk.length - 1] || ""}:${ak.length}:${ak[ak.length - 1] || ""}`;
+    if (useDefault && MENTION_INDEX && MENTION_INDEX_SIG === sig) return MENTION_INDEX;
+    const index = new Map(); // phrase -> { keys:Set, via }
+    const add = (phrase, key, via) => {
+      const norm = normalizeLocationName(phrase);
+      if (!norm || !fixtures[key]) return;
+      const cur = index.get(norm) || { keys: new Set(), via: new Map() };
+      cur.keys.add(key); cur.via.set(key, via);
+      index.set(norm, cur);
+    };
+    Object.keys(fixtures).forEach((k) => { add(k, k, "gazetteer_fixture"); add(fixtures[k].name, k, "gazetteer_fixture"); });
+    Object.keys(aliases).forEach((a) => add(a, aliases[a], "gazetteer_alias"));
+    const maxTokens = Math.max(1, ...Array.from(index.keys()).map((p) => p.split(" ").length));
+    const built = { index, maxTokens };
+    if (useDefault) { MENTION_INDEX = built; MENTION_INDEX_SIG = sig; }
+    return built;
+  }
+
+  // Find every place the text actually NAMES, in order.
+  //   options.fixtures / options.aliases  test injection (default: module tables)
+  //   options.context.countries          ordered country keys already mentioned,
+  //                                       used to ground a bare "the capital"
+  // Returns { mentions, unresolved, ambiguous }. Each mention:
+  //   { text, start, end, key, name, source, latitude, longitude, scale? }
+  //   source ∈ gazetteer_fixture | gazetteer_alias | capital_reference | explicit_coordinates
+  function findLocationMentions(text, options = {}) {
+    const fixtures = options.fixtures || LOCATION_FIXTURES;
+    const aliases = options.aliases || LOCATION_ALIASES;
+    const contextCountries = (options.context && Array.isArray(options.context.countries)) ? options.context.countries : [];
+    const { raw, tokens } = tokenizeForMentions(text);
+    const { index, maxTokens } = mentionIndex(fixtures, aliases);
+    const mentions = [];
+    const unresolved = [];
+    const ambiguous = [];
+    const claimed = new Array(tokens.length).fill(false);
+
+    const fixtureMention = (key, via, start, end) => {
+      const f = fixtures[key];
+      return { text: raw.slice(start, end), start, end, key, name: f.name, source: via,
+        latitude: f.latitude, longitude: f.longitude, ...(f.scale ? { scale: f.scale } : {}) };
+    };
+    const claim = (i, j) => { for (let k = i; k < j; k += 1) claimed[k] = true; };
+
+    // 1) Explicit coordinates first — they are not tokens the gazetteer knows.
+    const coordRe = /(-?\d{1,2}(?:\.\d+)?)\s*[,/]\s*(-?\d{1,3}(?:\.\d+)?)|lat(?:itude)?\s*-?\d{1,2}(?:\.\d+)?.*?l(?:ng|on|ongitude)?\s*-?\d{1,3}(?:\.\d+)?/gi;
+    let cm;
+    while ((cm = coordRe.exec(raw)) !== null) {
+      const parsed = parseExplicitCoords(cm[0]);
+      if (!parsed) continue;
+      const start = cm.index, end = cm.index + cm[0].length;
+      mentions.push({ text: cm[0], start, end, key: null, name: parsed.name, source: "explicit_coordinates",
+        latitude: parsed.latitude, longitude: parsed.longitude });
+      tokens.forEach((t, i) => { if (t.start >= start && t.end <= end) claimed[i] = true; });
+    }
+
+    // 2) Conceptual capital references, before plain names so "Finnish capital"
+    //    is one mention (and "Sweden's capital" does not ALSO yield Sweden).
+    for (let i = 0; i < tokens.length; i += 1) {
+      if (claimed[i] || tokens[i].norm !== "capital") continue;
+      // (a) "<demonym> capital"  (b) "<country> s capital" / "<country> capital"
+      let countryKey = null, from = i, to = i + 1;
+      for (let span = 1; span <= 3 && i - span >= 0; span += 1) {
+        const phrase = tokens.slice(i - span, i).map((t) => t.norm).join(" ");
+        if (COUNTRY_DEMONYMS[phrase]) { countryKey = COUNTRY_DEMONYMS[phrase]; from = i - span; break; }
+        const entry = index.get(phrase);
+        if (entry && entry.keys.size === 1) {
+          const k = Array.from(entry.keys)[0];
+          if (fixtures[k] && fixtures[k].scale === "country") { countryKey = k; from = i - span; break; }
+        }
+      }
+      // (c) "capital of <country>"
+      if (!countryKey && tokens[i + 1] && tokens[i + 1].norm === "of") {
+        for (let span = 1; span <= 3 && i + 1 + span <= tokens.length; span += 1) {
+          const phrase = tokens.slice(i + 2, i + 2 + span).map((t) => t.norm).join(" ");
+          const entry = index.get(phrase);
+          const k = entry && entry.keys.size === 1 ? Array.from(entry.keys)[0] : (COUNTRY_DEMONYMS[phrase] || null);
+          if (k && fixtures[k] && fixtures[k].scale === "country") { countryKey = k; to = i + 2 + span; break; }
+        }
+      }
+      const start = tokens[from].start, end = tokens[to - 1].end, textSpan = raw.slice(start, end);
+      if (countryKey) {
+        const cap = COUNTRY_CAPITALS[countryKey];
+        if (cap && fixtures[cap]) { mentions.push({ ...fixtureMention(cap, "capital_reference", start, end), country_key: countryKey }); }
+        else unresolved.push({ text: textSpan, start, end, reason: `the capital of ${fixtures[countryKey].name} is not in the gazetteer`, country_key: countryKey });
+        claim(from, to);
+        continue;
+      }
+      // (d) bare "the capital": ground it in the countries already in context.
+      const prior = tokens[i - 1] && ["the", "its", "their"].includes(tokens[i - 1].norm) ? i - 1 : i;
+      const bareStart = tokens[prior].start, bareText = raw.slice(bareStart, end);
+      const candidates = Array.from(new Set(contextCountries.filter((k) => COUNTRY_CAPITALS[k] && fixtures[COUNTRY_CAPITALS[k]])));
+      if (candidates.length === 1) {
+        mentions.push({ ...fixtureMention(COUNTRY_CAPITALS[candidates[0]], "capital_reference", bareStart, end), country_key: candidates[0] });
+      } else if (candidates.length > 1) {
+        ambiguous.push({ text: bareText, start: bareStart, end, candidates: candidates.map((k) => fixtures[COUNTRY_CAPITALS[k]].name),
+          reason: "which country's capital? several are in the brief" });
+      } else {
+        unresolved.push({ text: bareText, start: bareStart, end, reason: "\"the capital\" of which country? none is named" });
+      }
+      claim(prior, to);
+    }
+
+    // 3) Plain gazetteer names / aliases: longest token sequence first, no overlaps.
+    for (let i = 0; i < tokens.length; i += 1) {
+      if (claimed[i]) continue;
+      let hit = null;
+      for (let len = Math.min(maxTokens, tokens.length - i); len >= 1; len -= 1) {
+        if (tokens.slice(i, i + len).some((t, k) => claimed[i + k])) continue;
+        const phrase = tokens.slice(i, i + len).map((t) => t.norm).join(" ");
+        const entry = index.get(phrase);
+        if (entry) { hit = { entry, len, phrase }; break; }
+      }
+      if (!hit) continue;
+      const start = tokens[i].start, end = tokens[i + hit.len - 1].end;
+      if (hit.entry.keys.size > 1) {
+        ambiguous.push({ text: raw.slice(start, end), start, end,
+          candidates: Array.from(hit.entry.keys).map((k) => fixtures[k].name), reason: "this name matches more than one known place" });
+      } else {
+        const key = Array.from(hit.entry.keys)[0];
+        mentions.push(fixtureMention(key, hit.entry.via.get(key), start, end));
+      }
+      claim(i, i + hit.len);
+      i += hit.len - 1;
+    }
+
+    mentions.sort((a, b) => a.start - b.start);
+    return { mentions, unresolved, ambiguous };
+  }
+
   function splitSegments(description) {
     // Protect "lat,lng" pairs and decimals so the comma segment splitter does
     // not shatter explicit coordinates like "35.65,139.84". Periods are NOT
@@ -3746,6 +3940,9 @@ This checklist is technical planning support only. It is not creative approval, 
     normalizeLocationName,
     resolveLocation,
     parseExplicitCoords,
+    findLocationMentions,
+    COUNTRY_CAPITALS,
+    COUNTRY_DEMONYMS,
     defaultDuration,
     orbitSecondsPerRevolution,
     SEGMENT_ACTIONS,

@@ -17597,9 +17597,17 @@ function createServer(options = {}) {
         })
         .then((payload) => {
           const { packageId, packageDir } = resolveAigenPackageDir(payload.id || payload.package_id || '', { root: serverOptions.root || ROOT });
-          sendJSON(res, 200, { project_id: packageId, ...earthStudioLane.writeJob(packageDir, payload) });
+          const result = earthStudioLane.writeJob(packageDir, payload);
+          // text-direction v2: a camera-quality FAIL is written as evidence but is
+          // NOT a successful generation — it must not come back as HTTP 200/ok:true.
+          if (result && result.ok === false) {
+            sendError(res, 422, result.error || 'camera quality FAIL', result.code || 'earth-studio-camera-quality-fail', { project_id: packageId, ...result });
+            return;
+          }
+          sendJSON(res, 200, { project_id: packageId, ...result });
         })
-        .catch((error) => sendError(res, error.statusCode || 500, error.message, 'earth-studio-plan-error'));
+        .catch((error) => sendError(res, error.statusCode || 500, error.message, error.code || 'earth-studio-plan-error',
+          error.intent ? { intent: error.intent } : undefined));
       return;
     }
 

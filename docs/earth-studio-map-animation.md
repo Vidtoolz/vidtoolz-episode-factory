@@ -476,6 +476,75 @@ unchanged apart from the `continuation_state` pointer.
 `POST /api/earth-studio/plan` · `POST /api/earth-studio/render` ·
 `POST /api/earth-studio/cancel` · `POST /api/earth-studio/stage`
 
+## Text-direction v2 — semantic safety + hard failure gates (2026-09-07)
+
+Three contracts changed so that a technically valid camera plan can no longer be
+produced for a misread brief, and a failed machine check can no longer look like
+success.
+
+**One location authority.** `earth-studio-job-planner.findLocationMentions(text)`
+is the only place free text is turned into geography. It matches whole
+normalized token sequences (longest first) against the gazetteer, the alias
+table (`nyc` → New York), explicit `lat, lng` coordinates and a bounded,
+verified country→capital table ("the Finnish capital" → Helsinki). There is no
+substring matching: "climate" is not Lima and "chrome" is not Rome. What it
+cannot ground is returned as `unresolved` / `ambiguous`, never guessed. The
+Director's `parseIntent` consumes this resolver and reports
+`intent.state ∈ INTENT_RESOLVED | INTENT_AMBIGUOUS | INTENT_INCOMPLETE | INTENT_INVALID`
+with the reasons. `autoDirect` throws a structured error (`code` = the state,
+`intent` = the record) for anything but `INTENT_RESOLVED`; the lane refuses a
+`direction.intent` that is not resolved (HTTP 400, `INTENT_NOT_RESOLVED`). Auto-Direct
+in the GUI shows the state and the reasons instead of directing the wrong place.
+
+**Camera-quality verdicts are the result, not a side file.** The evaluator emits
+only `FAIL` or `PASS_FOR_HUMAN_REVIEW` — there is deliberately no machine `PASS`;
+a human visual review is what may later approve an artifact. `writeJob` now
+returns `camera_quality: { verdict, scope, errors, warnings, report }` for every
+job and, on `FAIL`, `ok: false`, `status: "CAMERA_QUALITY_FAIL"`, `error`, `code`.
+`POST /api/earth-studio/plan` maps that to **HTTP 422** with the same payload.
+The `.esp` and `camera-quality.json` are still written as evidence; `job.json`
+keeps its byte-frozen field set. The GUI renders `FAIL` as "not a successful
+generation" and `PASS_FOR_HUMAN_REVIEW` as "requires human visual review".
+
+**One canonical text path.** Story text belongs to **Auto-Direct**
+(text → resolver → Director → planner → quality gate → `.esp`). The direct planner
+grammar remains available as **Advanced camera commands** — an expert mode that
+bypasses the Director and is labeled as such; it is not text direction.
+
+Permanent regression coverage: `tests/earth-studio-text-direction-v2.test.js`
+(the reproduced incidents, the OBQ-20 `zoom_out` FAIL fixture, PASS_FOR_HUMAN_REVIEW
+preservation) and the browser smoke's v2 checks.
+
+**Structured directorial brief (Stage B).** `buildDirectorialBrief(text)` returns an
+`EarthStudioDirectorialBriefV1`: resolved locations with provenance, ordered
+subjects, start/end geography, explicit coordinates, runtime target, narration
+cues, narrative beats, tone (+ progression), requested/prohibited movement,
+start/end state, comparison, globe context, unresolved fields and the ambiguity
+state. Every field says whether it was `EXPLICIT`, `RESOLVED`, `INFERRED`,
+`DEFAULTED` or is `UNRESOLVED`; silence in the text is recorded as DEFAULTED,
+never filled in. `directFromBrief(brief)` is the canonical path Auto-Direct now
+uses: gate → `autoDirect` → tone → timing → plan (`plan.brief`, `plan.timing`,
+`plan.tone` ride into `direction.json`).
+
+*Timing.* "Arrive at 12 seconds", "arrive at Stockholm at 9 s", "hold there until
+25 s", "20 seconds total" become constraints that are honored by retiming the
+Director's OWN travel/hold durations (never below the journey model's 1 s step
+minimum). Tolerance is `TIMING_TOLERANCE_S = 0.5` (steps are stored to 0.1 s);
+each constraint reports `MET` / `APPROXIMATE` / `UNMET` with the reason. Narration
+cues (arrive-at, hold-until) take precedence: a total-runtime target may only retime
+the tail after the last cue-locked stop, every constraint is re-measured against
+the final journey, and a true conflict is reported as such (`timing.conflicts`) —
+the arrival is kept and the total is honestly marked unmet. This is runtime
+arithmetic, not audio alignment.
+
+*Tone.* A bounded vocabulary — urgent, tense, energetic, dramatic, calm,
+contemplative, restrained, relaxed (+ "relaxed/calm conclusion") — maps
+deterministically onto the journey pace preset and at-location dwell emphasis
+only. Explicit pacing words win over a tone's implied pace (recorded). Tone never
+overrides the Director's travel-style decision, and a tone the camera vocabulary
+cannot carry ("melancholic") is recorded as UNRESOLVED with a limitation. None of
+this inspects imagery; it is not cinematography.
+
 ## Boundaries
 Runs locally on vidnux; uses system `ffmpeg`. Does not log into Google, automate the Earth Studio
 browser, advance package-run state, or write approved media. PRESTO is not contacted.

@@ -148,6 +148,8 @@ require("./earth-studio-sequence-audit.test.js");
 require("./earth-studio-intent-contract-audit.test.js");
 require("./earth-studio-directorial-rhythm.test.js");
 require("./earth-studio-directorial-rhythm-review.test.js");
+require("./earth-studio-text-direction-v2.test.js");
+require("./earth-studio-text-direction-v2-brief.test.js");
 require("./comfyui-gateway.test.js");
 require("./comfyui-qualification.test.js");
 require("./earth-studio-proof.test.js");
