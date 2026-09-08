@@ -1084,7 +1084,20 @@ function evaluate({ plan, esp }) {
   };
 }
 
-module.exports = { cameraTracks, evaluate, coherenceReport, orbitReport, deadOrbitReport, deadMovementReport,
+function evaluateTrajectory({ plan, trajectory, serializerConfig }) {
+  const esp = JSON.parse(JSON.stringify(require('./earth-studio-job-planner').buildEspFromTrajectory(trajectory, serializerConfig)));
+  return evaluate({ plan, esp });
+}
+
+// Frozen playback compatibility projection: serialized handles, leaf metadata,
+// and the legacy inverse stay together. Never resample physical keyed values.
+function predictPlayback(trajectory, options) {
+  const esp = require('./earth-studio-job-planner').buildEspFromTrajectory(trajectory, options.serializerConfig);
+  return motionContinuity.playbackPositionTrace(motionContinuity.extractEspCameraTracks(esp),
+    Math.max(1, trajectory.total_frames || 1), options.frameRate || trajectory.frame_rate || 30);
+}
+
+module.exports = { cameraTracks, evaluate, evaluateTrajectory, predictPlayback, coherenceReport, orbitReport, deadOrbitReport, deadMovementReport,
   rollReport, sortedTimedSamples, timeAwareDerivatives, motionEnvelope,
   scalarPumpDefects, radiusAndTargetDefects, headingDefects, trajectoryDefects, boundaryContinuityDefects,
   boundaryVectorMetrics, smoothnessDoctrineReport, SMOOTHNESS_TOLERANCES, POSITION_DIRECTION_TOLERANCE };

@@ -179,11 +179,14 @@ function writeJob(packageDir, payload = {}, options = {}) {
   if (journey) {
     planOptions.motionPolicy = { coherent_trajectory: true, dedupe_keyframes: true, source: 'journey' };
   }
-  const artifacts = planner.buildArtifacts(jobName, description, createdAt, planOptions);
-  Object.entries(artifacts).forEach(([file, content]) => fs.writeFileSync(path.join(dir, file), content));
   const plan = planner.buildShotPlan(jobName, description, createdAt, planOptions);
-  const esp = JSON.parse(artifacts['earth-studio.esp']);
-  const quality = cameraQuality.evaluate({ plan, esp });
+  // QC receives the annotated plan. The API historically returned the notes
+  // from the pre-annotation plan; retain that separate compatibility view.
+  const responseNotes = [...(plan.notes || [])];
+  const context = planner.buildArtifactContextFromPlan(plan, planOptions);
+  const { artifacts } = context;
+  Object.entries(artifacts).forEach(([file, content]) => fs.writeFileSync(path.join(dir, file), content));
+  const quality = cameraQuality.evaluateTrajectory(context);
   fs.writeFileSync(path.join(dir, 'camera-quality.json'), `${JSON.stringify(quality, null, 2)}\n`);
   // When a template is requested AND the caller supplied its explicit native
   // parameters, generate the additional native-shape .esp beside the generic
@@ -313,7 +316,7 @@ function writeJob(packageDir, payload = {}, options = {}) {
     warnings: plan.warnings,
     // Plan-level informational notes (applied defaults, carry-over, easing/
     // settle provenance) — additive so the GUI can show them.
-    notes: plan.notes || [],
+    notes: responseNotes,
     unresolved_items: plan.unresolved_items,
     files: Object.keys(artifacts).concat('job.json', 'camera-quality.json', ...extraFiles),
     lane_dir: dir,
