@@ -1,6 +1,16 @@
 (function earthStudioJobPlanner(globalScope) {
   "use strict";
 
+  // M1 CameraTrajectory seam: canonical compilation authority (§3.3, §4.1).
+  // The trajectory module owns motionPolicy, dropRedundantKeyframes,
+  // exportLongitudeTrack, computeTrajectoryMarkers, and compileTrajectory.
+  // The planner keeps its own internal copies of the three moved functions
+  // for exact behavioral compatibility (exportLongitudeTrack uses closure
+  // helpers espKeyframe/round6). External consumers use the module.
+  var trajectory = typeof require !== "undefined"
+    ? require("./earth-studio-camera-trajectory")
+    : (globalScope.EarthStudioCameraTrajectory || null);
+
   const DEFAULT_OUTPUT_DIR = "/home/vidtoolz/Videos/vidtoolz-earth-studio-jobs";
   const VERSION = "0.9.4"; // v0.9.4 semantic-space composition constraint; explicit tilt remains authoritative. v0.9.3 evidence-integrity hardening (profile v4): role-correct easing — the Google-template heavy deceleration lands on SEGMENT-BOUNDARY keyframes (positional 0.99·gap/0.99, altitude 2.5·gap/1.0 — the template authors it on the keyframe ENDING the big move, an interior keyframe, NOT the track final), track finals get the gentle multi-reference arrival (0.25/0.29, infl 0.4), interior influence is corpus-DERIVED (0.43; darien-gap 0.35 participates). // v0.9.2 corpus-rebuilt profile v3: deterministic derivation (scripts/rebuild-earth-studio-motion-profile.js) over 4 approved internet references; family-aware arrivals — APPROACH finals use the Google Zoom-To template full-gap deceleration (x 0.99·gap, influence 0.99, via 2 independent template exports), others the multi-reference 0.31/0.4. // v0.9.1 internet-reference motion profile v2: gap-relative eased handles + final settle-hold, derived ONLY from internet-sourced human-authored .esp references (config/earth-studio-motion/, operator directive: local/generated files do not qualify) — ES preserves unadorned keyframes as hard-linear, so easing must be authored. (v0.8.0 fly→orbit geometry: a fly/zoom immediately followed by an orbit around the same resolved target terminates at the orbit's ring entry (plan-annotated lookahead, ends_at_orbit_entry), so the pair plays as one continuous move — no sideways slide onto the ring. (v0.7.0: hover holds camera, orbit-scoped modifiers, fragment merge, "tilt N degrees", global duration strip, antimeridian seam pairs.)
   const FRAME_RATE = 30;
@@ -3433,6 +3443,45 @@ This checklist is technical planning support only. It is not creative approval, 
   // options.compareLegacyMotion (COMPARISON ONLY — never production): emit the
   // pre-v0.9 motion — no authored transitions, no settle-hold — so a real
   // Earth Studio import can A/B the corpus-informed easing against legacy.
+
+  // M1 extract: compileTrajectory (§3.3). Compiles physical tracks from
+  // buildEspKeyframes into the canonical CameraTrajectory v1 shape.
+  // The trajectory module owns this authority; the planner delegates.
+  // Called by external consumers who need only the trajectory, not the
+  // full .esp artifact. buildEsp internally calls this; external consumers
+  // call buildEsp (byte-frozen output) or compileTrajectory (seam output).
+  function compileTrajectory(plan, options = {}) {
+    const totalFrames = Math.max(1, plan.total_frames || 1);
+    const keyframeOptions = options.compareLegacyMotion ? { compareLegacyMotion: true } : {};
+    if (options.cruiseProfile) keyframeOptions.cruiseProfile = options.cruiseProfile;
+    if (options.acquisitionProfile) keyframeOptions.acquisitionProfile = options.acquisitionProfile;
+    if (options.framingStableAcquisition !== undefined) keyframeOptions.framingStableAcquisition = options.framingStableAcquisition;
+    if (options.orbitEntryDensity !== undefined) keyframeOptions.orbitEntryDensity = options.orbitEntryDensity;
+    if (options.orbitEntryTiltSchedule !== undefined) keyframeOptions.orbitEntryTiltSchedule = options.orbitEntryTiltSchedule;
+    if (Array.isArray(options.orbitTiming)) keyframeOptions.orbitTiming = options.orbitTiming;
+    if (Array.isArray(options.orbitBearing)) keyframeOptions.orbitBearing = options.orbitBearing;
+    if (plan.initial_camera && typeof plan.initial_camera === "object") {
+      keyframeOptions.initialCamera = plan.initial_camera;
+    }
+    var tracks = buildEspKeyframes(plan, keyframeOptions);
+    // Terminal state via captureState out-channel (planner:3346-3348).
+    var cap = {};
+    buildEspKeyframes(plan, Object.assign({}, keyframeOptions, { captureState: cap }));
+    tracks.terminalState = (cap.final && typeof cap.final === "object")
+      ? { latitude: cap.final.latitude, longitude: cap.final.longitude, altitude: cap.final.altitude,
+          pan: cap.final.pan, tilt: cap.final.tilt }
+      : null;
+    return trajectory ? trajectory.compileTrajectory(plan, options, tracks) : {
+      schema: "vidtoolz.camera.trajectory.v1",
+      frame_rate: plan.frame_rate,
+      total_frames: plan.total_frames,
+      keyed: { lng: tracks.lng, lat: tracks.lat, alt: tracks.alt, pan: tracks.pan, tilt: tracks.tilt },
+      terminal_camera: tracks.terminalState || null,
+      markers: [],
+      motion_policy: motionPolicy(plan, options),
+    };
+  }
+
   function buildEsp(plan, options = {}) {
     const dims = plan.render_dimensions || ASPECTS[plan.aspect] || ASPECTS[DEFAULT_ASPECT];
     const width = options.width || dims.width;
@@ -3960,6 +4009,7 @@ This checklist is technical planning support only. It is not creative approval, 
     buildKml,
     buildShotPlanMarkdown,
     buildEspKeyframes,
+    compileTrajectory,
     orbitTimingReport,
     orbitBearingReport,
     ACQUISITION_PROFILES,
