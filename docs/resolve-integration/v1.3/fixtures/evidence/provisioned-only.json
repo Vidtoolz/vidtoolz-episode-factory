@@ -1,0 +1,18 @@
+{
+  "schema": "vidtoolz.resolveEvidenceSet.v1.3",
+  "records": {
+    "44774d7dc4e16803e019905db4074fb6e9a8c5cc3fe5162a2bddf52f5a5623a5": {
+      "record_type": "PROVISIONING_RECORD",
+      "target": {
+        "host_name": "vidnux",
+        "library_name": "VIDTOOLZ Resolve Qualification v1"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "library_kind": "Disk",
+      "root_path": "/home/vidtoolz/resolve-qualification-library-v1",
+      "instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+      "provisioned_by": "Mikko (operator)",
+      "record_id": "44774d7dc4e16803e019905db4074fb6e9a8c5cc3fe5162a2bddf52f5a5623a5"
+    }
+  }
+}

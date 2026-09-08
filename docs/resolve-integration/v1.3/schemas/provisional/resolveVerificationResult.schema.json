@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveVerificationResult.v1",
+  "title": "Verification result (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "added",
+    "authority_version",
+    "changed",
+    "expected_delta_digest",
+    "h0_guard_digest",
+    "h0_payload_sha256",
+    "is_human_approval",
+    "missing_expected",
+    "plan_digest",
+    "readback_snapshot_sha256",
+    "removed",
+    "s1_guard_digest",
+    "s1_payload_sha256",
+    "schema",
+    "target",
+    "transaction_id",
+    "unrelated",
+    "verdict"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveVerificationResult.v1"
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "h0_payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "s1_payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "added": {
+      "type": "array"
+    },
+    "removed": {
+      "type": "array"
+    },
+    "changed": {
+      "type": "array"
+    },
+    "creation_identity_map": {
+      "type": "object"
+    },
+    "missing_expected": {
+      "type": "array"
+    },
+    "unrelated": {
+      "type": "array"
+    },
+    "coverage": {
+      "type": "object"
+    },
+    "verdict": {
+      "enum": [
+        "VERIFIED",
+        "EXPECTED_DELTA_MISSING",
+        "UNEXPECTED_DELTA",
+        "UNOBSERVABLE_STATE"
+      ]
+    },
+    "is_human_approval": {
+      "const": false
+    },
+    "transaction_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "library_instance_uuid",
+        "project_unique_id",
+        "timeline_unique_id",
+        "target_epoch",
+        "host_name",
+        "library_name",
+        "library_kind",
+        "project_name",
+        "timeline_name",
+        "resolve_version"
+      ],
+      "properties": {
+        "library_instance_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "project_unique_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeline_unique_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_epoch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "host_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "library_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "library_kind": {
+          "enum": [
+            "Disk"
+          ]
+        },
+        "observed_database_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "project_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeline_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolve_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "h0_guard_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "s1_guard_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "expected_delta_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authority_version": {
+      "const": "1.3.0"
+    },
+    "readback_snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$comment": "Binding: plan_digest, transaction_id, target, h0_guard_digest must equal the plan's; expected_delta_digest must equal plan.operation_set_digest (the delta authority); s1_guard_digest/readback_snapshot_sha256 identify the actual readback. VERIFIED forbids unrelated/missing_expected. Never human approval."
+}

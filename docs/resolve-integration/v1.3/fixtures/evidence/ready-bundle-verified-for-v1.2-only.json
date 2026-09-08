@@ -1,0 +1,52 @@
+{
+  "schema": "vidtoolz.resolveEvidenceSet.v1.3",
+  "records": {
+    "44774d7dc4e16803e019905db4074fb6e9a8c5cc3fe5162a2bddf52f5a5623a5": {
+      "record_type": "PROVISIONING_RECORD",
+      "target": {
+        "host_name": "vidnux",
+        "library_name": "VIDTOOLZ Resolve Qualification v1"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "library_kind": "Disk",
+      "root_path": "/home/vidtoolz/resolve-qualification-library-v1",
+      "instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+      "provisioned_by": "Mikko (operator)",
+      "record_id": "44774d7dc4e16803e019905db4074fb6e9a8c5cc3fe5162a2bddf52f5a5623a5"
+    },
+    "dfc57a42c5ecf319e049f2d7ab151cf5441dbb27694cc04e971faa6367b56aae": {
+      "record_type": "LAUNCH_RECIPE",
+      "target": {
+        "host_name": "vidnux"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "recipe_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "resolve_version": "21.1.0.0014",
+      "resolve_binary_sha256": "124caa502547f85a2e17ad6a59269918ae561c0f82d701b9fc4e7f42127ffee7",
+      "external_scripting_preference": "Local",
+      "record_id": "dfc57a42c5ecf319e049f2d7ab151cf5441dbb27694cc04e971faa6367b56aae"
+    },
+    "833624f6eab94343baccd9449a7d342a23c0ebcb596fed390fd687654d890d15": {
+      "record_type": "BUNDLE_VERIFICATION",
+      "target": {
+        "host_name": "vidnux"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "authority_version": "1.2.0",
+      "manifest_sha256": "69e1caecf9ba9bd16875b7625c58902e3e5f613372165c8d11d80ff48939b5e6",
+      "verifier": "Codex (independent)",
+      "prepared_by": "Claude Code (Fable 5.1)",
+      "record_id": "833624f6eab94343baccd9449a7d342a23c0ebcb596fed390fd687654d890d15"
+    },
+    "b1cefc5e45b0d5e7a7354599c0fcb040f6fc12fdad420c0d8070d033c64f5670": {
+      "record_type": "READ_ONLY_JOURNAL",
+      "target": {
+        "host_name": "vidnux",
+        "library_name": "VIDTOOLZ Resolve Qualification v1"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "journal_path_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "record_id": "b1cefc5e45b0d5e7a7354599c0fcb040f6fc12fdad420c0d8070d033c64f5670"
+    }
+  }
+}

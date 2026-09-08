@@ -1,0 +1,28 @@
+{
+  "fixture": "conflict-with-authority-effect",
+  "layer_expected_failure": "schema",
+  "schema": "provisional/resolveConflict",
+  "check": null,
+  "expect_error_contains": "NONE_UNTIL_HUMAN_ADJUDICATION",
+  "document": {
+    "schema": "vidtoolz.resolveConflict.v1",
+    "transaction_id": "tx-fixture",
+    "plan_digest": "80097efebbf4d3d916f19780b24de40251cc9c5b86b52c1b773a71960dccb457",
+    "code": "UNEXPECTED_DELTA",
+    "drift_class": "POSITION_DRIFT",
+    "object": {
+      "item": "it-3"
+    },
+    "expected": {
+      "start": 108694
+    },
+    "observed": {
+      "start": 108700
+    },
+    "policy": "REQUEST_RECONCILIATION",
+    "next_action_non_mutating": "present to Mikko",
+    "authority_effect": "APPLIED",
+    "resolved": true,
+    "authority_version": "1.3.0"
+  }
+}

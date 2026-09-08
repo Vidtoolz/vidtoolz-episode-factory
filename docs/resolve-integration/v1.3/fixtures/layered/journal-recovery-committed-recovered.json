@@ -1,0 +1,224 @@
+{
+  "fixture": "journal-recovery-committed-recovered",
+  "layer_expected_failure": "none",
+  "schema": "provisional/resolveTransactionJournal",
+  "check": "semantic_journal",
+  "expect_error_contains": null,
+  "document": [
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 0,
+      "previous_record_sha256": null,
+      "state": "PREPARED",
+      "plan_digest": "80097efebbf4d3d916f19780b24de40251cc9c5b86b52c1b773a71960dccb457",
+      "operation_id": null,
+      "intent": {
+        "phase": "PREPARED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "bbef1a6f4ad2742b0af54823e8e67a71f6d7a858e004e2d90d2c9340b8b6fca1",
+      "authority_version": "1.3.0",
+      "recovery_of_transaction_id": null
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 1,
+      "previous_record_sha256": "ce75f94a95dff5e492e78cdca30c6999a647e2520ac93401aed32783749d193d",
+      "state": "LEASED",
+      "plan_digest": "80097efebbf4d3d916f19780b24de40251cc9c5b86b52c1b773a71960dccb457",
+      "operation_id": null,
+      "intent": {
+        "phase": "LEASED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "bbef1a6f4ad2742b0af54823e8e67a71f6d7a858e004e2d90d2c9340b8b6fca1",
+      "authority_version": "1.3.0",
+      "recovery_of_transaction_id": null
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 2,
+      "previous_record_sha256": "f31c10642c71bcc05bee9d9e4e8b1ebfa918512b0cd82170b72e0cadc966ed3c",
+      "state": "PREFLIGHT_OK",
+      "plan_digest": "80097efebbf4d3d916f19780b24de40251cc9c5b86b52c1b773a71960dccb457",
+      "operation_id": null,
+      "intent": {
+        "phase": "PREFLIGHT_OK"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "bbef1a6f4ad2742b0af54823e8e67a71f6d7a858e004e2d90d2c9340b8b6fca1",
+      "authority_version": "1.3.0",
+      "recovery_of_transaction_id": null
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 3,
+      "previous_record_sha256": "f70462584f8efad7730e55879c376619ece4475597ec06e730433a5c17ed7f0d",
+      "state": "APPLIED",
+      "plan_digest": "80097efebbf4d3d916f19780b24de40251cc9c5b86b52c1b773a71960dccb457",
+      "operation_id": "op-1",
+      "intent": {
+        "phase": "APPLIED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "bbef1a6f4ad2742b0af54823e8e67a71f6d7a858e004e2d90d2c9340b8b6fca1",
+      "authority_version": "1.3.0",
+      "recovery_of_transaction_id": null
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 4,
+      "previous_record_sha256": "5d5903ebf47bfefc4f2f0eb7edaf0b92e69eb14ce14e4f29bdadbde6d8b68b51",
+      "state": "RECOVERY_RECONCILING",
+      "plan_digest": "80097efebbf4d3d916f19780b24de40251cc9c5b86b52c1b773a71960dccb457",
+      "operation_id": null,
+      "intent": {
+        "phase": "RECOVERY_RECONCILING"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "bbef1a6f4ad2742b0af54823e8e67a71f6d7a858e004e2d90d2c9340b8b6fca1",
+      "authority_version": "1.3.0",
+      "recovery_of_transaction_id": "tx-fixture"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 5,
+      "previous_record_sha256": "07d2ded46d0d705dba955e7f73ffa89d3e8c271714b57620b12c65b8d79b9db8",
+      "state": "COMMITTED_RECOVERED",
+      "plan_digest": "80097efebbf4d3d916f19780b24de40251cc9c5b86b52c1b773a71960dccb457",
+      "operation_id": null,
+      "intent": {
+        "phase": "COMMITTED_RECOVERED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "bbef1a6f4ad2742b0af54823e8e67a71f6d7a858e004e2d90d2c9340b8b6fca1",
+      "authority_version": "1.3.0",
+      "recovery_of_transaction_id": null
+    }
+  ],
+  "plan": {
+    "schema": "vidtoolz.resolveMutationPlan.v1",
+    "transaction_id": "tx-fixture",
+    "authority_version": "1.3.0",
+    "milestone": "M3",
+    "dry_run": false,
+    "target": {
+      "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+      "project_unique_id": "proj-fixture-0001",
+      "timeline_unique_id": "tl-fixture-0001",
+      "target_epoch": "epoch-fixture-1",
+      "host_name": "vidnux",
+      "library_name": "VIDTOOLZ Resolve Qualification v1",
+      "library_kind": "Disk",
+      "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "timeline_name": "VIDTOOLZ__fixture__r1",
+      "resolve_version": "21.1.0.0014"
+    },
+    "target_epoch": "epoch-fixture-1",
+    "target_contract_digest": "8df3c5f10166bd4dd5a6d48e910881a950460d2fd2ee6908e6fd55b5d51063af",
+    "binding_set_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "handoff_digest_sha256": "3fd9bdd875c9eb489abf77797613abbc2616eef36073503742ebc9fd80f5bf69",
+    "h0_payload_sha256": "7358980ce30fb9ce681c8005f60cb99f56d5e200a060bd118ab6c0bf0c156ec6",
+    "h0_guard_digest": "bbef1a6f4ad2742b0af54823e8e67a71f6d7a858e004e2d90d2c9340b8b6fca1",
+    "capability_matrix_version": "1.3.0",
+    "collector_version": "0.0.0-fixture",
+    "timebase_digest": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+    "permission_class": "RESOLVE_ASSEMBLE",
+    "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+    "lease": {},
+    "operations": [
+      {
+        "operation_id": "op-1",
+        "op": "APPEND",
+        "selector": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1",
+          "track_type": "video",
+          "track_index": 1
+        },
+        "expected_old": null,
+        "expected_new": {
+          "start": 110194,
+          "end": 110541
+        },
+        "allowed_created": [
+          "one item"
+        ],
+        "allowed_deleted": [],
+        "declared_side_effects": []
+      }
+    ],
+    "operation_set_digest": "5f5bc4eb19ea9fe08ec470c04288a5155d5cfcc44f082d8049d0db2df46fa17c",
+    "plan_digest": "80097efebbf4d3d916f19780b24de40251cc9c5b86b52c1b773a71960dccb457",
+    "refs": {
+      "m0_exit": "bbe3b00633cf6fbd0dde4452aafa6ca2fbad9020bd8141f40045e60fb25a3be6",
+      "m1_exit": "35c6314e5ec66d75799916e1d4ac2ac561a55ab923dfab646bf96904e7e1472a",
+      "m2_exit": "ec9aff5cc951bb0f5bfb4458977e3221fe2cb089bdcf85dd9c71679a004119ff",
+      "authorization": "7363bbda89b033d3f96f208963265949e9ea48637b340a9085a377b427d5dec6",
+      "exclusive_session": "587f615da344bbbf7fc48088559b25cd66969c0564d7953ebef7ba785ffe0f6a",
+      "read_only_journal": "b1cefc5e45b0d5e7a7354599c0fcb040f6fc12fdad420c0d8070d033c64f5670",
+      "media_class": "b47665cdec9b15aa38ea0e1d2c0786b1675c1f5362618d4bbb6205989b4a8a9d",
+      "destination_timeline": "86b9810e3f5c884f82e71fc74eb3a9a8cbbb3de3ef5f58d320b598ed95aba594",
+      "journal_prepared": "4f83a75f1991d4f8acec0e9720ab15024c3d4e5bb7d197a047d3e496dcf26914",
+      "guard": "a1dce6d1ce162f1df8923d2b26b361983afb107a7740936460f9ad8c551c303f",
+      "plan_validation": "b0f1b67d3021b11cedf2d726e353cd6348a686b74e8104424b1f6c3457b71697"
+    }
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "fixture": "snapshot-m0-complete-missing-mandatory-domain",
+  "layer_expected_failure": "semantic",
+  "schema": "resolveSnapshot",
+  "check": "semantic_snapshot",
+  "expect_error_contains": "mandatory domains",
+  "document": {
+    "schema": "vidtoolz.resolveSnapshot.v1.3",
+    "collector_version": "0.0.0-fixture",
+    "canonicalization_version": "1.3",
+    "target_epoch": "epoch-fixture-1",
+    "resolve_build": "21.1.0.0014",
+    "library": {
+      "db_type": "Disk",
+      "db_name": "VIDTOOLZ Resolve Qualification v1",
+      "instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+    },
+    "project": {
+      "unique_id": null,
+      "unique_id_status": "UNAVAILABLE",
+      "name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "last_modified_time_observed": null,
+      "unique_id_reason": "Project.GetUniqueId not qualified on 21.1.0.0014; M0 probe pending"
+    },
+    "collection": {
+      "started_at": "2026-09-08T00:00:00Z",
+      "ended_at": "2026-09-08T00:00:01Z",
+      "generation": 1,
+      "stable_pair": true
+    },
+    "coverage": {
+      "profile": "MINIMAL_M0",
+      "complete": true,
+      "observed_domains": [
+        "connection",
+        "library",
+        "project"
+      ],
+      "unobservable_domains": [
+        "grades",
+        "fusion_graphs",
+        "caches",
+        "nested_timelines",
+        "keyframe_curves"
+      ],
+      "deferred_domains": [
+        "item_identity",
+        "item_source_bounds",
+        "markers",
+        "settings",
+        "track_locks",
+        "adapter_bin_media",
+        "item_properties",
+        "fades",
+        "speed",
+        "takes",
+        "linked_items",
+        "unowned_media_hashes"
+      ],
+      "incomplete_reasons": []
+    },
+    "policy": {
+      "target_contract_sha256": "8df3c5f10166bd4dd5a6d48e910881a950460d2fd2ee6908e6fd55b5d51063af",
+      "timebase_sha256": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+      "track_policy_sha256": "0c1996f8cb183e27f393eb53113871098e492e43bd49ec8c07e7d49b25f0caa7",
+      "capabilities_version": "1.3.0",
+      "collector_version": "0.0.0-fixture",
+      "canonicalization_version": "1.3"
+    },
+    "payload": {
+      "timeline": {
+        "unique_id": null,
+        "unique_id_status": "UNAVAILABLE",
+        "name": "VIDTOOLZ__fixture__r1",
+        "start_frame": 108000,
+        "start_timecode": "01:00:00:00",
+        "fps": {
+          "numerator": 30,
+          "denominator": 1
+        },
+        "width": 1080,
+        "height": 1920,
+        "end_frame": 114756,
+        "is_current": true,
+        "duration_convention": "UNQUALIFIED",
+        "settings": {
+          "useCustomSettings": "1",
+          "timelineFrameRate": "30"
+        },
+        "unique_id_reason": "Timeline.GetUniqueId not qualified on 21.1.0.0014; M0 probe pending"
+      },
+      "tracks": [
+        {
+          "type": "video",
+          "index": 1,
+          "name": "V1",
+          "enabled": null,
+          "locked": null,
+          "items": [
+            {
+              "unique_id": null,
+              "observation_ordinal": 0,
+              "name": "c0",
+              "start": 108000,
+              "end": 108300,
+              "duration": 300,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "NONE",
+              "field_status": {
+                "unique_id": "UNAVAILABLE",
+                "start": "OBSERVED",
+                "end": "OBSERVED",
+                "duration": "OBSERVED",
+                "enabled": "OBSERVED",
+                "media_pool_item_unique_id": "UNAVAILABLE",
+                "media_id": "NOT_REQUESTED",
+                "source_start": "UNAVAILABLE",
+                "source_end": "UNAVAILABLE",
+                "unique_id_reason": "TimelineItem.GetUniqueId not qualified on 21.1.0.0014; M0 probe pending",
+                "media_pool_item_unique_id_reason": "MediaPoolItem.GetUniqueId not qualified",
+                "source_start_reason": "GetSourceStartFrame not qualified",
+                "source_end_reason": "GetSourceEndFrame not qualified"
+              },
+              "provenance": {
+                "kind": "MEDIA_BACKED"
+              },
+              "media_pool_item_unique_id": null,
+              "media_id": null,
+              "source_locator": null,
+              "source_status": "UNHASHED_UNOWNED",
+              "source_sha256": null,
+              "source_start": null,
+              "source_end": null
+            }
+          ]
+        }
+      ],
+      "markers": [],
+      "media_dependencies": [],
+      "observation_failures": []
+    },
+    "hash_domains": {
+      "payload": "vidtoolz.resolveSnapshotPayload.v1.3",
+      "guard": "vidtoolz.resolveGuard.v1"
+    },
+    "payload_sha256": "d92536de948ef90111e1c8fb9608b233a107f2c2c33d3fd4dde54446537c1169",
+    "guard_digest": "14f722d0fb074be1581ee0acc52f14a604a924089a794320e9488ed7d154584b"
+  }
+}

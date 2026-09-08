@@ -1,0 +1,179 @@
+{
+  "schema": "vidtoolz.resolveEvidenceSet.v1.3",
+  "records": {
+    "44774d7dc4e16803e019905db4074fb6e9a8c5cc3fe5162a2bddf52f5a5623a5": {
+      "record_type": "PROVISIONING_RECORD",
+      "target": {
+        "host_name": "vidnux",
+        "library_name": "VIDTOOLZ Resolve Qualification v1"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "library_kind": "Disk",
+      "root_path": "/home/vidtoolz/resolve-qualification-library-v1",
+      "instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+      "provisioned_by": "Mikko (operator)",
+      "record_id": "44774d7dc4e16803e019905db4074fb6e9a8c5cc3fe5162a2bddf52f5a5623a5"
+    },
+    "dfc57a42c5ecf319e049f2d7ab151cf5441dbb27694cc04e971faa6367b56aae": {
+      "record_type": "LAUNCH_RECIPE",
+      "target": {
+        "host_name": "vidnux"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "recipe_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "resolve_version": "21.1.0.0014",
+      "resolve_binary_sha256": "124caa502547f85a2e17ad6a59269918ae561c0f82d701b9fc4e7f42127ffee7",
+      "external_scripting_preference": "Local",
+      "record_id": "dfc57a42c5ecf319e049f2d7ab151cf5441dbb27694cc04e971faa6367b56aae"
+    },
+    "03b0d0dfb780dca2be5e19a90476b63f4ea1a7439fa89d82265be243da45f9d0": {
+      "record_type": "BUNDLE_VERIFICATION",
+      "target": {
+        "host_name": "vidnux"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "authority_version": "1.3.0",
+      "manifest_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "Codex (independent)",
+      "prepared_by": "Claude Code (Fable 5.1)",
+      "record_id": "03b0d0dfb780dca2be5e19a90476b63f4ea1a7439fa89d82265be243da45f9d0"
+    },
+    "b1cefc5e45b0d5e7a7354599c0fcb040f6fc12fdad420c0d8070d033c64f5670": {
+      "record_type": "READ_ONLY_JOURNAL",
+      "target": {
+        "host_name": "vidnux",
+        "library_name": "VIDTOOLZ Resolve Qualification v1"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "journal_path_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "record_id": "b1cefc5e45b0d5e7a7354599c0fcb040f6fc12fdad420c0d8070d033c64f5670"
+    },
+    "0abce834353c569ce01792345a48723dc8e06bcd20b2fb3eea79ae27f780f6c3": {
+      "record_type": "CONNECTION_OBSERVATION",
+      "target": {
+        "host_name": "vidnux",
+        "library_name": "VIDTOOLZ Resolve Qualification v1"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "db_type": "Disk",
+      "db_name": "VIDTOOLZ Resolve Qualification v1",
+      "product": "DaVinci Resolve Studio",
+      "resolve_version": "21.1.0.0014",
+      "root_path": "/home/vidtoolz/resolve-qualification-library-v1",
+      "record_id": "0abce834353c569ce01792345a48723dc8e06bcd20b2fb3eea79ae27f780f6c3"
+    },
+    "b2a5138f23f4e1b3dfff08d49546bf8488a76d54dbeca8a0740c6b8c23dc1451": {
+      "record_type": "PROJECT_BINDING_OBSERVATION",
+      "target": {
+        "host_name": "vidnux",
+        "library_name": "VIDTOOLZ Resolve Qualification v1"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "project_unique_id": "proj-fixture-0001",
+      "project_unique_id_status": "OBSERVED",
+      "record_id": "b2a5138f23f4e1b3dfff08d49546bf8488a76d54dbeca8a0740c6b8c23dc1451"
+    },
+    "25f5e693b3f6a9dcbce1941624f16aa0e0c801d41b1bc517f0cf3531c22f6007": {
+      "record_type": "TIMELINE_BINDING_OBSERVATION",
+      "target": {
+        "host_name": "vidnux",
+        "library_name": "VIDTOOLZ Resolve Qualification v1"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "timeline_name": "VIDTOOLZ__fixture__r1",
+      "timeline_unique_id": "tl-fixture-0001",
+      "timeline_unique_id_status": "OBSERVED",
+      "record_id": "25f5e693b3f6a9dcbce1941624f16aa0e0c801d41b1bc517f0cf3531c22f6007"
+    },
+    "bbe3b00633cf6fbd0dde4452aafa6ca2fbad9020bd8141f40045e60fb25a3be6": {
+      "record_type": "MILESTONE_EXIT",
+      "target": {
+        "host_name": "vidnux"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "milestone": "M0",
+      "authority_version": "1.3.0",
+      "evidence_dir_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "record_id": "bbe3b00633cf6fbd0dde4452aafa6ca2fbad9020bd8141f40045e60fb25a3be6"
+    },
+    "35c6314e5ec66d75799916e1d4ac2ac561a55ab923dfab646bf96904e7e1472a": {
+      "record_type": "MILESTONE_EXIT",
+      "target": {
+        "host_name": "vidnux"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "milestone": "M1",
+      "authority_version": "1.3.0",
+      "evidence_dir_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "record_id": "35c6314e5ec66d75799916e1d4ac2ac561a55ab923dfab646bf96904e7e1472a"
+    },
+    "ec9aff5cc951bb0f5bfb4458977e3221fe2cb089bdcf85dd9c71679a004119ff": {
+      "record_type": "MILESTONE_EXIT",
+      "target": {
+        "host_name": "vidnux"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "milestone": "M2",
+      "authority_version": "1.3.0",
+      "evidence_dir_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "record_id": "ec9aff5cc951bb0f5bfb4458977e3221fe2cb089bdcf85dd9c71679a004119ff"
+    },
+    "7363bbda89b033d3f96f208963265949e9ea48637b340a9085a377b427d5dec6": {
+      "record_type": "M3_AUTHORIZATION",
+      "target": {
+        "host_name": "vidnux"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "approver": "Mikko",
+      "authority_version": "1.3.0",
+      "record_id": "7363bbda89b033d3f96f208963265949e9ea48637b340a9085a377b427d5dec6"
+    },
+    "587f615da344bbbf7fc48088559b25cd66969c0564d7953ebef7ba785ffe0f6a": {
+      "record_type": "EXCLUSIVE_SESSION_ATTESTATION",
+      "target": {
+        "host_name": "vidnux"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "attested_by": "adapter preflight (single resolve pid)",
+      "pid_observed": 4242,
+      "record_id": "587f615da344bbbf7fc48088559b25cd66969c0564d7953ebef7ba785ffe0f6a"
+    },
+    "a4a5bec7a44d825e4469a8e3649cd261b304edffbf486eb0862f48e6915aba2f": {
+      "record_type": "REFREEZE_RECORD",
+      "target": {
+        "host_name": "vidnux"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "kind": "M0_READ_REQUALIFICATION",
+      "reviewed": false,
+      "manifest_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "authority_version": "1.4.0-HYPOTHETICAL",
+      "record_id": "a4a5bec7a44d825e4469a8e3649cd261b304edffbf486eb0862f48e6915aba2f"
+    },
+    "b47665cdec9b15aa38ea0e1d2c0786b1675c1f5362618d4bbb6205989b4a8a9d": {
+      "record_type": "MEDIA_CLASS_ATTESTATION",
+      "target": {
+        "host_name": "vidnux"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "media_class": "SYNTHETIC",
+      "media_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "record_id": "b47665cdec9b15aa38ea0e1d2c0786b1675c1f5362618d4bbb6205989b4a8a9d"
+    },
+    "86b9810e3f5c884f82e71fc74eb3a9a8cbbb3de3ef5f58d320b598ed95aba594": {
+      "record_type": "DESTINATION_TIMELINE",
+      "target": {
+        "host_name": "vidnux",
+        "library_name": "VIDTOOLZ Resolve Qualification v1"
+      },
+      "recorded_at": "2026-09-08T00:00:00Z",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "timeline_name": "VIDTOOLZ__fixture__r1",
+      "timeline_unique_id": "tl-fixture-0001",
+      "record_id": "86b9810e3f5c884f82e71fc74eb3a9a8cbbb3de3ef5f58d320b598ed95aba594"
+    }
+  }
+}

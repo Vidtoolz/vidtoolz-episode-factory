@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveTransactionJournal.v1",
+  "title": "Transaction journal record (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "authority_version",
+    "guard_digest",
+    "intent",
+    "plan_digest",
+    "previous_record_sha256",
+    "recorded_at",
+    "recovery_of_transaction_id",
+    "schema",
+    "sequence",
+    "state",
+    "target_ref",
+    "transaction_id"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveTransactionJournal.v1"
+    },
+    "transaction_id": {
+      "type": "string"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "previous_record_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "state": {
+      "enum": [
+        "ABORTED",
+        "APPLIED",
+        "CHECKPOINTED",
+        "COMMITTED",
+        "COMMITTED_RECOVERED",
+        "CONFLICT",
+        "LEASED",
+        "NOT_APPLIED",
+        "ORPHANED_AMBIGUOUS",
+        "ORPHANED_PARTIAL",
+        "PREFLIGHT_OK",
+        "PREPARED",
+        "PUBLISHED",
+        "READBACK_S1",
+        "RECOVERY_RECONCILING",
+        "SAVED",
+        "VERIFIED"
+      ]
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "operation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "intent": {
+      "type": "object"
+    },
+    "result": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "readback_payload_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "checkpoint": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "recorded_at": {
+      "type": "string"
+    },
+    "target_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_unique_id",
+        "timeline_unique_id",
+        "library_instance_uuid"
+      ],
+      "properties": {
+        "project_unique_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeline_unique_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "library_instance_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      }
+    },
+    "guard_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authority_version": {
+      "const": "1.3.0"
+    },
+    "recovery_of_transaction_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "$comment": "Append-only; contiguous sequence from 0; single transaction_id AND single plan_digest; constant target_ref; constant guard_digest except across a RECOVERY_RECONCILING record; hash chain over vidtoolz.resolveJournalRecord.v1; transitions per authority_lib.JOURNAL_TRANSITIONS; APPLIED requires a unique operation_id; RECOVERY_RECONCILING requires recovery_of_transaction_id == transaction_id; nothing after a terminal state."
+}

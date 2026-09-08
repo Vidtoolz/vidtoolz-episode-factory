@@ -1,0 +1,24 @@
+{
+  "fixture": "commit-missing-target",
+  "layer_expected_failure": "schema",
+  "schema": "provisional/resolveCommitManifest",
+  "check": null,
+  "expect_error_contains": "target",
+  "document": {
+    "schema": "vidtoolz.resolveCommitManifest.v1",
+    "transaction_id": "tx-fixture",
+    "plan_digest": "80097efebbf4d3d916f19780b24de40251cc9c5b86b52c1b773a71960dccb457",
+    "authority_version": "1.3.0",
+    "operation_set_digest": "5f5bc4eb19ea9fe08ec470c04288a5155d5cfcc44f082d8049d0db2df46fa17c",
+    "terminal_state": "COMMITTED",
+    "binding_observation_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "binding_set_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "receipt_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "journal_head_sha256": "72e069810b49a9b746a345d9b23709c3700189ba9d34c794e2359a603b89b3d5",
+    "verification_result_sha256": "52567a3e2142d50ca98d42361a17b28264ab7d07f37838a9afad3e279eb5fb3a",
+    "guard_digest": "bbef1a6f4ad2742b0af54823e8e67a71f6d7a858e004e2d90d2c9340b8b6fca1",
+    "unresolved_conflicts": [],
+    "ef_source_pins": {},
+    "published_at": "2026-09-08T00:00:00Z"
+  }
+}

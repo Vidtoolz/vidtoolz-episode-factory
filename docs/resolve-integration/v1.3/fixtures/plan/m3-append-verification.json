@@ -1,0 +1,38 @@
+{
+  "schema": "vidtoolz.resolveVerificationResult.v1",
+  "plan_digest": "80097efebbf4d3d916f19780b24de40251cc9c5b86b52c1b773a71960dccb457",
+  "transaction_id": "tx-fixture",
+  "target": {
+    "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+    "project_unique_id": "proj-fixture-0001",
+    "timeline_unique_id": "tl-fixture-0001",
+    "target_epoch": "epoch-fixture-1",
+    "host_name": "vidnux",
+    "library_name": "VIDTOOLZ Resolve Qualification v1",
+    "library_kind": "Disk",
+    "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+    "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+    "timeline_name": "VIDTOOLZ__fixture__r1",
+    "resolve_version": "21.1.0.0014"
+  },
+  "h0_guard_digest": "bbef1a6f4ad2742b0af54823e8e67a71f6d7a858e004e2d90d2c9340b8b6fca1",
+  "s1_guard_digest": "0ff2a113b6252fd345ee159eab7a3400b76486045e8641d03cc8ade1d382631e",
+  "h0_payload_sha256": "7358980ce30fb9ce681c8005f60cb99f56d5e200a060bd118ab6c0bf0c156ec6",
+  "s1_payload_sha256": "7358980ce30fb9ce681c8005f60cb99f56d5e200a060bd118ab6c0bf0c156ec6",
+  "readback_snapshot_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+  "expected_delta_digest": "5f5bc4eb19ea9fe08ec470c04288a5155d5cfcc44f082d8049d0db2df46fa17c",
+  "authority_version": "1.3.0",
+  "added": [
+    "it-new"
+  ],
+  "removed": [],
+  "changed": [],
+  "creation_identity_map": {
+    "op-1": "it-new"
+  },
+  "missing_expected": [],
+  "unrelated": [],
+  "coverage": {},
+  "verdict": "VERIFIED",
+  "is_human_approval": false
+}

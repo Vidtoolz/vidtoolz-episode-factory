@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveEligibilityRequest.v1.3",
+  "title": "Eligibility request (no state or qualification assertions)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "milestone",
+    "operation",
+    "scope",
+    "refs"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveEligibilityRequest.v1.3"
+    },
+    "milestone": {
+      "type": "string"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "expected_project_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "expected_timeline_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "transaction_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "plan_digest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "plan_h0_guard_digest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "refs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authorization": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "journal_prepared": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "read_only_journal": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "guard": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "plan_validation": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "m0_exit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "m1_exit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "m2_exit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "exclusive_session": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "media_class": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "destination_timeline": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  },
+  "$comment": "additionalProperties false: attachment_state, capability_state, evidence, journal_available, guard_available and authorization_token are not request fields; the evaluator derives them from TARGET-CONTRACT, CAPABILITIES, READ-PRIMITIVES, PERMISSIONS and the evidence set."
+}

@@ -1,0 +1,7 @@
+# Resolve execution subsystem: authority bundle v1.3
+
+Versioned, narrowly scoped correction of v1.2 (parent branch `docs/resolve-authority-freeze-v1.2` @ `c6d1284c6f395f5b21a6d14f8c2873bccfc065bb`, parent manifest `69e1caecf9ba9bd16875b7625c58902e3e5f613372165c8d11d80ff48939b5e6`; grandparent v1.1 `47ddb22` / `83d8a307…48c5`; great-grandparent v1.0 `e2874f6` / `d9cd5478…8821`). `../v1/`, `../v1.1/` and `../v1.2/` are immutable history. Read `FREEZE-MANIFEST.json` first (closed status vocabulary per file; sha256 and byte count per file), then `AUTHORITY-PRECEDENCE.md`, `CHANGELOG-v1.3.md` and `FINDING-RESOLUTION-MATRIX-v1.3.md`. `PROVISIONAL.md` lists what is not frozen. `SCHEMA-VALID != AUTHORIZED TO MUTATE` (`SEMANTIC-VALIDATION.md`); `PERMISSION DECLARATION != ELIGIBILITY` (`ELIGIBILITY.md`); `PROBE_ALLOWED != QUALIFIED_READ` (`M0-PROBE-CONTRACT.md`); attachment state is derived from evidence, never declared (`TARGET-ATTACHMENT-GATE.md`).
+
+Validate with `python3 -B tools/validate_v1_3.py` (report: `VALIDATION-REPORT.md`; layers raw parse → schema → semantic → eligibility → linked-set). Regenerate machine artifacts with `python3 -B tools/build_v1_3.py`, then the manifest with `python3 -B tools/build_manifest.py` after a passing validation.
+
+Nothing in this bundle is human approval of any run, gate or publication; no Resolve was launched or mutated; M0 has not begun; no adapter exists; mutation-capable schemas remain PROVISIONAL_UNTIL_M3.
