@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveVerificationResult.v1",
+  "title": "Verification result (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "plan_digest",
+    "h0_payload_sha256",
+    "s1_payload_sha256",
+    "added",
+    "removed",
+    "changed",
+    "missing_expected",
+    "unrelated",
+    "verdict",
+    "is_human_approval"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveVerificationResult.v1"
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "h0_payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "s1_payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "added": {
+      "type": "array"
+    },
+    "removed": {
+      "type": "array"
+    },
+    "changed": {
+      "type": "array"
+    },
+    "creation_identity_map": {
+      "type": "object"
+    },
+    "missing_expected": {
+      "type": "array"
+    },
+    "unrelated": {
+      "type": "array"
+    },
+    "coverage": {
+      "type": "object"
+    },
+    "verdict": {
+      "enum": [
+        "VERIFIED",
+        "EXPECTED_DELTA_MISSING",
+        "UNEXPECTED_DELTA",
+        "UNOBSERVABLE_STATE"
+      ]
+    },
+    "is_human_approval": {
+      "const": false
+    }
+  }
+}

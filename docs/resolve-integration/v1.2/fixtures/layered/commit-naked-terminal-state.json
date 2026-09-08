@@ -1,0 +1,21 @@
+{
+  "fixture": "commit-naked-terminal-state",
+  "layer_expected_failure": "schema",
+  "schema": "provisional/resolveCommitManifest",
+  "check": null,
+  "expect_error_contains": "verification_result_sha256",
+  "document": {
+    "schema": "vidtoolz.resolveCommitManifest.v1",
+    "transaction_id": "tx-fixture",
+    "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "terminal_state": "COMMITTED",
+    "binding_observation_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "binding_set_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "receipt_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "journal_head_sha256": "4dc75a680d7bebee212f2df1498cad5939154d45ebd77a94a8dc0652f91e043f",
+    "guard_digest": "abb56f6c7449cc5e238f7e2cf2540021fcb896e9567bd26a2c8b8921b5c0e19c",
+    "unresolved_conflicts": [],
+    "ef_source_pins": {},
+    "published_at": "2026-09-08T00:00:00Z"
+  }
+}

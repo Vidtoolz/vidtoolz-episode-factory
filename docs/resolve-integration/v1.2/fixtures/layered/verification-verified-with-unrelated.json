@@ -1,0 +1,28 @@
+{
+  "fixture": "verification-verified-with-unrelated",
+  "layer_expected_failure": "semantic",
+  "schema": "provisional/resolveVerificationResult",
+  "check": "semantic_verification_result",
+  "expect_error_contains": "unrelated",
+  "document": {
+    "schema": "vidtoolz.resolveVerificationResult.v1",
+    "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "h0_payload_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "s1_payload_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "added": [
+      "it-new"
+    ],
+    "removed": [],
+    "changed": [],
+    "creation_identity_map": {
+      "op-1": "it-new"
+    },
+    "missing_expected": [],
+    "unrelated": [
+      "it-3 moved"
+    ],
+    "coverage": {},
+    "verdict": "VERIFIED",
+    "is_human_approval": false
+  }
+}

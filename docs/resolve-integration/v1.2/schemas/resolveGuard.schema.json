@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveGuard.v1",
+  "title": "Composite pre-write / revalidation guard (model A)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "hash_domain",
+    "guard_version",
+    "library",
+    "project",
+    "timeline",
+    "target_epoch",
+    "coverage",
+    "policy",
+    "payload_sha256"
+  ],
+  "properties": {
+    "hash_domain": {
+      "const": "vidtoolz.resolveGuard.v1"
+    },
+    "guard_version": {
+      "const": 1
+    },
+    "library": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "db_type",
+        "db_name",
+        "instance_uuid"
+      ],
+      "properties": {
+        "db_type": {
+          "enum": [
+            "Disk"
+          ]
+        },
+        "db_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instance_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unique_id",
+        "name"
+      ],
+      "properties": {
+        "unique_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "timeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unique_id",
+        "name"
+      ],
+      "properties": {
+        "unique_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "target_epoch": {
+      "type": "string"
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "complete",
+        "observed_domains",
+        "unobservable_domains",
+        "deferred_domains"
+      ],
+      "properties": {
+        "profile": {
+          "enum": [
+            "MINIMAL_M0",
+            "FULL_TIMELINE_READ",
+            "WRITE_PRECHECK"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "observed_domains": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "adapter_bin_media",
+              "caches",
+              "connection",
+              "fades",
+              "fusion_graphs",
+              "grades",
+              "item_identity",
+              "item_properties",
+              "item_source_bounds",
+              "items",
+              "keyframe_curves",
+              "library",
+              "linked_items",
+              "markers",
+              "nested_timelines",
+              "project",
+              "render_queue",
+              "settings",
+              "speed",
+              "takes",
+              "timeline",
+              "track_locks",
+              "tracks",
+              "unowned_media_hashes"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "unobservable_domains": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "adapter_bin_media",
+              "caches",
+              "connection",
+              "fades",
+              "fusion_graphs",
+              "grades",
+              "item_identity",
+              "item_properties",
+              "item_source_bounds",
+              "items",
+              "keyframe_curves",
+              "library",
+              "linked_items",
+              "markers",
+              "nested_timelines",
+              "project",
+              "render_queue",
+              "settings",
+              "speed",
+              "takes",
+              "timeline",
+              "track_locks",
+              "tracks",
+              "unowned_media_hashes"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "deferred_domains": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "adapter_bin_media",
+              "caches",
+              "connection",
+              "fades",
+              "fusion_graphs",
+              "grades",
+              "item_identity",
+              "item_properties",
+              "item_source_bounds",
+              "items",
+              "keyframe_curves",
+              "library",
+              "linked_items",
+              "markers",
+              "nested_timelines",
+              "project",
+              "render_queue",
+              "settings",
+              "speed",
+              "takes",
+              "timeline",
+              "track_locks",
+              "tracks",
+              "unowned_media_hashes"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_contract_sha256",
+        "timebase_sha256",
+        "track_policy_sha256",
+        "capabilities_version",
+        "collector_version",
+        "canonicalization_version"
+      ],
+      "properties": {
+        "target_contract_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "timebase_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "track_policy_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "capabilities_version": {
+          "type": "string"
+        },
+        "collector_version": {
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.2"
+        }
+      }
+    },
+    "payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$comment": "guard_digest = sha256(utf8('vidtoolz.resolveGuard.v1') + 0x0A + canonical(guard)). Equality of guard_digest is the pre-write version token; equality of payload_sha256 alone is insufficient."
+}

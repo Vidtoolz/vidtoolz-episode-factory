@@ -1,0 +1,168 @@
+{
+  "schema": "vidtoolz.resolveCanonicalizationRejections.v1.2",
+  "cases": [
+    {
+      "name": "marker_exact_duplicate",
+      "kind": "markers",
+      "input": [
+        {
+          "object_address": "timeline",
+          "frame": 5,
+          "duration": 1,
+          "custom_data": "",
+          "name": "m",
+          "color": "Blue",
+          "note": ""
+        },
+        {
+          "object_address": "timeline",
+          "frame": 5,
+          "duration": 1,
+          "custom_data": "",
+          "name": "m",
+          "color": "Blue",
+          "note": ""
+        }
+      ],
+      "expect": "MARKER_COLLISION"
+    },
+    {
+      "name": "marker_same_object_frame_different_note",
+      "kind": "markers",
+      "input": [
+        {
+          "object_address": "timeline",
+          "frame": 5,
+          "duration": 1,
+          "custom_data": "",
+          "name": "m",
+          "color": "Blue",
+          "note": "a"
+        },
+        {
+          "object_address": "timeline",
+          "frame": 5,
+          "duration": 1,
+          "custom_data": "",
+          "name": "m",
+          "color": "Blue",
+          "note": "b"
+        }
+      ],
+      "expect": "MARKER_COLLISION"
+    },
+    {
+      "name": "f64_not_hex",
+      "kind": "canon",
+      "input": {
+        "$f64": "NOT_HEX"
+      },
+      "expect": "$f64"
+    },
+    {
+      "name": "f64_uppercase",
+      "kind": "canon",
+      "input": {
+        "$f64": "3FF0000000000000"
+      },
+      "expect": "$f64"
+    },
+    {
+      "name": "f64_short",
+      "kind": "canon",
+      "input": {
+        "$f64": "3ff"
+      },
+      "expect": "$f64"
+    },
+    {
+      "name": "f64_nan",
+      "kind": "canon",
+      "input": {
+        "$f64": "7ff8000000000000"
+      },
+      "expect": "NaN"
+    },
+    {
+      "name": "f64_infinity",
+      "kind": "canon",
+      "input": {
+        "$f64": "7ff0000000000000"
+      },
+      "expect": "NaN"
+    },
+    {
+      "name": "f64_negative_zero",
+      "kind": "canon",
+      "input": {
+        "$f64": "8000000000000000"
+      },
+      "expect": "negative zero"
+    },
+    {
+      "name": "rational_unreduced",
+      "kind": "canon",
+      "input": {
+        "$rational": "2/4"
+      },
+      "expect": "reduced"
+    },
+    {
+      "name": "rational_zero_denominator",
+      "kind": "canon",
+      "input": {
+        "$rational": "1/0"
+      },
+      "expect": "$rational"
+    },
+    {
+      "name": "rational_negative",
+      "kind": "canon",
+      "input": {
+        "$rational": "-1/2"
+      },
+      "expect": "$rational"
+    },
+    {
+      "name": "bare_float",
+      "kind": "canon",
+      "input": {
+        "x": 1.5
+      },
+      "expect": "bare float"
+    },
+    {
+      "name": "string_track_index",
+      "kind": "tracks",
+      "input": [
+        {
+          "type": "video",
+          "index": "2"
+        }
+      ],
+      "expect": "integer"
+    },
+    {
+      "name": "duplicate_track_address",
+      "kind": "tracks",
+      "input": [
+        {
+          "type": "video",
+          "index": 1
+        },
+        {
+          "type": "video",
+          "index": 1
+        }
+      ],
+      "expect": "duplicate"
+    },
+    {
+      "name": "unregistered_domain",
+      "kind": "domain",
+      "input": {},
+      "domain": "vidtoolz.unregistered",
+      "expect": "unregistered"
+    }
+  ]
+}

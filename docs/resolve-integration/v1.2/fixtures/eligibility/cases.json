@@ -1,0 +1,607 @@
+{
+  "schema": "vidtoolz.resolveEligibilityFixtures.v1.2",
+  "cases": [
+    {
+      "name": "m0-probe-allow",
+      "request": {
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHMENT_READY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": null,
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true
+      },
+      "expect_eligible": true
+    },
+    {
+      "name": "m0-snapshot-allow-post-probe",
+      "request": {
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHED_READ_ONLY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true,
+        "capability_state": {
+          "GetVersionString": "QUALIFIED_READ",
+          "GetProductName": "QUALIFIED_READ",
+          "GetProjectManager": "QUALIFIED_READ",
+          "GetCurrentDatabase": "QUALIFIED_READ",
+          "GetTrackCount": "QUALIFIED_READ",
+          "GetItemListInTrack": "QUALIFIED_READ",
+          "GetStart": "QUALIFIED_READ",
+          "GetEnd": "QUALIFIED_READ",
+          "GetStartFrame": "QUALIFIED_READ",
+          "GetEndFrame": "QUALIFIED_READ",
+          "GetMarkers": "QUALIFIED_READ",
+          "Timeline.GetSettings": "QUALIFIED_READ",
+          "Project.GetSettings": "QUALIFIED_READ",
+          "GetStartTimecode": "QUALIFIED_READ"
+        }
+      },
+      "expect_eligible": true
+    },
+    {
+      "name": "m0-snapshot-allow-pre-probe-degraded",
+      "request": {
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHED_READ_ONLY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true,
+        "capability_state": {}
+      },
+      "expect_eligible": true
+    },
+    {
+      "name": "m0-connect-deny-pre-probe-refuse-fallback",
+      "request": {
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHMENT_READY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true,
+        "capability_state": {}
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m0-connect-allow-post-probe",
+      "request": {
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHMENT_READY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true,
+        "capability_state": {
+          "GetVersionString": "QUALIFIED_READ",
+          "GetProductName": "QUALIFIED_READ",
+          "GetProjectManager": "QUALIFIED_READ",
+          "GetCurrentDatabase": "QUALIFIED_READ",
+          "GetTrackCount": "QUALIFIED_READ",
+          "GetItemListInTrack": "QUALIFIED_READ",
+          "GetStart": "QUALIFIED_READ",
+          "GetEnd": "QUALIFIED_READ",
+          "GetStartFrame": "QUALIFIED_READ",
+          "GetEndFrame": "QUALIFIED_READ",
+          "GetMarkers": "QUALIFIED_READ",
+          "Timeline.GetSettings": "QUALIFIED_READ",
+          "Project.GetSettings": "QUALIFIED_READ",
+          "GetStartTimecode": "QUALIFIED_READ"
+        }
+      },
+      "expect_eligible": true
+    },
+    {
+      "name": "m0-deny-unprovisioned",
+      "request": {
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "UNPROVISIONED",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m0-deny-eka-target",
+      "request": {
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHED_READ_ONLY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "PostgreSQL",
+          "observed_database_name": "EKA",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true,
+        "capability_state": {
+          "GetVersionString": "QUALIFIED_READ",
+          "GetProductName": "QUALIFIED_READ",
+          "GetProjectManager": "QUALIFIED_READ",
+          "GetCurrentDatabase": "QUALIFIED_READ",
+          "GetTrackCount": "QUALIFIED_READ",
+          "GetItemListInTrack": "QUALIFIED_READ",
+          "GetStart": "QUALIFIED_READ",
+          "GetEnd": "QUALIFIED_READ",
+          "GetStartFrame": "QUALIFIED_READ",
+          "GetEndFrame": "QUALIFIED_READ",
+          "GetMarkers": "QUALIFIED_READ",
+          "Timeline.GetSettings": "QUALIFIED_READ",
+          "Project.GetSettings": "QUALIFIED_READ",
+          "GetStartTimecode": "QUALIFIED_READ"
+        }
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m0-deny-unknown-library",
+      "request": {
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHED_READ_ONLY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "Some Other Library",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true,
+        "capability_state": {
+          "GetVersionString": "QUALIFIED_READ",
+          "GetProductName": "QUALIFIED_READ",
+          "GetProjectManager": "QUALIFIED_READ",
+          "GetCurrentDatabase": "QUALIFIED_READ",
+          "GetTrackCount": "QUALIFIED_READ",
+          "GetItemListInTrack": "QUALIFIED_READ",
+          "GetStart": "QUALIFIED_READ",
+          "GetEnd": "QUALIFIED_READ",
+          "GetStartFrame": "QUALIFIED_READ",
+          "GetEndFrame": "QUALIFIED_READ",
+          "GetMarkers": "QUALIFIED_READ",
+          "Timeline.GetSettings": "QUALIFIED_READ",
+          "Project.GetSettings": "QUALIFIED_READ",
+          "GetStartTimecode": "QUALIFIED_READ"
+        }
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m0-deny-production-project-name",
+      "request": {
+        "milestone": "M2",
+        "operation": "SetCurrentTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHED_READ_ONLY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "PYSTY UHD",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "m1_exit_evidence_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        },
+        "journal_available": true
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m0-deny-wrong-host",
+      "request": {
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHED_READ_ONLY",
+          "host_name": "PRESTO",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true,
+        "capability_state": {
+          "GetVersionString": "QUALIFIED_READ",
+          "GetProductName": "QUALIFIED_READ",
+          "GetProjectManager": "QUALIFIED_READ",
+          "GetCurrentDatabase": "QUALIFIED_READ",
+          "GetTrackCount": "QUALIFIED_READ",
+          "GetItemListInTrack": "QUALIFIED_READ",
+          "GetStart": "QUALIFIED_READ",
+          "GetEnd": "QUALIFIED_READ",
+          "GetStartFrame": "QUALIFIED_READ",
+          "GetEndFrame": "QUALIFIED_READ",
+          "GetMarkers": "QUALIFIED_READ",
+          "Timeline.GetSettings": "QUALIFIED_READ",
+          "Project.GetSettings": "QUALIFIED_READ",
+          "GetStartTimecode": "QUALIFIED_READ"
+        }
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m0-deny-missing-bundle-verification",
+      "request": {
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHMENT_READY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {},
+        "journal_available": true
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m0-deny-version-mismatch",
+      "request": {
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHED_READ_ONLY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.0.4.0005",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true,
+        "capability_state": {
+          "GetVersionString": "QUALIFIED_READ",
+          "GetProductName": "QUALIFIED_READ",
+          "GetProjectManager": "QUALIFIED_READ",
+          "GetCurrentDatabase": "QUALIFIED_READ",
+          "GetTrackCount": "QUALIFIED_READ",
+          "GetItemListInTrack": "QUALIFIED_READ",
+          "GetStart": "QUALIFIED_READ",
+          "GetEnd": "QUALIFIED_READ",
+          "GetStartFrame": "QUALIFIED_READ",
+          "GetEndFrame": "QUALIFIED_READ",
+          "GetMarkers": "QUALIFIED_READ",
+          "Timeline.GetSettings": "QUALIFIED_READ",
+          "Project.GetSettings": "QUALIFIED_READ",
+          "GetStartTimecode": "QUALIFIED_READ"
+        }
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m0-deny-no-journal",
+      "request": {
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHED_READ_ONLY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": false,
+        "capability_state": {
+          "GetVersionString": "QUALIFIED_READ",
+          "GetProductName": "QUALIFIED_READ",
+          "GetProjectManager": "QUALIFIED_READ",
+          "GetCurrentDatabase": "QUALIFIED_READ",
+          "GetTrackCount": "QUALIFIED_READ",
+          "GetItemListInTrack": "QUALIFIED_READ",
+          "GetStart": "QUALIFIED_READ",
+          "GetEnd": "QUALIFIED_READ",
+          "GetStartFrame": "QUALIFIED_READ",
+          "GetEndFrame": "QUALIFIED_READ",
+          "GetMarkers": "QUALIFIED_READ",
+          "Timeline.GetSettings": "QUALIFIED_READ",
+          "Project.GetSettings": "QUALIFIED_READ",
+          "GetStartTimecode": "QUALIFIED_READ"
+        }
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m0-deny-write-op",
+      "request": {
+        "milestone": "M0",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHED_READ_ONLY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m3-append-deny-without-authorization",
+      "request": {
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "SCRATCH_WRITE_READY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "m1_exit_evidence_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "m2_exit_evidence_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "journal_prepared_record_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "exclusive_session_attestation_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "plan_semantic_validation": "PASS",
+          "current_guard_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+          "plan_h0_guard_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+          "destination_timeline_unique_id": "tl-1"
+        },
+        "journal_available": true,
+        "guard_available": true
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m3-append-allow-full-evidence",
+      "request": {
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "SCRATCH_WRITE_READY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "m1_exit_evidence_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "m2_exit_evidence_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "journal_prepared_record_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "exclusive_session_attestation_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "plan_semantic_validation": "PASS",
+          "current_guard_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+          "plan_h0_guard_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+          "destination_timeline_unique_id": "tl-1"
+        },
+        "journal_available": true,
+        "guard_available": true,
+        "authorization_token": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "expect_eligible": true
+    },
+    {
+      "name": "m3-append-deny-stale-guard",
+      "request": {
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "SCRATCH_WRITE_READY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "m1_exit_evidence_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "m2_exit_evidence_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "journal_prepared_record_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "exclusive_session_attestation_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "plan_semantic_validation": "PASS",
+          "current_guard_digest": "9999999999999999999999999999999999999999999999999999999999999999",
+          "plan_h0_guard_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+          "destination_timeline_unique_id": "tl-1"
+        },
+        "journal_available": true,
+        "guard_available": true,
+        "authorization_token": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m3-deny-shared-library-scope",
+      "request": {
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "NETWORK_LIBRARY_EKA",
+        "target": {
+          "attachment_state": "SCRATCH_WRITE_READY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "m4-deny-unknown-milestone",
+      "request": {
+        "milestone": "M4",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "ATTACHED_READ_ONLY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true
+      },
+      "expect_eligible": false
+    },
+    {
+      "name": "deny-unknown-operation",
+      "request": {
+        "milestone": "M3",
+        "operation": "FrobnicateTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "target": {
+          "attachment_state": "SCRATCH_WRITE_READY",
+          "host_name": "vidnux",
+          "library_name": "VIDTOOLZ Resolve Qualification v1",
+          "library_kind": "Disk",
+          "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+          "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_M0_scratch",
+          "resolve_version": "21.1.0.0014",
+          "timeline_unique_id": "tl-1"
+        },
+        "evidence": {
+          "bundle_independent_verification_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "journal_available": true
+      },
+      "expect_eligible": false
+    }
+  ]
+}

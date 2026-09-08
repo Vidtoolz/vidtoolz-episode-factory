@@ -1,0 +1,206 @@
+{
+  "fixture": "commit-unresolved-conflict",
+  "layer_expected_failure": "semantic",
+  "schema": "provisional/resolveCommitManifest",
+  "check": "semantic_commit_manifest",
+  "expect_error_contains": "unresolved",
+  "document": {
+    "schema": "vidtoolz.resolveCommitManifest.v1",
+    "transaction_id": "tx-fixture",
+    "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "terminal_state": "COMMITTED",
+    "binding_observation_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "binding_set_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "receipt_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "journal_head_sha256": "4dc75a680d7bebee212f2df1498cad5939154d45ebd77a94a8dc0652f91e043f",
+    "verification_result_sha256": "bff4ce1999660be368f00e0805d25ef77406952a1559d2054806fac8996e35dc",
+    "guard_digest": "abb56f6c7449cc5e238f7e2cf2540021fcb896e9567bd26a2c8b8921b5c0e19c",
+    "unresolved_conflicts": [
+      "HUMAN_CONFLICT it-3"
+    ],
+    "ef_source_pins": {},
+    "published_at": "2026-09-08T00:00:00Z"
+  },
+  "journal": [
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 0,
+      "previous_record_sha256": null,
+      "state": "PREPARED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "PREPARED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 1,
+      "previous_record_sha256": "e4b33d63a5aa24835f008cb9145df9765452ab09f06365360f821e020d8c745d",
+      "state": "LEASED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "LEASED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 2,
+      "previous_record_sha256": "95a80af5b86ee2bb43653b8ed007d51f890ccf8be64159c1e885eb25026c8aa1",
+      "state": "PREFLIGHT_OK",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "PREFLIGHT_OK"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 3,
+      "previous_record_sha256": "a59ce8853b8dc996c817f21d8c3cbcc00edeb4a7e4b92552c94fcba8fc3a0dd5",
+      "state": "CHECKPOINTED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "CHECKPOINTED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 4,
+      "previous_record_sha256": "9e53f88c958dfa7dd1d8c97ee7b8550efae2b6e473c4dbad04c97c1142359e50",
+      "state": "APPLIED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": "op-1",
+      "intent": {
+        "phase": "APPLIED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 5,
+      "previous_record_sha256": "48fc4092b01cd3bc2b6f18dc7b75a7c7117cb527cd92a6f169110434c32e3004",
+      "state": "READBACK_S1",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "READBACK_S1"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 6,
+      "previous_record_sha256": "e61498604431d1f10c2f2b5892d8a8c3ce2d267159ad0407ac8c1e7c1bbaba40",
+      "state": "VERIFIED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "VERIFIED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 7,
+      "previous_record_sha256": "f05aeb6ffea6b1bd32dc4176d8c69b78353360525f43821e3a433b2cd4644ae6",
+      "state": "SAVED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "SAVED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 8,
+      "previous_record_sha256": "2162e85f59346319f69cabe89625f4fd53b93ab8386f0b334ab8c43d4839e593",
+      "state": "PUBLISHED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "PUBLISHED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 9,
+      "previous_record_sha256": "d7e0c80ad53475e62ee1159a4a5a62e3b0b8659ad63617cbc123f0c43c1723a3",
+      "state": "COMMITTED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "COMMITTED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    }
+  ],
+  "verification_result": {
+    "schema": "vidtoolz.resolveVerificationResult.v1",
+    "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "h0_payload_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "s1_payload_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "added": [
+      "it-new"
+    ],
+    "removed": [],
+    "changed": [],
+    "creation_identity_map": {
+      "op-1": "it-new"
+    },
+    "missing_expected": [],
+    "unrelated": [],
+    "coverage": {},
+    "verdict": "VERIFIED",
+    "is_human_approval": false
+  },
+  "guard_digest": "abb56f6c7449cc5e238f7e2cf2540021fcb896e9567bd26a2c8b8921b5c0e19c"
+}

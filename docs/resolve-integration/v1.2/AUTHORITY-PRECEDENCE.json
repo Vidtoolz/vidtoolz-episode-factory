@@ -1,0 +1,251 @@
+{
+  "schema": "vidtoolz.resolveAuthorityPrecedence.v1.2",
+  "version": "1.2.0",
+  "status": "FROZEN_NOW",
+  "law": "when two frozen statements conflict, the entry here decides; a document marked HISTORICAL is never an implementation authority; a SUPERSEDED statement is kept only as history",
+  "retired_terms": [
+    "IMPORT_OVERRIDE",
+    "--dump-tools",
+    "18 probes",
+    "resolveSnapshot.v1.1",
+    "canonicalization_version: 1.1",
+    "QUALIFIED_READ (inspect row)"
+  ],
+  "retired_term_exempt": [
+    "AUTHORITY-PRECEDENCE.md",
+    "DRIFT-POLICY.md",
+    "CHANGELOG-v1.2.md",
+    "FINDING-RESOLUTION-MATRIX-v1.2.md",
+    "SNAPSHOT-CONCURRENCY-RECOVERY.md",
+    "VALIDATION-REPORT.md",
+    "SCORECRAFT-EXTRACTION.md"
+  ],
+  "documents": [
+    {
+      "path": "README.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "AUTHORIZATION-2026-09-08.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "DOCTRINE.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "TRANSPORT.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "ELIGIBILITY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "TARGET-ATTACHMENT-GATE.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "SNAPSHOT-COMPLETENESS.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "GUARD-AUTHORITY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "CANONICALIZATION.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "IDENTITY-BINDING.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "SNAPSHOT-CONCURRENCY-RECOVERY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "DRIFT-POLICY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "REVIEW-MARKER-POLICY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "SEMANTIC-VALIDATION.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "CANARIES.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "MILESTONES.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "M3-MATRIX.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "SCORECRAFT-EXTRACTION.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "CLIENT-VERSION-INVENTORY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "PROVISIONAL.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "AUTHORITY-PRECEDENCE.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "CHANGELOG-v1.2.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.2.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "VALIDATION-REPORT.md",
+      "status": "STILL_ACTIVE",
+      "reason": "generated report; not normative"
+    },
+    {
+      "path": "CHANGELOG-v1.1.md",
+      "status": "HISTORICAL",
+      "reason": "v1.1 history"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX.md",
+      "status": "HISTORICAL",
+      "reason": "v1.1 finding map; v1.2 map is FINDING-RESOLUTION-MATRIX-v1.2.md"
+    },
+    {
+      "path": "ADJUDICATION-FREEZE-CONTRACT.md",
+      "status": "HISTORICAL",
+      "reason": "2026-09-08 three-way adjudication; input to v1.0; several sections superseded (see superseded_statements)"
+    },
+    {
+      "path": "AUTHORITY-ARCHITECTURE-ADJUDICATION-M0-M3.md",
+      "status": "HISTORICAL",
+      "reason": "input to v1.1; M0 definition and marker wording superseded"
+    }
+  ],
+  "superseded_statements": [
+    {
+      "id": "S1",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#10 (M0: 'any Resolve call beyond --dump-tools' forbidden; M0 = static inventory only)",
+      "new_authority": "MILESTONES.md#M0",
+      "status": "SUPERSEDED",
+      "reason": "v1.1/v1.2 M0 is a read-only connection/observation milestone gated by TARGET-ATTACHMENT-GATE.md and ELIGIBILITY.md; the static inventory became bundle v1.0 itself",
+      "effective_version": "1.1.0"
+    },
+    {
+      "id": "S2",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#5.2, #6 (payload_sha256 / 'H0 = payload digest' as the version token)",
+      "new_authority": "GUARD-AUTHORITY.md",
+      "status": "SUPERSEDED",
+      "reason": "composite guard digest (model A) is the version token; payload digest proves content only",
+      "effective_version": "1.1.0"
+    },
+    {
+      "id": "S3",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#5.2 snapshot context wording ('target_contract_digest', 'target epoch' inside snapshot envelope hash)",
+      "new_authority": "schemas/resolveSnapshot.schema.json; SNAPSHOT-COMPLETENESS.md",
+      "status": "SUPERSEDED",
+      "reason": "v1.2 snapshot carries coverage profile, per-field observation status, guard digest and hash domains",
+      "effective_version": "1.2.0"
+    },
+    {
+      "id": "S4",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#7, #10, #16 (milestone table and refreeze wording; v1.1 M3-MATRIX '18 probes')",
+      "new_authority": "MILESTONES.md; M3-MATRIX.md; M3-PROBES.json",
+      "status": "SUPERSEDED",
+      "reason": "v1.2 milestone boundaries are machine-checked against PERMISSIONS.json (MILESTONE-MATRIX.json); M3 has 19 probes P1-P19 and P0 is an M0 preflight",
+      "effective_version": "1.2.0"
+    },
+    {
+      "id": "S5",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#7 M9 row and AUTHORITY-ARCHITECTURE-ADJUDICATION-M0-M3.md ('markers -> review notes with target_domain from colour/name')",
+      "new_authority": "REVIEW-MARKER-POLICY.md",
+      "status": "SUPERSEDED",
+      "reason": "markers locate candidates only; dispositions require human attestation",
+      "effective_version": "1.1.0"
+    },
+    {
+      "id": "S6",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#5.5 and v1.0 SNAPSHOT-CONCURRENCY-RECOVERY.md drift table (IMPORT_OVERRIDE; STALE_ASSET vs 'newer handoff')",
+      "new_authority": "DRIFT-POLICY.md; schemas/provisional/resolveConflict.schema.json",
+      "status": "SUPERSEDED",
+      "reason": "PROPOSE_REVIEW_NOTE; STALE_ASSET vs EF canonical head",
+      "effective_version": "1.1.0"
+    },
+    {
+      "id": "S7",
+      "old_authority": "v1.1 PERMISSIONS.json entries with prose 'evidence_prerequisite' only",
+      "new_authority": "PERMISSIONS.json; ELIGIBILITY.md; tools/authority_lib.py#evaluate_eligibility",
+      "status": "SUPERSEDED",
+      "reason": "declaration vs eligibility split; machine-evaluable prerequisites",
+      "effective_version": "1.2.0",
+      "new_authority_note": "prerequisites[] per entry + eligibility evaluator"
+    },
+    {
+      "id": "S8",
+      "old_authority": "v1.1 CAPABILITIES.json rows with evidence_class QUALIFIED_READ citing scripts",
+      "new_authority": "CAPABILITIES.json#evidence_records",
+      "status": "SUPERSEDED",
+      "reason": "no exact evidence exists on 21.1.0 build 14; rows downgraded",
+      "effective_version": "1.2.0",
+      "new_authority_note": "evidence records per row"
+    },
+    {
+      "id": "S9",
+      "old_authority": "v1.1 CANONICALIZATION.md marker sort key (object_address, frame, custom_data, name, color)",
+      "new_authority": "CANONICALIZATION.md#3",
+      "status": "SUPERSEDED",
+      "reason": "total order incl. duration and note; (object_address, frame) collision rejection",
+      "effective_version": "1.2.0",
+      "new_authority_note": "total marker order"
+    },
+    {
+      "id": "S10",
+      "old_authority": "v1.1 SCORECRAFT-EXTRACTION.md ('guards exist only in the hardlink fixture')",
+      "new_authority": "SCORECRAFT-EXTRACTION.md",
+      "status": "SUPERSEDED",
+      "reason": "guards also exist in scorecraft-resolve-driver.py and scorecraft-resolve-production-fixture.py; production driver still lacks one",
+      "effective_version": "1.2.0",
+      "new_authority_note": "corrected guard facts"
+    }
+  ]
+}

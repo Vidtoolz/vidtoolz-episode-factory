@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveCapabilityMatrix.v1.2",
+  "title": "Capability matrix v1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "status",
+    "evidence_class_vocabulary",
+    "rows"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveCapabilityMatrix.v1.2"
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "FROZEN_NOW"
+      ]
+    },
+    "qualification_note": {
+      "type": "string"
+    },
+    "evidence_class_vocabulary": {
+      "type": "array"
+    },
+    "evidence_class_definitions": {
+      "type": "object"
+    },
+    "resolve": {
+      "type": "object"
+    },
+    "coverage_caveat": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "blocked_until",
+          "class",
+          "evidence",
+          "evidence_class",
+          "evidence_records",
+          "m3_probes",
+          "operation",
+          "primitives"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string"
+          },
+          "class": {
+            "type": "string"
+          },
+          "primitives": {
+            "type": "array"
+          },
+          "evidence_class": {
+            "enum": [
+              "QUALIFIED_READ",
+              "DOCUMENTED_NOT_QUALIFIED",
+              "NOT_TESTED",
+              "UNSUPPORTED",
+              "BLOCKED",
+              "QUALIFIED_EF_SIDE"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "m3_probes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blocked_until": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "qualification_note": {
+            "type": "string"
+          },
+          "m3_question": {
+            "type": "string"
+          },
+          "evidence_records": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "host",
+                "resolve_version",
+                "build",
+                "run_ref",
+                "method",
+                "observed_result",
+                "evidence_path",
+                "evidence_sha256",
+                "version_match"
+              ],
+              "properties": {
+                "host": {
+                  "type": "string"
+                },
+                "resolve_version": {
+                  "type": "string"
+                },
+                "build": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "run_ref": {
+                  "type": "string"
+                },
+                "method": {
+                  "type": "string"
+                },
+                "observed_result": {
+                  "type": "string"
+                },
+                "evidence_path": {
+                  "type": "string"
+                },
+                "evidence_sha256": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "version_match": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "evidence_record_fields": {
+      "type": "array"
+    }
+  }
+}

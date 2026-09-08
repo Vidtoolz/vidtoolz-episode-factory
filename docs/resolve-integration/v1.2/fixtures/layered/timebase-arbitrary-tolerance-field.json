@@ -1,0 +1,98 @@
+{
+  "fixture": "timebase-arbitrary-tolerance-field",
+  "layer_expected_failure": "schema",
+  "schema": "resolveTimebase",
+  "check": null,
+  "expect_error_contains": "additional",
+  "document": {
+    "schema": "vidtoolz.resolveTimebase.v1.1",
+    "version": "1.1.0",
+    "status": "FROZEN_NOW",
+    "qualification_note": "law, profile and fixtures frozen; api_mapping is PROVISIONAL_UNTIL_M3",
+    "blocked_until": "M3",
+    "authoritative_fps_source": {
+      "primary": "handoff.timeline.timebase.output_fps",
+      "cross_check_equal": "handoff.editor.output.fps",
+      "on_mismatch_or_absent": "TIMEBASE_UNRESOLVED",
+      "note": "handoff.timeline.timebase.frame_rounding=CANONICAL_RENDERER is mapped by this law, never rewritten in historical JSON"
+    },
+    "profile_v1": {
+      "output_fps": 30,
+      "fps": {
+        "numerator": 30,
+        "denominator": 1
+      },
+      "timecode": {
+        "nominal_fps": 30,
+        "drop_frame": false,
+        "drop_frames_per_minute": 0,
+        "start": "01:00:00:00"
+      },
+      "intended_start_frame_offset": 108000,
+      "geometry": {
+        "width": 1080,
+        "height": 1920,
+        "progressive": true
+      },
+      "audio_sample_rate_hz": 48000
+    },
+    "domains": {
+      "millisecond": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "frame": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "audio_sample": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "law": {
+      "name": "CEIL_BOUNDARY_V1",
+      "rounding": "CEIL",
+      "den": "1000*q",
+      "B(m)": "floor((m*p + den - 1) / den)",
+      "absolute(m)": "O + B(m)",
+      "interval": "[a,b) -> [O+B(a), O+B(b))",
+      "duration": "B(b) - B(a)",
+      "coincident_boundaries": "share one frame; later interval owns it",
+      "reject": [
+        "negative m",
+        "invalid range",
+        "integer overflow",
+        "required interval with B(b)-B(a)==0 -> TIMEBASE_COLLAPSED_INTERVAL"
+      ],
+      "substitution_allowed": false,
+      "scope": "profile_v1 only; any other rate/drop-frame/geometry requires a new profile with its own fixtures and M3-class evidence"
+    },
+    "tolerance": {
+      "planned_vs_observed_frames": 0,
+      "arbitrary_ms": 40
+    },
+    "quantization": {
+      "delay_ms_upper_bound_exclusive": "1000*q/p",
+      "programme_tail_policy": "extend final visual hold + silence to B(end_ms); never time-stretch narration",
+      "audio_rule": "ms boundary -> 48*m samples at 48000 Hz, verified separately"
+    },
+    "legacy_drafts": "use handoff fps fields when consistent; external immutable projection contract; never edit historical JSON",
+    "api_mapping": {
+      "status": "PROVISIONAL_UNTIL_M3",
+      "record_frame_origin": "INFERRED absolute incl. start-TC offset (hardlink fixture, FRB); prove in M3",
+      "end_frame_convention": "UNKNOWN inclusive/exclusive; prove on 1- and 2-frame clips",
+      "still_duration_control": "UNKNOWN; prove",
+      "GetStartFrame_equals_offset": "assert O at M3 else TIMEBASE_MISMATCH",
+      "m3_probes": [
+        "P2",
+        "P3",
+        "P4"
+      ]
+    },
+    "fixtures": [
+      "fixtures/timebase/canary-boundaries.json",
+      "fixtures/timebase/negative-profiles.json"
+    ]
+  }
+}

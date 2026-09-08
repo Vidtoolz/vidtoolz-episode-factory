@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveBindingSet.v1",
+  "title": "Binding set (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "canonicalization_version",
+    "binding_set_digest",
+    "run_id",
+    "sequence_lineage_id",
+    "handoff",
+    "story_pin",
+    "target_contract_digest",
+    "timebase_digest",
+    "track_policy_digest",
+    "rows"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveBindingSet.v1"
+    },
+    "canonicalization_version": {
+      "const": "1"
+    },
+    "binding_set_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "predecessor_binding_set_digest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "sequence_lineage_id": {
+      "type": "string"
+    },
+    "handoff": {
+      "type": "object",
+      "required": [
+        "handoff_id",
+        "handoff_digest_sha256",
+        "file_sha256"
+      ]
+    },
+    "story_pin": {
+      "type": "object"
+    },
+    "target_contract_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "timebase_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "track_policy_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "binding_id",
+          "scope",
+          "key",
+          "disposition",
+          "source",
+          "planned",
+          "track_role",
+          "occurrence_policy"
+        ],
+        "properties": {
+          "binding_id": {
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "BEAT_LAYER",
+              "SECTION_AUDIO",
+              "PROGRAMME_AUDIO"
+            ]
+          },
+          "key": {
+            "type": "object"
+          },
+          "disposition": {
+            "enum": [
+              "MATERIALIZE",
+              "NO_TIMELINE_ITEM",
+              "BLOCKED"
+            ]
+          },
+          "no_item_reason": {
+            "type": "string"
+          },
+          "source": {
+            "type": "object",
+            "required": [
+              "asset_id",
+              "sha256",
+              "media_kind"
+            ],
+            "properties": {
+              "asset_id": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "media_kind": {
+                "enum": [
+                  "IMAGE",
+                  "VIDEO",
+                  "AUDIO"
+                ]
+              },
+              "selected_take": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "conform": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          },
+          "planned": {
+            "type": "object",
+            "required": [
+              "record_start_frame",
+              "record_end_frame_exclusive",
+              "source_in_frame",
+              "source_out_frame_exclusive"
+            ],
+            "properties": {
+              "record_start_frame": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "record_end_frame_exclusive": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source_in_frame": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source_out_frame_exclusive": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          "track_role": {
+            "type": "string"
+          },
+          "recipe": {
+            "type": "object"
+          },
+          "occurrence_policy": {
+            "enum": [
+              "EXACTLY_ONE",
+              "ZERO_OR_MORE",
+              "LOOP_SPANS"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

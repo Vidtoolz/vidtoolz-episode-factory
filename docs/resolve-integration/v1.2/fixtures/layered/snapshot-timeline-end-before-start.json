@@ -1,0 +1,401 @@
+{
+  "fixture": "snapshot-timeline-end-before-start",
+  "layer_expected_failure": "semantic",
+  "schema": "resolveSnapshot",
+  "check": "semantic_snapshot",
+  "expect_error_contains": "end_frame < start_frame",
+  "document": {
+    "schema": "vidtoolz.resolveSnapshot.v1.2",
+    "collector_version": "0.0.0-fixture",
+    "canonicalization_version": "1.2",
+    "target_epoch": "epoch-fixture-1",
+    "resolve_build": "21.1.0.0014",
+    "library": {
+      "db_type": "Disk",
+      "db_name": "VIDTOOLZ Resolve Qualification v1",
+      "instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+    },
+    "project": {
+      "unique_id": "proj-fixture-0001",
+      "unique_id_status": "OBSERVED",
+      "name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "last_modified_time_observed": null
+    },
+    "collection": {
+      "started_at": "2026-09-08T00:00:00Z",
+      "ended_at": "2026-09-08T00:00:01Z",
+      "generation": 1,
+      "stable_pair": true
+    },
+    "coverage": {
+      "profile": "FULL_TIMELINE_READ",
+      "complete": true,
+      "observed_domains": [
+        "connection",
+        "library",
+        "project",
+        "timeline",
+        "tracks",
+        "items",
+        "markers",
+        "settings",
+        "adapter_bin_media"
+      ],
+      "unobservable_domains": [
+        "grades",
+        "fusion_graphs",
+        "caches",
+        "nested_timelines",
+        "keyframe_curves"
+      ],
+      "deferred_domains": [
+        "item_properties",
+        "fades",
+        "speed",
+        "takes",
+        "linked_items",
+        "unowned_media_hashes",
+        "track_locks",
+        "item_identity"
+      ]
+    },
+    "policy": {
+      "target_contract_sha256": "fec5f69177485eed0eeab4bcaae9208cd2295d0abd1b494719b79571eb4d38f1",
+      "timebase_sha256": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+      "track_policy_sha256": "0c1996f8cb183e27f393eb53113871098e492e43bd49ec8c07e7d49b25f0caa7",
+      "capabilities_version": "1.2.0",
+      "collector_version": "0.0.0-fixture",
+      "canonicalization_version": "1.2"
+    },
+    "payload": {
+      "timeline": {
+        "unique_id": "tl-fixture-0001",
+        "unique_id_status": "OBSERVED",
+        "name": "VIDTOOLZ__fixture__r1",
+        "start_frame": 108000,
+        "start_timecode": "01:00:00:00",
+        "fps": {
+          "numerator": 30,
+          "denominator": 1
+        },
+        "width": 1080,
+        "height": 1920,
+        "end_frame": 100,
+        "is_current": true,
+        "duration_convention": "UNQUALIFIED",
+        "settings": {
+          "useCustomSettings": "1",
+          "timelineFrameRate": "30"
+        }
+      },
+      "tracks": [
+        {
+          "type": "video",
+          "index": 1,
+          "name": "V1",
+          "enabled": true,
+          "locked": false,
+          "items": [
+            {
+              "unique_id": "it-1",
+              "observation_ordinal": 0,
+              "name": "still-001",
+              "start": 108000,
+              "end": 108347,
+              "duration": 347,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "COMPLETE",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "media_pool_item_unique_id": "OBSERVED",
+                "media_id": "UNAVAILABLE",
+                "source_start": "OBSERVED",
+                "source_end": "OBSERVED",
+                "media_id_reason": "GetMediaId not qualified on 21.1.0.0014"
+              },
+              "provenance": {
+                "kind": "MEDIA_BACKED"
+              },
+              "media_pool_item_unique_id": "mp-1",
+              "media_id": null,
+              "source_locator": "/qual/media/still-001.png",
+              "source_status": "HASHED",
+              "source_sha256": "06ada57c26aa5cf429e9f2c0a99e3e4a42daecd45fc4c955d7c1399ab4227ae8",
+              "source_start": 0,
+              "source_end": 347
+            },
+            {
+              "unique_id": "it-2",
+              "observation_ordinal": 1,
+              "name": "Text+",
+              "start": 108347,
+              "end": 108694,
+              "duration": 347,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "PARTIAL",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "media_pool_item_unique_id": "NOT_REQUESTED",
+                "media_id": "NOT_REQUESTED",
+                "source_start": "UNSUPPORTED",
+                "source_end": "UNSUPPORTED"
+              },
+              "provenance": {
+                "kind": "TITLE"
+              },
+              "media_pool_item_unique_id": null,
+              "media_id": null,
+              "source_locator": null,
+              "source_status": "NOT_APPLICABLE",
+              "source_sha256": null,
+              "absence_reason": "NO_FILE_BACKED_SOURCE",
+              "source_start": null,
+              "source_end": null
+            },
+            {
+              "unique_id": "it-3",
+              "observation_ordinal": 2,
+              "name": "human-broll",
+              "start": 108694,
+              "end": 109174,
+              "duration": 480,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "COMPLETE",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "media_pool_item_unique_id": "OBSERVED",
+                "media_id": "UNAVAILABLE",
+                "source_start": "OBSERVED",
+                "source_end": "OBSERVED",
+                "media_id_reason": "GetMediaId not qualified on 21.1.0.0014"
+              },
+              "provenance": {
+                "kind": "MEDIA_BACKED"
+              },
+              "media_pool_item_unique_id": "mp-2",
+              "media_id": null,
+              "source_locator": "/qual/media/human-broll.png",
+              "source_status": "UNHASHED_UNOWNED",
+              "source_sha256": null,
+              "source_start": 0,
+              "source_end": 480
+            },
+            {
+              "unique_id": "it-4",
+              "observation_ordinal": 3,
+              "name": "Solid Color",
+              "start": 109174,
+              "end": 109654,
+              "duration": 480,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "PARTIAL",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "media_pool_item_unique_id": "NOT_REQUESTED",
+                "media_id": "NOT_REQUESTED",
+                "source_start": "UNSUPPORTED",
+                "source_end": "UNSUPPORTED"
+              },
+              "provenance": {
+                "kind": "GENERATOR"
+              },
+              "media_pool_item_unique_id": null,
+              "media_id": null,
+              "source_locator": null,
+              "source_status": "NOT_APPLICABLE",
+              "source_sha256": null,
+              "absence_reason": "NO_MEDIA_POOL_ITEM",
+              "source_start": null,
+              "source_end": null
+            },
+            {
+              "unique_id": "it-5",
+              "observation_ordinal": 4,
+              "name": "Compound Clip 1",
+              "start": 109654,
+              "end": 109924,
+              "duration": 270,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "PARTIAL",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "media_pool_item_unique_id": "NOT_REQUESTED",
+                "media_id": "NOT_REQUESTED",
+                "source_start": "UNSUPPORTED",
+                "source_end": "UNSUPPORTED"
+              },
+              "provenance": {
+                "kind": "COMPOUND"
+              },
+              "media_pool_item_unique_id": null,
+              "media_id": null,
+              "source_locator": null,
+              "source_status": "NOT_APPLICABLE",
+              "source_sha256": null,
+              "absence_reason": "NO_FILE_BACKED_SOURCE",
+              "source_start": null,
+              "source_end": null
+            },
+            {
+              "unique_id": "it-6",
+              "observation_ordinal": 5,
+              "name": "missing-media",
+              "start": 109924,
+              "end": 110194,
+              "duration": 270,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "COMPLETE",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "media_pool_item_unique_id": "OBSERVED",
+                "media_id": "UNAVAILABLE",
+                "source_start": "OBSERVED",
+                "source_end": "OBSERVED",
+                "media_id_reason": "GetMediaId not qualified on 21.1.0.0014"
+              },
+              "provenance": {
+                "kind": "MEDIA_BACKED"
+              },
+              "media_pool_item_unique_id": "mp-3",
+              "media_id": null,
+              "source_locator": "/qual/media/missing-media.png",
+              "source_status": "OFFLINE",
+              "source_sha256": null,
+              "source_start": 0,
+              "source_end": 270
+            }
+          ]
+        },
+        {
+          "type": "video",
+          "index": 2,
+          "name": "V2",
+          "enabled": true,
+          "locked": false,
+          "items": [
+            {
+              "unique_id": "it-7",
+              "observation_ordinal": 0,
+              "name": "Adjustment Clip",
+              "start": 108000,
+              "end": 108694,
+              "duration": 694,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "PARTIAL",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "media_pool_item_unique_id": "NOT_REQUESTED",
+                "media_id": "NOT_REQUESTED",
+                "source_start": "UNSUPPORTED",
+                "source_end": "UNSUPPORTED"
+              },
+              "provenance": {
+                "kind": "ADJUSTMENT"
+              },
+              "media_pool_item_unique_id": null,
+              "media_id": null,
+              "source_locator": null,
+              "source_status": "NOT_APPLICABLE",
+              "source_sha256": null,
+              "absence_reason": "NO_MEDIA_POOL_ITEM",
+              "source_start": null,
+              "source_end": null
+            },
+            {
+              "unique_id": "it-8",
+              "observation_ordinal": 1,
+              "name": "Fusion Composition",
+              "start": 108694,
+              "end": 109174,
+              "duration": 480,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "PARTIAL",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "media_pool_item_unique_id": "NOT_REQUESTED",
+                "media_id": "NOT_REQUESTED",
+                "source_start": "UNSUPPORTED",
+                "source_end": "UNSUPPORTED"
+              },
+              "provenance": {
+                "kind": "FUSION_OR_GENERATED"
+              },
+              "media_pool_item_unique_id": null,
+              "media_id": null,
+              "source_locator": null,
+              "source_status": "NOT_APPLICABLE",
+              "source_sha256": null,
+              "absence_reason": "UNOBSERVED_BY_API",
+              "source_start": null,
+              "source_end": null
+            }
+          ]
+        },
+        {
+          "type": "audio",
+          "index": 1,
+          "name": "A1",
+          "enabled": true,
+          "locked": false,
+          "items": [
+            {
+              "unique_id": "it-9",
+              "observation_ordinal": 0,
+              "name": "narration",
+              "start": 108000,
+              "end": 114756,
+              "duration": 6756,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "COMPLETE",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "media_pool_item_unique_id": "OBSERVED",
+                "media_id": "UNAVAILABLE",
+                "source_start": "OBSERVED",
+                "source_end": "OBSERVED",
+                "media_id_reason": "GetMediaId not qualified on 21.1.0.0014"
+              },
+              "provenance": {
+                "kind": "MEDIA_BACKED"
+              },
+              "media_pool_item_unique_id": "mp-4",
+              "media_id": null,
+              "source_locator": "/qual/media/narration.png",
+              "source_status": "HASHED",
+              "source_sha256": "f9ff04d26379f94f9eb199f10132e8aed31b1e59e0312720540d8fefbe086cec",
+              "source_start": 0,
+              "source_end": 6756
+            }
+          ]
+        }
+      ],
+      "markers": [
+        {
+          "object_address": "timeline",
+          "frame": 108000,
+          "duration": 1,
+          "color": "Blue",
+          "name": "draft-still-001",
+          "note": "",
+          "custom_data": "vidtoolz:resolve:binding:v1:epoch-fixture-1:b-001:o-1"
+        }
+      ],
+      "media_dependencies": []
+    },
+    "hash_domains": {
+      "payload": "vidtoolz.resolveSnapshotPayload.v1.2",
+      "guard": "vidtoolz.resolveGuard.v1"
+    },
+    "payload_sha256": "a6b85781b597b688004b1e34277fd838a70ba35aaef652bef38b5cd6b47b5b7e",
+    "guard_digest": "abb56f6c7449cc5e238f7e2cf2540021fcb896e9567bd26a2c8b8921b5c0e19c"
+  }
+}

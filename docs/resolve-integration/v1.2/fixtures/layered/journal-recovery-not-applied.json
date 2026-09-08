@@ -1,0 +1,57 @@
+{
+  "fixture": "journal-recovery-not-applied",
+  "layer_expected_failure": "none",
+  "schema": "provisional/resolveTransactionJournal",
+  "check": "semantic_journal",
+  "expect_error_contains": null,
+  "document": [
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 0,
+      "previous_record_sha256": null,
+      "state": "PREPARED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "PREPARED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 1,
+      "previous_record_sha256": "e4b33d63a5aa24835f008cb9145df9765452ab09f06365360f821e020d8c745d",
+      "state": "RECOVERY_RECONCILING",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "RECOVERY_RECONCILING"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 2,
+      "previous_record_sha256": "d40a3c22d127d40a5bcfa93075d135e859d6d499796de6b37ebac4c233c64e1f",
+      "state": "NOT_APPLIED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "NOT_APPLIED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "fixture": "journal-operation-id-reused",
+  "layer_expected_failure": "semantic",
+  "schema": "provisional/resolveTransactionJournal",
+  "check": "semantic_journal",
+  "expect_error_contains": "applied twice",
+  "document": [
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 0,
+      "previous_record_sha256": null,
+      "state": "PREPARED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "PREPARED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 1,
+      "previous_record_sha256": "e4b33d63a5aa24835f008cb9145df9765452ab09f06365360f821e020d8c745d",
+      "state": "LEASED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "LEASED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 2,
+      "previous_record_sha256": "95a80af5b86ee2bb43653b8ed007d51f890ccf8be64159c1e885eb25026c8aa1",
+      "state": "PREFLIGHT_OK",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": null,
+      "intent": {
+        "phase": "PREFLIGHT_OK"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 3,
+      "previous_record_sha256": "a59ce8853b8dc996c817f21d8c3cbcc00edeb4a7e4b92552c94fcba8fc3a0dd5",
+      "state": "APPLIED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": "op-1",
+      "intent": {
+        "phase": "APPLIED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 4,
+      "previous_record_sha256": "647136a0701daa7b8eb43127b6d73d5c6c197d0451558650b94be68abe6bbf80",
+      "state": "APPLIED",
+      "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operation_id": "op-1",
+      "intent": {
+        "phase": "APPLIED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T00:00:00Z"
+    }
+  ]
+}

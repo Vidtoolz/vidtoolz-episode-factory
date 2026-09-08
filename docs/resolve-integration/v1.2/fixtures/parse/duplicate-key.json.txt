@@ -1,0 +1,1 @@
+{"schema":"vidtoolz.resolveGeneric.v1","a":1,"a":2}
