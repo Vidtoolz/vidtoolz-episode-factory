@@ -165,6 +165,45 @@ async function main() {
     await cdp.waitFor(`document.querySelector('#es-journey .jb-flow')`);
     await cdp.evaluate(`window.__errs = []; window.addEventListener('error', (e)=>window.__errs.push(String(e.message)));`);
 
+    // M1: execute the actual browser-loaded dependency chain, then compare
+    // trajectory semantics AND artifact bytes against Node for the same plan.
+    const m1Plan = require('../tests/earth-studio-m1-seam.test.js').fixture();
+    const m1NodePlanner = require('../earth-studio-job-planner.js');
+    const m1Browser = await cdp.evaluate(`(()=>{
+      const p=EarthStudioJobPlanner, plan=${js(m1Plan)};
+      return { loaded: !!window.EarthStudioCameraTrajectory && !!window.EarthStudioSerializer,
+        trajectory: p.compileTrajectory(plan), artifacts: p.buildArtifactsFromPlan(plan) };
+    })()`);
+    check('M1 trajectory and serializer modules loaded through browser entry', m1Browser.loaded);
+    check('M1 browser compile emits qualifying markers and resolved motion policy',
+      m1Browser.trajectory.markers.length > 0 && m1Browser.trajectory.motion_policy.coherentTrajectory === true);
+    const m1NodeTrajectory = m1NodePlanner.compileTrajectory(m1Plan);
+    check('M1 browser and Node markers/motion-policy semantics identical',
+      JSON.stringify(m1Browser.trajectory.markers) === JSON.stringify(m1NodeTrajectory.markers)
+      && JSON.stringify(m1Browser.trajectory.motion_policy) === JSON.stringify(m1NodeTrajectory.motion_policy));
+    // Chrome and Node may differ in the last bits of transcendental functions.
+    // Compare the full orbit output to baseline IN THE SAME browser, exactly.
+    const baselineSource = childProcess.execFileSync('git', ['show', 'f30e454:earth-studio-job-planner.js'], { cwd: ROOT, encoding: 'utf8' });
+    const baselineBrowser = await cdp.evaluate(`(()=>{
+      const corrected = window.EarthStudioJobPlanner;
+      try { ${baselineSource}
+        const p=window.EarthStudioJobPlanner, plan=${js(m1Plan)};
+        return { keyed:p.buildEspKeyframes(plan), artifacts:p.buildArtifactsFromPlan(plan) };
+      } finally { window.EarthStudioJobPlanner=corrected; }
+    })()`);
+    check('M1 browser orbit keyframes exactly match production baseline in browser',
+      JSON.stringify(require('../earth-studio-camera-trajectory').legacyTracksFromTrajectory(m1Browser.trajectory)) === JSON.stringify(baselineBrowser.keyed));
+    check('M1 browser orbit artifact bytes exactly match production baseline in browser',
+      JSON.stringify(m1Browser.artifacts) === JSON.stringify(baselineBrowser.artifacts));
+    const scalarPlan=m1NodePlanner.buildShotPlan('m1-browser-scalar',
+      'zoom in to Helsinki at 5000m for 5 seconds then zoom out from Helsinki at 12000m for 5 seconds then hover over Helsinki for 3 seconds',
+      '2026-09-08T00:00:00.000Z');
+    const scalarBrowser=await cdp.evaluate(`(()=>{const p=EarthStudioJobPlanner, plan=${js(scalarPlan)};
+      return {trajectory:p.compileTrajectory(plan),artifacts:p.buildArtifactsFromPlan(plan)};})()`);
+    check('M1 browser and Node scalar trajectory and artifact bytes identical',
+      JSON.stringify(scalarBrowser) === JSON.stringify({trajectory:m1NodePlanner.compileTrajectory(scalarPlan),
+        artifacts:m1NodePlanner.buildArtifactsFromPlan(scalarPlan)}));
+
     // ── the journey builder is the default view, with the whole sequence visible
     check('journey builder is the default mode',
       await cdp.evaluate(`MODE === 'journey' && document.getElementById('es-journey').style.display !== 'none'`));
@@ -452,6 +491,12 @@ async function main() {
     check('the FAIL evidence is still written to disk for diagnosis',
       fs.existsSync(path.join(laneDir, 'camera-quality.json')) && JSON.parse(fs.readFileSync(path.join(laneDir, 'camera-quality.json'), 'utf8')).verdict === 'FAIL');
 
+    if (process.env.M1_BROWSER_EVIDENCE_DIR) {
+      fs.mkdirSync(process.env.M1_BROWSER_EVIDENCE_DIR, { recursive: true });
+      const shot = await cdp.send('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync(path.join(process.env.M1_BROWSER_EVIDENCE_DIR, 'browser-runtime.png'), Buffer.from(shot.data, 'base64'));
+      fs.writeFileSync(path.join(process.env.M1_BROWSER_EVIDENCE_DIR, 'browser-trajectory.json'), JSON.stringify(m1Browser.trajectory, null, 2) + '\n');
+    }
     const jsErrors = await cdp.evaluate(`window.__errs || []`);
     check('no uncaught JavaScript errors on the page', jsErrors.length === 0, JSON.stringify(jsErrors));
   } finally {
@@ -460,6 +505,9 @@ async function main() {
     if (server) { server.close(); }
   }
 
+  if (process.env.M1_BROWSER_EVIDENCE_DIR) {
+    fs.writeFileSync(path.join(process.env.M1_BROWSER_EVIDENCE_DIR, 'browser-checks.json'), JSON.stringify(checks, null, 2) + '\n');
+  }
   const failed = checks.filter((c) => !c.ok);
   console.log(`\n${failed.length ? 'FAIL' : 'PASS'} — ${checks.length - failed.length}/${checks.length} browser checks`);
   if (failed.length) { process.exitCode = 1; }
