@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveTransactionJournal.v1",
+  "title": "Transaction journal record (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "transaction_id",
+    "sequence",
+    "previous_record_sha256",
+    "state",
+    "plan_digest",
+    "intent",
+    "recorded_at"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveTransactionJournal.v1"
+    },
+    "transaction_id": {
+      "type": "string"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "previous_record_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "state": {
+      "enum": [
+        "PREPARED",
+        "LEASED",
+        "PREFLIGHT_OK",
+        "CHECKPOINTED",
+        "APPLIED",
+        "READBACK_S1",
+        "VERIFIED",
+        "SAVED",
+        "PUBLISHED",
+        "COMMITTED",
+        "COMMITTED_RECOVERED",
+        "NOT_APPLIED",
+        "CONFLICT",
+        "ORPHANED_PARTIAL",
+        "ORPHANED_AMBIGUOUS"
+      ]
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "operation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "intent": {
+      "type": "object"
+    },
+    "result": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "readback_payload_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "checkpoint": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "recorded_at": {
+      "type": "string"
+    }
+  },
+  "$comment": "Append-only; fsync before the corresponding API call; durable intent precedes every mutator."
+}

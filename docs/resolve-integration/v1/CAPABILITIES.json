@@ -1,0 +1,359 @@
+{
+  "schema": "vidtoolz.resolveCapabilityMatrix.v1",
+  "version": "1.0.0",
+  "status": "FROZEN_NOW as static inventory; every NOT_TESTED row that M4+ depends on is UNTESTED_BLOCKED until M3 evidence",
+  "resolve": {
+    "product": "DaVinci Resolve Studio",
+    "version": "21.1.0",
+    "build": 14,
+    "host": "vidnux",
+    "stub_sha256": "00078fa1256851b9807621a4eea5e670f4266b0e7003763cba4a62655543f0ec",
+    "readme_md_sha256": "5f58c94da8ec3c1f390d77ad9c60675263591dc101159b302e50b5774513830b",
+    "readme_txt_sha256": "7f42d7f65678ae70f7eff16d168cae8bcd3815494b75bd6da7119e0250397964",
+    "changelog_sha256": "b12c961176d79a5fc87757a21dc7ce2e147f13fb4dab927ed9154943c7de1491"
+  },
+  "evidence_legend": {
+    "DOCUMENTED": "signature in stub/README",
+    "ESTATE": "exercised by an estate script against a real Resolve",
+    "NOT_TESTED": "must be resolved in M3 on the qualification library"
+  },
+  "coverage_caveat": "grades, plugin/Fusion graphs, caches, nested timelines, keyframe curves are not fully serializable; snapshots carry UNOBSERVABLE_STATE; zero-unintended-change claims only within coverage",
+  "rows": [
+    {
+      "operation": "inspect project/timelines/tracks/items/settings",
+      "class": "DIRECT_API",
+      "primitives": [
+        "GetCurrentProject",
+        "GetTimelineByIndex",
+        "GetTimelineCount",
+        "GetTrackCount",
+        "GetItemListInTrack",
+        "GetSettings",
+        "GetProperties",
+        "GetStart(subframe)",
+        "GetEnd(subframe)",
+        "GetDuration(subframe)",
+        "GetSourceStartFrame",
+        "GetSourceEndFrame",
+        "GetIsTrackLocked",
+        "GetIsTrackEnabled"
+      ],
+      "evidence": "ESTATE (resolve-hermes, Scorecraft readback)",
+      "status": "QUALIFIED_READ"
+    },
+    {
+      "operation": "object identity",
+      "class": "DIRECT_API",
+      "primitives": [
+        "GetUniqueId (Project/MediaPool/Folder/MediaPoolItem/Timeline/TimelineItem)",
+        "MediaPoolItem.GetMediaId",
+        "GetLinkedItems",
+        "GetTakeByIndex"
+      ],
+      "evidence": "DOCUMENTED",
+      "status": "NOT_TESTED",
+      "m3_question": "uniqueness scope; survival across DuplicateTimeline, DRT export/import, FinalizeTake, delete+append"
+    },
+    {
+      "operation": "machine metadata (markers, customData, clip metadata)",
+      "class": "DIRECT_API",
+      "primitives": [
+        "Timeline/TimelineItem/MediaPoolItem.AddMarker(frameId,color,name,note,duration,customData)",
+        "GetMarkerByCustomData",
+        "UpdateMarkerCustomData",
+        "DeleteMarkerByCustomData",
+        "MediaPoolItem.SetMetadata({})"
+      ],
+      "evidence": "DOCUMENTED (README.txt:315-325)",
+      "status": "NOT_TESTED",
+      "m3_question": "customData length limits; duplicate customData; marker frameId semantics per object"
+    },
+    {
+      "operation": "create timeline with canonical settings",
+      "class": "DIRECT_API",
+      "primitives": [
+        "CreateEmptyTimeline",
+        "AddTrack",
+        "SetSettings({useCustomSettings,timelineResolutionWidth/Height,timelineFrameRate})",
+        "SetStartTimecode"
+      ],
+      "evidence": "ESTATE (FRB, deprecated singular form)",
+      "status": "NOT_TESTED",
+      "m3_question": "plural SetSettings acceptance; partial-failure semantics (README.md:243); duplicate name returns nil"
+    },
+    {
+      "operation": "import media into controlled bin",
+      "class": "DIRECT_API",
+      "primitives": [
+        "ImportMedia([{FilePath}])",
+        "AddSubFolder",
+        "SetCurrentFolder",
+        "SetMetadata"
+      ],
+      "evidence": "ESTATE (hardlink fixture, deprecated list form)",
+      "status": "NOT_TESTED",
+      "m3_question": "duplicate import behaviour; symlink/hardlink handling"
+    },
+    {
+      "operation": "exact placement with source range",
+      "class": "DIRECT_API",
+      "primitives": [
+        "AppendToTimeline([{mediaPoolItem,startFrame,endFrame,mediaType,trackIndex,recordFrame}]) on CURRENT timeline"
+      ],
+      "evidence": "DOCUMENTED; ESTATE for recordFrame=GetStartFrame() (hardlink fixture)",
+      "status": "NOT_TESTED",
+      "m3_question": "recordFrame origin (INFERRED absolute incl. start-TC offset); endFrame inclusivity; still duration control; occupied-interval collision; mixed source fps"
+    },
+    {
+      "operation": "move/trim/slip/nudge existing item in place",
+      "class": "UNSUPPORTED",
+      "primitives": [],
+      "evidence": "stub grep: no setters",
+      "status": "UNSUPPORTED"
+    },
+    {
+      "operation": "equivalent move/trim of owned simple item",
+      "class": "DELETE_AND_APPEND",
+      "primitives": [
+        "DeleteClips([item],false)",
+        "AppendToTimeline"
+      ],
+      "evidence": "DOCUMENTED",
+      "status": "NOT_TESTED",
+      "m3_question": "non-atomic; crash between calls is a first-class recovery case"
+    },
+    {
+      "operation": "replace one occurrence media keeping item",
+      "class": "TAKE_SWAP",
+      "primitives": [
+        "AddTake",
+        "SelectTakeByIndex",
+        "FinalizeTake"
+      ],
+      "evidence": "DOCUMENTED",
+      "status": "NOT_TESTED",
+      "m3_question": "item id survival; source bounds after finalize"
+    },
+    {
+      "operation": "replace occurrence by new occurrence",
+      "class": "DELETE_AND_APPEND",
+      "primitives": [
+        "DeleteClips",
+        "AppendToTimeline"
+      ],
+      "evidence": "DOCUMENTED",
+      "status": "NOT_TESTED"
+    },
+    {
+      "operation": "replace underlying media-pool file",
+      "class": "UNSAFE",
+      "primitives": [
+        "ReplaceClip",
+        "ReplaceClipPreserveSubClip",
+        "RelinkClips"
+      ],
+      "evidence": "DOCUMENTED (global to all uses)",
+      "status": "BLOCKED_V1"
+    },
+    {
+      "operation": "temporarily hide item",
+      "class": "DISABLE",
+      "primitives": [
+        "SetClipEnabled(false)"
+      ],
+      "evidence": "DOCUMENTED",
+      "status": "NOT_TESTED",
+      "note": "preview aid only; NOT canonical CUT"
+    },
+    {
+      "operation": "close gap by deletion",
+      "class": "RIPPLE_DELETE",
+      "primitives": [
+        "DeleteClips([items],true)"
+      ],
+      "evidence": "DOCUMENTED",
+      "status": "BLOCKED_V1",
+      "note": "downstream/linked scope unqualified; enumerate every shift before any enablement"
+    },
+    {
+      "operation": "canonical CUT / section re-tile / script retime",
+      "class": "REBUILD_DESTINATION_TIMELINE",
+      "primitives": [
+        "successor handoff -> new destination timeline; old destination preserved"
+      ],
+      "evidence": "EF retileSection (draft-revision-successor.js:352-368)",
+      "status": "QUALIFIED_EF_SIDE"
+    },
+    {
+      "operation": "KEEP",
+      "class": "COMPOSED_API_OPERATION",
+      "primitives": [
+        "verify binding; zero mutation; no absent-feedback promotion"
+      ],
+      "evidence": "EF intake (NO_FEEDBACK != KEEP)",
+      "status": "QUALIFIED_EF_SIDE"
+    },
+    {
+      "operation": "CHANGE / REWRITE",
+      "class": "COMPOSED_API_OPERATION",
+      "primitives": [
+        "canonical review -> revision plan -> successor -> bindings -> TAKE_SWAP | DELETE_AND_APPEND | REBUILD"
+      ],
+      "evidence": "EF revision authority",
+      "status": "DEPENDS_ON_PRIMITIVES"
+    },
+    {
+      "operation": "transform/crop/composite/audio properties",
+      "class": "DIRECT_API",
+      "primitives": [
+        "SetProperties({Pan,Tilt,ZoomX,ZoomY,...})",
+        "GetProperties"
+      ],
+      "evidence": "DOCUMENTED (singular forms deprecated/absent)",
+      "status": "NOT_TESTED",
+      "m3_question": "property whitelist, units, defaults, readback equality"
+    },
+    {
+      "operation": "speed, fades, transitions",
+      "class": "DIRECT_API",
+      "primitives": [
+        "SetSpeed",
+        "SetFades",
+        "AddTransition"
+      ],
+      "evidence": "DOCUMENTED",
+      "status": "NOT_TESTED",
+      "m3_question": "ripple/handle effects"
+    },
+    {
+      "operation": "titles / Fusion graphics",
+      "class": "COMPOSED_API_OPERATION",
+      "primitives": [
+        "InsertFusionTitleIntoTimeline",
+        "ImportFusionComp",
+        "FRB .setting templates"
+      ],
+      "evidence": "ESTATE (FRB): 5 s user-pref insert duration, restart to rescan, ExtentSet quirk",
+      "status": "DEFERRED",
+      "note": "accept pre-rendered registered graphics initially"
+    },
+    {
+      "operation": "audio tracks / mapping / normalization",
+      "class": "DIRECT_API",
+      "primitives": [
+        "AddTrack('audio')",
+        "mediaType 2 append",
+        "SetAudioMapping",
+        "NormalizeAudioLevel"
+      ],
+      "evidence": "DOCUMENTED",
+      "status": "DISABLED_BEYOND_APPEND"
+    },
+    {
+      "operation": "subtitles / AI tools",
+      "class": "DIRECT_API",
+      "primitives": [
+        "CreateSubtitlesFromAudio",
+        "TranscribeAudio"
+      ],
+      "evidence": "DOCUMENTED (Studio+Extras, fail soft False)",
+      "status": "DISABLED_V1"
+    },
+    {
+      "operation": "checkpoint",
+      "class": "COMPOSED_API_OPERATION",
+      "primitives": [
+        "DuplicateTimeline(name)",
+        "Timeline.Export(EXPORT_DRT)",
+        "SaveProject",
+        "external manifest"
+      ],
+      "evidence": "DOCUMENTED",
+      "status": "NOT_TESTED",
+      "m3_question": "id survival across duplicate; DRT re-import creates new ids (expected)"
+    },
+    {
+      "operation": "undo / rollback",
+      "class": "UNSUPPORTED",
+      "primitives": [],
+      "evidence": "stub grep",
+      "status": "UNSUPPORTED"
+    },
+    {
+      "operation": "revision counter / change events / CAS",
+      "class": "UNSUPPORTED",
+      "primitives": [
+        "GetProjectLastModifiedTime(projectName) advisory only"
+      ],
+      "evidence": "stub :1678",
+      "status": "NOT_TESTED",
+      "m3_question": "does last-modified change on every mutation (tripwire value)"
+    },
+    {
+      "operation": "track locking as GUI-edit mitigation",
+      "class": "DIRECT_API",
+      "primitives": [
+        "SetTrackLock",
+        "GetIsTrackLocked"
+      ],
+      "evidence": "stub :2176-2179",
+      "status": "NOT_TESTED",
+      "m3_question": "does a locked track reject API appends? does it block GUI edits on destination tracks?"
+    },
+    {
+      "operation": "cross-client project lock",
+      "class": "OBSERVED",
+      "primitives": [
+        "project-server collaboration lock ('Lock project <uuid>' in ResolveDebug.txt 2026-09-08)"
+      ],
+      "evidence": "ESTATE log",
+      "status": "QUALIFIED_READ",
+      "note": "granularity = project; not an item-level guard"
+    },
+    {
+      "operation": "render / delivery",
+      "class": "COMPOSED_API_OPERATION",
+      "primitives": [
+        "LoadRenderPreset",
+        "SetRenderSettings",
+        "AddRenderJob",
+        "StartRendering",
+        "GetRenderJobStatus",
+        "IsRenderingInProgress"
+      ],
+      "evidence": "ESTATE (FRB): live GUI required; media-storage target; fails if frames exist",
+      "status": "DEFERRED_M11"
+    },
+    {
+      "operation": "playback control",
+      "class": "UNSUPPORTED",
+      "primitives": [
+        "SetCurrentTimecode is seek only"
+      ],
+      "evidence": "ESTATE (xdotool workaround)",
+      "status": "UNSUPPORTED"
+    },
+    {
+      "operation": "library switch / load other project / close project",
+      "class": "UNSAFE",
+      "primitives": [
+        "SetCurrentDatabase (closes open project)",
+        "LoadProject",
+        "CloseProject",
+        "ImportProject"
+      ],
+      "evidence": "README.txt:146",
+      "status": "BLOCKED_ALL_SCOPES"
+    },
+    {
+      "operation": "non-render mutation under -nogui",
+      "class": "NOT_TESTED",
+      "primitives": [
+        "Scorecraft P7/P8 gate harness assumes yes; no recorded pass"
+      ],
+      "evidence": "gate scripts exist",
+      "status": "NOT_TESTED",
+      "m3_question": "decides whether M4-M8 need a GUI session"
+    }
+  ]
+}

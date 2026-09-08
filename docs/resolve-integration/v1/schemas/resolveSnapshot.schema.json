@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveSnapshot.v1",
+  "title": "Canonical Resolve readback snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "collector_version",
+    "canonicalization_version",
+    "target_contract_digest",
+    "target_epoch",
+    "resolve_build",
+    "project",
+    "collection",
+    "coverage",
+    "payload",
+    "payload_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveSnapshot.v1"
+    },
+    "collector_version": {
+      "type": "string"
+    },
+    "canonicalization_version": {
+      "const": "1"
+    },
+    "target_contract_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "target_epoch": {
+      "type": "string"
+    },
+    "resolve_build": {
+      "type": "string"
+    },
+    "library": {
+      "type": "object"
+    },
+    "project": {
+      "type": "object",
+      "required": [
+        "unique_id",
+        "name"
+      ]
+    },
+    "collection": {
+      "type": "object",
+      "required": [
+        "started_at",
+        "ended_at",
+        "generation"
+      ]
+    },
+    "coverage": {
+      "type": "object",
+      "required": [
+        "observed_domains",
+        "unobservable_domains"
+      ],
+      "properties": {
+        "observed_domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unobservable_domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "timeline",
+        "tracks",
+        "markers",
+        "media_dependencies"
+      ],
+      "properties": {
+        "timeline": {
+          "type": "object",
+          "required": [
+            "unique_id",
+            "name",
+            "start_frame",
+            "start_timecode",
+            "fps",
+            "width",
+            "height",
+            "end_frame"
+          ],
+          "properties": {
+            "fps": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "numerator",
+                "denominator"
+              ],
+              "properties": {
+                "numerator": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "denominator": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "tracks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "type",
+              "index",
+              "name",
+              "enabled",
+              "locked",
+              "items"
+            ],
+            "properties": {
+              "type": {
+                "enum": [
+                  "video",
+                  "audio",
+                  "subtitle"
+                ]
+              },
+              "index": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "unique_id",
+                    "name",
+                    "start",
+                    "end",
+                    "duration",
+                    "source_start",
+                    "source_end",
+                    "enabled",
+                    "media_pool_item_unique_id",
+                    "media_id",
+                    "source_locator",
+                    "source_sha256",
+                    "markers"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "markers": {
+          "type": "array"
+        },
+        "media_dependencies": {
+          "type": "array"
+        }
+      },
+      "additionalProperties": false
+    },
+    "payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$comment": "Hashed payload = canonical bytes of `payload` only; collection timestamps and payload_sha256 are outside the hash. Sorting: tracks by (type enum order video<audio<subtitle, index); items by (start, end, type, unique_id); markers by (object_address, frame, customData)."
+}

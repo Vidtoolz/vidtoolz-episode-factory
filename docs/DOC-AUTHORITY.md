@@ -20,6 +20,7 @@ beat hand-maintained prose.
 | Draft music (dual-model A/B/C) | `draft-music-package.json` per run/canary; orchestration authority in `scripts/draft-music-orchestrator.js` (entry `scripts/generate-draft-music.js`) | `docs/draft-music-automation.md`; `node scripts/generate-draft-music.js status` |
 | Package-runs discovery index | `package-runs-index.json` — DERIVED, REBUILDABLE, NON-AUTHORITATIVE projection over canonical run identity (`scripts/package-runs-index.js`). Directory count under `package-runs/` ≠ genuine run count: proof/canary/acceptance/legacy directories carry no run identity and are excluded by design. | `node scripts/package-runs-index.js --check` (read-only); `node scripts/package-runs-index.js` rebuilds atomically |
 | Index freshness | `scripts/package-runs-index.js --freshness` | rebuild with `node scripts/package-runs-index.js` |
+| Resolve execution subsystem (doctrine, transport, host/library, identity/timebase, capability matrix, canary authority, freeze status) | `docs/resolve-integration/v1/FREEZE-MANIFEST.json` (hash-pinned bundle; `DOCTRINE.md` is the doctrine text; `PROVISIONAL.md` lists what is NOT frozen) | read `FREEZE-MANIFEST.json` first; a document disagreeing with the manifest hash is not the frozen version. Nothing in the bundle is human approval of any run. |
 | Test count | none — it is not hardcoded | run `scripts/verify.sh` |
 
 ## Current / authoritative docs
@@ -31,6 +32,7 @@ beat hand-maintained prose.
 - `config/production-stages.json` — generated stage data (mirror of the canonical spec).
 - `docs/production-mode.md` — run-level production mode (DRAFT / REVIEW / PRODUCTION) and gate-7/8 semantics per mode.
 - `docs/draft-bespoke-successor-authority.md` — immutable current-Story Draft successor and registry-to-Directed-Draft assembly authority.
+- `docs/resolve-integration/v1/` — Resolve execution subsystem authority bundle (frozen 2026-09-08 by Mikko's authorization; `experiments/quarantine-2026-09-08/` holds the quarantined non-authoritative prototypes).
 
 ## Historical / reference docs (snapshots, not current truth)
 

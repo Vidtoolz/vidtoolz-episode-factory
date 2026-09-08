@@ -1,0 +1,90 @@
+{
+  "schema": "vidtoolz.resolveCanonicalizationVectors.v1",
+  "spec": "CANONICALIZATION.md v1",
+  "reference_implementation": "python (bundle generator, 2026-09-08)",
+  "vectors": [
+    {
+      "name": "empty_object",
+      "input": {},
+      "canonical_utf8": "{}",
+      "canonical_byte_length": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "name": "key_order_codepoint",
+      "input": {
+        "b": 1,
+        "a": 2,
+        "B": 3,
+        "ä": 4,
+        "aa": 5
+      },
+      "canonical_utf8": "{\"B\":3,\"a\":2,\"aa\":5,\"b\":1,\"ä\":4}",
+      "canonical_byte_length": 33,
+      "sha256": "df61306e58593a4e6d1250857e292078975125334e4207941c73c9ce24a980f9"
+    },
+    {
+      "name": "nested_and_arrays",
+      "input": {
+        "z": [
+          3,
+          1,
+          2
+        ],
+        "y": {
+          "k": [
+            {
+              "m": true
+            },
+            {
+              "m": false
+            },
+            null
+          ]
+        }
+      },
+      "canonical_utf8": "{\"y\":{\"k\":[{\"m\":true},{\"m\":false},null]},\"z\":[3,1,2]}",
+      "canonical_byte_length": 53,
+      "sha256": "fed4e2eefe9dab3ef8df3e698b4e68e05c8393b739d1640109b5dc1dfa2f4a43"
+    },
+    {
+      "name": "string_escapes",
+      "input": {
+        "s": "quote\" back\\ tab\t nl\n cr\r bell\u0007 del slash/ ls  emoji😀 ä"
+      },
+      "canonical_utf8": "{\"s\":\"quote\\\" back\\\\ tab\\t nl\\n cr\\r bell\\u0007 del slash/ ls  emoji😀 ä\"}",
+      "canonical_byte_length": 80,
+      "sha256": "6d56210f39717961ff2b8c823f224a5d3d4228310dade5c9b19eb7605a7a2e1f"
+    },
+    {
+      "name": "integers_and_tagged",
+      "input": {
+        "frames": 6756,
+        "ms": 225183,
+        "zero": 0,
+        "neg": -17,
+        "fps": {
+          "$rational": "30/1"
+        },
+        "gain": {
+          "$f64": "3ff0000000000000"
+        }
+      },
+      "canonical_utf8": "{\"fps\":{\"$rational\":\"30/1\"},\"frames\":6756,\"gain\":{\"$f64\":\"3ff0000000000000\"},\"ms\":225183,\"neg\":-17,\"zero\":0}",
+      "canonical_byte_length": 108,
+      "sha256": "a20c4aa1c6d15845479203d2499ed3f83c6961fc341bf1804b5dd5050b83ac00"
+    },
+    {
+      "name": "timebase_boundary_row",
+      "input": {
+        "boundary_ms": 225183,
+        "B": 6756,
+        "absolute_frame": 114756,
+        "law": "CEIL_BOUNDARY_V1"
+      },
+      "canonical_utf8": "{\"B\":6756,\"absolute_frame\":114756,\"boundary_ms\":225183,\"law\":\"CEIL_BOUNDARY_V1\"}",
+      "canonical_byte_length": 80,
+      "sha256": "076fbd6012e993e881d4ec37dcb24f1229464414b3d77c67035a301680b30107"
+    }
+  ]
+}

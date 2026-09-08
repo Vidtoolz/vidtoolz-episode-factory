@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveTimebase.v1",
+  "title": "Resolve timebase law and profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "authoritative_fps_source",
+    "profile_v1",
+    "law",
+    "tolerance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveTimebase.v1"
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "authoritative_fps_source": {
+      "type": "object"
+    },
+    "profile_v1": {
+      "type": "object",
+      "required": [
+        "fps",
+        "timecode",
+        "start_frame_offset",
+        "geometry",
+        "audio_sample_rate_hz"
+      ],
+      "properties": {
+        "fps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "numerator",
+            "denominator"
+          ],
+          "properties": {
+            "numerator": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "denominator": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "timecode": {
+          "type": "object"
+        },
+        "start_frame_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "geometry": {
+          "type": "object"
+        },
+        "audio_sample_rate_hz": {
+          "type": "integer"
+        },
+        "decimal_rate_mapping": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "law": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "const": "CEIL_BOUNDARY_V1"
+        }
+      },
+      "additionalProperties": true
+    },
+    "tolerance": {
+      "type": "object"
+    },
+    "timecode_ordinal": {
+      "type": "object"
+    },
+    "source_media_v1": {
+      "type": "object"
+    },
+    "legacy_drafts": {
+      "type": "string"
+    },
+    "api_mapping": {
+      "type": "object"
+    },
+    "fixtures": {
+      "type": "string"
+    }
+  }
+}

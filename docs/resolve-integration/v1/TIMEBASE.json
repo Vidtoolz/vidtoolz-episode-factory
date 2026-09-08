@@ -1,0 +1,73 @@
+{
+  "schema": "vidtoolz.resolveTimebase.v1",
+  "version": "1.0.0",
+  "status": "FROZEN_NOW (law, profile, fixtures); PROVISIONAL_UNTIL_M3 (api_mapping)",
+  "authoritative_fps_source": {
+    "primary": "handoff.timeline.timebase.output_fps",
+    "cross_check_equal": "handoff.editor.output.fps",
+    "on_mismatch_or_absent": "TIMEBASE_UNRESOLVED",
+    "note": "handoff.timeline.timebase.frame_rounding=CANONICAL_RENDERER is mapped by this law, never rewritten in historical JSON"
+  },
+  "profile_v1": {
+    "fps": {
+      "numerator": 30,
+      "denominator": 1
+    },
+    "timecode": {
+      "nominal_fps": 30,
+      "drop_frames_per_minute": 0,
+      "start": "01:00:00:00"
+    },
+    "start_frame_offset": 108000,
+    "geometry": {
+      "width": 1080,
+      "height": 1920,
+      "progressive": true
+    },
+    "audio_sample_rate_hz": 48000,
+    "decimal_rate_mapping": {
+      "29.97": "30000/1001",
+      "59.94": "60000/1001"
+    }
+  },
+  "law": {
+    "name": "CEIL_BOUNDARY_V1",
+    "den": "1000*q",
+    "B(m)": "floor((m*p + den - 1) / den)",
+    "absolute(m)": "O + B(m)",
+    "interval": "[a,b) -> [O+B(a), O+B(b))",
+    "duration": "B(b) - B(a)",
+    "coincident_boundaries": "share one frame; later interval owns it",
+    "reject": [
+      "negative m",
+      "invalid range",
+      "integer overflow",
+      "required interval with B(b)-B(a)==0 -> TIMEBASE_COLLAPSED_INTERVAL"
+    ],
+    "rationale": "canonical renderer (production-assembly-renderer.js:607 Math.ceil) and composition compiler (CEIL_EVENT_MS_TO_FIRST_FRAME_AT_OR_AFTER) already use ceil; approved MP4 = 6756 frames = ceil(225183*30/1000); half-up gives 6755"
+  },
+  "tolerance": {
+    "planned_vs_observed_frames": 0,
+    "quantization_delay_ms_upper_bound": "1000*q/p (exclusive)",
+    "programme_tail": "extend final visual hold + silence to B(end_ms); never time-stretch narration",
+    "audio": "ms boundary -> 48*m samples, verified separately"
+  },
+  "timecode_ordinal": {
+    "ndf": "O=(3600h+60min+s)*N+f",
+    "drop_frame": "future profile only"
+  },
+  "source_media_v1": {
+    "cfr_same_rate_only": true,
+    "other_rates": "registered deterministic conform derivative (sha-pinned, real-time duration preserved)",
+    "still_duration": "declared per binding"
+  },
+  "legacy_drafts": "use handoff fps fields when consistent; external immutable projection contract; never edit historical JSON",
+  "api_mapping": {
+    "status": "PROVISIONAL_UNTIL_M3",
+    "record_frame_origin": "INFERRED absolute incl. start-TC offset (hardlink fixture, FRB); prove in M3",
+    "end_frame_convention": "UNKNOWN inclusive/exclusive; prove on 1- and 2-frame clips",
+    "still_duration_control": "UNKNOWN; prove",
+    "GetStartFrame_equals_offset": "assert O at M3 else TIMEBASE_MISMATCH"
+  },
+  "fixtures": "fixtures/timebase/canary-boundaries.json"
+}

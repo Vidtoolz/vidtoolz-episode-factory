@@ -1,0 +1,18 @@
+{
+  "schema": "vidtoolz.resolveTrackPolicy.v1",
+  "version": "1.0.0",
+  "video": {
+    "1": "FULL_CANVAS_VISUAL",
+    "2": "PRESENTER",
+    "3": "TYPOGRAPHY",
+    "4": "RESERVED"
+  },
+  "audio": {
+    "1": "NARRATION",
+    "2": "MUSIC",
+    "3": "RESERVED"
+  },
+  "marker_owner_prefix": "vidtoolz:resolve:binding:v1:",
+  "bin_pattern": "VIDTOOLZ/<run_id>/",
+  "timeline_name_pattern": "VIDTOOLZ__<run_id>__<handoff_id[0:8]>__r<N>"
+}

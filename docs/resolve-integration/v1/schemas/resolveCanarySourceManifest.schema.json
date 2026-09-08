@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveCanarySourceManifest.v1",
+  "title": "Canary source relocation manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "run_id",
+    "preserved_root",
+    "relocation_rule",
+    "handoff",
+    "approved_comparison_artifact",
+    "media",
+    "media_match_count",
+    "human_review",
+    "lock",
+    "grants_gate_approval"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveCanarySourceManifest.v1"
+    },
+    "status": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "preserved_root": {
+      "type": "string"
+    },
+    "live_root_declared_in_handoff": {
+      "type": "string"
+    },
+    "live_root_status": {
+      "type": "string"
+    },
+    "relocation_rule": {
+      "type": "string"
+    },
+    "handoff": {
+      "type": "object"
+    },
+    "story_pin": {
+      "type": "object"
+    },
+    "approved_comparison_artifact": {
+      "type": "object"
+    },
+    "media": {
+      "type": "array",
+      "minItems": 22,
+      "maxItems": 22,
+      "items": {
+        "type": "object",
+        "required": [
+          "role",
+          "declared_path",
+          "preserved_path",
+          "declared_sha256",
+          "preserved_sha256",
+          "match"
+        ]
+      }
+    },
+    "media_match_count": {
+      "const": "22/22"
+    },
+    "asset_manifest": {
+      "type": "object"
+    },
+    "composition": {
+      "type": "object"
+    },
+    "human_review": {
+      "type": "object"
+    },
+    "lock": {
+      "type": "object"
+    },
+    "blueprint_manual_not_target": {
+      "type": "object"
+    },
+    "story_binding_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "negative_fixture_only": {
+      "type": "object"
+    },
+    "grants_gate_approval": {
+      "const": false
+    }
+  }
+}

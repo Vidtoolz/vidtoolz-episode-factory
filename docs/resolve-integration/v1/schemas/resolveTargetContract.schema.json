@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveTargetContract.v1",
+  "title": "Resolve target contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "host",
+    "resolve",
+    "library",
+    "session",
+    "prohibited_targets",
+    "denied_calls_all_scopes"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveTargetContract.v1"
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "host": {
+      "type": "object"
+    },
+    "resolve": {
+      "type": "object"
+    },
+    "interpreter": {
+      "type": "object"
+    },
+    "library": {
+      "type": "object",
+      "required": [
+        "kind",
+        "name",
+        "rule"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "Disk"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "root_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "instance_uuid": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rule": {
+          "type": "string"
+        },
+        "provisioning": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "session": {
+      "type": "object"
+    },
+    "prohibited_targets": {
+      "type": "object"
+    },
+    "naming": {
+      "type": "object"
+    },
+    "denied_calls_all_scopes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveTrackPolicy.v1",
+  "title": "Track policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "video",
+    "audio",
+    "marker_owner_prefix"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveTrackPolicy.v1"
+    },
+    "version": {
+      "type": "string"
+    },
+    "video": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": [
+          "FULL_CANVAS_VISUAL",
+          "PRESENTER",
+          "PRESENTER_PROXY",
+          "TYPOGRAPHY",
+          "RESERVED"
+        ]
+      }
+    },
+    "audio": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": [
+          "NARRATION",
+          "MUSIC",
+          "RESERVED"
+        ]
+      }
+    },
+    "marker_owner_prefix": {
+      "const": "vidtoolz:resolve:binding:v1:"
+    },
+    "bin_pattern": {
+      "type": "string"
+    },
+    "timeline_name_pattern": {
+      "type": "string"
+    }
+  }
+}

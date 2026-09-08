@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveMutationPlan.v1",
+  "title": "Mutation plan (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "plan_digest",
+    "target_epoch",
+    "target_contract_digest",
+    "binding_set_digest",
+    "h0_payload_sha256",
+    "capability_matrix_version",
+    "collector_version",
+    "timebase_digest",
+    "permission_class",
+    "scope",
+    "operations"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveMutationPlan.v1"
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "target_epoch": {
+      "type": "string"
+    },
+    "target_contract_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "binding_set_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "handoff_digest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "h0_payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "capability_matrix_version": {
+      "type": "string"
+    },
+    "collector_version": {
+      "type": "string"
+    },
+    "timebase_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "permission_class": {
+      "enum": [
+        "RESOLVE_READ",
+        "RESOLVE_ASSEMBLE",
+        "RESOLVE_REVISE",
+        "RESOLVE_FINISH",
+        "RESOLVE_RENDER"
+      ]
+    },
+    "scope": {
+      "enum": [
+        "SCRATCH_QUALIFICATION_LIBRARY",
+        "LOCAL_STAGING_LIBRARY",
+        "PRODUCTION_LIBRARY"
+      ]
+    },
+    "lease": {
+      "type": "object"
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation_id",
+          "op",
+          "selector",
+          "expected_old",
+          "expected_new",
+          "allowed_created",
+          "allowed_deleted",
+          "declared_side_effects"
+        ],
+        "properties": {
+          "operation_id": {
+            "type": "string"
+          },
+          "op": {
+            "enum": [
+              "IMPORT_MEDIA",
+              "APPEND",
+              "DELETE",
+              "DISABLE",
+              "ENABLE",
+              "SET_TAKE",
+              "UPSERT_MARKER",
+              "SET_PROPERTIES",
+              "CHECKPOINT_DUPLICATE",
+              "CHECKPOINT_EXPORT_DRT",
+              "SAVE_PROJECT"
+            ]
+          },
+          "selector": {
+            "type": "object"
+          },
+          "expected_old": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "expected_new": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "creation_template": {
+            "type": "object"
+          },
+          "allowed_created": {
+            "type": "array"
+          },
+          "allowed_deleted": {
+            "type": "array"
+          },
+          "declared_side_effects": {
+            "type": "array"
+          },
+          "source_pins": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    "dry_run": {
+      "type": "boolean"
+    }
+  },
+  "$comment": "No wildcard 'allow changes to this entire item'."
+}

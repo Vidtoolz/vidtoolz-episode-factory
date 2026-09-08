@@ -1,0 +1,253 @@
+{
+  "schema": "vidtoolz.resolveFreezeManifest.v1",
+  "bundle": "docs/resolve-integration/v1",
+  "version": "1.0.0",
+  "frozen_at": "2026-09-08",
+  "approver": "Mikko Pakkala (written authorization 2026-09-08, recorded in AUTHORIZATION-2026-09-08.md)",
+  "prepared_by": "Claude Code (Fable 5.1)",
+  "status_vocabulary": [
+    "FROZEN_NOW",
+    "PROVISIONAL_UNTIL_M3",
+    "UNTESTED_BLOCKED"
+  ],
+  "rules": [
+    "a file whose sha256 differs from this manifest is not the frozen version",
+    "any semantic amendment is a new bundle version with a new approval, never a silent repin",
+    "provisional items are drafts, not frozen fact; UNTESTED_BLOCKED capability rows block every dependent milestone until M3 evidence re-freezes them",
+    "nothing in this bundle is human approval of any run, gate or publication",
+    "repository state: this bundle and experiments/quarantine-2026-09-08/ are UNCOMMITTED working-tree additions on a checkout currently at branch codex/m1-camera-trajectory-seam (HEAD 4593b38); committing is a separate Mikko decision"
+  ],
+  "files": [
+    {
+      "path": "ADJUDICATION-FREEZE-CONTRACT.md",
+      "sha256": "e84534a6c1ecd4b78a53ea9507a7556142dda04c2abf8242e955aafc026ffb7f",
+      "bytes": 61876,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "AUTHORIZATION-2026-09-08.md",
+      "sha256": "ffde6ef7c00620bd0c35223c24acf820ae9177026e6972e16b06aedf2931d202",
+      "bytes": 3154,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "CANARY-SOURCE-MANIFEST.json",
+      "sha256": "dad05e34637672b2dfd52b94319331a30b631ce72805e7e73f4b8151f0762c4b",
+      "bytes": 24552,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "CANONICALIZATION.md",
+      "sha256": "64a319a965ee05a2288a73a2b6ca3bf00cac78313ae74745cd8b46b20207d91e",
+      "bytes": 2366,
+      "status": "FROZEN_NOW (spec); Node conformance = M1"
+    },
+    {
+      "path": "CAPABILITIES.json",
+      "sha256": "e539a1a3a910bab225494f71b513ac98df2c41dbac154234bc3b07cfc84708b2",
+      "bytes": 11920,
+      "status": "FROZEN_NOW (static inventory); NOT_TESTED rows UNTESTED_BLOCKED"
+    },
+    {
+      "path": "CLIENT-VERSION-INVENTORY.md",
+      "sha256": "542c4c46e6335eae5b397f30a079c1278884d49edf6e025c616b7787cd04d1b4",
+      "bytes": 1901,
+      "status": "FROZEN_NOW (vidnux); PRESTO/VIDLAP2 UNVERIFIED"
+    },
+    {
+      "path": "DOCTRINE.md",
+      "sha256": "842f8b665acfb00641fd18dff7989d9b22345ee75e62ab68bfbf4a4d297b735e",
+      "bytes": 3329,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "IDENTITY-BINDING.md",
+      "sha256": "4a67c8247fb87916ac32fbf49f3f04cde2ba3c1817ac52c335bea4aab0fab622",
+      "bytes": 2690,
+      "status": "FROZEN_NOW (relationship, rules, marker namespace, track policy)"
+    },
+    {
+      "path": "PROVISIONAL.md",
+      "sha256": "d53da47a3b95dbbee108f31357726417e9eb8b4f8b0d0b808f92962ded3d7acb",
+      "bytes": 2078,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "QUARANTINE-MANIFEST.json",
+      "sha256": "d99411ed19384f737edabc881d0c672cea01541867458e8af739caf5c5d50b65",
+      "bytes": 11799,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "README.md",
+      "sha256": "0f730e44f847bb81ee8bfd370e2b3343286b24198fa5afcb54409285a0b19f31",
+      "bytes": 581,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "SCORECRAFT-EXTRACTION.md",
+      "sha256": "52f7f0c61e3c405f73217d6441c94ae79699bcde368d9c5bcbc35c1391489c31",
+      "bytes": 4222,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "SCRATCH-TEST-PLAN-M3.md",
+      "sha256": "8978536fd8b511fb1617e16784955f5bac44cfa268ab52d2e76ac2d4851b3b6e",
+      "bytes": 3129,
+      "status": "PROVISIONAL_UNTIL_M3 (plan, not evidence)"
+    },
+    {
+      "path": "SNAPSHOT-CONCURRENCY-RECOVERY.md",
+      "sha256": "6e1ad59e8bf15f6419558b5e2a3e5243625f5f491cf9385c54674feb921b9f8c",
+      "bytes": 4320,
+      "status": "FROZEN_NOW (doctrine, guarantees, codes, state machine)"
+    },
+    {
+      "path": "TARGET-CONTRACT.json",
+      "sha256": "80d60bcae20a59fe6fea7638c3d570661b9e9cc4ce7e97fda74d5165c079ef05",
+      "bytes": 4235,
+      "status": "FROZEN_NOW (host, build, pins, rules); library.root_path/instance_uuid/session.launch_recipe_sha256 PROVISIONAL_UNTIL_M3"
+    },
+    {
+      "path": "TIMEBASE.json",
+      "sha256": "d206049d005fd67c2464ca05193ba1a76d68ab98dcbc12547b7690b1138a422a",
+      "bytes": 2824,
+      "status": "FROZEN_NOW (law, profile_v1, fixtures); api_mapping PROVISIONAL_UNTIL_M3"
+    },
+    {
+      "path": "TRANSPORT.md",
+      "sha256": "7f221e006de3f100336b2aabac8807aab66325e8949a1662fa441549fbc5d4e5",
+      "bytes": 2069,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "fixtures/canonicalization/vectors.json",
+      "sha256": "215f743da6d85c87d24feaaf4af659cc7d0734b0fe0d57338fa33382e6eb5382",
+      "bytes": 2655,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "fixtures/timebase/canary-boundaries.json",
+      "sha256": "b5ae374906a16feee4d5fe6ac199a0814a763f3f84e5af790a084c3d9625ac53",
+      "bytes": 8765,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "schemas/provisional/resolveBindingObservation.schema.json",
+      "sha256": "4095c8e2a2d83cd2ca539066e4c176caebe4fb57d082c28550d49e522639571c",
+      "bytes": 1367,
+      "status": "PROVISIONAL_UNTIL_M3"
+    },
+    {
+      "path": "schemas/provisional/resolveBindingSet.schema.json",
+      "sha256": "9e76a67b6bfbc8f5b5f3b1d2a7e90d002724ac2f84dd1b9e677c40849349af4d",
+      "bytes": 4404,
+      "status": "PROVISIONAL_UNTIL_M3"
+    },
+    {
+      "path": "schemas/provisional/resolveCheckpoint.schema.json",
+      "sha256": "12d1e9556b8a4992e52cf165e85313bf19696b114ff58bd065fb922d17bd4e1b",
+      "bytes": 974,
+      "status": "PROVISIONAL_UNTIL_M3"
+    },
+    {
+      "path": "schemas/provisional/resolveCommitManifest.schema.json",
+      "sha256": "f3977901631bd0e94da7094ae0e4145d6e329cd39d634181b90de3f5f2016f98",
+      "bytes": 1403,
+      "status": "PROVISIONAL_UNTIL_M3"
+    },
+    {
+      "path": "schemas/provisional/resolveConflict.schema.json",
+      "sha256": "09c70bd5cd82c6eb2472279b290fd0ac7b4eb12f84efca15e1e0971536095764",
+      "bytes": 1841,
+      "status": "PROVISIONAL_UNTIL_M3"
+    },
+    {
+      "path": "schemas/provisional/resolveMutationPlan.schema.json",
+      "sha256": "ce3d32220117a701edb0f1e92aa1ff5353875506b22417f9f5e155af44221056",
+      "bytes": 3387,
+      "status": "PROVISIONAL_UNTIL_M3"
+    },
+    {
+      "path": "schemas/provisional/resolveSequenceLineage.schema.json",
+      "sha256": "24fd7d7212176a4bb1405d132cff5abab4a111105b99a2249d614ae48ea62ad8",
+      "bytes": 1086,
+      "status": "PROVISIONAL_UNTIL_M3"
+    },
+    {
+      "path": "schemas/provisional/resolveTransactionJournal.schema.json",
+      "sha256": "a8c7a5d1c221be6a959ecc149b3097dd2800107dc9602d1c7e236a7e75eeca89",
+      "bytes": 1941,
+      "status": "PROVISIONAL_UNTIL_M3"
+    },
+    {
+      "path": "schemas/provisional/resolveVerificationResult.schema.json",
+      "sha256": "f5422e95e15f73d47d6ed66b637aa56d037dbd28c15121545e71ca5b919b4350",
+      "bytes": 1383,
+      "status": "PROVISIONAL_UNTIL_M3"
+    },
+    {
+      "path": "schemas/resolveCanarySourceManifest.schema.json",
+      "sha256": "42c669988d38c7919f36190c4b5c52fdc25272d1cac952d88781f738e63e5a35",
+      "bytes": 1912,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "schemas/resolveSnapshot.schema.json",
+      "sha256": "7a3fd8e31ffcfab3e65abb657f2f5c077c3d1605606fdab2d7d6facf230d65f4",
+      "bytes": 4575,
+      "status": "FROZEN_NOW (pre-M2 set)"
+    },
+    {
+      "path": "schemas/resolveTargetContract.schema.json",
+      "sha256": "18d429e981779e76e06ccc437f4ab6ecae0ef62fa7cdd2851d633c9144869892",
+      "bytes": 1623,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "schemas/resolveTimebase.schema.json",
+      "sha256": "e738c46759a49a27945a7520d0cf3f09c6e7f7f518a5a0d0f0d487230daafb18",
+      "bytes": 2160,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "schemas/resolveTrackPolicy.schema.json",
+      "sha256": "8e7c906595850d9c05f04829e7c92189f2f4aa8aa4b6206e3c7b30081fa2ae21",
+      "bytes": 1043,
+      "status": "FROZEN_NOW"
+    },
+    {
+      "path": "schemas/resolveTrackPolicy.v1.json",
+      "sha256": "b2b5fb1de467850fc9268c5d7d0458d572763f32058bcb8736b6ab467fdf65e4",
+      "bytes": 433,
+      "status": "FROZEN_NOW"
+    }
+  ],
+  "external_pins": {
+    "claude_review": {
+      "path": "/home/vidtoolz/outputs/resolve-mcp-integration-review-2026-09-08/REVIEW.md",
+      "sha256": "123da15c3d609aea0715bd0ad63dc5345fd2f9508b9a3f25be753f6fd328361f"
+    },
+    "hermes_verification": {
+      "path": "/home/vidtoolz/outputs/resolve-mcp-integration-review-2026-09-08/HERMES-INDEPENDENT-VERIFICATION.md",
+      "sha256": "6a2d4c6f7bfba43f94a571b164c1ebf9183e641d9561e2128c71eaf0d01539e6"
+    },
+    "codex_review": {
+      "path": "/home/vidtoolz/outputs/codex-resolve-integration-review-2026-09-08/REVIEW.md",
+      "sha256": "c85708a8fd422451e7bfc02397d278cc3857f8a288ece9265e3c7ad123c2e3ff"
+    },
+    "doc_authority": {
+      "path": "docs/DOC-AUTHORITY.md",
+      "sha256": "57a68f7d98fcd07fcf7ac1ccda218299a700f6252d2e435cd4b09a2c34ea14bd"
+    },
+    "launcher_stub": {
+      "path": "/home/vidtoolz/bin/open-directed-draft-inspector",
+      "sha256": "cdf31715bd8614ccfc4c3ce9607137bcca3f0c059129a40abc47081a3905eed1"
+    }
+  },
+  "counts": {
+    "files": 34,
+    "frozen_now": 24,
+    "provisional": 10
+  }
+}
