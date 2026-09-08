@@ -1,0 +1,24 @@
+{
+  "fixture": "plan-m2-non-dry-run",
+  "check": "semantic_mutation_plan",
+  "expect_errors": true,
+  "document": {
+    "schema": "vidtoolz.resolveMutationPlan.v1",
+    "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "milestone": "M2",
+    "dry_run": false,
+    "target_epoch": "epoch-fixture-1",
+    "target_contract_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "binding_set_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "handoff_digest_sha256": "3fd9bdd875c9eb489abf77797613abbc2616eef36073503742ebc9fd80f5bf69",
+    "h0_payload_sha256": "7ce256448d3d98edf555d2050a9f358b0b11555e9ae0822f57280af340af02c1",
+    "h0_guard_digest": "41b4ab8bbde9fb6a8549f91ed95e69f4b5f484be0725ae231ce5230ae02d2024",
+    "capability_matrix_version": "1.1.0",
+    "collector_version": "0.0.0-fixture",
+    "timebase_digest": "4444444444444444444444444444444444444444444444444444444444444444",
+    "permission_class": "RESOLVE_ASSEMBLE",
+    "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+    "lease": {},
+    "operations": []
+  }
+}

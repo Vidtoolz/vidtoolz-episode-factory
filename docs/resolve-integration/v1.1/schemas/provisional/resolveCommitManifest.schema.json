@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveCommitManifest.v1",
+  "title": "Commit manifest head (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "transaction_id",
+    "plan_digest",
+    "terminal_state",
+    "binding_observation_sha256",
+    "binding_set_digest",
+    "receipt_sha256",
+    "journal_head_sha256",
+    "ef_source_pins",
+    "published_at"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveCommitManifest.v1"
+    },
+    "transaction_id": {
+      "type": "string"
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "terminal_state": {
+      "enum": [
+        "COMMITTED",
+        "COMMITTED_RECOVERED"
+      ]
+    },
+    "binding_observation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "binding_set_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "receipt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "journal_head_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "ef_source_pins": {
+      "type": "object"
+    },
+    "published_at": {
+      "type": "string"
+    }
+  },
+  "$comment": "Readers derive success only from this head, published atomically under EF compare-and-swap."
+}

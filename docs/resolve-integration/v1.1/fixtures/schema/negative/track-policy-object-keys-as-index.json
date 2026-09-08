@@ -1,0 +1,34 @@
+{
+  "fixture": "track-policy-object-keys-as-index",
+  "kind": "negative",
+  "schema": "resolveTrackPolicy",
+  "expect_error_contains": "array",
+  "document": {
+    "schema": "vidtoolz.resolveTrackPolicy.v1.1",
+    "version": "1.1.0",
+    "status": "FROZEN_NOW",
+    "qualification_note": "layout policy is EF intent; whether Resolve enforces/keeps this layout is NOT_TESTED (M3 probes P1, P5, P9)",
+    "enforcement_evidence": "NOT_TESTED",
+    "video": {
+      "1": "FULL_CANVAS_VISUAL"
+    },
+    "audio": [
+      {
+        "index": 1,
+        "role": "NARRATION"
+      },
+      {
+        "index": 2,
+        "role": "MUSIC"
+      },
+      {
+        "index": 3,
+        "role": "RESERVED"
+      }
+    ],
+    "ordering": "tracks sort by (type order video<audio<subtitle, numeric index); indexes are integers, never strings",
+    "marker_owner_prefix": "vidtoolz:resolve:binding:v1:",
+    "bin_pattern": "VIDTOOLZ/<run_id>/",
+    "timeline_name_pattern": "VIDTOOLZ__<run_id>__<handoff_id[0:8]>__r<N>"
+  }
+}

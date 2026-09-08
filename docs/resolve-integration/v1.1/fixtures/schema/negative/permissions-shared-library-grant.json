@@ -1,0 +1,986 @@
+{
+  "fixture": "permissions-shared-library-grant",
+  "kind": "negative",
+  "schema": "resolvePermissions",
+  "expect_error_contains": "False",
+  "document": {
+    "schema": "vidtoolz.resolvePermissions.v1.1",
+    "version": "1.1.0",
+    "status": "FROZEN_NOW",
+    "default": "DENY",
+    "rule": "any (milestone, operation, scope) without an explicit allowed:true entry is DENIED; unknown milestone, operation or scope is DENIED; entries never grant shared_library_allowed",
+    "milestones": [
+      "M0",
+      "M1",
+      "M2",
+      "M3"
+    ],
+    "scopes": [
+      "SCRATCH_QUALIFICATION_LIBRARY"
+    ],
+    "prohibited_scopes": [
+      "LOCAL_STAGING_LIBRARY",
+      "PRODUCTION_LIBRARY",
+      "USER_LOCAL_DATABASE",
+      "NETWORK_LIBRARY_EKA"
+    ],
+    "denied_all_scopes": [
+      "SetCurrentDatabase",
+      "CloseProject",
+      "ImportProject",
+      "DeleteTimelines",
+      "DeleteClips_ripple",
+      "ReplaceClip",
+      "ReplaceClipPreserveSubClip",
+      "RelinkClips",
+      "UnlinkClips",
+      "run_script",
+      "run_script_unsafe",
+      "execute_python",
+      "execute_lua",
+      "StartRendering",
+      "AddRenderJob",
+      "LoadProject_nonPrefixed",
+      "SetClipProperty",
+      "DeleteProject"
+    ],
+    "plan_op_to_api": {
+      "IMPORT_MEDIA": "ImportMedia",
+      "APPEND": "AppendToTimeline",
+      "DELETE": "DeleteClips_noRipple",
+      "DISABLE": "SetClipEnabled",
+      "ENABLE": "SetClipEnabled",
+      "SET_TAKE": "AddTake_SelectTake_FinalizeTake",
+      "UPSERT_MARKER": "AddMarker",
+      "SET_PROPERTIES": "SetProperties",
+      "CHECKPOINT_DUPLICATE": "DuplicateTimeline",
+      "CHECKPOINT_EXPORT_DRT": "ExportTimelineDRT",
+      "SAVE_PROJECT": "SaveProject"
+    },
+    "scratch_lifecycle": {
+      "granted_at": "M3",
+      "operations": [
+        "CreateProject",
+        "CreateEmptyTimeline",
+        "SaveProject",
+        "LoadProject_adapterPrefixed"
+      ],
+      "constraints": [
+        "project name prefix VIDTOOLZ_RESOLVE_QUAL_V1_",
+        "library == TARGET-CONTRACT qualification library (PROVISIONED)",
+        "never EKA, never user's Local Database, never library switching"
+      ]
+    },
+    "entries": [
+      {
+        "milestone": "M0",
+        "operation": "Connect",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": true
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetVersionString",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetCurrentDatabase",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetProjectListInCurrentFolder",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetCurrentProject",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetTimelineByIndex",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetTimelineCount",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetCurrentTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetTrackCount",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetItemListInTrack",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetItemAttributes",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetMarkers",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetSettings",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetProperties",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetUniqueId",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "GetProjectLastModifiedTime",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M0",
+        "operation": "SnapshotCapture",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "TARGET-CONTRACT provisioning_status=PROVISIONED and independent v1.1 manifest verification",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "Connect",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetVersionString",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetCurrentDatabase",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetProjectListInCurrentFolder",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetCurrentProject",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetTimelineByIndex",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetTimelineCount",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetCurrentTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetTrackCount",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetItemListInTrack",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetItemAttributes",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetMarkers",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetSettings",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetProperties",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetUniqueId",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "GetProjectLastModifiedTime",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M1",
+        "operation": "SnapshotCapture",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "Connect",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetVersionString",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetCurrentDatabase",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetProjectListInCurrentFolder",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetCurrentProject",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetTimelineByIndex",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetTimelineCount",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetCurrentTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetTrackCount",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetItemListInTrack",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetItemAttributes",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetMarkers",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetSettings",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetProperties",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetUniqueId",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "GetProjectLastModifiedTime",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "SnapshotCapture",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "Connect",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetVersionString",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetCurrentDatabase",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetProjectListInCurrentFolder",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetCurrentProject",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetTimelineByIndex",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetTimelineCount",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetCurrentTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetTrackCount",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetItemListInTrack",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetItemAttributes",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetMarkers",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetSettings",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetProperties",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetUniqueId",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "GetProjectLastModifiedTime",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "SnapshotCapture",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M3 entry gate",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "SetCurrentTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "read-only navigation on adapter-prefixed project only",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M2",
+        "operation": "BuildMutationPlanDryRun",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 exit",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "SetCurrentTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "read-only navigation on adapter-prefixed project only",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "BuildMutationPlanDryRun",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M1 exit",
+        "mutation_allowed": false,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "IMPORT_MEDIA",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "plan-level op; executes API primitive ImportMedia; same prerequisites as that primitive; PREPARED journal record",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "plan-level op; executes API primitive AppendToTimeline; same prerequisites as that primitive; PREPARED journal record",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "DELETE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "plan-level op; executes API primitive DeleteClips_noRipple; same prerequisites as that primitive; PREPARED journal record",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "DISABLE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "plan-level op; executes API primitive SetClipEnabled; same prerequisites as that primitive; PREPARED journal record",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "ENABLE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "plan-level op; executes API primitive SetClipEnabled; same prerequisites as that primitive; PREPARED journal record",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "SET_TAKE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "plan-level op; executes API primitive AddTake_SelectTake_FinalizeTake; same prerequisites as that primitive; PREPARED journal record",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "UPSERT_MARKER",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "plan-level op; executes API primitive AddMarker; same prerequisites as that primitive; PREPARED journal record",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "SET_PROPERTIES",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "plan-level op; executes API primitive SetProperties; same prerequisites as that primitive; PREPARED journal record",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "CHECKPOINT_DUPLICATE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "plan-level op; executes API primitive DuplicateTimeline; same prerequisites as that primitive; PREPARED journal record",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "CHECKPOINT_EXPORT_DRT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "plan-level op; executes API primitive ExportTimelineDRT; same prerequisites as that primitive; PREPARED journal record",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "SAVE_PROJECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "plan-level op; executes API primitive SaveProject; same prerequisites as that primitive; PREPARED journal record",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "CreateProject",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; adapter-prefixed VIDTOOLZ_RESOLVE_QUAL_V1_* only",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "CreateEmptyTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; inside adapter-prefixed project",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "AddTrack",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P1/P9",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "ImportMedia",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; synthetic media only; run-scoped bin",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "AppendToTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probes P1-P5, P13",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "DeleteClips_noRipple",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P13; never ripple",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "SetClipEnabled",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P14",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "AddMarker",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P7",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "UpdateMarkerCustomData",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P7",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "DeleteMarkerByCustomData",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P7",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "SetSettings",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P8",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "SetTrackLock",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P9",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "AddTake_SelectTake_FinalizeTake",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P6",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "DuplicateTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P6 (checkpoint qualification)",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "ExportTimelineDRT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P6",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "ImportTimelineFromFileDRT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; probe P6",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "SaveProject",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; scratch lifecycle: adapter-prefixed project in the qualification library only (P15, P16)",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      },
+      {
+        "milestone": "M3",
+        "operation": "LoadProject_adapterPrefixed",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "allowed": true,
+        "evidence_prerequisite": "M2 exit + Mikko M3 authorization + PREPARED journal record; scratch lifecycle: reopen the same adapter-prefixed project after SaveProject (P15)",
+        "mutation_allowed": true,
+        "shared_library_allowed": false
+      }
+    ]
+  }
+}

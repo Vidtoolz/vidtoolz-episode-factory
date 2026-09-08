@@ -1,0 +1,3 @@
+# Resolve execution subsystem: authority bundle v1.1
+
+Versioned correction of v1.0 (parent branch `docs/resolve-authority-freeze-v1` @ `e2874f6f67f5adb3a5ced0e0e138c370e38995cb`, parent manifest `d9cd54780e0a123ae2045ac575bbc41638039ef3e878f1b608afbce3989a8821`). v1.0 under `../v1/` is immutable historical authority and is not modified. Read `FREEZE-MANIFEST.json` first (closed status vocabulary per file), then `CHANGELOG-v1.1.md` and `FINDING-RESOLUTION-MATRIX.md`. `PROVISIONAL.md` lists what is not frozen. `SCHEMA-VALID != AUTHORIZED TO MUTATE` (`SEMANTIC-VALIDATION.md`). Validate with `python3 tools/validate_v1_1.py` (report: `VALIDATION-REPORT.md`). Nothing in this bundle is human approval of any run, gate or publication; no Resolve mutation is authorized by it.

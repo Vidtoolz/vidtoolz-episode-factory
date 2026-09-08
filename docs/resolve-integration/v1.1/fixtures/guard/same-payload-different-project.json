@@ -1,0 +1,7 @@
+{
+  "purpose": "payload digest alone does not prove target context",
+  "payload_sha256_equal": true,
+  "guard_digest_equal": false,
+  "a_guard": "41b4ab8bbde9fb6a8549f91ed95e69f4b5f484be0725ae231ce5230ae02d2024",
+  "b_guard": "28d98c40792fd2f0432ac069805413ba51ed055bed3d56d24da24d180a1c5829"
+}

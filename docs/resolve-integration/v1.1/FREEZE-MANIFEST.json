@@ -1,0 +1,1212 @@
+{
+  "schema": "vidtoolz.resolveFreezeManifest.v1.1",
+  "bundle": "docs/resolve-integration/v1.1",
+  "version": "1.1.0",
+  "frozen_at": "2026-09-08",
+  "prepared_by": "Claude Code (Fable 5.1)",
+  "approval_status": "CANDIDATE_FOR_INDEPENDENT_REVIEW",
+  "approver": null,
+  "parent": {
+    "version": "1.0.0",
+    "branch": "docs/resolve-authority-freeze-v1",
+    "head": "e2874f6f67f5adb3a5ced0e0e138c370e38995cb",
+    "baseline": "f30e4543b0af17d047f803ae9044aef859ef13bc",
+    "manifest_sha256": "d9cd54780e0a123ae2045ac575bbc41638039ef3e878f1b608afbce3989a8821",
+    "immutable": true
+  },
+  "status_vocabulary": [
+    "FROZEN_NOW",
+    "PROVISIONAL_UNTIL_M3",
+    "UNTESTED_BLOCKED"
+  ],
+  "status_field_law": "status is a closed vocabulary; conditions live in qualification_note/blocked_until; parsers never inspect prose",
+  "rules": [
+    "a file whose sha256 differs from this manifest is not the frozen version",
+    "v1.0 bytes and manifest are never modified; v1.1 supersedes by reference",
+    "SCHEMA-VALID != AUTHORIZED TO MUTATE",
+    "mutation-capable schemas remain PROVISIONAL_UNTIL_M3; no adapter mutation implementation exists; no Resolve write was executed",
+    "PERMISSIONS.json is default DENY; unknown milestone/operation/scope is denied; shared_library_allowed is never true",
+    "nothing in this bundle is human approval of any run, gate or publication"
+  ],
+  "files": [
+    {
+      "path": "ADJUDICATION-FREEZE-CONTRACT.md",
+      "sha256": "e84534a6c1ecd4b78a53ea9507a7556142dda04c2abf8242e955aafc026ffb7f",
+      "bytes": 61876,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "AUTHORITY-ARCHITECTURE-ADJUDICATION-M0-M3.md",
+      "sha256": "93c8d75eb28b6504c3f4fdaa414b2bff2516fb328fc88c2eca19527c2444a232",
+      "bytes": 43504,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "AUTHORIZATION-2026-09-08.md",
+      "sha256": "ffde6ef7c00620bd0c35223c24acf820ae9177026e6972e16b06aedf2931d202",
+      "bytes": 3154,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "CANARIES.md",
+      "sha256": "c6cb0cdbd5fe29f999587b6b732f0911d142eb4b4a03a684b78c52fe76626439",
+      "bytes": 3356,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "CANARY-SOURCE-MANIFEST.json",
+      "sha256": "bac25c43fa966fd886b27ec40ae09699a67c1c3b83cd8a6429fcc8ed0049618e",
+      "bytes": 24554,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "CANONICALIZATION.md",
+      "sha256": "9b491a8d7115116ef5782bbf8e167e7a8c268060ddef885136e7b9a595e71c04",
+      "bytes": 2596,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false,
+      "qualification_note": "Node conformance not yet demonstrated",
+      "blocked_until": "M1"
+    },
+    {
+      "path": "CAPABILITIES.json",
+      "sha256": "059e473e4f4701ad7d79047c6f10336e204d1651d2405baf027fa3b74be12635",
+      "bytes": 16839,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false,
+      "qualification_note": "rows with evidence_class NOT_TESTED / DOCUMENTED_NOT_QUALIFIED are UNTESTED_BLOCKED",
+      "blocked_until": "M0/M3"
+    },
+    {
+      "path": "CHANGELOG-v1.1.md",
+      "sha256": "1cd0d240e926053b7bb2f831516cd1c207c2987275a9fe00a2e812c7712f9721",
+      "bytes": 3970,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "CLIENT-VERSION-INVENTORY.md",
+      "sha256": "542c4c46e6335eae5b397f30a079c1278884d49edf6e025c616b7787cd04d1b4",
+      "bytes": 1901,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false,
+      "qualification_note": "PRESTO/VIDLAP2 unverified",
+      "blocked_until": "M10.5"
+    },
+    {
+      "path": "DOCTRINE.md",
+      "sha256": "842f8b665acfb00641fd18dff7989d9b22345ee75e62ab68bfbf4a4d297b735e",
+      "bytes": 3329,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "DRIFT-POLICY.md",
+      "sha256": "5fe5fa81cd1f6afa593aea29fcf38a6c3bff94195120fdc5a3aa47cdd499ac17",
+      "bytes": 2038,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX.md",
+      "sha256": "a6dd8310cae27cc1768ad8f7aebb79d81911f0936b6727629a4b219538a6cf64",
+      "bytes": 5955,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "GUARD-AUTHORITY.md",
+      "sha256": "1314f86d1ee6f2fcb63e241de4cfda1dd984755f428c0e94dd44f6137d5b6266",
+      "bytes": 1680,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "IDENTITY-BINDING.md",
+      "sha256": "981f9c0e486b71d599e77fd26959637960cd4a319b2c8f49c258763adf8e0726",
+      "bytes": 3615,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "M3-MATRIX.md",
+      "sha256": "531cd0deced603ab2bc5c103b5b4505404475e23e08ffb3a7a76463c52935072",
+      "bytes": 7870,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "MILESTONES.md",
+      "sha256": "2dadab8053e3890a8211641387e5e441267b2e27528c86e3cff1944be86a284d",
+      "bytes": 4402,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "PERMISSIONS.json",
+      "sha256": "4d99d873983f34d26224c953ac79f5b3be19a698a35146d8c06130568d18b35b",
+      "bytes": 32629,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "PROVISIONAL.md",
+      "sha256": "8bef2f6ef588b048683715c5199a241a7b385ba1d52655e0b0a4f01eebbc417c",
+      "bytes": 1884,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "QUARANTINE-MANIFEST.json",
+      "sha256": "d99411ed19384f737edabc881d0c672cea01541867458e8af739caf5c5d50b65",
+      "bytes": 11799,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "README.md",
+      "sha256": "83674a72d17bf456a101c3082e85aa3b32785b6b758075eee88619eef09fefdf",
+      "bytes": 777,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "REVIEW-MARKER-POLICY.md",
+      "sha256": "996e3cc80052694b30902f5d24ffbdc81eb55c10db50ff63ffda9af87fd0f2b8",
+      "bytes": 965,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "SCORECRAFT-EXTRACTION.md",
+      "sha256": "242bf7f35ff43be47ad1f0a88aed48e71c625dd4a6929bd34c797bf007470ced",
+      "bytes": 3510,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "SEMANTIC-VALIDATION.md",
+      "sha256": "48750dd93e531fae2a6bbc6b68bc7d8bb698f38a922ff7bc1d3971d4ec7708e6",
+      "bytes": 2110,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true,
+      "qualification_note": "reference validators are not runtime-qualified",
+      "blocked_until": "M3"
+    },
+    {
+      "path": "SNAPSHOT-CONCURRENCY-RECOVERY.md",
+      "sha256": "75ef97ee61fd494a794b9582d28ab8303af1da7fe94df5b353bd00791f00c592",
+      "bytes": 5440,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "TARGET-CONTRACT.json",
+      "sha256": "b33d1dc1ce3933b8872af34ce951b226bc7a2aff393cdb8103da5a87a0952204",
+      "bytes": 4910,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false,
+      "qualification_note": "library.root_path, library.instance_uuid, session.launch_recipe_sha256, session.external_scripting_preference_observed are required future observations",
+      "blocked_until": "M0-provisioning"
+    },
+    {
+      "path": "TIMEBASE.json",
+      "sha256": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+      "bytes": 2865,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false,
+      "qualification_note": "api_mapping is provisional",
+      "blocked_until": "M3"
+    },
+    {
+      "path": "TRANSPORT.md",
+      "sha256": "7f221e006de3f100336b2aabac8807aab66325e8949a1662fa441549fbc5d4e5",
+      "bytes": 2069,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "VALIDATION-REPORT.md",
+      "sha256": "14e234de9fa4083c39a85a19e750fa94972e3d3a48920e727a799152b5374d28",
+      "bytes": 13065,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/canonicalization/vectors.json",
+      "sha256": "433adfa333e6aabceb879c1d9d07c29458fc07a1089dd2a73f6ed0df7b14b5da",
+      "bytes": 42491,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "fixtures/guard/same-payload-different-project.json",
+      "sha256": "7ca8c79444f14db2157ce569a8916f762d7e69dcbdc9f44726d79f4fffda001b",
+      "bytes": 295,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/permissions/lookups.json",
+      "sha256": "d5ff9fc209f2bf6e3a4716da882ac26b7e847d8bcd647f9428bb69a348eb28ed",
+      "bytes": 2375,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/canary-21-media.json",
+      "sha256": "77164d501d261c22c3282ce424191e9d658b08d0ffc7b47b6d65c0c3049ef546",
+      "bytes": 24745,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/canary-bad-sha-format.json",
+      "sha256": "607f60da84530a187bb0c5fdd11d1b75d141645a871d0a35a495fb23f95df4de",
+      "bytes": 25433,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/canary-claims-approval.json",
+      "sha256": "0d3adb901d188db4aba9538c7e527d77b2cf46a4f7fad66a24477d6740cd6534",
+      "bytes": 25431,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/canary-duplicate-record.json",
+      "sha256": "664aa060d6afe8056b959a710a57484c820a8fa622bf97ad81bac7edd65caf97",
+      "bytes": 25434,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/canary-match-string-not-bool.json",
+      "sha256": "d3b967d26c9b651fc0c34f44cf680e827c6d25ac4348cc951a5aedcc45f74084",
+      "bytes": 25439,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/canary-path-traversal.json",
+      "sha256": "a7e6138977f14dc625539f5991f36f8476cab08f4234b72b3d9c6214f7523bd3",
+      "bytes": 25202,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/capabilities-unknown-evidence-class.json",
+      "sha256": "67c53dd66ab2d958da5939db1a1c8d0cb455bb7e2ea3c452f788a27c9f2b7783",
+      "bytes": 18072,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/permissions-default-allow.json",
+      "sha256": "a2e16eb180b62628223cff24d84c3854977a27532bb38a7e5ae9bfa4517882ae",
+      "bytes": 34739,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/permissions-production-scope.json",
+      "sha256": "85ac676d282e7edbf2409162db5e94f462a981b070ac1fe895ba125b6c80cf73",
+      "bytes": 34773,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/permissions-shared-library-grant.json",
+      "sha256": "f7295a0ef371ca838224ab6e53f66a2e9f1c7a5e399f778f8a3bb487b9c896b5",
+      "bytes": 34745,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/snapshot-bad-absence-reason.json",
+      "sha256": "a311d926a562f157c4e3bdc554b122521de6b1bab9e937d8ea8643bcf4d191d7",
+      "bytes": 11273,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/snapshot-media-backed-missing-pool-id.json",
+      "sha256": "7075f3da4b34b3ca270ccf42679a324d98502f6fd6ca89a9c27e4f483974b127",
+      "bytes": 11263,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/snapshot-missing-deferred-domains.json",
+      "sha256": "39b63da4c764dc3ae2852e25d2b01a5fb8119aa7d62b1c590d64458d017180db",
+      "bytes": 11131,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/snapshot-negative-frame.json",
+      "sha256": "6cf7954fe114c396bc709b299a870f74072c7367434db3ae45668e277c1d8fcf",
+      "bytes": 11276,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/snapshot-no-guard-digest.json",
+      "sha256": "ab482ea4e83721cedb39c7f8efc2399cd99a66699f82fb0b76a6968a3709607d",
+      "bytes": 11200,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/snapshot-postgres-library.json",
+      "sha256": "c8ebe269f2077437566218da9080014629b27bd9f944b05df23acf9b2d00b829",
+      "bytes": 11287,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/snapshot-string-track-index.json",
+      "sha256": "e0d704a3be09c278de308029a676377db5ca1e2a14cf20f702242ed87e53539a",
+      "bytes": 11288,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/snapshot-title-with-sha.json",
+      "sha256": "25bbf3e0d451fda276cc11fe69d3b5e9633190590efd19703a8413b9bb894138",
+      "bytes": 11342,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/target-accepts-open-session.json",
+      "sha256": "1141a92db0e269770e395fd61c2eaca432e45e878fae2861c477a184accc5b56",
+      "bytes": 5298,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/target-empty-host.json",
+      "sha256": "9c1095956fa37a5070c25cc4d87edd14e74e83121a12f188da4a819ceb4eedf5",
+      "bytes": 5287,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/target-empty-session-envelope.json",
+      "sha256": "2afeb8fecff994485eb6baf4df37a9f1079a7a3f5fa9fab1109ddf01b0228574",
+      "bytes": 5257,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/target-missing-denied-setcurrentdatabase.json",
+      "sha256": "f09dba259068cbf0d52801e3c420e6c59c2ce09579fb4dfa506359ac3a7d4ef6",
+      "bytes": 5287,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/target-path-traversal.json",
+      "sha256": "289ea7e530bd7aebe065d4da523ac006daf55a23ecc41957927f9f5c3b5905f6",
+      "bytes": 5300,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/target-production-mode.json",
+      "sha256": "f5d5a34f12725524bf9a53d202a9bf0477fc3f656fa5dfedd498ec6e217e5b2b",
+      "bytes": 5285,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/target-shared-postgres-library.json",
+      "sha256": "fdbb0e136691e24511ab5f2cb1201aa70eb0c12230fe8328788d7dff4cd5bce2",
+      "bytes": 5277,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/target-user-local-database.json",
+      "sha256": "7414f4a31bc0b1435ac81d7f9e5f5d157c1bf8283ce0143e5516792f612a7228",
+      "bytes": 5281,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/timebase-24fps.json",
+      "sha256": "a8209dc8b81de62e0b5f125cd29e5aeae69f930fc66c00203636749f78c30308",
+      "bytes": 3178,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/timebase-arbitrary-tolerance-field.json",
+      "sha256": "50cd38aa492d02619be50d93e32b1e1dc711a15cf45aff5f20b7bdeff0afb40a",
+      "bytes": 3232,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/timebase-frame-tolerance.json",
+      "sha256": "20cb88c5de52b70ab28b13aa8be36951e32b28a0a2235fdc15c5d7be5ac86d81",
+      "bytes": 3187,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/timebase-half-up-law.json",
+      "sha256": "664c469269f536d4746cb10c2f5992f6da5c0b7224f2fdb1a78d0b946582a04e",
+      "bytes": 3192,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/timebase-math-round-law.json",
+      "sha256": "749ecd5f60725ad5641721391e56e94fbfa9c8432e368d70ec06bd11aa93d19e",
+      "bytes": 3190,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/timebase-negative-sample-rate.json",
+      "sha256": "de35f257c00c37210b18c3a71d3dfcf53a968f9a1123c2ad62cd6711a078a9a2",
+      "bytes": 3197,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/timebase-substitution-allowed.json",
+      "sha256": "472fb842c55f4bf5a607bf721089169d1563cc1a8f2d98ec74b5172c5a5a4a70",
+      "bytes": 3195,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/track-policy-object-keys-as-index.json",
+      "sha256": "3f6c245d6fd2ac23bc58907efb4feb6e860607988af251aa85b78b5cd023ec9b",
+      "bytes": 1007,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/track-policy-string-index.json",
+      "sha256": "af56afa3aa9b85d4d42aa344b386d83175245c8aea3370e67a0933418491c1f4",
+      "bytes": 1239,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/negative/track-policy-unknown-role.json",
+      "sha256": "c5df444c7a3af21595066c55f6cd6dffef114048c2b7140d2e11ddbf5ab1fd99",
+      "bytes": 1222,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/positive/canary-manifest-frozen.json",
+      "sha256": "0ee749e200af41e757b49edf5608572c09d860134c90ef27d26e4865363b7706",
+      "bytes": 25429,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/positive/capabilities-frozen.json",
+      "sha256": "e1c2a71d0b76b5d9d57e6f1dd7d1920c4c1fd326d0d09c491c0b01e2988ee941",
+      "bytes": 18069,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/positive/permissions-frozen.json",
+      "sha256": "1cdfbe6f524f54854ef1887b9c4a4f278e1c09b15b9ff2b33df2ee744d6202b5",
+      "bytes": 34729,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/positive/snapshot-human-timeline-mixed-provenance.json",
+      "sha256": "f880c3582ecb4885f90681a9c596ba6fa2b16fc5075e06b19fee566078f9c7bc",
+      "bytes": 11294,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/positive/target-contract-frozen.json",
+      "sha256": "321c78a5777698d3c7ddfe40b1cf5e90a05322820a6b5540f7740c27893fc7ea",
+      "bytes": 5291,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/positive/timebase-frozen.json",
+      "sha256": "99584690e6624f8d7ef527a9f886387743c274135f6efa3df3436cd6b7b5752d",
+      "bytes": 3179,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/schema/positive/track-policy-frozen.json",
+      "sha256": "194a044f1164009e820abc6feebffab4452fd119cbfff3d021a30a769293fe4d",
+      "bytes": 1226,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/canary-duplicate-asset-id.json",
+      "sha256": "0bbe8b200a2652ce0283d908498e1b80dfc8efaac58caad2698fe9804132b54c",
+      "bytes": 25398,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/canary-hash-mismatch.json",
+      "sha256": "2ff26adf9c0df82f4ee0472e4c221fd53dcb7d193a8883529d926e9d4b85b596",
+      "bytes": 25393,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/canary-valid.json",
+      "sha256": "89a4d425ddb720b537d2585083051f567cfb7a26818eece01a7bf21c62b3ae3f",
+      "bytes": 25386,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/commit-after-published.json",
+      "sha256": "3cfe675eaea8b645fbeba2d1c8bc78a93b6c9595adf0119b265cef2e347fddff",
+      "bytes": 219,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/commit-without-published.json",
+      "sha256": "ac54f997cb1cc10ac5cdba300f5076a8d3377ecc7f725633ae4d009f06c4f1bb",
+      "bytes": 219,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/journal-broken-hash-chain.json",
+      "sha256": "129787f91b150214bf5d47c5acab661e49223457c0ed473a78ecebafcdcf0ffe",
+      "bytes": 5663,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/journal-legal-chain.json",
+      "sha256": "7fab26635f998024294d6b53c63aaf8f0fe99dce9c77543ffc5c08fa93463d06",
+      "bytes": 5658,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/journal-skip-to-committed.json",
+      "sha256": "718b3e9e997cf5b5605b6cc4e5de7de1ff3d928c148129a392a15f4942ef89a7",
+      "bytes": 5665,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/plan-m2-append-dry-run-denied.json",
+      "sha256": "ea71a55d69a0463555a4173a5c92dfd5d17266f0713ea80f5aef66e04bf49492",
+      "bytes": 1899,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/plan-m2-non-dry-run.json",
+      "sha256": "1412c8c04cfd007acd994fb63999f104f101e04f8eefe47d3a7b9c80e189635c",
+      "bytes": 1118,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/plan-m3-append-selector-complete.json",
+      "sha256": "a2318ad6754d92264a1523e6ffcd739337a97fab384d42a07135b59e0ae9e6e8",
+      "bytes": 1771,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/plan-m3-delete-selector-incomplete.json",
+      "sha256": "ed550fbbbf22c5a8f53d165e038cd73541a68159fe726b90d181304bd0a9ea5e",
+      "bytes": 1809,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/plan-m3-stale-guard.json",
+      "sha256": "a783af229263210537152f4c72c968f54e32e19b3e0238749a6f517891bec01c",
+      "bytes": 1843,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/snapshot-complete-but-items-unobservable.json",
+      "sha256": "d3dc639ee72df9cdb4a5d1a13ffac6a42d414a9595c575cd2afd07c4f4c5402c",
+      "bytes": 11282,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/snapshot-guard-context-changed.json",
+      "sha256": "4b6fb196606590bc6acd3d3a67ecd1f31ff203b017364ea4d8ff90ecc0f9364d",
+      "bytes": 11248,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/snapshot-stale-payload-digest.json",
+      "sha256": "4b6c9e9685411984f066c02aa0f7794da710b638a69f14c3b37bf976c2903333",
+      "bytes": 11255,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/snapshot-valid.json",
+      "sha256": "b0ac358c8764de579792bdb527f9c3a396bb0f1da582eed0d052767c640fbca9",
+      "bytes": 11240,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/target-provisioned-without-evidence.json",
+      "sha256": "80d51bb0e6f3577e0c8d83ddf34c0f65052aa0d07337bf6026aec7944cf19269",
+      "bytes": 5274,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/target-valid-unprovisioned.json",
+      "sha256": "1e9ca398b8a73edbaabcde850766639fb2d72f7a0088f6b287662ed6e542d01f",
+      "bytes": 5268,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/timebase-valid.json",
+      "sha256": "35265f3d7efd514fc8f71fd74df105f906bd83491c5c9abf1f24a4ff4ac32548",
+      "bytes": 3150,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/track-policy-duplicate-index.json",
+      "sha256": "e777b6a2c29c8f6a4c3f28ec86c8fb76687f2e7f061d22370e562612668bf1e4",
+      "bytes": 1207,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/track-policy-valid.json",
+      "sha256": "7be83eeed6f8bfd05e693c93c140fef00307abe86dd11b3f8b9df6fdd1e07973",
+      "bytes": 1198,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/verification-claims-human-approval.json",
+      "sha256": "86972bdf82575c170a5264ed632a412bb4ca35178fb82c86c8d5921bb3c4f45e",
+      "bytes": 733,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/verification-verified-clean.json",
+      "sha256": "26841ebb4d78e9c0f733b51f097e00cf3a5ed25e7dbcb991c7f13b9b35e577dd",
+      "bytes": 728,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/semantic/verification-verified-with-unrelated.json",
+      "sha256": "92d0c11e35d044c4f93a140eb5ed8a468b7a292b61b5b6bc817011b36eea362e",
+      "bytes": 760,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/snapshot/human-timeline-mixed-provenance.json",
+      "sha256": "8ffcd553538af31063a1c1666ee84da9b08ce903933dfabd685df558ace81637",
+      "bytes": 10421,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "fixtures/timebase/canary-boundaries.json",
+      "sha256": "b5ae374906a16feee4d5fe6ac199a0814a763f3f84e5af790a084c3d9625ac53",
+      "bytes": 8765,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "fixtures/timebase/negative-profiles.json",
+      "sha256": "4d2e7fa3b787bf61cc58019e1bccc158c4aa3fea6549b11c97b9b413b8edf75c",
+      "bytes": 1088,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "schemas/provisional/resolveBindingObservation.schema.json",
+      "sha256": "4095c8e2a2d83cd2ca539066e4c176caebe4fb57d082c28550d49e522639571c",
+      "bytes": 1367,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveBindingSet.schema.json",
+      "sha256": "9e76a67b6bfbc8f5b5f3b1d2a7e90d002724ac2f84dd1b9e677c40849349af4d",
+      "bytes": 4404,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveCheckpoint.schema.json",
+      "sha256": "12d1e9556b8a4992e52cf165e85313bf19696b114ff58bd065fb922d17bd4e1b",
+      "bytes": 974,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveCommitManifest.schema.json",
+      "sha256": "f3977901631bd0e94da7094ae0e4145d6e329cd39d634181b90de3f5f2016f98",
+      "bytes": 1403,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveConflict.schema.json",
+      "sha256": "2ed2cbfd9bfe4e5af2edd75a9168bd58b5cf1b66f20c6784426509768d1d29ef",
+      "bytes": 2305,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveMutationPlan.schema.json",
+      "sha256": "37dcdb72a62d1d03fdf062a7a9b5cbd83d0b608a1333b420480f3117fcfad26d",
+      "bytes": 6519,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveSequenceLineage.schema.json",
+      "sha256": "24fd7d7212176a4bb1405d132cff5abab4a111105b99a2249d614ae48ea62ad8",
+      "bytes": 1086,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveTransactionJournal.schema.json",
+      "sha256": "a8c7a5d1c221be6a959ecc149b3097dd2800107dc9602d1c7e236a7e75eeca89",
+      "bytes": 1941,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveVerificationResult.schema.json",
+      "sha256": "f5422e95e15f73d47d6ed66b637aa56d037dbd28c15121545e71ca5b919b4350",
+      "bytes": 1383,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "inherited_from_v1": true,
+      "changed_from_v1": false,
+      "new_in_v1_1": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/resolveCanarySourceManifest.schema.json",
+      "sha256": "4b9e2b6cb44c6435738c8dfceda74b74ad2a594376e9f283646486ad906e8940",
+      "bytes": 4873,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "schemas/resolveCapabilityMatrix.schema.json",
+      "sha256": "1faadc7aa660b04d19981279a69abf7e5390bd70e298e83e7fd5dd4155b3bb6e",
+      "bytes": 2138,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "schemas/resolveGuard.schema.json",
+      "sha256": "cfb057cde6cfe39bbcf25af50c70fd1b016bbf09576eaa870b4b6100f8f35b16",
+      "bytes": 3582,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "schemas/resolvePermissions.schema.json",
+      "sha256": "dbf2b4f9aa2fbb85896d27469d4384ae6de7dd68206eecd711469b8d73969044",
+      "bytes": 3260,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "schemas/resolveSnapshot.schema.json",
+      "sha256": "38145a23c91f539717053860ddba81f22208b4ae9e41f29bc293611561345d17",
+      "bytes": 26916,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "schemas/resolveTargetContract.schema.json",
+      "sha256": "dceed01bdf862aa75a338f3d532fdac15d1b9710a78f4ed6fd450f2194a5b25c",
+      "bytes": 6929,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "schemas/resolveTimebase.schema.json",
+      "sha256": "e78b896528d2bf789baafd79ec5058e46e385fb49c50a83aaf0dd91a40a7b61a",
+      "bytes": 5984,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "schemas/resolveTrackPolicy.schema.json",
+      "sha256": "f7d2f10c162c2b04dcf7c578308b1a3eac6047e5e2786917dff2eb7f34f0fef7",
+      "bytes": 2158,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false
+    },
+    {
+      "path": "schemas/resolveTrackPolicy.v1.json",
+      "sha256": "0c1996f8cb183e27f393eb53113871098e492e43bd49ec8c07e7d49b25f0caa7",
+      "bytes": 999,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": true,
+      "new_in_v1_1": false,
+      "qualification_note": "enforcement by Resolve NOT_TESTED",
+      "blocked_until": "M3"
+    },
+    {
+      "path": "tools/.gitignore",
+      "sha256": "862263fa1f46c20f0d1e4dac5ffcc75abd55c08211b2c3864c5f8764b9d87793",
+      "bytes": 19,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "tools/authority_lib.py",
+      "sha256": "20a68a972b15bfcbf0398ba724fb735b802b123f64cb86b078bc392c13906ea8",
+      "bytes": 15197,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true,
+      "qualification_note": "reference implementation; not runtime-qualified",
+      "blocked_until": "M1"
+    },
+    {
+      "path": "tools/build_v1_1.py",
+      "sha256": "c86917239b3c0aeb24dc467c0ec3873cb5c880e581676e0ab9fa0c5256511fb1",
+      "bytes": 73798,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    },
+    {
+      "path": "tools/validate_v1_1.py",
+      "sha256": "60cd261610fc9b48832111f23cd9001076be5edc1c5dec66b45571d21b08fc05",
+      "bytes": 9542,
+      "status": "FROZEN_NOW",
+      "inherited_from_v1": false,
+      "changed_from_v1": false,
+      "new_in_v1_1": true
+    }
+  ],
+  "removed_from_v1_1_present_in_v1": [
+    "SCRATCH-TEST-PLAN-M3.md"
+  ],
+  "external_pins": {
+    "v1_parent_manifest": {
+      "path": "../v1/FREEZE-MANIFEST.json",
+      "sha256": "d9cd54780e0a123ae2045ac575bbc41638039ef3e878f1b608afbce3989a8821"
+    },
+    "doc_authority": {
+      "path": "../../DOC-AUTHORITY.md",
+      "sha256": "c892dc1e6c8e59675d14a2357b46d5604fee5de742bed169e94702037fc50c40"
+    },
+    "claude_review": {
+      "path": "/home/vidtoolz/outputs/resolve-mcp-integration-review-2026-09-08/REVIEW.md",
+      "sha256": "123da15c3d609aea0715bd0ad63dc5345fd2f9508b9a3f25be753f6fd328361f"
+    },
+    "hermes_verification": {
+      "path": "/home/vidtoolz/outputs/resolve-mcp-integration-review-2026-09-08/HERMES-INDEPENDENT-VERIFICATION.md",
+      "sha256": "6a2d4c6f7bfba43f94a571b164c1ebf9183e641d9561e2128c71eaf0d01539e6"
+    },
+    "codex_review": {
+      "path": "/home/vidtoolz/outputs/codex-resolve-integration-review-2026-09-08/REVIEW.md",
+      "sha256": "c85708a8fd422451e7bfc02397d278cc3857f8a288ece9265e3c7ad123c2e3ff"
+    },
+    "freeze_report_v1": {
+      "path": "/home/vidtoolz/outputs/resolve-mcp-integration-review-2026-09-08/FREEZE-REPORT.md",
+      "sha256": "81aac740ac5b05e10f1eb02eb4d1509b88773c12e8cb5c900c95391a119ae439"
+    }
+  },
+  "counts": {
+    "files": 124,
+    "frozen_now": 114,
+    "provisional_until_m3": 10,
+    "inherited_unchanged": 14,
+    "changed_from_v1": 19,
+    "new_in_v1_1": 91
+  }
+}

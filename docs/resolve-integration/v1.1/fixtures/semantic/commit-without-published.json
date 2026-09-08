@@ -1,0 +1,9 @@
+{
+  "fixture": "commit-without-published",
+  "check": "semantic_commit_manifest",
+  "expect_errors": true,
+  "terminal_journal_state": "VERIFIED",
+  "document": {
+    "schema": "vidtoolz.resolveCommitManifest.v1"
+  }
+}

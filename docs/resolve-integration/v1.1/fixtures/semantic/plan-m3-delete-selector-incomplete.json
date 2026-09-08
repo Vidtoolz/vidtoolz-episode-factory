@@ -1,0 +1,49 @@
+{
+  "fixture": "plan-m3-delete-selector-incomplete",
+  "check": "semantic_mutation_plan",
+  "expect_errors": true,
+  "document": {
+    "schema": "vidtoolz.resolveMutationPlan.v1",
+    "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "milestone": "M3",
+    "dry_run": false,
+    "target_epoch": "epoch-fixture-1",
+    "target_contract_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "binding_set_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "handoff_digest_sha256": "3fd9bdd875c9eb489abf77797613abbc2616eef36073503742ebc9fd80f5bf69",
+    "h0_payload_sha256": "7ce256448d3d98edf555d2050a9f358b0b11555e9ae0822f57280af340af02c1",
+    "h0_guard_digest": "41b4ab8bbde9fb6a8549f91ed95e69f4b5f484be0725ae231ce5230ae02d2024",
+    "capability_matrix_version": "1.1.0",
+    "collector_version": "0.0.0-fixture",
+    "timebase_digest": "4444444444444444444444444444444444444444444444444444444444444444",
+    "permission_class": "RESOLVE_ASSEMBLE",
+    "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+    "lease": {},
+    "operations": [
+      {
+        "operation_id": "op-1",
+        "op": "DELETE",
+        "selector": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1",
+          "track_type": "video",
+          "track_index": 1
+        },
+        "expected_old": {
+          "unique_id": "it-1"
+        },
+        "expected_new": {
+          "start": 110194,
+          "end": 110541
+        },
+        "allowed_created": [
+          "one item"
+        ],
+        "allowed_deleted": [],
+        "declared_side_effects": []
+      }
+    ]
+  }
+}

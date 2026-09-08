@@ -1,0 +1,548 @@
+{
+  "fixture": "capabilities-frozen",
+  "kind": "positive",
+  "schema": "resolveCapabilityMatrix",
+  "expect_error_contains": null,
+  "document": {
+    "schema": "vidtoolz.resolveCapabilityMatrix.v1.1",
+    "version": "1.1.0",
+    "status": "FROZEN_NOW",
+    "qualification_note": "static inventory frozen; evidence_class per row is the authority state; rows with evidence_class NOT_TESTED or DOCUMENTED_NOT_QUALIFIED are UNTESTED_BLOCKED for every dependent milestone",
+    "evidence_class_vocabulary": [
+      "QUALIFIED_READ",
+      "DOCUMENTED_NOT_QUALIFIED",
+      "NOT_TESTED",
+      "UNSUPPORTED",
+      "BLOCKED",
+      "QUALIFIED_EF_SIDE"
+    ],
+    "evidence_class_definitions": {
+      "QUALIFIED_READ": "read-only call exercised against a real Resolve by an estate script whose output was consumed",
+      "DOCUMENTED_NOT_QUALIFIED": "present in the 21.1 stub/README but never exercised in this estate",
+      "NOT_TESTED": "mutation or composed operation with no scratch evidence",
+      "UNSUPPORTED": "no API primitive exists",
+      "BLOCKED": "denied by policy regardless of evidence",
+      "QUALIFIED_EF_SIDE": "implemented and tested inside Episode Factory; no Resolve dependency"
+    },
+    "resolve": {
+      "product": "DaVinci Resolve Studio",
+      "version": "21.1.0",
+      "build": 14,
+      "host": "vidnux",
+      "stub_sha256": "00078fa1256851b9807621a4eea5e670f4266b0e7003763cba4a62655543f0ec",
+      "readme_md_sha256": "5f58c94da8ec3c1f390d77ad9c60675263591dc101159b302e50b5774513830b",
+      "readme_txt_sha256": "7f42d7f65678ae70f7eff16d168cae8bcd3815494b75bd6da7119e0250397964",
+      "changelog_sha256": "b12c961176d79a5fc87757a21dc7ce2e147f13fb4dab927ed9154943c7de1491"
+    },
+    "coverage_caveat": "grades, plugin/Fusion graphs, caches, nested timelines, keyframe curves are not fully serializable; snapshots carry UNOBSERVABLE_STATE; zero-unintended-change claims only within coverage",
+    "rows": [
+      {
+        "operation": "read: project/timeline enumeration",
+        "class": "DIRECT_API",
+        "primitives": [
+          "GetProjectManager",
+          "GetCurrentProject",
+          "GetCurrentDatabase",
+          "GetTimelineByIndex",
+          "GetTimelineCount",
+          "GetCurrentTimeline",
+          "GetName",
+          "GetVersionString"
+        ],
+        "evidence_class": "QUALIFIED_READ",
+        "evidence": "ESTATE: resolve-hermes read-only tools; Scorecraft driver; hardlink fixture (GetCurrentDatabase)",
+        "m3_probes": [],
+        "blocked_until": null
+      },
+      {
+        "operation": "read: track/item enumeration (integer form)",
+        "class": "DIRECT_API",
+        "primitives": [
+          "GetTrackCount",
+          "GetItemListInTrack",
+          "GetTrackName",
+          "GetStart",
+          "GetEnd",
+          "GetDuration",
+          "GetMediaPoolItem",
+          "GetStartFrame"
+        ],
+        "evidence_class": "QUALIFIED_READ",
+        "evidence": "ESTATE: Scorecraft production driver readback; FRB render harness (GetStart/GetDuration/GetStartFrame)",
+        "m3_probes": [],
+        "blocked_until": null,
+        "qualification_note": "integer (default) form only; subframe_precision=True form is a separate row"
+      },
+      {
+        "operation": "read: subframe precision variants",
+        "class": "DIRECT_API",
+        "primitives": [
+          "GetStart(True)",
+          "GetEnd(True)",
+          "GetDuration(True)",
+          "GetLeftOffset(True)",
+          "GetRightOffset(True)"
+        ],
+        "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+        "evidence": "stub only; never called in estate",
+        "m3_probes": [
+          "P0-read"
+        ],
+        "blocked_until": "M0"
+      },
+      {
+        "operation": "read: source boundary methods",
+        "class": "DIRECT_API",
+        "primitives": [
+          "GetSourceStartFrame",
+          "GetSourceEndFrame",
+          "GetSourceStartTime",
+          "GetSourceEndTime"
+        ],
+        "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+        "evidence": "stub only",
+        "m3_probes": [
+          "P0-read",
+          "P3"
+        ],
+        "blocked_until": "M0"
+      },
+      {
+        "operation": "read: plural settings/properties",
+        "class": "DIRECT_API",
+        "primitives": [
+          "Project.GetSettings",
+          "Timeline.GetSettings",
+          "TimelineItem.GetProperties"
+        ],
+        "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+        "evidence": "README.md deprecates singular forms; estate used ONLY singular GetSetting/GetProperty; plural never exercised",
+        "m3_probes": [
+          "P0-read",
+          "P8"
+        ],
+        "blocked_until": "M0"
+      },
+      {
+        "operation": "read: object identity",
+        "class": "DIRECT_API",
+        "primitives": [
+          "Project.GetUniqueId",
+          "Timeline.GetUniqueId",
+          "TimelineItem.GetUniqueId",
+          "MediaPoolItem.GetUniqueId",
+          "MediaPoolItem.GetMediaId",
+          "Folder.GetUniqueId"
+        ],
+        "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+        "evidence": "stub only; uniqueness scope and survival unknown",
+        "m3_probes": [
+          "P0-read",
+          "P6",
+          "P15"
+        ],
+        "blocked_until": "M3",
+        "m3_question": "scope of uniqueness; survival across DuplicateTimeline / DRT export-import / FinalizeTake / delete+append / rename / save+reopen; which MediaPoolItem id is stable"
+      },
+      {
+        "operation": "read: track lock/enable getters",
+        "class": "DIRECT_API",
+        "primitives": [
+          "GetIsTrackLocked",
+          "GetIsTrackEnabled"
+        ],
+        "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+        "evidence": "stub only",
+        "m3_probes": [
+          "P0-read",
+          "P9"
+        ],
+        "blocked_until": "M0"
+      },
+      {
+        "operation": "read: timeline/project metadata",
+        "class": "DIRECT_API",
+        "primitives": [
+          "GetStartTimecode",
+          "GetEndFrame",
+          "GetProjectLastModifiedTime",
+          "GetMarkers",
+          "GetMarkerByCustomData"
+        ],
+        "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+        "evidence": "stub only (GetStartFrame is qualified via FRB/Scorecraft; GetStartTimecode is not)",
+        "m3_probes": [
+          "P0-read",
+          "P12"
+        ],
+        "blocked_until": "M0"
+      },
+      {
+        "operation": "create timeline with canonical settings",
+        "class": "DIRECT_API",
+        "primitives": [
+          "CreateEmptyTimeline",
+          "AddTrack",
+          "SetSettings",
+          "SetStartTimecode"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "FRB used deprecated singular SetSetting; plural untested",
+        "m3_probes": [
+          "P8",
+          "P11"
+        ],
+        "blocked_until": "M3"
+      },
+      {
+        "operation": "import media into controlled bin",
+        "class": "DIRECT_API",
+        "primitives": [
+          "ImportMedia([{FilePath}])",
+          "AddSubFolder",
+          "SetCurrentFolder",
+          "SetMetadata"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "hardlink fixture used deprecated AddItemListToMediaPool list form",
+        "m3_probes": [
+          "P2"
+        ],
+        "blocked_until": "M3"
+      },
+      {
+        "operation": "exact placement with source range",
+        "class": "DIRECT_API",
+        "primitives": [
+          "AppendToTimeline([{mediaPoolItem,startFrame,endFrame,mediaType,trackIndex,recordFrame}]) on CURRENT timeline"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "signature documented; recordFrame origin INFERRED from two estate scripts",
+        "m3_probes": [
+          "P1",
+          "P2",
+          "P3",
+          "P4",
+          "P5"
+        ],
+        "blocked_until": "M3",
+        "m3_question": "current-timeline targeting; recordFrame origin; endFrame inclusivity; still duration; collision behaviour"
+      },
+      {
+        "operation": "move/trim/slip/nudge existing item in place",
+        "class": "UNSUPPORTED",
+        "primitives": [],
+        "evidence_class": "UNSUPPORTED",
+        "evidence": "stub grep: no setters",
+        "m3_probes": [],
+        "blocked_until": null
+      },
+      {
+        "operation": "replace one occurrence with a new occurrence",
+        "class": "DELETE_AND_APPEND",
+        "primitives": [
+          "DeleteClips([item], false)",
+          "AppendToTimeline"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "documented primitives; composed operation never exercised",
+        "m3_probes": [
+          "P13",
+          "P16"
+        ],
+        "blocked_until": "M3",
+        "m3_question": "does the new occurrence land at the identical [start,end) with neighbours byte-for-byte unchanged in snapshot terms; what identity does the new item carry; what happens on crash between delete and append; does DeleteClips(false) shift anything"
+      },
+      {
+        "operation": "replace one occurrence media keeping item (take swap)",
+        "class": "TAKE_SWAP",
+        "primitives": [
+          "AddTake",
+          "SelectTakeByIndex",
+          "FinalizeTake"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "documented",
+        "m3_probes": [
+          "P6"
+        ],
+        "blocked_until": "M3",
+        "m3_question": "does item GetUniqueId survive FinalizeTake; source bounds after finalize"
+      },
+      {
+        "operation": "temporarily hide/disable one occurrence",
+        "class": "DISABLE",
+        "primitives": [
+          "SetClipEnabled(false)",
+          "GetClipEnabled"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "documented",
+        "m3_probes": [
+          "P14"
+        ],
+        "blocked_until": "M3",
+        "qualification_note": "DISABLE != CUT",
+        "m3_question": "does SetClipEnabled change only the enabled flag (no position/duration/marker change); is the flag readable and stable across save/reopen; DISABLE != CUT: a disabled occurrence still occupies its interval and is NOT a canonical CUT, which is a successor-handoff rebuild"
+      },
+      {
+        "operation": "replace underlying media-pool file",
+        "class": "UNSAFE",
+        "primitives": [
+          "ReplaceClip",
+          "ReplaceClipPreserveSubClip",
+          "RelinkClips"
+        ],
+        "evidence_class": "BLOCKED",
+        "evidence": "global to all uses of the pool item",
+        "m3_probes": [],
+        "blocked_until": "never in v1"
+      },
+      {
+        "operation": "close gap by deletion",
+        "class": "RIPPLE_DELETE",
+        "primitives": [
+          "DeleteClips([items], true)"
+        ],
+        "evidence_class": "BLOCKED",
+        "evidence": "downstream/linked scope unqualified",
+        "m3_probes": [],
+        "blocked_until": "never in v1"
+      },
+      {
+        "operation": "canonical CUT / section re-tile / script retime",
+        "class": "REBUILD_DESTINATION_TIMELINE",
+        "primitives": [
+          "successor handoff -> new destination timeline"
+        ],
+        "evidence_class": "QUALIFIED_EF_SIDE",
+        "evidence": "EF retileSection (draft-revision-successor.js)",
+        "m3_probes": [],
+        "blocked_until": null
+      },
+      {
+        "operation": "KEEP",
+        "class": "COMPOSED_API_OPERATION",
+        "primitives": [
+          "verify binding; zero mutation"
+        ],
+        "evidence_class": "QUALIFIED_EF_SIDE",
+        "evidence": "EF intake: NO_FEEDBACK != KEEP",
+        "m3_probes": [],
+        "blocked_until": null
+      },
+      {
+        "operation": "CHANGE / REWRITE",
+        "class": "COMPOSED_API_OPERATION",
+        "primitives": [
+          "canonical review -> revision plan -> successor -> bindings -> primitives"
+        ],
+        "evidence_class": "QUALIFIED_EF_SIDE",
+        "evidence": "EF revision authority; Resolve primitives remain NOT_TESTED",
+        "m3_probes": [
+          "P13",
+          "P6"
+        ],
+        "blocked_until": "M3"
+      },
+      {
+        "operation": "transform/crop/composite/audio properties",
+        "class": "DIRECT_API",
+        "primitives": [
+          "SetProperties",
+          "GetProperties"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "plural forms never exercised",
+        "m3_probes": [],
+        "blocked_until": "M3"
+      },
+      {
+        "operation": "speed, fades, transitions",
+        "class": "DIRECT_API",
+        "primitives": [
+          "SetSpeed",
+          "SetFades",
+          "AddTransition"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "documented",
+        "m3_probes": [],
+        "blocked_until": "M3"
+      },
+      {
+        "operation": "titles / Fusion graphics",
+        "class": "COMPOSED_API_OPERATION",
+        "primitives": [
+          "InsertFusionTitleIntoTimeline",
+          "ImportFusionComp"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "FRB: 5 s user-pref insert duration; restart to rescan",
+        "m3_probes": [],
+        "blocked_until": "deferred"
+      },
+      {
+        "operation": "audio tracks / mapping / normalization",
+        "class": "DIRECT_API",
+        "primitives": [
+          "AddTrack('audio')",
+          "mediaType 2 append",
+          "SetAudioMapping",
+          "NormalizeAudioLevel"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "documented",
+        "m3_probes": [],
+        "blocked_until": "deferred"
+      },
+      {
+        "operation": "subtitles / AI tools",
+        "class": "DIRECT_API",
+        "primitives": [
+          "CreateSubtitlesFromAudio",
+          "TranscribeAudio"
+        ],
+        "evidence_class": "BLOCKED",
+        "evidence": "Studio+Extras; fail soft",
+        "m3_probes": [],
+        "blocked_until": "never in v1"
+      },
+      {
+        "operation": "checkpoint",
+        "class": "COMPOSED_API_OPERATION",
+        "primitives": [
+          "DuplicateTimeline",
+          "Timeline.Export(EXPORT_DRT)",
+          "SaveProject"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "documented",
+        "m3_probes": [
+          "P6",
+          "P15"
+        ],
+        "blocked_until": "M3"
+      },
+      {
+        "operation": "undo / rollback",
+        "class": "UNSUPPORTED",
+        "primitives": [],
+        "evidence_class": "UNSUPPORTED",
+        "evidence": "stub grep",
+        "m3_probes": [],
+        "blocked_until": null
+      },
+      {
+        "operation": "revision counter / change events / CAS",
+        "class": "UNSUPPORTED",
+        "primitives": [
+          "GetProjectLastModifiedTime(projectName) advisory"
+        ],
+        "evidence_class": "UNSUPPORTED",
+        "evidence": "no CAS/event API; last-modified trust class decided by P12",
+        "m3_probes": [
+          "P12"
+        ],
+        "blocked_until": "M3"
+      },
+      {
+        "operation": "track locking as GUI-edit mitigation",
+        "class": "DIRECT_API",
+        "primitives": [
+          "SetTrackLock",
+          "GetIsTrackLocked"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "stub",
+        "m3_probes": [
+          "P9"
+        ],
+        "blocked_until": "M3"
+      },
+      {
+        "operation": "cross-client project lock",
+        "class": "OBSERVED",
+        "primitives": [
+          "project-server collaboration lock (ResolveDebug.txt 2026-09-08)"
+        ],
+        "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+        "evidence": "log observation only; project granularity",
+        "m3_probes": [],
+        "blocked_until": null
+      },
+      {
+        "operation": "render / delivery",
+        "class": "COMPOSED_API_OPERATION",
+        "primitives": [
+          "LoadRenderPreset",
+          "SetRenderSettings",
+          "AddRenderJob",
+          "StartRendering",
+          "GetRenderJobStatus"
+        ],
+        "evidence_class": "BLOCKED",
+        "evidence": "FRB: live GUI required; media-storage target",
+        "m3_probes": [],
+        "blocked_until": "M11"
+      },
+      {
+        "operation": "playback control",
+        "class": "UNSUPPORTED",
+        "primitives": [
+          "SetCurrentTimecode is seek only"
+        ],
+        "evidence_class": "UNSUPPORTED",
+        "evidence": "estate xdotool workaround",
+        "m3_probes": [],
+        "blocked_until": null
+      },
+      {
+        "operation": "library switch / load other project / close project",
+        "class": "UNSAFE",
+        "primitives": [
+          "SetCurrentDatabase",
+          "LoadProject(non-prefixed)",
+          "CloseProject",
+          "ImportProject"
+        ],
+        "evidence_class": "BLOCKED",
+        "evidence": "README.txt:146",
+        "m3_probes": [],
+        "blocked_until": "never"
+      },
+      {
+        "operation": "scratch project lifecycle (adapter-prefixed only)",
+        "class": "COMPOSED_API_OPERATION",
+        "primitives": [
+          "CreateProject",
+          "CreateEmptyTimeline",
+          "SaveProject",
+          "LoadProject(adapter-prefixed)"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "hardlink fixture used CreateProject/SaveProject on an isolated library (deprecated forms)",
+        "m3_probes": [
+          "P15",
+          "P16"
+        ],
+        "blocked_until": "M3",
+        "qualification_note": "permitted only in the qualification library by PERMISSIONS.json scratch_lifecycle"
+      },
+      {
+        "operation": "non-render mutation under -nogui",
+        "class": "NOT_TESTED",
+        "primitives": [
+          "Scorecraft P7/P8 harness assumes yes; no recorded pass"
+        ],
+        "evidence_class": "NOT_TESTED",
+        "evidence": "gate scripts exist",
+        "m3_probes": [
+          "P10"
+        ],
+        "blocked_until": "M3",
+        "m3_question": "one -nogui pass qualifies ONLY the probes actually executed under -nogui; it does not qualify M4-M8 headless operation"
+      }
+    ]
+  }
+}

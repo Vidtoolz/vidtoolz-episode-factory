@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolvePermissions.v1.1",
+  "title": "Fail-closed permission authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "status",
+    "default",
+    "milestones",
+    "scopes",
+    "denied_all_scopes",
+    "entries"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolvePermissions.v1.1"
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "FROZEN_NOW"
+      ]
+    },
+    "default": {
+      "const": "DENY"
+    },
+    "rule": {
+      "type": "string"
+    },
+    "milestones": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "M0",
+          "M1",
+          "M2",
+          "M3"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "const": "SCRATCH_QUALIFICATION_LIBRARY"
+      },
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "prohibited_scopes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "denied_all_scopes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "SetCurrentDatabase"
+          }
+        },
+        {
+          "contains": {
+            "const": "ReplaceClip"
+          }
+        },
+        {
+          "contains": {
+            "const": "run_script"
+          }
+        },
+        {
+          "contains": {
+            "const": "run_script_unsafe"
+          }
+        },
+        {
+          "contains": {
+            "const": "DeleteClips_ripple"
+          }
+        }
+      ]
+    },
+    "scratch_lifecycle": {
+      "type": "object"
+    },
+    "plan_op_to_api": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "milestone",
+          "operation",
+          "scope",
+          "allowed",
+          "evidence_prerequisite",
+          "mutation_allowed",
+          "shared_library_allowed"
+        ],
+        "properties": {
+          "milestone": {
+            "enum": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ]
+          },
+          "operation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "const": "SCRATCH_QUALIFICATION_LIBRARY"
+          },
+          "allowed": {
+            "type": "boolean"
+          },
+          "evidence_prerequisite": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mutation_allowed": {
+            "type": "boolean"
+          },
+          "shared_library_allowed": {
+            "const": false
+          }
+        }
+      }
+    }
+  },
+  "$comment": "shared_library_allowed is const false: no schema-valid document can grant shared-library access. mutation_allowed true is only reachable for M3 entries by construction of the frozen instance; the semantic validator refuses mutation_allowed:true outside M3."
+}

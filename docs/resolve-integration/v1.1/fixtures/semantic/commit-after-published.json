@@ -1,0 +1,9 @@
+{
+  "fixture": "commit-after-published",
+  "check": "semantic_commit_manifest",
+  "expect_errors": false,
+  "terminal_journal_state": "PUBLISHED",
+  "document": {
+    "schema": "vidtoolz.resolveCommitManifest.v1"
+  }
+}

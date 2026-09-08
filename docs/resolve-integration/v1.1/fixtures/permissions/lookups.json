@@ -1,0 +1,95 @@
+{
+  "schema": "vidtoolz.resolvePermissionLookupFixtures.v1.1",
+  "cases": [
+    {
+      "milestone": "M0",
+      "operation": "GetCurrentDatabase",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": true
+    },
+    {
+      "milestone": "M0",
+      "operation": "SaveProject",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": false
+    },
+    {
+      "milestone": "M2",
+      "operation": "AppendToTimeline",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": false
+    },
+    {
+      "milestone": "M3",
+      "operation": "AppendToTimeline",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": true
+    },
+    {
+      "milestone": "M3",
+      "operation": "SetCurrentDatabase",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": false
+    },
+    {
+      "milestone": "M3",
+      "operation": "DeleteClips_ripple",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": false
+    },
+    {
+      "milestone": "M3",
+      "operation": "AppendToTimeline",
+      "scope": "PRODUCTION_LIBRARY",
+      "expect_allowed": false
+    },
+    {
+      "milestone": "M4",
+      "operation": "AppendToTimeline",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": false
+    },
+    {
+      "milestone": "M3",
+      "operation": "FrobnicateTimeline",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": false
+    },
+    {
+      "milestone": "M3",
+      "operation": "SaveProject",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": true
+    },
+    {
+      "milestone": "M3",
+      "operation": "LoadProject_nonPrefixed",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": false
+    },
+    {
+      "milestone": "M1",
+      "operation": "SetCurrentTimeline",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": false
+    },
+    {
+      "milestone": "M3",
+      "operation": "APPEND",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": true
+    },
+    {
+      "milestone": "M2",
+      "operation": "APPEND",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": false
+    },
+    {
+      "milestone": "M3",
+      "operation": "SET_PROPERTIES",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "expect_allowed": true
+    }
+  ]
+}

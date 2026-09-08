@@ -1,0 +1,367 @@
+{
+  "fixture": "canary-duplicate-record",
+  "kind": "negative",
+  "schema": "resolveCanarySourceManifest",
+  "expect_error_contains": "unique",
+  "document": {
+    "schema": "vidtoolz.resolveCanarySourceManifest.v1.1",
+    "status": "FROZEN_NOW",
+    "run_id": "2026-08-31-claude-real-20-bespoke-still-draft-successor",
+    "preserved_root": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor",
+    "live_root_declared_in_handoff": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor",
+    "live_root_status": "media only; JSON estate moved 2026-09-02; declared live paths are NOT authority",
+    "relocation_rule": "declared_path.replace(live_root, preserved_root)",
+    "handoff": {
+      "handoff_id": "directed-draft-handoff-3fd9bdd875c9eb489abf7779",
+      "revision": 2,
+      "handoff_digest_sha256": "3fd9bdd875c9eb489abf77797613abbc2616eef36073503742ebc9fd80f5bf69",
+      "file_sha256": "b675b8f33acfa0134d70c5205d66984e981b2b069fd35eb81071319b2eebdf66",
+      "file_bytes": 60673,
+      "predecessor": {
+        "handoff_id": "directed-draft-handoff-cfd418bd4f1aa4b65ab5ddfc",
+        "handoff_digest_sha256": "cfd418bd4f1aa4b65ab5ddfcfc5135106234b138979ad3c2fece5bded8fd36c6"
+      },
+      "timebase": {
+        "unit": "MILLISECOND",
+        "output_fps": 30,
+        "frame_rounding": "CANONICAL_RENDERER"
+      },
+      "duration_ms": 225183,
+      "beat_count": 20,
+      "editor_output": {
+        "relative_path": "media/directed-draft-assembly/directed-draft-r2.mp4",
+        "width": 1080,
+        "height": 1920,
+        "fps": 30,
+        "video_codec": "libx264",
+        "audio_codec": "aac",
+        "audio_sample_rate": 48000,
+        "audio_channels": 2,
+        "preset": "medium",
+        "crf": 18
+      }
+    },
+    "story_pin": {
+      "project_id": "01M0QR9DGP5RRFTPVDA7WQP2XM",
+      "version_id": "01M11CW0YTA8DJMXXZFYJQ6GG6",
+      "content_hash": "f384d5cd6c74d40e702fc1cc5994fe48fafdc6c3d2dd4e4c45eff09c2061718e",
+      "approval_state": "approved"
+    },
+    "approved_comparison_artifact": {
+      "path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/directed-draft-assembly/directed-draft-r2.mp4",
+      "sha256": "b5ba7bc097ce450714afef5a8f38ad82d64010b2e1129d01766e9cd80a515348",
+      "bytes": 19272011,
+      "ffprobe": {
+        "width": 1080,
+        "height": 1920,
+        "r_frame_rate": "30/1",
+        "nb_read_frames": 6756,
+        "duration_s": "225.200000"
+      },
+      "render_manifest_sha256": "07b1a28b1465a487c46ee1161d442552f4ff7d6db5c747530001852b55d5dfdc",
+      "render_plan_sha256": "1d831ae1b40281470d3b343e09c0cdf21c7636f93e4b25694a158efcb9683e18"
+    },
+    "media": [
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-001",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-001-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-001-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "56a13e662e933d9090e122c806d87aa0737a8b6d3ce720ae5f1e867bd8192425",
+        "preserved_sha256": "56a13e662e933d9090e122c806d87aa0737a8b6d3ce720ae5f1e867bd8192425",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-001",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-001-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-001-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "56a13e662e933d9090e122c806d87aa0737a8b6d3ce720ae5f1e867bd8192425",
+        "preserved_sha256": "56a13e662e933d9090e122c806d87aa0737a8b6d3ce720ae5f1e867bd8192425",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-003",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-003-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-003-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "8b0365f1d11d9cbe949bacf35da505cfcc720c44e4c507480f74e9fb618f8a72",
+        "preserved_sha256": "8b0365f1d11d9cbe949bacf35da505cfcc720c44e4c507480f74e9fb618f8a72",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-004",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-004-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-004-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "5052c36a340c6fc194aaa4788d83d76f57213eb1d542b2188b3f448cda49b125",
+        "preserved_sha256": "5052c36a340c6fc194aaa4788d83d76f57213eb1d542b2188b3f448cda49b125",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-005",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-005-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-005-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "250437681665b6653e6190d95d1c49158bf9f560f805ea3dd06db0b3425d9dd9",
+        "preserved_sha256": "250437681665b6653e6190d95d1c49158bf9f560f805ea3dd06db0b3425d9dd9",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-006",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-006-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-006-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "719d025cb7eabee2da2044b4e9215d06da399b3058e2afb6ddf87072482595df",
+        "preserved_sha256": "719d025cb7eabee2da2044b4e9215d06da399b3058e2afb6ddf87072482595df",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-007",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-007-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-007-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "b3af1490f6f13334bb331229ee2b691ee657b3cdcaefa2930080d8856cc3fdb0",
+        "preserved_sha256": "b3af1490f6f13334bb331229ee2b691ee657b3cdcaefa2930080d8856cc3fdb0",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-008",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-008-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-008-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "62e8a869eff63c47af19d2e14c16df8442003c84b00238c841eebb611a872c38",
+        "preserved_sha256": "62e8a869eff63c47af19d2e14c16df8442003c84b00238c841eebb611a872c38",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-009",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-009-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-009-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "7b0b3d4af64b22d8cc96973d74df2bacfa54a2c4de343e46bf4f8e9ea74307c9",
+        "preserved_sha256": "7b0b3d4af64b22d8cc96973d74df2bacfa54a2c4de343e46bf4f8e9ea74307c9",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-010",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-010-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-010-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "803cd1f2643a4fd6d9ecae12a5fb48b757049f92e6c9216922cafa59f4391295",
+        "preserved_sha256": "803cd1f2643a4fd6d9ecae12a5fb48b757049f92e6c9216922cafa59f4391295",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-011",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-011-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-011-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "30f9cf7c263d8b2ffe6761a2adfe2e3d83909305fdd814ea26180fb5a58cdca4",
+        "preserved_sha256": "30f9cf7c263d8b2ffe6761a2adfe2e3d83909305fdd814ea26180fb5a58cdca4",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-012",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-012-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-012-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "50643555771c30a041f827c947f437702b879142ceffb0795220a4d9769a0dfe",
+        "preserved_sha256": "50643555771c30a041f827c947f437702b879142ceffb0795220a4d9769a0dfe",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-013",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-013-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-013-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "75cde90f708c84af4498f10904768105f4d6e4ff247d8bba0562625c08d12c5d",
+        "preserved_sha256": "75cde90f708c84af4498f10904768105f4d6e4ff247d8bba0562625c08d12c5d",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-014",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-014-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-014-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "c7989ef39ecc5a95a06da5ea0dee0b6c583f5aea8a1d1882cbd8a7ec0f185be6",
+        "preserved_sha256": "c7989ef39ecc5a95a06da5ea0dee0b6c583f5aea8a1d1882cbd8a7ec0f185be6",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-015",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-015-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-015-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "0f5d9a8236a64774380a095439446f6b8ba535f409c198dbe8c51d2ee7d5fba4",
+        "preserved_sha256": "0f5d9a8236a64774380a095439446f6b8ba535f409c198dbe8c51d2ee7d5fba4",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-016",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-016-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-016-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "3a1d43013858dd9b0816e625ffa153fe37df3e69e628fcd0d40871db5cbe8165",
+        "preserved_sha256": "3a1d43013858dd9b0816e625ffa153fe37df3e69e628fcd0d40871db5cbe8165",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-017",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-017-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-017-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "f79c5c82889fc18e9b18fffceabfd9c9c52a3e993a33319ae2fcd97b9c2d0ef7",
+        "preserved_sha256": "f79c5c82889fc18e9b18fffceabfd9c9c52a3e993a33319ae2fcd97b9c2d0ef7",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-018",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-018-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-018-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "75eb3e67b30a05fe07dd3268902751d034257d005425ab5b32ecd42985cc15e8",
+        "preserved_sha256": "75eb3e67b30a05fe07dd3268902751d034257d005425ab5b32ecd42985cc15e8",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-019",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-019-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-019-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "a3e29b20ddfe677de071532d356ef16b7df8db605ef98fcf11cca4169c9d76ea",
+        "preserved_sha256": "a3e29b20ddfe677de071532d356ef16b7df8db605ef98fcf11cca4169c9d76ea",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "DRAFT_BESPOKE_STILL",
+        "asset_id": "draft-still-020",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-020-attempt-1/images/flux-local/flux-001.png",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-bespoke-stills/attempts/draft-still-020-attempt-1/images/flux-local/flux-001.png",
+        "declared_sha256": "778e6e36d83b94c8336429dcb5f10218fa640d5696602a4593550bf829337931",
+        "preserved_sha256": "778e6e36d83b94c8336429dcb5f10218fa640d5696602a4593550bf829337931",
+        "match": true,
+        "media_kind": "IMAGE",
+        "width": 1080,
+        "height": 1920
+      },
+      {
+        "role": "NARRATION",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-inputs/narration.wav",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-inputs/narration.wav",
+        "declared_sha256": "9586e030ffff3d3c7aa877d7e587d13187feddb31abc8f531153c963ca8d465c",
+        "preserved_sha256": "9586e030ffff3d3c7aa877d7e587d13187feddb31abc8f531153c963ca8d465c",
+        "match": true,
+        "duration_ms": 225183
+      },
+      {
+        "role": "MUSIC",
+        "declared_path": "/home/vidtoolz/vidtoolz-episode-factory/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-inputs/music.wav",
+        "preserved_path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/media/draft-inputs/music.wav",
+        "declared_sha256": "172d57ce571cfd29c58a16837d5834e1401a122b7e05e09b88318159328b552c",
+        "preserved_sha256": "172d57ce571cfd29c58a16837d5834e1401a122b7e05e09b88318159328b552c",
+        "match": true,
+        "duration_ms": 237016
+      }
+    ],
+    "media_match_count": "22/22",
+    "asset_manifest": {
+      "path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/draft-bespoke-asset-manifest.json",
+      "schema": "vidtoolz.productionAssemblyAssetManifest.v1",
+      "sha256": "79ebc228799c9276849da7736ccbfcc9d1f4540a690d8863b401228499ab4aac"
+    },
+    "composition": {
+      "path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/draft-bespoke-composition.json",
+      "sha256": "81e4bd709706416a0275cbc7bc5af9b1a841e937895e0a5661416cd1590e0229"
+    },
+    "human_review": {
+      "path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/draft-review/mikko-r2-draft-approved.json",
+      "schema": "vidtoolz.draftReview.v2",
+      "review_id": "mikko-r2-draft-approved",
+      "draft_verdict": "KEEP",
+      "notes": 0,
+      "reviewer": "mikko",
+      "review_subject_output_sha256": "b5ba7bc097ce450714afef5a8f38ad82d64010b2e1129d01766e9cd80a515348",
+      "review_subject_handoff_id": "directed-draft-handoff-3fd9bdd875c9eb489abf7779",
+      "binding_digest_sha256": "5a89364e837f0186c6bd66ff5d30ef2707ec89be62fbfc25476c8b896d17ce9f",
+      "submission_digest_sha256": "232dba31528171d84c31400b3f79158627091ea3ab4d69f0373f2677878b75cc",
+      "file_sha256": "c1875cb8b9d83745c31b2dde4683873c64fea5440c3056ff3645170eee852957"
+    },
+    "lock": {
+      "path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/final-production-lock.json",
+      "schema": "vidtoolz.finalProductionLock.v1",
+      "lock_id": "final-production-lock-2026-08-31-claude-real-20-bespoke-still-draft-successor-r2-f72ba0a7faf3d164",
+      "lock_digest_sha256": "2ab1fdc92a5db076ad8ad70844b0544511f0da1932d03b62b5eb480f8af99401",
+      "file_sha256": "cafe0ec8325f3d84d5a1708710652b20c197572f763737de4d40fe405a88b0dd"
+    },
+    "blueprint_manual_not_target": {
+      "path": "/home/vidtoolz/episode-factory-preservation/2026-09-02-pre-parser-bypass/live-untracked-originals/package-runs/2026-08-31-claude-real-20-bespoke-still-draft-successor/final-production/final-resolve-blueprint.json",
+      "schema": "vidtoolz.finalResolveBlueprint.v1",
+      "edit_mode": "MANUAL",
+      "sha256": "1eb5d96420f1445c8f1401be4bba722ba98bd0e23d45b7723610648ff028f903"
+    },
+    "story_binding_sha256": "86d86d62900b2c89a58bf44bac5c49a60d0e3ea286a5d9dc0ff9685c00e5f342",
+    "negative_fixture_only": {
+      "topic_06": "/home/vidtoolz/outputs/live-autonomous-directed-draft-topic-06-2026-09-04/",
+      "reason": "schema collision + missing media; never authority"
+    },
+    "grants_gate_approval": false
+  }
+}

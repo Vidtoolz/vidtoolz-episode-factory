@@ -1,0 +1,847 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveSnapshot.v1.1",
+  "title": "Canonical Resolve readback snapshot v1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "collector_version",
+    "canonicalization_version",
+    "target_epoch",
+    "resolve_build",
+    "library",
+    "project",
+    "collection",
+    "coverage",
+    "policy",
+    "payload",
+    "payload_sha256",
+    "guard_digest",
+    "hash_domains"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveSnapshot.v1.1"
+    },
+    "collector_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "canonicalization_version": {
+      "const": "1.1"
+    },
+    "target_epoch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "resolve_build": {
+      "type": "string",
+      "minLength": 1
+    },
+    "library": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "db_type",
+        "db_name",
+        "instance_uuid"
+      ],
+      "properties": {
+        "db_type": {
+          "enum": [
+            "Disk"
+          ]
+        },
+        "db_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instance_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unique_id",
+        "name",
+        "last_modified_time_observed"
+      ],
+      "properties": {
+        "unique_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "last_modified_time_observed": {
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ],
+          "description": "advisory tripwire; trust class decided by M3 probe P12"
+        }
+      }
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "started_at",
+        "ended_at",
+        "generation",
+        "stable_pair"
+      ],
+      "properties": {
+        "started_at": {
+          "type": "string"
+        },
+        "ended_at": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stable_pair": {
+          "type": "boolean"
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "complete",
+        "observed_domains",
+        "unobservable_domains",
+        "deferred_domains"
+      ],
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "observed_domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unobservable_domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deferred_domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_contract_sha256",
+        "timebase_sha256",
+        "track_policy_sha256",
+        "capabilities_version",
+        "collector_version",
+        "canonicalization_version"
+      ],
+      "properties": {
+        "target_contract_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "timebase_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "track_policy_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "capabilities_version": {
+          "type": "string"
+        },
+        "collector_version": {
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.1"
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeline",
+        "tracks",
+        "markers",
+        "media_dependencies"
+      ],
+      "properties": {
+        "timeline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "unique_id",
+            "name",
+            "start_frame",
+            "start_timecode",
+            "fps",
+            "width",
+            "height",
+            "end_frame",
+            "is_current",
+            "settings"
+          ],
+          "properties": {
+            "unique_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string"
+            },
+            "start_frame": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "start_timecode": {
+              "type": "string"
+            },
+            "fps": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "numerator",
+                "denominator"
+              ],
+              "properties": {
+                "numerator": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "denominator": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "end_frame": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "is_current": {
+              "type": "boolean"
+            },
+            "settings": {
+              "type": "object"
+            }
+          }
+        },
+        "tracks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "index",
+              "name",
+              "enabled",
+              "locked",
+              "items"
+            ],
+            "properties": {
+              "type": {
+                "enum": [
+                  "video",
+                  "audio",
+                  "subtitle"
+                ]
+              },
+              "index": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "locked": {
+                "type": "boolean"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "unique_id",
+                        "name",
+                        "start",
+                        "end",
+                        "duration",
+                        "enabled",
+                        "markers",
+                        "identity_observed",
+                        "observed_identity_fields",
+                        "provenance",
+                        "media_pool_item_unique_id",
+                        "media_id",
+                        "source_locator",
+                        "source_status",
+                        "source_sha256",
+                        "source_start",
+                        "source_end"
+                      ],
+                      "properties": {
+                        "unique_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "start": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "$rational"
+                              ],
+                              "properties": {
+                                "$rational": {
+                                  "type": "string",
+                                  "pattern": "^[0-9]+/[1-9][0-9]*$"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "end": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "$rational"
+                              ],
+                              "properties": {
+                                "$rational": {
+                                  "type": "string",
+                                  "pattern": "^[0-9]+/[1-9][0-9]*$"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "duration": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "$rational"
+                              ],
+                              "properties": {
+                                "$rational": {
+                                  "type": "string",
+                                  "pattern": "^[0-9]+/[1-9][0-9]*$"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "markers": {
+                          "type": "array"
+                        },
+                        "identity_observed": {
+                          "enum": [
+                            "COMPLETE",
+                            "PARTIAL"
+                          ]
+                        },
+                        "observed_identity_fields": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "minItems": 1
+                        },
+                        "provenance": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "kind"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "const": "MEDIA_BACKED"
+                            }
+                          }
+                        },
+                        "media_pool_item_unique_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "media_id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "source_locator": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "source_status": {
+                          "enum": [
+                            "HASHED",
+                            "UNHASHED_UNOWNED",
+                            "OFFLINE"
+                          ]
+                        },
+                        "source_sha256": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "source_start": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "$rational"
+                              ],
+                              "properties": {
+                                "$rational": {
+                                  "type": "string",
+                                  "pattern": "^[0-9]+/[1-9][0-9]*$"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "source_end": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "$rational"
+                              ],
+                              "properties": {
+                                "$rational": {
+                                  "type": "string",
+                                  "pattern": "^[0-9]+/[1-9][0-9]*$"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "unique_id",
+                        "name",
+                        "start",
+                        "end",
+                        "duration",
+                        "enabled",
+                        "markers",
+                        "identity_observed",
+                        "observed_identity_fields",
+                        "provenance",
+                        "media_pool_item_unique_id",
+                        "media_id",
+                        "source_locator",
+                        "source_status",
+                        "source_sha256",
+                        "absence_reason"
+                      ],
+                      "properties": {
+                        "unique_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "start": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "$rational"
+                              ],
+                              "properties": {
+                                "$rational": {
+                                  "type": "string",
+                                  "pattern": "^[0-9]+/[1-9][0-9]*$"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "end": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "$rational"
+                              ],
+                              "properties": {
+                                "$rational": {
+                                  "type": "string",
+                                  "pattern": "^[0-9]+/[1-9][0-9]*$"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "duration": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "$rational"
+                              ],
+                              "properties": {
+                                "$rational": {
+                                  "type": "string",
+                                  "pattern": "^[0-9]+/[1-9][0-9]*$"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "markers": {
+                          "type": "array"
+                        },
+                        "identity_observed": {
+                          "enum": [
+                            "COMPLETE",
+                            "PARTIAL"
+                          ]
+                        },
+                        "observed_identity_fields": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "minItems": 1
+                        },
+                        "provenance": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "kind"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "GENERATOR",
+                                "TITLE",
+                                "COMPOUND",
+                                "ADJUSTMENT",
+                                "FUSION_OR_GENERATED",
+                                "OTHER_OBSERVED"
+                              ]
+                            }
+                          }
+                        },
+                        "media_pool_item_unique_id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "media_id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "source_locator": {
+                          "type": "null"
+                        },
+                        "source_status": {
+                          "const": "NOT_APPLICABLE"
+                        },
+                        "source_sha256": {
+                          "type": "null"
+                        },
+                        "absence_reason": {
+                          "enum": [
+                            "NO_MEDIA_POOL_ITEM",
+                            "NO_FILE_BACKED_SOURCE",
+                            "UNOBSERVED_BY_API"
+                          ]
+                        },
+                        "source_start": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "$rational"
+                              ],
+                              "properties": {
+                                "$rational": {
+                                  "type": "string",
+                                  "pattern": "^[0-9]+/[1-9][0-9]*$"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "source_end": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "$rational"
+                              ],
+                              "properties": {
+                                "$rational": {
+                                  "type": "string",
+                                  "pattern": "^[0-9]+/[1-9][0-9]*$"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "object_address",
+              "frame",
+              "duration",
+              "color",
+              "name",
+              "note",
+              "custom_data"
+            ],
+            "properties": {
+              "object_address": {
+                "type": "string",
+                "minLength": 1
+              },
+              "frame": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "$rational"
+                    ],
+                    "properties": {
+                      "$rational": {
+                        "type": "string",
+                        "pattern": "^[0-9]+/[1-9][0-9]*$"
+                      }
+                    }
+                  }
+                ]
+              },
+              "duration": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "$rational"
+                    ],
+                    "properties": {
+                      "$rational": {
+                        "type": "string",
+                        "pattern": "^[0-9]+/[1-9][0-9]*$"
+                      }
+                    }
+                  }
+                ]
+              },
+              "color": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "custom_data": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "media_dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "logical_locator",
+              "source_sha256",
+              "status"
+            ],
+            "properties": {
+              "logical_locator": {
+                "type": "string"
+              },
+              "source_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "enum": [
+                  "HASHED",
+                  "UNHASHED_UNOWNED",
+                  "OFFLINE"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "guard_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "hash_domains": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "payload",
+        "guard"
+      ],
+      "properties": {
+        "payload": {
+          "const": "vidtoolz.resolveSnapshotPayload.v1.1"
+        },
+        "guard": {
+          "const": "vidtoolz.resolveGuard.v1"
+        }
+      }
+    }
+  },
+  "$comment": "payload_sha256 = digest(normalized payload, domain vidtoolz.resolveSnapshotPayload.v1.1). guard_digest = digest(guard object, domain vidtoolz.resolveGuard.v1) binding library/project/timeline/epoch/coverage/policy/payload_sha256. The payload hash ALONE never proves target context; pre-write revalidation compares guard_digest. Item provenance variants: MEDIA_BACKED requires media-pool identity and a source status; GENERATOR/TITLE/COMPOUND/ADJUSTMENT/FUSION_OR_GENERATED/OTHER_OBSERVED require null source and an absence_reason. Nullable fields MUST be emitted as null, never omitted."
+}

@@ -1,0 +1,249 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveMutationPlan.v1",
+  "title": "Mutation plan (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "binding_set_digest",
+    "capability_matrix_version",
+    "collector_version",
+    "dry_run",
+    "h0_guard_digest",
+    "h0_payload_sha256",
+    "milestone",
+    "operations",
+    "permission_class",
+    "plan_digest",
+    "schema",
+    "scope",
+    "target_contract_digest",
+    "target_epoch",
+    "timebase_digest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveMutationPlan.v1"
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "target_epoch": {
+      "type": "string"
+    },
+    "target_contract_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "binding_set_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "handoff_digest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "h0_payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "payload digest of H0; insufficient alone; h0_guard_digest is the version token"
+    },
+    "capability_matrix_version": {
+      "type": "string"
+    },
+    "collector_version": {
+      "type": "string"
+    },
+    "timebase_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "permission_class": {
+      "enum": [
+        "RESOLVE_READ",
+        "RESOLVE_ASSEMBLE",
+        "RESOLVE_REVISE",
+        "RESOLVE_FINISH",
+        "RESOLVE_RENDER"
+      ]
+    },
+    "scope": {
+      "enum": [
+        "SCRATCH_QUALIFICATION_LIBRARY",
+        "LOCAL_STAGING_LIBRARY",
+        "PRODUCTION_LIBRARY"
+      ]
+    },
+    "lease": {
+      "type": "object"
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation_id",
+          "op",
+          "selector",
+          "expected_old",
+          "expected_new",
+          "allowed_created",
+          "allowed_deleted",
+          "declared_side_effects"
+        ],
+        "properties": {
+          "operation_id": {
+            "type": "string"
+          },
+          "op": {
+            "enum": [
+              "IMPORT_MEDIA",
+              "APPEND",
+              "DELETE",
+              "DISABLE",
+              "ENABLE",
+              "SET_TAKE",
+              "UPSERT_MARKER",
+              "SET_PROPERTIES",
+              "CHECKPOINT_DUPLICATE",
+              "CHECKPOINT_EXPORT_DRT",
+              "SAVE_PROJECT"
+            ]
+          },
+          "selector": {
+            "type": "object",
+            "required": [
+              "library_instance_uuid",
+              "project_unique_id",
+              "timeline_unique_id",
+              "target_epoch",
+              "track_type",
+              "track_index"
+            ],
+            "properties": {
+              "library_instance_uuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "project_unique_id": {
+                "type": "string"
+              },
+              "timeline_unique_id": {
+                "type": "string"
+              },
+              "target_epoch": {
+                "type": "string"
+              },
+              "track_type": {
+                "enum": [
+                  "video",
+                  "audio"
+                ]
+              },
+              "track_index": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "item_unique_id": {
+                "type": "string"
+              },
+              "expected_start": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "$rational"
+                    ],
+                    "properties": {
+                      "$rational": {
+                        "type": "string",
+                        "pattern": "^[0-9]+/[1-9][0-9]*$"
+                      }
+                    }
+                  }
+                ]
+              },
+              "expected_end": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "$rational"
+                    ],
+                    "properties": {
+                      "$rational": {
+                        "type": "string",
+                        "pattern": "^[0-9]+/[1-9][0-9]*$"
+                      }
+                    }
+                  }
+                ]
+              },
+              "expected_media_pool_item_unique_id": {
+                "type": "string"
+              },
+              "expected_marker_custom_data": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "expected_old": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "expected_new": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "creation_template": {
+            "type": "object"
+          },
+          "allowed_created": {
+            "type": "array"
+          },
+          "allowed_deleted": {
+            "type": "array"
+          },
+          "declared_side_effects": {
+            "type": "array"
+          },
+          "source_pins": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "milestone": {
+      "enum": [
+        "M2",
+        "M3"
+      ]
+    },
+    "h0_guard_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$comment": "PROVISIONAL_UNTIL_M3. Schema-valid != authorized to mutate. A plan is executable only if PERMISSIONS.json allows every operation at (milestone, scope), the semantic validator passes, dry_run is false only at M3, and h0_guard_digest equals the current guard."
+}
