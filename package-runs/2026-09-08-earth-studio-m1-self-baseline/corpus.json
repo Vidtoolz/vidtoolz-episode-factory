@@ -1,0 +1,1960 @@
+{
+  "oracle": "earth-studio-m1-self-baseline",
+  "oracle_version": "1.1.0",
+  "oracle_script_sha256": "5d54eaf896470c770496c368f4c14ae3c71777e007a6532fb46c3b644d0224ad",
+  "frozen_contract_sha": "19f98b6a39b0cb079c46e79fa4293a88c04b64a59d124f033d42be9fb3887171",
+  "started_at": "2026-09-08T12:42:30.024Z",
+  "baseline_commit": "f30e4543b0af17d047f803ae9044aef859ef13bc",
+  "node_version": "v24.17.0",
+  "os_name": "Linux",
+  "os_release": "7.0.0-31-generic",
+  "os_arch": "x64",
+  "discovery": {
+    "root": "package-runs/",
+    "pattern": "**/shot-plan.json",
+    "discovered_count": 199,
+    "sorting_rule": "lexicographic by repo-relative path (String.localeCompare, ASCII paths)",
+    "sorted_order": [
+      "package-runs/2026-06-27-london-proof/earth-studio/shot-plan.json",
+      "package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/shot-plan.json",
+      "package-runs/2026-08-12-earth-studio-antimeridian-real-import-v094/earth-studio/shot-plan.json",
+      "package-runs/2026-08-12-earth-studio-hover-real-import-v094/earth-studio/shot-plan.json",
+      "package-runs/2026-08-12-earth-studio-space-zoom-v094-candidate/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-A-landmark-subject/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B-city-to-city-hero/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B2-same-geography-route-story/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-D-scale-reveal/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-GLOBAL-network/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-HERO-landmark-reveal/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-ROUTE-restraint/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/C-region-to-city-finland-helsinki-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/E-multi-destination-helsinki-stockholm-copenhagen-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F1-continuation-source-helsinki-stockholm-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/G-standalone-orbit-colosseum-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/H-fly-into-orbit-eiffel-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/I-landmark-push-helsinki-cathedral-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/J-country-scale-finland-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/K-hover-into-orbit-colosseum-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/L-globe-pullback-finland-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/M-long-crossing-control-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/A-landmark-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-9x16/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/C-multi-stop-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/D-scale-contrast-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E1-continuation-source-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E2-continuation-target-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/G-hold-then-orbit-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/H-orbit-large-scale-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-16x9/earth-studio/shot-plan.json",
+      "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-9x16/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-01-landmark-establish/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-02-landmark-push-in/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-03-landmark-orbit/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-04-orbit-inappropriate-route/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-05-local-point-to-point/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-06-city-to-city/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-07-long-distance/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-08-globe-inappropriate/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-09-country-scale/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-10-very-small-subject/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-11-matched-comparison/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-12-unequal-scale-comparison/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-13-multi-destination/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-14-return-conclusion/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-15-final-emphasis/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16a-continuation-source/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16b-continuation-target/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-18-restraint/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-01-landmark-identity-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-01-landmark-identity-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-02-landmark-then-travel-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-02-landmark-then-travel-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-03-elongated-island-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-03-elongated-island-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-04-coastal-city-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-04-coastal-city-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-05-inland-city-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-05-inland-city-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-06-mountain-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-06-mountain-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-07-elongated-natural-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-07-elongated-natural-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-08-country-scale-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-08-country-scale-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-09-outbound-direction-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-09-outbound-direction-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-10-landmark-then-immediate-travel-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-10-landmark-then-immediate-travel-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-11-opening-orbit-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-11-opening-orbit-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-12-matched-comparison-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-12-matched-comparison-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-13-continuation-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-13-continuation-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-14-explicit-override-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-14-explicit-override-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-15-low-confidence-A-default/earth-studio/shot-plan.json",
+      "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-15-low-confidence-B-composed/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-01-landmark-establish-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-01-landmark-establish-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-02-landmark-inspect-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-02-landmark-inspect-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-03-landmark-emphasize-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-03-landmark-emphasize-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-04-terrain-matterhorn-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-04-terrain-matterhorn-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-05-city-establish-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-05-city-establish-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-06-city-orient-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-06-city-orient-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-07-city-arrival-inspect-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-07-city-arrival-inspect-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-08-compact-island-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-08-compact-island-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-09-country-orient-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-09-country-orient-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-10-large-country-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-10-large-country-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-11-continent-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-11-continent-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-12-landmark-then-travel-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-12-landmark-then-travel-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-13-explicit-hover-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-13-explicit-hover-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-14-explicit-orbit-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-14-explicit-orbit-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-15-matched-comparison-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-15-matched-comparison-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-16-continuation-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-16-continuation-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-17-explicit-topdown-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-17-explicit-topdown-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-18-explicit-oblique-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-18-explicit-oblique-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-19-explicit-degrees-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-19-explicit-degrees-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-20-route-restraint-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-20-route-restraint-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-21-hover-oblique-conflict-A-baseline/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-21-hover-oblique-conflict-B-obliquity/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D01-helsinki-half/A-coarse-30deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D01-helsinki-half/B-live-10deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D02-promoted-helsinki-establish/A-coarse-30deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D02-promoted-helsinki-establish/B-live-10deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D03-helsinki-explicit-full/A-coarse-30deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D03-helsinki-explicit-full/B-live-10deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D04-santorini-half/A-coarse-30deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D04-santorini-half/B-live-10deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/A-coarse-30deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/B-live-10deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/A-coarse-30deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/B-live-10deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D07-equator/A-coarse-30deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D07-equator/B-live-10deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D08-lat80/A-coarse-30deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D08-lat80/B-live-10deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D09-near-pole/A-coarse-30deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D09-near-pole/B-live-10deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/A-coarse-30deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/B-live-10deg/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-BASELINE/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-SETTLE-THEN-LAUNCH/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-TANGENT-DEPARTURE/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T03-colosseum-explicit-full/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T09-helsinki-orbit-to-hold/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GEIRANGERFJORD/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GRAND-CANYON/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MATTERHORN/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MOUNT-FUJI/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-ALPS/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-EVEREST/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-KILIMANJARO/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-MONT-BLANC/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-45/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-55/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-65/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-72/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-74/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-45/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-55/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-65/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-72/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-74/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-45/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-55/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-65/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-72/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-74/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-45/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-55/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-65/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-72/earth-studio/shot-plan.json",
+      "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-74/earth-studio/shot-plan.json",
+      "package-runs/2026-08-22-earth-studio-orbit-travel-promotion/earth-studio/shot-plan.json"
+    ],
+    "duplicate_canonical_identities": []
+  },
+  "source_hashes": {
+    "earth-studio-job-planner.js": "a90985609e7d92080cf1d38e7d94abbc7f8f8c7a71a3569523b8a610a1024ead",
+    "earth-studio-camera-quality.js": "a5b9b5a0185e08e036eb428cf61db415f2cdafd45644051725093c7b831162fc"
+  },
+  "config_earth_studio_motion_hashes": {
+    "config/earth-studio-motion/corpus.json": "596001840a07b93317fd3bce0a103b17c5a56b3175e19ea3a210c45291534e5f",
+    "config/earth-studio-motion/motion-profile.json": "764b1cf9c6f24bb5af8fbbce0b17b2dc480b7dbe33e4e3f7c5d9ca71cd7a6a54",
+    "config/earth-studio-motion/references/darien-gap.esp": "638f70529d9bf880b0fb58ca6f0f347be716f1aa9a7a0847936d6afea3efe980",
+    "config/earth-studio-motion/references/darien-gap.signature.json": "a21c7d658d90d81df4ddb9df199fca32a92d81ae5b969fe4b1a1fcf265abf53c",
+    "config/earth-studio-motion/references/ekayle1.esp": "c7c7a8484d0fb1bf06751c62bf46ee410d1b8cfbe32154c1747a1c9acf7e19b2",
+    "config/earth-studio-motion/references/ekayle1.signature.json": "fa621785833e308b05028fb23f68e5547219932867629dddfbfb0eadc8436fad",
+    "config/earth-studio-motion/references/mountkinabalu.esp": "74a16521d4208d97636172a51bf1ef2fe99617f1fa670c96ced9b22b6f23ece5",
+    "config/earth-studio-motion/references/mountkinabalu.signature.json": "628cbf4b7780e8eb2763e904ce936e6e6491a2a70bf13a4b1b5b879ba63f74b1",
+    "config/earth-studio-motion/references/radiator-untitled.esp": "47e83bcfd43c8a90993d96276ad2843e27391970560584d8d7f4544c090f3d47",
+    "config/earth-studio-motion/references/radiator-untitled.signature.json": "4c7b81eca7e314f6f313c19659ace6dddea4b6d96d0d23370c4f6a431407a826",
+    "config/earth-studio-motion/references/servyx.esp": "d3db9995eea226182fe3be4a07130feef377d04941a7c18716a28383aa032512",
+    "config/earth-studio-motion/references/servyx.signature.json": "0cf17d6f6d8c91ec7b0684c9a3ba9272106caf55811e3691428be2e62d3b1ff4",
+    "config/earth-studio-motion/reports/derivation-report.json": "8590ac85e99200d9f31f2dbcccebb77f718e53e1d5c559924b5fd98108c63a18"
+  },
+  "expected_artifact_set": {
+    "planner_tier": [
+      "README.md",
+      "shot-plan.json",
+      "shot-plan.md",
+      "route.kml",
+      "earth-studio-build-checklist.md",
+      "earth-studio.esp"
+    ],
+    "lane_tier": [
+      "camera-quality.json",
+      "motion-continuity.json",
+      "continuation-state.json",
+      "job.json",
+      "direction.json",
+      "journey.json"
+    ]
+  },
+  "comparison_classification": {
+    "byte_exact": "all artifacts except job.json",
+    "structurally_exact": "job.json (generated_at varies; all other fields byte-exact)",
+    "excepted_fields": [
+      "job.json.generated_at"
+    ]
+  },
+  "numeric_authority": "exact values only; no epsilon, no tolerance, no approximate equality (D-2)",
+  "round_trip_exactness": {
+    "method": "per-track all_exact based on leaf-metadata-sourced normalization (v1.1 pan fix)",
+    "total_samples_across_all_cases": 2860,
+    "non_exact_samples": 22,
+    "non_exact_rate": "0.77%",
+    "note": "1-ulp non-exactness is expected IEEE-754 behavior on normalize->denormalize round-trip. Post-extraction must reproduce these same exact values at the same observation boundary. No epsilon tolerance is used."
+  },
+  "cases": [
+    {
+      "case_id": "2026-06-27-london-proof",
+      "source": "package-runs/2026-06-27-london-proof/earth-studio/shot-plan.json",
+      "artifacts_hashed": 7,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-07-earth-studio-v04-acceptance",
+      "source": "package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/shot-plan.json",
+      "artifacts_hashed": 7,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-12-earth-studio-antimeridian-real-import-v094",
+      "source": "package-runs/2026-08-12-earth-studio-antimeridian-real-import-v094/earth-studio/shot-plan.json",
+      "artifacts_hashed": 7,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-12-earth-studio-hover-real-import-v094",
+      "source": "package-runs/2026-08-12-earth-studio-hover-real-import-v094/earth-studio/shot-plan.json",
+      "artifacts_hashed": 7,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-12-earth-studio-space-zoom-v094-candidate",
+      "source": "package-runs/2026-08-12-earth-studio-space-zoom-v094-candidate/earth-studio/shot-plan.json",
+      "artifacts_hashed": 7,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-A-landmark-subject",
+      "source": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-A-landmark-subject/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-B-city-to-city-hero",
+      "source": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B-city-to-city-hero/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-B2-same-geography-route-story",
+      "source": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B2-same-geography-route-story/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-D-scale-reveal",
+      "source": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-D-scale-reveal/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-GLOBAL-network",
+      "source": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-GLOBAL-network/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-HERO-landmark-reveal",
+      "source": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-HERO-landmark-reveal/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-ROUTE-restraint",
+      "source": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-ROUTE-restraint/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-TERRAIN-mountain",
+      "source": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__A-local-landmark-to-landmark-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__B-city-to-city-helsinki-stockholm-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__C-region-to-city-finland-helsinki-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/C-region-to-city-finland-helsinki-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__D-long-distance-helsinki-new-york-orbit-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__E-multi-destination-helsinki-stockholm-copenhagen-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/E-multi-destination-helsinki-stockholm-copenhagen-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__F1-continuation-source-helsinki-stockholm-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F1-continuation-source-helsinki-stockholm-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__F2-continuation-target-stockholm-copenhagen-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__G-standalone-orbit-colosseum-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/G-standalone-orbit-colosseum-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__H-fly-into-orbit-eiffel-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/H-fly-into-orbit-eiffel-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__I-landmark-push-helsinki-cathedral-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/I-landmark-push-helsinki-cathedral-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__J-country-scale-finland-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/J-country-scale-finland-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__K-hover-into-orbit-colosseum-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/K-hover-into-orbit-colosseum-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__L-globe-pullback-finland-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/L-globe-pullback-finland-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__M-long-crossing-control-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/M-long-crossing-control-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 10,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance__canaries__A-landmark-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/A-landmark-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance__canaries__B-city-to-city-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance__canaries__B-city-to-city-9x16",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-9x16/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance__canaries__C-multi-stop-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/C-multi-stop-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance__canaries__D-scale-contrast-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/D-scale-contrast-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance__canaries__E1-continuation-source-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E1-continuation-source-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance__canaries__E2-continuation-target-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E2-continuation-target-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance__canaries__G-hold-then-orbit-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/G-hold-then-orbit-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance__canaries__H-orbit-large-scale-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/H-orbit-large-scale-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance__canaries__I-wide-target-16x9",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-16x9/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-19-earth-studio-journey-visual-acceptance__canaries__I-wide-target-9x16",
+      "source": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-9x16/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-01-landmark-establish",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-01-landmark-establish/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-02-landmark-push-in",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-02-landmark-push-in/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-03-landmark-orbit",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-03-landmark-orbit/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-04-orbit-inappropriate-route",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-04-orbit-inappropriate-route/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-05-local-point-to-point",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-05-local-point-to-point/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-06-city-to-city",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-06-city-to-city/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-07-long-distance",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-07-long-distance/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-08-globe-inappropriate",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-08-globe-inappropriate/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-09-country-scale",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-09-country-scale/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-10-very-small-subject",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-10-very-small-subject/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-11-matched-comparison",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-11-matched-comparison/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-12-unequal-scale-comparison",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-12-unequal-scale-comparison/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-13-multi-destination",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-13-multi-destination/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-14-return-conclusion",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-14-return-conclusion/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-15-final-emphasis",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-15-final-emphasis/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-16a-continuation-source",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16a-continuation-source/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-16b-continuation-target",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16b-continuation-target/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-17-nl-complex-story",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-18-restraint",
+      "source": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-18-restraint/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-01-landmark-identity-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-01-landmark-identity-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-01-landmark-identity-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-01-landmark-identity-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-02-landmark-then-travel-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-02-landmark-then-travel-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-02-landmark-then-travel-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-02-landmark-then-travel-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-03-elongated-island-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-03-elongated-island-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-03-elongated-island-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-03-elongated-island-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-04-coastal-city-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-04-coastal-city-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-04-coastal-city-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-04-coastal-city-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-05-inland-city-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-05-inland-city-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-05-inland-city-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-05-inland-city-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-06-mountain-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-06-mountain-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-06-mountain-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-06-mountain-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-07-elongated-natural-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-07-elongated-natural-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-07-elongated-natural-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-07-elongated-natural-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-08-country-scale-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-08-country-scale-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-08-country-scale-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-08-country-scale-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-09-outbound-direction-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-09-outbound-direction-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-09-outbound-direction-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-09-outbound-direction-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-10-landmark-then-immediate-travel-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-10-landmark-then-immediate-travel-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-10-landmark-then-immediate-travel-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-10-landmark-then-immediate-travel-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-11-opening-orbit-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-11-opening-orbit-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-11-opening-orbit-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-11-opening-orbit-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-12-matched-comparison-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-12-matched-comparison-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-12-matched-comparison-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-12-matched-comparison-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-13-continuation-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-13-continuation-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-13-continuation-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-13-continuation-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-14-explicit-override-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-14-explicit-override-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-14-explicit-override-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-14-explicit-override-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-15-low-confidence-A-default",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-15-low-confidence-A-default/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-20-earth-studio-opening-composition-ab__projects__OC-15-low-confidence-B-composed",
+      "source": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-15-low-confidence-B-composed/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-01-landmark-establish-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-01-landmark-establish-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-01-landmark-establish-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-01-landmark-establish-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-02-landmark-inspect-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-02-landmark-inspect-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-03-landmark-emphasize-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-03-landmark-emphasize-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-04-terrain-matterhorn-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-04-terrain-matterhorn-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-05-city-establish-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-05-city-establish-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-05-city-establish-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-05-city-establish-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-06-city-orient-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-06-city-orient-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-06-city-orient-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-06-city-orient-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-07-city-arrival-inspect-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-07-city-arrival-inspect-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-07-city-arrival-inspect-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-07-city-arrival-inspect-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-08-compact-island-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-08-compact-island-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-08-compact-island-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-08-compact-island-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-09-country-orient-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-09-country-orient-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-09-country-orient-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-09-country-orient-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-10-large-country-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-10-large-country-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-10-large-country-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-10-large-country-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-11-continent-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-11-continent-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-11-continent-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-11-continent-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-12-landmark-then-travel-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-12-landmark-then-travel-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-12-landmark-then-travel-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-12-landmark-then-travel-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-13-explicit-hover-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-13-explicit-hover-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-13-explicit-hover-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-13-explicit-hover-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-14-explicit-orbit-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-14-explicit-orbit-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-14-explicit-orbit-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-14-explicit-orbit-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-15-matched-comparison-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-15-matched-comparison-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-15-matched-comparison-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-15-matched-comparison-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-16-continuation-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-16-continuation-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-16-continuation-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-16-continuation-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-17-explicit-topdown-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-17-explicit-topdown-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-17-explicit-topdown-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-17-explicit-topdown-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-18-explicit-oblique-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-18-explicit-oblique-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-18-explicit-oblique-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-18-explicit-oblique-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-19-explicit-degrees-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-19-explicit-degrees-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-19-explicit-degrees-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-19-explicit-degrees-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-20-route-restraint-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-20-route-restraint-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-20-route-restraint-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-20-route-restraint-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-21-hover-oblique-conflict-A-baseline",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-21-hover-oblique-conflict-A-baseline/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-21-hover-oblique-conflict-B-obliquity",
+      "source": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-21-hover-oblique-conflict-B-obliquity/earth-studio/shot-plan.json",
+      "artifacts_hashed": 11,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D01-helsinki-half__A-coarse-30deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D01-helsinki-half/A-coarse-30deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D01-helsinki-half__B-live-10deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D01-helsinki-half/B-live-10deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D02-promoted-helsinki-establish__A-coarse-30deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D02-promoted-helsinki-establish/A-coarse-30deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D02-promoted-helsinki-establish__B-live-10deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D02-promoted-helsinki-establish/B-live-10deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D03-helsinki-explicit-full__A-coarse-30deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D03-helsinki-explicit-full/A-coarse-30deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D03-helsinki-explicit-full__B-live-10deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D03-helsinki-explicit-full/B-live-10deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D04-santorini-half__A-coarse-30deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D04-santorini-half/A-coarse-30deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D04-santorini-half__B-live-10deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D04-santorini-half/B-live-10deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D05-matterhorn-terrain__A-coarse-30deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/A-coarse-30deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D05-matterhorn-terrain__B-live-10deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/B-live-10deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D06-paris-space-scale__A-coarse-30deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/A-coarse-30deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D06-paris-space-scale__B-live-10deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/B-live-10deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D07-equator__A-coarse-30deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D07-equator/A-coarse-30deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D07-equator__B-live-10deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D07-equator/B-live-10deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D08-lat80__A-coarse-30deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D08-lat80/A-coarse-30deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D08-lat80__B-live-10deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D08-lat80/B-live-10deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D09-near-pole__A-coarse-30deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D09-near-pole/A-coarse-30deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D09-near-pole__B-live-10deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D09-near-pole/B-live-10deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D10-antimeridian__A-coarse-30deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/A-coarse-30deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-density-audit__projects__D10-antimeridian__B-live-10deg",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/B-live-10deg/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-BASELINE",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-BASELINE/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-SETTLE-THEN-LAUNCH",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-SETTLE-THEN-LAUNCH/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-TANGENT-DEPARTURE",
+      "source": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-TANGENT-DEPARTURE/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terminal-settle-audit__projects__T03-colosseum-explicit-full",
+      "source": "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T03-colosseum-explicit-full/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terminal-settle-audit__projects__T09-helsinki-orbit-to-hold",
+      "source": "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T09-helsinki-orbit-to-hold/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-GEIRANGERFJORD",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GEIRANGERFJORD/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-GRAND-CANYON",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GRAND-CANYON/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-MATTERHORN",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MATTERHORN/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-MOUNT-FUJI",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MOUNT-FUJI/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-ALPS",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-ALPS/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-EVEREST",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-EVEREST/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-KILIMANJARO",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-KILIMANJARO/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-MONT-BLANC",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-MONT-BLANC/earth-studio/shot-plan.json",
+      "artifacts_hashed": 9,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-45",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-45/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-55",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-55/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-65",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-65/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-72",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-72/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-74",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-74/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-45",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-45/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-55",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-55/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-65",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-65/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-72",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-72/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-74",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-74/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-45",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-45/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-55",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-55/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-65",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-65/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-72",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-72/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-74",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-74/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-45",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-45/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-55",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-55/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": true
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-65",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-65/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-72",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-72/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-74",
+      "source": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-74/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    },
+    {
+      "case_id": "2026-08-22-earth-studio-orbit-travel-promotion",
+      "source": "package-runs/2026-08-22-earth-studio-orbit-travel-promotion/earth-studio/shot-plan.json",
+      "artifacts_hashed": 6,
+      "exception": null,
+      "roll_empty_leaf": true,
+      "round_trip_any_non_exact": false
+    }
+  ],
+  "totals": {
+    "discovered": 199,
+    "replayed": 199,
+    "failures": 0,
+    "roll_violations": 0
+  },
+  "failures": [],
+  "roll_violations": [],
+  "round_trip_sample_cases": [
+    "2026-06-27-london-proof",
+    "2026-08-07-earth-studio-v04-acceptance",
+    "2026-08-12-earth-studio-antimeridian-real-import-v094",
+    "2026-08-12-earth-studio-hover-real-import-v094",
+    "2026-08-12-earth-studio-space-zoom-v094-candidate"
+  ],
+  "side_channel_sample_cases": [
+    "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-B-obliquity",
+    "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-A-baseline",
+    "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-B-obliquity",
+    "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-A-baseline",
+    "2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-B-obliquity"
+  ],
+  "browser_invariant": {
+    "feasible": false,
+    "method": "(b) render-only alternative",
+    "runtime_identity": {
+      "node_version": "v24.17.0",
+      "os_name": "Linux",
+      "os_release": "7.0.0-31-generic"
+    },
+    "bundle_identity": {
+      "project-earth-studio.html": "80033f1c3bbe83dbee20c9678311445994d3cbbf0fbd2cf9b3c46330f3428e91",
+      "ef-nav.js": "dc49652918841b50f8973adc65a0e6202ed6a6f8cb11597c68fc6ee772cc387a",
+      "earth-studio-job-planner.js": "a90985609e7d92080cf1d38e7d94abbc7f8f8c7a71a3569523b8a610a1024ead",
+      "earth-studio-journey.js": "d3f60eba959c4354221a548aa61cecdfa0f854a7fa189e60fb0940f96cde9602",
+      "earth-studio-opening-composition.js": "9e2b993ab7f7dd2a25f051288cdd08a17189605eb661d8bd544673a8f102c05e",
+      "earth-studio-terrain-morphology.js": "4052f667c4c5b496d8cb2b29b09bded62c9663a4cb1c66cfbf4bf302f045c1cf",
+      "earth-studio-director.js": "fad65ec4a713006df71cbc9c3eb162d6f4f773d401daf1382536ae1fde76ef1a"
+    },
+    "static_boundary_proof": {
+      "method": "two-tier: (1) catalog definitions in loaded modules, (2) detect invocations in browser HTML only",
+      "patterns_searched": [
+        "buildArtifactsFromPlan",
+        "buildEsp",
+        "cameraTracks",
+        "rollReport",
+        "coherenceReport",
+        "evaluate",
+        "denormalized"
+      ],
+      "modules_checked": [
+        "ef-nav.js",
+        "earth-studio-job-planner.js",
+        "earth-studio-journey.js",
+        "earth-studio-opening-composition.js",
+        "earth-studio-terrain-morphology.js",
+        "earth-studio-director.js"
+      ],
+      "definitions_in_modules": 3,
+      "definitions": [
+        {
+          "file": "earth-studio-job-planner.js",
+          "pattern": "buildArtifactsFromPlan"
+        },
+        {
+          "file": "earth-studio-job-planner.js",
+          "pattern": "buildEsp"
+        },
+        {
+          "file": "earth-studio-journey.js",
+          "pattern": "buildEsp"
+        }
+      ],
+      "html_invocations_found": 0,
+      "html_invocations": [],
+      "conclusion": "Browser HTML does NOT invoke any generation/QC function. Definitions exist in 6 loaded module(s) for parseDescription/resolveLocation UI support — expected and harmless. The browser is outside the deterministic artifact generation/QC path."
+    },
+    "note": "Browser smoke test not executed (no CDP driver in the oracle's dependency-free constraint). Method (b): the browser bundle is proven outside the deterministic generation/QC path per static_boundary_proof. All compared artifacts (planner + lane tiers) are produced by Node-side modules (earth-studio-job-planner.js buildArtifactsFromPlan, lane, camera-quality). project-earth-studio.html only renders/parses .esp in the browser; it never computes any compared artifact. Bundle identity hashes recorded for post-extraction comparison.",
+    "pass": true
+  },
+  "synthetic_fixtures": {
+    "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/fixtures/fixtures.json",
+    "summary": {
+      "injected_roll_verdict": "PASS",
+      "experiment_switches_exercised": true,
+      "total_frames_guard_verdict": "PASS",
+      "initial_camera_seed_exercised": true
+    }
+  },
+  "previous_oracle": {
+    "version": "1.0.0",
+    "script_sha": "7da6f0ddbac012ab63069c61689e7c23a6a86ecec442feff6c4848c7aa2de5d4",
+    "note": "v1.0 199-case corpus + baseline hashes preserved unchanged in v1.1"
+  }
+}

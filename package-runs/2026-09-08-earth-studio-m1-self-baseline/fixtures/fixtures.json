@@ -1,0 +1,151 @@
+{
+  "injected_roll": {
+    "fixture": "injected_roll",
+    "input": "2026-06-27-london-proof ESP base",
+    "base_roll": {
+      "rotationZ_leaf_count": 1,
+      "rotationZ_keyframed_count": 0,
+      "empty_leaf": true
+    },
+    "mutation_applied": "keyframe injection in rotationZ leaf, and leaf removal",
+    "results": {
+      "empty_leaf_baseline": {
+        "empty_leaf": true,
+        "present": {
+          "present": false,
+          "non_zero": 0,
+          "keyframes": 0,
+          "max_abs_deg": 0
+        }
+      },
+      "keyframed_zero_roll": {
+        "present": true,
+        "non_zero": 0,
+        "keyframes": 1,
+        "detectable": true,
+        "note": "present:true distinguishes from empty-leaf present:false; keyframes=1 distinguishes from absent"
+      },
+      "keyframed_nonzero_roll": {
+        "present": true,
+        "non_zero": 1,
+        "keyframes": 2,
+        "max_abs_deg": 0.05,
+        "detectable": true,
+        "note": "Roll injection detected: present=true, non_zero>0. Post-extraction regression would flip these."
+      },
+      "absent_rotationZ": {
+        "present": false,
+        "non_zero": 0,
+        "keyframes": 0,
+        "detectable": true,
+        "note": "absent rotationZ returns present:false — distinct from empty-leaf present:false"
+      }
+    },
+    "verdict": "PASS"
+  },
+  "experiment_switches": {
+    "fixture": "experiment_switches_and_motion_policy",
+    "input": "package-runs/2026-06-27-london-proof/earth-studio/shot-plan.json",
+    "baseline_esp_hash": "8fa661afc3fcb601fda529c8e54c3f208c884e6b895b1921ad106ad5603076f9",
+    "results": {
+      "acquisitionProfile": {
+        "option": "brisk",
+        "coherentTrajectory_enabled": false,
+        "artifacts_produced": true,
+        "esp_present": true,
+        "esp_hash_changed_vs_baseline": false,
+        "exercised": true
+      },
+      "cruiseProfile": {
+        "option": "balanced",
+        "coherentTrajectory_enabled": true,
+        "artifacts_produced": true,
+        "esp_present": true,
+        "esp_hash_changed_vs_baseline": true,
+        "exercised": true
+      },
+      "orbitEntryDensity": {
+        "option": "with_altitude",
+        "coherentTrajectory_enabled": true,
+        "artifacts_produced": true,
+        "esp_present": true,
+        "esp_hash_changed_vs_baseline": true,
+        "exercised": true
+      },
+      "orbitEntryTiltSchedule": {
+        "option": "identity+density",
+        "coherentTrajectory_enabled": true,
+        "artifacts_produced": true,
+        "esp_present": true,
+        "esp_hash_changed_vs_baseline": true,
+        "exercised": true
+      },
+      "motion_policy_compareLegacyMotion": {
+        "option": "compareLegacyMotion:true (plan: coherentTrajectory=true, dedupeKeyframes=true)",
+        "artifacts_produced": true,
+        "esp_present": true,
+        "esp_hash": "d81971e3dc480d7123bd3e367c30664fa9ebae5f27e671023790330a7ee94309",
+        "resolved_policy": {
+          "coherentTrajectory": false,
+          "dedupeKeyframes": false
+        },
+        "both_flags_false": true,
+        "exercised": true,
+        "note": "compareLegacyMotion forces both flags false regardless of plan settings"
+      },
+      "motion_policy_non_default": {
+        "plan_motion_policy": {
+          "coherentTrajectory": true,
+          "dedupeKeyframes": true
+        },
+        "resolved_policy": {
+          "coherentTrajectory": true,
+          "dedupeKeyframes": true
+        },
+        "esp_hash_changed_vs_baseline": true,
+        "exercised": true
+      }
+    },
+    "switches_that_changed_output": [
+      "balanced",
+      "with_altitude",
+      "identity+density",
+      null
+    ],
+    "all_exercised": true,
+    "note": "coherentTrajectory forced true for cruiseProfile/orbitEntryDensity/orbitEntryTiltSchedule to pass through production gates (planner:2814,2817,3254)"
+  },
+  "total_frames_guard": {
+    "fixture": "total_frames_guard_degenerate",
+    "input": "package-runs/2026-06-27-london-proof/earth-studio/shot-plan.json",
+    "case_zero": {
+      "raw": 0,
+      "guarded": 1,
+      "guard_applied": true,
+      "esp_duration": 1,
+      "guard_matches_esp": true
+    },
+    "case_absent": {
+      "raw": null,
+      "guarded": 1,
+      "guard_applied": true,
+      "esp_duration": 1,
+      "guard_matches_esp": true
+    },
+    "verdict": "PASS"
+  },
+  "initial_camera_seed": {
+    "fixture": "initial_camera_seed",
+    "input": "package-runs/2026-06-27-london-proof/earth-studio/shot-plan.json",
+    "seed": {
+      "tilt": 45,
+      "facing": 180
+    },
+    "artifacts_produced": true,
+    "esp_present": true,
+    "esp_hash_changed_vs_baseline": false,
+    "captureState_received": true,
+    "exercised": true,
+    "verdict": "PASS_CAPTURESTATE"
+  }
+}
