@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolvePermissions.v1.8",
+  "title": "Fail-closed permission authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "default",
+    "denied_all_scopes",
+    "entries",
+    "law",
+    "milestones",
+    "prerequisite_codes",
+    "schema",
+    "scopes",
+    "status",
+    "target_contract_ref",
+    "target_requirements",
+    "version"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolvePermissions.v1.8"
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "FROZEN_NOW"
+      ]
+    },
+    "default": {
+      "const": "DENY"
+    },
+    "rule": {
+      "type": "string"
+    },
+    "milestones": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "M0",
+          "M1",
+          "M2",
+          "M3"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "const": "SCRATCH_QUALIFICATION_LIBRARY"
+      },
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "prohibited_scopes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "denied_all_scopes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "SetCurrentDatabase"
+          }
+        },
+        {
+          "contains": {
+            "const": "ReplaceClip"
+          }
+        },
+        {
+          "contains": {
+            "const": "run_script"
+          }
+        },
+        {
+          "contains": {
+            "const": "run_script_unsafe"
+          }
+        },
+        {
+          "contains": {
+            "const": "DeleteClips_ripple"
+          }
+        }
+      ]
+    },
+    "scratch_lifecycle": {
+      "type": "object"
+    },
+    "plan_op_to_api": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "allowed",
+          "evidence_prerequisite",
+          "milestone",
+          "mutation_allowed",
+          "operation",
+          "prerequisites",
+          "scope",
+          "shared_library_allowed",
+          "target_requirement"
+        ],
+        "properties": {
+          "milestone": {
+            "enum": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ]
+          },
+          "operation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "const": "SCRATCH_QUALIFICATION_LIBRARY"
+          },
+          "allowed": {
+            "type": "boolean"
+          },
+          "evidence_prerequisite": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mutation_allowed": {
+            "type": "boolean"
+          },
+          "shared_library_allowed": {
+            "const": false
+          },
+          "prerequisites": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "enum": [
+                "BUNDLE_INDEPENDENTLY_VERIFIED",
+                "EXCLUSIVE_SESSION_ATTESTED",
+                "GUARD_CURRENT",
+                "HOST_MATCHES_CONTRACT",
+                "JOURNAL_PREPARED",
+                "LIBRARY_MATCHES_CONTRACT",
+                "LIBRARY_NOT_SHARED",
+                "M0_EXIT_EVIDENCE",
+                "M1_EXIT_EVIDENCE",
+                "M2_EXIT_EVIDENCE",
+                "MIKKO_M3_AUTHORIZATION",
+                "PLAN_VALIDATED",
+                "PRIMITIVES_QUALIFIED_OR_DECLARED_UNOBSERVED",
+                "PROBE_ALLOWED_PRIMITIVES",
+                "PROJECT_ADAPTER_PREFIXED",
+                "READ_ONLY_JOURNAL_OPEN",
+                "RESOLVE_VERSION_MATCHES",
+                "SYNTHETIC_MEDIA_ONLY",
+                "TARGET_REQUIREMENT_SATISFIED",
+                "TARGET_STATE_ATTACHED_READ_ONLY",
+                "TARGET_STATE_ATTACHMENT_READY",
+                "TARGET_STATE_SCRATCH_WRITE_READY",
+                "TIMELINE_IS_DESTINATION"
+              ]
+            },
+            "contains": {
+              "const": "TARGET_REQUIREMENT_SATISFIED"
+            }
+          },
+          "target_requirement": {
+            "enum": [
+              "SESSION",
+              "PROJECT",
+              "PROJECT_TIMELINE"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "mutation_allowed": {
+                  "const": true
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "milestone": {
+                  "const": "M3"
+                },
+                "prerequisites": {
+                  "allOf": [
+                    {
+                      "contains": {
+                        "const": "MIKKO_M3_AUTHORIZATION"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "TARGET_STATE_SCRATCH_WRITE_READY"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "law": {
+      "type": "string"
+    },
+    "prerequisite_codes": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "BUNDLE_INDEPENDENTLY_VERIFIED",
+          "EXCLUSIVE_SESSION_ATTESTED",
+          "GUARD_CURRENT",
+          "HOST_MATCHES_CONTRACT",
+          "JOURNAL_PREPARED",
+          "LIBRARY_MATCHES_CONTRACT",
+          "LIBRARY_NOT_SHARED",
+          "M0_EXIT_EVIDENCE",
+          "M1_EXIT_EVIDENCE",
+          "M2_EXIT_EVIDENCE",
+          "MIKKO_M3_AUTHORIZATION",
+          "PLAN_VALIDATED",
+          "PRIMITIVES_QUALIFIED_OR_DECLARED_UNOBSERVED",
+          "PROBE_ALLOWED_PRIMITIVES",
+          "PROJECT_ADAPTER_PREFIXED",
+          "READ_ONLY_JOURNAL_OPEN",
+          "RESOLVE_VERSION_MATCHES",
+          "SYNTHETIC_MEDIA_ONLY",
+          "TARGET_REQUIREMENT_SATISFIED",
+          "TARGET_STATE_ATTACHED_READ_ONLY",
+          "TARGET_STATE_ATTACHMENT_READY",
+          "TARGET_STATE_SCRATCH_WRITE_READY",
+          "TIMELINE_IS_DESTINATION"
+        ]
+      }
+    },
+    "target_contract_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "host_name",
+        "library_name",
+        "prohibited_library_names",
+        "project_prefix",
+        "resolve_version"
+      ],
+      "properties": {
+        "host_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "library_name": {
+          "type": "string"
+        },
+        "prohibited_library_names": {
+          "type": "array"
+        },
+        "project_prefix": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolve_version": {
+          "type": "string"
+        }
+      }
+    },
+    "target_requirements": {
+      "const": [
+        "SESSION",
+        "PROJECT",
+        "PROJECT_TIMELINE"
+      ]
+    }
+  },
+  "$comment": "shared_library_allowed is const false. mutation_allowed true forces milestone M3 and the two mandatory codes by schema. Every entry declares a target_requirement and lists TARGET_REQUIREMENT_SATISFIED (the evaluator enforces binding even if omitted)."
+}

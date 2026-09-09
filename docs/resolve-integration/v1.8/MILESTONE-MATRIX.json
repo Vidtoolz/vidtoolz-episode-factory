@@ -1,0 +1,261 @@
+{
+  "schema": "vidtoolz.resolveMilestoneMatrix.v1.8",
+  "version": "1.8.0",
+  "status": "FROZEN_NOW",
+  "derived_from": [
+    "PERMISSIONS.json",
+    "READ-PRIMITIVES.json"
+  ],
+  "invariants": [
+    "M0 permits only read logical operations and the explicit read-primitive qualification probe; mutation_allowed is false for every M0/M1/M2 entry",
+    "M1 is offline contract work; its Resolve read entries require M0_EXIT_EVIDENCE",
+    "M2 adds SetCurrentTimeline (adapter-prefixed) and dry-run plan construction; no mutator",
+    "M3 is the only milestone with mutation_allowed entries; every one requires MIKKO_M3_AUTHORIZATION and TARGET_STATE_SCRATCH_WRITE_READY",
+    "the shared library is not a scope; no entry can grant it",
+    "every entry declares a target_requirement (SESSION | PROJECT | PROJECT_TIMELINE); no operation binds to whatever project or timeline is current",
+    "every entry declares a target_requirement (SESSION | PROJECT | PROJECT_TIMELINE); no operation binds to whatever project or timeline is current",
+    "every entry declares a target_requirement (SESSION | PROJECT | PROJECT_TIMELINE); no operation binds to whatever project or timeline is current",
+    "every entry declares a target_requirement (SESSION | PROJECT | PROJECT_TIMELINE); no operation binds to whatever project or timeline is current"
+  ],
+  "milestones": {
+    "M0": {
+      "read_operations": [
+        "CONNECT",
+        "ENUMERATE_PROJECTS",
+        "ENUMERATE_TIMELINES",
+        "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "SNAPSHOT_CAPTURE",
+        "TIMEBASE_OBSERVE",
+        "TRIPWIRE_READ"
+      ],
+      "mutation_operations": [],
+      "target_requirements": {
+        "CONNECT": "SESSION",
+        "ENUMERATE_PROJECTS": "SESSION",
+        "ENUMERATE_TIMELINES": "PROJECT",
+        "READ_PRIMITIVE_QUALIFICATION_PROBE": "SESSION",
+        "SNAPSHOT_CAPTURE": "PROJECT_TIMELINE",
+        "TIMEBASE_OBSERVE": "PROJECT_TIMELINE",
+        "TRIPWIRE_READ": "PROJECT"
+      },
+      "denied_all_scopes": [
+        "SetCurrentDatabase",
+        "CloseProject",
+        "ImportProject",
+        "DeleteTimelines",
+        "DeleteClips_ripple",
+        "ReplaceClip",
+        "ReplaceClipPreserveSubClip",
+        "RelinkClips",
+        "UnlinkClips",
+        "run_script",
+        "run_script_unsafe",
+        "execute_python",
+        "execute_lua",
+        "StartRendering",
+        "AddRenderJob",
+        "LoadProject_nonPrefixed",
+        "SetClipProperty",
+        "DeleteProject"
+      ],
+      "scopes": [
+        "SCRATCH_QUALIFICATION_LIBRARY"
+      ]
+    },
+    "M1": {
+      "read_operations": [
+        "CONNECT",
+        "ENUMERATE_PROJECTS",
+        "ENUMERATE_TIMELINES",
+        "SNAPSHOT_CAPTURE",
+        "TIMEBASE_OBSERVE",
+        "TRIPWIRE_READ"
+      ],
+      "mutation_operations": [],
+      "target_requirements": {
+        "CONNECT": "SESSION",
+        "ENUMERATE_PROJECTS": "SESSION",
+        "ENUMERATE_TIMELINES": "PROJECT",
+        "SNAPSHOT_CAPTURE": "PROJECT_TIMELINE",
+        "TIMEBASE_OBSERVE": "PROJECT_TIMELINE",
+        "TRIPWIRE_READ": "PROJECT"
+      },
+      "denied_all_scopes": [
+        "SetCurrentDatabase",
+        "CloseProject",
+        "ImportProject",
+        "DeleteTimelines",
+        "DeleteClips_ripple",
+        "ReplaceClip",
+        "ReplaceClipPreserveSubClip",
+        "RelinkClips",
+        "UnlinkClips",
+        "run_script",
+        "run_script_unsafe",
+        "execute_python",
+        "execute_lua",
+        "StartRendering",
+        "AddRenderJob",
+        "LoadProject_nonPrefixed",
+        "SetClipProperty",
+        "DeleteProject"
+      ],
+      "scopes": [
+        "SCRATCH_QUALIFICATION_LIBRARY"
+      ]
+    },
+    "M2": {
+      "read_operations": [
+        "BUILD_MUTATION_PLAN_DRY_RUN",
+        "CONNECT",
+        "ENUMERATE_PROJECTS",
+        "ENUMERATE_TIMELINES",
+        "SNAPSHOT_CAPTURE",
+        "SetCurrentTimeline",
+        "TIMEBASE_OBSERVE",
+        "TRIPWIRE_READ"
+      ],
+      "mutation_operations": [],
+      "target_requirements": {
+        "BUILD_MUTATION_PLAN_DRY_RUN": "PROJECT_TIMELINE",
+        "CONNECT": "SESSION",
+        "ENUMERATE_PROJECTS": "SESSION",
+        "ENUMERATE_TIMELINES": "PROJECT",
+        "SNAPSHOT_CAPTURE": "PROJECT_TIMELINE",
+        "SetCurrentTimeline": "PROJECT_TIMELINE",
+        "TIMEBASE_OBSERVE": "PROJECT_TIMELINE",
+        "TRIPWIRE_READ": "PROJECT"
+      },
+      "denied_all_scopes": [
+        "SetCurrentDatabase",
+        "CloseProject",
+        "ImportProject",
+        "DeleteTimelines",
+        "DeleteClips_ripple",
+        "ReplaceClip",
+        "ReplaceClipPreserveSubClip",
+        "RelinkClips",
+        "UnlinkClips",
+        "run_script",
+        "run_script_unsafe",
+        "execute_python",
+        "execute_lua",
+        "StartRendering",
+        "AddRenderJob",
+        "LoadProject_nonPrefixed",
+        "SetClipProperty",
+        "DeleteProject"
+      ],
+      "scopes": [
+        "SCRATCH_QUALIFICATION_LIBRARY"
+      ]
+    },
+    "M3": {
+      "read_operations": [
+        "BUILD_MUTATION_PLAN_DRY_RUN",
+        "CONNECT",
+        "ENUMERATE_PROJECTS",
+        "ENUMERATE_TIMELINES",
+        "SNAPSHOT_CAPTURE",
+        "SetCurrentTimeline",
+        "TIMEBASE_OBSERVE",
+        "TRIPWIRE_READ"
+      ],
+      "mutation_operations": [
+        "APPEND",
+        "AddMarker",
+        "AddTake_SelectTake_FinalizeTake",
+        "AddTrack",
+        "AppendToTimeline",
+        "CHECKPOINT_DUPLICATE",
+        "CHECKPOINT_EXPORT_DRT",
+        "CreateEmptyTimeline",
+        "CreateProject",
+        "DELETE",
+        "DISABLE",
+        "DeleteClips_noRipple",
+        "DeleteMarkerByCustomData",
+        "DuplicateTimeline",
+        "ENABLE",
+        "ExportTimelineDRT",
+        "IMPORT_MEDIA",
+        "ImportMedia",
+        "ImportTimelineFromFileDRT",
+        "LoadProject_adapterPrefixed",
+        "SAVE_PROJECT",
+        "SET_PROPERTIES",
+        "SET_TAKE",
+        "SaveProject",
+        "SetClipEnabled",
+        "SetProperties",
+        "SetSettings",
+        "SetTrackLock",
+        "UPSERT_MARKER",
+        "UpdateMarkerCustomData"
+      ],
+      "target_requirements": {
+        "APPEND": "PROJECT_TIMELINE",
+        "AddMarker": "PROJECT_TIMELINE",
+        "AddTake_SelectTake_FinalizeTake": "PROJECT_TIMELINE",
+        "AddTrack": "PROJECT_TIMELINE",
+        "AppendToTimeline": "PROJECT_TIMELINE",
+        "BUILD_MUTATION_PLAN_DRY_RUN": "PROJECT_TIMELINE",
+        "CHECKPOINT_DUPLICATE": "PROJECT_TIMELINE",
+        "CHECKPOINT_EXPORT_DRT": "PROJECT_TIMELINE",
+        "CONNECT": "SESSION",
+        "CreateEmptyTimeline": "PROJECT",
+        "CreateProject": "SESSION",
+        "DELETE": "PROJECT_TIMELINE",
+        "DISABLE": "PROJECT_TIMELINE",
+        "DeleteClips_noRipple": "PROJECT_TIMELINE",
+        "DeleteMarkerByCustomData": "PROJECT_TIMELINE",
+        "DuplicateTimeline": "PROJECT_TIMELINE",
+        "ENABLE": "PROJECT_TIMELINE",
+        "ENUMERATE_PROJECTS": "SESSION",
+        "ENUMERATE_TIMELINES": "PROJECT",
+        "ExportTimelineDRT": "PROJECT_TIMELINE",
+        "IMPORT_MEDIA": "PROJECT",
+        "ImportMedia": "PROJECT",
+        "ImportTimelineFromFileDRT": "PROJECT_TIMELINE",
+        "LoadProject_adapterPrefixed": "PROJECT",
+        "SAVE_PROJECT": "PROJECT",
+        "SET_PROPERTIES": "PROJECT_TIMELINE",
+        "SET_TAKE": "PROJECT_TIMELINE",
+        "SNAPSHOT_CAPTURE": "PROJECT_TIMELINE",
+        "SaveProject": "PROJECT",
+        "SetClipEnabled": "PROJECT_TIMELINE",
+        "SetCurrentTimeline": "PROJECT_TIMELINE",
+        "SetProperties": "PROJECT_TIMELINE",
+        "SetSettings": "PROJECT_TIMELINE",
+        "SetTrackLock": "PROJECT_TIMELINE",
+        "TIMEBASE_OBSERVE": "PROJECT_TIMELINE",
+        "TRIPWIRE_READ": "PROJECT",
+        "UPSERT_MARKER": "PROJECT_TIMELINE",
+        "UpdateMarkerCustomData": "PROJECT_TIMELINE"
+      },
+      "denied_all_scopes": [
+        "SetCurrentDatabase",
+        "CloseProject",
+        "ImportProject",
+        "DeleteTimelines",
+        "DeleteClips_ripple",
+        "ReplaceClip",
+        "ReplaceClipPreserveSubClip",
+        "RelinkClips",
+        "UnlinkClips",
+        "run_script",
+        "run_script_unsafe",
+        "execute_python",
+        "execute_lua",
+        "StartRendering",
+        "AddRenderJob",
+        "LoadProject_nonPrefixed",
+        "SetClipProperty",
+        "DeleteProject"
+      ],
+      "scopes": [
+        "SCRATCH_QUALIFICATION_LIBRARY"
+      ]
+    }
+  }
+}
