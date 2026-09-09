@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveVerificationResult.v1",
+  "title": "Verification result (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "added",
+    "applied_operation_ids",
+    "authority_version",
+    "changed",
+    "expected_delta_digest",
+    "h0_guard_digest",
+    "h0_payload_sha256",
+    "is_human_approval",
+    "missing_expected",
+    "plan_digest",
+    "readback_snapshot_sha256",
+    "removed",
+    "s1_guard_digest",
+    "s1_payload_sha256",
+    "schema",
+    "session_id",
+    "target",
+    "transaction_id",
+    "unobserved_domains",
+    "unrelated",
+    "verdict"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveVerificationResult.v1"
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "h0_payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "s1_payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "added": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "removed": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "changed": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "creation_identity_map": {
+      "type": "object"
+    },
+    "missing_expected": {
+      "type": "array"
+    },
+    "unrelated": {
+      "type": "array"
+    },
+    "coverage": {
+      "type": "object"
+    },
+    "verdict": {
+      "enum": [
+        "VERIFIED",
+        "EXPECTED_DELTA_MISSING",
+        "UNEXPECTED_DELTA",
+        "UNOBSERVABLE_STATE",
+        "EFFECT_NOT_SPECIFIED"
+      ]
+    },
+    "is_human_approval": {
+      "const": false
+    },
+    "transaction_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "library_instance_uuid",
+        "project_unique_id",
+        "timeline_unique_id",
+        "target_epoch",
+        "host_name",
+        "library_name",
+        "library_kind",
+        "project_name",
+        "timeline_name",
+        "resolve_version"
+      ],
+      "properties": {
+        "library_instance_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "project_unique_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeline_unique_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_epoch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "host_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "library_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "library_kind": {
+          "enum": [
+            "Disk"
+          ]
+        },
+        "observed_database_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "project_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeline_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolve_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "h0_guard_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "s1_guard_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "expected_delta_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authority_version": {
+      "const": "1.7.0"
+    },
+    "readback_snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "applied_operation_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "unobserved_domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$comment": "v1.6: applied_operation_ids and unobserved_domains are DERIVED and compared (F15-06: a ghost applied id is rejected; F15-05: the unobserved/excluded domains are named in every result so no zero-unintended-change claim covers them). v1.5: the verifier DERIVES added/removed/changed/creation_identity_map/missing_expected/unrelated/verdict from S0, the bound plan, the journal's applied operations and S1 (authority_lib.verify_transaction); a declared result must equal the derived truth. h0/s1 digests must resolve to supplied snapshots; readback_snapshot_sha256 = digest of the S1 snapshot object. VERIFIED is impossible for operations whose effect law is NOT_YET_SPECIFIED (EFFECT_NOT_SPECIFIED). Never human approval."
+}

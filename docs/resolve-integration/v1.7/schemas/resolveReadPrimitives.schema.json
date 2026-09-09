@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveReadPrimitives.v1.7",
+  "title": "Logical read operation -> primitive mapping (v1.3: target requirements, probe flags)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capture_allowlist_digest",
+    "capture_allowlist_law",
+    "law",
+    "logical_operations",
+    "primitive_spec_law",
+    "primitive_spec_sha256",
+    "schema",
+    "status",
+    "version"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveReadPrimitives.v1.7"
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "FROZEN_NOW"
+      ]
+    },
+    "law": {
+      "type": "string"
+    },
+    "logical_operations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "primitives",
+          "target_requirement"
+        ],
+        "properties": {
+          "purpose": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "contract": {
+            "type": "string"
+          },
+          "why_allowed": {
+            "type": "string"
+          },
+          "target_requirement": {
+            "enum": [
+              "SESSION",
+              "PROJECT",
+              "PROJECT_TIMELINE"
+            ]
+          },
+          "purpose_is_qualification": {
+            "type": "boolean"
+          },
+          "read_only": {
+            "type": "boolean"
+          },
+          "promotes_capability": {
+            "const": false
+          },
+          "evidence_output": {
+            "enum": [
+              "RAW_CAPABILITY_CAPTURE",
+              "NONE"
+            ]
+          },
+          "primitives": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "arg_types",
+                "completeness",
+                "evidence_class",
+                "evidence_ref",
+                "expectation_status",
+                "expected_type",
+                "fallback_if_unqualified",
+                "method",
+                "milestones_available",
+                "nullable",
+                "probe_allowed",
+                "receiver",
+                "shape_rule"
+              ],
+              "properties": {
+                "method": {
+                  "type": "string"
+                },
+                "evidence_class": {
+                  "enum": [
+                    "QUALIFIED_READ",
+                    "DOCUMENTED_NOT_QUALIFIED",
+                    "NOT_TESTED",
+                    "UNSUPPORTED",
+                    "BLOCKED",
+                    "QUALIFIED_EF_SIDE"
+                  ]
+                },
+                "evidence_ref": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "milestones_available": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "M0",
+                      "M1",
+                      "M2",
+                      "M3"
+                    ]
+                  }
+                },
+                "fallback_if_unqualified": {
+                  "enum": [
+                    "MARK_UNAVAILABLE",
+                    "DOWNGRADE_COVERAGE",
+                    "REFUSE",
+                    "PROBE_ONLY"
+                  ]
+                },
+                "probe_allowed": {
+                  "type": "boolean"
+                },
+                "receiver": {
+                  "enum": [
+                    "Resolve",
+                    "ProjectManager",
+                    "Project",
+                    "MediaPool",
+                    "Folder",
+                    "Timeline",
+                    "TimelineItem",
+                    "MediaPoolItem"
+                  ]
+                },
+                "expected_type": {
+                  "enum": [
+                    "str",
+                    "int",
+                    "bool",
+                    "float",
+                    "list",
+                    "dict",
+                    "object"
+                  ]
+                },
+                "arg_types": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "str",
+                      "int",
+                      "bool",
+                      "float"
+                    ]
+                  }
+                },
+                "nullable": {
+                  "type": "boolean"
+                },
+                "shape_rule": {
+                  "enum": [
+                    "NONE",
+                    "NON_EMPTY"
+                  ]
+                },
+                "completeness": {
+                  "enum": [
+                    "COMPLETE",
+                    "PARTIAL_OK"
+                  ]
+                },
+                "expectation_status": {
+                  "enum": [
+                    "DOCUMENTED_HYPOTHESIS",
+                    "PROBE_VALIDATED",
+                    "FROZEN"
+                  ]
+                },
+                "expectation_source": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "failure_taxonomy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "CAPABILITY_FAILURE",
+              "FATAL_TARGET_FAILURE"
+            ],
+            "properties": {
+              "CAPABILITY_FAILURE": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "FATAL_TARGET_FAILURE": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "failure_law": {
+            "type": "string"
+          },
+          "capture_shim_contract": {
+            "type": "string"
+          },
+          "phases": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "M0A_PROBE",
+                "M0B_REVIEW",
+                "M0C_REFREEZE",
+                "M0D_QUALIFIED_READ"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "expected_type_note": {
+      "type": "string"
+    },
+    "primitive_spec_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "primitive_spec_law": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "statuses",
+        "frozen_allowed",
+        "law"
+      ],
+      "properties": {
+        "statuses": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "DOCUMENTED_HYPOTHESIS",
+              "PROBE_VALIDATED",
+              "FROZEN"
+            ]
+          }
+        },
+        "frozen_allowed": {
+          "const": false
+        },
+        "law": {
+          "type": "string"
+        }
+      }
+    },
+    "capture_allowlist_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "capture_allowlist_law": {
+      "type": "string"
+    }
+  }
+}

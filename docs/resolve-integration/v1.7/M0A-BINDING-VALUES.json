@@ -1,0 +1,40 @@
+{
+  "schema": "vidtoolz.resolveM0ABindingValues.v1.7",
+  "authority_version": "1.7.0",
+  "purpose": "The exact identities an M0A probe package must record and be bound to under authority v1.7. Codex's v1.6 operational finding was that Hermes could not bind its M0A package because these values were not operationally closed. Every value here is the value the running code produces; validate_v1_7.py section m0a-binding re-derives each one and fails if any differs or reads as a placeholder.",
+  "active_authority_shape": [
+    "authority_version",
+    "manifest_sha256",
+    "capability_matrix_sha256",
+    "trusted_shim_sha256"
+  ],
+  "retention_rule": "stdout and stderr are never inlined into a raw frame. When a getter attempt produces either stream, the exact bytes are stored as their own content-addressed record in the RAW layer of the evidence session and the frame carries only stdout_sha256 / stderr_sha256. When nothing was captured both fields are null and the retention rule is NOT_CAPTURED. There is no third option and no truncated copy.",
+  "manifest_sha256_note": "authority_manifest_sha256 is the sha256 of THIS bundle's FREEZE-MANIFEST.json as frozen; it is deliberately absent from this file so that build -> validate -> manifest -> validate converges. Read it from FREEZE-MANIFEST.json at probe time.",
+  "values": {
+    "authority_version": "1.7.0",
+    "raw_schema_id": "vidtoolz.resolveRawCapabilityCapture.v1",
+    "raw_schema_version": "1.7",
+    "codec_version": "vidtoolz.resolvePyValue.v1",
+    "raw_ingest_version": "vidtoolz.resolveRawIngest.v1",
+    "raw_frame_max_bytes": 1048576,
+    "trusted_shim_version": "vidtoolz.captureShim.reference.v1",
+    "trusted_shim_sha256": "caf310438232c65d010942a4f8d56632489500d24a18666574e775d2cf61d61f",
+    "trusted_shim_source_path": "tools/capture_shim_reference.py",
+    "trusted_shim_source_sha256": "327a64620afab3d3fba2f3894e641e9bbcefd2b15de022a44bfa981a7385d69f",
+    "trusted_shim_authority_sha256": "6de37960cea92a6bf586e8aeaa030fc633b4177f3bb6fabc74dd055c164cd94d",
+    "capture_allowlist_digest": "ead63126d6e4032f2854f16db036ed27494940764d2069b9deaf87963f539030",
+    "capture_allowlist_method_count": 47,
+    "reference_parser_version": "vidtoolz.resolveProbeParser.v1",
+    "reference_parser_sha256": "01a39890a27deecdefd4b1733de573fb0f02d33464097126a86624b0a4a7dcfd",
+    "primitive_spec_sha256": "3a7d7241316297ecc9fb5ba2950a0cae9c23056fab2059683a45b9f7ed8ff13a",
+    "schema_registry_sha256": "89014a28800ebc2966f34c9e4eabfb2c23bd512c55a449a55504e1c9e2dfa8a5",
+    "schema_registry_file": "SCHEMA-REGISTRY.json",
+    "trusted_shim_file": "TRUSTED-SHIM.json",
+    "evidence_store_version": "vidtoolz.resolveEvidenceStore.v1",
+    "evidence_session_schema": "vidtoolz.resolveEvidenceSession.v1",
+    "evidence_hashes_schema": "vidtoolz.resolveEvidenceHashes.v1",
+    "evidence_layers": "RAW, DERIVED, HUMAN_REVIEW, AUTHORITY_PROMOTION",
+    "stdout_retention": "CONTENT_ADDRESSED_RAW_LAYER",
+    "stderr_retention": "CONTENT_ADDRESSED_RAW_LAYER"
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveCommitManifest.v1",
+  "title": "Commit manifest head (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "authority_version",
+    "binding_observation_sha256",
+    "binding_set_digest",
+    "ef_source_pins",
+    "guard_digest",
+    "journal_head_sha256",
+    "operation_set_digest",
+    "plan_digest",
+    "published_at",
+    "receipt_sha256",
+    "s1_guard_digest",
+    "s1_snapshot_sha256",
+    "schema",
+    "session_id",
+    "target",
+    "terminal_state",
+    "transaction_id",
+    "unresolved_conflicts",
+    "verification_result_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveCommitManifest.v1"
+    },
+    "transaction_id": {
+      "type": "string"
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "terminal_state": {
+      "enum": [
+        "COMMITTED",
+        "COMMITTED_RECOVERED"
+      ]
+    },
+    "binding_observation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "binding_set_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "receipt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "journal_head_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "ef_source_pins": {
+      "type": "object"
+    },
+    "published_at": {
+      "type": "string"
+    },
+    "verification_result_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "guard_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "unresolved_conflicts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "library_instance_uuid",
+        "project_unique_id",
+        "timeline_unique_id",
+        "target_epoch",
+        "host_name",
+        "library_name",
+        "library_kind",
+        "project_name",
+        "timeline_name",
+        "resolve_version"
+      ],
+      "properties": {
+        "library_instance_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "project_unique_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeline_unique_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_epoch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "host_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "library_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "library_kind": {
+          "enum": [
+            "Disk"
+          ]
+        },
+        "observed_database_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "project_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeline_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolve_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "authority_version": {
+      "const": "1.7.0"
+    },
+    "operation_set_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "s1_guard_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "s1_snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$comment": "Commit eligibility is composed validation (validate_transaction_set): S0, plan, journal (membership), S1, derived delta, expected effect, verification against derived truth, then commit: same plan/transaction/target/guard/operation set; VERIFIED; allowed terminal state; no unresolved conflict; evidence digests; s1_guard_digest == S1."
+}

@@ -1,0 +1,719 @@
+{
+  "fixture": "snapshot-not-requested-with-value",
+  "layer_expected_failure": "snapshot",
+  "schema": "resolveSnapshot",
+  "check": "semantic_snapshot",
+  "expect_error_contains": "fabrication",
+  "document": {
+    "schema": "vidtoolz.resolveSnapshot.v1.7",
+    "collector_version": "0.0.0-fixture",
+    "canonicalization_version": "1.5",
+    "target_epoch": "epoch-fixture-1",
+    "resolve_build": "21.1.0.0014",
+    "library": {
+      "db_type": "Disk",
+      "db_name": "VIDTOOLZ Resolve Qualification v1",
+      "instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+    },
+    "project": {
+      "unique_id": "proj-fixture-0001",
+      "name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "last_modified_time": null,
+      "field_status": {
+        "unique_id": "OBSERVED",
+        "name": "OBSERVED",
+        "last_modified_time": "NOT_REQUESTED"
+      }
+    },
+    "collection": {
+      "started_at": "2026-09-08T11:50:00Z",
+      "ended_at": "2026-09-08T11:50:01Z",
+      "generation": 1,
+      "stable_pair": true,
+      "session_id": "sess-2026-09-08-0001",
+      "method_provenance": {
+        "Folder.GetUniqueId": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "830f59e82c7a84fbbe01614cde6f38b724d1e6f7881dc807f2303c4015b261c2",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetClipEnabled": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "e22dda90df83749a6d23ae875b894babf3c4db068ae735462e5f6f9b76713318",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetClipProperty": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "dd88f440215f34b276440ca98f1a947c9e6af2ec4b30e3dbf543cc3deb82a0f0",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetCurrentDatabase": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "8e76ddf1bc0caf3b24b6c34e50c39e8be331885aa97d5620c3733301d28a910c",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetCurrentProject": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "e1bfb904d82c5587143b6e1f74fa128a58ad206645ed76f28361b240e9786d02",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetCurrentTimeline": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "01ff223725ad5c1c5f5abb2bde608b6e6a77686eff131a70246da4e2fd93401d",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetDuration": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "19ba4dcb8fd164ac6513a7d6e6cf20397313e669e344fb45f14a33b074998f0e",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetDuration(True)": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "74cc08a48b28022b24822aa748917fb89a8094c74e1814f610beef2b6f053d41",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetEnd": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "0940531f6958c25f4519602096a53aa60b1270150863c9b8774ae5142295f2af",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetEnd(True)": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "9b185269d74d325a7a7f368c3065042f0c68b96b1769dd4d0f2dfb20fb6edab9",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetEndFrame": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "17c2b6135cedbe97f3deb076b113c44706f9ebe5aac0c01356a4dfde8cddf7f0",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetIsTrackEnabled": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "64b6d207e4faa83634d06a228310f5fa8d2cbff82ace4f922c4e0ab4267d34ab",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetIsTrackLocked": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "644ad1092a438b50687b81c7ce6ef5a5f7fd905165b4b7c085bc2f6ad520b26a",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetItemListInTrack": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "d7f73c600b7cbc3caa2c2e84c02ec43bde195220fc199a5a35a78b302888cccf",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetLeftOffset(True)": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "c3d14a0bb396259ca59e2a209d3d771ca734c3ff91ffa475e94883a1a3c48126",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetMarkerByCustomData": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "5913e536ae1bc57befe94d2152a69d5c2a9645163c4ff447509ea7f9960dc2a0",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetMarkers": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "6ad7f7d0d5d7873be7dac5d5b5f42089fd86d2d6f89e1534a058af22937fe54b",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetMediaPoolItem": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "15f717432c4858e18c03b8007fb1b7dbc7a00e9b81984ad0a8539b5632f24217",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetProductName": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "ac0decdf2ec1e5c1d5e365477442a8e1d9f23028ed9d6500fef6246e1312edf1",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetProjectLastModifiedTime": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "23c312e862cc23296185bb8598202814f3f3955ef6c0e3dbb34518ffbc7c6fb8",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetProjectListInCurrentFolder": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "3240b67cc63d03a0524ac071fd0677a961a13689ac1892306aca794de2575640",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetProjectManager": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "d66860ede67000068c7926028bf2a9addc9547f0f050ee9486c905238e25c678",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetRightOffset(True)": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "18781e316d226ad3ae95e69eed036f49ba8983b164b0451aa6ad56c5c1c150cf",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetSourceEndFrame": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "ef30ef7a966c5be8c1d4dc8dfe940f0ede4c79f77817cd439bb3b60f39035d74",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetSourceEndTime": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "3881a889b79e795c05133a9a77cf5f6f9890878333d3b3cc69c74eec068651d2",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetSourceStartFrame": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "3ec3534641ef9d89b59b3fdedb8eb34dc24c3b5038d5ced7e2e7bbab4a91819a",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetSourceStartTime": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "ddf61f2b9cb85fcbe109e0fffef9c9c84b0e2f60ff2e48a27006c3389a453a9d",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetStart": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "adf38739679fa30fec26e9830098ad223eb487aaa145b41488b5b6bc1d15d292",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetStart(True)": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "bc5c295a529b2f9e8a63decc25e3e95db5cf71f7d36ec186f1bef859f37e5d4c",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetStartFrame": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "12e3b4750bbcaf445672f8dd780c2beb030154091f445eb30e99cce62ef37f28",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetStartTimecode": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "84502596df22c33c2bfc6963f1ff4168aaa9c89da3b3fc827c9ebef1419bbf4f",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetTimelineByIndex": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "e316c666d1f48a73857a14eeac1ed77057d219c5cfd0428e0f6cbdc0b41540d6",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetTimelineCount": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "659f411d7ed8a02226d74c01a45f3d19e06e0750c03337159aad18b6c6a2d55e",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetTrackCount": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "8bb572e0162b8d27c1b1ff61c178f73792a2c0d550d0643b814e7f55d065a14a",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetTrackName": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "734217e9a59f97c50d5157bd654508a348203ed080860563f2c7842a386b06c1",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "GetVersionString": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "78914c20ab42cd842ef43b29d3f5774fbeaff33f5a3456c4ee4b36215fe2218c",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "MediaPoolItem.GetMediaId": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "8457ee2628496d2c0473f7886f97f375d5ac3cdc144014cbbfaf90048d271edb",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "MediaPoolItem.GetUniqueId": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "d58190e5e078d9cc5e2b653024601c736e5d222b0cb5ce65f1dd9b109546d991",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "Project.GetName": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "02533628b4d2a0a8c9b3171b3ebec9029ce808abc9665bc8df63b90b69af626f",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "Project.GetSettings": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "7fdd5339f49873c591a460af6174c633d5f0e464e0a0405b6a4d5b05596aac87",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "Project.GetUniqueId": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "054a4f1fc7382123a98506da079b59030ff56173bcdb12c0f202a654c48266d5",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "Timeline.GetName": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "90b3041c4e07f3b6cec56559f43fcf69da75baa1bd1da058edd6fb177b53e4fc",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "Timeline.GetSettings": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "1af464164c611c47cb91b4af02d490d2772a0ce194bf882af24b8df791f1b774",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "Timeline.GetUniqueId": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "f0ae17fa5c890d0faebd3b4210eaca4fd44ddbfaa331466c27eb3ca7a8acea88",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "TimelineItem.GetName": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "fb67a8293577087df95cd9415e16690ea301472b01ef6c397d540908a61e680a",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "TimelineItem.GetProperties": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "f2ea4d9af81391d7ecaa02fac333f52f64d93818184c5354c62d204bd62e28e4",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        },
+        "TimelineItem.GetUniqueId": {
+          "observation_class": "QUALIFIED_OBSERVATION",
+          "raw_capture_record_id": "bb73aaab163a03e3853760dfdcab7a3090f26142abdf812b173b29b8e3950f04",
+          "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8"
+        }
+      }
+    },
+    "coverage": {
+      "profile": "FULL_TIMELINE_READ",
+      "complete": true,
+      "observed_domains": [
+        "connection",
+        "library",
+        "project",
+        "timeline",
+        "tracks",
+        "items",
+        "markers",
+        "settings",
+        "adapter_bin_media"
+      ],
+      "unobservable_domains": [
+        "grades",
+        "fusion_graphs",
+        "caches",
+        "nested_timelines",
+        "keyframe_curves"
+      ],
+      "deferred_domains": [
+        "item_properties",
+        "fades",
+        "speed",
+        "takes",
+        "linked_items",
+        "unowned_media_hashes",
+        "track_locks",
+        "item_identity"
+      ],
+      "incomplete_reasons": []
+    },
+    "policy": {
+      "target_contract_sha256": "9dcb9817784a45993c2c421bb9a5126218b80336b7f1028502299a5b2fd42c65",
+      "timebase_sha256": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+      "track_policy_sha256": "0c1996f8cb183e27f393eb53113871098e492e43bd49ec8c07e7d49b25f0caa7",
+      "capabilities_version": "1.7.0-HYPOTHETICAL",
+      "capability_matrix_sha256": "9e1674f34bfa136c74774fe68109f07cff255822baf2cf56d8ed1a11d256f3f8",
+      "collector_version": "0.0.0-fixture",
+      "canonicalization_version": "1.5"
+    },
+    "payload": {
+      "timeline": {
+        "unique_id": "tl-fixture-0001",
+        "name": "VIDTOOLZ__fixture__r1",
+        "start_frame": 108000,
+        "start_timecode": "01:00:00:00",
+        "fps": {
+          "numerator": 30,
+          "denominator": 1
+        },
+        "width": 1080,
+        "height": 1920,
+        "end_frame": 114756,
+        "is_current": true,
+        "duration_convention": "UNQUALIFIED",
+        "settings": {
+          "useCustomSettings": "1",
+          "timelineFrameRate": "30"
+        },
+        "field_status": {
+          "unique_id": "OBSERVED",
+          "name": "OBSERVED",
+          "start_frame": "OBSERVED",
+          "end_frame": "OBSERVED",
+          "start_timecode": "OBSERVED",
+          "fps": "OBSERVED",
+          "width": "OBSERVED",
+          "height": "OBSERVED",
+          "is_current": "OBSERVED",
+          "settings": "OBSERVED"
+        }
+      },
+      "tracks": [
+        {
+          "type": "video",
+          "index": 1,
+          "name": "V1",
+          "enabled": true,
+          "locked": false,
+          "field_status": {
+            "name": "OBSERVED",
+            "enabled": "OBSERVED",
+            "locked": "OBSERVED"
+          },
+          "items": [
+            {
+              "unique_id": "it-1",
+              "observation_ordinal": 0,
+              "name": "still-001",
+              "start": 108000,
+              "end": 108347,
+              "duration": 347,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "COMPLETE",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "name": "OBSERVED",
+                "start": "OBSERVED",
+                "end": "OBSERVED",
+                "duration": "OBSERVED",
+                "enabled": "NOT_REQUESTED",
+                "media_pool_item_unique_id": "OBSERVED",
+                "media_id": "UNAVAILABLE",
+                "source_start": "OBSERVED",
+                "source_end": "OBSERVED",
+                "media_id_reason": "GetMediaId returned None on fixture"
+              },
+              "provenance": {
+                "kind": "MEDIA_BACKED"
+              },
+              "media_pool_item_unique_id": "mp-1",
+              "media_id": null,
+              "source_locator": "/qual/media/still-001.png",
+              "source_status": "HASHED",
+              "source_sha256": "06ada57c26aa5cf429e9f2c0a99e3e4a42daecd45fc4c955d7c1399ab4227ae8",
+              "source_start": 0,
+              "source_end": 347
+            },
+            {
+              "unique_id": "it-2",
+              "observation_ordinal": 1,
+              "name": "Text+",
+              "start": 108347,
+              "end": 108694,
+              "duration": 347,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "PARTIAL",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "name": "OBSERVED",
+                "start": "OBSERVED",
+                "end": "OBSERVED",
+                "duration": "OBSERVED",
+                "enabled": "OBSERVED",
+                "media_pool_item_unique_id": "NOT_REQUESTED",
+                "media_id": "NOT_REQUESTED",
+                "source_start": "UNSUPPORTED",
+                "source_end": "UNSUPPORTED"
+              },
+              "provenance": {
+                "kind": "TITLE"
+              },
+              "media_pool_item_unique_id": null,
+              "media_id": null,
+              "source_locator": null,
+              "source_status": "NOT_APPLICABLE",
+              "source_sha256": null,
+              "absence_reason": "NO_FILE_BACKED_SOURCE",
+              "source_start": null,
+              "source_end": null
+            },
+            {
+              "unique_id": "it-3",
+              "observation_ordinal": 2,
+              "name": "human-broll",
+              "start": 108694,
+              "end": 109174,
+              "duration": 480,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "COMPLETE",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "name": "OBSERVED",
+                "start": "OBSERVED",
+                "end": "OBSERVED",
+                "duration": "OBSERVED",
+                "enabled": "OBSERVED",
+                "media_pool_item_unique_id": "OBSERVED",
+                "media_id": "UNAVAILABLE",
+                "source_start": "OBSERVED",
+                "source_end": "OBSERVED",
+                "media_id_reason": "GetMediaId returned None on fixture"
+              },
+              "provenance": {
+                "kind": "MEDIA_BACKED"
+              },
+              "media_pool_item_unique_id": "mp-2",
+              "media_id": null,
+              "source_locator": "/qual/media/human-broll.png",
+              "source_status": "UNHASHED_UNOWNED",
+              "source_sha256": null,
+              "source_start": 0,
+              "source_end": 480
+            },
+            {
+              "unique_id": "it-4",
+              "observation_ordinal": 3,
+              "name": "Solid Color",
+              "start": 109174,
+              "end": 109654,
+              "duration": 480,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "PARTIAL",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "name": "OBSERVED",
+                "start": "OBSERVED",
+                "end": "OBSERVED",
+                "duration": "OBSERVED",
+                "enabled": "OBSERVED",
+                "media_pool_item_unique_id": "NOT_REQUESTED",
+                "media_id": "NOT_REQUESTED",
+                "source_start": "UNSUPPORTED",
+                "source_end": "UNSUPPORTED"
+              },
+              "provenance": {
+                "kind": "GENERATOR"
+              },
+              "media_pool_item_unique_id": null,
+              "media_id": null,
+              "source_locator": null,
+              "source_status": "NOT_APPLICABLE",
+              "source_sha256": null,
+              "absence_reason": "NO_MEDIA_POOL_ITEM",
+              "source_start": null,
+              "source_end": null
+            },
+            {
+              "unique_id": "it-5",
+              "observation_ordinal": 4,
+              "name": "Compound Clip 1",
+              "start": 109654,
+              "end": 109924,
+              "duration": 270,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "PARTIAL",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "name": "OBSERVED",
+                "start": "OBSERVED",
+                "end": "OBSERVED",
+                "duration": "OBSERVED",
+                "enabled": "OBSERVED",
+                "media_pool_item_unique_id": "NOT_REQUESTED",
+                "media_id": "NOT_REQUESTED",
+                "source_start": "UNSUPPORTED",
+                "source_end": "UNSUPPORTED"
+              },
+              "provenance": {
+                "kind": "COMPOUND"
+              },
+              "media_pool_item_unique_id": null,
+              "media_id": null,
+              "source_locator": null,
+              "source_status": "NOT_APPLICABLE",
+              "source_sha256": null,
+              "absence_reason": "NO_FILE_BACKED_SOURCE",
+              "source_start": null,
+              "source_end": null
+            },
+            {
+              "unique_id": "it-6",
+              "observation_ordinal": 5,
+              "name": "missing-media",
+              "start": 109924,
+              "end": 110194,
+              "duration": 270,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "COMPLETE",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "name": "OBSERVED",
+                "start": "OBSERVED",
+                "end": "OBSERVED",
+                "duration": "OBSERVED",
+                "enabled": "OBSERVED",
+                "media_pool_item_unique_id": "OBSERVED",
+                "media_id": "UNAVAILABLE",
+                "source_start": "OBSERVED",
+                "source_end": "OBSERVED",
+                "media_id_reason": "GetMediaId returned None on fixture"
+              },
+              "provenance": {
+                "kind": "MEDIA_BACKED"
+              },
+              "media_pool_item_unique_id": "mp-3",
+              "media_id": null,
+              "source_locator": "/qual/media/missing-media.png",
+              "source_status": "OFFLINE",
+              "source_sha256": null,
+              "source_start": 0,
+              "source_end": 270
+            }
+          ]
+        },
+        {
+          "type": "video",
+          "index": 2,
+          "name": "V2",
+          "enabled": true,
+          "locked": false,
+          "field_status": {
+            "name": "OBSERVED",
+            "enabled": "OBSERVED",
+            "locked": "OBSERVED"
+          },
+          "items": [
+            {
+              "unique_id": "it-7",
+              "observation_ordinal": 0,
+              "name": "Adjustment Clip",
+              "start": 108000,
+              "end": 108694,
+              "duration": 694,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "PARTIAL",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "name": "OBSERVED",
+                "start": "OBSERVED",
+                "end": "OBSERVED",
+                "duration": "OBSERVED",
+                "enabled": "OBSERVED",
+                "media_pool_item_unique_id": "NOT_REQUESTED",
+                "media_id": "NOT_REQUESTED",
+                "source_start": "UNSUPPORTED",
+                "source_end": "UNSUPPORTED"
+              },
+              "provenance": {
+                "kind": "ADJUSTMENT"
+              },
+              "media_pool_item_unique_id": null,
+              "media_id": null,
+              "source_locator": null,
+              "source_status": "NOT_APPLICABLE",
+              "source_sha256": null,
+              "absence_reason": "NO_MEDIA_POOL_ITEM",
+              "source_start": null,
+              "source_end": null
+            },
+            {
+              "unique_id": "it-8",
+              "observation_ordinal": 1,
+              "name": "Fusion Composition",
+              "start": 108694,
+              "end": 109174,
+              "duration": 480,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "PARTIAL",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "name": "OBSERVED",
+                "start": "OBSERVED",
+                "end": "OBSERVED",
+                "duration": "OBSERVED",
+                "enabled": "OBSERVED",
+                "media_pool_item_unique_id": "NOT_REQUESTED",
+                "media_id": "NOT_REQUESTED",
+                "source_start": "UNSUPPORTED",
+                "source_end": "UNSUPPORTED"
+              },
+              "provenance": {
+                "kind": "FUSION_OR_GENERATED"
+              },
+              "media_pool_item_unique_id": null,
+              "media_id": null,
+              "source_locator": null,
+              "source_status": "NOT_APPLICABLE",
+              "source_sha256": null,
+              "absence_reason": "UNOBSERVED_BY_API",
+              "source_start": null,
+              "source_end": null
+            }
+          ]
+        },
+        {
+          "type": "audio",
+          "index": 1,
+          "name": "A1",
+          "enabled": true,
+          "locked": false,
+          "field_status": {
+            "name": "OBSERVED",
+            "enabled": "OBSERVED",
+            "locked": "OBSERVED"
+          },
+          "items": [
+            {
+              "unique_id": "it-9",
+              "observation_ordinal": 0,
+              "name": "narration",
+              "start": 108000,
+              "end": 114756,
+              "duration": 6756,
+              "enabled": true,
+              "markers": [],
+              "identity_observed": "COMPLETE",
+              "field_status": {
+                "unique_id": "OBSERVED",
+                "name": "OBSERVED",
+                "start": "OBSERVED",
+                "end": "OBSERVED",
+                "duration": "OBSERVED",
+                "enabled": "OBSERVED",
+                "media_pool_item_unique_id": "OBSERVED",
+                "media_id": "UNAVAILABLE",
+                "source_start": "OBSERVED",
+                "source_end": "OBSERVED",
+                "media_id_reason": "GetMediaId returned None on fixture"
+              },
+              "provenance": {
+                "kind": "MEDIA_BACKED"
+              },
+              "media_pool_item_unique_id": "mp-4",
+              "media_id": null,
+              "source_locator": "/qual/media/narration.png",
+              "source_status": "HASHED",
+              "source_sha256": "f9ff04d26379f94f9eb199f10132e8aed31b1e59e0312720540d8fefbe086cec",
+              "source_start": 0,
+              "source_end": 6756
+            }
+          ]
+        }
+      ],
+      "markers": [
+        {
+          "object_address": "timeline",
+          "frame": 108000,
+          "duration": 1,
+          "color": "Blue",
+          "name": "draft-still-001",
+          "note": "",
+          "custom_data": "vidtoolz:resolve:binding:v1:epoch-fixture-1:b-001:o-1"
+        }
+      ],
+      "media_dependencies": [],
+      "observation_failures": []
+    },
+    "hash_domains": {
+      "payload": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "guard": "vidtoolz.resolveGuard.v3"
+    },
+    "payload_sha256": "e76197ea4e5315c73cf40d0e57f2cd78e1e94c054a058ac9f5a63b97b5d2793b",
+    "guard_digest": "d3409305d1aa92ca2f57d5b3aa91620c7f93f284305d54162f5573819ffca78f"
+  },
+  "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+  "evidence_set": "attached-reviewed-evidence"
+}
