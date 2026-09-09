@@ -1,0 +1,20 @@
+{
+  "schema": "vidtoolz.resolveFixtureActiveAuthority.v1.9",
+  "note": "fixtures are minted against this PLACEHOLDER manifest sha; the validator proves they do not derive against the real FREEZE-MANIFEST.json sha and that records re-minted against the real sha do. capability_matrix_sha256 is the CANONICAL CONTENT DIGEST (domain vidtoolz.resolveCapabilityMatrix.v1) of the matrix object, not a file hash",
+  "placeholder_manifest_sha256": "a5966b66313e53b29b9a7c6b872cbd67503355d6f680df3a5bdf5948c4a4c5ca",
+  "capability_matrix_sha256": "56352acaa8097278d14be374e0d2c10219ccd1e75a7697ca8dcc50ad665f77fb",
+  "hypothetical_capability_matrix_sha256": "f9613202bab9086d946c9d529f832446ce8d0b6ed741cf5588cc930cba9bd347",
+  "parser_version": "vidtoolz.resolveProbeParser.v1",
+  "parser_sha256": "01a39890a27deecdefd4b1733de573fb0f02d33464097126a86624b0a4a7dcfd",
+  "primitive_spec_sha256": "3a7d7241316297ecc9fb5ba2950a0cae9c23056fab2059683a45b9f7ed8ff13a",
+  "reference_shim_version": "vidtoolz.captureShim.reference.v1",
+  "reference_shim_sha256": "caf310438232c65d010942a4f8d56632489500d24a18666574e775d2cf61d61f",
+  "trusted_shim_sha256": "032502730b7bcf9ffa7e45dbd53547e820bcb89aa6938007441d15e0b365958d",
+  "capture_allowlist_digest": "ead63126d6e4032f2854f16db036ed27494940764d2069b9deaf87963f539030",
+  "active_authority_shape": [
+    "authority_version",
+    "manifest_sha256",
+    "capability_matrix_sha256",
+    "trusted_shim_sha256"
+  ]
+}

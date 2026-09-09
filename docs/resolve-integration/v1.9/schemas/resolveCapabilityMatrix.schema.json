@@ -1,0 +1,382 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveCapabilityMatrix.v1.9",
+  "title": "Capability matrix v1.9 (content-bound; exact stored-chain evidence entries)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidence_class_vocabulary",
+    "matrix_content_law",
+    "refreeze",
+    "rows",
+    "schema",
+    "status",
+    "version"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveCapabilityMatrix.v1.9"
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "FROZEN_NOW"
+      ]
+    },
+    "qualification_note": {
+      "type": "string"
+    },
+    "evidence_class_vocabulary": {
+      "type": "array"
+    },
+    "evidence_class_definitions": {
+      "type": "object"
+    },
+    "resolve": {
+      "type": "object"
+    },
+    "coverage_caveat": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "blocked_until",
+          "class",
+          "evidence",
+          "evidence_class",
+          "evidence_records",
+          "m3_probes",
+          "operation",
+          "primitives"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string"
+          },
+          "class": {
+            "type": "string"
+          },
+          "primitives": {
+            "type": "array"
+          },
+          "evidence_class": {
+            "enum": [
+              "QUALIFIED_READ",
+              "DOCUMENTED_NOT_QUALIFIED",
+              "NOT_TESTED",
+              "UNSUPPORTED",
+              "BLOCKED",
+              "QUALIFIED_EF_SIDE"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "m3_probes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blocked_until": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "qualification_note": {
+            "type": "string"
+          },
+          "m3_question": {
+            "type": "string"
+          },
+          "evidence_records": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "build",
+                "evidence_path",
+                "host",
+                "method",
+                "probe_id",
+                "resolve_version",
+                "result",
+                "reviewed_refreeze_version",
+                "run_ref",
+                "version_match"
+              ],
+              "properties": {
+                "host": {
+                  "type": "string"
+                },
+                "resolve_version": {
+                  "type": "string"
+                },
+                "build": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "run_ref": {
+                  "type": "string"
+                },
+                "method": {
+                  "type": "string"
+                },
+                "evidence_path": {
+                  "type": "string"
+                },
+                "evidence_sha256": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "version_match": {
+                  "type": "boolean"
+                },
+                "reviewed_refreeze_version": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "probe_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "result": {
+                  "enum": [
+                    "UNQUALIFIED_PRIOR_VERSION",
+                    null
+                  ]
+                },
+                "product": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "receiver_class": {
+                  "enum": [
+                    "Resolve",
+                    "ProjectManager",
+                    "Project",
+                    "MediaPool",
+                    "Folder",
+                    "Timeline",
+                    "TimelineItem",
+                    "MediaPoolItem"
+                  ]
+                },
+                "raw_capture_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "derived_result_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "review_decision_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "parser_version": {
+                  "const": "vidtoolz.resolveProbeParser.v1"
+                },
+                "parser_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "primitive_spec_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "session_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "derived_record_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "refreeze_block_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "capture_shim_version": {
+                  "const": "vidtoolz.captureShim.reference.v1"
+                },
+                "capture_shim_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "trusted_shim_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "observed_result": {
+                  "type": "string"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "result": {
+                        "const": null
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "receiver_class",
+                      "session_id",
+                      "raw_capture_sha256",
+                      "derived_result_sha256",
+                      "derived_record_sha256",
+                      "review_decision_sha256",
+                      "refreeze_block_sha256",
+                      "capture_shim_version",
+                      "capture_shim_sha256",
+                      "trusted_shim_sha256",
+                      "parser_version",
+                      "parser_sha256",
+                      "primitive_spec_sha256",
+                      "product"
+                    ],
+                    "not": {
+                      "required": [
+                        "observed_result"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "probe_candidate": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "evidence_record_fields": {
+      "type": "array"
+    },
+    "probe_law": {
+      "type": "string"
+    },
+    "refreeze": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "reviewed",
+        "review_decision_ref",
+        "parent_capability_matrix_sha256",
+        "parser_version",
+        "parser_sha256",
+        "primitive_spec_sha256",
+        "promoted_probe_ids",
+        "promoted_raw_capture_sha256",
+        "promoted_derived_result_sha256",
+        "promoted_review_decision_sha256"
+      ],
+      "properties": {
+        "kind": {
+          "const": "M0_READ_REQUALIFICATION"
+        },
+        "reviewed": {
+          "type": "boolean"
+        },
+        "review_decision_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_capability_matrix_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parser_version": {
+          "const": "vidtoolz.resolveProbeParser.v1"
+        },
+        "parser_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "primitive_spec_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "promoted_probe_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "promoted_raw_capture_sha256": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "promoted_derived_result_sha256": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "promoted_review_decision_sha256": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "qualification_pipeline": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "matrix_content_law": {
+      "type": "string"
+    }
+  }
+}
