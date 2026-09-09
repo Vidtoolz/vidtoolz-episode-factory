@@ -1,0 +1,371 @@
+{
+  "fixture": "snapshot-candidate-observation-honest-unavailable",
+  "layer_expected_failure": "none",
+  "schema": "resolveSnapshot",
+  "check": "semantic_snapshot",
+  "expect_error_contains": null,
+  "document": {
+    "schema": "vidtoolz.resolveSnapshot.v1.5",
+    "collector_version": "0.0.0-fixture",
+    "canonicalization_version": "1.5",
+    "target_epoch": "epoch-fixture-1",
+    "resolve_build": "21.1.0.0014",
+    "library": {
+      "db_type": "Disk",
+      "db_name": "VIDTOOLZ Resolve Qualification v1",
+      "instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+    },
+    "project": {
+      "unique_id": null,
+      "name": null,
+      "last_modified_time": null,
+      "field_status": {
+        "unique_id": "UNAVAILABLE",
+        "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+        "name": "UNAVAILABLE",
+        "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+        "last_modified_time": "UNAVAILABLE",
+        "last_modified_time_reason": "last_modified_time: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+      }
+    },
+    "collection": {
+      "started_at": "2026-09-08T11:50:00Z",
+      "ended_at": "2026-09-08T11:50:01Z",
+      "generation": 1,
+      "stable_pair": true,
+      "session_id": "sess-2026-09-08-0001",
+      "method_provenance": {
+        "Folder.GetUniqueId": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "79052df010c9ce296a5c0e4947a14a3cdca92b4f18986f0c73bb19630182b0ee",
+          "capability_matrix_sha256": null
+        },
+        "GetClipEnabled": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "b9e29f1be99c1e77d122630448e28eae9ea36e7b10889670b57b756fcf33009b",
+          "capability_matrix_sha256": null
+        },
+        "GetClipProperty": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "7600377077e5d2096f5bee98e000656c70e0981d8231338b73c04b8413008b19",
+          "capability_matrix_sha256": null
+        },
+        "GetCurrentDatabase": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "0f93fe66a694ceb55ffd93074c4c0181f60ad4b19f8a5c777cdfc3c97ae9548a",
+          "capability_matrix_sha256": null
+        },
+        "GetCurrentProject": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "eb88c74bcca5ac293e282eb6da13192bd63c5fae3419d82a920931e401b22a77",
+          "capability_matrix_sha256": null
+        },
+        "GetCurrentTimeline": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "50441bca70dde3290857c9888963f105cd87ee4cd53984d0de92eac1479a9823",
+          "capability_matrix_sha256": null
+        },
+        "GetDuration": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "bcdcc04a493384d77a1e2d846e60f240fc9237cef0f5c89a0802717e2e7a87d6",
+          "capability_matrix_sha256": null
+        },
+        "GetDuration(True)": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "afb36b865e1da091726b8f8daf3341ae1a94a08d84eb93090ad185e617ff6d00",
+          "capability_matrix_sha256": null
+        },
+        "GetEnd": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "3a72027026a07e6df49d013c42663b8c87ab30d07b5f33f850e038d820496c79",
+          "capability_matrix_sha256": null
+        },
+        "GetEnd(True)": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "257593ddaf96c58fbd742e7a483cdc49be044af9591d63f23bee2ab4355a43f6",
+          "capability_matrix_sha256": null
+        },
+        "GetEndFrame": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "f2633513e0803311c570d9cc466e6c4b3dc0e2a7b239a7d9de96290a77657371",
+          "capability_matrix_sha256": null
+        },
+        "GetIsTrackEnabled": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "ac5cd3acc559b284b7b83bd319edfc0d21b045a093f6c1a0ce810fa41f8568ec",
+          "capability_matrix_sha256": null
+        },
+        "GetIsTrackLocked": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "a558910e0d259246f4e6ec17e4364637d0a5b5d427c87a9f873262d40b9690c5",
+          "capability_matrix_sha256": null
+        },
+        "GetItemListInTrack": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "ef83478304c51c4b2ee8b074f981fec73b2b052b77c3ae974e3ebdc6c0fbf04a",
+          "capability_matrix_sha256": null
+        },
+        "GetLeftOffset(True)": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "d1cb778b104eeb1774c96182a1c4e1873b226fb0e0d620436deee07989b284c7",
+          "capability_matrix_sha256": null
+        },
+        "GetMarkerByCustomData": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "391edc680d490bc80590f3de8c7a753c02aa28309bf18477bd854bcb567c4493",
+          "capability_matrix_sha256": null
+        },
+        "GetMarkers": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "f3c802194ab778b24961316655edcf1fbf1a54e55d31557314ca3a7309962df9",
+          "capability_matrix_sha256": null
+        },
+        "GetMediaPoolItem": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "07682f3cf22155cb51cce4a18aeca85af985ca19292adc4db203b9a7cdeb0402",
+          "capability_matrix_sha256": null
+        },
+        "GetProductName": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "a151b279865a65756a58fe4e1104f7e87c8cd1de46e42ff1118ee46bf1e566af",
+          "capability_matrix_sha256": null
+        },
+        "GetProjectLastModifiedTime": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "3684f50c76c6bf2ca7c7ac3973879957ef7cc6053530c471beb7c3048de3c230",
+          "capability_matrix_sha256": null
+        },
+        "GetProjectListInCurrentFolder": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "e695fa35b8fe27430f9833e31f1481b57dfe7f34a2b0dae8f2435bbe42d42b4c",
+          "capability_matrix_sha256": null
+        },
+        "GetProjectManager": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "423a6041fec55b042151aaec8ef28b21b572c907efb70109fb8809b58b611783",
+          "capability_matrix_sha256": null
+        },
+        "GetRightOffset(True)": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "c9c48ed5099c01e72235d9875de607fadfd1d29f84505bf7a2d47cc6c7f07219",
+          "capability_matrix_sha256": null
+        },
+        "GetSourceEndFrame": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "2edcf5f4cf35d1fa05003e7997f68585bc598234f40d7c46ad0ed6ee976c9764",
+          "capability_matrix_sha256": null
+        },
+        "GetSourceEndTime": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "da167a68bafd81ac3f633eb84814c4bae3fc972315c69ccec7d50370f4aa3acc",
+          "capability_matrix_sha256": null
+        },
+        "GetSourceStartFrame": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "17f21a4d8019d9bd19d6405125495fcf32069d2e0d21f9f403461f978c3a3b0b",
+          "capability_matrix_sha256": null
+        },
+        "GetSourceStartTime": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "aebb3524f029c803ab78b8a0942a7d514abcecc10a529f069654152ec3abeba9",
+          "capability_matrix_sha256": null
+        },
+        "GetStart": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "5cec77fa107e78f73efafa85c04b725e6fbdfc49d3d7b6236ef6553e8b1e7c0b",
+          "capability_matrix_sha256": null
+        },
+        "GetStart(True)": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "263cca26cd71cccdae00f61e1e0a472ecdb5de3dbecd2049c7cbc37a89a832fa",
+          "capability_matrix_sha256": null
+        },
+        "GetStartFrame": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "0df11d313cf15cd5e4293ab45e7160f3d1130626406ffa65cfe635154a9509a8",
+          "capability_matrix_sha256": null
+        },
+        "GetStartTimecode": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "ef52fd9e9e2954faa35568d552eda2b2cc7c5b572793d095093f844a2c573cf9",
+          "capability_matrix_sha256": null
+        },
+        "GetTimelineByIndex": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "8e1f18ce379ecfeffde9b55a0c74f23dd1decddd76ed6cbb89ddc1358f06d3e3",
+          "capability_matrix_sha256": null
+        },
+        "GetTimelineCount": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "af5c1757c92f703970920219e5f1e407a9be0c52a46e5c946723aafc2a1a259a",
+          "capability_matrix_sha256": null
+        },
+        "GetTrackCount": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "b37277b25bfa34233e7092e4bab161e9e676165dd73a34a2cd58ec9ea3b4b363",
+          "capability_matrix_sha256": null
+        },
+        "GetTrackName": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "106d6a7709ba2beed8b12869eb83d48f9ddfab22df3ba4034d9fd4769a8118b2",
+          "capability_matrix_sha256": null
+        },
+        "GetVersionString": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "9357bd279850c0afe3cbc29208e3daa4660050d2430b04fa0261bb22edd6c39f",
+          "capability_matrix_sha256": null
+        },
+        "MediaPoolItem.GetMediaId": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "f5524be29e2f2605389ff9c1c5a4b97f53f0a1123d0f2952fda2f1c88d9d2fa3",
+          "capability_matrix_sha256": null
+        },
+        "MediaPoolItem.GetUniqueId": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "78973d2eca2ea6f683f50b6818ec76d41cc75a9a627b2c8ae4c005933bd89fac",
+          "capability_matrix_sha256": null
+        },
+        "Project.GetName": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "4eb817132b31de1fb403316113de28933d62a48cdb77368c8cab785fabd650b2",
+          "capability_matrix_sha256": null
+        },
+        "Project.GetSettings": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "2daf8745c4d4ed42801f295989280b8f8cbeb008be1bc4cb4248f174692d6502",
+          "capability_matrix_sha256": null
+        },
+        "Project.GetUniqueId": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "74aa65ed6bc698da772d46dc06b9b95d3262ede8cd1c54cf2da5975338b45790",
+          "capability_matrix_sha256": null
+        },
+        "Timeline.GetName": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "15349086e4d93199631e3e7feb164bc3e0c4937fecc6adc9e7829a6dc5370c89",
+          "capability_matrix_sha256": null
+        },
+        "Timeline.GetSettings": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "33d7401161244c6b033b76588ed36cf2208026dfcc0cde694d0404ccf68f0b84",
+          "capability_matrix_sha256": null
+        },
+        "Timeline.GetUniqueId": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "7668a9448c2d7c76e971c5e89718f66dfb760c34a9a21cbd30b16cb3b4032149",
+          "capability_matrix_sha256": null
+        },
+        "TimelineItem.GetName": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "70c4e6735706d718592875c21f976536b9447dc625e7ad73dbec4f39b63dd33c",
+          "capability_matrix_sha256": null
+        },
+        "TimelineItem.GetProperties": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "a75adb306cd286ce4ded6eb585a4659749e3dc68dc636e61094fc6587aa44fd7",
+          "capability_matrix_sha256": null
+        },
+        "TimelineItem.GetUniqueId": {
+          "observation_class": "CANDIDATE_OBSERVATION",
+          "capability_evidence_record_id": "3474b3217e5990f3f98a97fa2e810be72f79960c5b5a329d705ffb32b39456b7",
+          "capability_matrix_sha256": null
+        }
+      }
+    },
+    "coverage": {
+      "profile": "MINIMAL_M0",
+      "complete": false,
+      "observed_domains": [
+        "connection",
+        "library"
+      ],
+      "unobservable_domains": [
+        "grades",
+        "fusion_graphs",
+        "caches",
+        "nested_timelines",
+        "keyframe_curves"
+      ],
+      "deferred_domains": [
+        "project",
+        "timeline",
+        "tracks",
+        "items",
+        "item_identity",
+        "item_source_bounds",
+        "markers",
+        "settings",
+        "track_locks",
+        "adapter_bin_media",
+        "item_properties",
+        "fades",
+        "speed",
+        "takes",
+        "linked_items",
+        "unowned_media_hashes"
+      ],
+      "incomplete_reasons": [
+        "no read primitive is QUALIFIED_READ under the active capability authority (v1.5): project/timeline fields UNAVAILABLE; tracks/items/markers not enumerated",
+        "mandatory domains project, timeline not observed"
+      ]
+    },
+    "policy": {
+      "target_contract_sha256": "36001cf522eb7d44bf383d06c81d5b88cffd19d143f381f6afa8571ea217b74f",
+      "timebase_sha256": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+      "track_policy_sha256": "0c1996f8cb183e27f393eb53113871098e492e43bd49ec8c07e7d49b25f0caa7",
+      "capabilities_version": "1.5.0",
+      "capability_matrix_sha256": "6dce2d0d163f65164a06cf01184d5c16dcfc75c4b9d6873448e0a0f9302365f4",
+      "collector_version": "0.0.0-fixture",
+      "canonicalization_version": "1.5"
+    },
+    "payload": {
+      "timeline": {
+        "unique_id": null,
+        "name": null,
+        "start_frame": null,
+        "start_timecode": null,
+        "fps": null,
+        "width": null,
+        "height": null,
+        "end_frame": null,
+        "is_current": null,
+        "duration_convention": "UNQUALIFIED",
+        "settings": null,
+        "field_status": {
+          "unique_id": "UNAVAILABLE",
+          "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "name": "UNAVAILABLE",
+          "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "start_frame": "UNAVAILABLE",
+          "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "end_frame": "UNAVAILABLE",
+          "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "start_timecode": "UNAVAILABLE",
+          "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "fps": "UNAVAILABLE",
+          "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "width": "UNAVAILABLE",
+          "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "height": "UNAVAILABLE",
+          "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "is_current": "UNAVAILABLE",
+          "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "settings": "UNAVAILABLE",
+          "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+        }
+      },
+      "tracks": [],
+      "markers": [],
+      "media_dependencies": [],
+      "observation_failures": []
+    },
+    "hash_domains": {
+      "payload": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "guard": "vidtoolz.resolveGuard.v3"
+    },
+    "payload_sha256": "7da0bdbd0271e5dd26db8433eead95b73809d9f3e3a950fad2bc31eecce437f6",
+    "guard_digest": "daa4c2ab1bab5d9f7805b882f69cbda914fe0d4038ef7704f3c0fa4e32cc0fd8"
+  },
+  "capabilities": "CAPABILITIES.json",
+  "evidence_set": "attached-candidate-evidence-unreviewed"
+}

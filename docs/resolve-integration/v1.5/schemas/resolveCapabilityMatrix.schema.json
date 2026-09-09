@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveCapabilityMatrix.v1.5",
+  "title": "Capability matrix v1.5",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidence_class_vocabulary",
+    "refreeze",
+    "rows",
+    "schema",
+    "status",
+    "version"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveCapabilityMatrix.v1.5"
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "FROZEN_NOW"
+      ]
+    },
+    "qualification_note": {
+      "type": "string"
+    },
+    "evidence_class_vocabulary": {
+      "type": "array"
+    },
+    "evidence_class_definitions": {
+      "type": "object"
+    },
+    "resolve": {
+      "type": "object"
+    },
+    "coverage_caveat": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "blocked_until",
+          "class",
+          "evidence",
+          "evidence_class",
+          "evidence_records",
+          "m3_probes",
+          "operation",
+          "primitives"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string"
+          },
+          "class": {
+            "type": "string"
+          },
+          "primitives": {
+            "type": "array"
+          },
+          "evidence_class": {
+            "enum": [
+              "QUALIFIED_READ",
+              "DOCUMENTED_NOT_QUALIFIED",
+              "NOT_TESTED",
+              "UNSUPPORTED",
+              "BLOCKED",
+              "QUALIFIED_EF_SIDE"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "m3_probes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blocked_until": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "qualification_note": {
+            "type": "string"
+          },
+          "m3_question": {
+            "type": "string"
+          },
+          "evidence_records": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "build",
+                "evidence_path",
+                "evidence_sha256",
+                "host",
+                "method",
+                "observed_result",
+                "probe_id",
+                "raw_evidence_sha256",
+                "resolve_version",
+                "result",
+                "reviewed_refreeze_version",
+                "run_ref",
+                "version_match"
+              ],
+              "properties": {
+                "host": {
+                  "type": "string"
+                },
+                "resolve_version": {
+                  "type": "string"
+                },
+                "build": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "run_ref": {
+                  "type": "string"
+                },
+                "method": {
+                  "type": "string"
+                },
+                "observed_result": {
+                  "type": "string"
+                },
+                "evidence_path": {
+                  "type": "string"
+                },
+                "evidence_sha256": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "version_match": {
+                  "type": "boolean"
+                },
+                "reviewed_refreeze_version": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "probe_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "raw_evidence_sha256": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "result": {
+                  "enum": [
+                    "SUCCESS",
+                    "CAPABILITY_FAILURE",
+                    "UNQUALIFIED_PRIOR_VERSION"
+                  ]
+                }
+              }
+            }
+          },
+          "probe_candidate": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "evidence_record_fields": {
+      "type": "array"
+    },
+    "probe_law": {
+      "type": "string"
+    },
+    "refreeze": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "reviewed",
+        "review_decision_ref",
+        "promoted_probe_ids",
+        "promoted_evidence_sha256"
+      ],
+      "properties": {
+        "kind": {
+          "const": "M0_READ_REQUALIFICATION"
+        },
+        "reviewed": {
+          "type": "boolean"
+        },
+        "review_decision_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "promoted_probe_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "promoted_evidence_sha256": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "qualification_pipeline": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

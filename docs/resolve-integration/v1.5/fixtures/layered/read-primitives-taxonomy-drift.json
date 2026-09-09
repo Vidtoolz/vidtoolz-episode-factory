@@ -1,0 +1,1554 @@
+{
+  "fixture": "read-primitives-taxonomy-drift",
+  "layer_expected_failure": "semantic",
+  "schema": "resolveReadPrimitives",
+  "check": "semantic_read_primitives",
+  "expect_error_contains": "taxonomy",
+  "document": {
+    "schema": "vidtoolz.resolveReadPrimitives.v1.5",
+    "version": "1.5.0",
+    "status": "FROZEN_NOW",
+    "law": "a logical read operation expands to primitives and declares its target_requirement (SESSION | PROJECT | PROJECT_TIMELINE); a primitive whose evidence_class is not QUALIFIED_READ (with linked reviewed CAPABILITY_EVIDENCE) is never called silently: SNAPSHOT_CAPTURE marks the field UNAVAILABLE or downgrades coverage, REFUSE fallbacks block the operation; only READ_PRIMITIVE_QUALIFICATION_PROBE may call probe_allowed getters, explicitly, in an isolated read-only session, to produce CANDIDATE evidence records; nothing is promoted automatically",
+    "logical_operations": {
+      "READ_PRIMITIVE_QUALIFICATION_PROBE": {
+        "purpose": "M0 preflight: call each DOCUMENTED_NOT_QUALIFIED read getter explicitly and record an evidence record per method",
+        "primitives": [
+          {
+            "method": "Folder.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Folder",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetClipEnabled",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetClipProperty",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "dict"
+          },
+          {
+            "method": "GetCurrentDatabase",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "ProjectManager",
+            "expected_type": "dict"
+          },
+          {
+            "method": "GetCurrentProject",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "resolve-hermes live validation (docs/render-readiness-field-map.md:43)"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "ProjectManager",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetCurrentTimeline",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "resolve-hermes live validation"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetDuration",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetDuration(True)",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetEnd",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetEnd(True)",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetEndFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetIsTrackEnabled",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetIsTrackLocked",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetItemListInTrack",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "list"
+          },
+          {
+            "method": "GetLeftOffset(True)",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetMarkerByCustomData",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "dict"
+          },
+          {
+            "method": "GetMarkers",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "dict"
+          },
+          {
+            "method": "GetMediaPoolItem",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetProductName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Resolve",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetProjectLastModifiedTime",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetProjectListInCurrentFolder",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "ProjectManager",
+            "expected_type": "list"
+          },
+          {
+            "method": "GetProjectManager",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Resolve",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetRightOffset(True)",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetSourceEndFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetSourceEndTime",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetSourceStartFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetSourceStartTime",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetStart",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01 (isolated Resolve, real renders)"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetStart(True)",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetStartFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetStartTimecode",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetTimelineByIndex",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetTimelineCount",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetTrackCount",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetTrackName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetVersionString",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Resolve",
+            "expected_type": "str"
+          },
+          {
+            "method": "MediaPoolItem.GetMediaId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "MediaPoolItem",
+            "expected_type": "str"
+          },
+          {
+            "method": "MediaPoolItem.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "MediaPoolItem",
+            "expected_type": "str"
+          },
+          {
+            "method": "Project.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "expected_type": "str"
+          },
+          {
+            "method": "Project.GetSettings",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "expected_type": "dict"
+          },
+          {
+            "method": "Project.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "expected_type": "str"
+          },
+          {
+            "method": "Timeline.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "str"
+          },
+          {
+            "method": "Timeline.GetSettings",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "dict"
+          },
+          {
+            "method": "Timeline.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "expected_type": "str"
+          },
+          {
+            "method": "TimelineItem.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "str"
+          },
+          {
+            "method": "TimelineItem.GetProperties",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "dict"
+          },
+          {
+            "method": "TimelineItem.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "expected_type": "str"
+          }
+        ],
+        "output": "CAPABILITY_EVIDENCE records (qualification.reviewed:false) + RAW_EVIDENCE records + one CONNECTION_OBSERVATION, all envelope-bound to the session; a reviewed refreeze may later turn rows QUALIFIED_READ",
+        "target_requirement": "SESSION",
+        "purpose_is_qualification": true,
+        "read_only": true,
+        "promotes_capability": false,
+        "evidence_output": "CANDIDATE_EVIDENCE",
+        "contract": "M0-PROBE-CONTRACT.md",
+        "why_allowed": "the getters are DOCUMENTED_NOT_QUALIFIED; calling them is the test, not a use of their result; results are recorded, never acted on",
+        "failure_taxonomy": {
+          "CAPABILITY_FAILURE": [
+            "GETTER_RAISED",
+            "GETTER_TIMEOUT",
+            "UNEXPECTED_RETURN_TYPE",
+            "GETTER_RETURNED_NONE"
+          ],
+          "FATAL_TARGET_FAILURE": [
+            "WRONG_HOST"
+          ]
+        },
+        "failure_law": "a getter that raises/times out/returns an unexpected type is a CAPABILITY_FAILURE record (reviewed → REJECT; the probe continues); wrong host/library/uuid/root, stale session, conflicting target or wrong manifest/authority/version is a FATAL_TARGET_FAILURE record that STOPS the probe and makes the session's derived attachment state CONFLICT"
+      },
+      "CONNECT": {
+        "primitives": [
+          {
+            "method": "GetVersionString",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Resolve",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetProductName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Resolve",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetProjectManager",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Resolve",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetCurrentDatabase",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "ProjectManager",
+            "expected_type": "dict"
+          }
+        ],
+        "target_requirement": "SESSION",
+        "note": "SESSION scope: proves host/library/session identity; requires qualified getters (REFUSE fallback) so it is not eligible before a reviewed refreeze; the probe establishes the same boundary in probe mode"
+      },
+      "ENUMERATE_PROJECTS": {
+        "primitives": [
+          {
+            "method": "GetProjectListInCurrentFolder",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "ProjectManager",
+            "expected_type": "list"
+          },
+          {
+            "method": "GetCurrentProject",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "resolve-hermes live validation (docs/render-readiness-field-map.md:43)"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "ProjectManager",
+            "expected_type": "object"
+          },
+          {
+            "method": "Project.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "expected_type": "str"
+          }
+        ],
+        "target_requirement": "SESSION",
+        "note": "SESSION scope: lists projects; establishes no project binding by itself"
+      },
+      "ENUMERATE_TIMELINES": {
+        "primitives": [
+          {
+            "method": "GetTimelineCount",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetTimelineByIndex",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetCurrentTimeline",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "resolve-hermes live validation"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "expected_type": "object"
+          },
+          {
+            "method": "Timeline.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "str"
+          }
+        ],
+        "target_requirement": "PROJECT",
+        "note": "PROJECT scope: requires a PROJECT_BINDING_OBSERVATION for expected_project_name"
+      },
+      "SNAPSHOT_CAPTURE": {
+        "primitives": [
+          {
+            "method": "GetTrackCount",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetItemListInTrack",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "list"
+          },
+          {
+            "method": "GetTrackName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetStart",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01 (isolated Resolve, real renders)"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetEnd",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetDuration",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "TimelineItem.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetMediaPoolItem",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetClipEnabled",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetStartFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetEndFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetStartTimecode",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "str"
+          },
+          {
+            "method": "Timeline.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "str"
+          },
+          {
+            "method": "Project.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "expected_type": "str"
+          },
+          {
+            "method": "TimelineItem.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "expected_type": "str"
+          },
+          {
+            "method": "MediaPoolItem.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "MediaPoolItem",
+            "expected_type": "str"
+          },
+          {
+            "method": "MediaPoolItem.GetMediaId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "MediaPoolItem",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetSourceStartFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetSourceEndFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetIsTrackLocked",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetIsTrackEnabled",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetMarkers",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "dict"
+          },
+          {
+            "method": "Timeline.GetSettings",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "dict"
+          },
+          {
+            "method": "Project.GetSettings",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "expected_type": "dict"
+          },
+          {
+            "method": "GetClipProperty",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "expected_type": "dict"
+          }
+        ],
+        "target_requirement": "PROJECT_TIMELINE",
+        "note": "PROJECT_TIMELINE scope: requires PROJECT_BINDING_OBSERVATION + TIMELINE_BINDING_OBSERVATION for the expected names; never the current timeline by accident"
+      },
+      "TIMEBASE_OBSERVE": {
+        "primitives": [
+          {
+            "method": "GetStartFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetStartTimecode",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "str"
+          },
+          {
+            "method": "Timeline.GetSettings",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "expected_type": "dict"
+          }
+        ],
+        "target_requirement": "PROJECT_TIMELINE"
+      },
+      "TRIPWIRE_READ": {
+        "primitives": [
+          {
+            "method": "GetProjectLastModifiedTime",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "expected_type": "int"
+          }
+        ],
+        "target_requirement": "PROJECT"
+      }
+    },
+    "expected_type_note": "expected_type is the documented 21.1 return type of the getter (provisional expectation); the probe parser records observed_type and shape_ok, and SUCCESS is derived only when they match"
+  }
+}

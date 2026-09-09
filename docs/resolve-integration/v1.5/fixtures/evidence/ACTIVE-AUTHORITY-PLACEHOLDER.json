@@ -1,0 +1,7 @@
+{
+  "schema": "vidtoolz.resolveFixtureActiveAuthority.v1.5",
+  "note": "fixtures are minted against this PLACEHOLDER manifest sha; the validator proves they do not derive against the real FREEZE-MANIFEST.json sha and that records re-minted against the real sha do",
+  "placeholder_manifest_sha256": "5c67efcc19963e7059b5c71e01c61a0e357d7b314607ee89b4460359cc398648",
+  "capability_matrix_sha256": "6dce2d0d163f65164a06cf01184d5c16dcfc75c4b9d6873448e0a0f9302365f4",
+  "hypothetical_capability_matrix_sha256": "3f6def1fe9e7e9e749fe6284ced0d6f2f0f60b8ab05bce1282cc382f1cff7613"
+}
