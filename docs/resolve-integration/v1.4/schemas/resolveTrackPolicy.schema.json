@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveTrackPolicy.v1.1",
+  "title": "Track policy v1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "status",
+    "enforcement_evidence",
+    "video",
+    "audio",
+    "marker_owner_prefix"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveTrackPolicy.v1.1"
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "FROZEN_NOW"
+      ]
+    },
+    "qualification_note": {
+      "type": "string"
+    },
+    "enforcement_evidence": {
+      "enum": [
+        "NOT_TESTED",
+        "QUALIFIED"
+      ]
+    },
+    "video": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "role"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "role": {
+            "enum": [
+              "FULL_CANVAS_VISUAL",
+              "PRESENTER",
+              "PRESENTER_PROXY",
+              "TYPOGRAPHY",
+              "RESERVED"
+            ]
+          }
+        }
+      }
+    },
+    "audio": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "role"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "role": {
+            "enum": [
+              "NARRATION",
+              "MUSIC",
+              "RESERVED"
+            ]
+          }
+        }
+      }
+    },
+    "ordering": {
+      "type": "string"
+    },
+    "marker_owner_prefix": {
+      "const": "vidtoolz:resolve:binding:v1:"
+    },
+    "bin_pattern": {
+      "type": "string"
+    },
+    "timeline_name_pattern": {
+      "type": "string"
+    }
+  },
+  "$comment": "Semantic validator enforces unique ascending indexes and the frozen required roles (V1 FULL_CANVAS_VISUAL, A1 NARRATION, A2 MUSIC)."
+}

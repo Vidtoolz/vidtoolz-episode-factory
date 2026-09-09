@@ -1,0 +1,1898 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveEvidenceSet.v1.4",
+  "title": "Linked evidence set (content-addressed, envelope-bound records)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "current_session_id",
+    "evaluated_at",
+    "records"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveEvidenceSet.v1.4"
+    },
+    "current_session_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "evaluated_at": {
+      "type": "string",
+      "minLength": 20
+    },
+    "records": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "record_type",
+          "record_id",
+          "envelope",
+          "recorded_at"
+        ],
+        "properties": {
+          "record_type": {
+            "enum": [
+              "BUNDLE_VERIFICATION",
+              "CAPABILITY_EVIDENCE",
+              "CONNECTION_OBSERVATION",
+              "DESTINATION_TIMELINE",
+              "EXCLUSIVE_SESSION_ATTESTATION",
+              "GUARD_SNAPSHOT",
+              "JOURNAL_PREPARED",
+              "LAUNCH_RECIPE",
+              "M3_AUTHORIZATION",
+              "MEDIA_CLASS_ATTESTATION",
+              "MILESTONE_EXIT",
+              "OPERATOR_PROVISIONED_PROJECT",
+              "PLAN_VALIDATION",
+              "PROJECT_BINDING_OBSERVATION",
+              "PROVISIONING_RECORD",
+              "RAW_EVIDENCE",
+              "READ_ONLY_JOURNAL",
+              "REFREEZE_RECORD",
+              "TIMELINE_BINDING_OBSERVATION"
+            ]
+          },
+          "record_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "envelope": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "authority_version",
+              "manifest_sha256",
+              "host_name",
+              "product",
+              "resolve_version",
+              "build",
+              "library_name",
+              "library_uuid",
+              "library_root",
+              "session_id",
+              "provisioning_id",
+              "project_name",
+              "project_unique_id",
+              "timeline_name",
+              "timeline_unique_id",
+              "target_epoch",
+              "sequence",
+              "captured_at",
+              "record_type_version"
+            ],
+            "properties": {
+              "authority_version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "manifest_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "host_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "product": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "resolve_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "build": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "library_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "library_uuid": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "library_root": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+                    "minLength": 2
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "session_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "provisioning_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "project_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "project_unique_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "timeline_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "timeline_unique_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "target_epoch": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "captured_at": {
+                "type": "string",
+                "minLength": 20
+              },
+              "record_type_version": {
+                "const": "1.4"
+              }
+            }
+          },
+          "recorded_at": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "PROVISIONING_RECORD"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "instance_uuid",
+                "library_kind",
+                "provisioned_by",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "root_path"
+              ],
+              "properties": {
+                "library_kind": {
+                  "const": "Disk"
+                },
+                "root_path": {
+                  "type": "string",
+                  "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+                  "minLength": 2
+                },
+                "instance_uuid": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                },
+                "provisioned_by": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "LAUNCH_RECIPE"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "external_scripting_preference",
+                "recipe_sha256",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "resolve_binary_sha256",
+                "resolve_version"
+              ],
+              "properties": {
+                "recipe_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "resolve_version": {
+                  "type": "string"
+                },
+                "resolve_binary_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "external_scripting_preference": {
+                  "enum": [
+                    "Local",
+                    "Network",
+                    "None"
+                  ]
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "BUNDLE_VERIFICATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "authority_version",
+                "envelope",
+                "historical",
+                "manifest_sha256",
+                "prepared_by",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "verifier"
+              ],
+              "properties": {
+                "authority_version": {
+                  "type": "string"
+                },
+                "manifest_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "verifier": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "prepared_by": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "historical": {
+                  "type": "boolean"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "CONNECTION_OBSERVATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "db_name",
+                "db_type",
+                "envelope",
+                "instance_uuid",
+                "product",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "resolve_version",
+                "root_path"
+              ],
+              "properties": {
+                "db_type": {
+                  "type": "string"
+                },
+                "db_name": {
+                  "type": "string"
+                },
+                "product": {
+                  "type": "string"
+                },
+                "resolve_version": {
+                  "type": "string"
+                },
+                "root_path": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "instance_uuid": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "PROJECT_BINDING_OBSERVATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "project_name",
+                "project_unique_id",
+                "project_unique_id_status",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "project_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "project_unique_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "project_unique_id_status": {
+                  "enum": [
+                    "OBSERVED",
+                    "UNAVAILABLE",
+                    "UNSUPPORTED",
+                    "ERROR",
+                    "NOT_REQUESTED"
+                  ]
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "TIMELINE_BINDING_OBSERVATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "project_name",
+                "project_unique_id",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "timeline_name",
+                "timeline_unique_id",
+                "timeline_unique_id_status"
+              ],
+              "properties": {
+                "project_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "timeline_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "timeline_unique_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "timeline_unique_id_status": {
+                  "enum": [
+                    "OBSERVED",
+                    "UNAVAILABLE",
+                    "UNSUPPORTED",
+                    "ERROR",
+                    "NOT_REQUESTED"
+                  ]
+                },
+                "project_unique_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "timeline_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "OPERATOR_PROVISIONED_PROJECT"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "project_name",
+                "provisioned_by",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "project_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "provisioned_by": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "CAPABILITY_EVIDENCE"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "method",
+                "parsed_observation",
+                "probe_authority_version",
+                "probe_id",
+                "qualification",
+                "raw_evidence_sha256",
+                "receiver_type",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "result"
+              ],
+              "properties": {
+                "method": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "receiver_type": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "probe_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "probe_authority_version": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "raw_evidence_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "parsed_observation": {
+                  "type": "object"
+                },
+                "result": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "classification",
+                    "success",
+                    "code"
+                  ],
+                  "properties": {
+                    "classification": {
+                      "enum": [
+                        "SUCCESS",
+                        "CAPABILITY_FAILURE",
+                        "FATAL_TARGET_FAILURE"
+                      ]
+                    },
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "CONFLICTING_TARGET",
+                            "GETTER_RAISED",
+                            "GETTER_RETURNED_NONE",
+                            "GETTER_TIMEOUT",
+                            "STALE_SESSION",
+                            "UNEXPECTED_RETURN_TYPE",
+                            "WRONG_AUTHORITY_VERSION",
+                            "WRONG_HOST",
+                            "WRONG_LIBRARY",
+                            "WRONG_LIBRARY_ROOT",
+                            "WRONG_LIBRARY_UUID",
+                            "WRONG_MANIFEST",
+                            "WRONG_RESOLVE_VERSION"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "qualification": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "reviewed",
+                    "decision",
+                    "promoted_by"
+                  ],
+                  "properties": {
+                    "reviewed": {
+                      "type": "boolean"
+                    },
+                    "decision": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "ACCEPT",
+                            "REJECT"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "promoted_by": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "authority_version",
+                            "capability_matrix_sha256"
+                          ],
+                          "properties": {
+                            "authority_version": {
+                              "type": "string"
+                            },
+                            "capability_matrix_sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "RAW_EVIDENCE"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "content",
+                "content_sha256",
+                "envelope",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "content": {
+                  "type": "string"
+                },
+                "content_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "REFREEZE_RECORD"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "authority_version",
+                "capability_matrix_sha256",
+                "envelope",
+                "kind",
+                "manifest_sha256",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "reviewed"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "M0_READ_REQUALIFICATION"
+                  ]
+                },
+                "reviewed": {
+                  "type": "boolean"
+                },
+                "manifest_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "authority_version": {
+                  "type": "string"
+                },
+                "capability_matrix_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "MILESTONE_EXIT"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "authority_version",
+                "envelope",
+                "evidence_dir_sha256",
+                "milestone",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "milestone": {
+                  "enum": [
+                    "M0",
+                    "M1",
+                    "M2"
+                  ]
+                },
+                "authority_version": {
+                  "type": "string"
+                },
+                "evidence_dir_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "M3_AUTHORIZATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "approver",
+                "authority_version",
+                "envelope",
+                "library_name",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "scope"
+              ],
+              "properties": {
+                "scope": {
+                  "const": "SCRATCH_QUALIFICATION_LIBRARY"
+                },
+                "approver": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "authority_version": {
+                  "type": "string"
+                },
+                "library_name": {
+                  "type": "string"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "JOURNAL_PREPARED"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "journal_path_sha256",
+                "plan_digest",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "transaction_id"
+              ],
+              "properties": {
+                "transaction_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "plan_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "journal_path_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "READ_ONLY_JOURNAL"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "journal_path_sha256",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "journal_path_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "EXCLUSIVE_SESSION_ATTESTATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "attested_by",
+                "envelope",
+                "pid_observed",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "attested_by": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pid_observed": {
+                  "type": "integer"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "GUARD_SNAPSHOT"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "guard_digest",
+                "payload_sha256",
+                "project_name",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "timeline_name"
+              ],
+              "properties": {
+                "guard_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "project_name": {
+                  "type": "string"
+                },
+                "timeline_name": {
+                  "type": "string"
+                },
+                "payload_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "timeline_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "PLAN_VALIDATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "authority_version",
+                "envelope",
+                "plan_digest",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "result",
+                "validator"
+              ],
+              "properties": {
+                "plan_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "result": {
+                  "enum": [
+                    "PASS",
+                    "FAIL"
+                  ]
+                },
+                "authority_version": {
+                  "type": "string"
+                },
+                "validator": {
+                  "type": "string"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "MEDIA_CLASS_ATTESTATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "media_class",
+                "media_sha256",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "media_class": {
+                  "enum": [
+                    "SYNTHETIC",
+                    "PRODUCTION"
+                  ]
+                },
+                "media_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "DESTINATION_TIMELINE"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "project_name",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "timeline_name",
+                "timeline_unique_id"
+              ],
+              "properties": {
+                "project_name": {
+                  "type": "string"
+                },
+                "timeline_name": {
+                  "type": "string"
+                },
+                "timeline_unique_id": {
+                  "type": "string"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "timeline_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$comment": "Every record carries the identity envelope (authority_version, manifest_sha256, host, product/version/build, library name/uuid/root, session_id, provisioning_id, project/timeline identity, target_epoch, sequence, captured_at, record_type_version). Level law: BUNDLE records need authority+manifest+host; LIBRARY records add library name/uuid/root; SESSION records add product/version/build, session_id and provisioning_id. record_id = sha256(domain vidtoolz.resolveEvidenceRecord.v1 + canonical body without record_id). Inconsistent records never compose (envelope_conflicts); the CURRENT record of a type is the highest envelope.sequence within current_session_id; map order is irrelevant."
+}

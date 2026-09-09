@@ -1,0 +1,197 @@
+{
+  "fixture": "snapshot-m0-track-observed-nothing-qualified",
+  "layer_expected_failure": "snapshot",
+  "schema": "resolveSnapshot",
+  "check": "semantic_snapshot",
+  "expect_error_contains": "not callable",
+  "document": {
+    "schema": "vidtoolz.resolveSnapshot.v1.4",
+    "collector_version": "0.0.0-fixture",
+    "canonicalization_version": "1.4",
+    "target_epoch": "epoch-fixture-1",
+    "resolve_build": "21.1.0.0014",
+    "library": {
+      "db_type": "Disk",
+      "db_name": "VIDTOOLZ Resolve Qualification v1",
+      "instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+    },
+    "project": {
+      "unique_id": null,
+      "name": null,
+      "last_modified_time": null,
+      "field_status": {
+        "unique_id": "UNAVAILABLE",
+        "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+        "name": "UNAVAILABLE",
+        "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+        "last_modified_time": "UNAVAILABLE",
+        "last_modified_time_reason": "last_modified_time: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+      }
+    },
+    "collection": {
+      "started_at": "2026-09-08T11:50:00Z",
+      "ended_at": "2026-09-08T11:50:01Z",
+      "generation": 1,
+      "stable_pair": true,
+      "session_id": "sess-2026-09-08-0001",
+      "primitive_status": {
+        "Folder.GetUniqueId": "UNQUALIFIED",
+        "GetClipEnabled": "UNQUALIFIED",
+        "GetClipProperty": "UNQUALIFIED",
+        "GetCurrentDatabase": "UNQUALIFIED",
+        "GetCurrentProject": "UNQUALIFIED",
+        "GetCurrentTimeline": "UNQUALIFIED",
+        "GetDuration": "UNQUALIFIED",
+        "GetDuration(True)": "UNQUALIFIED",
+        "GetEnd": "UNQUALIFIED",
+        "GetEnd(True)": "UNQUALIFIED",
+        "GetEndFrame": "UNQUALIFIED",
+        "GetIsTrackEnabled": "UNQUALIFIED",
+        "GetIsTrackLocked": "UNQUALIFIED",
+        "GetItemListInTrack": "UNQUALIFIED",
+        "GetLeftOffset(True)": "UNQUALIFIED",
+        "GetMarkerByCustomData": "UNQUALIFIED",
+        "GetMarkers": "UNQUALIFIED",
+        "GetMediaPoolItem": "UNQUALIFIED",
+        "GetProductName": "UNQUALIFIED",
+        "GetProjectLastModifiedTime": "UNQUALIFIED",
+        "GetProjectListInCurrentFolder": "UNQUALIFIED",
+        "GetProjectManager": "UNQUALIFIED",
+        "GetRightOffset(True)": "UNQUALIFIED",
+        "GetSourceEndFrame": "UNQUALIFIED",
+        "GetSourceEndTime": "UNQUALIFIED",
+        "GetSourceStartFrame": "UNQUALIFIED",
+        "GetSourceStartTime": "UNQUALIFIED",
+        "GetStart": "UNQUALIFIED",
+        "GetStart(True)": "UNQUALIFIED",
+        "GetStartFrame": "UNQUALIFIED",
+        "GetStartTimecode": "UNQUALIFIED",
+        "GetTimelineByIndex": "UNQUALIFIED",
+        "GetTimelineCount": "UNQUALIFIED",
+        "GetTrackCount": "UNQUALIFIED",
+        "GetTrackName": "UNQUALIFIED",
+        "GetVersionString": "UNQUALIFIED",
+        "MediaPoolItem.GetMediaId": "UNQUALIFIED",
+        "MediaPoolItem.GetUniqueId": "UNQUALIFIED",
+        "Project.GetName": "UNQUALIFIED",
+        "Project.GetSettings": "UNQUALIFIED",
+        "Project.GetUniqueId": "UNQUALIFIED",
+        "Timeline.GetName": "UNQUALIFIED",
+        "Timeline.GetSettings": "UNQUALIFIED",
+        "Timeline.GetUniqueId": "UNQUALIFIED",
+        "TimelineItem.GetName": "UNQUALIFIED",
+        "TimelineItem.GetProperties": "UNQUALIFIED",
+        "TimelineItem.GetUniqueId": "UNQUALIFIED"
+      }
+    },
+    "coverage": {
+      "profile": "MINIMAL_M0",
+      "complete": false,
+      "observed_domains": [
+        "connection",
+        "library"
+      ],
+      "unobservable_domains": [
+        "grades",
+        "fusion_graphs",
+        "caches",
+        "nested_timelines",
+        "keyframe_curves"
+      ],
+      "deferred_domains": [
+        "project",
+        "timeline",
+        "tracks",
+        "items",
+        "item_identity",
+        "item_source_bounds",
+        "markers",
+        "settings",
+        "track_locks",
+        "adapter_bin_media",
+        "item_properties",
+        "fades",
+        "speed",
+        "takes",
+        "linked_items",
+        "unowned_media_hashes"
+      ],
+      "incomplete_reasons": [
+        "no read primitive is QUALIFIED_READ under the active capability authority (v1.4): project/timeline fields UNAVAILABLE; tracks/items/markers not enumerated",
+        "mandatory domains project, timeline not observed"
+      ]
+    },
+    "policy": {
+      "target_contract_sha256": "e2bad0adddb1e9beffcf070e6dd9f751b5a24f2e3d65ba14898a1c0601ffc27c",
+      "timebase_sha256": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+      "track_policy_sha256": "0c1996f8cb183e27f393eb53113871098e492e43bd49ec8c07e7d49b25f0caa7",
+      "capabilities_version": "1.4.0",
+      "capability_matrix_sha256": "d1eb49fe1d7801c2b1a14f4364d4bcc0f609fcf85e9449d20027a6f604c8bad3",
+      "collector_version": "0.0.0-fixture",
+      "canonicalization_version": "1.4"
+    },
+    "payload": {
+      "timeline": {
+        "unique_id": null,
+        "name": null,
+        "start_frame": null,
+        "start_timecode": null,
+        "fps": null,
+        "width": null,
+        "height": null,
+        "end_frame": null,
+        "is_current": null,
+        "duration_convention": "UNQUALIFIED",
+        "settings": null,
+        "field_status": {
+          "unique_id": "UNAVAILABLE",
+          "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "name": "UNAVAILABLE",
+          "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "start_frame": "UNAVAILABLE",
+          "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "end_frame": "UNAVAILABLE",
+          "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "start_timecode": "UNAVAILABLE",
+          "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "fps": "UNAVAILABLE",
+          "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "width": "UNAVAILABLE",
+          "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "height": "UNAVAILABLE",
+          "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "is_current": "UNAVAILABLE",
+          "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "settings": "UNAVAILABLE",
+          "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+        }
+      },
+      "tracks": [
+        {
+          "type": "video",
+          "index": 1,
+          "name": "V1",
+          "enabled": true,
+          "locked": false,
+          "field_status": {
+            "name": "OBSERVED",
+            "enabled": "OBSERVED",
+            "locked": "OBSERVED"
+          },
+          "items": []
+        }
+      ],
+      "markers": [],
+      "media_dependencies": [],
+      "observation_failures": []
+    },
+    "hash_domains": {
+      "payload": "vidtoolz.resolveSnapshotPayload.v1.4",
+      "guard": "vidtoolz.resolveGuard.v2"
+    },
+    "payload_sha256": "af97052ed046bcc3ad563b36d594160666b9fa9bdbcfffad7de86688f9cfd43c",
+    "guard_digest": "a2f8ef8cabeb12dd1264485d0bc2917cedd7a94f3c43030d7ae1cd6523d22cf3"
+  },
+  "capabilities": "CAPABILITIES.json",
+  "evidence_set": "attached"
+}

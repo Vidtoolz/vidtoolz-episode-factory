@@ -1,0 +1,827 @@
+#!/usr/bin/env python3
+"""Generate v1.4 machine artifacts as a narrow correction of v1.3. Deterministic; offline; no Resolve.
+Run from the bundle dir: python3 -B tools/build_v1_4.py
+Inputs: the v1.3 instances/schemas already seeded in this directory (byte-identical copies of the frozen v1.3 bundle)."""
+import copy
+import hashlib
+import json
+import os
+import sys
+
+sys.dont_write_bytecode = True
+HERE = os.path.dirname(os.path.abspath(__file__))
+B = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
+import authority_lib as L  # noqa: E402
+import fixture_evidence as F  # noqa: E402
+
+SHA = {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+SHA_OR_NULL = {"anyOf": [SHA, {"type": "null"}]}
+NONNEG = {"type": "integer", "minimum": 0}
+POSINT = {"type": "integer", "minimum": 1}
+RATIONAL_TAG = {"type": "object", "additionalProperties": False, "required": ["$rational"], "properties": {"$rational": {"type": "string", "pattern": "^(0|[1-9][0-9]*)/([1-9][0-9]*)$"}}}
+FRAME_QTY = {"anyOf": [NONNEG, RATIONAL_TAG]}
+FRAME_QTY_OR_NULL = {"anyOf": [NONNEG, RATIONAL_TAG, {"type": "null"}]}
+ABS_PATH = {"type": "string", "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$", "minLength": 2}
+UUID = {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"}
+OBS = {"enum": list(L.OBS_STATUS)}
+STR_OR_NULL = {"type": ["string", "null"]}
+AV = {"const": L.AUTHORITY_VERSION}
+UU, HOST, LIB, VER, PFX, PROJ, TL, SCOPE = F.UU, F.HOST, F.LIB, F.VER, F.PFX, F.PROJ, F.TL, "SCRATCH_QUALIFICATION_LIBRARY"
+EV = ["QUALIFIED_READ", "DOCUMENTED_NOT_QUALIFIED", "NOT_TESTED", "UNSUPPORTED", "BLOCKED", "QUALIFIED_EF_SIDE"]
+FIXTURE_COUNT = [0]
+
+
+def dump(rel, obj):
+    p = os.path.join(B, rel)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+
+def load(rel):
+    return L.strict_load(os.path.join(B, rel))
+
+
+def sha_of(rel):
+    return hashlib.sha256(open(os.path.join(B, rel), "rb").read()).hexdigest()
+
+
+def S(id_, title, props, req, comment=None, extra=None):
+    d = {"$schema": "https://json-schema.org/draft/2020-12/schema", "$id": id_, "title": title, "type": "object", "additionalProperties": False, "required": req, "properties": props}
+    if comment:
+        d["$comment"] = comment
+    if extra:
+        d.update(extra)
+    return d
+
+
+def fixture(name, layer, schema, doc, check=None, expect_contains=None, extra=None):
+    assert layer in L.FIXTURE_LAYERS, layer
+    d = {"fixture": name, "layer_expected_failure": layer, "schema": schema, "check": check, "expect_error_contains": expect_contains, "document": doc}
+    if extra:
+        d.update(extra)
+    dump(f"fixtures/layered/{name}.json", d)
+    FIXTURE_COUNT[0] += 1
+
+
+# ============================================================ TARGET CONTRACT v1.4: CONFLICT state, envelope binding law
+tc = load("TARGET-CONTRACT.json")
+tc["schema"] = "vidtoolz.resolveTargetContract.v1.4"; tc["version"] = "1.4.0"
+tc["attachment_derivation"] = "tools/authority_lib.py#derive_attachment_state(target_contract, evidence_set, active_authority)"
+tc["attachment_states"]["CONFLICT"] = {"required_records": [], "meaning": "contradictory, ambiguous or fatal evidence: incoherent envelopes in the current session, multiple provisioning identities, two current observations with the same sequence, timestamp/sequence disorder, a FATAL_TARGET_FAILURE probe record, or an evidence set not bound to the active reviewed manifest; rank below UNPROVISIONED; nothing is eligible"}
+tc["attachment_states"]["ATTACHMENT_READY"]["meaning"] = "current session (evidence_set.current_session_id) opened by a LAUNCH_RECIPE bound to the provisioning record (provisioning_id, uuid, root), pinned to contract version/binary/Local scripting; independent BUNDLE_VERIFICATION bound to the ACTIVE reviewed manifest + authority version on this host; all session records coherent"
+tc["attachment_states"]["ATTACHED_READ_ONLY"]["meaning"] = "the CURRENT CONNECTION_OBSERVATION of the current session (highest envelope.sequence, not stale, not ambiguous) shows db_type Disk, db_name == contract library, product/version == contract, root and uuid == provisioning record; any mismatch stays ATTACHMENT_READY with OBSERVED_TARGET_MISMATCH"
+tc["evidence_envelope_law"] = {"schema": "schemas/resolveEvidenceSet.schema.json", "levels": L.ENVELOPE_REQUIRED, "record_levels": L.ENVELOPE_LEVEL, "coherence_fields": list(L.COHERENCE_FIELDS), "currency": "CURRENT record of a type in the current session = highest envelope.sequence; equal highest sequences with distinct content = AMBIGUOUS (CONFLICT); captured_at older than MAX_OBSERVATION_AGE_S relative to evidence_set.evaluated_at = STALE; records of other sessions are never current; JSON/map/array order never matters", "max_observation_age_s": L.MAX_OBSERVATION_AGE_S, "binding": "every record binds envelope.manifest_sha256 and envelope.authority_version to the ACTIVE reviewed authority; a BUNDLE_VERIFICATION for another manifest is tolerated only with historical:true and never counts"}
+tc["attachment_law"] = "schema validity != attachment eligibility; the state is a function of (TARGET-CONTRACT, evidence set, active authority {authority_version, manifest_sha256, capability_matrix_sha256}) computed by derive_attachment_state; a document that declares a state is rejected; inconsistent records never compose (CONFLICT); M0 probe requires derived ATTACHMENT_READY; every other M0 read op requires derived ATTACHED_READ_ONLY plus its operation-specific project/timeline binding; any M3 write requires derived SCRATCH_WRITE_READY"
+dump("TARGET-CONTRACT.json", tc)
+tcs = load("schemas/resolveTargetContract.schema.json")
+tcs["$id"] = "vidtoolz.resolveTargetContract.v1.4"; tcs["title"] = "Resolve target contract v1.4 (attachment gate; derived state; envelope law)"
+tcs["properties"]["schema"] = {"const": "vidtoolz.resolveTargetContract.v1.4"}
+tcs["properties"]["version"] = {"type": "string", "pattern": "^1\\.4\\.[0-9]+$"}
+tcs["properties"]["attachment_derivation"] = {"const": tc["attachment_derivation"]}
+tcs["properties"]["attachment_states"] = {"type": "object", "additionalProperties": False, "required": L.ATTACHMENT_STATES + ["CONFLICT"], "properties": {s: {"type": "object", "additionalProperties": False, "required": ["required_records", "meaning"], "properties": {"required_records": {"type": "array", "items": {"enum": sorted(L.RECORD_TYPES)}, "uniqueItems": True}, "meaning": {"type": "string"}}} for s in L.ATTACHMENT_STATES + ["CONFLICT"]}}
+tcs["properties"]["evidence_envelope_law"] = {"type": "object", "required": ["schema", "levels", "record_levels", "coherence_fields", "currency", "max_observation_age_s", "binding"]}
+tcs["required"] = sorted(set(tcs["required"]) | {"evidence_envelope_law"})
+dump("schemas/resolveTargetContract.schema.json", tcs)
+fixture("target-contract-frozen-derived", "none", "resolveTargetContract", tc, check="semantic_target_contract")
+neg = copy.deepcopy(tc); neg["attachment_state"] = "ATTACHMENT_READY"; fixture("target-declared-attachment-state", "schema", "resolveTargetContract", neg, expect_contains="attachment_state")
+neg = copy.deepcopy(tc); neg["attachment_state_is_declared"] = True; fixture("target-declared-flag-true", "schema", "resolveTargetContract", neg, expect_contains="False")
+neg = copy.deepcopy(tc); neg["accepts_current_open_session_as_target"] = True; fixture("target-accepts-open-session", "schema", "resolveTargetContract", neg, expect_contains="False")
+neg = copy.deepcopy(tc); neg["library"]["kind"] = "PostgreSQL"; fixture("target-shared-postgres-library", "schema", "resolveTargetContract", neg, expect_contains="Disk")
+neg = copy.deepcopy(tc); neg["denied_calls_all_scopes"].remove("SetCurrentDatabase"); fixture("target-missing-denied-setcurrentdatabase", "schema", "resolveTargetContract", neg, expect_contains="contains")
+neg = copy.deepcopy(tc); neg["host"]["name"] = ""; fixture("target-empty-host", "schema", "resolveTargetContract", neg, expect_contains="minLength")
+neg = copy.deepcopy(tc); neg["library"]["name"] = "EKA"; fixture("target-library-is-prohibited", "schema", "resolveTargetContract", neg, expect_contains="pattern")
+neg = copy.deepcopy(tc); del neg["attachment_states"]["CONFLICT"]; fixture("target-missing-conflict-state", "schema", "resolveTargetContract", neg, expect_contains="CONFLICT")
+neg = copy.deepcopy(tc); del neg["evidence_envelope_law"]; fixture("target-missing-envelope-law", "schema", "resolveTargetContract", neg, expect_contains="evidence_envelope_law")
+
+# ============================================================ CAPABILITIES v1.4 (refreeze block; evidence record success law) + READ PRIMITIVES (receiver, taxonomy)
+caps = load("CAPABILITIES.json")
+caps["schema"] = "vidtoolz.resolveCapabilityMatrix.v1.4"; caps["version"] = "1.4.0"
+caps["qualification_note"] = "v1.4: zero QUALIFIED_READ rows. A row becomes QUALIFIED_READ only in a reviewed refreeze whose `refreeze` block is reviewed and whose evidence_records carry method, probe_id, raw_evidence_sha256, result SUCCESS, version_match true and reviewed_refreeze_version == this matrix version; the evaluator then resolves the linked CAPABILITY_EVIDENCE record (SUCCESS, exact host/product/version/build, expected receiver, reviewed ACCEPT, promoted by the active authority version + this matrix's sha256, raw evidence present and re-hashing) before any primitive is callable."
+caps["evidence_record_fields"] = ["host", "resolve_version", "build", "run_ref", "method", "observed_result", "evidence_path", "evidence_sha256", "version_match", "reviewed_refreeze_version", "probe_id", "raw_evidence_sha256", "result"]
+caps["refreeze"] = {"kind": "M0_READ_REQUALIFICATION", "reviewed": False, "review_decision_ref": None, "promoted_probe_ids": [], "note": "no probe has run; nothing promoted"}
+caps["qualification_pipeline"] = ["candidate CAPABILITY_EVIDENCE (probe run, reviewed:false)", "independent review decision per record (ACCEPT/REJECT)", "capability refreeze: new CAPABILITIES.json with reviewed refreeze block, rows QUALIFIED_READ citing (method, probe_id, raw_evidence_sha256)", "REFREEZE_RECORD in the evidence set naming the new matrix sha256", "records' qualification.promoted_by = {authority_version, capability_matrix_sha256 of the active matrix}", "evaluator compares every evidence record to the ACTIVE matrix; older refreeze, other authority version, other host/version or failed result never qualify"]
+for r in caps["rows"]:
+    for x in r.get("evidence_records", []):
+        x["probe_id"] = None; x["raw_evidence_sha256"] = None; x["result"] = "UNQUALIFIED_PRIOR_VERSION"
+dump("CAPABILITIES.json", caps)
+cap_schema = load("schemas/resolveCapabilityMatrix.schema.json")
+cap_schema["$id"] = "vidtoolz.resolveCapabilityMatrix.v1.4"; cap_schema["title"] = "Capability matrix v1.4"
+cap_schema["properties"]["schema"] = {"const": "vidtoolz.resolveCapabilityMatrix.v1.4"}
+cap_schema["properties"]["refreeze"] = {"type": "object", "additionalProperties": False, "required": ["kind", "reviewed", "review_decision_ref", "promoted_probe_ids"], "properties": {"kind": {"const": "M0_READ_REQUALIFICATION"}, "reviewed": {"type": "boolean"}, "review_decision_ref": STR_OR_NULL, "promoted_probe_ids": {"type": "array", "items": {"type": "string"}}, "note": {"type": "string"}}}
+cap_schema["properties"]["qualification_pipeline"] = {"type": "array", "items": {"type": "string"}}
+er = cap_schema["properties"]["rows"]["items"]["properties"]["evidence_records"]["items"]
+er["properties"].update({"probe_id": STR_OR_NULL, "raw_evidence_sha256": SHA_OR_NULL, "result": {"enum": ["SUCCESS", "CAPABILITY_FAILURE", "UNQUALIFIED_PRIOR_VERSION"]}})
+er["required"] = sorted(set(er["required"]) | {"probe_id", "raw_evidence_sha256", "result"})
+cap_schema["required"] = sorted(set(cap_schema["required"]) | {"refreeze"})
+dump("schemas/resolveCapabilityMatrix.schema.json", cap_schema)
+fixture("capabilities-frozen", "none", "resolveCapabilityMatrix", caps, check="semantic_capabilities")
+neg = copy.deepcopy(caps); neg["rows"][0]["evidence_class"] = "QUALIFIED_READ"; fixture("capabilities-qualified-read-without-exact-evidence", "semantic", "resolveCapabilityMatrix", neg, check="semantic_capabilities", expect_contains="without exact")
+neg = copy.deepcopy(caps); neg["rows"][0]["evidence_class"] = "QUALIFIED_READ"; neg["rows"][0]["evidence_records"] = [{"host": HOST, "resolve_version": "21.1.0", "build": 14, "run_ref": "probe", "method": "GetVersionString", "observed_result": "x", "evidence_path": "/x", "evidence_sha256": "a" * 64, "version_match": True, "reviewed_refreeze_version": "1.4.0", "probe_id": "probe-0001", "raw_evidence_sha256": "b" * 64, "result": "CAPABILITY_FAILURE"}]; fixture("capabilities-qualified-read-on-failed-evidence", "semantic", "resolveCapabilityMatrix", neg, check="semantic_capabilities", expect_contains="SUCCESS")
+neg = copy.deepcopy(caps); neg["rows"][0]["evidence_class"] = "QUALIFIED_READ"; neg["rows"][0]["evidence_records"] = [{"host": HOST, "resolve_version": "21.1.0", "build": 14, "run_ref": "probe", "method": "GetVersionString", "observed_result": "x", "evidence_path": "/x", "evidence_sha256": "a" * 64, "version_match": True, "reviewed_refreeze_version": "1.3.0", "probe_id": "probe-0001", "raw_evidence_sha256": "b" * 64, "result": "SUCCESS"}]; fixture("capabilities-qualified-read-promoted-by-other-refreeze", "semantic", "resolveCapabilityMatrix", neg, check="semantic_capabilities", expect_contains="refreeze")
+neg = copy.deepcopy(caps); neg["rows"][0]["evidence_class"] = "QUALIFIED_READ"; neg["rows"][0]["evidence_records"] = [{"host": HOST, "resolve_version": "21.1.0", "build": 14, "run_ref": "probe", "method": "GetVersionString", "observed_result": "x", "evidence_path": "/x", "evidence_sha256": "a" * 64, "version_match": True, "reviewed_refreeze_version": "1.4.0", "probe_id": "probe-0001", "raw_evidence_sha256": "b" * 64, "result": "SUCCESS"}]; fixture("capabilities-qualified-read-unreviewed-refreeze-block", "semantic", "resolveCapabilityMatrix", neg, check="semantic_capabilities", expect_contains="reviewed refreeze block")
+neg = copy.deepcopy(caps); neg["rows"][0]["evidence_class"] = "QUALIFIED"; fixture("capabilities-unknown-evidence-class", "schema", "resolveCapabilityMatrix", neg, expect_contains="enum")
+neg = copy.deepcopy(caps); del neg["refreeze"]; fixture("capabilities-missing-refreeze-block", "schema", "resolveCapabilityMatrix", neg, expect_contains="refreeze")
+neg = copy.deepcopy(caps); neg["rows"][0]["evidence_records"][0]["version_match"] = True; fixture("capabilities-version-match-lie", "semantic", "resolveCapabilityMatrix", neg, check="semantic_capabilities", expect_contains="version differs")
+rp = load("READ-PRIMITIVES.json")
+rp["schema"] = "vidtoolz.resolveReadPrimitives.v1.4"; rp["version"] = "1.4.0"
+for op, spec in rp["logical_operations"].items():
+    for p in spec["primitives"]:
+        p["receiver"] = F.receiver_of(p["method"])
+probe = rp["logical_operations"]["READ_PRIMITIVE_QUALIFICATION_PROBE"]
+probe["failure_taxonomy"] = {k: list(v) for k, v in L.PROBE_FAILURE_TAXONOMY.items()}
+probe["failure_law"] = "a getter that raises/times out/returns an unexpected type is a CAPABILITY_FAILURE record (reviewed → REJECT; the probe continues); wrong host/library/uuid/root, stale session, conflicting target or wrong manifest/authority/version is a FATAL_TARGET_FAILURE record that STOPS the probe and makes the session's derived attachment state CONFLICT"
+probe["output"] = "CAPABILITY_EVIDENCE records (qualification.reviewed:false) + RAW_EVIDENCE records + one CONNECTION_OBSERVATION, all envelope-bound to the session; a reviewed refreeze may later turn rows QUALIFIED_READ"
+PROBE_METHODS = sorted({p["method"] for p in probe["primitives"]})
+dump("READ-PRIMITIVES.json", rp)
+rp_schema = load("schemas/resolveReadPrimitives.schema.json")
+rp_schema["$id"] = "vidtoolz.resolveReadPrimitives.v1.4"; rp_schema["properties"]["schema"] = {"const": "vidtoolz.resolveReadPrimitives.v1.4"}
+lo = rp_schema["properties"]["logical_operations"]["additionalProperties"]
+lo["properties"]["failure_taxonomy"] = {"type": "object", "additionalProperties": False, "required": ["CAPABILITY_FAILURE", "FATAL_TARGET_FAILURE"], "properties": {"CAPABILITY_FAILURE": {"type": "array", "items": {"type": "string"}}, "FATAL_TARGET_FAILURE": {"type": "array", "items": {"type": "string"}}}}
+lo["properties"]["failure_law"] = {"type": "string"}
+pi = lo["properties"]["primitives"]["items"]
+pi["properties"]["receiver"] = {"enum": ["Resolve", "ProjectManager", "Project", "MediaPool", "Folder", "Timeline", "TimelineItem", "MediaPoolItem"]}
+pi["required"] = sorted(set(pi["required"]) | {"receiver"})
+dump("schemas/resolveReadPrimitives.schema.json", rp_schema)
+fixture("read-primitives-frozen", "none", "resolveReadPrimitives", rp, check="semantic_read_primitives")
+neg = copy.deepcopy(rp); neg["logical_operations"]["SNAPSHOT_CAPTURE"]["primitives"][0]["evidence_class"] = "QUALIFIED_READ"; fixture("read-primitives-class-mismatch-with-matrix", "semantic", "resolveReadPrimitives", neg, check="semantic_read_primitives", expect_contains="!= matrix")
+neg = copy.deepcopy(rp); neg["logical_operations"]["SNAPSHOT_CAPTURE"]["primitives"][0]["probe_allowed"] = True; fixture("read-primitives-probe-allowed-outside-probe", "semantic", "resolveReadPrimitives", neg, check="semantic_read_primitives", expect_contains="only inside")
+neg = copy.deepcopy(rp); neg["logical_operations"]["READ_PRIMITIVE_QUALIFICATION_PROBE"]["failure_taxonomy"]["FATAL_TARGET_FAILURE"] = ["WRONG_HOST"]; fixture("read-primitives-taxonomy-drift", "semantic", "resolveReadPrimitives", neg, check="semantic_read_primitives", expect_contains="taxonomy")
+neg = copy.deepcopy(rp); del neg["logical_operations"]["CONNECT"]["primitives"][0]["receiver"]; fixture("read-primitives-missing-receiver", "schema", "resolveReadPrimitives", neg, expect_contains="receiver")
+neg = copy.deepcopy(rp); neg["logical_operations"]["CONNECT"]["target_requirement"] = "CURRENT_PROJECT"; fixture("read-primitives-invented-target-requirement", "schema", "resolveReadPrimitives", neg, expect_contains="enum")
+# hypothetical refrozen matrix (NOT AUTHORITY): rows QUALIFIED_READ citing (method, probe_id, raw_evidence_sha256)
+caps_hyp = copy.deepcopy(caps); caps_hyp["version"] = "1.5.0-HYPOTHETICAL"; caps_hyp["qualification_note"] = "HYPOTHETICAL_NOT_AUTHORITY: illustrates a future reviewed refreeze; never load as CAPABILITIES.json"
+caps_hyp["refreeze"] = {"kind": "M0_READ_REQUALIFICATION", "reviewed": True, "review_decision_ref": "HYPOTHETICAL review decision", "promoted_probe_ids": ["probe-0001"], "note": "hypothetical"}
+for r in caps_hyp["rows"]:
+    if r["operation"].startswith("read:"):
+        r["evidence_class"] = "QUALIFIED_READ"; r.pop("probe_candidate", None)
+        r["evidence_records"] = [{"host": HOST, "resolve_version": "21.1.0", "build": 14, "run_ref": "HYPOTHETICAL M0 probe run probe-0001", "method": m, "observed_result": "hypothetical non-null", "evidence_path": "/HYPOTHETICAL", "evidence_sha256": hashlib.sha256(m.encode()).hexdigest(), "version_match": True, "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL", "probe_id": "probe-0001", "raw_evidence_sha256": L.sha256_text(f"probe-0001 {m} -> <non-null value of expected type>"), "result": "SUCCESS"} for m in r["primitives"]]
+dump("fixtures/eligibility/capabilities-hypothetical-refreeze.json", caps_hyp)
+CAPS_SHA, HYP_SHA = sha_of("CAPABILITIES.json"), sha_of("fixtures/eligibility/capabilities-hypothetical-refreeze.json")
+ACTIVE = {"authority_version": L.AUTHORITY_VERSION, "manifest_sha256": F.PLACEHOLDER_MANIFEST, "capability_matrix_sha256": CAPS_SHA}
+ACTIVE_HYP = dict(ACTIVE, capability_matrix_sha256=HYP_SHA)
+dump("fixtures/evidence/ACTIVE-AUTHORITY-PLACEHOLDER.json", {"schema": "vidtoolz.resolveFixtureActiveAuthority.v1.4", "note": "fixtures are minted against this PLACEHOLDER manifest sha; the validator proves they do not derive against the real FREEZE-MANIFEST.json sha and that records re-minted against the real sha do", "placeholder_manifest_sha256": F.PLACEHOLDER_MANIFEST, "capability_matrix_sha256": CAPS_SHA, "hypothetical_capability_matrix_sha256": HYP_SHA})
+
+# ============================================================ EVIDENCE SET schema v1.4 (envelope law) + fixture evidence sets
+envelope_s = {"type": "object", "additionalProperties": False, "required": list(L.ENVELOPE_FIELDS), "properties": {"authority_version": {"type": "string", "minLength": 1}, "manifest_sha256": SHA, "host_name": {"type": "string", "minLength": 1}, "product": STR_OR_NULL, "resolve_version": STR_OR_NULL, "build": {"type": ["integer", "null"]}, "library_name": STR_OR_NULL, "library_uuid": {"anyOf": [UUID, {"type": "null"}]}, "library_root": {"anyOf": [ABS_PATH, {"type": "null"}]}, "session_id": STR_OR_NULL, "provisioning_id": SHA_OR_NULL, "project_name": STR_OR_NULL, "project_unique_id": STR_OR_NULL, "timeline_name": STR_OR_NULL, "timeline_unique_id": STR_OR_NULL, "target_epoch": STR_OR_NULL, "sequence": NONNEG, "captured_at": {"type": "string", "minLength": 20}, "record_type_version": {"const": L.RECORD_TYPE_VERSION}}}
+
+
+def rec_schema(rtype, req, props):
+    level = L.ENVELOPE_LEVEL[rtype]
+    env_req = {k: {"not": {"type": "null"}} for k in L.ENVELOPE_REQUIRED[level]}
+    if rtype in L.PROJECT_SCOPED:
+        env_req["project_name"] = {"type": "string", "minLength": 1}
+    if rtype in L.TIMELINE_SCOPED:
+        env_req["timeline_name"] = {"type": "string", "minLength": 1}
+    return {"if": {"properties": {"record_type": {"const": rtype}}}, "then": {"required": sorted(set(req) | {"record_type", "record_id", "envelope", "recorded_at"}), "properties": dict(props, envelope={"properties": env_req})}}
+
+
+RES_S = {"type": "object", "additionalProperties": False, "required": ["classification", "success", "code"], "properties": {"classification": {"enum": ["SUCCESS", "CAPABILITY_FAILURE", "FATAL_TARGET_FAILURE"]}, "success": {"type": "boolean"}, "code": {"anyOf": [{"enum": sorted(sum(L.PROBE_FAILURE_TAXONOMY.values(), []))}, {"type": "null"}]}}}
+QUAL_S = {"type": "object", "additionalProperties": False, "required": ["reviewed", "decision", "promoted_by"], "properties": {"reviewed": {"type": "boolean"}, "decision": {"anyOf": [{"enum": ["ACCEPT", "REJECT"]}, {"type": "null"}]}, "promoted_by": {"anyOf": [{"type": "object", "additionalProperties": False, "required": ["authority_version", "capability_matrix_sha256"], "properties": {"authority_version": {"type": "string"}, "capability_matrix_sha256": SHA}}, {"type": "null"}]}}}
+RECORD_RULES = [
+    rec_schema("PROVISIONING_RECORD", ["library_kind", "root_path", "instance_uuid", "provisioned_by"], {"library_kind": {"const": "Disk"}, "root_path": ABS_PATH, "instance_uuid": UUID, "provisioned_by": {"type": "string", "minLength": 1}}),
+    rec_schema("LAUNCH_RECIPE", ["recipe_sha256", "resolve_version", "resolve_binary_sha256", "external_scripting_preference"], {"recipe_sha256": SHA, "resolve_version": {"type": "string"}, "resolve_binary_sha256": SHA, "external_scripting_preference": {"enum": ["Local", "Network", "None"]}}),
+    rec_schema("BUNDLE_VERIFICATION", ["authority_version", "manifest_sha256", "verifier", "prepared_by", "historical"], {"authority_version": {"type": "string"}, "manifest_sha256": SHA, "verifier": {"type": "string", "minLength": 1}, "prepared_by": {"type": "string", "minLength": 1}, "historical": {"type": "boolean"}}),
+    rec_schema("CONNECTION_OBSERVATION", ["db_type", "db_name", "product", "resolve_version", "root_path", "instance_uuid"], {"db_type": {"type": "string"}, "db_name": {"type": "string"}, "product": {"type": "string"}, "resolve_version": {"type": "string"}, "root_path": {"type": ["string", "null"]}, "instance_uuid": {"anyOf": [UUID, {"type": "null"}]}}),
+    rec_schema("PROJECT_BINDING_OBSERVATION", ["project_name", "project_unique_id", "project_unique_id_status"], {"project_name": {"type": "string", "minLength": 1}, "project_unique_id": STR_OR_NULL, "project_unique_id_status": OBS}),
+    rec_schema("TIMELINE_BINDING_OBSERVATION", ["project_name", "timeline_name", "timeline_unique_id", "timeline_unique_id_status", "project_unique_id"], {"project_name": {"type": "string", "minLength": 1}, "timeline_name": {"type": "string", "minLength": 1}, "timeline_unique_id": STR_OR_NULL, "timeline_unique_id_status": OBS, "project_unique_id": STR_OR_NULL}),
+    rec_schema("OPERATOR_PROVISIONED_PROJECT", ["project_name", "provisioned_by"], {"project_name": {"type": "string", "minLength": 1}, "provisioned_by": {"type": "string", "minLength": 1}}),
+    rec_schema("CAPABILITY_EVIDENCE", ["method", "receiver_type", "probe_id", "probe_authority_version", "raw_evidence_sha256", "parsed_observation", "result", "qualification"], {"method": {"type": "string", "minLength": 1}, "receiver_type": {"type": "string", "minLength": 1}, "probe_id": {"type": "string", "minLength": 1}, "probe_authority_version": {"type": "string", "minLength": 1}, "raw_evidence_sha256": SHA, "parsed_observation": {"type": "object"}, "result": RES_S, "qualification": QUAL_S}),
+    rec_schema("RAW_EVIDENCE", ["content", "content_sha256"], {"content": {"type": "string"}, "content_sha256": SHA}),
+    rec_schema("REFREEZE_RECORD", ["kind", "reviewed", "manifest_sha256", "authority_version", "capability_matrix_sha256"], {"kind": {"enum": ["M0_READ_REQUALIFICATION"]}, "reviewed": {"type": "boolean"}, "manifest_sha256": SHA, "authority_version": {"type": "string"}, "capability_matrix_sha256": SHA}),
+    rec_schema("MILESTONE_EXIT", ["milestone", "authority_version", "evidence_dir_sha256"], {"milestone": {"enum": ["M0", "M1", "M2"]}, "authority_version": {"type": "string"}, "evidence_dir_sha256": SHA}),
+    rec_schema("M3_AUTHORIZATION", ["scope", "approver", "authority_version", "library_name"], {"scope": {"const": SCOPE}, "approver": {"type": "string", "minLength": 1}, "authority_version": {"type": "string"}, "library_name": {"type": "string"}}),
+    rec_schema("JOURNAL_PREPARED", ["transaction_id", "plan_digest", "journal_path_sha256"], {"transaction_id": {"type": "string", "minLength": 1}, "plan_digest": SHA, "journal_path_sha256": SHA}),
+    rec_schema("READ_ONLY_JOURNAL", ["journal_path_sha256"], {"journal_path_sha256": SHA}),
+    rec_schema("EXCLUSIVE_SESSION_ATTESTATION", ["attested_by", "pid_observed"], {"attested_by": {"type": "string", "minLength": 1}, "pid_observed": {"type": "integer"}}),
+    rec_schema("GUARD_SNAPSHOT", ["guard_digest", "project_name", "timeline_name", "payload_sha256"], {"guard_digest": SHA, "project_name": {"type": "string"}, "timeline_name": {"type": "string"}, "payload_sha256": SHA}),
+    rec_schema("PLAN_VALIDATION", ["plan_digest", "result", "authority_version", "validator"], {"plan_digest": SHA, "result": {"enum": ["PASS", "FAIL"]}, "authority_version": {"type": "string"}, "validator": {"type": "string"}}),
+    rec_schema("MEDIA_CLASS_ATTESTATION", ["media_class", "media_sha256"], {"media_class": {"enum": ["SYNTHETIC", "PRODUCTION"]}, "media_sha256": SHA}),
+    rec_schema("DESTINATION_TIMELINE", ["project_name", "timeline_name", "timeline_unique_id"], {"project_name": {"type": "string"}, "timeline_name": {"type": "string"}, "timeline_unique_id": {"type": "string"}}),
+]
+record_common = {"record_type": {"enum": sorted(L.RECORD_TYPES)}, "record_id": SHA, "envelope": envelope_s, "recorded_at": {"type": "string", "minLength": 1}}
+ev_schema = S("vidtoolz.resolveEvidenceSet.v1.4", "Linked evidence set (content-addressed, envelope-bound records)", {"schema": {"const": "vidtoolz.resolveEvidenceSet.v1.4"}, "current_session_id": STR_OR_NULL, "evaluated_at": {"type": "string", "minLength": 20}, "records": {"type": "object", "propertyNames": {"pattern": "^[a-f0-9]{64}$"}, "additionalProperties": {"type": "object", "required": ["record_type", "record_id", "envelope", "recorded_at"], "properties": record_common, "allOf": RECORD_RULES}}}, ["schema", "current_session_id", "evaluated_at", "records"],
+              comment="Every record carries the identity envelope (authority_version, manifest_sha256, host, product/version/build, library name/uuid/root, session_id, provisioning_id, project/timeline identity, target_epoch, sequence, captured_at, record_type_version). Level law: BUNDLE records need authority+manifest+host; LIBRARY records add library name/uuid/root; SESSION records add product/version/build, session_id and provisioning_id. record_id = sha256(domain vidtoolz.resolveEvidenceRecord.v1 + canonical body without record_id). Inconsistent records never compose (envelope_conflicts); the CURRENT record of a type is the highest envelope.sequence within current_session_id; map order is irrelevant.")
+dump("schemas/resolveEvidenceSet.schema.json", ev_schema)
+req_schema = load("schemas/resolveEligibilityRequest.schema.json")
+req_schema["$id"] = "vidtoolz.resolveEligibilityRequest.v1.4"; req_schema["properties"]["schema"] = {"const": "vidtoolz.resolveEligibilityRequest.v1.4"}
+dump("schemas/resolveEligibilityRequest.schema.json", req_schema)
+M = F.Mint(F.PLACEHOLDER_MANIFEST, CAPS_SHA)
+EVSETS, H = F.base_sets(M, PROBE_METHODS, HYP_SHA)
+# structurally invalid sets (schema / binding layer)
+bad_prov = M.R("PROVISIONING_RECORD", level="LIBRARY", env={"library_root": None}, library_kind="Disk", root_path=F.ROOT, instance_uuid=UU, provisioned_by="Mikko")
+EVSETS["invalid-provisioning-without-root"] = F.ES([bad_prov, H["bundle"], H["launch"], H["roj"]])
+EVSETS["invalid-connection-wrong-manifest"] = F.ES([H["prov"], H["bundle"], H["launch"], H["roj"], M.conn(seq=2, env={"manifest_sha256": "9" * 64}), H["pb"], H["tb"]])
+EVSETS["invalid-connection-other-authority"] = F.ES([H["prov"], H["bundle"], H["launch"], H["roj"], M.conn(seq=2, env={"authority_version": "1.3.0"}), H["pb"], H["tb"]])
+EVSETS["invalid-bundle-other-manifest-not-historical"] = F.ES([H["prov"], M.bundle(env={"manifest_sha256": "9" * 64}, manifest_sha256="9" * 64), H["launch"], H["roj"]])
+tampered = copy.deepcopy(EVSETS["attached"]); tampered["records"][H["conn"]["record_id"]]["db_name"] = "EKA"
+EVSETS["invalid-tampered-record"] = tampered
+for name, es in EVSETS.items():
+    dump(f"fixtures/evidence/{name}.json", es)
+
+# ============================================================ SNAPSHOT v1.4: observation status on timeline/project/track fields; capability coupling; GUARD v2
+def fs_schema(fields):
+    return {"type": "object", "additionalProperties": False, "required": list(fields), "properties": {**{k: OBS for k in fields}, **{k + "_reason": {"type": "string", "minLength": 1} for k in fields}}}
+
+
+item_common = {"unique_id": STR_OR_NULL, "observation_ordinal": NONNEG, "name": STR_OR_NULL, "start": FRAME_QTY_OR_NULL, "end": FRAME_QTY_OR_NULL, "duration": FRAME_QTY_OR_NULL, "enabled": {"type": ["boolean", "null"]}, "markers": {"type": "array"}, "identity_observed": {"enum": ["COMPLETE", "PARTIAL", "NONE"]}, "field_status": fs_schema(L.ITEM_STATUS_FIELDS), "media_pool_item_unique_id": STR_OR_NULL, "media_id": STR_OR_NULL, "source_start": FRAME_QTY_OR_NULL, "source_end": FRAME_QTY_OR_NULL}
+media_backed = {"type": "object", "additionalProperties": False, "required": list(item_common) + ["provenance", "source_locator", "source_status", "source_sha256"], "properties": dict(item_common, provenance={"type": "object", "additionalProperties": False, "required": ["kind"], "properties": {"kind": {"const": "MEDIA_BACKED"}}}, source_locator=STR_OR_NULL, source_status={"enum": ["HASHED", "UNHASHED_UNOWNED", "OFFLINE"]}, source_sha256=SHA_OR_NULL)}
+non_media = {"type": "object", "additionalProperties": False, "required": list(item_common) + ["provenance", "source_locator", "source_status", "source_sha256", "absence_reason"], "properties": dict(item_common, provenance={"type": "object", "additionalProperties": False, "required": ["kind"], "properties": {"kind": {"enum": ["GENERATOR", "TITLE", "COMPOUND", "ADJUSTMENT", "FUSION_OR_GENERATED", "OTHER_OBSERVED"]}}}, source_locator={"type": "null"}, source_status={"const": "NOT_APPLICABLE"}, source_sha256={"type": "null"}, absence_reason={"enum": ["NO_MEDIA_POOL_ITEM", "NO_FILE_BACKED_SOURCE", "UNOBSERVED_BY_API"]})}
+marker = {"type": "object", "additionalProperties": False, "required": ["object_address", "frame", "duration", "color", "name", "note", "custom_data"], "properties": {"object_address": {"type": "string", "minLength": 1}, "frame": FRAME_QTY, "duration": FRAME_QTY, "color": {"type": "string"}, "name": {"type": "string"}, "note": {"type": "string"}, "custom_data": {"type": "string"}}}
+track = {"type": "object", "additionalProperties": False, "required": ["type", "index", "name", "enabled", "locked", "field_status", "items"], "properties": {"type": {"enum": ["video", "audio", "subtitle"]}, "index": POSINT, "name": STR_OR_NULL, "enabled": {"type": ["boolean", "null"]}, "locked": {"type": ["boolean", "null"]}, "field_status": fs_schema(L.TRACK_STATUS_FIELDS), "items": {"type": "array", "items": {"oneOf": [media_backed, non_media]}}}}
+coverage = {"type": "object", "additionalProperties": False, "required": ["profile", "complete", "observed_domains", "unobservable_domains", "deferred_domains", "incomplete_reasons"], "properties": {"profile": {"enum": list(L.COVERAGE_PROFILES)}, "complete": {"type": "boolean"}, "observed_domains": {"type": "array", "items": {"enum": sorted(L.KNOWN_DOMAINS)}, "uniqueItems": True}, "unobservable_domains": {"type": "array", "items": {"enum": sorted(L.KNOWN_DOMAINS)}, "uniqueItems": True}, "deferred_domains": {"type": "array", "items": {"enum": sorted(L.KNOWN_DOMAINS)}, "uniqueItems": True}, "incomplete_reasons": {"type": "array", "items": {"type": "string", "minLength": 1}}}}
+policy_s = {"type": "object", "additionalProperties": False, "required": ["target_contract_sha256", "timebase_sha256", "track_policy_sha256", "capabilities_version", "capability_matrix_sha256", "collector_version", "canonicalization_version"], "properties": {"target_contract_sha256": SHA, "timebase_sha256": SHA, "track_policy_sha256": SHA, "capabilities_version": {"type": "string"}, "capability_matrix_sha256": SHA, "collector_version": {"type": "string"}, "canonicalization_version": {"const": "1.4"}}}
+library_s = {"type": "object", "additionalProperties": False, "required": ["db_type", "db_name", "instance_uuid"], "properties": {"db_type": {"enum": ["Disk"]}, "db_name": {"type": "string", "minLength": 1}, "instance_uuid": UUID}}
+obs_fail = {"type": "object", "additionalProperties": False, "required": ["track_address", "observation_ordinal", "method", "reason"], "properties": {"track_address": {"type": "string", "minLength": 1}, "observation_ordinal": {"type": ["integer", "null"]}, "method": STR_OR_NULL, "reason": {"type": "string", "minLength": 1}}}
+project_s = {"type": "object", "additionalProperties": False, "required": ["unique_id", "name", "last_modified_time", "field_status"], "properties": {"unique_id": STR_OR_NULL, "name": STR_OR_NULL, "last_modified_time": {"type": ["integer", "string", "null"]}, "field_status": fs_schema(L.PROJECT_STATUS_FIELDS)}}
+timeline_s = {"type": "object", "additionalProperties": False, "required": ["unique_id", "name", "start_frame", "start_timecode", "fps", "width", "height", "end_frame", "is_current", "duration_convention", "settings", "field_status"], "properties": {"unique_id": STR_OR_NULL, "name": STR_OR_NULL, "start_frame": {"type": ["integer", "null"], "minimum": 0}, "start_timecode": STR_OR_NULL, "fps": {"anyOf": [{"type": "object", "additionalProperties": False, "required": ["numerator", "denominator"], "properties": {"numerator": POSINT, "denominator": POSINT}}, {"type": "null"}]}, "width": {"type": ["integer", "null"], "minimum": 1}, "height": {"type": ["integer", "null"], "minimum": 1}, "end_frame": {"type": ["integer", "null"], "minimum": 0}, "is_current": {"type": ["boolean", "null"]}, "duration_convention": {"enum": ["UNQUALIFIED", "END_EXCLUSIVE", "END_INCLUSIVE"]}, "settings": {"type": ["object", "null"]}, "field_status": fs_schema(L.TIMELINE_STATUS_FIELDS)}}
+collection_s = {"type": "object", "additionalProperties": False, "required": ["started_at", "ended_at", "generation", "stable_pair", "session_id", "primitive_status"], "properties": {"started_at": {"type": "string"}, "ended_at": {"type": "string"}, "generation": NONNEG, "stable_pair": {"type": "boolean"}, "session_id": {"type": "string", "minLength": 1}, "primitive_status": {"type": "object", "additionalProperties": {"enum": ["QUALIFIED_CALLABLE", "PROBE_ALLOWED", "UNQUALIFIED", "UNKNOWN_METHOD"]}}}}
+snap_schema = S("vidtoolz.resolveSnapshot.v1.4", "Canonical Resolve readback snapshot v1.4", {
+    "schema": {"const": "vidtoolz.resolveSnapshot.v1.4"}, "collector_version": {"type": "string", "minLength": 1}, "canonicalization_version": {"const": "1.4"}, "target_epoch": {"type": "string", "minLength": 1}, "resolve_build": {"type": "string", "minLength": 1},
+    "library": library_s, "project": project_s, "collection": collection_s, "coverage": coverage, "policy": policy_s,
+    "payload": {"type": "object", "additionalProperties": False, "required": ["timeline", "tracks", "markers", "media_dependencies", "observation_failures"], "properties": {"timeline": timeline_s, "tracks": {"type": "array", "items": track}, "markers": {"type": "array", "items": marker}, "media_dependencies": {"type": "array", "items": {"type": "object", "required": ["logical_locator", "source_sha256", "status"], "properties": {"logical_locator": {"type": "string"}, "source_sha256": SHA_OR_NULL, "status": {"enum": ["HASHED", "UNHASHED_UNOWNED", "OFFLINE"]}}}}, "observation_failures": {"type": "array", "items": obs_fail}}},
+    "payload_sha256": SHA, "guard_digest": SHA, "hash_domains": {"type": "object", "additionalProperties": False, "required": ["payload", "guard"], "properties": {"payload": {"const": "vidtoolz.resolveSnapshotPayload.v1.4"}, "guard": {"const": "vidtoolz.resolveGuard.v2"}}},
+}, ["schema", "collector_version", "canonicalization_version", "target_epoch", "resolve_build", "library", "project", "collection", "coverage", "policy", "payload", "payload_sha256", "guard_digest", "hash_domains"],
+    comment="v1.4: the honest observation model (OBSERVED|UNAVAILABLE|UNSUPPORTED|ERROR|NOT_REQUESTED + reason) covers timeline fields (unique_id, name, start_frame, end_frame, start_timecode, fps, width, height, is_current, settings), project fields (unique_id, name, last_modified_time), track fields (name, enabled, locked) and the ten item fields. Every value is nullable; null only when status permits; OBSERVED requires a value AND a callable producing primitive (collection.primitive_status / active capability authority). coverage.complete is a function of the profile's mandatory domains, item fields, timeline fields, identity, locks, guard and an empty failure ledger; otherwise incomplete_reasons must name what is missing.")
+dump("schemas/resolveSnapshot.schema.json", snap_schema)
+ident_s = {"type": "object", "additionalProperties": False, "required": ["unique_id", "unique_id_status", "unique_id_reason", "name", "name_status"], "properties": {"unique_id": STR_OR_NULL, "unique_id_status": OBS, "unique_id_reason": STR_OR_NULL, "name": STR_OR_NULL, "name_status": OBS}}
+guard_schema = S("vidtoolz.resolveGuard.v2", "Composite pre-write / revalidation guard v2 (identity with observation status + reason)", {"hash_domain": {"const": "vidtoolz.resolveGuard.v2"}, "guard_version": {"const": 2}, "library": library_s, "project": ident_s, "timeline": ident_s, "target_epoch": {"type": "string"}, "coverage": coverage, "policy": policy_s, "payload_sha256": SHA}, ["hash_domain", "guard_version", "library", "project", "timeline", "target_epoch", "coverage", "policy", "payload_sha256"],
+                 comment="Guard digest = sha256(domain vidtoolz.resolveGuard.v2 + canonical guard object). v2 carries project/timeline identity WITH observation status and reason, so UNAVAILABLE and ERROR identities produce different guards and a guard never silently equates an unobserved identity with an observed one. Payload digest alone is never a version token. WRITE_PRECHECK completeness requires OBSERVED identity.")
+dump("schemas/resolveGuard.schema.json", guard_schema)
+policy = {"target_contract_sha256": sha_of("TARGET-CONTRACT.json"), "timebase_sha256": sha_of("TIMEBASE.json"), "track_policy_sha256": sha_of("schemas/resolveTrackPolicy.v1.json"), "capabilities_version": "1.4.0", "capability_matrix_sha256": CAPS_SHA, "collector_version": "0.0.0-fixture", "canonicalization_version": "1.4"}
+policy_hyp = dict(policy, capabilities_version="1.5.0-HYPOTHETICAL", capability_matrix_sha256=HYP_SHA)
+
+
+def fst(fields, **kw):
+    base = {k: "OBSERVED" for k in fields}
+    base.update(kw)
+    return base
+
+
+def unavailable(fields, reason="not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"):
+    d = {}
+    for k in fields:
+        d[k] = "UNAVAILABLE"; d[k + "_reason"] = f"{k}: {reason}"
+    return d
+
+
+def item_media(uid, ordn, start, end, mp, sha=None, status="HASHED", name="clip", **kw):
+    it = {"unique_id": uid, "observation_ordinal": ordn, "name": name, "start": start, "end": end, "duration": end - start, "enabled": True, "markers": [], "identity_observed": "COMPLETE", "field_status": fst(L.ITEM_STATUS_FIELDS, media_id="UNAVAILABLE", media_id_reason="GetMediaId returned None on fixture"), "provenance": {"kind": "MEDIA_BACKED"}, "media_pool_item_unique_id": mp, "media_id": None, "source_locator": f"/qual/media/{name}.png", "source_status": status, "source_sha256": sha, "source_start": 0, "source_end": end - start}
+    it.update(kw)
+    return it
+
+
+def item_other(uid, ordn, start, end, kind, reason, name):
+    return {"unique_id": uid, "observation_ordinal": ordn, "name": name, "start": start, "end": end, "duration": end - start, "enabled": True, "markers": [], "identity_observed": "PARTIAL", "field_status": fst(L.ITEM_STATUS_FIELDS, media_pool_item_unique_id="NOT_REQUESTED", media_id="NOT_REQUESTED", source_start="UNSUPPORTED", source_end="UNSUPPORTED"), "provenance": {"kind": kind}, "media_pool_item_unique_id": None, "media_id": None, "source_locator": None, "source_status": "NOT_APPLICABLE", "source_sha256": None, "absence_reason": reason, "source_start": None, "source_end": None}
+
+
+def item_unobserved(ordn):
+    """M0 before any qualification: enumerated by the probe's ledger only; every field UNAVAILABLE."""
+    return {"unique_id": None, "observation_ordinal": ordn, "name": None, "start": None, "end": None, "duration": None, "enabled": None, "markers": [], "identity_observed": "NONE", "field_status": unavailable(L.ITEM_STATUS_FIELDS), "provenance": {"kind": "OTHER_OBSERVED"}, "media_pool_item_unique_id": None, "media_id": None, "source_locator": None, "source_status": "NOT_APPLICABLE", "source_sha256": None, "absence_reason": "UNOBSERVED_BY_API", "source_start": None, "source_end": None}
+
+
+def item_partial(ordn, start, name):
+    it = item_media(None, ordn, start, start, None, None, "UNHASHED_UNOWNED", name)
+    it.update(end=None, duration=None, enabled=None, source_start=None, source_end=None, source_locator=None, identity_observed="NONE", field_status=fst(L.ITEM_STATUS_FIELDS, **unavailable(("unique_id", "end", "duration", "enabled", "media_pool_item_unique_id", "source_start", "source_end"), "getter not callable in this session"), media_id="NOT_REQUESTED"))
+    return it
+
+
+def trk(typ, idx, name, items, enabled=True, locked=False, observed=True):
+    if observed:
+        return {"type": typ, "index": idx, "name": name, "enabled": enabled, "locked": locked, "field_status": fst(L.TRACK_STATUS_FIELDS), "items": items}
+    return {"type": typ, "index": idx, "name": None, "enabled": None, "locked": None, "field_status": unavailable(L.TRACK_STATUS_FIELDS), "items": items}
+
+
+FULL_COV = {"profile": "FULL_TIMELINE_READ", "complete": True, "observed_domains": ["connection", "library", "project", "timeline", "tracks", "items", "markers", "settings", "adapter_bin_media"], "unobservable_domains": ["grades", "fusion_graphs", "caches", "nested_timelines", "keyframe_curves"], "deferred_domains": ["item_properties", "fades", "speed", "takes", "linked_items", "unowned_media_hashes", "track_locks", "item_identity"], "incomplete_reasons": []}
+WP_COV = {"profile": "WRITE_PRECHECK", "complete": True, "observed_domains": ["connection", "library", "project", "timeline", "tracks", "items", "item_identity", "item_source_bounds", "markers", "settings", "track_locks", "adapter_bin_media", "guard", "policy"], "unobservable_domains": ["grades", "fusion_graphs", "caches", "nested_timelines", "keyframe_curves"], "deferred_domains": ["item_properties", "fades", "speed", "takes", "linked_items", "unowned_media_hashes"], "incomplete_reasons": []}
+HYP_PS = {m: "QUALIFIED_CALLABLE" for m in PROBE_METHODS}
+FROZEN_PS = {m: "UNQUALIFIED" for m in PROBE_METHODS}
+
+
+def make_snapshot(tracks, markers=None, coverage_=None, convention="UNQUALIFIED", failures=None, timeline_observed=True, project_observed=True, policy_=None, ps=None, epoch="epoch-fixture-1"):
+    if timeline_observed:
+        tl = {"unique_id": "tl-fixture-0001", "name": TL, "start_frame": 108000, "start_timecode": "01:00:00:00", "fps": {"numerator": 30, "denominator": 1}, "width": 1080, "height": 1920, "end_frame": 114756, "is_current": True, "duration_convention": convention, "settings": {"useCustomSettings": "1", "timelineFrameRate": "30"}, "field_status": fst(L.TIMELINE_STATUS_FIELDS)}
+    else:
+        tl = {"unique_id": None, "name": None, "start_frame": None, "start_timecode": None, "fps": None, "width": None, "height": None, "end_frame": None, "is_current": None, "duration_convention": convention, "settings": None, "field_status": unavailable(L.TIMELINE_STATUS_FIELDS)}
+    payload = L.normalize_snapshot_payload({"timeline": tl, "tracks": tracks, "markers": markers or [], "media_dependencies": [], "observation_failures": failures or []})
+    proj = {"unique_id": "proj-fixture-0001", "name": PROJ, "last_modified_time": None, "field_status": fst(L.PROJECT_STATUS_FIELDS, last_modified_time="NOT_REQUESTED")} if project_observed else {"unique_id": None, "name": None, "last_modified_time": None, "field_status": unavailable(L.PROJECT_STATUS_FIELDS)}
+    snap = {"schema": "vidtoolz.resolveSnapshot.v1.4", "collector_version": "0.0.0-fixture", "canonicalization_version": "1.4", "target_epoch": epoch, "resolve_build": VER, "library": {"db_type": "Disk", "db_name": LIB, "instance_uuid": UU}, "project": proj, "collection": {"started_at": "2026-09-08T11:50:00Z", "ended_at": "2026-09-08T11:50:01Z", "generation": 1, "stable_pair": True, "session_id": F.S_CUR, "primitive_status": ps if ps is not None else HYP_PS}, "coverage": copy.deepcopy(coverage_ or FULL_COV), "policy": policy_ or policy_hyp, "payload": payload, "hash_domains": {"payload": "vidtoolz.resolveSnapshotPayload.v1.4", "guard": "vidtoolz.resolveGuard.v2"}}
+    snap["payload_sha256"] = L.snapshot_payload_digest(payload)
+    snap["guard_digest"] = L.guard_digest(snap)
+    return snap
+
+
+def resign(d):
+    d["payload_sha256"] = L.snapshot_payload_digest(d["payload"]); d["guard_digest"] = L.guard_digest(d)
+    return d
+
+
+sha_a = hashlib.sha256(b"fixture-a").hexdigest()
+human_tl = [
+    trk("video", 1, "V1", [item_media("it-1", 0, 108000, 108347, "mp-1", sha_a, "HASHED", "still-001"), item_other("it-2", 1, 108347, 108694, "TITLE", "NO_FILE_BACKED_SOURCE", "Text+"), item_media("it-3", 2, 108694, 109174, "mp-2", None, "UNHASHED_UNOWNED", "human-broll"), item_other("it-4", 3, 109174, 109654, "GENERATOR", "NO_MEDIA_POOL_ITEM", "Solid Color"), item_other("it-5", 4, 109654, 109924, "COMPOUND", "NO_FILE_BACKED_SOURCE", "Compound Clip 1"), item_media("it-6", 5, 109924, 110194, "mp-3", None, "OFFLINE", "missing-media")]),
+    trk("video", 2, "V2", [item_other("it-7", 0, 108000, 108694, "ADJUSTMENT", "NO_MEDIA_POOL_ITEM", "Adjustment Clip"), item_other("it-8", 1, 108694, 109174, "FUSION_OR_GENERATED", "UNOBSERVED_BY_API", "Fusion Composition")]),
+    trk("audio", 1, "A1", [item_media("it-9", 0, 108000, 114756, "mp-4", hashlib.sha256(b"narr").hexdigest(), "HASHED", "narration")]),
+]
+snap_pos = make_snapshot(human_tl, markers=[{"object_address": "timeline", "frame": 108000, "duration": 1, "color": "Blue", "name": "draft-still-001", "note": "", "custom_data": "vidtoolz:resolve:binding:v1:epoch-fixture-1:b-001:o-1"}])
+dump("fixtures/snapshot/human-timeline-mixed-provenance.json", snap_pos)
+SX_HYP = {"capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json", "evidence_set": "attached-reviewed-evidence"}
+SX_FROZEN = {"capabilities": "CAPABILITIES.json", "evidence_set": "attached"}
+fixture("snapshot-human-timeline-full-read", "none", "resolveSnapshot", snap_pos, check="semantic_snapshot", extra=SX_HYP)
+fixture("snapshot-full-read-claimed-under-frozen-matrix", "snapshot", "resolveSnapshot", snap_pos, check="semantic_snapshot", expect_contains="not callable", extra=SX_FROZEN)
+# M0 before any qualification (zero QUALIFIED_READ rows): nothing callable, so the degraded capture may contain ONLY the
+# connection/library domains (from the session's CONNECTION_OBSERVATION); project/timeline fields UNAVAILABLE with reason;
+# no tracks, items or markers (probe output is never snapshot content); honest complete:false. This is the only legal
+# SNAPSHOT_CAPTURE output before a reviewed refreeze and it is never a plan H0.
+M0_COV = {"profile": "MINIMAL_M0", "complete": False, "observed_domains": ["connection", "library"], "unobservable_domains": ["grades", "fusion_graphs", "caches", "nested_timelines", "keyframe_curves"], "deferred_domains": ["project", "timeline", "tracks", "items", "item_identity", "item_source_bounds", "markers", "settings", "track_locks", "adapter_bin_media", "item_properties", "fades", "speed", "takes", "linked_items", "unowned_media_hashes"], "incomplete_reasons": ["no read primitive is QUALIFIED_READ under the active capability authority (v1.4): project/timeline fields UNAVAILABLE; tracks/items/markers not enumerated", "mandatory domains project, timeline not observed"]}
+m0_snap = make_snapshot([], coverage_=M0_COV, timeline_observed=False, project_observed=False, policy_=policy, ps=FROZEN_PS)
+dump("fixtures/snapshot/m0-minimal-nothing-qualified.json", m0_snap)
+fixture("snapshot-m0-minimal-nothing-qualified-honest", "none", "resolveSnapshot", m0_snap, check="semantic_snapshot", extra=SX_FROZEN)
+# M0 minimal with hypothetical qualification: identities observed, complete
+m0_complete = make_snapshot([trk("video", 1, "V1", [item_media("it-1", 0, 108000, 108347, "mp-1", sha_a)])], coverage_={"profile": "MINIMAL_M0", "complete": True, "observed_domains": ["connection", "library", "project", "timeline", "tracks", "items"], "unobservable_domains": ["grades", "fusion_graphs", "caches", "nested_timelines", "keyframe_curves"], "deferred_domains": ["item_identity", "item_source_bounds", "markers", "settings", "track_locks", "adapter_bin_media", "item_properties", "fades", "speed", "takes", "linked_items", "unowned_media_hashes"], "incomplete_reasons": []})
+fixture("snapshot-m0-minimal-complete-qualified", "none", "resolveSnapshot", m0_complete, check="semantic_snapshot", extra=SX_HYP)
+# partial item under qualified matrix but one getter failed at runtime (ERROR) + one element that could not be enumerated (ledger) -> honest incomplete
+part = copy.deepcopy(human_tl); part[0]["items"].append(dict(item_partial(9, 113000, "p"), field_status=dict(item_partial(9, 113000, "p")["field_status"], end="ERROR", end_reason="GetEnd raised RuntimeError on this item")))
+snap_partial = make_snapshot(part, coverage_=dict(FULL_COV, complete=False, incomplete_reasons=["item video:1#9 end ERROR (GetEnd raised)", "item video:1#9 identity UNAVAILABLE", "observation_failures: video:1 ordinal 10 GetItemListInTrack element raised"]), failures=[{"track_address": "video:1", "observation_ordinal": 10, "method": "GetItemListInTrack", "reason": "element 10 raised on attribute access; recorded in ledger, not fabricated"}])
+dump("fixtures/snapshot/full-read-partial-item-ledger.json", snap_partial)
+fixture("snapshot-full-read-partial-item-honest", "none", "resolveSnapshot", snap_partial, check="semantic_snapshot", extra=SX_HYP)
+# degraded timeline observation: GetStartFrame NOT callable under an otherwise qualified matrix (evidence set lacks its record)
+SX_HYP_NO_SF = {"capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json", "evidence_set": "attached-reviewed-evidence-minus-getstartframe"}
+deg = copy.deepcopy(snap_pos)
+deg["payload"]["timeline"].update(start_frame=None); deg["payload"]["timeline"]["field_status"].update(start_frame="UNAVAILABLE", start_frame_reason="GetStartFrame not QUALIFIED_CALLABLE in this session (no linked reviewed CAPABILITY_EVIDENCE)")
+deg["collection"]["primitive_status"]["GetStartFrame"] = "UNQUALIFIED"
+deg["coverage"].update(complete=False, incomplete_reasons=["timeline.start_frame UNAVAILABLE (GetStartFrame not callable)"]); resign(deg)
+dump("fixtures/snapshot/full-read-degraded-start-frame.json", deg)
+fixture("snapshot-degraded-start-frame-unavailable-honest", "none", "resolveSnapshot", deg, check="semantic_snapshot", extra=SX_HYP_NO_SF)
+fixture("snapshot-degraded-start-frame-claimed-observed", "snapshot", "resolveSnapshot", snap_pos, check="semantic_snapshot", expect_contains="timeline.start_frame: OBSERVED but producing primitive", extra=SX_HYP_NO_SF)
+deg2 = copy.deepcopy(deg); deg2["payload"]["timeline"].update(start_frame=108000); resign(deg2)
+fixture("snapshot-degraded-start-frame-value-with-unavailable", "snapshot", "resolveSnapshot", deg2, check="semantic_snapshot", expect_contains="fabrication", extra=SX_HYP_NO_SF)
+deg3 = copy.deepcopy(deg); deg3["coverage"].update(complete=True, incomplete_reasons=[]); resign(deg3)
+fixture("snapshot-degraded-start-frame-claims-complete", "snapshot", "resolveSnapshot", deg3, check="semantic_snapshot", expect_contains="unresolved timeline fields", extra=SX_HYP_NO_SF)
+wp_tracks = copy.deepcopy(human_tl)
+for t in wp_tracks:
+    t["items"] = [it for it in t["items"] if it["provenance"]["kind"] == "MEDIA_BACKED"]
+    for it in t["items"]:
+        it["field_status"]["media_id"] = "OBSERVED"; it["field_status"].pop("media_id_reason", None); it["media_id"] = "mid-" + it["unique_id"]
+wp_snap = make_snapshot(wp_tracks, coverage_=WP_COV)
+dump("fixtures/snapshot/write-precheck-complete.json", wp_snap)
+fixture("snapshot-write-precheck-complete", "none", "resolveSnapshot", wp_snap, check="semantic_snapshot", extra=SX_HYP)
+
+
+def sneg(name, mut, expect, layer="snapshot", base=None, extra=None):
+    d = copy.deepcopy(base or snap_pos); mut(d)
+    if layer != "schema":
+        try:
+            resign(d)
+        except L.CanonError:
+            pass
+    fixture(name, layer, "resolveSnapshot", d, check="semantic_snapshot" if layer != "schema" else None, expect_contains=expect, extra=extra or SX_HYP)
+
+
+def _it(d, t=0, i=0):
+    return d["payload"]["tracks"][t]["items"][i]
+
+
+TLN = lambda d: d["payload"]["timeline"]  # noqa: E731
+sneg("snapshot-complete-empty-observed", lambda d: d["coverage"].update(observed_domains=[]), "empty observed")
+sneg("snapshot-complete-write-precheck-missing-domains", lambda d: d["coverage"].update(profile="WRITE_PRECHECK"), "mandatory domains")
+sneg("snapshot-invented-domain", lambda d: d["coverage"]["observed_domains"].append("vibes"), "enum", "schema")
+sneg("snapshot-invented-field-status-name", lambda d: _it(d)["field_status"].update(vibe_level="OBSERVED"), "oneOf", "schema")
+sneg("snapshot-observed-status-null-value", lambda d: _it(d).update(unique_id=None), "OBSERVED but value null")
+sneg("snapshot-fabricated-id", lambda d: _it(d)["field_status"].update(unique_id="UNAVAILABLE", unique_id_reason="x"), "fabrication")
+sneg("snapshot-observed-start-null", lambda d: _it(d).update(start=None), "OBSERVED but value null")
+sneg("snapshot-unavailable-end-with-value", lambda d: _it(d)["field_status"].update(end="UNAVAILABLE", end_reason="x"), "fabrication")
+sneg("snapshot-unavailable-without-reason", lambda d: (_it(d).update(enabled=None), _it(d)["field_status"].update(enabled="UNAVAILABLE")), "requires a reason")
+sneg("snapshot-not-requested-with-value", lambda d: _it(d)["field_status"].update(enabled="NOT_REQUESTED"), "fabrication")
+sneg("snapshot-unknown-status-word", lambda d: _it(d)["field_status"].update(start="MAYBE"), "oneOf", "schema")
+sneg("snapshot-timeline-start-frame-null-observed", lambda d: TLN(d).update(start_frame=None), "timeline.start_frame: status OBSERVED but value null")
+sneg("snapshot-timeline-width-value-with-unavailable", lambda d: TLN(d)["field_status"].update(width="UNAVAILABLE", width_reason="x"), "fabrication")
+sneg("snapshot-timeline-identity-null-observed", lambda d: TLN(d).update(unique_id=None), "timeline.unique_id: status OBSERVED but value null")
+sneg("snapshot-timeline-settings-unavailable-without-reason", lambda d: (TLN(d).update(settings=None), TLN(d)["field_status"].update(settings="UNAVAILABLE")), "requires a reason")
+sneg("snapshot-timeline-missing-field-status", lambda d: TLN(d).pop("field_status"), "field_status", "schema")
+sneg("snapshot-project-identity-null-observed", lambda d: d["project"].update(unique_id=None), "project.unique_id: status OBSERVED but value null")
+sneg("snapshot-project-identity-value-with-unavailable", lambda d: d["project"]["field_status"].update(unique_id="UNAVAILABLE", unique_id_reason="x"), "fabrication")
+sneg("snapshot-track-lock-value-with-unavailable", lambda d: d["payload"]["tracks"][0]["field_status"].update(locked="UNAVAILABLE", locked_reason="x"), "fabrication")
+sneg("snapshot-end-before-start", lambda d: _it(d).update(end=_it(d)["start"] - 1), "end < start")
+sneg("snapshot-duration-contradiction", lambda d: _it(d).update(duration=999), "duration inconsistent")
+sneg("snapshot-source-bounds-inverted", lambda d: _it(d).update(source_end=0, source_start=5), "source_end < source_start")
+sneg("snapshot-timeline-end-before-start", lambda d: TLN(d).update(end_frame=100), "end_frame < start_frame")
+sneg("snapshot-missing-ordinal", lambda d: _it(d).pop("observation_ordinal"), "oneOf", "schema")
+sneg("snapshot-negative-frame", lambda d: _it(d).update(start=-5), "oneOf", "schema")
+sneg("snapshot-postgres-library", lambda d: d["library"].update(db_type="PostgreSQL"), "Disk", "schema")
+fixture("snapshot-guard-context-changed-raw", "snapshot", "resolveSnapshot", dict(snap_pos, project=dict(snap_pos["project"], unique_id="proj-OTHER")), check="semantic_snapshot", expect_contains="guard_digest", extra=SX_HYP)
+sneg("snapshot-incomplete-without-reasons", lambda d: d["coverage"].update(complete=False, incomplete_reasons=[]), "incomplete_reasons")
+sneg("snapshot-incomplete-nothing-missing-named", lambda d: d["coverage"].update(complete=False, incomplete_reasons=["vibes"], unobservable_domains=[], deferred_domains=[]), "name missing")
+sneg("snapshot-complete-with-incomplete-reasons", lambda d: d["coverage"].update(incomplete_reasons=["stray"]), "incomplete_reasons listed")
+sneg("snapshot-complete-with-partial-item-full-profile", lambda d: d["payload"]["tracks"][0]["items"].append(item_partial(9, 113000, "p")), "unresolved item fields")
+sneg("snapshot-complete-with-unresolved-timeline-fields", lambda d: (TLN(d).update(start_frame=None, end_frame=None), TLN(d)["field_status"].update(start_frame="UNAVAILABLE", start_frame_reason="GetStartFrame not callable", end_frame="UNAVAILABLE", end_frame_reason="GetEndFrame not callable")), "unresolved timeline fields")
+sneg("snapshot-complete-with-observation-failures", lambda d: d["payload"].update(observation_failures=[{"track_address": "video:1", "observation_ordinal": 7, "method": "GetItemListInTrack", "reason": "raised"}]), "observation_failures present")
+sneg("snapshot-full-profile-timeline-identity-unavailable-complete", lambda d: (TLN(d).update(unique_id=None), TLN(d)["field_status"].update(unique_id="UNAVAILABLE", unique_id_reason="x")), "timeline.unique_id not OBSERVED")
+sneg("snapshot-observed-field-without-callable-primitive", lambda d: None, "not callable", extra={"capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json", "evidence_set": "attached-evidence-wrong-build"})
+sneg("snapshot-claims-callable-not-in-authority", lambda d: d["collection"]["primitive_status"].update(GetStart="QUALIFIED_CALLABLE"), "claims GetStart callable", base=m0_snap, extra=SX_FROZEN)
+sneg("snapshot-m0-domain-observed-without-callable", lambda d: d["coverage"].update(observed_domains=["connection", "library", "tracks"]), "domain tracks observed but producing primitive", base=m0_snap, extra=SX_FROZEN)
+sneg("snapshot-m0-complete-claimed-nothing-qualified", lambda d: d["coverage"].update(complete=True, incomplete_reasons=[]), "mandatory domains", base=m0_snap, extra=SX_FROZEN)
+sneg("snapshot-m0-timeline-frames-observed-nothing-qualified", lambda d: (TLN(d).update(start_frame=108000, end_frame=114756), TLN(d)["field_status"].update(start_frame="OBSERVED", end_frame="OBSERVED")), "not callable", base=m0_snap, extra=SX_FROZEN)
+sneg("snapshot-m0-track-observed-nothing-qualified", lambda d: d["payload"].update(tracks=[trk("video", 1, "V1", [])]), "not callable", base=m0_snap, extra=SX_FROZEN)
+sneg("snapshot-write-precheck-null-lock", lambda d: (d["payload"]["tracks"][0].update(locked=None), d["payload"]["tracks"][0]["field_status"].update(locked="UNAVAILABLE", locked_reason="x")), "unresolved track locks", base=wp_snap)
+sneg("snapshot-write-precheck-project-id-unavailable", lambda d: (d["project"].update(unique_id=None), d["project"]["field_status"].update(unique_id="UNAVAILABLE", unique_id_reason="x")), "project.unique_id not OBSERVED", base=wp_snap)
+sneg("snapshot-write-precheck-item-id-unavailable", lambda d: (_it(d).update(unique_id=None), _it(d)["field_status"].update(unique_id="UNAVAILABLE", unique_id_reason="x")), "unresolved item fields", base=wp_snap)
+sneg("snapshot-write-precheck-timecode-unavailable", lambda d: (TLN(d).update(start_timecode=None), TLN(d)["field_status"].update(start_timecode="UNAVAILABLE", start_timecode_reason="x")), "unresolved timeline fields", base=wp_snap)
+sneg("snapshot-write-precheck-missing-guard-domain", lambda d: d["coverage"].update(observed_domains=[x for x in d["coverage"]["observed_domains"] if x != "guard"]), "mandatory domains", base=wp_snap)
+# guard v2: UNAVAILABLE vs ERROR identity are distinct guards
+g_unavail = copy.deepcopy(m0_snap); g_error = copy.deepcopy(m0_snap)
+g_error["project"]["field_status"].update(unique_id="ERROR", unique_id_reason="Project.GetUniqueId raised"); resign(g_error)
+snap_b = copy.deepcopy(snap_pos); snap_b["project"]["unique_id"] = "proj-fixture-0002"; resign(snap_b)
+dump("fixtures/guard/guard-vectors.json", {"purpose": "payload digest alone does not prove target context; identity observation status and reason are part of the guard", "same_payload_different_project": {"payload_sha256_equal": snap_pos["payload_sha256"] == snap_b["payload_sha256"], "guard_digest_equal": snap_pos["guard_digest"] == snap_b["guard_digest"]}, "unavailable_vs_error_identity": {"payload_sha256_equal": g_unavail["payload_sha256"] == g_error["payload_sha256"], "guard_digest_equal": g_unavail["guard_digest"] == g_error["guard_digest"], "a_status": "UNAVAILABLE", "b_status": "ERROR"}, "guard_a": snap_pos["guard_digest"], "guard_b": snap_b["guard_digest"]})
+fixture("snapshot-m0-project-identity-error-honest", "none", "resolveSnapshot", g_error, check="semantic_snapshot", extra=SX_FROZEN)
+
+# ============================================================ CANONICALIZATION VECTORS v1.4
+vectors = []
+PD = "vidtoolz.resolveSnapshotPayload.v1.4"
+
+
+def vec(name, obj, domain="vidtoolz.resolveGeneric.v1", normalize=None, note=None):
+    o = normalize(obj) if normalize else obj
+    c = L.canon(o)
+    vectors.append({"name": name, "note": note, "input": obj, "domain": domain, "canonical_utf8": c, "canonical_byte_length": len(c.encode("utf-8")), "sha256": L.digest(o, domain)})
+
+
+vec("empty_object", {})
+vec("key_order_codepoint", {"b": 1, "a": 2, "B": 3, "ä": 4, "aa": 5})
+vec("string_escapes", {"s": "quote\" back\\ tab\t nl\n cr\r del slash/ emoji\U0001F600 ä"})
+vec("integers_and_tagged", {"frames": 6756, "ms": 225183, "zero": 0, "neg": -17, "fps": {"$rational": "30/1"}, "gain": {"$f64": "3ff0000000000000"}})
+vec("f64_one_canonical_form_positive_zero", {"z": {"$f64": "0000000000000000"}})
+base_tl = m0_snap["payload"]["timeline"]
+tr_ = lambda typ, idx: trk(typ, idx, f"{typ}{idx}", [])  # noqa: E731
+P = lambda tracks, markers=None: {"timeline": base_tl, "tracks": tracks, "markers": markers or [], "media_dependencies": [], "observation_failures": []}  # noqa: E731
+vec("numeric_track_index_2_before_10", P([tr_("video", 10), tr_("video", 2)]), PD, L.normalize_snapshot_payload)
+vec("track_type_order_video_audio_subtitle", P([tr_("subtitle", 1), tr_("audio", 1), tr_("video", 1)]), PD, L.normalize_snapshot_payload)
+mk = lambda addr, frame, dur, cd, name, color, note: {"object_address": addr, "frame": frame, "duration": dur, "custom_data": cd, "name": name, "color": color, "note": note}  # noqa: E731
+markers_a = [mk("timeline", 10, 1, "", "m", "Blue", "second"), mk("timeline", 5, 1, "", "m", "Blue", ""), mk("item:it-1", 5, 3, "", "m", "Blue", ""), mk("timeline", 7, 2, "vidtoolz:x", "a", "Red", "n1")]
+vec("markers_total_order_A", P([], markers_a), PD, L.normalize_snapshot_payload)
+vec("markers_total_order_B_reversed_same_digest", P([], list(reversed(markers_a))), PD, L.normalize_snapshot_payload)
+perm_a = copy.deepcopy(human_tl); perm_b = list(reversed(copy.deepcopy(human_tl)))
+for t in perm_b:
+    t["items"] = list(reversed(t["items"]))
+vec("permutation_invariance_A", P(perm_a), PD, L.normalize_snapshot_payload)
+vec("permutation_invariance_B_same_digest", P(perm_b), PD, L.normalize_snapshot_payload)
+same_frame = P([trk("video", 1, "V1", [item_other("z-id", 2, 5, 9, "TITLE", "NO_FILE_BACKED_SOURCE", "t"), item_media("a-id", 1, 5, 9, "mp", None, "UNHASHED_UNOWNED", "m"), item_media("b-id", 0, 5, 7, "mp", None, "UNHASHED_UNOWNED", "n")])])
+vec("same_frame_items_deterministic", same_frame, PD, L.normalize_snapshot_payload)
+partial_mix = P([trk("video", 1, None, [item_partial(3, 20, "p3"), item_unobserved(0), item_partial(1, 20, "p1"), item_partial(2, 5, "p2")], observed=False)])
+partial_mix_rev = copy.deepcopy(partial_mix); partial_mix_rev["tracks"][0]["items"].reverse()
+vec("partial_items_status_aware_order_A", partial_mix, PD, L.normalize_snapshot_payload)
+vec("partial_items_status_aware_order_B_same_digest", partial_mix_rev, PD, L.normalize_snapshot_payload)
+vec("unobserved_timeline_all_null_with_status", P([]), PD, L.normalize_snapshot_payload, "a timeline with every field UNAVAILABLE is representable and hashable")
+vec("nullable_fields_explicit_null", {"media_id": None, "source_sha256": None, "source_locator": None})
+dump("fixtures/canonicalization/vectors.json", {"schema": "vidtoolz.resolveCanonicalizationVectors.v1.4", "spec": "CANONICALIZATION.md v1.4", "digest_rule": "sha256(utf8(domain) + 0x0A + canonical_bytes)", "registered_domains": sorted(L.HASH_DOMAINS), "reference_implementation": "tools/authority_lib.py", "vectors": vectors})
+F64_BAD = [("f64_trailing_newline", "3ff0000000000000\n"), ("f64_leading_space", " 3ff0000000000000"), ("f64_trailing_space", "3ff0000000000000 "), ("f64_trailing_tab", "3ff0000000000000\t"), ("f64_leading_tab", "\t3ff0000000000000"), ("f64_crlf", "3ff0000000000000\r\n"), ("f64_uppercase", "3FF0000000000000"), ("f64_mixed_case", "3fF0000000000000"), ("f64_short", "3ff"), ("f64_fifteen", "3ff000000000000"), ("f64_long", "3ff00000000000000"), ("f64_not_hex", "NOT_HEX_NOT_HEX_"), ("f64_prefix_0x", "0x3ff000000000000"), ("f64_unicode_digit", "3ff000000000000١"), ("f64_empty", ""), ("f64_nonstring", 12345)]
+cases = [{"name": n, "kind": "canon", "input": {"$f64": v}, "expect": "$f64"} for n, v in F64_BAD]
+cases += [{"name": "f64_nan", "kind": "canon", "input": {"$f64": "7ff8000000000000"}, "expect": "NaN"}, {"name": "f64_nan_payload", "kind": "canon", "input": {"$f64": "fff8000000000001"}, "expect": "NaN"}, {"name": "f64_infinity", "kind": "canon", "input": {"$f64": "7ff0000000000000"}, "expect": "NaN"}, {"name": "f64_negative_infinity", "kind": "canon", "input": {"$f64": "fff0000000000000"}, "expect": "NaN"}, {"name": "f64_negative_zero", "kind": "canon", "input": {"$f64": "8000000000000000"}, "expect": "negative zero"}]
+cases += [{"name": "rational_unreduced", "kind": "canon", "input": {"$rational": "2/4"}, "expect": "reduced"}, {"name": "rational_zero_denominator", "kind": "canon", "input": {"$rational": "1/0"}, "expect": "$rational"}, {"name": "rational_negative", "kind": "canon", "input": {"$rational": "-1/2"}, "expect": "$rational"}, {"name": "rational_trailing_newline", "kind": "canon", "input": {"$rational": "30/1\n"}, "expect": "$rational"}, {"name": "rational_leading_space", "kind": "canon", "input": {"$rational": " 30/1"}, "expect": "$rational"}, {"name": "rational_leading_zero", "kind": "canon", "input": {"$rational": "030/1"}, "expect": "$rational"}]
+cases += [{"name": "bare_float", "kind": "canon", "input": {"x": 1.5}, "expect": "bare float"}, {"name": "marker_exact_duplicate", "kind": "markers", "input": [mk("timeline", 5, 1, "", "m", "Blue", ""), mk("timeline", 5, 1, "", "m", "Blue", "")], "expect": "MARKER_COLLISION"}, {"name": "marker_same_object_frame_different_note", "kind": "markers", "input": [mk("timeline", 5, 1, "", "m", "Blue", "a"), mk("timeline", 5, 1, "", "m", "Blue", "b")], "expect": "MARKER_COLLISION"}, {"name": "string_track_index", "kind": "tracks", "input": [{"type": "video", "index": "2"}], "expect": "integer"}, {"name": "duplicate_track_address", "kind": "tracks", "input": [{"type": "video", "index": 1}, {"type": "video", "index": 1}], "expect": "duplicate"}, {"name": "unregistered_domain", "kind": "domain", "input": {}, "domain": "vidtoolz.unregistered", "expect": "unregistered"}, {"name": "unregistered_domain_old_guard_v1", "kind": "domain", "input": {}, "domain": "vidtoolz.resolveGuard.v1", "expect": "unregistered"}, {"name": "items_missing_ordinal", "kind": "items", "input": [{"start": 1, "end": 2, "provenance": {"kind": "TITLE"}}], "expect": "observation_ordinal"}, {"name": "items_duplicate_ordinal", "kind": "items", "input": [item_partial(1, 5, "a"), item_partial(1, 5, "b")], "expect": "collision"}, {"name": "items_observed_end_null_in_sort", "kind": "items", "input": [dict(item_media("x", 0, 5, 9, None, None, "UNHASHED_UNOWNED", "m"), end=None)], "expect": "numeric"}]
+dump("fixtures/canonicalization/rejections.json", {"schema": "vidtoolz.resolveCanonicalizationRejections.v1.4", "cases": cases})
+
+# ============================================================ PERMISSIONS v1.4 (unchanged law; schema/version bump) + ELIGIBILITY cases
+perms = load("PERMISSIONS.json")
+perms["schema"] = "vidtoolz.resolvePermissions.v1.4"; perms["version"] = "1.4.0"
+perms["law"] = "PERMISSION DECLARATION (allowed:true) != AUTHORIZATION ELIGIBILITY. Eligibility is evaluated deterministically by authority_lib.evaluate_eligibility(perms, request, read_primitives, capabilities, target_contract, evidence_set, active_authority); attachment state, primitive qualification and every prerequisite are DERIVED from the frozen authorities plus envelope-bound, content-addressed evidence records of the CURRENT session bound to the ACTIVE reviewed manifest; record order never matters; contradictory evidence is CONFLICT; unknown or unlinked input fails closed"
+dump("PERMISSIONS.json", perms)
+perm_schema = load("schemas/resolvePermissions.schema.json")
+perm_schema["$id"] = "vidtoolz.resolvePermissions.v1.4"; perm_schema["properties"]["schema"] = {"const": "vidtoolz.resolvePermissions.v1.4"}
+dump("schemas/resolvePermissions.schema.json", perm_schema)
+fixture("permissions-frozen", "none", "resolvePermissions", perms)
+neg = copy.deepcopy(perms); neg["default"] = "ALLOW"; fixture("permissions-default-allow", "schema", "resolvePermissions", neg, expect_contains="DENY")
+neg = copy.deepcopy(perms); neg["entries"][0]["shared_library_allowed"] = True; fixture("permissions-shared-library-grant", "schema", "resolvePermissions", neg, expect_contains="False")
+neg = copy.deepcopy(perms); neg["entries"][0]["mutation_allowed"] = True; fixture("permissions-m0-mutation", "schema", "resolvePermissions", neg, expect_contains="M3")
+neg = copy.deepcopy(perms); neg["entries"][1]["target_requirement"] = "PROJECT"; fixture("permissions-target-requirement-disagrees-with-read-primitives", "semantic", "resolvePermissions", neg, check="semantic_read_primitives_with_perms", expect_contains="differs")
+matrix = load("MILESTONE-MATRIX.json"); matrix["schema"] = "vidtoolz.resolveMilestoneMatrix.v1.4"; matrix["version"] = "1.4.0"; dump("MILESTONE-MATRIX.json", matrix)
+probes = load("M3-PROBES.json"); probes["schema"] = "vidtoolz.resolveM3Probes.v1.4"; dump("M3-PROBES.json", probes)
+
+
+def REQ(m, op, project=None, timeline=None, refs=None, **kw):
+    r = {"schema": "vidtoolz.resolveEligibilityRequest.v1.4", "milestone": m, "operation": op, "scope": SCOPE, "refs": refs or {}}
+    if project is not None:
+        r["expected_project_name"] = project
+    if timeline is not None:
+        r["expected_timeline_name"] = timeline
+    r.update(kw)
+    return r
+
+
+RID = lambda r: r["record_id"]  # noqa: E731
+ROJ = {"read_only_journal": RID(H["roj"])}
+M3_REFS = {"m0_exit": RID(H["m0"]), "m1_exit": RID(H["m1"]), "m2_exit": RID(H["m2"]), "authorization": RID(H["auth"]), "exclusive_session": RID(H["excl"]), "read_only_journal": RID(H["roj"]), "media_class": RID(H["media"]), "destination_timeline": RID(H["dest"])}
+elig = []
+HYP = "fixtures/eligibility/capabilities-hypothetical-refreeze.json"
+
+
+def case(name, request, evidence_set, expect, expect_failed_contains=None, capabilities="CAPABILITIES.json", schema_valid=True, expect_state=None):
+    elig.append({"name": name, "request": request, "evidence_set": evidence_set, "capabilities": capabilities, "expect_eligible": expect, "expect_failed_contains": expect_failed_contains, "expect_attachment_state": expect_state, "request_schema_valid": schema_valid})
+
+
+PR = "READ_PRIMITIVE_QUALIFICATION_PROBE"
+case("m0-probe-allow-attachment-ready", REQ("M0", PR, refs=ROJ), "ready", True, expect_state="ATTACHMENT_READY")
+case("m0-probe-deny-unprovisioned", REQ("M0", PR, refs=ROJ), "empty", False, "TARGET_STATE_ATTACHMENT_READY", expect_state="UNPROVISIONED")
+case("m0-probe-deny-provisioned-not-verified", REQ("M0", PR, refs=ROJ), "provisioned-only", False, "TARGET_STATE_ATTACHMENT_READY", expect_state="PROVISIONED_NOT_VERIFIED")
+case("m0-probe-deny-launch-wrong-binary", REQ("M0", PR, refs=ROJ), "ready-wrong-binary-pin", False, "TARGET_STATE_ATTACHMENT_READY", expect_state="PROVISIONED_NOT_VERIFIED")
+case("m0-probe-deny-self-verified-bundle", REQ("M0", PR, refs=ROJ), "ready-self-verified-bundle", False, "BUNDLE_INDEPENDENTLY_VERIFIED", expect_state="PROVISIONED_NOT_VERIFIED")
+case("m0-probe-deny-bundle-other-host", REQ("M0", PR, refs=ROJ), "ready-bundle-other-host", False, "BUNDLE_INDEPENDENTLY_VERIFIED", expect_state="PROVISIONED_NOT_VERIFIED")
+case("m0-probe-deny-bundle-historical-only", REQ("M0", PR, refs=ROJ), "ready-bundle-historical-only", False, "BUNDLE_INDEPENDENTLY_VERIFIED", expect_state="PROVISIONED_NOT_VERIFIED")
+case("m0-probe-deny-no-current-session", REQ("M0", PR, refs=ROJ), "ready-no-current-session", False, "TARGET_STATE_ATTACHMENT_READY", expect_state="PROVISIONED_NOT_VERIFIED")
+case("m0-probe-deny-launch-previous-session-only", REQ("M0", PR, refs=ROJ), "ready-launch-previous-session-only", False, "TARGET_STATE_ATTACHMENT_READY", expect_state="PROVISIONED_NOT_VERIFIED")
+case("m0-probe-deny-no-read-only-journal-ref", REQ("M0", PR), "ready", False, "READ_ONLY_JOURNAL_OPEN")
+case("m0-probe-deny-declared-state-ignored", REQ("M0", PR, refs=ROJ, attachment_state="ATTACHMENT_READY"), "empty", False, "TARGET_STATE_ATTACHMENT_READY", schema_valid=False)
+case("m0-probe-deny-tampered-record", REQ("M0", PR, refs=ROJ), "invalid-tampered-record", False, "ATTACHMENT_CONFLICT", expect_state="CONFLICT")
+case("m0-probe-deny-provisioning-without-root", REQ("M0", PR, refs=ROJ), "invalid-provisioning-without-root", False, "ATTACHMENT_CONFLICT", expect_state="CONFLICT")
+case("m0-probe-deny-wrong-manifest-record", REQ("M0", PR, refs=ROJ), "invalid-connection-wrong-manifest", False, "ATTACHMENT_CONFLICT", expect_state="CONFLICT")
+case("m0-probe-deny-other-authority-record", REQ("M0", PR, refs=ROJ), "invalid-connection-other-authority", False, "ATTACHMENT_CONFLICT", expect_state="CONFLICT")
+case("m0-probe-deny-bundle-other-manifest-not-historical", REQ("M0", PR, refs=ROJ), "invalid-bundle-other-manifest-not-historical", False, "ATTACHMENT_CONFLICT", expect_state="CONFLICT")
+case("m0-probe-deny-fatal-probe-failure-in-session", REQ("M0", PR, refs=ROJ), "attached-fatal-probe-failure", False, "FATAL_TARGET_FAILURE", expect_state="CONFLICT")
+case("m0-probe-allow-after-capability-failure-only", REQ("M0", PR, refs=ROJ), "attached-capability-failure-only", True, expect_state="ATTACHED_READ_ONLY")
+case("m0-snapshot-allow-degraded-attached", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached", True, expect_state="ATTACHED_READ_ONLY")
+case("m0-snapshot-allow-reversed-record-order", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-reversed-order", True, expect_state="ATTACHED_READ_ONLY")
+case("m0-snapshot-deny-attachment-ready-only", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "ready", False, "TARGET_STATE_ATTACHED_READ_ONLY", expect_state="ATTACHMENT_READY")
+case("m0-snapshot-deny-stale-good-current-eka", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-stale-good-current-eka", False, "TARGET_STATE_ATTACHED_READ_ONLY", expect_state="ATTACHMENT_READY")
+case("m0-snapshot-allow-current-good-stale-eka", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-current-good-stale-eka", True, expect_state="ATTACHED_READ_ONLY")
+case("m0-snapshot-deny-duplicate-sequence-conflict", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-duplicate-sequence-conflict", False, "ATTACHMENT_CONFLICT", expect_state="CONFLICT")
+case("m0-snapshot-allow-duplicate-timestamp-distinct-sequence", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-duplicate-timestamp-distinct-sequence", True, expect_state="ATTACHED_READ_ONLY")
+case("m0-snapshot-deny-connection-previous-session-only", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-connection-previous-session-only", False, "TARGET_STATE_ATTACHED_READ_ONLY", expect_state="ATTACHMENT_READY")
+case("m0-snapshot-deny-ancient-observation", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-ancient-observation", False, "STALE", expect_state="ATTACHMENT_READY")
+case("m0-snapshot-deny-sequence-timestamp-disorder", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-sequence-timestamp-disorder", False, "ATTACHMENT_CONFLICT", expect_state="CONFLICT")
+case("m0-snapshot-deny-missing-root-in-connection", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-missing-root-in-connection", False, "root", expect_state="ATTACHMENT_READY")
+case("m0-snapshot-deny-changed-uuid-in-connection", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-changed-uuid-in-connection", False, "uuid", expect_state="ATTACHMENT_READY")
+case("m0-snapshot-deny-second-provisioning-other-uuid", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-second-provisioning-other-uuid", False, "ATTACHMENT_CONFLICT", expect_state="CONFLICT")
+case("m0-snapshot-deny-cross-library-timeline-binding", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-cross-library-timeline-binding", False, "ATTACHMENT_CONFLICT", expect_state="CONFLICT")
+case("m0-snapshot-deny-binding-from-other-session", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-binding-other-session", False, "PROJECT_BINDING_OBSERVATION", expect_state="ATTACHED_READ_ONLY")
+case("m0-snapshot-deny-no-timeline-binding", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, "VIDTOOLZ__other__r1", refs=ROJ), "attached", False, "TIMELINE_BINDING_OBSERVATION")
+case("m0-snapshot-deny-no-expected-timeline", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, refs=ROJ), "attached", False, "expected_timeline_name")
+case("m0-snapshot-deny-no-expected-project", REQ("M0", "SNAPSHOT_CAPTURE", None, TL, refs=ROJ), "attached", False, "expected_project_name")
+case("m0-snapshot-deny-unbound-project-name", REQ("M0", "SNAPSHOT_CAPTURE", PFX + "GHOST", TL, refs=ROJ), "attached", False, "PROJECT_BINDING_OBSERVATION")
+case("m0-enumerate-timelines-deny-human-project-without-operator-record", REQ("M0", "ENUMERATE_TIMELINES", "PYSTY UHD", refs=ROJ), "attached", False, "neither adapter-prefixed nor operator-provisioned")
+case("m0-enumerate-timelines-allow-operator-provisioned-project", REQ("M0", "ENUMERATE_TIMELINES", "Mikko human scratch", refs=ROJ), "attached", True)
+case("m0-enumerate-projects-allow-session-scope-no-project", REQ("M0", "ENUMERATE_PROJECTS", refs=ROJ), "attached", True)
+case("m0-enumerate-projects-allow-without-any-binding-records", REQ("M0", "ENUMERATE_PROJECTS", refs=ROJ), "attached-current-good-stale-eka", True)
+case("m0-enumerate-timelines-deny-no-project", REQ("M0", "ENUMERATE_TIMELINES", refs=ROJ), "attached", False, "expected_project_name")
+case("m0-snapshot-deny-eka-observed", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-eka-observed", False, "TARGET_STATE_ATTACHED_READ_ONLY", expect_state="ATTACHMENT_READY")
+case("m0-snapshot-deny-local-database-observed", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-local-database-observed", False, "TARGET_STATE_ATTACHED_READ_ONLY")
+case("m0-snapshot-deny-version-mismatch", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached-version-mismatch", False, "RESOLVE_VERSION_MATCHES")
+case("m0-connect-deny-refuse-fallback-no-qualified-rows", REQ("M0", "CONNECT", refs=ROJ), "attached", False, "REFUSE")
+case("m0-connect-deny-qualified-read-string-ignored", REQ("M0", "CONNECT", refs=ROJ, capability_state={"GetVersionString": "QUALIFIED_READ"}), "attached", False, "REFUSE", schema_valid=False)
+case("m0-connect-deny-reviewed-evidence-but-matrix-not-refrozen", REQ("M0", "CONNECT", refs=ROJ), "attached-reviewed-evidence", False, "REFUSE")
+case("m0-connect-allow-hypothetical-refrozen-matrix", REQ("M0", "CONNECT", refs=ROJ), "attached-reviewed-evidence", True, capabilities=HYP)
+case("m0-connect-deny-hyp-unreviewed-candidates", REQ("M0", "CONNECT", refs=ROJ), "attached-candidate-evidence-unreviewed", False, "REFUSE", capabilities=HYP)
+case("m0-connect-deny-hyp-failed-getters", REQ("M0", "CONNECT", refs=ROJ), "attached-evidence-failed-getters", False, "REFUSE", capabilities=HYP)
+case("m0-connect-deny-hyp-wrong-build", REQ("M0", "CONNECT", refs=ROJ), "attached-evidence-wrong-build", False, "REFUSE", capabilities=HYP)
+case("m0-connect-deny-hyp-old-refreeze", REQ("M0", "CONNECT", refs=ROJ), "attached-evidence-old-refreeze", False, "REFUSE", capabilities=HYP)
+case("m0-connect-deny-hyp-old-authority", REQ("M0", "CONNECT", refs=ROJ), "attached-evidence-old-authority", False, "REFUSE", capabilities=HYP)
+case("m0-connect-deny-hyp-no-raw-evidence", REQ("M0", "CONNECT", refs=ROJ), "attached-evidence-no-raw", False, "REFUSE", capabilities=HYP)
+case("m0-connect-deny-hyp-raw-tampered", REQ("M0", "CONNECT", refs=ROJ), "attached-evidence-raw-tampered", False, "REFUSE", capabilities=HYP)
+case("m0-connect-deny-hyp-wrong-receiver", REQ("M0", "CONNECT", refs=ROJ), "attached-evidence-wrong-receiver", False, "REFUSE", capabilities=HYP)
+case("m0-connect-deny-hyp-no-linked-evidence", REQ("M0", "CONNECT", refs=ROJ), "attached", False, "REFUSE", capabilities=HYP)
+case("m0-deny-write-op", REQ("M0", "APPEND", PROJ, TL, refs=ROJ), "write-ready-base", False, "NOT_PERMITTED_BY_POLICY")
+case("m0-deny-ref-empty-string", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs={"read_only_journal": ""}), "attached", False, "not a sha256", schema_valid=False)
+case("m0-deny-ref-false-string", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs={"read_only_journal": "false"}), "attached", False, "not a sha256", schema_valid=False)
+case("m0-deny-ref-unlinked-sha", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs={"read_only_journal": "9" * 64}), "attached", False, "not in evidence set")
+case("m0-deny-ref-wrong-record-type", REQ("M0", "SNAPSHOT_CAPTURE", PROJ, TL, refs={"read_only_journal": RID(H["conn"])}), "attached", False, "has type CONNECTION_OBSERVATION")
+case("m2-set-current-timeline-deny-production-project-name", REQ("M2", "SetCurrentTimeline", "PYSTY UHD", "traileri", refs=dict(ROJ, m1_exit=RID(H["m1"]))), "write-ready-base", False, "PROJECT_ADAPTER_PREFIXED")
+case("m2-set-current-timeline-allow", REQ("M2", "SetCurrentTimeline", PROJ, TL, refs=dict(ROJ, m1_exit=RID(H["m1"]))), "write-ready-base", True)
+case("m3-append-deny-without-authorization", REQ("M3", "APPEND", PROJ, TL, refs={k: v for k, v in M3_REFS.items() if k != "authorization"}, transaction_id="tx-1", plan_digest="a" * 64, plan_h0_guard_digest=snap_pos["guard_digest"]), "write-ready-without-authorization", False, "MIKKO_M3_AUTHORIZATION")
+case("m3-append-deny-authorization-old-authority", REQ("M3", "APPEND", PROJ, TL, refs=M3_REFS, transaction_id="tx-1", plan_digest="a" * 64, plan_h0_guard_digest=snap_pos["guard_digest"]), "write-ready-authorization-old-authority", False, "MIKKO_M3_AUTHORIZATION")
+case("m3-append-deny-refreeze-unreviewed", REQ("M3", "APPEND", PROJ, TL, refs=M3_REFS, transaction_id="tx-1", plan_digest="a" * 64, plan_h0_guard_digest=snap_pos["guard_digest"]), "write-ready-refreeze-unreviewed", False, "TARGET_STATE_SCRATCH_WRITE_READY")
+case("m3-append-deny-refreeze-for-other-matrix", REQ("M3", "APPEND", PROJ, TL, refs=M3_REFS, transaction_id="tx-1", plan_digest="a" * 64, plan_h0_guard_digest=snap_pos["guard_digest"]), "write-ready-refreeze-other-matrix", False, "TARGET_STATE_SCRATCH_WRITE_READY")
+case("m3-append-deny-no-journal-guard-plan-records", REQ("M3", "APPEND", PROJ, TL, refs=M3_REFS, transaction_id="tx-1", plan_digest="a" * 64, plan_h0_guard_digest=snap_pos["guard_digest"]), "write-ready-base", False, "JOURNAL_PREPARED", expect_state="SCRATCH_WRITE_READY")
+case("m3-save-deny-ids-unavailable", REQ("M3", "SAVE_PROJECT", PROJ, refs=M3_REFS, transaction_id="tx-1", plan_digest="a" * 64), "attached-no-ids", False, "OBSERVED project_unique_id")
+case("m3-deny-shared-library-scope", dict(REQ("M3", "APPEND", PROJ, TL, refs=M3_REFS), scope="NETWORK_LIBRARY_EKA"), "write-ready-base", False, "NOT_PERMITTED_BY_POLICY")
+case("m4-deny-unknown-milestone", REQ("M4", "SNAPSHOT_CAPTURE", PROJ, TL, refs=ROJ), "attached", False, "NOT_PERMITTED_BY_POLICY")
+case("deny-unknown-operation", REQ("M3", "FrobnicateTimeline", PROJ, TL, refs=M3_REFS), "write-ready-base", False, "NOT_PERMITTED_BY_POLICY")
+dump("fixtures/eligibility/cases.json", {"schema": "vidtoolz.resolveEligibilityFixtures.v1.4", "law": "expect_eligible/expect_attachment_state are computed by evaluate_eligibility/derive_attachment_state over (PERMISSIONS, request, READ-PRIMITIVES, capabilities file, TARGET-CONTRACT, fixtures/evidence/<evidence_set>.json, active authority = {1.4.0, placeholder manifest sha, sha256 of the capabilities file}); results must be identical under randomized record order", "cases": elig})
+
+# ============================================================ PROVISIONAL schemas: binding + membership + derived verification
+TGT_S = {"type": "object", "additionalProperties": False, "required": ["library_instance_uuid", "project_unique_id", "timeline_unique_id", "target_epoch", "host_name", "library_name", "library_kind", "project_name", "timeline_name", "resolve_version"], "properties": {"library_instance_uuid": UUID, "project_unique_id": {"type": "string", "minLength": 1}, "timeline_unique_id": {"type": "string", "minLength": 1}, "target_epoch": {"type": "string", "minLength": 1}, "host_name": {"type": "string", "minLength": 1}, "library_name": {"type": "string", "minLength": 1}, "library_kind": {"enum": ["Disk"]}, "observed_database_name": STR_OR_NULL, "project_name": {"type": "string", "minLength": 1}, "timeline_name": {"type": "string", "minLength": 1}, "resolve_version": {"type": "string", "minLength": 1}}}
+TARGET_REF_S = {"type": "object", "additionalProperties": False, "required": ["project_unique_id", "timeline_unique_id", "library_instance_uuid"], "properties": {"project_unique_id": {"type": "string", "minLength": 1}, "timeline_unique_id": {"type": "string", "minLength": 1}, "library_instance_uuid": UUID}}
+mp = load("schemas/provisional/resolveMutationPlan.schema.json")
+mp["properties"]["target"] = TGT_S; mp["properties"]["authority_version"] = AV
+mp["properties"]["operations"]["items"]["properties"]["selector"]["properties"]["expected_media_pool_item_unique_id"] = {"type": "string"}
+mp["$comment"] = "PROVISIONAL_UNTIL_M3. v1.4 binding tuple: plan_digest (= digest of plan without plan_digest/refs), transaction_id, target, h0_guard_digest, operation_set_digest (= digest of operations) and authority_version, shared with journal, verification, conflict and commit. Every journal operation record must name an operation_id of this plan with the same op. refs are sha256 references into the evidence set resolved by evaluate_eligibility."
+dump("schemas/provisional/resolveMutationPlan.schema.json", mp)
+jr = load("schemas/provisional/resolveTransactionJournal.schema.json")
+jr["properties"]["state"] = {"enum": sorted({s for v in L.JOURNAL_TRANSITIONS.values() for s in v} | {"PREPARED"})}
+jr["properties"]["target_ref"] = TARGET_REF_S; jr["properties"]["authority_version"] = AV
+jr["properties"]["operation_set_digest"] = SHA; jr["properties"]["op"] = {"anyOf": [{"enum": sorted(L.WRITE_OPS)}, {"type": "null"}]}
+jr["required"] = sorted(set(jr["required"]) | {"operation_set_digest", "op"})
+jr["$comment"] = "Append-only; contiguous sequence from 0; single transaction_id, plan_digest and operation_set_digest; constant target_ref; constant guard_digest except across RECOVERY_RECONCILING; hash chain; transitions per JOURNAL_TRANSITIONS (operation lifecycle OP_STARTED -> APPLIED | OP_FAILED); OPERATION MEMBERSHIP: OP_STARTED/APPLIED/OP_FAILED name an operation_id of the bound plan with matching op, each started/applied at most once, APPLIED only after its OP_STARTED, READBACK_S1 only after every plan operation is APPLIED; non-operation records carry null operation_id/op."
+dump("schemas/provisional/resolveTransactionJournal.schema.json", jr)
+vs = load("schemas/provisional/resolveVerificationResult.schema.json")
+vs["properties"].update({"target": TGT_S, "authority_version": AV, "applied_operation_ids": {"type": "array", "items": {"type": "string"}}, "added": {"type": "array", "items": {"type": "object"}}, "removed": {"type": "array", "items": {"type": "object"}}, "changed": {"type": "array", "items": {"type": "object"}}, "verdict": {"enum": ["VERIFIED", "EXPECTED_DELTA_MISSING", "UNEXPECTED_DELTA", "UNOBSERVABLE_STATE", "EFFECT_NOT_SPECIFIED"]}})
+vs["required"] = sorted(set(vs["required"]) | {"applied_operation_ids"})
+vs["$comment"] = "v1.4: the verifier DERIVES added/removed/changed/creation_identity_map/missing_expected/unrelated/verdict from S0, the bound plan, the journal's applied operations and S1 (authority_lib.verify_transaction); a declared result must equal the derived truth. h0/s1 digests must resolve to supplied snapshots; readback_snapshot_sha256 = digest of the S1 snapshot object. VERIFIED is impossible for operations whose effect law is NOT_YET_SPECIFIED (EFFECT_NOT_SPECIFIED). Never human approval."
+dump("schemas/provisional/resolveVerificationResult.schema.json", vs)
+cs = load("schemas/provisional/resolveConflict.schema.json"); cs["properties"]["authority_version"] = AV; dump("schemas/provisional/resolveConflict.schema.json", cs)
+cmm = load("schemas/provisional/resolveCommitManifest.schema.json")
+cmm["properties"].update({"target": TGT_S, "authority_version": AV, "s1_guard_digest": SHA})
+cmm["required"] = sorted(set(cmm["required"]) | {"s1_guard_digest"})
+cmm["$comment"] = "Commit eligibility is composed validation (validate_transaction_set): S0, plan, journal (membership), S1, derived delta, expected effect, verification against derived truth, then commit: same plan/transaction/target/guard/operation set; VERIFIED; allowed terminal state; no unresolved conflict; evidence digests; s1_guard_digest == S1."
+dump("schemas/provisional/resolveCommitManifest.schema.json", cmm)
+
+# ============================================================ PLAN / JOURNAL / S0 / S1 / VERIFICATION / COMMIT fixtures (linked sets)
+TGT = {"library_instance_uuid": UU, "project_unique_id": "proj-fixture-0001", "timeline_unique_id": "tl-fixture-0001", "target_epoch": "epoch-fixture-1", "host_name": HOST, "library_name": LIB, "library_kind": "Disk", "observed_database_name": LIB, "project_name": PROJ, "timeline_name": TL, "resolve_version": VER}
+s0 = wp_snap
+sel_append = {"library_instance_uuid": UU, "project_unique_id": "proj-fixture-0001", "timeline_unique_id": "tl-fixture-0001", "target_epoch": "epoch-fixture-1", "track_type": "video", "track_index": 1, "expected_media_pool_item_unique_id": "mp-new"}
+ops = [{"operation_id": "op-1", "op": "APPEND", "selector": sel_append, "expected_old": None, "expected_new": {"start": 110194, "end": 110541}, "allowed_created": ["one item"], "allowed_deleted": [], "declared_side_effects": []}]
+plan_body = {"schema": "vidtoolz.resolveMutationPlan.v1", "transaction_id": "tx-fixture", "authority_version": L.AUTHORITY_VERSION, "milestone": "M3", "dry_run": False, "target": TGT, "target_epoch": "epoch-fixture-1", "target_contract_digest": sha_of("TARGET-CONTRACT.json"), "binding_set_digest": "2" * 64, "handoff_digest_sha256": "3fd9bdd875c9eb489abf77797613abbc2616eef36073503742ebc9fd80f5bf69", "h0_payload_sha256": s0["payload_sha256"], "h0_guard_digest": s0["guard_digest"], "capability_matrix_version": "1.5.0-HYPOTHETICAL", "collector_version": "0.0.0-fixture", "timebase_digest": sha_of("TIMEBASE.json"), "permission_class": "RESOLVE_ASSEMBLE", "scope": SCOPE, "lease": {}, "operations": ops, "operation_set_digest": L.operation_set_digest(ops)}
+PDG = L.plan_digest_of(plan_body)
+MH = F.Mint(F.PLACEHOLDER_MANIFEST, HYP_SHA)  # records promoted by / bound to the hypothetical matrix
+r_jp = M.journal_prepared("tx-fixture", PDG)
+r_guard = M.guard(s0["guard_digest"], s0["payload_sha256"])
+r_guard_stale = M.guard(snap_b["guard_digest"], snap_b["payload_sha256"], seq=3)
+r_pv = M.plan_validation(PDG)
+r_pv_fail = M.plan_validation(PDG, "FAIL")
+hyp_recs = list(EVSETS["write-ready-hyp"]["records"].values())
+EVSETS["write-ready-full"] = F.ES(hyp_recs + [r_jp, r_guard, r_pv])
+EVSETS["write-ready-stale-guard-current"] = F.ES(hyp_recs + [r_jp, r_guard, r_guard_stale, r_pv])
+EVSETS["write-ready-plan-validation-fail"] = F.ES(hyp_recs + [r_jp, r_guard, r_pv_fail])
+for name in ("write-ready-full", "write-ready-stale-guard-current", "write-ready-plan-validation-fail"):
+    dump(f"fixtures/evidence/{name}.json", EVSETS[name])
+PLAN_REFS = dict(M3_REFS, journal_prepared=RID(r_jp), guard=RID(r_guard), plan_validation=RID(r_pv))
+plan_m3 = dict(plan_body, plan_digest=PDG, refs=PLAN_REFS)
+dump("fixtures/plan/m3-append-plan.json", plan_m3)
+G = s0["guard_digest"]
+PX = {"evidence_set": "write-ready-full", "capabilities": HYP, "guard_digest": G}
+fixture("plan-m3-append-eligible", "none", "provisional/resolveMutationPlan", plan_m3, check="semantic_mutation_plan", extra=PX)
+p = copy.deepcopy(plan_m3); p["permission_class"] = "RESOLVE_READ"; p["plan_digest"] = L.plan_digest_of(p); fixture("plan-read-class-with-append", "semantic", "provisional/resolveMutationPlan", p, check="semantic_mutation_plan", expect_contains="RESOLVE_READ", extra=PX)
+p = copy.deepcopy(plan_m3); p["operations"][0]["selector"]["project_unique_id"] = "proj-OTHER"; p["operation_set_digest"] = L.operation_set_digest(p["operations"]); p["plan_digest"] = L.plan_digest_of(p); fixture("plan-selector-target-mismatch", "semantic", "provisional/resolveMutationPlan", p, check="semantic_mutation_plan", expect_contains="does not match plan target", extra=PX)
+p = copy.deepcopy(plan_m3); p["h0_guard_digest"] = snap_b["guard_digest"]; p["plan_digest"] = L.plan_digest_of(p); fixture("plan-stale-guard", "semantic", "provisional/resolveMutationPlan", p, check="semantic_mutation_plan", expect_contains="STALE_SNAPSHOT", extra=PX)
+p = copy.deepcopy(plan_m3); p["refs"].pop("authorization"); fixture("plan-missing-m3-authorization", "eligibility", "provisional/resolveMutationPlan", p, check="semantic_mutation_plan", expect_contains="MIKKO_M3_AUTHORIZATION", extra=PX)
+p = copy.deepcopy(plan_m3); p["operations"].append(dict(ops[0], operation_id="op-1")); p["operation_set_digest"] = L.operation_set_digest(p["operations"]); p["plan_digest"] = L.plan_digest_of(p); fixture("plan-duplicate-operation-id", "semantic", "provisional/resolveMutationPlan", p, check="semantic_mutation_plan", expect_contains="unique", extra=PX)
+p = copy.deepcopy(plan_m3); p["plan_digest"] = "0" * 64; fixture("plan-digest-not-of-body", "semantic", "provisional/resolveMutationPlan", p, check="semantic_mutation_plan", expect_contains="plan_digest does not match", extra=PX)
+p = copy.deepcopy(plan_m3); p["operation_set_digest"] = "0" * 64; p["plan_digest"] = L.plan_digest_of(p); fixture("plan-operation-set-digest-mismatch", "semantic", "provisional/resolveMutationPlan", p, check="semantic_mutation_plan", expect_contains="operation_set_digest", extra=PX)
+p = copy.deepcopy(plan_m3); p["authority_version"] = "1.3.0"; fixture("plan-authority-version-old", "schema", "provisional/resolveMutationPlan", p, expect_contains="1.4.0")
+p = copy.deepcopy(plan_m3); p["milestone"] = "M2"; p["dry_run"] = True; p["plan_digest"] = L.plan_digest_of(p); fixture("plan-m2-append-not-permitted", "semantic", "provisional/resolveMutationPlan", p, check="semantic_mutation_plan", expect_contains="not permitted", extra=PX)
+fixture("plan-guard-record-not-current", "eligibility", "provisional/resolveMutationPlan", plan_m3, check="semantic_mutation_plan", expect_contains="GUARD_CURRENT", extra=dict(PX, evidence_set="write-ready-stale-guard-current"))
+fixture("plan-plan-validation-record-fail", "eligibility", "provisional/resolveMutationPlan", plan_m3, check="semantic_mutation_plan", expect_contains="PLAN_VALIDATED", extra=dict(PX, evidence_set="write-ready-plan-validation-fail"))
+fixture("plan-eligible-without-prepared-journal", "eligibility", "provisional/resolveMutationPlan", plan_m3, check="semantic_mutation_plan", expect_contains="JOURNAL_PREPARED", extra=dict(PX, evidence_set="write-ready-hyp"))
+TREF = {"project_unique_id": "proj-fixture-0001", "timeline_unique_id": "tl-fixture-0001", "library_instance_uuid": UU}
+OSD = plan_m3["operation_set_digest"]
+
+
+def jrec(seq, state, prev, tx="tx-fixture", opid=None, op=None, pd=PDG, guard=G, tref=TREF, osd=OSD):
+    return {"schema": "vidtoolz.resolveTransactionJournal.v1", "transaction_id": tx, "sequence": seq, "previous_record_sha256": prev, "state": state, "plan_digest": pd, "operation_set_digest": osd, "operation_id": opid, "op": op, "intent": {"phase": state}, "result": None, "readback_payload_sha256": None, "checkpoint": None, "recorded_at": "2026-09-08T11:55:00Z", "target_ref": tref, "guard_digest": guard, "authority_version": L.AUTHORITY_VERSION, "recovery_of_transaction_id": (tx if state == "RECOVERY_RECONCILING" else None)}
+
+
+def chain(states, tx="tx-fixture", ops_=("op-1",), **kw):
+    """states: list of state names; OP_STARTED/APPLIED/OP_FAILED consume operation ids in order given by ops_."""
+    out, prev, oi = [], None, 0
+    started = {}
+    for i, st in enumerate(states):
+        opid = op = None
+        if st in ("OP_STARTED",):
+            opid = ops_[oi]; started[opid] = True; op = "APPEND"
+        elif st in ("APPLIED", "OP_FAILED"):
+            opid = ops_[oi]; op = "APPEND"; oi += 1
+        r = jrec(i, st, prev, tx, opid=opid, op=op, **kw)
+        out.append(r); prev = L.digest(r, "vidtoolz.resolveJournalRecord.v1")
+    return out
+
+
+def rechain(records):
+    prev = None
+    for r in records:
+        r["previous_record_sha256"] = prev; prev = L.digest(r, "vidtoolz.resolveJournalRecord.v1")
+    return records
+
+
+LEGAL_STATES = ["PREPARED", "LEASED", "PREFLIGHT_OK", "CHECKPOINTED", "OP_STARTED", "APPLIED", "READBACK_S1", "VERIFIED", "SAVED", "PUBLISHED", "COMMITTED"]
+legal = chain(LEGAL_STATES)
+JX = {"plan": plan_m3}
+fixture("journal-legal-chain", "none", "provisional/resolveTransactionJournal", legal, check="semantic_journal", extra=JX)
+fixture("journal-recovery-committed-recovered", "none", "provisional/resolveTransactionJournal", chain(["PREPARED", "LEASED", "PREFLIGHT_OK", "OP_STARTED", "APPLIED", "RECOVERY_RECONCILING", "COMMITTED_RECOVERED"]), check="semantic_journal", extra=JX)
+fixture("journal-recovery-not-applied", "none", "provisional/resolveTransactionJournal", chain(["PREPARED", "RECOVERY_RECONCILING", "NOT_APPLIED"]), check="semantic_journal", extra=JX)
+fixture("journal-operation-failed-aborted", "none", "provisional/resolveTransactionJournal", chain(["PREPARED", "LEASED", "PREFLIGHT_OK", "OP_STARTED", "OP_FAILED", "ABORTED"]), check="semantic_journal", extra=JX)
+b = copy.deepcopy(legal); b[5]["operation_id"] = "op-9"; rechain(b); fixture("journal-applied-operation-not-in-plan", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="not in the bound plan operation set", extra=JX)
+b = copy.deepcopy(legal); b[4]["operation_id"] = "op-9"; b[5]["operation_id"] = "op-9"; rechain(b); fixture("journal-invented-operation-started-and-applied", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="invented", extra=JX)
+b = copy.deepcopy(legal); b[5]["op"] = "DELETE"; rechain(b); fixture("journal-op-type-inconsistent-with-plan", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="inconsistent with plan entry", extra=JX)
+b = copy.deepcopy(legal); del b[4];
+for i, r in enumerate(b):
+    r["sequence"] = i
+rechain(b); fixture("journal-applied-without-started", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="without a preceding OP_STARTED", extra=JX)
+b = chain(["PREPARED", "LEASED", "PREFLIGHT_OK", "OP_STARTED", "APPLIED", "OP_STARTED", "APPLIED"], ops_=("op-1", "op-1")); fixture("journal-operation-applied-twice", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="applied twice", extra=JX)
+b = chain(["PREPARED", "LEASED", "PREFLIGHT_OK", "READBACK_S1"]); fixture("journal-readback-before-all-applied", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="READBACK_S1 before all plan operations applied", extra=JX)
+b = copy.deepcopy(legal); b[1]["operation_id"] = "op-1"; b[1]["op"] = "APPEND"; rechain(b); fixture("journal-non-operation-state-carries-operation", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="carries operation_id", extra=JX)
+b = copy.deepcopy(legal); b[6]["operation_set_digest"] = "9" * 64; rechain(b); fixture("journal-operation-set-digest-drift", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="operation_set_digest changed", extra=JX)
+b = chain(["PREPARED", "LEASED"], osd="9" * 64); fixture("journal-operation-set-digest-not-plan", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="operation_set_digest != plan", extra=JX)
+b = copy.deepcopy(legal); b[5]["state"] = "COMMITTED"; rechain(b); fixture("journal-skip-to-committed", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="illegal transition", extra=JX)
+b = copy.deepcopy(legal); b[3]["previous_record_sha256"] = "f" * 64; fixture("journal-broken-hash-chain", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="hash chain", extra=JX)
+b = copy.deepcopy(legal); b[2]["sequence"] = 5; rechain(b); fixture("journal-sequence-gap", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="not contiguous", extra=JX)
+b = copy.deepcopy(legal); b[3]["transaction_id"] = "tx-other"; rechain(b); fixture("journal-transaction-id-change", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="transaction_id changed", extra=JX)
+b = copy.deepcopy(legal); b[6]["plan_digest"] = "9" * 64; rechain(b); fixture("journal-plan-digest-change-mid-chain", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="plan_digest changed", extra=JX)
+b = copy.deepcopy(legal); b[6]["guard_digest"] = snap_b["guard_digest"]; rechain(b); fixture("journal-guard-change-without-recovery", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="guard_digest changed", extra=JX)
+b = copy.deepcopy(legal) + [jrec(11, "APPLIED", L.journal_head(legal), opid="op-1", op="APPEND")]; fixture("journal-record-after-terminal", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="after terminal", extra=JX)
+b = chain(["PREPARED", "RECOVERY_RECONCILING", "NOT_APPLIED"]); b[1]["recovery_of_transaction_id"] = "tx-other"; rechain(b); fixture("journal-recovery-unlinked", "semantic", "provisional/resolveTransactionJournal", b, check="semantic_journal", expect_contains="not linked", extra=JX)
+b = copy.deepcopy(legal); b[5]["state"] = "APPLIED_MAYBE"; fixture("journal-unknown-state", "schema", "provisional/resolveTransactionJournal", b, expect_contains="enum")
+b = copy.deepcopy(legal); del b[0]["op"]; fixture("journal-missing-op-field", "schema", "provisional/resolveTransactionJournal", b, expect_contains="op")
+fixture("journal-empty", "semantic", "provisional/resolveTransactionJournal", [], check="semantic_journal", expect_contains="empty", extra=JX)
+# S1: S0 + the appended occurrence
+s1_tracks = copy.deepcopy(wp_tracks)
+new_item = item_media("it-new", 6, 110194, 110541, "mp-new", hashlib.sha256(b"new-still").hexdigest(), "HASHED", "still-021"); new_item["field_status"]["media_id"] = "OBSERVED"; new_item["media_id"] = "mid-it-new"
+s1_tracks[0]["items"].append(new_item)
+s1 = make_snapshot(s1_tracks, coverage_=WP_COV); s1["collection"]["generation"] = 2
+dump("fixtures/snapshot/write-precheck-s1-after-append.json", s1)
+s1_noop = copy.deepcopy(s0); s1_noop["collection"]["generation"] = 2; resign(s1_noop)
+s1_extra = copy.deepcopy(s1); s1_extra["payload"]["tracks"][0]["items"][1]["enabled"] = False; resign(s1_extra)
+s1_wrong_track = make_snapshot([copy.deepcopy(wp_tracks[0]), dict(copy.deepcopy(wp_tracks[1]), items=[dict(new_item, observation_ordinal=2)]), copy.deepcopy(wp_tracks[2])], coverage_=WP_COV)
+s1_other_media = copy.deepcopy(s1); s1_other_media["payload"]["tracks"][0]["items"][-1]["media_pool_item_unique_id"] = "mp-wrong"; resign(s1_other_media)
+s1_other_epoch = copy.deepcopy(s1); s1_other_epoch["target_epoch"] = "epoch-fixture-2"; resign(s1_other_epoch)
+
+
+def make_vr(plan, s0_, s1_, journal, override=None):
+    d = L.verify_transaction(plan, s0_, s1_, journal)
+    vr = {"schema": "vidtoolz.resolveVerificationResult.v1", "plan_digest": plan["plan_digest"], "transaction_id": plan["transaction_id"], "target": plan["target"], "h0_guard_digest": s0_["guard_digest"], "s1_guard_digest": s1_["guard_digest"], "h0_payload_sha256": s0_["payload_sha256"], "s1_payload_sha256": s1_["payload_sha256"], "readback_snapshot_sha256": L.snapshot_object_digest(s1_), "expected_delta_digest": plan["operation_set_digest"], "authority_version": L.AUTHORITY_VERSION, "coverage": {"s0": s0_["coverage"]["profile"], "s1": s1_["coverage"]["profile"]}, "is_human_approval": False}
+    vr.update({k: d[k] for k in ("added", "removed", "changed", "creation_identity_map", "missing_expected", "unrelated", "applied_operation_ids", "verdict")})
+    vr.update(override or {})
+    return vr
+
+
+vr_ok = make_vr(plan_m3, s0, s1, legal)
+assert vr_ok["verdict"] == "VERIFIED" and vr_ok["creation_identity_map"] == {"op-1": "it-new"}, vr_ok
+dump("fixtures/plan/m3-append-verification.json", vr_ok)
+VX = {"plan": plan_m3, "s0": s0, "s1": s1, "journal": legal}
+fixture("verification-derived-verified", "none", "provisional/resolveVerificationResult", vr_ok, check="semantic_verification_result", extra=VX)
+fixture("verification-append-no-added-item-claims-verified", "semantic", "provisional/resolveVerificationResult", dict(vr_ok, s1_guard_digest=s1_noop["guard_digest"], s1_payload_sha256=s1_noop["payload_sha256"], readback_snapshot_sha256=L.snapshot_object_digest(s1_noop), added=[], creation_identity_map={}), check="semantic_verification_result", expect_contains="differs from derived truth", extra=dict(VX, s1=s1_noop))
+fixture("verification-derived-append-missing", "none", "provisional/resolveVerificationResult", make_vr(plan_m3, s0, s1_noop, legal), check="semantic_verification_result", extra=dict(VX, s1=s1_noop))
+fixture("verification-hides-unrelated-change", "semantic", "provisional/resolveVerificationResult", dict(vr_ok, s1_guard_digest=s1_extra["guard_digest"], s1_payload_sha256=s1_extra["payload_sha256"], readback_snapshot_sha256=L.snapshot_object_digest(s1_extra)), check="semantic_verification_result", expect_contains="differs from derived truth", extra=dict(VX, s1=s1_extra))
+fixture("verification-derived-unexpected-delta", "none", "provisional/resolveVerificationResult", make_vr(plan_m3, s0, s1_extra, legal), check="semantic_verification_result", extra=dict(VX, s1=s1_extra))
+fixture("verification-arbitrary-s1-hash", "semantic", "provisional/resolveVerificationResult", dict(vr_ok, s1_payload_sha256="9" * 64), check="semantic_verification_result", expect_contains="S1 digests do not resolve", extra=VX)
+fixture("verification-arbitrary-readback-hash", "semantic", "provisional/resolveVerificationResult", dict(vr_ok, readback_snapshot_sha256="9" * 64), check="semantic_verification_result", expect_contains="S1 digests do not resolve", extra=VX)
+fixture("verification-s0-hash-not-plan-guard", "semantic", "provisional/resolveVerificationResult", dict(vr_ok, h0_guard_digest=snap_b["guard_digest"], h0_payload_sha256=snap_b["payload_sha256"]), check="semantic_verification_result", expect_contains="guard mismatch", extra=VX)
+fixture("verification-other-plan", "semantic", "provisional/resolveVerificationResult", dict(vr_ok, plan_digest="9" * 64), check="semantic_verification_result", expect_contains="another plan", extra=VX)
+fixture("verification-other-transaction", "semantic", "provisional/resolveVerificationResult", dict(vr_ok, transaction_id="tx-other"), check="semantic_verification_result", expect_contains="another transaction", extra=VX)
+fixture("verification-other-target", "semantic", "provisional/resolveVerificationResult", dict(vr_ok, target=dict(TGT, timeline_unique_id="tl-OTHER")), check="semantic_verification_result", expect_contains="another target", extra=VX)
+fixture("verification-delta-authority-mismatch", "semantic", "provisional/resolveVerificationResult", dict(vr_ok, expected_delta_digest="9" * 64), check="semantic_verification_result", expect_contains="expected-delta", extra=VX)
+fixture("verification-s1-other-epoch", "semantic", "provisional/resolveVerificationResult", make_vr(plan_m3, s0, s1_other_epoch, legal), check="semantic_verification_result", expect_contains="target_epoch", extra=dict(VX, s1=s1_other_epoch))
+fixture("verification-append-on-wrong-track-not-verified", "none", "provisional/resolveVerificationResult", make_vr(plan_m3, s0, s1_wrong_track, legal), check="semantic_verification_result", extra=dict(VX, s1=s1_wrong_track))
+fixture("verification-append-wrong-media-not-verified", "none", "provisional/resolveVerificationResult", make_vr(plan_m3, s0, s1_other_media, legal), check="semantic_verification_result", extra=dict(VX, s1=s1_other_media))
+fixture("verification-append-not-applied-in-journal", "none", "provisional/resolveVerificationResult", make_vr(plan_m3, s0, s1, chain(["PREPARED", "LEASED", "PREFLIGHT_OK"])), check="semantic_verification_result", extra=dict(VX, journal=chain(["PREPARED", "LEASED", "PREFLIGHT_OK"])))
+fixture("verification-claims-human-approval", "schema", "provisional/resolveVerificationResult", dict(vr_ok, is_human_approval=True), expect_contains="False")
+fixture("verification-missing-applied-ops", "schema", "provisional/resolveVerificationResult", {k: v for k, v in vr_ok.items() if k != "applied_operation_ids"}, expect_contains="applied_operation_ids")
+# effect law: SET_PROPERTIES has no specified effect -> can never be VERIFIED
+ops_sp = [dict(ops[0], operation_id="op-2", op="SET_PROPERTIES", selector=dict(sel_append, item_unique_id="it-1", expected_start=108000, expected_end=108347), expected_new={"ZoomX": {"$f64": "3ff0000000000000"}})]
+plan_sp_body = dict(plan_body, operations=ops_sp, operation_set_digest=L.operation_set_digest(ops_sp)); plan_sp = dict(plan_sp_body, plan_digest=L.plan_digest_of(plan_sp_body), refs=PLAN_REFS)
+legal_sp = chain(LEGAL_STATES, ops_=("op-2",), pd=plan_sp["plan_digest"], osd=plan_sp["operation_set_digest"])
+for r in legal_sp:
+    if r["op"]:
+        r["op"] = "SET_PROPERTIES"
+rechain(legal_sp)
+vr_sp = make_vr(plan_sp, s0, s1_noop, legal_sp)
+assert vr_sp["verdict"] == "EFFECT_NOT_SPECIFIED", vr_sp["verdict"]
+fixture("verification-effect-not-specified-derived", "none", "provisional/resolveVerificationResult", vr_sp, check="semantic_verification_result", extra={"plan": plan_sp, "s0": s0, "s1": s1_noop, "journal": legal_sp})
+fixture("verification-effect-not-specified-claims-verified", "semantic", "provisional/resolveVerificationResult", dict(vr_sp, verdict="VERIFIED", missing_expected=[]), check="semantic_verification_result", expect_contains="NOT_YET_SPECIFIED", extra={"plan": plan_sp, "s0": s0, "s1": s1_noop, "journal": legal_sp})
+conflict_ok = {"schema": "vidtoolz.resolveConflict.v1", "transaction_id": "tx-fixture", "plan_digest": PDG, "code": "UNEXPECTED_DELTA", "drift_class": "POSITION_DRIFT", "object": {"item": "it-3"}, "expected": {"start": 108694}, "observed": {"start": 108700}, "policy": "REQUEST_RECONCILIATION", "next_action_non_mutating": "present to Mikko", "authority_effect": "NONE_UNTIL_HUMAN_ADJUDICATION", "resolved": True, "authority_version": L.AUTHORITY_VERSION}
+fixture("conflict-bound-resolved", "none", "provisional/resolveConflict", conflict_ok, check="semantic_conflict", extra=JX)
+c = copy.deepcopy(conflict_ok); c["plan_digest"] = "9" * 64; fixture("conflict-other-plan", "semantic", "provisional/resolveConflict", c, check="semantic_conflict", expect_contains="not bound", extra=JX)
+commit_ok = {"schema": "vidtoolz.resolveCommitManifest.v1", "transaction_id": "tx-fixture", "plan_digest": PDG, "target": TGT, "authority_version": L.AUTHORITY_VERSION, "operation_set_digest": OSD, "terminal_state": "COMMITTED", "binding_observation_sha256": "5" * 64, "binding_set_digest": "2" * 64, "receipt_sha256": "6" * 64, "journal_head_sha256": L.journal_head(legal), "verification_result_sha256": L.digest(vr_ok, "vidtoolz.resolveVerificationResult.v1"), "guard_digest": G, "s1_guard_digest": s1["guard_digest"], "unresolved_conflicts": [], "ef_source_pins": {}, "published_at": "2026-09-08T11:59:00Z"}
+CX = {"plan": plan_m3, "journal": legal, "verification_result": vr_ok, "conflicts": [], "s0": s0, "s1": s1}
+fixture("commit-linked-eligible", "none", "provisional/resolveCommitManifest", commit_ok, check="semantic_commit_manifest", extra=CX)
+fixture("commit-verification-hash-only-object-missing", "semantic", "provisional/resolveCommitManifest", commit_ok, check="semantic_commit_manifest", expect_contains="not only their hashes", extra=dict(CX, verification_result=None))
+vr_bad = dict(vr_ok, s1_guard_digest=s1_noop["guard_digest"], s1_payload_sha256=s1_noop["payload_sha256"], readback_snapshot_sha256=L.snapshot_object_digest(s1_noop), added=[], creation_identity_map={})
+fixture("commit-verification-not-derived-truth", "semantic", "provisional/resolveCommitManifest", dict(commit_ok, verification_result_sha256=L.digest(vr_bad, "vidtoolz.resolveVerificationResult.v1"), s1_guard_digest=s1_noop["guard_digest"]), check="semantic_commit_manifest", expect_contains="differs from derived truth", extra=dict(CX, verification_result=vr_bad, s1=s1_noop))
+fixture("commit-journal-invented-operation", "semantic", "provisional/resolveCommitManifest", commit_ok, check="semantic_commit_manifest", expect_contains="not in the bound plan", extra=dict(CX, journal=(lambda b: (b[5].update(operation_id="op-9"), rechain(b))[1])(copy.deepcopy(legal))))
+c = copy.deepcopy(commit_ok); c["s1_guard_digest"] = snap_b["guard_digest"]; fixture("commit-s1-guard-mismatch", "semantic", "provisional/resolveCommitManifest", c, check="semantic_commit_manifest", expect_contains="s1_guard_digest", extra=CX)
+c = copy.deepcopy(commit_ok); c["operation_set_digest"] = "9" * 64; fixture("commit-operation-set-mismatch", "semantic", "provisional/resolveCommitManifest", c, check="semantic_commit_manifest", expect_contains="operation_set_digest", extra=CX)
+c = copy.deepcopy(commit_ok); c["journal_head_sha256"] = "7" * 64; fixture("commit-journal-head-mismatch", "semantic", "provisional/resolveCommitManifest", c, check="semantic_commit_manifest", expect_contains="journal_head", extra=CX)
+c = copy.deepcopy(commit_ok); c["target"] = dict(TGT, project_unique_id="proj-OTHER"); fixture("commit-target-mismatch", "semantic", "provisional/resolveCommitManifest", c, check="semantic_commit_manifest", expect_contains="target", extra=CX)
+fixture("commit-with-unresolved-conflict-record", "semantic", "provisional/resolveCommitManifest", commit_ok, check="semantic_commit_manifest", expect_contains="unresolved conflict", extra=dict(CX, conflicts=[dict(conflict_ok, resolved=False)]))
+c = copy.deepcopy(commit_ok); del c["s1_guard_digest"]; fixture("commit-missing-s1-guard", "schema", "provisional/resolveCommitManifest", c, expect_contains="s1_guard_digest")
+
+
+def linked(name, layer, ts, expect=None, evidence_set="write-ready-full", capabilities=HYP):
+    dump(f"fixtures/linked-set/{name}.json", {"fixture": name, "layer_expected_failure": layer, "evidence_set": evidence_set, "capabilities": capabilities, "expect_error_contains": expect, "set": ts})
+
+
+TS_OK = {"s0_snapshot": s0, "plan": plan_m3, "journal": legal, "s1_snapshot": s1, "verification": vr_ok, "commit": commit_ok, "conflicts": [conflict_ok]}
+linked("linked-set-committed-consistent", "none", TS_OK)
+linked("linked-set-in-flight-no-s1", "none", dict(TS_OK, journal=chain(["PREPARED", "LEASED", "PREFLIGHT_OK", "OP_STARTED", "APPLIED"]), s1_snapshot=None, verification=None, commit=None, conflicts=[]))
+linked("linked-set-append-without-effect", "linked-set", dict(TS_OK, s1_snapshot=s1_noop, verification=vr_bad, commit=dict(commit_ok, verification_result_sha256=L.digest(vr_bad, "vidtoolz.resolveVerificationResult.v1"), s1_guard_digest=s1_noop["guard_digest"])), "differs from derived truth")
+linked("linked-set-append-without-effect-honest-verdict-no-commit", "linked-set", dict(TS_OK, s1_snapshot=s1_noop, verification=make_vr(plan_m3, s0, s1_noop, legal), commit=dict(commit_ok, verification_result_sha256=L.digest(make_vr(plan_m3, s0, s1_noop, legal), "vidtoolz.resolveVerificationResult.v1"), s1_guard_digest=s1_noop["guard_digest"])), "without VERIFIED")
+linked("linked-set-unrelated-change-hidden", "linked-set", dict(TS_OK, s1_snapshot=s1_extra, verification=dict(vr_ok, s1_guard_digest=s1_extra["guard_digest"], s1_payload_sha256=s1_extra["payload_sha256"], readback_snapshot_sha256=L.snapshot_object_digest(s1_extra))), "differs from derived truth")
+linked("linked-set-journal-invented-operation", "linked-set", dict(TS_OK, journal=(lambda b: (b[5].update(operation_id="op-9"), rechain(b))[1])(copy.deepcopy(legal))), "not in the bound plan")
+linked("linked-set-journal-applied-without-started", "linked-set", dict(TS_OK, journal=(lambda b: ([r.update(sequence=i) for i, r in enumerate(b)], rechain(b))[1])([r for i, r in enumerate(copy.deepcopy(legal)) if i != 4])), "without a preceding OP_STARTED")
+linked("linked-set-s1-arbitrary-hash", "linked-set", dict(TS_OK, verification=dict(vr_ok, s1_payload_sha256="9" * 64)), "S1 digests do not resolve")
+linked("linked-set-s0-not-write-precheck", "linked-set", dict(TS_OK, s0_snapshot=snap_pos), "WRITE_PRECHECK")
+linked("linked-set-s0-observed-fields-not-callable", "linked-set", TS_OK, "not callable", evidence_set="write-ready-base", capabilities="CAPABILITIES.json")
+linked("linked-set-effect-not-specified-claims-verified", "linked-set", dict(TS_OK, plan=plan_sp, journal=legal_sp, s1_snapshot=s1_noop, verification=dict(vr_sp, verdict="VERIFIED", missing_expected=[]), commit=None, conflicts=[]), "NOT_YET_SPECIFIED")
+linked("linked-set-verification-other-plan", "linked-set", dict(TS_OK, verification=dict(vr_ok, plan_digest="9" * 64)), "another plan")
+linked("linked-set-guard-snapshot-stale", "linked-set", dict(TS_OK, s0_snapshot=snap_b), "STALE_SNAPSHOT")
+linked("linked-set-plan-not-eligible-no-authorization", "linked-set", TS_OK, "MIKKO_M3_AUTHORIZATION", evidence_set="write-ready-without-authorization")
+linked("linked-set-committed-journal-without-commit", "linked-set", dict(TS_OK, commit=None), "without a commit manifest")
+linked("linked-set-unresolved-conflict", "linked-set", dict(TS_OK, conflicts=[dict(conflict_ok, resolved=False)]), "unresolved conflict")
+linked("linked-set-schema-invalid-plan", "linked-set", dict(TS_OK, plan=dict(plan_m3, target_attachment_state="SCRATCH_WRITE_READY")), "schema/plan")
+linked("linked-set-s1-other-epoch", "linked-set", dict(TS_OK, s1_snapshot=s1_other_epoch, verification=make_vr(plan_m3, s0, s1_other_epoch, legal)), "target_epoch")
+
+# ============================================================ freeze manifest schema v1.4
+man_schema = load("schemas/resolveFreezeManifest.schema.json")
+man_schema["$id"] = "vidtoolz.resolveFreezeManifest.v1.4"; man_schema["title"] = "Freeze manifest v1.4"
+man_schema["properties"]["schema"] = {"const": "vidtoolz.resolveFreezeManifest.v1.4"}; man_schema["properties"]["bundle"] = {"const": "docs/resolve-integration/v1.4"}; man_schema["properties"]["version"] = {"const": "1.4.0"}
+man_schema["properties"]["parent"]["properties"].update({"version": {"const": "1.3.0"}, "branch": {"const": "docs/resolve-authority-freeze-v1.3"}, "head": {"const": "1c9e090fcc8978e6e9b8f5dd538849448044d26b"}, "manifest_sha256": {"const": "ad1e6bfcbcb41d79c230795d64e031438e8e39a194f640daca68532d798a55dc"}})
+dump("schemas/resolveFreezeManifest.schema.json", man_schema)
+print("build_v1_4: OK; layered fixtures:", FIXTURE_COUNT[0], "; evidence sets:", len(EVSETS))

@@ -1,0 +1,53 @@
+{
+  "schema": "vidtoolz.resolveVerificationResult.v1",
+  "plan_digest": "54d49270e89ce7effcd7ac0d66a10b0815c83bbbe009c10f20e07f0acb8d59f6",
+  "transaction_id": "tx-fixture",
+  "target": {
+    "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+    "project_unique_id": "proj-fixture-0001",
+    "timeline_unique_id": "tl-fixture-0001",
+    "target_epoch": "epoch-fixture-1",
+    "host_name": "vidnux",
+    "library_name": "VIDTOOLZ Resolve Qualification v1",
+    "library_kind": "Disk",
+    "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+    "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+    "timeline_name": "VIDTOOLZ__fixture__r1",
+    "resolve_version": "21.1.0.0014"
+  },
+  "h0_guard_digest": "d28d2960182f6b5474d75c24daa05cde4f2e45460344523c79ce3164ab542b60",
+  "s1_guard_digest": "8299aebf03d6a4663f33c2515612f159b30c8044455569c10cce90c329ba636c",
+  "h0_payload_sha256": "00cfb2f87074536348c0f4cfcb3a83893308afc93b14cd1a78a7005bf41e9b32",
+  "s1_payload_sha256": "4151d420b459d535e5e16e0378f578b8c0808b22ffddc9e249f0883274dfe09c",
+  "readback_snapshot_sha256": "989dce8fa885e1db7ee13839a9b07df193ed40018cafa690bc7f79d5a63cc36d",
+  "expected_delta_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+  "authority_version": "1.4.0",
+  "coverage": {
+    "s0": "WRITE_PRECHECK",
+    "s1": "WRITE_PRECHECK"
+  },
+  "is_human_approval": false,
+  "added": [
+    {
+      "unique_id": "it-new",
+      "track_type": "video",
+      "track_index": 1,
+      "start": 110194,
+      "end": 110541,
+      "enabled": true,
+      "media_pool_item_unique_id": "mp-new",
+      "name": "still-021"
+    }
+  ],
+  "removed": [],
+  "changed": [],
+  "creation_identity_map": {
+    "op-1": "it-new"
+  },
+  "missing_expected": [],
+  "unrelated": [],
+  "applied_operation_ids": [
+    "op-1"
+  ],
+  "verdict": "VERIFIED"
+}

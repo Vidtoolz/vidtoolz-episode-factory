@@ -1,0 +1,1396 @@
+{
+  "schema": "vidtoolz.resolveCapabilityMatrix.v1.4",
+  "version": "1.5.0-HYPOTHETICAL",
+  "status": "FROZEN_NOW",
+  "qualification_note": "HYPOTHETICAL_NOT_AUTHORITY: illustrates a future reviewed refreeze; never load as CAPABILITIES.json",
+  "evidence_class_vocabulary": [
+    "QUALIFIED_READ",
+    "DOCUMENTED_NOT_QUALIFIED",
+    "NOT_TESTED",
+    "UNSUPPORTED",
+    "BLOCKED",
+    "QUALIFIED_EF_SIDE"
+  ],
+  "evidence_class_definitions": {
+    "QUALIFIED_READ": "read-only method exercised on the contract Resolve version/build (21.1.0 b14) on the contract host, with a recorded run reference, observed result, evidence hash for that exact method AND a reviewed_refreeze_version (human-reviewed refreeze); callable by ordinary logical operations only when a matching CAPABILITY_EVIDENCE record is linked in the evidence set",
+    "DOCUMENTED_NOT_QUALIFIED": "present in the 21.1 stub/README but never exercised in this estate",
+    "NOT_TESTED": "mutation or composed operation with no scratch evidence",
+    "UNSUPPORTED": "no API primitive exists",
+    "BLOCKED": "denied by policy regardless of evidence",
+    "QUALIFIED_EF_SIDE": "implemented and tested inside Episode Factory; no Resolve dependency"
+  },
+  "evidence_record_fields": [
+    "host",
+    "resolve_version",
+    "build",
+    "run_ref",
+    "method",
+    "observed_result",
+    "evidence_path",
+    "evidence_sha256",
+    "version_match",
+    "reviewed_refreeze_version",
+    "probe_id",
+    "raw_evidence_sha256",
+    "result"
+  ],
+  "resolve": {
+    "product": "DaVinci Resolve Studio",
+    "version": "21.1.0",
+    "build": 14,
+    "host": "vidnux",
+    "stub_sha256": "00078fa1256851b9807621a4eea5e670f4266b0e7003763cba4a62655543f0ec",
+    "readme_md_sha256": "5f58c94da8ec3c1f390d77ad9c60675263591dc101159b302e50b5774513830b",
+    "readme_txt_sha256": "7f42d7f65678ae70f7eff16d168cae8bcd3815494b75bd6da7119e0250397964",
+    "changelog_sha256": "b12c961176d79a5fc87757a21dc7ce2e147f13fb4dab927ed9154943c7de1491"
+  },
+  "coverage_caveat": "grades, plugin/Fusion graphs, caches, nested timelines, keyframe curves are not fully serializable; snapshots carry UNOBSERVABLE_STATE; zero-unintended-change claims only within coverage",
+  "rows": [
+    {
+      "operation": "read: connection",
+      "class": "DIRECT_API",
+      "primitives": [
+        "GetVersionString",
+        "GetProductName",
+        "GetProjectManager",
+        "GetCurrentDatabase"
+      ],
+      "evidence_class": "QUALIFIED_READ",
+      "evidence": "no evidence on 21.1.0 build 14; prior-version records attached where they exist",
+      "evidence_records": [
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetVersionString",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "5db8527bee1a97e176722053838b012bc46027d7fe23446b8703a53d422d85d8",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "beaa08336b6cc840bcc91f8369fdd18cb3dd77288cf1fc27abf7c43a0ee646ce",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetProductName",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "dc84afa7d488a3d52030156f3344926070453819d57a97a40bc466f819cafbf5",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "0e93f7bd9f134f7f5fc1b4161ef2c5cc168888494803348b2614702fbbe4d6c3",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetProjectManager",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "9cdc828449a02058b55a8efa5279bd50736df4480f5ae04f3a264388c24ac4f0",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "502410d5c00d3ae4bac71421194aed11ef13ca513c1766f1e8bc38594a42c784",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetCurrentDatabase",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "99fbf9997da7fe93c9ab324cdeacdcdbc7a78ee3acbc6ac21c989a102d6447fc",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "2f3c2406e04ff87240e510a87968d9cfc4a709506018ecf1e500ada0b99d7135",
+          "result": "SUCCESS"
+        }
+      ],
+      "m3_probes": [
+        "P0-read"
+      ],
+      "blocked_until": "M0",
+      "qualification_note": "QUALIFIED_READ requires an exact evidence record on 21.1.0 build 14 for the same method; none exists"
+    },
+    {
+      "operation": "read: project enumeration",
+      "class": "DIRECT_API",
+      "primitives": [
+        "GetProjectListInCurrentFolder",
+        "GetCurrentProject",
+        "Project.GetName"
+      ],
+      "evidence_class": "QUALIFIED_READ",
+      "evidence": "resolve-hermes evidence is on 21.0.0b.28 (version mismatch)",
+      "evidence_records": [
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetProjectListInCurrentFolder",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "81a5437cdd26319fcd97b793f5c67aab4999322ae8c3c104c747446c04adb1ef",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "f4654146563961671f81221335b187e75ef6f61d77a4281c21d5938a825b80a0",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetCurrentProject",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "9e2ca7b43a31e6a1bc8cae51aed26f5700f9d97cf014afdd233a1e44c1d7d133",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "a1cd31305f92eab8b3f2801233b19381af2e6be2faab45e9fc6a5cad09e49562",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "Project.GetName",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "7b11854f2c4d5bdc23c04ba7410ff6f3990217b5bbe461bf8a7537549d4fcba8",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "5142c1f54f18d843837a58d774f2385cdceb4ed1dd0017a85c162e5909891c03",
+          "result": "SUCCESS"
+        }
+      ],
+      "m3_probes": [
+        "P0-read"
+      ],
+      "blocked_until": "M0",
+      "qualification_note": "QUALIFIED_READ requires an exact evidence record on 21.1.0 build 14 for the same method; none exists"
+    },
+    {
+      "operation": "read: timeline enumeration",
+      "class": "DIRECT_API",
+      "primitives": [
+        "GetTimelineCount",
+        "GetTimelineByIndex",
+        "GetCurrentTimeline",
+        "Timeline.GetName"
+      ],
+      "evidence_class": "QUALIFIED_READ",
+      "evidence": "prior-version evidence only",
+      "evidence_records": [
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetTimelineCount",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "d428726d16a3725a2627d0f80b924020946e619f83b68c624a6cb0df4826cbcf",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "c4c3710f9a89710cc5c50b5a9120b64859748f5b7a71b8c01d26dfcbe223d766",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetTimelineByIndex",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "9eac5a2778d83ff3dd963f67d10a7c29b00db84bbaf237492123ab8b7e9cab2c",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "33bebca700d3aa2d809b133a795fa28eb54047aa795d4365aa573ffc6d2dff6e",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetCurrentTimeline",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "85e5e697f2f99a456bfae0b3334dcce841f654824e60d7c4e0bfae9504917ec0",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "578c54181179374cb83571a5b4015483fc8b816c6309443e224fa804b45fd73c",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "Timeline.GetName",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "8b3dbffd3a8e71d0f84b55cd47431e045360f1f33809da113ced0a5aeecb653b",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "de8d6c2392d9607f30abe130a262b981a391bc90e0a6c80f9293f0852cb4cbaf",
+          "result": "SUCCESS"
+        }
+      ],
+      "m3_probes": [
+        "P0-read"
+      ],
+      "blocked_until": "M0",
+      "qualification_note": "QUALIFIED_READ requires an exact evidence record on 21.1.0 build 14 for the same method; none exists"
+    },
+    {
+      "operation": "read: track enumeration",
+      "class": "DIRECT_API",
+      "primitives": [
+        "GetTrackCount",
+        "GetItemListInTrack",
+        "GetTrackName"
+      ],
+      "evidence_class": "QUALIFIED_READ",
+      "evidence": "Scorecraft driver never recorded a pass; FRB used GetStart/GetDuration on 21.0.3",
+      "evidence_records": [
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetTrackCount",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "4d5e2400a329a78101d067640aa6d467c8b8435d932adb210677b22cdd8816c2",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "3722502f4dd5740be7e5cd9e35c199c59e0e19ee627a9636dc107b2ba591e087",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetItemListInTrack",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "29abf68c99461e08c8b77b3a8ba464a8a22d5de3d3aa3fdc87e0cdb7adee82bc",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "c052124fb9bd875f3a0e067885d63068104e5c1a86bc2610a4233d78ce1aeb95",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetTrackName",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "982c23eadc3f61f06699f1451c59e6f20805d5a748bcc78ba6cd0e67aa7a453f",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "18bef14fea9d553e738ee05bbe5be9057210a61a2a863ce5087fe488ff99f6a3",
+          "result": "SUCCESS"
+        }
+      ],
+      "m3_probes": [
+        "P0-read"
+      ],
+      "blocked_until": "M0",
+      "qualification_note": "QUALIFIED_READ requires an exact evidence record on 21.1.0 build 14 for the same method; none exists"
+    },
+    {
+      "operation": "read: item position (integer form)",
+      "class": "DIRECT_API",
+      "primitives": [
+        "GetStart",
+        "GetEnd",
+        "GetDuration",
+        "TimelineItem.GetName",
+        "GetMediaPoolItem",
+        "GetClipEnabled"
+      ],
+      "evidence_class": "QUALIFIED_READ",
+      "evidence": "GetStart/GetDuration evidenced on 21.0.3 only; GetEnd never evidenced",
+      "evidence_records": [
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetStart",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "e817abf4f1707a40cdde7ad8fd79c434f7fe827db9d412bd06a0cf9a69f006d9",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "be0f017baaf9a021f7b7ba1d7b277d3e714aec335f4191bec3d787362b5fd4bd",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetEnd",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "f1597a6eca260ac75a742201e98ce442121c6a37f2cfba4cd87a9b665f48ee81",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "d9a9be8c859912ec4ac67d5a508a1db2943036d8474b43c6be1e03c7c2d09eea",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetDuration",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "8daad07f95f0240246aa11a499037f17ca0e2de325f47875375d53f582460495",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "fca2c082e90f02abdd350857f6ed432e4935ba98c255fe4dc57564e00d0255f2",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "TimelineItem.GetName",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "a906541789444d5bdb8aaa8d0ea4035fefd2a29fa3fe3c11d3e4ce2fd5ee05ec",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "4c3b411aa5934eb3247c06846e3b2e204ecba5739a1ee99df59a1a4ff40bd37d",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetMediaPoolItem",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "2e4af6b88739c30b42b4f139ca5c52e916b1de842a8b43b9bbc88981297c23da",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "ad75a35be774a4321f9a963f6755860565aec92c50a282f3d8744b9898162710",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetClipEnabled",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "d8b2ebfbd44683e926dda24cc0137346cbacc1baaa7393a17d44f5b921ef58db",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "ea0b961559f0d04de8a6d29b7a531f87cbd7b2121c3589920b2fa3d19b0d8103",
+          "result": "SUCCESS"
+        }
+      ],
+      "m3_probes": [
+        "P0-read"
+      ],
+      "blocked_until": "M0",
+      "qualification_note": "QUALIFIED_READ requires an exact evidence record on 21.1.0 build 14 for the same method; none exists"
+    },
+    {
+      "operation": "read: subframe precision variants",
+      "class": "DIRECT_API",
+      "primitives": [
+        "GetStart(True)",
+        "GetEnd(True)",
+        "GetDuration(True)",
+        "GetLeftOffset(True)",
+        "GetRightOffset(True)"
+      ],
+      "evidence_class": "QUALIFIED_READ",
+      "evidence": "never called in estate",
+      "evidence_records": [
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetStart(True)",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "947f050a47bcbe95dfe569ca3372ff2a8f50aa9b8610f5323663991ff224f7e3",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "e49f7708a8481672f6e533ebeb01b16bbd566f6ae2190d1f8d7e836712a11fab",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetEnd(True)",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "3829f303e01a1f2188bbf6ccbbf7ee30c7dd949c53ae962d95b3801142c07830",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "627e232bc6a285d65f99e7ec6a7b020173d80bd5e4edee5ea3228bfa067c7b59",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetDuration(True)",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "c43f15eea456448603fac3f57e0887b6c391d82b9e24486de8a678cf46c5fe3f",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "49960e4412a9974a4a4a681d0b10ea71f0cafd3f8a177f62e162e6836ba30dcc",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetLeftOffset(True)",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "f5e91f823599446b9bb0de8467c1c76f1bc81ecd8248373a40ec641b64976d02",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "5806a4b66d9b2837a15d2ec0617de102d4c71edb8d4eeda93b273bb9364010f8",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetRightOffset(True)",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "2487e25caf48da7709a29e385863d2e4c994e92e608bcd89fa3c8af51f0bd482",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "d64799cea4855ca5e46cd409adc067c94929191d0f7c5070366c5107cca52bbd",
+          "result": "SUCCESS"
+        }
+      ],
+      "m3_probes": [
+        "P0-read"
+      ],
+      "blocked_until": "M0",
+      "qualification_note": "QUALIFIED_READ requires an exact evidence record on 21.1.0 build 14 for the same method; none exists"
+    },
+    {
+      "operation": "read: source boundary methods",
+      "class": "DIRECT_API",
+      "primitives": [
+        "GetSourceStartFrame",
+        "GetSourceEndFrame",
+        "GetSourceStartTime",
+        "GetSourceEndTime"
+      ],
+      "evidence_class": "QUALIFIED_READ",
+      "evidence": "never called in estate",
+      "evidence_records": [
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetSourceStartFrame",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "7cdf9832e1a6fbd128d9f5f171429347ce67dc26a42a0144ddfd35a159fc3a4f",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "00e7b2112690845b57775ea33778eaf51ab344035602bff62c17a369d0ca7a92",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetSourceEndFrame",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "a04800983774fbeb7917b6b1a25ff1da9bf384ff4aa548b5b8725a8ceea3b5fa",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "c7c877d07666f41581b721605301eb567f44571c04ed4f249b058cd4db5d6fba",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetSourceStartTime",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "85bd0dc3140d3badadf4b04efabd593d29542ec8515f46979d9fd392650323d8",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "c6e53dabae5a61873b9b40adeb51b0e38d3ff3294ff38cb0078ed7690763304b",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetSourceEndTime",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "bb0289d096e0daa4f1c08c7e01526d384a867557c979efbae5528c9f90d5c2cb",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "a85305cfd43bfe34c04c716d14a5a522549997b1e3fd0a8a75b9f0d755f5d56c",
+          "result": "SUCCESS"
+        }
+      ],
+      "m3_probes": [
+        "P0-read"
+      ],
+      "blocked_until": "M0",
+      "qualification_note": "QUALIFIED_READ requires an exact evidence record on 21.1.0 build 14 for the same method; none exists"
+    },
+    {
+      "operation": "read: plural settings/properties",
+      "class": "DIRECT_API",
+      "primitives": [
+        "Project.GetSettings",
+        "Timeline.GetSettings",
+        "TimelineItem.GetProperties",
+        "GetClipProperty"
+      ],
+      "evidence_class": "QUALIFIED_READ",
+      "evidence": "estate used ONLY deprecated singular forms",
+      "evidence_records": [
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "Project.GetSettings",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "0efda91ff46774d7666c162fe6f484e21ea7aeafdbe4b2bd2eeb89e6ec3a11fc",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "0f7ea911589cf48dccfb5b98fabb42980e40cb732300aefbc45100371e942f0f",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "Timeline.GetSettings",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "07a02c5a021ba44ed703e8a1d12eeeab762a2c54daaec4f42ff5303966f164f7",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "41bfce50063be2483300d7a1a6a7334c8aa8e58c1db2037a485919e4bb20e5f5",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "TimelineItem.GetProperties",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "3a284ff0fa88213e8d87260a7dcbc7f0c29b400d2f469c28b6971f4af1fd3c91",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "61b66ad16bc84e6a89c2f61542a51aa36b0ab48cb844bc54ab72f0f45afa89b5",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetClipProperty",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "4dcbbd0d5fd52f74b40aed66f21ef82d8d0981d2ba1f62d727f3a1045f47f539",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "da59e0b1108dad78c394bc75a99258f75590861de23594e6d68fc1d9ac0668b9",
+          "result": "SUCCESS"
+        }
+      ],
+      "m3_probes": [
+        "P0-read"
+      ],
+      "blocked_until": "M0",
+      "qualification_note": "QUALIFIED_READ requires an exact evidence record on 21.1.0 build 14 for the same method; none exists"
+    },
+    {
+      "operation": "read: object identity (readable now)",
+      "class": "DIRECT_API",
+      "primitives": [
+        "Project.GetUniqueId",
+        "Timeline.GetUniqueId",
+        "TimelineItem.GetUniqueId",
+        "MediaPoolItem.GetUniqueId",
+        "MediaPoolItem.GetMediaId",
+        "Folder.GetUniqueId"
+      ],
+      "evidence_class": "QUALIFIED_READ",
+      "evidence": "stub only; readability on 21.1 build 14 unproven",
+      "evidence_records": [
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "Project.GetUniqueId",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "ce557fe8a6db76bdc63ebf38c2d1825ac95a8bdd0513c4b3a6258c524574e6e4",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "f3057c232fea4e7325c2a514c8e2c95e5372ace4956a5f5c78b64347a434c2ba",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "Timeline.GetUniqueId",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "e863ca455e78a72cda47dc5d4a7f5cc84ae3052a6f49820398c06936097c39ea",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "d3d3840ea40ea18610cb969566abaaa5bd10b2339741c9ef967fcf5ebf102029",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "TimelineItem.GetUniqueId",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "a5fa91386331d97dc8f195ec35671eee0c3163ed26ed1f75e6dc54522e7aac2a",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "22f974338e12f2840f1db6516a67f92ebb24a71b542791ca99da89c54682ff47",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "MediaPoolItem.GetUniqueId",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "1996bc8664ab3c2449acb6c73fdc071f9928da4a2e79b1ce4ec3d404d14de1e1",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "9c6d4715d9027965da4c99d5fd61eea48e72832905bc6d953db0ef8b1b1f7bdf",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "MediaPoolItem.GetMediaId",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "1746b30031e13f7dc0658b06eff37854bbf151315ebc1cfdcf6f61c67d2a4ac9",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "aeb1ef98baeafa195db7dcefe72195abfa8439f65de352d678f45b42a84812cc",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "Folder.GetUniqueId",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "aeb36deb7df3166d8ec822dc09ed5eed7640bb35fbd4ddb5ded9f524749131db",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "b463b9415cec50799a8ae34e0562a7d377428a750587fc2ee3f03920e39d7a76",
+          "result": "SUCCESS"
+        }
+      ],
+      "m3_probes": [
+        "P0-read"
+      ],
+      "blocked_until": "M0",
+      "qualification_note": "QUALIFIED_READ requires an exact evidence record on 21.1.0 build 14 for the same method; none exists"
+    },
+    {
+      "operation": "read: track lock/enable getters",
+      "class": "DIRECT_API",
+      "primitives": [
+        "GetIsTrackLocked",
+        "GetIsTrackEnabled"
+      ],
+      "evidence_class": "QUALIFIED_READ",
+      "evidence": "stub only",
+      "evidence_records": [
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetIsTrackLocked",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "b88b7492576908930085935e324464a905dc5d50f013e8a78d5269a25be84180",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "f100f980fd6f69c6c3db223461516424d5771fbb97eca2a60cc005075b5e1e11",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetIsTrackEnabled",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "3010b4d1fbd6b4a4e5387c94fc615997e604df4fad81c6944e5cd028f5a9599f",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "484849ae0796c538cc375c7bad55b85d44ec589211223e6e9af9f2ba28b97502",
+          "result": "SUCCESS"
+        }
+      ],
+      "m3_probes": [
+        "P0-read"
+      ],
+      "blocked_until": "M0",
+      "qualification_note": "QUALIFIED_READ requires an exact evidence record on 21.1.0 build 14 for the same method; none exists"
+    },
+    {
+      "operation": "read: timeline/project metadata",
+      "class": "DIRECT_API",
+      "primitives": [
+        "GetStartFrame",
+        "GetEndFrame",
+        "GetStartTimecode",
+        "GetProjectLastModifiedTime",
+        "GetMarkers",
+        "GetMarkerByCustomData"
+      ],
+      "evidence_class": "QUALIFIED_READ",
+      "evidence": "GetStartFrame used by hardlink fixture/FRB on prior versions",
+      "evidence_records": [
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetStartFrame",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "9171dd367403081ffbcc3a6bc5fa49ef57c591bf6aaed172c5fcad45f43efca4",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "f4bf21edd610fe2d3201cc7d577d1631b4d5463ba73d4ffd6a581cfaa84158d4",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetEndFrame",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "02910e0c0eba291414eae084af923a168e60d52d8362256f4b01278ed56cc1cc",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "c604029ead303c576ccbfa22e9d8c5bd5b2346618af5085a2b8df4036b9d8786",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetStartTimecode",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "4af97116c402e03d2583ca22baf109706a473e711f2bb9ba70dc4b5578ec3378",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "ba257feef669776e679a6efec4019b3eb323a7bec0625626cfb6d8af4a31fb34",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetProjectLastModifiedTime",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "6440b16e4d9f365f91aae76d25620bd583611d99de1e127591bffec44ab933ba",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "89cf309390f4f708bc25afed84db3e8ed790e90906822f26fae15e871ff57135",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetMarkers",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "73f507639d8c2b6aa4b3e6d5af7af0bf47a8c963164fc8570adbf2e6a1999fb9",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "72ea328a7dd4a95afd70de81641db5f5d63c1e59890bc38fa65aa05972537d80",
+          "result": "SUCCESS"
+        },
+        {
+          "host": "vidnux",
+          "resolve_version": "21.1.0",
+          "build": 14,
+          "run_ref": "HYPOTHETICAL M0 probe run probe-0001",
+          "method": "GetMarkerByCustomData",
+          "observed_result": "hypothetical non-null",
+          "evidence_path": "/HYPOTHETICAL",
+          "evidence_sha256": "9e78eb04565debcb6b3fa4976ba73ffe1451999e552d2d2381c914716fa8b07a",
+          "version_match": true,
+          "reviewed_refreeze_version": "1.5.0-HYPOTHETICAL",
+          "probe_id": "probe-0001",
+          "raw_evidence_sha256": "a97ffba2e7b8dc14d963bd2046feb0b3c0d80c215cbcbc11bf043de7f19020df",
+          "result": "SUCCESS"
+        }
+      ],
+      "m3_probes": [
+        "P0-read"
+      ],
+      "blocked_until": "M0",
+      "qualification_note": "QUALIFIED_READ requires an exact evidence record on 21.1.0 build 14 for the same method; none exists"
+    },
+    {
+      "operation": "identity: GetUniqueId survives mutation (separate claim)",
+      "class": "DIRECT_API",
+      "primitives": [
+        "TimelineItem.GetUniqueId(survival)",
+        "MediaPoolItem.GetUniqueId(survival)",
+        "Timeline.GetUniqueId(survival)"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "survival across DuplicateTimeline/DRT/FinalizeTake/delete+append/rename/save+reopen is a mutation-era claim",
+      "evidence_records": [],
+      "m3_probes": [
+        "P6",
+        "P15"
+      ],
+      "blocked_until": "M3",
+      "m3_question": "which ids survive which operation; separate from readability"
+    },
+    {
+      "operation": "create timeline with canonical settings",
+      "class": "DIRECT_API",
+      "primitives": [
+        "CreateEmptyTimeline",
+        "AddTrack",
+        "SetSettings",
+        "SetStartTimecode"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "FRB used deprecated singular SetSetting; plural untested",
+      "m3_probes": [
+        "P8",
+        "P11"
+      ],
+      "blocked_until": "M3",
+      "evidence_records": []
+    },
+    {
+      "operation": "import media into controlled bin",
+      "class": "DIRECT_API",
+      "primitives": [
+        "ImportMedia([{FilePath}])",
+        "AddSubFolder",
+        "SetCurrentFolder",
+        "SetMetadata"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "hardlink fixture used deprecated AddItemListToMediaPool list form",
+      "m3_probes": [
+        "P2"
+      ],
+      "blocked_until": "M3",
+      "evidence_records": []
+    },
+    {
+      "operation": "exact placement with source range",
+      "class": "DIRECT_API",
+      "primitives": [
+        "AppendToTimeline([{mediaPoolItem,startFrame,endFrame,mediaType,trackIndex,recordFrame}]) on CURRENT timeline"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "signature documented; recordFrame origin INFERRED from two estate scripts",
+      "m3_probes": [
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5"
+      ],
+      "blocked_until": "M3",
+      "m3_question": "current-timeline targeting; recordFrame origin; endFrame inclusivity; still duration; collision behaviour",
+      "evidence_records": []
+    },
+    {
+      "operation": "move/trim/slip/nudge existing item in place",
+      "class": "UNSUPPORTED",
+      "primitives": [],
+      "evidence_class": "UNSUPPORTED",
+      "evidence": "stub grep: no setters",
+      "m3_probes": [],
+      "blocked_until": null,
+      "evidence_records": []
+    },
+    {
+      "operation": "replace one occurrence with a new occurrence",
+      "class": "DELETE_AND_APPEND",
+      "primitives": [
+        "DeleteClips([item], false)",
+        "AppendToTimeline"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "documented primitives; composed operation never exercised",
+      "m3_probes": [
+        "P13",
+        "P16"
+      ],
+      "blocked_until": "M3",
+      "m3_question": "does the new occurrence land at the identical [start,end) with neighbours byte-for-byte unchanged in snapshot terms; what identity does the new item carry; what happens on crash between delete and append; does DeleteClips(false) shift anything",
+      "evidence_records": []
+    },
+    {
+      "operation": "replace one occurrence media keeping item (take swap)",
+      "class": "TAKE_SWAP",
+      "primitives": [
+        "AddTake",
+        "SelectTakeByIndex",
+        "FinalizeTake"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "documented",
+      "m3_probes": [
+        "P6"
+      ],
+      "blocked_until": "M3",
+      "m3_question": "does item GetUniqueId survive FinalizeTake; source bounds after finalize",
+      "evidence_records": []
+    },
+    {
+      "operation": "temporarily hide/disable one occurrence",
+      "class": "DISABLE",
+      "primitives": [
+        "SetClipEnabled(false)",
+        "GetClipEnabled"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "documented",
+      "m3_probes": [
+        "P14"
+      ],
+      "blocked_until": "M3",
+      "qualification_note": "DISABLE != CUT",
+      "m3_question": "does SetClipEnabled change only the enabled flag (no position/duration/marker change); is the flag readable and stable across save/reopen; DISABLE != CUT: a disabled occurrence still occupies its interval and is NOT a canonical CUT, which is a successor-handoff rebuild",
+      "evidence_records": []
+    },
+    {
+      "operation": "replace underlying media-pool file",
+      "class": "UNSAFE",
+      "primitives": [
+        "ReplaceClip",
+        "ReplaceClipPreserveSubClip",
+        "RelinkClips"
+      ],
+      "evidence_class": "BLOCKED",
+      "evidence": "global to all uses of the pool item",
+      "m3_probes": [],
+      "blocked_until": "never in v1",
+      "evidence_records": []
+    },
+    {
+      "operation": "close gap by deletion",
+      "class": "RIPPLE_DELETE",
+      "primitives": [
+        "DeleteClips([items], true)"
+      ],
+      "evidence_class": "BLOCKED",
+      "evidence": "downstream/linked scope unqualified",
+      "m3_probes": [],
+      "blocked_until": "never in v1",
+      "evidence_records": []
+    },
+    {
+      "operation": "canonical CUT / section re-tile / script retime",
+      "class": "REBUILD_DESTINATION_TIMELINE",
+      "primitives": [
+        "successor handoff -> new destination timeline"
+      ],
+      "evidence_class": "QUALIFIED_EF_SIDE",
+      "evidence": "EF retileSection (draft-revision-successor.js)",
+      "m3_probes": [],
+      "blocked_until": null,
+      "evidence_records": []
+    },
+    {
+      "operation": "KEEP",
+      "class": "COMPOSED_API_OPERATION",
+      "primitives": [
+        "verify binding; zero mutation"
+      ],
+      "evidence_class": "QUALIFIED_EF_SIDE",
+      "evidence": "EF intake: NO_FEEDBACK != KEEP",
+      "m3_probes": [],
+      "blocked_until": null,
+      "evidence_records": []
+    },
+    {
+      "operation": "CHANGE / REWRITE",
+      "class": "COMPOSED_API_OPERATION",
+      "primitives": [
+        "canonical review -> revision plan -> successor -> bindings -> primitives"
+      ],
+      "evidence_class": "QUALIFIED_EF_SIDE",
+      "evidence": "EF revision authority; Resolve primitives remain NOT_TESTED",
+      "m3_probes": [
+        "P13",
+        "P6"
+      ],
+      "blocked_until": "M3",
+      "evidence_records": []
+    },
+    {
+      "operation": "transform/crop/composite/audio properties",
+      "class": "DIRECT_API",
+      "primitives": [
+        "SetProperties",
+        "GetProperties"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "plural forms never exercised",
+      "m3_probes": [],
+      "blocked_until": "M3",
+      "evidence_records": []
+    },
+    {
+      "operation": "speed, fades, transitions",
+      "class": "DIRECT_API",
+      "primitives": [
+        "SetSpeed",
+        "SetFades",
+        "AddTransition"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "documented",
+      "m3_probes": [],
+      "blocked_until": "M3",
+      "evidence_records": []
+    },
+    {
+      "operation": "titles / Fusion graphics",
+      "class": "COMPOSED_API_OPERATION",
+      "primitives": [
+        "InsertFusionTitleIntoTimeline",
+        "ImportFusionComp"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "FRB: 5 s user-pref insert duration; restart to rescan",
+      "m3_probes": [],
+      "blocked_until": "deferred",
+      "evidence_records": []
+    },
+    {
+      "operation": "audio tracks / mapping / normalization",
+      "class": "DIRECT_API",
+      "primitives": [
+        "AddTrack('audio')",
+        "mediaType 2 append",
+        "SetAudioMapping",
+        "NormalizeAudioLevel"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "documented",
+      "m3_probes": [],
+      "blocked_until": "deferred",
+      "evidence_records": []
+    },
+    {
+      "operation": "subtitles / AI tools",
+      "class": "DIRECT_API",
+      "primitives": [
+        "CreateSubtitlesFromAudio",
+        "TranscribeAudio"
+      ],
+      "evidence_class": "BLOCKED",
+      "evidence": "Studio+Extras; fail soft",
+      "m3_probes": [],
+      "blocked_until": "never in v1",
+      "evidence_records": []
+    },
+    {
+      "operation": "checkpoint",
+      "class": "COMPOSED_API_OPERATION",
+      "primitives": [
+        "DuplicateTimeline",
+        "Timeline.Export(EXPORT_DRT)",
+        "SaveProject"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "documented",
+      "m3_probes": [
+        "P6",
+        "P15"
+      ],
+      "blocked_until": "M3",
+      "evidence_records": []
+    },
+    {
+      "operation": "undo / rollback",
+      "class": "UNSUPPORTED",
+      "primitives": [],
+      "evidence_class": "UNSUPPORTED",
+      "evidence": "stub grep",
+      "m3_probes": [],
+      "blocked_until": null,
+      "evidence_records": []
+    },
+    {
+      "operation": "revision counter / change events / CAS",
+      "class": "UNSUPPORTED",
+      "primitives": [
+        "GetProjectLastModifiedTime(projectName) advisory"
+      ],
+      "evidence_class": "UNSUPPORTED",
+      "evidence": "no CAS/event API; last-modified trust class decided by P12",
+      "m3_probes": [
+        "P12"
+      ],
+      "blocked_until": "M3",
+      "evidence_records": []
+    },
+    {
+      "operation": "track locking as GUI-edit mitigation",
+      "class": "DIRECT_API",
+      "primitives": [
+        "SetTrackLock",
+        "GetIsTrackLocked"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "stub",
+      "m3_probes": [
+        "P9"
+      ],
+      "blocked_until": "M3",
+      "evidence_records": []
+    },
+    {
+      "operation": "cross-client project lock",
+      "class": "OBSERVED",
+      "primitives": [
+        "project-server collaboration lock (ResolveDebug.txt 2026-09-08)"
+      ],
+      "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+      "evidence": "log observation only; project granularity",
+      "m3_probes": [],
+      "blocked_until": null,
+      "evidence_records": []
+    },
+    {
+      "operation": "render / delivery",
+      "class": "COMPOSED_API_OPERATION",
+      "primitives": [
+        "LoadRenderPreset",
+        "SetRenderSettings",
+        "AddRenderJob",
+        "StartRendering",
+        "GetRenderJobStatus"
+      ],
+      "evidence_class": "BLOCKED",
+      "evidence": "FRB: live GUI required; media-storage target",
+      "m3_probes": [],
+      "blocked_until": "M11",
+      "evidence_records": []
+    },
+    {
+      "operation": "playback control",
+      "class": "UNSUPPORTED",
+      "primitives": [
+        "SetCurrentTimecode is seek only"
+      ],
+      "evidence_class": "UNSUPPORTED",
+      "evidence": "estate xdotool workaround",
+      "m3_probes": [],
+      "blocked_until": null,
+      "evidence_records": []
+    },
+    {
+      "operation": "library switch / load other project / close project",
+      "class": "UNSAFE",
+      "primitives": [
+        "SetCurrentDatabase",
+        "LoadProject(non-prefixed)",
+        "CloseProject",
+        "ImportProject"
+      ],
+      "evidence_class": "BLOCKED",
+      "evidence": "README.txt:146",
+      "m3_probes": [],
+      "blocked_until": "never",
+      "evidence_records": []
+    },
+    {
+      "operation": "scratch project lifecycle (adapter-prefixed only)",
+      "class": "COMPOSED_API_OPERATION",
+      "primitives": [
+        "CreateProject",
+        "CreateEmptyTimeline",
+        "SaveProject",
+        "LoadProject(adapter-prefixed)"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "hardlink fixture used CreateProject/SaveProject on an isolated library (deprecated forms)",
+      "m3_probes": [
+        "P15",
+        "P16"
+      ],
+      "blocked_until": "M3",
+      "qualification_note": "permitted only in the qualification library by PERMISSIONS.json scratch_lifecycle",
+      "evidence_records": []
+    },
+    {
+      "operation": "non-render mutation under -nogui",
+      "class": "NOT_TESTED",
+      "primitives": [
+        "Scorecraft P7/P8 harness assumes yes; no recorded pass"
+      ],
+      "evidence_class": "NOT_TESTED",
+      "evidence": "gate scripts exist",
+      "m3_probes": [
+        "P10"
+      ],
+      "blocked_until": "M3",
+      "m3_question": "one -nogui pass qualifies ONLY the probes actually executed under -nogui; it does not qualify M4-M8 headless operation",
+      "evidence_records": []
+    }
+  ],
+  "probe_law": "probe_candidate:true marks a DOCUMENTED_NOT_QUALIFIED read row whose primitives READ_PRIMITIVE_QUALIFICATION_PROBE may call in an isolated read-only session to produce candidate evidence; it never makes the primitive callable elsewhere",
+  "refreeze": {
+    "kind": "M0_READ_REQUALIFICATION",
+    "reviewed": true,
+    "review_decision_ref": "HYPOTHETICAL review decision",
+    "promoted_probe_ids": [
+      "probe-0001"
+    ],
+    "note": "hypothetical"
+  },
+  "qualification_pipeline": [
+    "candidate CAPABILITY_EVIDENCE (probe run, reviewed:false)",
+    "independent review decision per record (ACCEPT/REJECT)",
+    "capability refreeze: new CAPABILITIES.json with reviewed refreeze block, rows QUALIFIED_READ citing (method, probe_id, raw_evidence_sha256)",
+    "REFREEZE_RECORD in the evidence set naming the new matrix sha256",
+    "records' qualification.promoted_by = {authority_version, capability_matrix_sha256 of the active matrix}",
+    "evaluator compares every evidence record to the ACTIVE matrix; older refreeze, other authority version, other host/version or failed result never qualify"
+  ]
+}

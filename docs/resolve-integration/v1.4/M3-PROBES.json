@@ -1,0 +1,205 @@
+{
+  "schema": "vidtoolz.resolveM3Probes.v1.4",
+  "status": "PROVISIONAL_UNTIL_M3",
+  "count": 19,
+  "preflight_reference": {
+    "id": "P0-read",
+    "milestone": "M0",
+    "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+    "note": "P0 is an M0 read-getter qualification preflight, not an M3 probe"
+  },
+  "probes": [
+    {
+      "id": "P1",
+      "title": "AppendToTimeline targets the current timeline",
+      "operations": [
+        "SetCurrentTimeline",
+        "AppendToTimeline",
+        "AddTrack"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P2",
+      "title": "recordFrame origin",
+      "operations": [
+        "AppendToTimeline"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P3",
+      "title": "endFrame inclusivity",
+      "operations": [
+        "AppendToTimeline"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P4",
+      "title": "still duration on append",
+      "operations": [
+        "AppendToTimeline"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P5",
+      "title": "collision on occupied interval",
+      "operations": [
+        "AppendToTimeline"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P6",
+      "title": "GetUniqueId survival",
+      "operations": [
+        "DuplicateTimeline",
+        "ExportTimelineDRT",
+        "ImportTimelineFromFileDRT",
+        "DeleteClips_noRipple",
+        "AppendToTimeline",
+        "AddTake_SelectTake_FinalizeTake"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P7",
+      "title": "marker customData limits/duplicates",
+      "operations": [
+        "AddMarker",
+        "UpdateMarkerCustomData",
+        "DeleteMarkerByCustomData"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P8",
+      "title": "SetSettings partial failure",
+      "operations": [
+        "SetSettings"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P9",
+      "title": "SetTrackLock vs API append",
+      "operations": [
+        "SetTrackLock",
+        "AppendToTimeline",
+        "AddTrack"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P10",
+      "title": "-nogui non-render mutation (P1-P4, P7, P13 only)",
+      "operations": [
+        "AppendToTimeline",
+        "AddMarker",
+        "DeleteClips_noRipple"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P11",
+      "title": "duplicate timeline name",
+      "operations": [
+        "CreateEmptyTimeline"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P12",
+      "title": "GetProjectLastModifiedTime trust class",
+      "operations": [
+        "AppendToTimeline",
+        "AddMarker",
+        "SetClipEnabled",
+        "SaveProject"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P13",
+      "title": "replace one occurrence with a new occurrence",
+      "operations": [
+        "DeleteClips_noRipple",
+        "AppendToTimeline"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P14",
+      "title": "disable changes only the enabled flag (DISABLE != CUT)",
+      "operations": [
+        "SetClipEnabled"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P15",
+      "title": "identity stable across save/reopen",
+      "operations": [
+        "SaveProject",
+        "LoadProject_adapterPrefixed"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+      "note": "v1.3: rename removed from the claim (option B); no rename operation exists in PERMISSIONS and none is needed for the qualification goal; the machine operation list is authoritative"
+    },
+    {
+      "id": "P16",
+      "title": "crash recovery at every phase boundary",
+      "operations": [
+        "AppendToTimeline",
+        "AddMarker",
+        "SaveProject"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P17",
+      "title": "comparator exactness incl. SetProperties",
+      "operations": [
+        "SetProperties"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P18",
+      "title": "Resolve crash mid-call",
+      "operations": [
+        "AppendToTimeline"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    {
+      "id": "P19",
+      "title": "import synthetic media into run-scoped bin",
+      "operations": [
+        "ImportMedia"
+      ],
+      "milestone": "M3",
+      "scope": "SCRATCH_QUALIFICATION_LIBRARY"
+    }
+  ]
+}

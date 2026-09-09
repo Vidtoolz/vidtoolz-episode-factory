@@ -1,0 +1,3875 @@
+{
+  "schema": "vidtoolz.resolveEvidenceSet.v1.4",
+  "current_session_id": "sess-2026-09-08-0001",
+  "evaluated_at": "2026-09-08T12:00:00Z",
+  "records": {
+    "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0": {
+      "record_type": "PROVISIONING_RECORD",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": null,
+        "provisioning_id": null,
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 0,
+        "captured_at": "2026-09-08T11:30:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "library_kind": "Disk",
+      "root_path": "/home/vidtoolz/resolve-qualification-library-v1",
+      "instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+      "provisioned_by": "Mikko (operator)",
+      "record_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0"
+    },
+    "536404154de77f45fe35ddfaa9b915bd0784ebd40326870e57dd3791678ce3c4": {
+      "record_type": "BUNDLE_VERIFICATION",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": null,
+        "resolve_version": null,
+        "build": null,
+        "library_name": null,
+        "library_uuid": null,
+        "library_root": null,
+        "session_id": null,
+        "provisioning_id": null,
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 0,
+        "captured_at": "2026-09-08T11:30:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "authority_version": "1.4.0",
+      "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+      "verifier": "Codex (independent)",
+      "prepared_by": "Claude Code (Fable 5.1)",
+      "historical": false,
+      "record_id": "536404154de77f45fe35ddfaa9b915bd0784ebd40326870e57dd3791678ce3c4"
+    },
+    "ad955dc8980ecaef39063acfd4a9c27d1d80e199e3fe2b09897ad0a376e31e34": {
+      "record_type": "LAUNCH_RECIPE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 0,
+        "captured_at": "2026-09-08T11:01:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "recipe_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "resolve_version": "21.1.0.0014",
+      "resolve_binary_sha256": "124caa502547f85a2e17ad6a59269918ae561c0f82d701b9fc4e7f42127ffee7",
+      "external_scripting_preference": "Local",
+      "record_id": "ad955dc8980ecaef39063acfd4a9c27d1d80e199e3fe2b09897ad0a376e31e34"
+    },
+    "bc47011fae11b8f3024054e5d04d5a7fb4a00a370afc36e8b365deb009293f29": {
+      "record_type": "READ_ONLY_JOURNAL",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 0,
+        "captured_at": "2026-09-08T11:02:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "journal_path_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "record_id": "bc47011fae11b8f3024054e5d04d5a7fb4a00a370afc36e8b365deb009293f29"
+    },
+    "2f4b6612180348f696d48ae64f16ac8d89ca473bee99e63b39235c0006f9f046": {
+      "record_type": "CONNECTION_OBSERVATION",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 2,
+        "captured_at": "2026-09-08T11:50:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "db_type": "Disk",
+      "db_name": "VIDTOOLZ Resolve Qualification v1",
+      "product": "DaVinci Resolve Studio",
+      "resolve_version": "21.1.0.0014",
+      "root_path": "/home/vidtoolz/resolve-qualification-library-v1",
+      "instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+      "record_id": "2f4b6612180348f696d48ae64f16ac8d89ca473bee99e63b39235c0006f9f046"
+    },
+    "d9391c1281819a3741300d0b2d8f65ce4bc6771aeafd84d7c4153263664af7e2": {
+      "record_type": "PROJECT_BINDING_OBSERVATION",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 1,
+        "captured_at": "2026-09-08T11:45:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "project_unique_id": "proj-fixture-0001",
+      "project_unique_id_status": "OBSERVED",
+      "record_id": "d9391c1281819a3741300d0b2d8f65ce4bc6771aeafd84d7c4153263664af7e2"
+    },
+    "0f66e6582bebf310cc74c3716b8e68491295a76502535ec185e8cfed7ac280e2": {
+      "record_type": "TIMELINE_BINDING_OBSERVATION",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_name": "VIDTOOLZ__fixture__r1",
+        "timeline_unique_id": "tl-fixture-0001",
+        "target_epoch": null,
+        "sequence": 1,
+        "captured_at": "2026-09-08T11:46:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "timeline_name": "VIDTOOLZ__fixture__r1",
+      "timeline_unique_id": "tl-fixture-0001",
+      "timeline_unique_id_status": "OBSERVED",
+      "project_unique_id": "proj-fixture-0001",
+      "record_id": "0f66e6582bebf310cc74c3716b8e68491295a76502535ec185e8cfed7ac280e2"
+    },
+    "374504062d1013bd92bdbf4ddd11d0b308d25e0069a8185ba9bda4ed00dfbb30": {
+      "record_type": "PROJECT_BINDING_OBSERVATION",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": "PYSTY UHD",
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 1,
+        "captured_at": "2026-09-08T11:45:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "project_name": "PYSTY UHD",
+      "project_unique_id": null,
+      "project_unique_id_status": "UNAVAILABLE",
+      "record_id": "374504062d1013bd92bdbf4ddd11d0b308d25e0069a8185ba9bda4ed00dfbb30"
+    },
+    "30e28d11643daeaf84096b9efe96d0f969af1ae05009d0dbb8c4a3556e036c89": {
+      "record_type": "PROJECT_BINDING_OBSERVATION",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": "Mikko human scratch",
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 1,
+        "captured_at": "2026-09-08T11:45:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "project_name": "Mikko human scratch",
+      "project_unique_id": null,
+      "project_unique_id_status": "UNAVAILABLE",
+      "record_id": "30e28d11643daeaf84096b9efe96d0f969af1ae05009d0dbb8c4a3556e036c89"
+    },
+    "4a29876c5c574af84a56b1a9aa3741212c4ce9d7da66e549d0c63b00138b4a94": {
+      "record_type": "OPERATOR_PROVISIONED_PROJECT",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": null,
+        "provisioning_id": null,
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 0,
+        "captured_at": "2026-09-08T11:30:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "project_name": "Mikko human scratch",
+      "provisioned_by": "Mikko (operator)",
+      "record_id": "4a29876c5c574af84a56b1a9aa3741212c4ce9d7da66e549d0c63b00138b4a94"
+    },
+    "076708cbff51f9ce652c1c5766bc2b0bae7bc023cf6edefb0186d87321a15f9f": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "Folder.GetUniqueId",
+      "receiver_type": "Folder",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "b463b9415cec50799a8ae34e0562a7d377428a750587fc2ee3f03920e39d7a76",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "076708cbff51f9ce652c1c5766bc2b0bae7bc023cf6edefb0186d87321a15f9f"
+    },
+    "3357dafbe9ec084d2206fe25790763a0704dba0eacf6ced7a6f3571e0c411b0e": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetClipEnabled",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "ea0b961559f0d04de8a6d29b7a531f87cbd7b2121c3589920b2fa3d19b0d8103",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "3357dafbe9ec084d2206fe25790763a0704dba0eacf6ced7a6f3571e0c411b0e"
+    },
+    "82457f6bdaa186c8478db25e0db6ab4f0946e7002672399beb76b01c42f4a7a0": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetClipProperty",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "da59e0b1108dad78c394bc75a99258f75590861de23594e6d68fc1d9ac0668b9",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "82457f6bdaa186c8478db25e0db6ab4f0946e7002672399beb76b01c42f4a7a0"
+    },
+    "63af1a369adc258909fba483e508b2bc7d1a583f071339cd9354da96a6b4b5b2": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetCurrentDatabase",
+      "receiver_type": "ProjectManager",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "2f3c2406e04ff87240e510a87968d9cfc4a709506018ecf1e500ada0b99d7135",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "63af1a369adc258909fba483e508b2bc7d1a583f071339cd9354da96a6b4b5b2"
+    },
+    "da8c5ff4fea66ab8eca760ade26718c63ac2c3688faf429b43b3b95d6da15694": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetCurrentProject",
+      "receiver_type": "ProjectManager",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "a1cd31305f92eab8b3f2801233b19381af2e6be2faab45e9fc6a5cad09e49562",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "da8c5ff4fea66ab8eca760ade26718c63ac2c3688faf429b43b3b95d6da15694"
+    },
+    "71692546e90e6749d9ebe3860773d0bb44604a9131530ca23ae915eab1b146db": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetCurrentTimeline",
+      "receiver_type": "Project",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "578c54181179374cb83571a5b4015483fc8b816c6309443e224fa804b45fd73c",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "71692546e90e6749d9ebe3860773d0bb44604a9131530ca23ae915eab1b146db"
+    },
+    "592fa9638f00bafdf7cc83ef1dfa2232a071378726b6b7752432c28e8ae121f8": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetDuration",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "fca2c082e90f02abdd350857f6ed432e4935ba98c255fe4dc57564e00d0255f2",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "592fa9638f00bafdf7cc83ef1dfa2232a071378726b6b7752432c28e8ae121f8"
+    },
+    "7cc4baa82c248d86342a7d78916f140e23e6335a1e3b699da7105fb45074eb4a": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetDuration(True)",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "49960e4412a9974a4a4a681d0b10ea71f0cafd3f8a177f62e162e6836ba30dcc",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "7cc4baa82c248d86342a7d78916f140e23e6335a1e3b699da7105fb45074eb4a"
+    },
+    "e2a21088c83533dfb2dbd2d3111ac1b03c8bbe1916b00cc1c206892682a82a6d": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetEnd",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "d9a9be8c859912ec4ac67d5a508a1db2943036d8474b43c6be1e03c7c2d09eea",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "e2a21088c83533dfb2dbd2d3111ac1b03c8bbe1916b00cc1c206892682a82a6d"
+    },
+    "185df44f7049eb979e3458ff28db0e18517838f0c5e5510f86d9cc5716df2f91": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetEnd(True)",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "627e232bc6a285d65f99e7ec6a7b020173d80bd5e4edee5ea3228bfa067c7b59",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "185df44f7049eb979e3458ff28db0e18517838f0c5e5510f86d9cc5716df2f91"
+    },
+    "6974018f31a509ca45edc233cdbbf6524d2e4a1096e68cc3f8936db5cacd5471": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetEndFrame",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "c604029ead303c576ccbfa22e9d8c5bd5b2346618af5085a2b8df4036b9d8786",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "6974018f31a509ca45edc233cdbbf6524d2e4a1096e68cc3f8936db5cacd5471"
+    },
+    "02b6c809ea14645fa26d581810c8327743e413d22a0efc40c3ab7e3e1108e435": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetIsTrackEnabled",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "484849ae0796c538cc375c7bad55b85d44ec589211223e6e9af9f2ba28b97502",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "02b6c809ea14645fa26d581810c8327743e413d22a0efc40c3ab7e3e1108e435"
+    },
+    "ab29ed4d49b1f597903d587ca11e6f9182c4452995cd5e5c622a3f128547c4fc": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetIsTrackLocked",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "f100f980fd6f69c6c3db223461516424d5771fbb97eca2a60cc005075b5e1e11",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "ab29ed4d49b1f597903d587ca11e6f9182c4452995cd5e5c622a3f128547c4fc"
+    },
+    "29dd533836c9f9c8bf16cc44c0d1c6290fbcb16264695d05f2e10530a0b29cfd": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetItemListInTrack",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "c052124fb9bd875f3a0e067885d63068104e5c1a86bc2610a4233d78ce1aeb95",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "29dd533836c9f9c8bf16cc44c0d1c6290fbcb16264695d05f2e10530a0b29cfd"
+    },
+    "673e617c4e24fe2c7df952e45f3786f8a57b35f8bc591f30237019b407b34f33": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetLeftOffset(True)",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "5806a4b66d9b2837a15d2ec0617de102d4c71edb8d4eeda93b273bb9364010f8",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "673e617c4e24fe2c7df952e45f3786f8a57b35f8bc591f30237019b407b34f33"
+    },
+    "50b8c90956c46d3f33f55baa8740548f8094321776e3d18419cca29923e664e0": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetMarkerByCustomData",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "a97ffba2e7b8dc14d963bd2046feb0b3c0d80c215cbcbc11bf043de7f19020df",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "50b8c90956c46d3f33f55baa8740548f8094321776e3d18419cca29923e664e0"
+    },
+    "25c4c0e1d6302f6f7b9d08f6230910dad90ce5c9d7817fa82bf62dea99d81868": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetMarkers",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "72ea328a7dd4a95afd70de81641db5f5d63c1e59890bc38fa65aa05972537d80",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "25c4c0e1d6302f6f7b9d08f6230910dad90ce5c9d7817fa82bf62dea99d81868"
+    },
+    "c9dd4766dd0ed6fdf335801287044ff17a996ef2ace3267a9c6d27075cb0b509": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetMediaPoolItem",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "ad75a35be774a4321f9a963f6755860565aec92c50a282f3d8744b9898162710",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "c9dd4766dd0ed6fdf335801287044ff17a996ef2ace3267a9c6d27075cb0b509"
+    },
+    "3799f14e74252ed03e65d0e4a610a0145631aa0b2dc8ef49e78cb0ffddc975a8": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetProductName",
+      "receiver_type": "Resolve",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "0e93f7bd9f134f7f5fc1b4161ef2c5cc168888494803348b2614702fbbe4d6c3",
+      "parsed_observation": {
+        "type": "str",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "3799f14e74252ed03e65d0e4a610a0145631aa0b2dc8ef49e78cb0ffddc975a8"
+    },
+    "606bd54848125b031e6fdfdd21bbe44c4b41115364de1bcec31bd88791ddc232": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetProjectLastModifiedTime",
+      "receiver_type": "Project",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "89cf309390f4f708bc25afed84db3e8ed790e90906822f26fae15e871ff57135",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "606bd54848125b031e6fdfdd21bbe44c4b41115364de1bcec31bd88791ddc232"
+    },
+    "0f6187c5049254bd8868a42c658dd32e7ab84a0c934e94a9f21398908a8028ed": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetProjectListInCurrentFolder",
+      "receiver_type": "ProjectManager",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "f4654146563961671f81221335b187e75ef6f61d77a4281c21d5938a825b80a0",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "0f6187c5049254bd8868a42c658dd32e7ab84a0c934e94a9f21398908a8028ed"
+    },
+    "273a4fe337a1d6d6d988ad71f2970d5231b83948de8b8ef8de9b8c2ac469d603": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetProjectManager",
+      "receiver_type": "Resolve",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "502410d5c00d3ae4bac71421194aed11ef13ca513c1766f1e8bc38594a42c784",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "273a4fe337a1d6d6d988ad71f2970d5231b83948de8b8ef8de9b8c2ac469d603"
+    },
+    "4c2beeaddec1915ffbd54549d81ad79fa076a1d03a63ac8b7f80165770d7769e": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetRightOffset(True)",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "d64799cea4855ca5e46cd409adc067c94929191d0f7c5070366c5107cca52bbd",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "4c2beeaddec1915ffbd54549d81ad79fa076a1d03a63ac8b7f80165770d7769e"
+    },
+    "362c0b6e99b9e0e2015595561dc3846770c3372141fa4cf78a3e4dba7635bbc3": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetSourceEndFrame",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "c7c877d07666f41581b721605301eb567f44571c04ed4f249b058cd4db5d6fba",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "362c0b6e99b9e0e2015595561dc3846770c3372141fa4cf78a3e4dba7635bbc3"
+    },
+    "d5db4b6911efebd382969c45685914a1bc482a510267569294e3dc5579216e02": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetSourceEndTime",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "a85305cfd43bfe34c04c716d14a5a522549997b1e3fd0a8a75b9f0d755f5d56c",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "d5db4b6911efebd382969c45685914a1bc482a510267569294e3dc5579216e02"
+    },
+    "1934dc2e66e6d79f612b5b649a438925c34869bb67afb65ccfaea60b7930551a": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetSourceStartFrame",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "00e7b2112690845b57775ea33778eaf51ab344035602bff62c17a369d0ca7a92",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "1934dc2e66e6d79f612b5b649a438925c34869bb67afb65ccfaea60b7930551a"
+    },
+    "993fca5738641d741712ae7945c9a0453d0cf160407a0eccc29dc6fc28ce2a24": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetSourceStartTime",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "c6e53dabae5a61873b9b40adeb51b0e38d3ff3294ff38cb0078ed7690763304b",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "993fca5738641d741712ae7945c9a0453d0cf160407a0eccc29dc6fc28ce2a24"
+    },
+    "0ccc97badfb83206340a6dd4a036aadcf3b594e2ff5c0c37ae7915144dde72be": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetStart",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "be0f017baaf9a021f7b7ba1d7b277d3e714aec335f4191bec3d787362b5fd4bd",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "0ccc97badfb83206340a6dd4a036aadcf3b594e2ff5c0c37ae7915144dde72be"
+    },
+    "29f1c59afe1b597808443d9eea58b0b3aefabd4e38b51d7fec1ead207cebca37": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetStart(True)",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "e49f7708a8481672f6e533ebeb01b16bbd566f6ae2190d1f8d7e836712a11fab",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "29f1c59afe1b597808443d9eea58b0b3aefabd4e38b51d7fec1ead207cebca37"
+    },
+    "7927280aa13f39eaaee5ecf1f2823b4ce4ee70cbb73f7a58fdd54c177b3ac870": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetStartFrame",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "f4bf21edd610fe2d3201cc7d577d1631b4d5463ba73d4ffd6a581cfaa84158d4",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "7927280aa13f39eaaee5ecf1f2823b4ce4ee70cbb73f7a58fdd54c177b3ac870"
+    },
+    "f3b04b0db0d89c0e4c494d4438bc41b27199522e5270b30d72da49d78cbd1dcc": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetStartTimecode",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "ba257feef669776e679a6efec4019b3eb323a7bec0625626cfb6d8af4a31fb34",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "f3b04b0db0d89c0e4c494d4438bc41b27199522e5270b30d72da49d78cbd1dcc"
+    },
+    "18fdcc48aa53dd463bf246938b197c13e3cb2f63ba7b988bc92670a2d7b2ad66": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetTimelineByIndex",
+      "receiver_type": "Project",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "33bebca700d3aa2d809b133a795fa28eb54047aa795d4365aa573ffc6d2dff6e",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "18fdcc48aa53dd463bf246938b197c13e3cb2f63ba7b988bc92670a2d7b2ad66"
+    },
+    "493a3fde132cebdd78bfb267a96615d092b1e439f033eb81fe9b6f33a13eec12": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetTimelineCount",
+      "receiver_type": "Project",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "c4c3710f9a89710cc5c50b5a9120b64859748f5b7a71b8c01d26dfcbe223d766",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "493a3fde132cebdd78bfb267a96615d092b1e439f033eb81fe9b6f33a13eec12"
+    },
+    "fa807577991eeed6511d548dfdf360f4cb90d67c85ad638b0cfb04477c82a999": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetTrackCount",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "3722502f4dd5740be7e5cd9e35c199c59e0e19ee627a9636dc107b2ba591e087",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "fa807577991eeed6511d548dfdf360f4cb90d67c85ad638b0cfb04477c82a999"
+    },
+    "378f75c7ce4771681736f88f2f46b268510d05df9a5cd0ce1dc0d7ed248b7883": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetTrackName",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "18bef14fea9d553e738ee05bbe5be9057210a61a2a863ce5087fe488ff99f6a3",
+      "parsed_observation": {
+        "type": "str",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "378f75c7ce4771681736f88f2f46b268510d05df9a5cd0ce1dc0d7ed248b7883"
+    },
+    "e15ceffed3ac196f86bfd886b841396c4a30db51037208f9aa8873269a8db7be": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "GetVersionString",
+      "receiver_type": "Resolve",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "beaa08336b6cc840bcc91f8369fdd18cb3dd77288cf1fc27abf7c43a0ee646ce",
+      "parsed_observation": {
+        "type": "str",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "e15ceffed3ac196f86bfd886b841396c4a30db51037208f9aa8873269a8db7be"
+    },
+    "3672ee39840df69b06f5a3679c07eb25fee838209bed4ecd88caf4da43edadd6": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "MediaPoolItem.GetMediaId",
+      "receiver_type": "MediaPoolItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "aeb1ef98baeafa195db7dcefe72195abfa8439f65de352d678f45b42a84812cc",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "3672ee39840df69b06f5a3679c07eb25fee838209bed4ecd88caf4da43edadd6"
+    },
+    "33e2873309e1f4fd84ea64c8c82d25a1058cf334040fb71a46e832d155af73db": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "MediaPoolItem.GetUniqueId",
+      "receiver_type": "MediaPoolItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "9c6d4715d9027965da4c99d5fd61eea48e72832905bc6d953db0ef8b1b1f7bdf",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "33e2873309e1f4fd84ea64c8c82d25a1058cf334040fb71a46e832d155af73db"
+    },
+    "2e84aa9e11916302a2a5c5d7febf700db5ffdc750d917387cf3121de1038e4af": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "Project.GetName",
+      "receiver_type": "Project",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "5142c1f54f18d843837a58d774f2385cdceb4ed1dd0017a85c162e5909891c03",
+      "parsed_observation": {
+        "type": "str",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "2e84aa9e11916302a2a5c5d7febf700db5ffdc750d917387cf3121de1038e4af"
+    },
+    "dada6921c5a8f7a6626ee86fd7664c2673596db513b8eaa344c30f3e6e682b08": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "Project.GetSettings",
+      "receiver_type": "Project",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "0f7ea911589cf48dccfb5b98fabb42980e40cb732300aefbc45100371e942f0f",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "dada6921c5a8f7a6626ee86fd7664c2673596db513b8eaa344c30f3e6e682b08"
+    },
+    "372e30887ea7ac97b8afe5ec75c1a8a0ebd10a0330d445b77bf115902db62d28": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "Project.GetUniqueId",
+      "receiver_type": "Project",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "f3057c232fea4e7325c2a514c8e2c95e5372ace4956a5f5c78b64347a434c2ba",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "372e30887ea7ac97b8afe5ec75c1a8a0ebd10a0330d445b77bf115902db62d28"
+    },
+    "67067eaa6a5e4356c8fff7e68d105da12005a704039784eff2608aebc36ffe03": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "Timeline.GetName",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "de8d6c2392d9607f30abe130a262b981a391bc90e0a6c80f9293f0852cb4cbaf",
+      "parsed_observation": {
+        "type": "str",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "67067eaa6a5e4356c8fff7e68d105da12005a704039784eff2608aebc36ffe03"
+    },
+    "3d587f724510e9973e93732271f24a7dc7340c7c2b0670a5c7333d869387c61f": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "Timeline.GetSettings",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "41bfce50063be2483300d7a1a6a7334c8aa8e58c1db2037a485919e4bb20e5f5",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "3d587f724510e9973e93732271f24a7dc7340c7c2b0670a5c7333d869387c61f"
+    },
+    "4d31499034fe7d5721c73a322c3f75e77f9e4e8c3803227295cab604bad8d139": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "Timeline.GetUniqueId",
+      "receiver_type": "Timeline",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "d3d3840ea40ea18610cb969566abaaa5bd10b2339741c9ef967fcf5ebf102029",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "4d31499034fe7d5721c73a322c3f75e77f9e4e8c3803227295cab604bad8d139"
+    },
+    "14fb8deea8f72a559841237eb532a7809f7ca8bf8d1e3c154fb58994ea1728aa": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "TimelineItem.GetName",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "4c3b411aa5934eb3247c06846e3b2e204ecba5739a1ee99df59a1a4ff40bd37d",
+      "parsed_observation": {
+        "type": "str",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "14fb8deea8f72a559841237eb532a7809f7ca8bf8d1e3c154fb58994ea1728aa"
+    },
+    "e7adcb07e89af825b473928fba982c309109458573f5687fd6a73b5838c77052": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "TimelineItem.GetProperties",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "61b66ad16bc84e6a89c2f61542a51aa36b0ab48cb844bc54ab72f0f45afa89b5",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "e7adcb07e89af825b473928fba982c309109458573f5687fd6a73b5838c77052"
+    },
+    "05c46e9b9bdae6b1a731b62613c27246c7a551e8c3f94d425627d2ef82a4e1f7": {
+      "record_type": "CAPABILITY_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "method": "TimelineItem.GetUniqueId",
+      "receiver_type": "TimelineItem",
+      "probe_id": "probe-0001",
+      "probe_authority_version": "1.4.0",
+      "raw_evidence_sha256": "22f974338e12f2840f1db6516a67f92ebb24a71b542791ca99da89c54682ff47",
+      "parsed_observation": {
+        "type": "object",
+        "non_null": true
+      },
+      "result": {
+        "classification": "SUCCESS",
+        "success": true,
+        "code": null
+      },
+      "qualification": {
+        "reviewed": true,
+        "decision": "ACCEPT",
+        "promoted_by": {
+          "authority_version": "1.4.0",
+          "capability_matrix_sha256": "3ea9cfcf9eee483069a9b4c2433626d6524b9688eca2505a631db01806f2d3f2"
+        }
+      },
+      "record_id": "05c46e9b9bdae6b1a731b62613c27246c7a551e8c3f94d425627d2ef82a4e1f7"
+    },
+    "e337c6dd84e48412643e5c31256476dd0d7ee340b8c1efeaf36645d6587c57e0": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED Folder.GetUniqueId",
+      "content_sha256": "a2de29c882060249eae9434ea3006035ae7f07cd85ab20f9f14a2983a59d6c69",
+      "record_id": "e337c6dd84e48412643e5c31256476dd0d7ee340b8c1efeaf36645d6587c57e0"
+    },
+    "51107bed1315284e3d27b15b4fcabb4dc4b641c9db46ed855fe1fa5a785e9806": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetClipEnabled",
+      "content_sha256": "0a34edda319f51c2a8dcb29b6911ecebc383f67034570fce0a97e934bcbc8feb",
+      "record_id": "51107bed1315284e3d27b15b4fcabb4dc4b641c9db46ed855fe1fa5a785e9806"
+    },
+    "0fc93deaa2488be0aa36c25c1c841c217cb09c152947247699c44cfe85732282": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetClipProperty",
+      "content_sha256": "463d82d370e5a4df0e66a790dd3a4d945df06369eca017235aad806db2dbf428",
+      "record_id": "0fc93deaa2488be0aa36c25c1c841c217cb09c152947247699c44cfe85732282"
+    },
+    "034dd41250cbbb2e9d88de5e9455440fee3b9aa82b77a8e04af257c79159f6a4": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetCurrentDatabase",
+      "content_sha256": "d294c9be5f067f35995f8c2df2ddb668ddc8475afe4d4bf5fde0e574e343c678",
+      "record_id": "034dd41250cbbb2e9d88de5e9455440fee3b9aa82b77a8e04af257c79159f6a4"
+    },
+    "e1a25d93282ba36c419bc38377258eee7584d7b0b2a44bf99c8bf17fe60fbaaa": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetCurrentProject",
+      "content_sha256": "64ed1deb5ba2367acb6394d5d073336e50be057cbbe7963c3d6e60d9ddf4a2f9",
+      "record_id": "e1a25d93282ba36c419bc38377258eee7584d7b0b2a44bf99c8bf17fe60fbaaa"
+    },
+    "592ec47cc9d358ab246197a69dc4d8004eb6858a81c0b44bec3fefaeed9e7f4c": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetCurrentTimeline",
+      "content_sha256": "73126a697b898ca0cee9047a990d905acb47ab1ff22e807dd8c50145e890a732",
+      "record_id": "592ec47cc9d358ab246197a69dc4d8004eb6858a81c0b44bec3fefaeed9e7f4c"
+    },
+    "b5b07c2fdc2f155e9c0a5dd0ff2c9ae6739fc755a79e6156398481f9da072301": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetDuration",
+      "content_sha256": "ebfbda320b269d8b76bf5631d2aca935c0c185288e7eab2cd0fb48f8f68eb4b2",
+      "record_id": "b5b07c2fdc2f155e9c0a5dd0ff2c9ae6739fc755a79e6156398481f9da072301"
+    },
+    "be3f154cb8eaafedd730d92e7be3ab979b7c2051b472261b975b7285f82ae4b5": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetDuration(True)",
+      "content_sha256": "fcd8175caa0e95d8a0bf21740f666e5964f765775f56995a19246f8bef77f9b4",
+      "record_id": "be3f154cb8eaafedd730d92e7be3ab979b7c2051b472261b975b7285f82ae4b5"
+    },
+    "493aa59ba8dcc011a22202433eda9f0c2f43fdfe900ebe6565bef59e0a19c38f": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetEnd",
+      "content_sha256": "4b298b94b270ad3a50a8ef021b9acfa5ba8431c831e38ab45a46995aa93fdfb3",
+      "record_id": "493aa59ba8dcc011a22202433eda9f0c2f43fdfe900ebe6565bef59e0a19c38f"
+    },
+    "306ef39a941262b5683f35bc9bd91707b08a0ee4fc12c67b2d47f1043e10a47b": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetEnd(True)",
+      "content_sha256": "c7e9ec4a69bef27d56ba2aea36901929cc2840d4f3206b235d6118da686fb357",
+      "record_id": "306ef39a941262b5683f35bc9bd91707b08a0ee4fc12c67b2d47f1043e10a47b"
+    },
+    "e8ba5a2e78e07948d28795ae0facbd0f5248a2c6968cba76ad621eb7df667b85": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetEndFrame",
+      "content_sha256": "bf8571498cecaf514935833cca49f27d1a8ceef6feebe97952c8531a044d4dea",
+      "record_id": "e8ba5a2e78e07948d28795ae0facbd0f5248a2c6968cba76ad621eb7df667b85"
+    },
+    "7177f785bd415641b03762eafc566eeb823f935b1628e6a0247ec8bf33d45993": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetIsTrackEnabled",
+      "content_sha256": "da3cfda720c0181f3370babbc25620c020cc14a3951be1fe04af97593738594f",
+      "record_id": "7177f785bd415641b03762eafc566eeb823f935b1628e6a0247ec8bf33d45993"
+    },
+    "ff4b40914718f2af107aa1353735905453090e436d5942c05d11c52c1c1287fd": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetIsTrackLocked",
+      "content_sha256": "8cb344dabfd8ab292340b06e98359f83638c186b239b4374e7ad7f499804fd93",
+      "record_id": "ff4b40914718f2af107aa1353735905453090e436d5942c05d11c52c1c1287fd"
+    },
+    "d84078e76f603788b5ab51aa62cd05f7e7019695e5d845dff2fd5698098af5e8": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetItemListInTrack",
+      "content_sha256": "2fbd590e2cac3448d5868f2d4d5cc67064967182dad69225eeb4b74c6eb25e16",
+      "record_id": "d84078e76f603788b5ab51aa62cd05f7e7019695e5d845dff2fd5698098af5e8"
+    },
+    "844720e62e2af4fa80cfb85d0db15b87a17e071315750d936f9da64bc7eb7e7e": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetLeftOffset(True)",
+      "content_sha256": "de240380c8785bc230d34e15d15b48af892b417ae0216a9b7d3cfb99220460f1",
+      "record_id": "844720e62e2af4fa80cfb85d0db15b87a17e071315750d936f9da64bc7eb7e7e"
+    },
+    "98990a3d5a30eeafdcef810b5f5964ab34c63cfceec8142bb71a486e1c38c9bf": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetMarkerByCustomData",
+      "content_sha256": "a789f01e5bbefd6676c94e47c65ef61b1f01a22f19cc18a0151755a9956a4684",
+      "record_id": "98990a3d5a30eeafdcef810b5f5964ab34c63cfceec8142bb71a486e1c38c9bf"
+    },
+    "925d6eb9acaad8501da9e1295a026756a9cb6a534641d1a023ea6526b2e429dd": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetMarkers",
+      "content_sha256": "49d095e28b4223db81760bed93cd8b3e1565b75e5dd827440c7ba6ab57585689",
+      "record_id": "925d6eb9acaad8501da9e1295a026756a9cb6a534641d1a023ea6526b2e429dd"
+    },
+    "d87ff341332e1e0eedddaad93500f43ed96ac20fdb5ba573e009bcaea7728538": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetMediaPoolItem",
+      "content_sha256": "c1189c6df0f0ff3593804cd0fc757ba506e48e1ea5bf1e7879b0fe9396a7bbeb",
+      "record_id": "d87ff341332e1e0eedddaad93500f43ed96ac20fdb5ba573e009bcaea7728538"
+    },
+    "b963459e6690fd63819f0c23f98be3d0e3cc9ba6ca1734b1c5f0e68f8212c0de": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetProductName",
+      "content_sha256": "1a7c042b0a60d1d612a84b2cccbe2e9c87d70e8df302dec2f0cf9c021e84b6f4",
+      "record_id": "b963459e6690fd63819f0c23f98be3d0e3cc9ba6ca1734b1c5f0e68f8212c0de"
+    },
+    "fb95d92ce2cd45b7c7c7a8906a9126ec9f1b48b6de863b6d44b4ce01c06b4361": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetProjectLastModifiedTime",
+      "content_sha256": "9870279ca320cff6f7d5f753e6af352ac3c555bc677326fdee92d3fb56baa68b",
+      "record_id": "fb95d92ce2cd45b7c7c7a8906a9126ec9f1b48b6de863b6d44b4ce01c06b4361"
+    },
+    "5bfb3d734494a5a6a329436310d6bc35f102e2d00f9059b48b7244a9fb8a2d32": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetProjectListInCurrentFolder",
+      "content_sha256": "0d02cf1b20e4361ee8a4d533c5646bb77a1a75e097bc58171eb08a424f5a91de",
+      "record_id": "5bfb3d734494a5a6a329436310d6bc35f102e2d00f9059b48b7244a9fb8a2d32"
+    },
+    "4b13c3527cab5154adcf95bb22d71aae89b09898f82ca40107793694c45f97da": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetProjectManager",
+      "content_sha256": "34fafb844ceecbd1ab89a89c7cf0e0abfbb7f9ab4217fc9be5c3d012413c0e21",
+      "record_id": "4b13c3527cab5154adcf95bb22d71aae89b09898f82ca40107793694c45f97da"
+    },
+    "973d0c6fbe16e7cf0363838e6f69ce8011a4e20fdceb091273b4577ecdca96bf": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetRightOffset(True)",
+      "content_sha256": "22b2e66f6537ebf37b3ef8b34e2fcf952e5a123fdfbc91d6ef1af7991dd8fd7e",
+      "record_id": "973d0c6fbe16e7cf0363838e6f69ce8011a4e20fdceb091273b4577ecdca96bf"
+    },
+    "f58f38da4a89fb4fab5e047a3749e37d05d8d1251259ac7f544b5f5b19065ae8": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetSourceEndFrame",
+      "content_sha256": "8c5b7cf42309930818d6b6ba099549af182229332b65774809a01c611d34267a",
+      "record_id": "f58f38da4a89fb4fab5e047a3749e37d05d8d1251259ac7f544b5f5b19065ae8"
+    },
+    "0642d7a32d389a7501fe06bb57bb31e4d66e03414a0d71bbda2a382cc6e8d411": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetSourceEndTime",
+      "content_sha256": "ecb2d1a83e7a48c6301e5aa4a4b68f0d2fda5c8072bf856031349d2c146efe1f",
+      "record_id": "0642d7a32d389a7501fe06bb57bb31e4d66e03414a0d71bbda2a382cc6e8d411"
+    },
+    "0763d8468c93cb7068b4c422b2f5c8cfe78b1506e66e88ca0e9246800dfea63d": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetSourceStartFrame",
+      "content_sha256": "33388e8200e82631e9ebcd9a97c5c81e6bfe917046781806b72aee4b8cd313c4",
+      "record_id": "0763d8468c93cb7068b4c422b2f5c8cfe78b1506e66e88ca0e9246800dfea63d"
+    },
+    "798b1ddaefb6460ae6cd0476d42000151b4cc16b17e65b3acd6443a16da25967": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetSourceStartTime",
+      "content_sha256": "c9cb76790b421261fb5b4f427d5f523c2ca0e865e9e7aa751d7269251d0a8c3a",
+      "record_id": "798b1ddaefb6460ae6cd0476d42000151b4cc16b17e65b3acd6443a16da25967"
+    },
+    "3d8a0e838f601604f2e42c8bdf5b627ef45232d43749dbe82cb20a72bc3838db": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetStart",
+      "content_sha256": "d29eb40535d4739c122c9b0db0a6f97c5d300b930611593d11c919a1a2cb3921",
+      "record_id": "3d8a0e838f601604f2e42c8bdf5b627ef45232d43749dbe82cb20a72bc3838db"
+    },
+    "3978cc0a868bad1a2c8ea601ee0d30de273aec0683985da5851f0c32e664cb6b": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetStart(True)",
+      "content_sha256": "3c288499eb89a755deabe82af58362e59762ef6a3e4cc41829d1c27a58e15984",
+      "record_id": "3978cc0a868bad1a2c8ea601ee0d30de273aec0683985da5851f0c32e664cb6b"
+    },
+    "17782807996b32b1415a51806f160f8c83921d5a2f034f9c30163b86588d868e": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetStartFrame",
+      "content_sha256": "fdbb20832b1b6da648ba691b871cc08a60e6e97f70a31314a472653712ad2b14",
+      "record_id": "17782807996b32b1415a51806f160f8c83921d5a2f034f9c30163b86588d868e"
+    },
+    "e99998541a5f6c41c45fd10d6dda8ccda84420bd0ef71185410c4973c7ecf382": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetStartTimecode",
+      "content_sha256": "d221ce31f4156d076516d48f8c0baf8b1a0f9a36e5edbb94e43e9fb3ec95de69",
+      "record_id": "e99998541a5f6c41c45fd10d6dda8ccda84420bd0ef71185410c4973c7ecf382"
+    },
+    "f33f758edfe8e844264bc28679c58cf834999d4207b684e04585ca9608d912b9": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetTimelineByIndex",
+      "content_sha256": "2a1264dd04be3f6158b1af85e98b05f34b0d9024da7b818984cb4ac729f898ac",
+      "record_id": "f33f758edfe8e844264bc28679c58cf834999d4207b684e04585ca9608d912b9"
+    },
+    "41cf881a442df85d6b833ed3ebf37a5487895693e0501ba02553737edf5f9ef0": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetTimelineCount",
+      "content_sha256": "bac68a89654094e6199b5018e676d472cd1eb32c376df9bfe101c8503b2c9e47",
+      "record_id": "41cf881a442df85d6b833ed3ebf37a5487895693e0501ba02553737edf5f9ef0"
+    },
+    "3585f96481108b844a7dd7f88c4630f4cac643b3a204b0a79ccf4958a623c1f9": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetTrackCount",
+      "content_sha256": "c7d3543c700f1f0f9bea6a7faafbf0a88d66a950c82bf142b2aa3ab0a55dd239",
+      "record_id": "3585f96481108b844a7dd7f88c4630f4cac643b3a204b0a79ccf4958a623c1f9"
+    },
+    "5885fc593238ab6fe05378f361131112d2a93359ec54778bfd72214d6ff4b1fc": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetTrackName",
+      "content_sha256": "5891077b4572832e44ac76baaa2e8939327b779c118dd17b520afebdde3bbb03",
+      "record_id": "5885fc593238ab6fe05378f361131112d2a93359ec54778bfd72214d6ff4b1fc"
+    },
+    "85b10fe17bc80ddee7bdca30df8348ced1e68c0f4167598d560c098d54e24a8f": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED GetVersionString",
+      "content_sha256": "0d598009df73cff38f3ca214c66f8ccc2f37911237b35d73a3cfb700f25f580d",
+      "record_id": "85b10fe17bc80ddee7bdca30df8348ced1e68c0f4167598d560c098d54e24a8f"
+    },
+    "ecb6bb01cc127825cfb72ceb852cbf7f49d58436c4a9de6ea9e439926cdb49a6": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED MediaPoolItem.GetMediaId",
+      "content_sha256": "6a1b8494167a6248a7f52fc1708cf73240afc89ec8b16a82986911f7d12f1b21",
+      "record_id": "ecb6bb01cc127825cfb72ceb852cbf7f49d58436c4a9de6ea9e439926cdb49a6"
+    },
+    "d2f8220823d9c233074dd619bbb4c8bf21a51cf9f4fe75361e9d84e266b94c84": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED MediaPoolItem.GetUniqueId",
+      "content_sha256": "09d0dc7752331abc6ad2a6782228371588b56412b7c940dad3555bb2d4f5f2ce",
+      "record_id": "d2f8220823d9c233074dd619bbb4c8bf21a51cf9f4fe75361e9d84e266b94c84"
+    },
+    "91dde16c31a9a684652a61aad7a771131b0692e6f0ce0aac2db642cae4a9de71": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED Project.GetName",
+      "content_sha256": "4c3903446a33e48692f9c2ae329433584966f165a9c255dcd3bd07385cfa577a",
+      "record_id": "91dde16c31a9a684652a61aad7a771131b0692e6f0ce0aac2db642cae4a9de71"
+    },
+    "ca2789862a3ff5600593139f8f35fc35ad4076c866d75debdc03a26bcb09eac9": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED Project.GetSettings",
+      "content_sha256": "9ff927be5fc718e7fe189a57a83e892d6d378976d08b2f5cbe5c80838c057559",
+      "record_id": "ca2789862a3ff5600593139f8f35fc35ad4076c866d75debdc03a26bcb09eac9"
+    },
+    "0f059a9bdbd5c3460737844f2e1da5d34e94273ac4bcdeb9e880b7a71ee22b0c": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED Project.GetUniqueId",
+      "content_sha256": "8211406c73dc48ab7d5e57f5b3ee9eeec232c326529820b8fc346cc5fad9cc13",
+      "record_id": "0f059a9bdbd5c3460737844f2e1da5d34e94273ac4bcdeb9e880b7a71ee22b0c"
+    },
+    "0f49eeeb2684bfe3a7e06d8028f9bd45ad84dde55c0e90813f636dfb3a568721": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED Timeline.GetName",
+      "content_sha256": "33bf18fc3efc1424ff20580b234912939325339f68eaccb856789b46f853af10",
+      "record_id": "0f49eeeb2684bfe3a7e06d8028f9bd45ad84dde55c0e90813f636dfb3a568721"
+    },
+    "bc457307e9b0c27b5f563c2c3b464facba583afd0b6412f9a44844b0eaa7bcff": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED Timeline.GetSettings",
+      "content_sha256": "cdea7710c9231aef9d5fb2b1c77d4a74bb01eab7e34901c3e5b4595583de4538",
+      "record_id": "bc457307e9b0c27b5f563c2c3b464facba583afd0b6412f9a44844b0eaa7bcff"
+    },
+    "337b1fb8ec5e284c6d5e2e9579b144579229221746ae1076a53fd5d8b3123f92": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED Timeline.GetUniqueId",
+      "content_sha256": "d6044982f0abbe8af4696d6a4776f86b56b552a7235a7646269f7e83f472a538",
+      "record_id": "337b1fb8ec5e284c6d5e2e9579b144579229221746ae1076a53fd5d8b3123f92"
+    },
+    "c3db1bccd3c76375d137448b5822c1591192269993bd0b071b8fc603b49a7ffe": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED TimelineItem.GetName",
+      "content_sha256": "5f8840455aea610e7ffad0f46e3c8b4f1b575cba879995e288e7bf32b84c4402",
+      "record_id": "c3db1bccd3c76375d137448b5822c1591192269993bd0b071b8fc603b49a7ffe"
+    },
+    "e38b042e495d0867898399b44c55f2c6ba6f9bc1c429ca1c98b38a9afbc24479": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED TimelineItem.GetProperties",
+      "content_sha256": "d30bbfb5ec11ffc68cd045c2ebb0403409a2ce70976d1b95a3b573718df9bf22",
+      "record_id": "e38b042e495d0867898399b44c55f2c6ba6f9bc1c429ca1c98b38a9afbc24479"
+    },
+    "aeccdaa533075b36d459a7df18bf2fd83f5491285a1e28d5ae550c3e3dddfc99": {
+      "record_type": "RAW_EVIDENCE",
+      "envelope": {
+        "authority_version": "1.4.0",
+        "manifest_sha256": "ad0dab01ce3bedd1d71dcd6207bb4515ea9b4390a55ebdcf75f514f2009a5686",
+        "host_name": "vidnux",
+        "product": "DaVinci Resolve Studio",
+        "resolve_version": "21.1.0.0014",
+        "build": 14,
+        "library_name": "VIDTOOLZ Resolve Qualification v1",
+        "library_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+        "library_root": "/home/vidtoolz/resolve-qualification-library-v1",
+        "session_id": "sess-2026-09-08-0001",
+        "provisioning_id": "3714990b13b7a03661f2bc810de115ff2f611ad1c9b52a25cd2a6661acaf1be0",
+        "project_name": null,
+        "project_unique_id": null,
+        "timeline_name": null,
+        "timeline_unique_id": null,
+        "target_epoch": null,
+        "sequence": 5,
+        "captured_at": "2026-09-08T11:35:00Z",
+        "record_type_version": "1.4"
+      },
+      "recorded_at": "2026-09-08T11:30:00Z",
+      "content": "TAMPERED TimelineItem.GetUniqueId",
+      "content_sha256": "b443b3615cf6ad4fcc65389e279ed369794171f629e35f93e7c56e95a9b013e8",
+      "record_id": "aeccdaa533075b36d459a7df18bf2fd83f5491285a1e28d5ae550c3e3dddfc99"
+    }
+  }
+}
