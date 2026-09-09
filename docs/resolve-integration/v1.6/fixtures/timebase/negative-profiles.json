@@ -1,0 +1,41 @@
+{
+  "schema": "vidtoolz.resolveTimebaseNegativeFixtures.v1.1",
+  "purpose": "each entry MUST be rejected by the frozen timebase schema or the timebase law self-check",
+  "cases": [
+    {
+      "name": "24fps_under_profile_v1",
+      "profile_v1.fps": {
+        "numerator": 24,
+        "denominator": 1
+      },
+      "reject_reason": "profile_v1 pins 30/1"
+    },
+    {
+      "name": "half_up_law",
+      "law.name": "HALF_UP_BOUNDARY_V1",
+      "reject_reason": "225183 ms -> 6755 frames; approved MP4 has 6756"
+    },
+    {
+      "name": "math_round_law",
+      "law.rounding": "ROUND",
+      "reject_reason": "rounding const CEIL"
+    },
+    {
+      "name": "negative_sample_rate",
+      "profile_v1.audio_sample_rate_hz": -48000,
+      "reject_reason": "const 48000"
+    },
+    {
+      "name": "arbitrary_tolerance",
+      "tolerance": {
+        "planned_vs_observed_frames": 1
+      },
+      "reject_reason": "exactness is const 0"
+    },
+    {
+      "name": "floor_law_on_canary_end",
+      "B(225183)": 6755,
+      "reject_reason": "ceil gives 6756 = MP4 frame count"
+    }
+  ]
+}

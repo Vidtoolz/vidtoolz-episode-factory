@@ -1,0 +1,4886 @@
+{
+  "schema": "vidtoolz.resolveFreezeManifest.v1.6",
+  "bundle": "docs/resolve-integration/v1.6",
+  "version": "1.6.0",
+  "frozen_at": "2026-09-09",
+  "prepared_by": "Claude Code (Fable 5.1)",
+  "approval_status": "CANDIDATE_FOR_INDEPENDENT_REVIEW",
+  "approver": null,
+  "parent": {
+    "version": "1.5.0",
+    "branch": "docs/resolve-authority-freeze-v1.5",
+    "head": "9d944e01358b4b88d6ee4c9993a4db4084ba23ad",
+    "manifest_sha256": "a40c6954fbe7f72d48eaf3957c0ac036c471a7a92496e277660530386e7aba5a",
+    "immutable": true,
+    "ancestors": [
+      {
+        "version": "1.4.0",
+        "branch": "docs/resolve-authority-freeze-v1.4",
+        "head": "d2d77680047221f2dac52adce6938dd410e38b47",
+        "manifest_sha256": "34a7d0507a5d7f31769a46561d97219869e3525889f121424623eab4ff1dd84f"
+      },
+      {
+        "version": "1.3.0",
+        "branch": "docs/resolve-authority-freeze-v1.3",
+        "head": "1c9e090fcc8978e6e9b8f5dd538849448044d26b",
+        "manifest_sha256": "ad1e6bfcbcb41d79c230795d64e031438e8e39a194f640daca68532d798a55dc"
+      },
+      {
+        "version": "1.2.0",
+        "branch": "docs/resolve-authority-freeze-v1.2",
+        "head": "c6d1284c6f395f5b21a6d14f8c2873bccfc065bb",
+        "manifest_sha256": "69e1caecf9ba9bd16875b7625c58902e3e5f613372165c8d11d80ff48939b5e6"
+      },
+      {
+        "version": "1.1.0",
+        "branch": "docs/resolve-authority-freeze-v1.1",
+        "head": "47ddb225335b8c85ca5255b1de86ff508e0e8e91",
+        "manifest_sha256": "83d8a307098cdc18931f6f09de2ce782afa0bdef94ec8540c2a143910cd448c5"
+      },
+      {
+        "version": "1.0.0",
+        "branch": "docs/resolve-authority-freeze-v1",
+        "head": "e2874f6f67f5adb3a5ced0e0e138c370e38995cb",
+        "manifest_sha256": "d9cd54780e0a123ae2045ac575bbc41638039ef3e878f1b608afbce3989a8821",
+        "baseline": "f30e4543b0af17d047f803ae9044aef859ef13bc"
+      }
+    ]
+  },
+  "status_vocabulary": [
+    "FROZEN_NOW",
+    "PROVISIONAL_UNTIL_M3",
+    "UNTESTED_BLOCKED"
+  ],
+  "status_field_law": "status is a closed vocabulary; conditions live in qualification_note/blocked_until; parsers never inspect prose",
+  "rules": [
+    "a file whose sha256 or byte count differs from this manifest is not the frozen version",
+    "v1.0, v1.1, v1.2, v1.3, v1.4 and v1.5 bytes and manifests are never modified; v1.6 supersedes by reference",
+    "SCHEMA-VALID != AUTHORIZED TO MUTATE; PERMISSION DECLARATION != ELIGIBILITY; PROBE_ALLOWED != QUALIFIED_READ; A CAPTURE != EVIDENCE THAT SOMETHING WORKS; attachment state is derived from a coherent, current, envelope-bound evidence set against the ACTIVE reviewed manifest, never declared; contradictory evidence is CONFLICT",
+    "a BUNDLE_VERIFICATION, MILESTONE_EXIT, M3_AUTHORIZATION or REFREEZE_RECORD counts only when bound to this manifest's sha256 and authority version 1.6.0; records for other manifests are historical",
+    "mutation-capable schemas remain PROVISIONAL_UNTIL_M3; verification is derived from S0/S1 over the protected surface (verify_transaction) and never declared; commit_eligibility -> validate_transaction_set is the ONLY authorizing commit path (every per-document helper is INTERNAL_NON_AUTHORIZING); capability meaning is DERIVED by the versioned reference parser from an immutable facts-only raw capture (never from a probe-written flag), the ACTIVE capability authority is the matrix's own content digest, a degraded H0 can never be a write precondition, and schema enforcement in the composed path is mandatory; no adapter mutation implementation exists; no Resolve write was executed; M0 has not begun",
+    "PERMISSIONS.json is default DENY; unknown milestone/operation/scope/prerequisite is denied; shared_library_allowed is never true; every entry declares a target_requirement",
+    "nothing in this bundle is human approval of any run, gate or publication"
+  ],
+  "files": [
+    {
+      "path": "ADJUDICATION-FREEZE-CONTRACT.md",
+      "sha256": "e84534a6c1ecd4b78a53ea9507a7556142dda04c2abf8242e955aafc026ffb7f",
+      "bytes": 61876,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "AUTHORITY-ARCHITECTURE-ADJUDICATION-M0-M3.md",
+      "sha256": "93c8d75eb28b6504c3f4fdaa414b2bff2516fb328fc88c2eca19527c2444a232",
+      "bytes": 43504,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "AUTHORITY-PRECEDENCE.json",
+      "sha256": "8c388bf3db0ee4150e4072a0eb81d99726b934519957b81af785e7c97220c51d",
+      "bytes": 32412,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "AUTHORITY-PRECEDENCE.md",
+      "sha256": "f360877066d3e8f2b99a706e0a81d3a258b2c65b669d1ee32f4b9e90efa3f2a0",
+      "bytes": 23563,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "AUTHORIZATION-2026-09-08.md",
+      "sha256": "ffde6ef7c00620bd0c35223c24acf820ae9177026e6972e16b06aedf2931d202",
+      "bytes": 3154,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "CANARIES.md",
+      "sha256": "c6cb0cdbd5fe29f999587b6b732f0911d142eb4b4a03a684b78c52fe76626439",
+      "bytes": 3356,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "CANARY-SOURCE-MANIFEST.json",
+      "sha256": "bac25c43fa966fd886b27ec40ae09699a67c1c3b83cd8a6429fcc8ed0049618e",
+      "bytes": 24554,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "CANONICALIZATION.md",
+      "sha256": "6bfc59d204b9a2f56c2f4b9675fbef10edd8950baa0bef43a0e1e2b7a0ed487a",
+      "bytes": 4277,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "Node conformance not yet demonstrated",
+      "blocked_until": "M1"
+    },
+    {
+      "path": "CAPABILITIES.json",
+      "sha256": "c5276ff4d4d046c5ade538c5e818ccf940fa57e7eeb696affc1a08c09a287ded",
+      "bytes": 28382,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "zero QUALIFIED_READ rows; refreeze block reviewed:false with empty promotion lists; read rows DOCUMENTED_NOT_QUALIFIED + probe_candidate until a reviewed refreeze promotes exact raw-capture, derived-result and review-decision digests under the active parser and primitive spec; the ACTIVE capability authority is this object's canonical content digest; mutation rows NOT_TESTED",
+      "blocked_until": "M0/M3"
+    },
+    {
+      "path": "CAPTURE-SHIM.md",
+      "sha256": "efcfbbcb0602db4b9e4d3745b90658d655c188672a8b5763717982d4e40fe68d",
+      "bytes": 4107,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true,
+      "qualification_note": "contract for a capture driver that has not run; the reference implementation is exercised against fake in-process objects only",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "CHANGELOG-v1.1.md",
+      "sha256": "1cd0d240e926053b7bb2f831516cd1c207c2987275a9fe00a2e812c7712f9721",
+      "bytes": 3970,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "CHANGELOG-v1.2.md",
+      "sha256": "790a7696c4539564e8190b8d20ccda34e4e3940ea671e1f1c632702bf246486b",
+      "bytes": 3474,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "CHANGELOG-v1.3.md",
+      "sha256": "3559a8fbeb07d84adb38cd61a5535fb137a038ac4cceb007ed46d85a6ecf1df0",
+      "bytes": 6194,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "CHANGELOG-v1.4.md",
+      "sha256": "37e3a286f453cd328edec7a59d65071293b65eb1167c29aa865ac338500d6b15",
+      "bytes": 9293,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "CHANGELOG-v1.5.md",
+      "sha256": "a1105d694a02edca2e855b7c2e81491ecb696d8d900a919b93e87d6d4a02676f",
+      "bytes": 8644,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "CHANGELOG-v1.6.md",
+      "sha256": "0753e584cd27753a6bc59ce77f11fb540ccfcfcd186c99b83049121e5b112c57",
+      "bytes": 8875,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "CLIENT-VERSION-INVENTORY.md",
+      "sha256": "542c4c46e6335eae5b397f30a079c1278884d49edf6e025c616b7787cd04d1b4",
+      "bytes": 1901,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false,
+      "qualification_note": "PRESTO/VIDLAP2 unverified",
+      "blocked_until": "M10.5"
+    },
+    {
+      "path": "DOCTRINE.md",
+      "sha256": "842f8b665acfb00641fd18dff7989d9b22345ee75e62ab68bfbf4a4d297b735e",
+      "bytes": 3329,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "DRIFT-POLICY.md",
+      "sha256": "5fe5fa81cd1f6afa593aea29fcf38a6c3bff94195120fdc5a3aa47cdd499ac17",
+      "bytes": 2038,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "ELIGIBILITY.md",
+      "sha256": "3f02b484c00c5d9c7e12ac640a2180d7f1ceb51da3d7fa0cf781ed51efcbc62f",
+      "bytes": 12945,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "reference evaluator is not runtime-qualified",
+      "blocked_until": "M3"
+    },
+    {
+      "path": "EVIDENCE-ROOT.md",
+      "sha256": "cc37e007cd8d957bd313cb1347c4dd127c5b1cd270b7695149082d67b74e9d5b",
+      "bytes": 2396,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true,
+      "qualification_note": "append-only layout for an M0 run that has not happened",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.2.md",
+      "sha256": "33c119368940c072e5269af9e728e786032e9c2f4a8ba27aad2ba14e3a1fdd2b",
+      "bytes": 4964,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.3.md",
+      "sha256": "dfcb5268c1b394c96556cd377f87a8447ee5ff9537de8d8d2422c4c515cae1ba",
+      "bytes": 6763,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.4.md",
+      "sha256": "6aac84596e84f44b5bc9c8fda7725eed018f5625202227691986e54d979d90a1",
+      "bytes": 11710,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.5.md",
+      "sha256": "4d832fc02b14edd050093bd9d2e6dbdf18e9cd23a5b852a4c81923d21c682cf0",
+      "bytes": 10365,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.6.md",
+      "sha256": "a83d99bb52a9b67c78717af3cdbb9762280fe132ded24eddce2e7510bc39e2d7",
+      "bytes": 13689,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX.md",
+      "sha256": "a6dd8310cae27cc1768ad8f7aebb79d81911f0936b6727629a4b219538a6cf64",
+      "bytes": 5955,
+      "status": "FROZEN_NOW",
+      "authority_class": "HISTORICAL_INPUT",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "GUARD-AUTHORITY.md",
+      "sha256": "f2b7ddf41cfb1773186003a8868f913ab71853fb27c69ca4f560374afeb938dd",
+      "bytes": 4658,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "IDENTITY-BINDING.md",
+      "sha256": "ae8ca6c7f85eb68358c32c02c4b1df959af7573655ed2dabb3c7c5d6e4f5a8ca",
+      "bytes": 4705,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "IDENTITY-EVIDENCE.md",
+      "sha256": "26cf65a59e97b29138e9639a8e6ec25051ae7c7c365151112f07d72bf7bbc64e",
+      "bytes": 3034,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true,
+      "qualification_note": "claims A/B/C are M0 observations; survival remains an M3 question",
+      "blocked_until": "M0/M3"
+    },
+    {
+      "path": "M0-PHASES.md",
+      "sha256": "b3ca49e17a3f498e57ea7040f8246c6bb462386be149a50b4ea68ed18c6711f5",
+      "bytes": 2929,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true,
+      "qualification_note": "no phase implies the next; M0A is not authorized and M0C requires Mikko's approval",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "M0-PROBE-CONTRACT.md",
+      "sha256": "ba73c7ced93426cdff491296ec3351ebc6cdac6993c660b21516d98d54502cdc",
+      "bytes": 6205,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "contract for a run that has not happened; produces raw captures only; promotion requires offline derivation + independent review + a Mikko-approved capability refreeze naming the successor matrix content digest",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "M0A-PROBE-COMPATIBILITY.md",
+      "sha256": "109eba7c6d98e6accf7b361b8ada9f882074d0ac4157677bb77eb8896374c603",
+      "bytes": 4107,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true,
+      "qualification_note": "requirements on a driver; no driver is certified by this bundle",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "M3-MATRIX.md",
+      "sha256": "c548ebabf9f0b46dbf0fa710e1e84fc085caef8f1b3ca113a3b025a9270c98d0",
+      "bytes": 8140,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "M3-PROBES.json",
+      "sha256": "d5cb85d977fdcbfab588c078f05eb8370be1461de1ea9f9f16877697d0ec8d89",
+      "bytes": 5131,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "MILESTONE-MATRIX.json",
+      "sha256": "a012082d7ba1803c58b9e449fa178c5b4bea91b50571b97aeb353a1e69492b3e",
+      "bytes": 8437,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "MILESTONES.md",
+      "sha256": "76e74e4a803f6fae30d332481f23fb1ab9f88a4cdb674fc4c1b596b10e08319e",
+      "bytes": 5695,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "PERMISSIONS.json",
+      "sha256": "d52df6319bc4887e06cbd152bc735d5253086b0e777a9624b1d90e73ed3cf903",
+      "bytes": 54410,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "declaration only; eligibility via evaluate_eligibility over the current-session evidence set and the active authority"
+    },
+    {
+      "path": "PRIMITIVE-SPEC.md",
+      "sha256": "5b4fe736bcff249d3a9992af4f757ca3fe7f3ff30b517a15d1737ce16b84e040",
+      "bytes": 2697,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true,
+      "qualification_note": "every expectation is DOCUMENTED_HYPOTHESIS; frozen_allowed is false until probe evidence refreezes it",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "PROVISIONAL.md",
+      "sha256": "9123b21912945b29806ad8a241680482ecb2f667e5e557489c1599d34be30e4c",
+      "bytes": 4610,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "QUARANTINE-MANIFEST.json",
+      "sha256": "d99411ed19384f737edabc881d0c672cea01541867458e8af739caf5c5d50b65",
+      "bytes": 11799,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "RAW-CAPTURE.md",
+      "sha256": "e8b90af6b7a5c433f71da2b3b7f11ce1cc1c9d295259e236621ce94ed27849f3",
+      "bytes": 7452,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true,
+      "qualification_note": "canonical facts-only capture format and typed value codec for records that do not exist yet; real M0A captures must reconcile against it",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "READ-PRIMITIVES.json",
+      "sha256": "48fe08243c4d7ab4b99680983044cd757b2a54b1fb099e42ae7878f54e0f1000",
+      "bytes": 77873,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "target_requirement per operation; the full expectation spec per primitive (receiver, arg_types, nullable, expected_type, shape_rule, completeness) is DOCUMENTED_HYPOTHESIS with a pinned primitive_spec_sha256; probe_allowed only inside the probe; the failure taxonomy is derived-class based; unqualified primitives are never called silently",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "README.md",
+      "sha256": "0f6f5f632598b7cea5717a2e12ba212345e6e551acb9dfb7f2eb0e80fe5edb0d",
+      "bytes": 4190,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "REFERENCE-PARSER.md",
+      "sha256": "21653d628be562f4c6eaca5419aec9ab7bd84a730b5c233347ce47ce2843e0c1",
+      "bytes": 4005,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true,
+      "qualification_note": "the derivation order and the closed class vocabulary are a reference; parser identity is the hash of the reference source",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "REVIEW-MARKER-POLICY.md",
+      "sha256": "996e3cc80052694b30902f5d24ffbdc81eb55c10db50ff63ffda9af87fd0f2b8",
+      "bytes": 965,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "REVIEW-REFREEZE.md",
+      "sha256": "dec24b903ac18792dcadc86c34f27b603e660b5aea8d55381db21f0156036408",
+      "bytes": 4853,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true,
+      "qualification_note": "review, refreeze and promotion law for records that do not exist yet; M0C additionally requires Mikko's approval",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "SCORECRAFT-EXTRACTION.md",
+      "sha256": "0376accd3a87c63cc44066c4ce8039bd86f971077278285e07fd08fce566c6f6",
+      "bytes": 4653,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "SEMANTIC-VALIDATION.md",
+      "sha256": "42ad29a3189f2793c1971c680faa280ce22e5bc2ae6fcc9294d2325405bea550",
+      "bytes": 14999,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "reference validators incl. commit_eligibility / validate_transaction_set / verify_transaction are not runtime-qualified; the APPEND expected-effect law, the APPEND_VERIFY profile, the mandatory checkpoint and the H0 early write gate are provisional",
+      "blocked_until": "M3"
+    },
+    {
+      "path": "SNAPSHOT-COMPLETENESS.md",
+      "sha256": "2f694d55a0cc58eed954c2f86be996a21f610851145d669fe30a29b6b9397c76",
+      "bytes": 10192,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "degraded capture before qualification carries connection/library only; capability->coverage coupling is a reference rule; item properties, fades, speed, takes, links and unowned media hashes are explicitly NOT represented",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "SNAPSHOT-CONCURRENCY-RECOVERY.md",
+      "sha256": "3dfc8843af0fd5171403e60b1195a8c51136f09fc1b95792c912aa6b0b334104",
+      "bytes": 5621,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "STILL_ACTIVE for doctrine, guarantees, recovery and conflict codes only; its transaction state-machine and snapshot field enumerations are SUPERSEDED (AUTHORITY-PRECEDENCE S32, S33)"
+    },
+    {
+      "path": "TARGET-ATTACHMENT-GATE.md",
+      "sha256": "24120660ec5075b81e30a3ef424cf9370f6ff094205070162d43b5a8cf2a59d4",
+      "bytes": 10365,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "TARGET-CONTRACT.json",
+      "sha256": "05e0e6ef391377ab50bf44352a43f0b144ff602a35241829cc819b25f253a8b0",
+      "bytes": 11051,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "attachment state is derived from an envelope-bound, current-session evidence set against the ACTIVE reviewed manifest (derive_attachment_state); CONFLICT is a state; provisioning/launch/connection records are required future observations",
+      "blocked_until": "M0-provisioning"
+    },
+    {
+      "path": "THREAT-MODEL.md",
+      "sha256": "f24218c787b589594c56bc4f3c7d19db11da9bb98d760296b95ca8ad4d963073",
+      "bytes": 5174,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true,
+      "qualification_note": "defensive controls and residual risks; the residuals are not closed"
+    },
+    {
+      "path": "TIMEBASE.json",
+      "sha256": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+      "bytes": 2865,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false,
+      "qualification_note": "api_mapping is provisional",
+      "blocked_until": "M3"
+    },
+    {
+      "path": "TRANSPORT.md",
+      "sha256": "7f221e006de3f100336b2aabac8807aab66325e8949a1662fa441549fbc5d4e5",
+      "bytes": 2069,
+      "status": "FROZEN_NOW",
+      "authority_class": "NORMATIVE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "VALIDATION-REPORT.md",
+      "sha256": "f7477b495aee810ac61e2c70136eda7972ce0efe84310babe32dc934abd19989",
+      "bytes": 220622,
+      "status": "FROZEN_NOW",
+      "authority_class": "REPORT",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/canonicalization/rejections.json",
+      "sha256": "2408087c96a3641047084e0f4ec05b1c6aa675ae393408e40dc0fdf15d219986",
+      "bytes": 11514,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/canonicalization/vectors.json",
+      "sha256": "ca5c22361c56575632f6675681a165bd351f20dd74ddf7f2a1e0c1fbe14111de",
+      "bytes": 122563,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "sha256": "50f7577628c56bab77c7a4430c68cd1fccbfb67860ac7c39efb143d038dcb2fa",
+      "bytes": 89768,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "HYPOTHETICAL_NOT_AUTHORITY: illustrates a future reviewed refreeze (rows QUALIFIED_READ citing raw-capture, derived-result and review-decision digests of fixture captures); never load as CAPABILITIES.json"
+    },
+    {
+      "path": "fixtures/eligibility/cases.json",
+      "sha256": "5e6dc98dca70b808120b3394fafc241b8668f8bf4cb43ed5c718ff03e4e0e02c",
+      "bytes": 105712,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/ACTIVE-AUTHORITY-PLACEHOLDER.json",
+      "sha256": "bbb358678fa1ea16cf8bf1e055f9585e1fc845f1b0d11eec8aa8fd3dc70c330b",
+      "bytes": 1114,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "fixture evidence is minted against this PLACEHOLDER manifest sha; validate_v1_5.py proves placeholder-bound records do not derive against the real FREEZE-MANIFEST.json sha and that re-minted records do"
+    },
+    {
+      "path": "fixtures/evidence/attached-ancient-observation.json",
+      "sha256": "22bd1cf956e741e620fb4497ea30d02a5164ceb944c2b75646d4712c4e1430b9",
+      "bytes": 9688,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-binding-other-session.json",
+      "sha256": "34f4f83aa9194d2e9bbf3fbd6a79f0b34800c9ec8f52e2d6680ab41310049ef9",
+      "bytes": 11127,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-candidate-evidence-unreviewed.json",
+      "sha256": "d29b84b5eea1389d071e7e73c70de37f7df72f058fa78f0cb5825d56cf3560ef",
+      "bytes": 165909,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-capability-failure-only.json",
+      "sha256": "b82bdb7edeaaa996f1dd07b873c4b46ad9083e7ebc61b145100ef3c73f534376",
+      "bytes": 16542,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-changed-uuid-in-connection.json",
+      "sha256": "e372005918bc2c5ca1bfc53f1ce1ad539750a17739d964c0655636248e594ccc",
+      "bytes": 9688,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-connection-previous-session-only.json",
+      "sha256": "eaca1e3554e424fd8b529972ac83cef057dbc25241a4926877cc7c4b78536901",
+      "bytes": 9688,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-cross-library-timeline-binding.json",
+      "sha256": "284c59c33d11370c511fe7f01dd46ce391e697f8d165fcb8a504e86317680aec",
+      "bytes": 9658,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-current-good-stale-eka.json",
+      "sha256": "1ed916d5b4c7d7c522bab89b44862ae8c1891c16b719388b6456fb949e909385",
+      "bytes": 11050,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-duplicate-sequence-conflict.json",
+      "sha256": "b102ce037db434b139b7e710f7063d2473eb7f55e2c1b6c2b6e493eda8b9ecd5",
+      "bytes": 11050,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-duplicate-timestamp-distinct-sequence.json",
+      "sha256": "15178551700dc2caee5390bd4117cc3dfbf5fc8bc6948f21627c091b5ee6cb0b",
+      "bytes": 11153,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-eka-observed.json",
+      "sha256": "3f34b65d43cccd211262af72387764e8ab9a9c40b2a6a9235d9ddcfc8475302c",
+      "bytes": 9585,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-attribute-missing-accepted.json",
+      "sha256": "6c1f8d4327bc1882e62d201ad27240f7adc402ad31460171c23837bfc66bbeda",
+      "bytes": 246691,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-derived-cache-forged.json",
+      "sha256": "c82ef64d5880cbd0a98688d0e19fd958e4e8ef5273c93c32ae43aa37d5bd40c7",
+      "bytes": 347449,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-derived-cache-honest.json",
+      "sha256": "3a916c290f06f328a7de4f6e5f0433bfca3918905d6a7e9943d1329c90d15467",
+      "bytes": 357981,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-failed-getters.json",
+      "sha256": "115c1a6b46e4599a5480831ac855b93ef7d83350ed517231f05694fd81ec1818",
+      "bytes": 240133,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-no-raw.json",
+      "sha256": "e4b5a220d7f52fa91c9a57c1be93ccff2c9cab28647fd2c43693d7b485d92c70",
+      "bytes": 108309,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-no-refreeze-record.json",
+      "sha256": "eca65a40f8e18a7edad538b7c41a234da256972dcefeee7d350576fe48650798",
+      "bytes": 247970,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-null-accepted.json",
+      "sha256": "63abd532d45ac1735736f858576026ab5f137c005372b5b422f99d22a3ea51fb",
+      "bytes": 252143,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-old-authority.json",
+      "sha256": "7e65a53b5d323c85db971cc834d93d87dac3089d274e8ba670cd63c11f737149",
+      "bytes": 260727,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-old-refreeze.json",
+      "sha256": "959f9325d9ecd5eb7acb1ee4c989dbf3671ddb9cefc3a3bc16b3a58bbbcd4af2",
+      "bytes": 260727,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-raised-accepted.json",
+      "sha256": "2cfecd182e09cbec981ff3b668232fa49ec4f81b8575f05d5a34985d129d51f8",
+      "bytes": 252848,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-raised-fake-parse-block.json",
+      "sha256": "72ad9a09db14a1c4af26a4d2e9b043fae65838ad05d4dc256a44a15f2485b8c4",
+      "bytes": 268349,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-raw-tampered.json",
+      "sha256": "57f6399dfdc4f254c736a7e903e4785cb815ac278baea94035a5bc439c22098c",
+      "bytes": 260916,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-refreeze-other-session.json",
+      "sha256": "ba821183ef2bf7350387c41239dd5b50c833b036b40032e97c11e741ba20a2f1",
+      "bytes": 260727,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-refreeze-stale-parser.json",
+      "sha256": "f9209d5cf77635150b6ba863997460ce41d14e4364a04f5976610f3cfe658260",
+      "bytes": 260727,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-refreeze-stale-spec.json",
+      "sha256": "ed8163a1fe3cf8bafef0b378259011706128c31ef8e2b641379f3105dc0bd2bd",
+      "bytes": 260727,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-refreeze-unlisted-raw.json",
+      "sha256": "76e68d997642aed86a7e7b163d8e4e7bfa95a78defc178b67c57eaa8f4cec8db",
+      "bytes": 257149,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-refreeze-unreviewed.json",
+      "sha256": "24d59bf2c58627ba17b40bbe66d0cd9af4904ce2d6f5fbe83cb0a238003f21e7",
+      "bytes": 260728,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-review-other-raw.json",
+      "sha256": "64c10da3e6bfac889b4e0653540acaba946ea197186f3bda95815cbf1cf1609b",
+      "bytes": 260727,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-review-reject.json",
+      "sha256": "6b08bfdae8b3036d0917b27ba90bf149007901597fbb1c0f667dc39cf5faa8da",
+      "bytes": 258471,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-review-stale-parser.json",
+      "sha256": "1c233347b9bcee393d06ec308bc6842405606769dd60c731819c07b020d540df",
+      "bytes": 260727,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-review-stale-spec.json",
+      "sha256": "3e7b79433178395143567e413e2df640eab7e1a3a51fa5458636989177f52738",
+      "bytes": 260727,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-reviewer-is-operator.json",
+      "sha256": "c8ec9285de59e96603b8a19d15cb49f82b7b42f5ff4d29b926d7ce1e429264ec",
+      "bytes": 261338,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-timeout-accepted.json",
+      "sha256": "bafa7af306dd1a88e39a5e760e0244267e626712e2932694cd1e362821d1fd8b",
+      "bytes": 260602,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-truncated-accepted.json",
+      "sha256": "bf063f8fa62e772a2a8463a10ea71d776e39d81edda64a07794fae97f8889d65",
+      "bytes": 268687,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-unserializable-accepted.json",
+      "sha256": "c295df009476bd0fa12a1957bf5e6d5f38c1a30e6fc6e6523fc96508a2899758",
+      "bytes": 256702,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-wrong-build.json",
+      "sha256": "908a69dd533afb2370b215a2affdd81c89986096a9863edb4f857997b88a2c26",
+      "bytes": 260633,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-wrong-receiver.json",
+      "sha256": "91b7538efffc12d803fad96ceff83814d9c1088815adc398f1b5ddf50d54a331",
+      "bytes": 260367,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-evidence-wrong-type-accepted.json",
+      "sha256": "13d6358d09d98ffe1e2d7479ca59648b6732d2785d0e5cc07c1edec18c965b02",
+      "bytes": 255685,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-fatal-probe-failure.json",
+      "sha256": "9cfe9824fffca3dcae694388708f21aac039678af0597042ff8e044d3e6a2654",
+      "bytes": 16995,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-identity-duplicates-claimed-unique.json",
+      "sha256": "17d78201468934e0af2239bba349e06d94f26e032dff2ab6edf8499e41337097",
+      "bytes": 292267,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-identity-duplicates-honest.json",
+      "sha256": "14d0a674bfa1123cd0164772620887b04e18b10fb7bfca7a9cdf904eb6940a8c",
+      "bytes": 292294,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-identity-observations.json",
+      "sha256": "d66a3ce78a1c50c7d87eabe029807c1cbb64a9db0dfc1c3d9792cac5d2d660ee",
+      "bytes": 296383,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-identity-stability-two-passes.json",
+      "sha256": "9ce225aa0cc1f657e4fbb3b07c68beec90e67d12e03a5075edb3034a9e2a63de",
+      "bytes": 292030,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/attached-local-database-observed.json",
+      "sha256": "543e86f43437f32c14e79f1be53b6448d2763f4a75738c486e99e67108589555",
+      "bytes": 9652,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-missing-root-in-connection.json",
+      "sha256": "2173319382d5c87df4907671c039a3b7a809fb55706d3159a93179a1bc370c0d",
+      "bytes": 9643,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-no-ids.json",
+      "sha256": "6b7367676e2fd52109ecaf634a987ad00dce95e8e1857121ee4a80fd2374e844",
+      "bytes": 9608,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-reversed-order.json",
+      "sha256": "07818091fbccbce0fd5ca4f225ec460051a75be83944d85b5680d51f199d3280",
+      "bytes": 13491,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-reviewed-evidence-minus-getstartframe.json",
+      "sha256": "8ef3540da1ad02931dec3a8a3c473451f3917b6fa045ffca8964e7f35fde1f4f",
+      "bytes": 255946,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-reviewed-evidence.json",
+      "sha256": "5d96fd9fa2bab482247b68e438c071ed9fd28bb125267f1a82062bb2ef79c4da",
+      "bytes": 260727,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-second-provisioning-other-uuid.json",
+      "sha256": "4c0a0663a7c052ffe0ca1a68d4cc89a111ec1e1a1b30f73ed61f940437c8db63",
+      "bytes": 14785,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-sequence-timestamp-disorder.json",
+      "sha256": "7337de222e7f5b43f94e4f5f55db7ca54201ae96f447a98671ae065c6fbe89c6",
+      "bytes": 11153,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-stale-good-current-eka.json",
+      "sha256": "b261a96df29fc0afc94ce0bb05c8fbbcb114cc8dec953247171246efc6728583",
+      "bytes": 11050,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached-version-mismatch.json",
+      "sha256": "1696e583ef72df95561e0f2ff8bbf0a38bb3a9297a09306ea3c3f4aae71cd31c",
+      "bytes": 9688,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/attached.json",
+      "sha256": "eebd920b5dd171087c399e68d102d54a135a2ff328b106f82dc21ec31fe159b9",
+      "bytes": 13491,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/empty.json",
+      "sha256": "eef90d4ad8749337a2c5fb4647539af63e15ece2dd27b7eb337ae7e17a66d862",
+      "bytes": 158,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/invalid-bundle-other-manifest-not-historical.json",
+      "sha256": "c7f6f4df012f61e6e694b4382ff9d043cc63dc640ce212cf9419ed0d688943dc",
+      "bytes": 5350,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/invalid-connection-other-authority.json",
+      "sha256": "68ae701273c9c9f3a25702880cbd9a707d40581db1b47704f80561126255f30d",
+      "bytes": 9688,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/invalid-connection-wrong-manifest.json",
+      "sha256": "7753cc833df60e0357841f8f92ead87e52b3eb606a908d78482a6a9113eff6e4",
+      "bytes": 9688,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/invalid-provisioning-without-root.json",
+      "sha256": "ee5f562d26594c4be3aa1312ec4955a6d8b47b5444bb5c9a90345e244a88853e",
+      "bytes": 5294,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/invalid-retired-capability-evidence-type.json",
+      "sha256": "0cafbf96eba83f556e3c67642e112ae02f673be77c4d6cd0fe3f593b46939471",
+      "bytes": 14777,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/invalid-tampered-record.json",
+      "sha256": "58fa4c689b57032158daef6e0cb56f05af3cb193c6e306590f0c6902f3d3ecf1",
+      "bytes": 13461,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/provisioned-only.json",
+      "sha256": "7a932a2311c04f3a7f8b5129c028170f97dcbb1e91d53ef91eb62d28bd0b85f4",
+      "bytes": 1436,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/ready-bundle-historical-only.json",
+      "sha256": "6f08df923bb8668a1591494f7ff955bfa9523854a6d587c75fb59bdd1b028f13",
+      "bytes": 5349,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/ready-bundle-other-host.json",
+      "sha256": "8add304194c6c184d1862c155fe8486148a0047d4ad83f5f44fdc1a383f8a1a3",
+      "bytes": 5350,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/ready-ghost-session-without-launch.json",
+      "sha256": "fab688a01262acccb3d792ffcbf1663a15916e6d8380683a0e63fdf0dce7ebad",
+      "bytes": 3901,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/ready-launch-previous-session-only.json",
+      "sha256": "0dfe695f548b9856931cbfde751b859ce87623dae33f25743744328d54f668c0",
+      "bytes": 5350,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/ready-no-current-session.json",
+      "sha256": "1a8e1c03c8c23b9a4e1fd17ff1b98b4291c9b4549ec3beb7725a35900de9f472",
+      "bytes": 5332,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/ready-self-verified-bundle.json",
+      "sha256": "7fe209edd7aa02899260febc705334a65e259e74837693a13429edaad2595662",
+      "bytes": 5354,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/ready-wrong-binary-pin.json",
+      "sha256": "c9bda9d09a007a08ebf9b583089283672929bb1f7d69ed1aa1dd8b51293db3e8",
+      "bytes": 5350,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/ready.json",
+      "sha256": "16e967981cd10e012317dad0972a8556df1d21aa08ae96399b2ae01aff909f1d",
+      "bytes": 5350,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/write-ready-authorization-old-authority.json",
+      "sha256": "454c47f548bd296ceb580686539f05e5018578e290595134330f767c6cce873f",
+      "bytes": 23641,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/write-ready-base.json",
+      "sha256": "e83f9a3a40cf30d195ad60bfd7d43a279cfe2a33b9f774e1229a04a53f0fd9b5",
+      "bytes": 23641,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/write-ready-full.json",
+      "sha256": "74886cda708117495a8c74e8e5e16c4b377662195db14396be563efb23da9e0b",
+      "bytes": 290363,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/write-ready-h0-candidate-provenance.json",
+      "sha256": "295a9d88e6c792b7ddd672dfbc6a75768042ec45c9fbbb7b825890ecd81e1328",
+      "bytes": 287449,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/write-ready-h0-forged-guard-object.json",
+      "sha256": "715f56414caab3ea4c29d9e754c1fa4df8487fb68e569b116f14dc80237da154",
+      "bytes": 284112,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/write-ready-h0-full-timeline-read.json",
+      "sha256": "a4484c3b841bfbd58eeae5379cf5f6d06e0586728f85221bae2d866a13fe02eb",
+      "bytes": 290290,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/write-ready-h0-incomplete-write-precheck.json",
+      "sha256": "130bf07876c736a329187f20ac20cd06e4283f1ee1a521ed6c02ac176fca5eda",
+      "bytes": 290410,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/write-ready-h0-minimal-m0.json",
+      "sha256": "f1b286dab1fb98aac6519d9b539cfd45b97f1ca3343a746c67259f28a65c20da",
+      "bytes": 284354,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/write-ready-h0-other-matrix.json",
+      "sha256": "e1131514620dd8ed2869dde55c3034da5548a1cf02bbb2f7a9d1ad7ace0ba35f",
+      "bytes": 290350,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/write-ready-h0-other-target.json",
+      "sha256": "ef6827e9dca6f62bf54bdb475eb59f223e7377b4b2fc283a6d41b96d4a093f5c",
+      "bytes": 290359,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/write-ready-h0-provenance-swapped.json",
+      "sha256": "709639479e32dc1e666e42b3c8d0012c943db71f0ffbb3f00d5fce4c0c6db4fb",
+      "bytes": 290605,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/write-ready-hyp.json",
+      "sha256": "3e36daa3e6013cf6d44e3759059f81b2b17553c7fde63216e064973536b72fb5",
+      "bytes": 268882,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/write-ready-plan-validation-fail.json",
+      "sha256": "82885a9b18f9713b1f275f1eaccf2933e781b1734f50b1b2e63ba7ed4cdc977b",
+      "bytes": 290363,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/write-ready-plan-validation-from-helper.json",
+      "sha256": "48fafd1696a9858f6c08835d44094ee413eea9f925f6ab6135cf0c6eda6e81c0",
+      "bytes": 290266,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/write-ready-plan-validation-other-h0.json",
+      "sha256": "e88010b7081829094f60dc5ab4fdcabc9a3b6c685b5a30fd4e330c9912471760",
+      "bytes": 290363,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/evidence/write-ready-refreeze-other-matrix.json",
+      "sha256": "3cf816a83e38d7058e84a07a169e6547a640af1a633ace3428119651b52f1271",
+      "bytes": 23641,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/write-ready-refreeze-unreviewed.json",
+      "sha256": "b803d05e3c1a6d0fbd095903ca2d06b611a93d262075cf87d479177a00328d2c",
+      "bytes": 23642,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/write-ready-stale-guard-current.json",
+      "sha256": "3c20c37458d5c6af48fecf652194a0000cbfce93dfab061cf5b5d144a6ed1176",
+      "bytes": 308852,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/evidence/write-ready-without-authorization.json",
+      "sha256": "9718bb54cd45a801a91fed6673613f6c747fffa228abe1e7e6f85f22c71721dc",
+      "bytes": 22524,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/guard/guard-vectors.json",
+      "sha256": "daaee43610d085a0ed409eb8bfe6ed553ceaeadaa757328dfe162ab772123116",
+      "bytes": 718,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/capabilities-frozen.json",
+      "sha256": "e60141712301cfdee39fbbaf7b092e3267ad9d321e38bd22aad6cf5579ff91e7",
+      "bytes": 30132,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/capabilities-missing-content-law.json",
+      "sha256": "921e2b64270c68de2a4fc067ec5f83718991da92fb2be9deddf4b3e506bc29ce",
+      "bytes": 29789,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/capabilities-missing-refreeze-block.json",
+      "sha256": "f69b3f3a6f5c45c824230381a4b20a75a77a2b983dcc5e40a183df7454fa0516",
+      "bytes": 29503,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/capabilities-prior-record-claims-success.json",
+      "sha256": "c5af70547ec6d7f5257dff4e9d5ad187d865fb278796d49e4472874c340f3f68",
+      "bytes": 30120,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/capabilities-qualified-read-entry-with-success-flag.json",
+      "sha256": "2d8f9be39a4ba263bb8cb418212e885b1532b1dbffc42fa7c2be8f3889441e67",
+      "bytes": 30693,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/capabilities-qualified-read-evidence-not-promoted-by-refreeze.json",
+      "sha256": "77360e40204f2c8120c90784ae66f8ade028ef3add3dcd3f92cb72f3e4224dbd",
+      "bytes": 30819,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/capabilities-qualified-read-promoted-by-other-refreeze.json",
+      "sha256": "0e8575db13199a9506466bce991b39694f9ea2c10899e0abb912cb8745e7d665",
+      "bytes": 30689,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/capabilities-qualified-read-unreviewed-refreeze-block.json",
+      "sha256": "158987f8ea9a81b8f15d8374b4023f30cbc94ad523316c65213b25d30d2b13a6",
+      "bytes": 30703,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/capabilities-qualified-read-without-exact-evidence.json",
+      "sha256": "9a96697b4461b4ddc3dd4a520815294c3c3a21bc4fc76f63ee766acfc966bb9d",
+      "bytes": 30168,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/capabilities-refreeze-block-old-parser-version.json",
+      "sha256": "b621271cf07db26d41634e60a3cb9787998d9b260839eb1562b4feb4df99e3e8",
+      "bytes": 30145,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/capabilities-refreeze-block-stale-parser.json",
+      "sha256": "81caed40d3404548a0a6e840bcb42aeb2cdaf478b1fcb80f5e02e630ebd2e83d",
+      "bytes": 30161,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/capabilities-unknown-evidence-class.json",
+      "sha256": "f9957af865fc0526a336bb2a81d1d5a9cf4b1781678be54dcb38f690c64f8594",
+      "bytes": 30118,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/capabilities-unreviewed-block-promotes.json",
+      "sha256": "4297be612dbfa8fbf36fc870069dc3982fe57682c46d359f998da8d3916f24ce",
+      "bytes": 30269,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/capabilities-v16-entry-on-unqualified-row.json",
+      "sha256": "32b92ff500daa63106978b5773a4ad15b1d5f44ecc570dd77e30794c8e33ada0",
+      "bytes": 31322,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/capabilities-version-match-lie.json",
+      "sha256": "c487e78d02a9e50b8d3ee0118bcfa569d245e65faf4f873b7955151fc5aa156d",
+      "bytes": 30159,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-direct-false-verified-consistent-hashes.json",
+      "sha256": "f26a169735bf478745a2ba6a282ee88a1938896b04521f2cba79cf2e9f98bda7",
+      "bytes": 70317,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-journal-head-mismatch.json",
+      "sha256": "f4297a488f4f9e047a4a49f567800e6bc6460830dc79354b0d7a58e86025b07b",
+      "bytes": 70285,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-journal-invented-operation.json",
+      "sha256": "ef81888a342eefbeffebdd7c59db6215076a8655bd39b07968f613e6c6a9c031",
+      "bytes": 70299,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-linked-eligible.json",
+      "sha256": "503c9ae0380943f5a44b8f14188bbc76095d463efe280fb6832a84f9310895bb",
+      "bytes": 70265,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-missing-s1-guard.json",
+      "sha256": "c1bff986d14feffbd60ce2fe7b1bbebd7936a3b0779966fcc6262ceb0e173669",
+      "bytes": 1923,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-missing-s1-snapshot-digest.json",
+      "sha256": "70f447b0dd4e9f0629a1ed3ff3ae8d10a13bbec2a1d3577c4703552d97da8197",
+      "bytes": 1933,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-missing-session.json",
+      "sha256": "97730ebfba2001c27b5c2848049738625082fc4c925af8dcacabfb30a85553d7",
+      "bytes": 1966,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-operation-set-mismatch.json",
+      "sha256": "2d81ecb1b935d426d651a3d96c62e57e8c45f80ec0449c80c89ee2bdbe055ea7",
+      "bytes": 70294,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-s1-guard-mismatch.json",
+      "sha256": "53c8310aa5d481d9254172c4205efc8e3fd02852dfb4efe9fa307b8ad66bf76a",
+      "bytes": 70284,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-s1-snapshot-digest-mismatch.json",
+      "sha256": "75254d46b0d8ec509d62e48b51f17867ffc1130215b0da1888ee2f2869cefbfa",
+      "bytes": 70297,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-session-mismatch.json",
+      "sha256": "9d0ab2ef5096ce27efd6a4f1555b12ec9658cb7fb50cbbe2e4d156421bf6067b",
+      "bytes": 70278,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-target-mismatch.json",
+      "sha256": "cc7563f726a94587fdd3235d417ed7a3dbcaff913a1671bd840b714909d3049a",
+      "bytes": 70266,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-verification-hash-only-object-missing.json",
+      "sha256": "2f8b2e82f883bfd17b0b85213bc98c3141deb47ba9ef228c3317d527f6bfd9cb",
+      "bytes": 67702,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-verification-not-derived-truth.json",
+      "sha256": "fa4044af13035e86631d729c6634edffa3373149281e3484cff1264be99ba5dd",
+      "bytes": 68344,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-with-unresolved-conflict-record.json",
+      "sha256": "eeb7091af280894661868886a3ace7f6ccd0c4671e5d3243407f6d3019c91c72",
+      "bytes": 70935,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-without-s0-object.json",
+      "sha256": "37f09d28e9d667163101a1a00337cada034733a37673f70b81c7e5cbef0f7fd3",
+      "bytes": 46557,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/commit-without-s1-object.json",
+      "sha256": "6b202544981799a9a55eb1ac5da6e31d7c4d8c70a0d9238c093da2b48fd857df",
+      "bytes": 45240,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/conflict-bound-resolved.json",
+      "sha256": "9a800159bf77b92d0bde047967967e33c8c76fdf1d8eb0fd9d537369d4249029",
+      "bytes": 4293,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/conflict-other-plan.json",
+      "sha256": "f292140cad00ef1b624b1acc22588c73b907c0af667f9d65e90d60a5411d9670",
+      "bytes": 4300,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-applied-operation-not-in-plan.json",
+      "sha256": "34e68b496f6ca77e19608ab7ef32d0357708e9acd7d12c13b798e4a9f350354f",
+      "bytes": 42062,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-applied-without-started.json",
+      "sha256": "4f1c63a9bbba359841c2f6ea0c21d4354a4e45b9c534320f6e67fa5f83f57c48",
+      "bytes": 40874,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-broken-hash-chain.json",
+      "sha256": "4ef87828df8ce11b3540974bbbb5556fc1e5bbdbaf1ba0ee9ce9c008f52be8cb",
+      "bytes": 42025,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-checkpointed-without-checkpoint-evidence.json",
+      "sha256": "f8cc790294d1df77fadf429f142374bc530bd6a3df8a7394f3c3479baf7959e6",
+      "bytes": 41779,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/journal-duplicate-readback-events.json",
+      "sha256": "5a229664fe94396f9742fc618a8b059b6eb793446d102cbd4759a0187a2065a0",
+      "bytes": 38676,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-empty.json",
+      "sha256": "8e18f9c1ec71c4ec9a5c6bbedcd84af1758fb7758a734ca22e37c1f107b6c06b",
+      "bytes": 28794,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-guard-change-without-recovery.json",
+      "sha256": "5cd2a6200b587f959e5eeb0df0f33a055c3a4492a2e0de535326c7553d9dea7a",
+      "bytes": 42047,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-in-flight-no-readback-with-s1-supplied.json",
+      "sha256": "4cdb3d6f63c6c0b8c70b2b01fef57b36914dda791ed80e61d5260972db065382",
+      "bytes": 36097,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-invented-operation-started-and-applied.json",
+      "sha256": "f416fe0601956a88d9660706a0a5b8c1268da574e76daaecb154e9d5fa19d8f9",
+      "bytes": 42044,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-legal-chain.json",
+      "sha256": "c6b6f4fc6d7fed6368c6673c68f1ffdfeffd26d65948c04048b081f0b8bff440",
+      "bytes": 42007,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-missing-op-field.json",
+      "sha256": "4162828d097e8d766625fd2125f4db898bd1057637d3ce75f41cda11803de88d",
+      "bytes": 13399,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-missing-session-id.json",
+      "sha256": "4229a989693f97f27e1af8ef121b80cf63d6e6482036dae91216478bcd45b070",
+      "bytes": 13383,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-non-checkpoint-carries-checkpoint.json",
+      "sha256": "81c28e8db7a2a0cf2f43aa0a0785a79f69512620401ca664786b1f81ca602d20",
+      "bytes": 42172,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/journal-non-operation-state-carries-operation.json",
+      "sha256": "68cbb708ba0d6705df6c0bdccca3f0a7801c7cb29e7b29422d292e56f7c6e171",
+      "bytes": 42061,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-non-readback-carries-readback-digest.json",
+      "sha256": "ea1dd981200bfe31ca555374623fb81a88fd8b0c432e2304846d39f5502424da",
+      "bytes": 42122,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-op-started-without-checkpoint.json",
+      "sha256": "de7d4c64ddbdee8ba9bb187111742d1e1e6ce447513fe6af53666d647c7aa155",
+      "bytes": 33449,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/journal-op-type-inconsistent-with-plan.json",
+      "sha256": "a335cacb537c639d333c3200197e742d3f34dfd4baddb7ee1e3134d17c93bd1e",
+      "bytes": 42056,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-operation-applied-twice.json",
+      "sha256": "e1a0bbebe58b408b8a183bf9baebb1bfa3f4be5f114a9f4b0db075b6ad110bc9",
+      "bytes": 13344,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-operation-failed-aborted.json",
+      "sha256": "a6be2c83e450684f4742911996ea273cd7a86fb6335bd588b3bfcd2a39d76383",
+      "bytes": 12152,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-operation-set-digest-drift.json",
+      "sha256": "a67eb356ad0a7852dcd1038139c19081ddba0e5044616e1bdcfceee8072b4293",
+      "bytes": 42052,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-operation-set-digest-not-plan.json",
+      "sha256": "40c2d03716866a17bae2ae3e9458890f8e3556e7b482203b656f96309ec45196",
+      "bytes": 6032,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-plan-digest-change-mid-chain.json",
+      "sha256": "c2b461ea457950e0038be647b3cbe6aeacce3d957f363fb5f246ec731242ed58",
+      "bytes": 42045,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-readback-before-all-applied.json",
+      "sha256": "03a712da02a494c72a4594f624386ec0f069e423088b9b78892bd2fe84e21cfe",
+      "bytes": 35062,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-readback-guard-not-s1.json",
+      "sha256": "dcfa6366a52de3e193b8f6835d97deccd55f95dda2e57be6cc509f4ada5e6d33",
+      "bytes": 42053,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-readback-names-other-s1.json",
+      "sha256": "75f5a1a8ec9a6a7f7e7d323d6e8d1a2fbf7ce95bad0807f37c3fd01fcdebe149",
+      "bytes": 42041,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-readback-without-digests.json",
+      "sha256": "5cf3f0179198ebe7a5980baf4a9984985d950b061200fbfe8f60526509cea760",
+      "bytes": 41932,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-record-after-terminal.json",
+      "sha256": "562c90e23749de94e2ed0b8b4d92ec861f15ec5f4523aad2d0e606afbd2d1d35",
+      "bytes": 43204,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-recovery-committed-recovered.json",
+      "sha256": "65727fe36ef10e17d22ec738fe0a66f4df85192966e44aa96b80d4a9e84f864d",
+      "bytes": 13374,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-recovery-not-applied.json",
+      "sha256": "eeffa4d887da4f6aa26c83db67ac0566f3349abcfc9bea6c41eeeaeb4c6c9188",
+      "bytes": 7201,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-recovery-unlinked.json",
+      "sha256": "164f35fcc8fbdccec44aec230cd68ca95f9e495130bd19f17b2f3e90609456bf",
+      "bytes": 7208,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-s1-from-other-session.json",
+      "sha256": "49ed022454e61273831fcbad96938684b311bf564352cf6212156adf3d60ece1",
+      "bytes": 42036,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-sequence-gap.json",
+      "sha256": "27a13495de7804b31469f63a71005b587aaa72cb7e619d5fec283846c0930a1e",
+      "bytes": 42024,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-session-changes-mid-chain.json",
+      "sha256": "946eb74e73ec8d25fa9bc11577c404e1eadd47142de45823c2526dc12f05f928",
+      "bytes": 42041,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-session-not-plan-session.json",
+      "sha256": "b6edaaa178a11e0a563e987297290f2a9495d6de24f0743adf0b78780d378684",
+      "bytes": 42058,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-skip-to-committed.json",
+      "sha256": "825081e7f9d7babe93300f20eb063bf8021197010468b7ea313f8a59496beb91",
+      "bytes": 42035,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-transaction-id-change.json",
+      "sha256": "c434d816b26d89f9b8e8bc4fb5b8a7f8f9189a56c0093eff49d13772da5fe4ca",
+      "bytes": 42039,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/journal-unknown-state.json",
+      "sha256": "bf7cad933f51e855bad43e8f75425940e780796d0d4f6e312582d8d85efa1114",
+      "bytes": 13422,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/permissions-default-allow.json",
+      "sha256": "b4a8bcb7cb1c8308a22faa412ed4da30a3560ba9f5c349ff658d06bdefa55e04",
+      "bytes": 57837,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/permissions-frozen.json",
+      "sha256": "9436de62e2b811ceae55fc60b0d9129eb78652e8db12bbd878ce16a6a652744e",
+      "bytes": 57825,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/permissions-m0-mutation.json",
+      "sha256": "965c452340d742962af64aed59ebaf67913c2dd330f66c700682b1f8199395ee",
+      "bytes": 57831,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/permissions-shared-library-grant.json",
+      "sha256": "e5c2955ed1c0efaa36d54b1712b7391a7b0adf5ffedbc0ea229e0ff46d51ab6a",
+      "bytes": 57843,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/permissions-target-requirement-disagrees-with-read-primitives.json",
+      "sha256": "055990c03d33dadbcbe8a0c4e4d69c93f2138a1f9964e65c03e082e9666e16c7",
+      "bytes": 57910,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-authority-version-old.json",
+      "sha256": "f098494d69e0f79ef6147857d99ca27b006ad6f2f0857d170319233e93fda88f",
+      "bytes": 3694,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-digest-not-of-body.json",
+      "sha256": "c95d44e513d61ae2894eb9a1551fde0805ae7b5680ea9527831d5399dcb68dca",
+      "bytes": 3940,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-duplicate-operation-id.json",
+      "sha256": "bf08fa63122459b2b4de0d90493922bcc6164804847408c8f8f57dd36372ebf8",
+      "bytes": 4617,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-eligible-without-prepared-journal.json",
+      "sha256": "0ce57bed3cda21c29b4157019397e0c84f8c928dcc1d4b50cbd8cbc409374d6a",
+      "bytes": 3947,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-guard-record-not-current.json",
+      "sha256": "bcd0c5652266aca35683f04e0c9be5c043f2c24c19b1f9f8ddef48a8b8e0f4b4",
+      "bytes": 3951,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-m2-append-not-permitted.json",
+      "sha256": "219ec5b640dca2b0c55322a8958dc7e449b2488c27c47734114e5bee39dd775d",
+      "bytes": 3931,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-m3-append-eligible.json",
+      "sha256": "b91ef86e298c024bffde4e302343e350e02fa1c7203d8e4840d3745344f1c234",
+      "bytes": 3912,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-missing-m3-authorization.json",
+      "sha256": "227d4c5d24f0bf888f3f19c9fad3448e6a57bed3b391a44b48d135af72801ece",
+      "bytes": 3854,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-missing-session.json",
+      "sha256": "ad72ca189c355e45b70789117b9b8ce068a611468998c0bf2c11a604ee7e4616",
+      "bytes": 3651,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-operation-set-digest-mismatch.json",
+      "sha256": "e32c5880a214e73f57caa421238fd25e6875d63dca407a7b7b5bf994ba573c36",
+      "bytes": 3945,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-plan-validation-record-fail.json",
+      "sha256": "187a9e7629e2a91b2aeb920a2bd7e9cd4139353bbdd7866851f95021cc4281fa",
+      "bytes": 3956,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-read-class-with-append.json",
+      "sha256": "f07e4d376f81bf1d94a8472172a80ab39683c4e921bc858a1d66a5b7b54e811e",
+      "bytes": 3926,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-selector-target-mismatch.json",
+      "sha256": "eefda7d61a99824ed195da23e32bf309983fadcabb5027557bac5e6823965cdc",
+      "bytes": 3939,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-session-not-current.json",
+      "sha256": "6288c26867d9b24f7242ca8b2afcd34744e1b28eb91ecb8627d20c0d3596ffe1",
+      "bytes": 3941,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/plan-stale-guard.json",
+      "sha256": "7f818bd5f442999675c8ff35d26d09973e52ad64e8c1543aca9f58cea97ea4a1",
+      "bytes": 3921,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/read-primitives-class-mismatch-with-matrix.json",
+      "sha256": "c8e456e7797e78b4052fec54ee0305d8b6569ce824551014da9714703301749c",
+      "bytes": 82388,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/read-primitives-frozen-expectation-without-refreeze.json",
+      "sha256": "1d1cc2180c53f372b52a567714efc27153bac9b2c1fe4c759fc0ad8c699b6f0b",
+      "bytes": 82389,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/read-primitives-frozen.json",
+      "sha256": "14767e7f03e5b3f1d45864fb36f9fa92957c59c6d6628797c4a3c191bbf89a8e",
+      "bytes": 82367,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/read-primitives-invented-target-requirement.json",
+      "sha256": "259dc75cb15373efdd5ecccf4184655261fc5c02fcbb5b8e259daa42d80c3fce",
+      "bytes": 82378,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/read-primitives-missing-expected-type.json",
+      "sha256": "278f0c5b6590f0a4cc67f69397a73052a4815554c51c96f9a6a09a0e7dbb713e",
+      "bytes": 82337,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/read-primitives-missing-nullable.json",
+      "sha256": "e8daef8dec83d38273c9bb1e88e4e4647f1ebb56f543f26eab8571311129f029",
+      "bytes": 82332,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/read-primitives-missing-receiver.json",
+      "sha256": "6f7f3db3490c3848b334c46746743e197b550cd7b3c13ed8e12885392c6ef4f7",
+      "bytes": 82328,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/read-primitives-probe-allowed-outside-probe.json",
+      "sha256": "f78ab0be419cd2467f766d9a4dc7a63fd6463201249d65c8ac28b20bd502b46f",
+      "bytes": 82400,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/read-primitives-probe-output-not-raw.json",
+      "sha256": "b4819aeed045c75c05053282a6b7584047d1761a54dcb05783c95f7daf89b642",
+      "bytes": 82359,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/read-primitives-spec-changed-without-digest.json",
+      "sha256": "886c4c63a1ea2ea6c4d040527e0093ce00f39d17930d87caa05f1059dfb6f9d7",
+      "bytes": 82410,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/read-primitives-taxonomy-drift.json",
+      "sha256": "156de5659a8abb23a1076f80c408599fea497e59ebfa742d6b3e83ff78964730",
+      "bytes": 82087,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-append-verify-profile-complete.json",
+      "sha256": "fa430bcff1d43516c7ab2318429faa35eb8a01d3f306d072be0407fc056588c4",
+      "bytes": 25403,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-candidate-observation-honest-unavailable.json",
+      "sha256": "5f151c927203388586787cb4c83e97c3b05d2a14d4443d5c7aa7a079040d322d",
+      "bytes": 16570,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-claims-callable-not-in-authority.json",
+      "sha256": "f607844b3e6b87af56a30214929127012ba6c151fcd779487eaeafe28544d8a7",
+      "bytes": 13367,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-complete-empty-observed.json",
+      "sha256": "05d3edce5fd063dc0b782b55c0562472b6573b420e348fe25d103ac5e277992d",
+      "bytes": 30566,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-complete-with-incomplete-reasons.json",
+      "sha256": "a884126716f82948597a85ae5d9400392f3e58e31e0c5e145c7b98b9b26f80dc",
+      "bytes": 30798,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-complete-with-observation-failures.json",
+      "sha256": "9ae60170bfe22a8dc40b270630280f407d6e7ce3b69ea39f6eda5d4a9b23a794",
+      "bytes": 30952,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-complete-with-partial-item-full-profile.json",
+      "sha256": "e33ecb2f3fa5f9d2f3344464edb3b54e9c5236af5249cb716622f21dd235e453",
+      "bytes": 32572,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-complete-with-unresolved-timeline-fields.json",
+      "sha256": "4a27cf463e4338012a832ef9b90aeb621934ece1cf7e3e56ff130ed56fd85034",
+      "bytes": 30906,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-complete-write-precheck-missing-domains.json",
+      "sha256": "971c5c8065bfd7923fa9b442fc8786b2e3be91bd4207c8dbde2074c6cc1f023e",
+      "bytes": 30770,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-degraded-start-frame-claimed-observed.json",
+      "sha256": "e1ab64e0013229ed4f801859df2054874bf90bde651de95bbf2db202a5df9d02",
+      "bytes": 30829,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-degraded-start-frame-claims-complete.json",
+      "sha256": "c7c71d4191b0d14dc70990ff20eb6e8bcf126110496a7dd45a5b41727794fa6c",
+      "bytes": 30797,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-degraded-start-frame-unavailable-honest.json",
+      "sha256": "eca1694c4b6bb7131f42bfd2416cffbdbc0ee5070b5ef76b23e71a6f50ed1648",
+      "bytes": 30852,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-degraded-start-frame-value-with-unavailable.json",
+      "sha256": "2336ae1c3caca44547d5ffc596016dd0ea401e754e7db28f5d27bf1b65d167c8",
+      "bytes": 30871,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-duplicate-occurrence-identity-across-tracks.json",
+      "sha256": "a58f9470a5d982aefb3a2fe06c2c57f6c9328bdeca06777764afa9cdeb51335e",
+      "bytes": 30790,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-duplicate-occurrence-identity-reversed-order.json",
+      "sha256": "81dca51ea4b6db204230eb2c4fcaad908c4b36d65a72feaee3828db091fda4a4",
+      "bytes": 30791,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-duplicate-occurrence-identity.json",
+      "sha256": "f85266ef56e410803a3cdb0a6b64896dba55dd6c3f341d4c7ab788dc9cb5046e",
+      "bytes": 30776,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-duration-contradiction.json",
+      "sha256": "e5bd38ab9b018cf175c9a1d495755c75e41d71c075181125f5f63a9b94ff504f",
+      "bytes": 30761,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-end-before-start.json",
+      "sha256": "4c1ad4ee56408354325f979be69a7103f82fc0ff5651c1dd8b37a2b3eaac617f",
+      "bytes": 30745,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-fabricated-id.json",
+      "sha256": "325a1571469bbe6d9b4cb9f154c842facc474ee347101fd293852b6c858375d8",
+      "bytes": 30786,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-full-profile-timeline-identity-unavailable-complete.json",
+      "sha256": "a9956ff8b1c0a8001384453ba236de593280d421ad0dfc5eb8b82b74b4994ee1",
+      "bytes": 30825,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-full-read-claimed-under-frozen-matrix.json",
+      "sha256": "e50d47c0a953c1c35a34f2c0e7d103536889741fd97a36148201a65301ab3fc7",
+      "bytes": 30706,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-full-read-partial-item-honest.json",
+      "sha256": "478b4b536cd71381fe3954eaddc15434d318ccc427d618b12c61213ad1e2fb5e",
+      "bytes": 32677,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-guard-context-changed-raw.json",
+      "sha256": "dda6e236987441b7b6f7ffdd89e357f48cb265305f350d587a14cb5318c42147",
+      "bytes": 30748,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-human-timeline-full-read.json",
+      "sha256": "6b45eb00e9ae6a6174da465c034635e478614051b48af108f11c505b58109f90",
+      "bytes": 30740,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-incomplete-nothing-missing-named.json",
+      "sha256": "00e1407226864d7bd63f28729baefa493f1374c5ff4f7865f687572b8f005067",
+      "bytes": 30476,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-incomplete-without-reasons.json",
+      "sha256": "3c78e9b6f13545cfe4c6fefb56aaa87708750f5dd9a0bd2477adc719eb6fda74",
+      "bytes": 30763,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-invented-domain.json",
+      "sha256": "b047b5cf7b307017f774331859fa2b82cb2cecaa714691303863a9aad3010737",
+      "bytes": 30737,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-invented-field-status-name.json",
+      "sha256": "1a0671002481e1a2b15bf071a32ea6bb392013ba87917806996e799275ce25f6",
+      "bytes": 30774,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-item-property-payload-unrepresentable.json",
+      "sha256": "a8bedeef772ac9c2af8267732aaa1cd7247562198dde9499142292b383f01878",
+      "bytes": 30821,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/snapshot-m0-complete-claimed-nothing-qualified.json",
+      "sha256": "8b61ae7c1efdd13ed3a7c8a60e50b82b4c595bdac76a72da0a9f5858997ecbb3",
+      "bytes": 12986,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-m0-domain-observed-without-callable.json",
+      "sha256": "36a09ec4241820837b3bd343e3b4370c816d5e2a11d7c7dd55d21b955235f4ef",
+      "bytes": 13264,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-m0-minimal-complete-qualified.json",
+      "sha256": "71c70f4b093aa74fdf855a8a3a364272fdec06773f62dfd3cf45f143d0a5ff4c",
+      "bytes": 19864,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-m0-minimal-nothing-qualified-honest.json",
+      "sha256": "a06132aad22962250f43a0ac9694a72a25b56672d8c594f851e0bc1babd8e124",
+      "bytes": 13198,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-m0-project-identity-error-honest.json",
+      "sha256": "d47da4c45b16f8bae90e89155fe523e56a0bcecbcbce65620266d5448638045d",
+      "bytes": 13152,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-m0-timeline-frames-observed-nothing-qualified.json",
+      "sha256": "1f89ec5c41ddb0d9ceae0eb17efe05399316cdc790a2bd286a917569fbedfdf7",
+      "bytes": 13220,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-m0-track-observed-nothing-qualified.json",
+      "sha256": "73e301a73fdc385b2c7bcb7095513da29e5750b74a7310eb736c6150d7056677",
+      "bytes": 13529,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-missing-method-provenance.json",
+      "sha256": "ad6a66acb7024b368ef16e447cbb86fb213a23d3eaf4301a0e7560e166f890df",
+      "bytes": 16319,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-missing-ordinal.json",
+      "sha256": "a4a63d7d93c9f48e8119e819dceb6276314830988b0b765ce1d6b5a416094516",
+      "bytes": 30681,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-negative-frame.json",
+      "sha256": "bc29042cfff7232c1c4b99b58dd044b6ddab2bac4a3675d699371e957c1104ff",
+      "bytes": 30716,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-not-requested-with-value.json",
+      "sha256": "c2e9b82c35843758e1883d38ec3e2fca1dde44103084a8d9ed657381d0ca1586",
+      "bytes": 30758,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-observed-backed-by-candidate-observation.json",
+      "sha256": "ea92da23890b52ee70326ef67b4852e139a59407f22a4cdf75423fbe1f63a5b7",
+      "bytes": 30736,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-observed-domain-item-properties-excluded.json",
+      "sha256": "968181225a753312cbd2e91db84a360dcd16f25994ca76324d92b2e19eab023f",
+      "bytes": 30813,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/snapshot-observed-field-without-callable-primitive.json",
+      "sha256": "eb6596d9c65f50d730290e62e722bcb6d06414ea0df80b54587a34c47e7da9fd",
+      "bytes": 30774,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-observed-start-null.json",
+      "sha256": "ca15d9e02bb92158dccb7989540473867f0259138c1ee393b093ce957a6d87f1",
+      "bytes": 30758,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-observed-status-null-value.json",
+      "sha256": "2c0cade980e8e856adc7f103545900598498c3a0ba11da84ca4465d308460e8c",
+      "bytes": 30765,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-observed-without-provenance-entry.json",
+      "sha256": "3b388085d112b53bd43626ee2f66934ccb5a2725740702bf023bc12b5b09fd10",
+      "bytes": 30461,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-postgres-library.json",
+      "sha256": "90fa18b07bf5caadfb3b6ad624368d4c2d21e2d09e84c3d2e1de0df3b5b2e531",
+      "bytes": 30727,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-project-identity-null-observed.json",
+      "sha256": "c0482aef28f3cab11ec2a1e6fed3c3c27d7ec1082bad10f040472379350cb801",
+      "bytes": 30782,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-project-identity-value-with-unavailable.json",
+      "sha256": "967e6108fd222cfda260323fdbdea1b1aeb65e566fad42d853386847dd0e2b06",
+      "bytes": 30804,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-provenance-cites-adjacent-getter.json",
+      "sha256": "aa40e6803d14ba5d7b0ba59a5c247866bbadb4d79c2e98c581050972874871a8",
+      "bytes": 30765,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-provenance-cites-failed-evidence.json",
+      "sha256": "727bc379cf7e8608f4ffdd34964422e4e4fa266a9e6fa3d62414cb1367562da4",
+      "bytes": 30787,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-provenance-cites-other-capture-than-promoted.json",
+      "sha256": "08d0b1d09a235223c98143f9f122fd2adcb2f8b74f446bcb8769e0df4c3701b0",
+      "bytes": 30796,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/snapshot-provenance-cites-raised-accepted-evidence.json",
+      "sha256": "4622d49dde85a7201fddbfa7ce3852443941029732bb48ce9816c4ce54609d5d",
+      "bytes": 30788,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/snapshot-provenance-cites-unreviewed-evidence.json",
+      "sha256": "e105e2a912cd9df943ab145ec6f47a786dcfd7ad4addb4cce3b03627aed72bc8",
+      "bytes": 30788,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-provenance-evidence-not-in-set.json",
+      "sha256": "58db24c68284dd62611790a7149fd4be29a1de3403fac40ec3c6a2b1f367f5ed",
+      "bytes": 30764,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-provenance-matrix-not-active.json",
+      "sha256": "8ed7f291968055c5e0e56c95ebd98a92b7d9d55ec4f5db2ff4bee22635975cb4",
+      "bytes": 30767,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-provenance-qualified-without-evidence-id.json",
+      "sha256": "83a0aad37fcaf5323fd78320af9dd644bc2dab4cdd89b2771dfa7d8f5089224b",
+      "bytes": 30726,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-provenance-under-forged-matrix-digest.json",
+      "sha256": "3c6dad338912a073ae7bac20e826280621b84f93a633d289df0431bf5571f44a",
+      "bytes": 30819,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/layered/snapshot-provenance-unknown-class.json",
+      "sha256": "7ca2ac16175d699427bf8d267fd1ef18cb553006ce4da93f166c9d6eb1a9ecf6",
+      "bytes": 30715,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-source-bounds-inverted.json",
+      "sha256": "d517173524df1aa7790c1770857b066c0bb361904c8b48b85cad2fa1bde9aaa3",
+      "bytes": 30763,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-timeline-end-before-start.json",
+      "sha256": "e891b0ca8aec02adc0e3b78a8bfc0abfb1dbada80e6fd20d12a4da92ac8cfe8e",
+      "bytes": 30763,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-timeline-identity-null-observed.json",
+      "sha256": "eeaee3399d5ceaa0b995a45a8b1cff97e418132d44f872f537f17d9fdf4f50ae",
+      "bytes": 30786,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-timeline-missing-field-status.json",
+      "sha256": "8c10915434f4f857a9937c8c7fbbc139ce734069c0a78bb45a8bf34cb806959d",
+      "bytes": 30367,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-timeline-settings-unavailable-without-reason.json",
+      "sha256": "a71fea5c89e7717b17364b9538fa809d3eaf28f88645a4dbec0310be1d5dce82",
+      "bytes": 30703,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-timeline-start-frame-null-observed.json",
+      "sha256": "f967a6590ed620d2b7f0eccb3947595d51ccc0af8a41bcd5939a1f419da2057b",
+      "bytes": 30802,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-timeline-width-value-with-unavailable.json",
+      "sha256": "5c445777e619b18a8a51a3403821eab44c299f7df70004f42c4646c4b20789c5",
+      "bytes": 30800,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-track-lock-value-with-unavailable.json",
+      "sha256": "50d5c53a35e6684c65f6fc7361193fcb083bc129e797d76bcc483d9e2110ba1d",
+      "bytes": 30799,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-unavailable-end-with-value.json",
+      "sha256": "f6fe28c0e789327d2e9f9a5ade8e1f439acce7f5270cf225005252551ae227a2",
+      "bytes": 30793,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-unavailable-without-reason.json",
+      "sha256": "c988c208d097579c87416a6838569ea1fc2123db3bfe58fb70ed320266c6cacd",
+      "bytes": 30764,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-unknown-status-word.json",
+      "sha256": "864cb86b3b339321c9799e112fd6707c8af724ada5589170ba82e3ee6359e238",
+      "bytes": 30722,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-write-precheck-complete.json",
+      "sha256": "569431b24b4068e0ebdbdae50da6e1f93ed0f56dc63441c0d127e00e0cf5c378",
+      "bytes": 24080,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-write-precheck-item-id-unavailable.json",
+      "sha256": "cf06f510448dc7c720dfbba3f1c08f23786eab41ed1a74a9890b99f28beac9f3",
+      "bytes": 24157,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-write-precheck-missing-guard-domain.json",
+      "sha256": "75abc1d2ee8e666b3cf2f77fc4cebd5762ad965bba1485a52b0b610ff3d066af",
+      "bytes": 24094,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-write-precheck-null-lock.json",
+      "sha256": "7dfc9d2dd5264a835beb6ebb649c260d694e78f0a98a6f42a93b5aff70299869",
+      "bytes": 24141,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-write-precheck-project-id-unavailable.json",
+      "sha256": "8bf010d47084ef6b1634f9027362dfb8fca7172c4905b63513ef54006820093e",
+      "bytes": 24147,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/snapshot-write-precheck-timecode-unavailable.json",
+      "sha256": "2b5e3018396469fff1a3b24f88c58ad0cc47d8242d3d775c22b4bb9b4ca1cee1",
+      "bytes": 24154,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/target-accepts-open-session.json",
+      "sha256": "6926e1aeb2eec659a0bd6759bec8600902cf64313e16bb27b21d00f2084fe68e",
+      "bytes": 11722,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/target-contract-frozen-derived.json",
+      "sha256": "e68f1ed3a8f70c86fac36e8d99a8f8c8f4d5f06e0a021ab9500725e99147bb2d",
+      "bytes": 11743,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/target-declared-attachment-state.json",
+      "sha256": "fb1304489451b9fc7c44ae7c62af893cd64ea0b8a53fa79dce73e29b9ac6cda5",
+      "bytes": 11783,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/target-declared-flag-true.json",
+      "sha256": "c65b60a41342df5d23094af68dcd095b218f243afa7953f76d9710c05666b238",
+      "bytes": 11720,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/target-empty-host.json",
+      "sha256": "eeae6966eb5b0a5f4977c7d397e4140abb85dd676ee864eedeb061e9a702f5c5",
+      "bytes": 11711,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/target-library-is-prohibited.json",
+      "sha256": "6e00b012f5c989ef14a5d7c6af084a4475d60a87ee89c4c7ce6829e53c1ae6cd",
+      "bytes": 11696,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/target-missing-conflict-state.json",
+      "sha256": "a9dc49beebde6f6ed18f1681a1c60d9b8c703da37039ac234bdf16f51b6538fd",
+      "bytes": 11300,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/target-missing-denied-setcurrentdatabase.json",
+      "sha256": "f010a9b75f7c7aaffb89800acff56d3546b861d2a9b4819b1a652cabdd662509",
+      "bytes": 11711,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/target-missing-envelope-law.json",
+      "sha256": "7863d6fe69fa848b1928fcde4f1a9ddae87fe765e0128d00f18bc8407e160508",
+      "bytes": 9073,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/target-shared-postgres-library.json",
+      "sha256": "b02b2b3285d58b592e3633c40d355778a5832b5bbf231ad0ecca0c51b4719208",
+      "bytes": 11731,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-append-no-added-item-claims-verified.json",
+      "sha256": "99de6bc44f7abdb6ffe80daeecd02a14f97da368b280ea274a752b21eb7b04f0",
+      "bytes": 66513,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-append-on-wrong-track-not-verified.json",
+      "sha256": "9759cb4ef464fe7706c42d434abd10299ff79696ea3a4ac60ce89ab60e274afe",
+      "bytes": 68549,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-append-wrong-media-not-verified.json",
+      "sha256": "bb86e1f4cb5846d742cc6d08c0a4520684f610cf1151dcc6c8ea815b4d5c757d",
+      "bytes": 68540,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-arbitrary-readback-hash.json",
+      "sha256": "14971a15e0f7aa800524b7f99e4c1a0865184c077096676b32bffb766c0fbdcf",
+      "bytes": 68463,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-arbitrary-s1-hash.json",
+      "sha256": "9ede54c31d96799ec8c50f65145a2cbe913d0a6bb9707d9c0189a1d6604759ac",
+      "bytes": 68457,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-claims-human-approval.json",
+      "sha256": "f8fbd5ebbfa8bdddcdbde577a387a7f97e40d04a6606d8a8c5ee8378abf6bd13",
+      "bytes": 2838,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-delta-authority-mismatch.json",
+      "sha256": "81ed5aeaa306a2249ab7820954be18233907265311637f350853b93e08f0b767",
+      "bytes": 68453,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-append-missing.json",
+      "sha256": "af698841638a572e7631d3b7da090c90a0bb4e22191deef6a0a3528063972fd2",
+      "bytes": 66565,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-unrelated-enabled-change.json",
+      "sha256": "25927138d3b784084f3e14e85ed6e962b6f3680c0a2f17768f00917ada1649ff",
+      "bytes": 68659,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-unrelated-marker-change.json",
+      "sha256": "f623d1f6d49540271d8f48b885b09f6e84779a672c8a72a2d9c9cb74cab39925",
+      "bytes": 68715,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-unrelated-media-dependency-change.json",
+      "sha256": "0b6b26c94d17205c01c5dada7c63aa0e4807a6b40e7a356bcec644c343bc4a05",
+      "bytes": 68737,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-unrelated-source-bound-change.json",
+      "sha256": "d3d63e9f7db97727907d92190e37353b3719c44657a173f5e2c7dea50a92f749",
+      "bytes": 68768,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-unrelated-timeline-dimension-change.json",
+      "sha256": "e01765cde2dd1e04cffc0186fd3b46278f352b77c6a394dae36cf53990ee2a7e",
+      "bytes": 68500,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-unrelated-timeline-end-change.json",
+      "sha256": "b4e00c105664c5c71f3146901993f1bea3818eb2c1ed42b22cd1a8d81681ec04",
+      "bytes": 68498,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-unrelated-timeline-settings-change.json",
+      "sha256": "31ccfd69779551e4ea46eea2ca82796aba86273a0b3dfae63f2cd83478503100",
+      "bytes": 68502,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-unrelated-timeline-start-change.json",
+      "sha256": "9af408c1757d057e272aa4d394b47e81b2860c85533ed9af7b92dd3e5e696ade",
+      "bytes": 68502,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-unrelated-track-name-change.json",
+      "sha256": "82196a2a8d35f29b7e67e479f6bd6fe0e6c4606e12e4ec1e883aa4cb011a7441",
+      "bytes": 68505,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-unrelated-track-topology-change.json",
+      "sha256": "31bcb4e138a8f28f1ac8d610fe2152fdaed8e8bc06c5b10a76a058ab79ffc9c5",
+      "bytes": 68804,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-verified-append-verify-profile.json",
+      "sha256": "f40e8348dfead005fdb9f7bbc3d6e288c825f3ef3e3c36f11176bc5eb42cedff",
+      "bytes": 68449,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-derived-verified.json",
+      "sha256": "c69b80241add61823804c612f0713d960ee5bd39107a891d12605aa7a701d31b",
+      "bytes": 68429,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-duplicate-identity-claims-verified.json",
+      "sha256": "617a8aba4d5b61a272f9cc7b4c269121f2f79e638998afdd08be044d3c2b155e",
+      "bytes": 68473,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-duplicate-identity-reversed-claims-verified.json",
+      "sha256": "01e1fb101fa0aa686328aa36c056c3e8190a2728f9fe3361411633cda8679137",
+      "bytes": 68482,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-duplicate-identity-unobservable.json",
+      "sha256": "871b2ac7ce813d968fc9212b32a0f7a55eca6c4fa8f70554c9698bb16824edeb",
+      "bytes": 67926,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-effect-not-specified-claims-verified.json",
+      "sha256": "820e4361555387ef0c0c0e36486397467307f9861638227325656e5a67c3b017",
+      "bytes": 66655,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-effect-not-specified-derived.json",
+      "sha256": "befbb8bbf92b99098d10ad3c5a64fad2fab14fe892f9bb3a13f782b8befb1660",
+      "bytes": 66717,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-hides-unrelated-enabled-change.json",
+      "sha256": "33d2d89ee6a2a0d25582d8b190e9be1210d481a693edfe15c2faaf6ca3cf8aea",
+      "bytes": 68472,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-hides-unrelated-marker-change.json",
+      "sha256": "31cfb1561cbd3c8063c61715c66b9e7ac2efd0dcfe3349328c11b2d83f7f1ec0",
+      "bytes": 68697,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-hides-unrelated-media-dependency-change.json",
+      "sha256": "c2607cbfbdcc48153d49aa05330bd91e2b8bc4cb716b5fdadbf7a764b2441d2f",
+      "bytes": 68690,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-hides-unrelated-source-bound-change.json",
+      "sha256": "e9a4a6c7c3261beb5faf14e28ae5c187f56c1f793da65b534c3852695d173932",
+      "bytes": 68476,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-hides-unrelated-timeline-dimension-change.json",
+      "sha256": "b730c9d99def56f97de2b5d0f4e42f20977de54346de21b4fa410186436ac319",
+      "bytes": 68482,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-hides-unrelated-timeline-end-change.json",
+      "sha256": "cedbdcb335761207ca238680dc883418abe28b875394a2ef977509242470de72",
+      "bytes": 68476,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-hides-unrelated-timeline-settings-change.json",
+      "sha256": "19acffbdc6fd81679352bdf383bc9b86968f40d0c7482a03e3ad84f2bcb55a2c",
+      "bytes": 68481,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-hides-unrelated-timeline-start-change.json",
+      "sha256": "526ad4c89460a4773ca7cca8d0cb354b1f734a84bdcbe2324094304125eb0ce2",
+      "bytes": 68478,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-hides-unrelated-track-name-change.json",
+      "sha256": "f792da9648f875e2cc7b2fda9eee3ed5ce20a776c3304c9fdcbe46e55f9cf44b",
+      "bytes": 68482,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-hides-unrelated-track-topology-change.json",
+      "sha256": "e7b2996dc093d9a1a79d859ffbc91aa1348b2f8dd8e22eab76460e9a326e3226",
+      "bytes": 68789,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-journal-readback-names-other-s1.json",
+      "sha256": "f1e62b9eaa47f6fa26bd94aac8fb2ad25008859f05d28e57c9cbc1390101bed2",
+      "bytes": 68465,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-missing-applied-ops.json",
+      "sha256": "60c7fdab187e0225135d858403af2df39eac7a0f4d79f113d2f17fd2113be57d",
+      "bytes": 2802,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-missing-session.json",
+      "sha256": "478268855922f5926c550f42df17319b271c2520f0caf17fdad403544491658d",
+      "bytes": 2796,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-other-plan.json",
+      "sha256": "8711447b36fc6244213bd032fb4049c23ed6a327f382917e3da73ededc51e605",
+      "bytes": 68437,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-other-session.json",
+      "sha256": "460bb2be6dcbb7a20b51903c2a27f271e2485271e47b13f226937dedb2d7740a",
+      "bytes": 68446,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-other-target.json",
+      "sha256": "32a400f4521bacaa97fd3202342e465eb017c4d93f2970cff72176f1748514f4",
+      "bytes": 68434,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-other-transaction.json",
+      "sha256": "a8edf5fa7f7fb9d395fd3f05488ada2c66b537d54374e454b6575824ca82c29b",
+      "bytes": 68449,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-s0-hash-not-plan-guard.json",
+      "sha256": "1d1e6d82973271a6342811d87279c9d5a16d3c38d7a41349af9bff2308d8baa2",
+      "bytes": 68451,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-s1-from-other-session.json",
+      "sha256": "b8a4ce3455abcd924fe027edac24d6b9fd69961203fafd97bffbac94f0ceff49",
+      "bytes": 68453,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-s1-other-epoch.json",
+      "sha256": "3d4965a8e12baebc972b35b31f4ffa78da04b8556038ce277d6ad3a969f79218",
+      "bytes": 68441,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/layered/verification-without-readback-event.json",
+      "sha256": "305dc38419b1db0e19ca655c08f148f47d346999b0fc862f8786a2e4b7ec081f",
+      "bytes": 62499,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-append-without-effect-honest-verdict-no-commit.json",
+      "sha256": "d0dab5aab867177d1107987cee069dd0fdd79d1b4616aee81f8a2aa5d0fc12cc",
+      "bytes": 72272,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-append-without-effect.json",
+      "sha256": "567904f5e480da14c1ef948960b4f0bf8af21956ecce63a938fec8c8bcc6b589",
+      "bytes": 72159,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-combined-duplicate-identity-other-session.json",
+      "sha256": "9c102e54201a028017d9939cf75943f3c2b02e31502ede7f907cc68c8c667f19",
+      "bytes": 74256,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-combined-weak-s1-other-session-hidden-change.json",
+      "sha256": "033ff20ddab389e837f7368eac6e976d896f0539851b30a1be2126821e7146ed",
+      "bytes": 74189,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-commit-without-s1.json",
+      "sha256": "6353a4662a79011849f21afd59c102396eac36d963e31ceda21d3a9b794ec2d0",
+      "bytes": 45277,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-committed-append-verify-profile.json",
+      "sha256": "0cf48595793e8ecbd31e0dc54614508f3db9631e9b4284eae9b693040fe6c22d",
+      "bytes": 74213,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-committed-consistent.json",
+      "sha256": "2596c3055d3498afebebb1d8ea6a802ede9dca7e8bd22414898d014f9f549b15",
+      "bytes": 74204,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-committed-journal-without-commit.json",
+      "sha256": "8bb79c6a82dae414f681261536c95e623e7dd178f5c7c9923f00684d52f2448d",
+      "bytes": 72380,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-direct-false-verified-consistent-hashes.json",
+      "sha256": "e672ea2a664902f1e44b9a0fe2ae4498909d16b7348984b70d2a0f7622ee1802",
+      "bytes": 74253,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-duplicate-occurrence-identity-reversed.json",
+      "sha256": "83bc4e21b7f44977507b766d373e7dcf28a8baac759dd56fb77da489a5aeb0af",
+      "bytes": 74253,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-duplicate-occurrence-identity.json",
+      "sha256": "66ffb747cf4471036a4f1ef121a4cee1b156237b6fef17a20a2df24e504ce7c6",
+      "bytes": 74244,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-effect-not-specified-claims-verified.json",
+      "sha256": "4cc3e72873af3d846932397c5fc25d35aef968e25cc92ceb91a1c688c1d065de",
+      "bytes": 69783,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-guard-snapshot-stale.json",
+      "sha256": "c87408b80884fbe3d220ce9a48cf8788410ac2495100f35c8c2bbebfd6162980",
+      "bytes": 81245,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-in-flight-no-s1.json",
+      "sha256": "b9077e6014afc522dfe638dcdaa8dc453e9a43795ac022c18c3ce6153d80a909",
+      "bytes": 36453,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-journal-applied-without-started.json",
+      "sha256": "c7fd8c4ece615e35818029850c9ac637b1b85134a4e9f0210eebf3c7130c259d",
+      "bytes": 73014,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-journal-invented-operation.json",
+      "sha256": "b09005ffefac221e473a1750207ba8adb66600e740772d4c48ead0f464df21ec",
+      "bytes": 74235,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-journal-names-other-s1.json",
+      "sha256": "3467834d25e632e408505a3ff767f15efa02b6fdb0af7d929dea43fa5b99f133",
+      "bytes": 74230,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-marker-unrelated-change.json",
+      "sha256": "8b42dad79e23bd61b55142f3453b79bf63876dc105eb604c28b6022f6ff4b952",
+      "bytes": 74484,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-media-dependency-unrelated-change.json",
+      "sha256": "4337c12d2a04b923299c59b124de9b7b228935b3373a6b853d244137d0cd5bcb",
+      "bytes": 74469,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-missing-readback-event-with-verification.json",
+      "sha256": "cba91a27b9baf60661c872602d986a1286114ccb8e198f69f0bdeeecc9964818",
+      "bytes": 66135,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-plan-not-eligible-no-authorization.json",
+      "sha256": "f12e1ba18dd17db22b22e6be8def8ae38096230319523e33cc2f9e994e382160",
+      "bytes": 74261,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-s0-not-write-precheck.json",
+      "sha256": "4b2e9378dc4018f9a5ba02099f869bd8cc6737166da00dc683e9259cf7e2a6d1",
+      "bytes": 81246,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-s0-observed-fields-not-callable.json",
+      "sha256": "0c8ce8e54afd70f547148addd546ef651420501e2f94c4bd54238a7b21216c58",
+      "bytes": 74188,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-s0-observed-fields-without-provenance.json",
+      "sha256": "a2181985ad924dbbdd114f5f9d3a9733727d4662e7cb700bf194018910ed3df5",
+      "bytes": 73925,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-s1-arbitrary-hash.json",
+      "sha256": "2d800714bce541c048149ac932235cd08e3200bbe725eaa7bed7eba71e240ad4",
+      "bytes": 74230,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-s1-from-other-session.json",
+      "sha256": "6af1699fe493e6016a632bdae455f32f45b849228a14ebd4bd27c2038841efe4",
+      "bytes": 74226,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-s1-incomplete.json",
+      "sha256": "c149722cc497e7b25e84fcbab8d7e49872d9a7e82a28d73af6b2c9fab870e060",
+      "bytes": 74266,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-s1-minimal-m0-profile.json",
+      "sha256": "0fe09289ebbe65ee25c1d3eab05aec6d4b64892a94beda5b61a1ef3512435bfe",
+      "bytes": 61697,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-s1-other-epoch.json",
+      "sha256": "abffe9e32adb875be1d124c1c31244e54fd3d31d3fca8528b2d2ba6676b2cbf1",
+      "bytes": 74214,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-s1-weaker-profile.json",
+      "sha256": "c3ae9d204fdc4a78013841069cdcf369ebc1e50a310bab162c2effb683b75739",
+      "bytes": 74176,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-schema-invalid-plan.json",
+      "sha256": "728dcfd2e5a39ce01c73f6d87906b4987dbce3d25059d8728829366cdf1e3c52",
+      "bytes": 74274,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-source-bound-unrelated-change.json",
+      "sha256": "e5d55292c88e992bbbfe21e7fd113634bc9858913bbb96486e14c523000b6357",
+      "bytes": 74243,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-timeline-dimension-unrelated-change.json",
+      "sha256": "235385a90c9f13edde29a2bb6505b5292738a1f6619d0d5484f24cdcb6e09e11",
+      "bytes": 74249,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-timeline-end-unrelated-change.json",
+      "sha256": "6fbcaa1224a638f9d1df9f927d5ee47f2de8f06cfc2c336f2997cd25e9cb668e",
+      "bytes": 74243,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-timeline-settings-unrelated-change.json",
+      "sha256": "3870cc41e46415112d1626f904c61c209714d22abeed00093fbb553474b03e8a",
+      "bytes": 74248,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-timeline-start-unrelated-change.json",
+      "sha256": "6d2b9c2c767c3f0cb4a375c14f32a245cfde29469e2017a41b5c5db3a8d6f740",
+      "bytes": 74245,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-track-topology-unrelated-change.json",
+      "sha256": "163d5169f5ac9622086f5932e529bb984015d9a55b614c70080a2923197613dc",
+      "bytes": 74582,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-unrelated-change-hidden.json",
+      "sha256": "61aa56fd07762b2dd86cd0f42f23c967a6e02be0583972abd3384af427b4262d",
+      "bytes": 74238,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-unresolved-conflict.json",
+      "sha256": "e2bf160ed10c69da2572dc05fe7a2017b762ea35de16f16f29d029454e577189",
+      "bytes": 74227,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-verification-ghost-applied-operation.json",
+      "sha256": "f57a62147dbc0432102bd593a7fe04c2a3d7f012917d3aec5c992b360d53832f",
+      "bytes": 74292,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-verification-hides-unobserved-domains.json",
+      "sha256": "9af67606b57a7cd6d2c232f52c9338b8df50952254fe3062c46d7c2824d0c2c6",
+      "bytes": 74014,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "fixtures/linked-set/linked-set-verification-other-plan.json",
+      "sha256": "6d2f852be6df1ca267247b4d4ac293c8c1bf7468f189d428d9d5be88d883be83",
+      "bytes": 74223,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/parse/clean.json.txt",
+      "sha256": "ee0d7fc56301a4abefe13b9c93ee23c12407f7956cbd0d64d44ab460ff79d435",
+      "bytes": 52,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/parse/duplicate-key.json.txt",
+      "sha256": "a9a49bf8599ef56188ca095666f22c766d986a674a36ef67bf23ad85c2309696",
+      "bytes": 52,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/plan/m3-append-plan.json",
+      "sha256": "ff8fcaafcc6f57a6143da2b8a0e4d2193fefa0516c0f37b1f3d5b280c1401478",
+      "bytes": 3351,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/plan/m3-append-verification.json",
+      "sha256": "a3c5085ce2d8a6aed2ce0d578c24ab5de7dc8acf9abecb0453fd9d5a56db7f99",
+      "bytes": 2476,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/snapshot/append-verify-s1-after-append.json",
+      "sha256": "918da76ee189b6f6084e4630e44baa3604154a12def2a215ba33fd6b2a40eba6",
+      "bytes": 23945,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/snapshot/full-read-degraded-start-frame.json",
+      "sha256": "07b910e7a467d46b6c0d9eebbe380d75b91dcf718a1b0e7f4574f89258ac1bd1",
+      "bytes": 29063,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/snapshot/full-read-partial-item-ledger.json",
+      "sha256": "fbc46c9d3c628e9f874c988ac513b60eec2d89ebfa58208e5a2560d748f5851d",
+      "bytes": 30842,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/snapshot/human-timeline-mixed-provenance.json",
+      "sha256": "c6732518dc650fa23b72ef252185340286fe13e24ee78909bb9411e4579d8aab",
+      "bytes": 28992,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/snapshot/m0-minimal-nothing-qualified.json",
+      "sha256": "cd7b3e75c4aeb1c154ee0c3b75987dc7996889e9f4dbc4aa6275828e7b6a75a0",
+      "bytes": 12196,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/snapshot/write-precheck-complete.json",
+      "sha256": "0f5ca66d8c403912faaf32738fc76a3932db8813e456456a4119bb7c197f3a18",
+      "bytes": 22697,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/snapshot/write-precheck-s1-after-append.json",
+      "sha256": "2fce9de24f150aeba7bb864507570c60a4b4d1ef28abbdc1bd24f120d3adf000",
+      "bytes": 23946,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/timebase/canary-boundaries.json",
+      "sha256": "b5ae374906a16feee4d5fe6ac199a0814a763f3f84e5af790a084c3d9625ac53",
+      "bytes": 8765,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "fixtures/timebase/negative-profiles.json",
+      "sha256": "4d2e7fa3b787bf61cc58019e1bccc158c4aa3fea6549b11c97b9b413b8edf75c",
+      "bytes": 1088,
+      "status": "FROZEN_NOW",
+      "authority_class": "FIXTURE",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/provisional/resolveBindingObservation.schema.json",
+      "sha256": "4095c8e2a2d83cd2ca539066e4c176caebe4fb57d082c28550d49e522639571c",
+      "bytes": 1367,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveBindingSet.schema.json",
+      "sha256": "9e76a67b6bfbc8f5b5f3b1d2a7e90d002724ac2f84dd1b9e677c40849349af4d",
+      "bytes": 4404,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveCheckpoint.schema.json",
+      "sha256": "12d1e9556b8a4992e52cf165e85313bf19696b114ff58bd065fb922d17bd4e1b",
+      "bytes": 974,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveCommitManifest.schema.json",
+      "sha256": "5f0db78914ab52043c7eb7d1050e5a0f4c759f5b2810501d7173cfa54370a0f2",
+      "bytes": 4070,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveConflict.schema.json",
+      "sha256": "04626677600f438ea52c19dd3934980e4be2454dec2a9e0f2f4e601a374950b3",
+      "bytes": 3272,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveMutationPlan.schema.json",
+      "sha256": "500c46aca777e8625bc7856620615eb0572afe04baa58babc7db33bb8955bc85",
+      "bytes": 9865,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveSequenceLineage.schema.json",
+      "sha256": "24fd7d7212176a4bb1405d132cff5abab4a111105b99a2249d614ae48ea62ad8",
+      "bytes": 1086,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveTransactionJournal.schema.json",
+      "sha256": "ee834d775a8533e6a864d29892349ba5217e8248d73e0b97648d18cea581912c",
+      "bytes": 4560,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/provisional/resolveVerificationResult.schema.json",
+      "sha256": "d7649c220c593d3d821b88dc5d3b8da96724a5a56709fc678645a00333c87bec",
+      "bytes": 4847,
+      "status": "PROVISIONAL_UNTIL_M3",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "blocked_until": "M3"
+    },
+    {
+      "path": "schemas/resolveCanarySourceManifest.schema.json",
+      "sha256": "4b9e2b6cb44c6435738c8dfceda74b74ad2a594376e9f283646486ad906e8940",
+      "bytes": 4873,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/resolveCapabilityMatrix.schema.json",
+      "sha256": "ecd7f7fdc25b434f73e421c0b50aff1193b346230f6fe9e08bcbcc2308187597",
+      "bytes": 9024,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/resolveEligibilityRequest.schema.json",
+      "sha256": "00f9ab702778a1794353120a150953dcf2b75b2e6905d893d41fc3afe0cb243d",
+      "bytes": 3910,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/resolveEvidenceSet.schema.json",
+      "sha256": "f779f0a2096a5ca6416f93743261c6c435fb2781b1fbdefdab1948f6463c1721",
+      "bytes": 111527,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "envelope law for records that do not exist yet; real M0 captures must reconcile against it",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "schemas/resolveFreezeManifest.schema.json",
+      "sha256": "ae10a9d327b8c1205dd6eafe596abc86091cf8ae98ba112d31be8b6a9d130914",
+      "bytes": 4526,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/resolveGuard.schema.json",
+      "sha256": "b2cd31097163e33660bcfdbf3cdf15d1b92f6d623615fc4bba91a146a84a8141",
+      "bytes": 8329,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/resolvePermissions.schema.json",
+      "sha256": "d6ad10eee2c5a56872b19693dd87c9cd1d8a794bdaf027b8c53d36f36438bc02",
+      "bytes": 7457,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/resolveReadPrimitives.schema.json",
+      "sha256": "706b30679c0f5bf83e60e13ac5503df9b99f38a87453cce5373ab873a403a5be",
+      "bytes": 7246,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/resolveSnapshot.schema.json",
+      "sha256": "ca2ec5d25be30a24f93065de787b9902437b358e0cb40754a0119334182876a2",
+      "bytes": 55099,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/resolveTargetContract.schema.json",
+      "sha256": "97c334516071170a0f3c04490118c64218dd6676c7ed116369f4d8edf314d664",
+      "bytes": 16808,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/resolveTimebase.schema.json",
+      "sha256": "e78b896528d2bf789baafd79ec5058e46e385fb49c50a83aaf0dd91a40a7b61a",
+      "bytes": 5984,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/resolveTrackPolicy.schema.json",
+      "sha256": "f7d2f10c162c2b04dcf7c578308b1a3eac6047e5e2786917dff2eb7f34f0fef7",
+      "bytes": 2158,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false
+    },
+    {
+      "path": "schemas/resolveTrackPolicy.v1.json",
+      "sha256": "0c1996f8cb183e27f393eb53113871098e492e43bd49ec8c07e7d49b25f0caa7",
+      "bytes": 999,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": true,
+      "changed_from_parent": false,
+      "new_in_this_version": false,
+      "qualification_note": "enforcement by Resolve NOT_TESTED",
+      "blocked_until": "M3"
+    },
+    {
+      "path": "tools/authority_lib.py",
+      "sha256": "8a8a9b3999e42606d82f99973c981cd913d67c59b88659b01ad109700a977a3e",
+      "bytes": 183598,
+      "status": "FROZEN_NOW",
+      "authority_class": "TOOL",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "reference implementation; not runtime-qualified; AUTHORITY_SURFACE lists the authorizing entry points, everything else is INTERNAL_NON_AUTHORIZING",
+      "blocked_until": "M1"
+    },
+    {
+      "path": "tools/build_manifest.py",
+      "sha256": "300ea565576a38eba99682e1f009cc62eb0ed5490bdd5216bd3b5c95dd6bd868",
+      "bytes": 14007,
+      "status": "FROZEN_NOW",
+      "authority_class": "TOOL",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false
+    },
+    {
+      "path": "tools/build_v1_6.py",
+      "sha256": "9c9ea3cdee206792f20b175c0e9c69b6f57e88011a671fbdea7d229ea87de5a2",
+      "bytes": 177032,
+      "status": "FROZEN_NOW",
+      "authority_class": "TOOL",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
+      "path": "tools/capture_shim_reference.py",
+      "sha256": "c032df86bb087643bdca32da873377bd428dea4c436101358b653aa324a58f24",
+      "bytes": 13989,
+      "status": "FROZEN_NOW",
+      "authority_class": "TOOL",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true,
+      "qualification_note": "TOOL: reference capture shim and append-only evidence root; NOT a production adapter and NOT runtime-qualified; executed only against fake in-process objects",
+      "blocked_until": "M0"
+    },
+    {
+      "path": "tools/fixture_evidence.py",
+      "sha256": "a7e0b865445a52668a47ffd62775c627c4227298baf6b7188a2ad6a3ab92e9ff",
+      "bytes": 44489,
+      "status": "FROZEN_NOW",
+      "authority_class": "TOOL",
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
+      "new_in_this_version": false,
+      "qualification_note": "TOOL: mints fixture evidence (raw captures through the reference shim against fake receivers, reviews, refreezes, guard records, identity observations) against the PLACEHOLDER manifest sha and re-mints against the real manifest sha inside the validator; never an authority"
+    },
+    {
+      "path": "tools/validate_v1_6.py",
+      "sha256": "fee21a5b3a9e8d60a9deef6593964f66d32427953a26103157f8180cf9398498",
+      "bytes": 136213,
+      "status": "FROZEN_NOW",
+      "authority_class": "TOOL",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    }
+  ],
+  "removed_from_this_version_present_in_parent": [
+    "fixtures/evidence/attached-evidence-getter-exception-accepted.json",
+    "fixtures/evidence/attached-evidence-label-success-parse-failed.json",
+    "fixtures/evidence/attached-evidence-null-result.json",
+    "fixtures/evidence/attached-evidence-parse-failed-accepted.json",
+    "fixtures/evidence/attached-evidence-promoted-other-raw.json",
+    "fixtures/evidence/attached-evidence-wrong-observed-type.json",
+    "fixtures/layered/capabilities-qualified-read-on-failed-evidence.json",
+    "tools/build_v1_5.py",
+    "tools/validate_v1_5.py"
+  ],
+  "external_pins": {
+    "v1_5_parent_manifest": {
+      "path": "../v1.5/FREEZE-MANIFEST.json",
+      "sha256": "a40c6954fbe7f72d48eaf3957c0ac036c471a7a92496e277660530386e7aba5a",
+      "bytes": 156968
+    },
+    "v1_4_manifest": {
+      "path": "../v1.4/FREEZE-MANIFEST.json",
+      "sha256": "34a7d0507a5d7f31769a46561d97219869e3525889f121424623eab4ff1dd84f",
+      "bytes": 124499
+    },
+    "v1_3_manifest": {
+      "path": "../v1.3/FREEZE-MANIFEST.json",
+      "sha256": "ad1e6bfcbcb41d79c230795d64e031438e8e39a194f640daca68532d798a55dc",
+      "bytes": 97853
+    },
+    "v1_2_manifest": {
+      "path": "../v1.2/FREEZE-MANIFEST.json",
+      "sha256": "69e1caecf9ba9bd16875b7625c58902e3e5f613372165c8d11d80ff48939b5e6",
+      "bytes": 62217
+    },
+    "v1_1_manifest": {
+      "path": "../v1.1/FREEZE-MANIFEST.json",
+      "sha256": "83d8a307098cdc18931f6f09de2ce782afa0bdef94ec8540c2a143910cd448c5",
+      "bytes": 41527
+    },
+    "v1_0_manifest": {
+      "path": "../v1/FREEZE-MANIFEST.json",
+      "sha256": "d9cd54780e0a123ae2045ac575bbc41638039ef3e878f1b608afbce3989a8821",
+      "bytes": 9425
+    },
+    "doc_authority": {
+      "path": "../../DOC-AUTHORITY.md",
+      "sha256": "07e5408936645fc3ae9c0ef6f38237c10e90dcdb03914ce3bb6c965bb4052420",
+      "bytes": 5548
+    }
+  },
+  "counts": {
+    "files": 470,
+    "bytes": 27953848,
+    "frozen_now": 459,
+    "provisional_until_m3": 11,
+    "inherited_unchanged": 34,
+    "changed_from_parent": 365,
+    "new_in_this_version": 71
+  }
+}

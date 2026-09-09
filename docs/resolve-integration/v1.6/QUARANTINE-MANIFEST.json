@@ -1,0 +1,216 @@
+{
+  "schema": "vidtoolz.resolveQuarantineManifest.v1",
+  "status": "FROZEN_NOW",
+  "executed_at": "2026-09-08",
+  "authorized_by": "Mikko (AUTHORIZATION-2026-09-08.md)",
+  "quarantine_root": "experiments/quarantine-2026-09-08",
+  "schema_renames": {
+    "vidtoolz.directedDraftAssemblyHandoff.v1": "vidtoolz.experimental.autonomousDirectedDraftHandoff.v1 (prototype emitters only; canonical id untouched in config/ and scripts/directed-draft-assembly-handoff.js)",
+    "vidtoolz.directedDraftTimeline.v1": "vidtoolz.experimental.autonomousDirectedDraftTimeline.v1"
+  },
+  "moved_files": [
+    {
+      "original_path": "scripts/autonomous-visual-draft/directed-draft-inspector-server.js",
+      "original_sha256": "7a118b075ec2c75ee660af721c904fa6bf4e395da4636c6825da0a34865e8d09",
+      "quarantined_path": "experiments/quarantine-2026-09-08/autonomous-visual-draft/directed-draft-inspector-server.js",
+      "quarantined_sha256": "c5937fc5f3b8b5fcc1762446d462e9ace4a3239a5f864c46dbbd9431514b161e",
+      "byte_identical": false,
+      "change": "startup guard (VIDTOOLZ_EXPERIMENTAL_INSPECTOR=1 required)"
+    },
+    {
+      "original_path": "scripts/autonomous-visual-draft/run-10-episode-pilot.js",
+      "original_sha256": "09e40a64cb4ccc8f07ba430965a3a5d52a07a9953d049bff5904a78519358e6e",
+      "quarantined_path": "experiments/quarantine-2026-09-08/autonomous-visual-draft/run-10-episode-pilot.js",
+      "quarantined_sha256": "6b3a1b8593be8a555fdd698b884841e10a9df9ec5be1855aec549f4d8ddcaa9d",
+      "byte_identical": false,
+      "change": "schema-id rename only"
+    },
+    {
+      "original_path": "scripts/autonomous-visual-draft/run-6-script-batch.js",
+      "original_sha256": "8dfc902be64a68b128e83d148535a6e5299719236bf12867feb3f99792743b30",
+      "quarantined_path": "experiments/quarantine-2026-09-08/autonomous-visual-draft/run-6-script-batch.js",
+      "quarantined_sha256": "94f98ba423c964b7e9af500b7caa2188b2e0be1bced2f9e47f75bdafa78b4599",
+      "byte_identical": false,
+      "change": "schema-id rename only"
+    },
+    {
+      "original_path": "scripts/autonomous-visual-draft/run-activation-smoke-test.js",
+      "original_sha256": "c9254b5b0d1a704dd39b464094043ebb0c6f7e35deb2da1514df9acb78c2a589",
+      "quarantined_path": "experiments/quarantine-2026-09-08/autonomous-visual-draft/run-activation-smoke-test.js",
+      "quarantined_sha256": "1b3fa353629351a94e56c7d4fd13e0d18cb16314138ffc6565a5f1a9642eb525",
+      "byte_identical": false,
+      "change": "schema-id rename only"
+    },
+    {
+      "original_path": "scripts/autonomous-visual-draft/run-autonomous-draft-suite.js",
+      "original_sha256": "93ac8b4ed3fcf27016dcd10b6a9af7ebc4e9b38432542b74654a9547c260d2c6",
+      "quarantined_path": "experiments/quarantine-2026-09-08/autonomous-visual-draft/run-autonomous-draft-suite.js",
+      "quarantined_sha256": "7ee5a5ddbb449ec1f2e287082f1a7a775eae3b7ce0dce92ec2e98fdced25d0ad",
+      "byte_identical": false,
+      "change": "schema-id rename only"
+    },
+    {
+      "original_path": "scripts/autonomous-visual-draft/run-full-video-drafts.js",
+      "original_sha256": "96a2fecfc7623a9ad9d6449667d9cae02d3dce24a4dc2913f9c28e68ccf67d7e",
+      "quarantined_path": "experiments/quarantine-2026-09-08/autonomous-visual-draft/run-full-video-drafts.js",
+      "quarantined_sha256": "96a2fecfc7623a9ad9d6449667d9cae02d3dce24a4dc2913f9c28e68ccf67d7e",
+      "byte_identical": true,
+      "change": null
+    },
+    {
+      "original_path": "scripts/autonomous-visual-draft/run-small-batch.js",
+      "original_sha256": "524ba69bca08830df17dcf9fb68d20c02e936f1e2bc484eaba75c24b02113554",
+      "quarantined_path": "experiments/quarantine-2026-09-08/autonomous-visual-draft/run-small-batch.js",
+      "quarantined_sha256": "02e1dffa9135ac382e3978a8206c11a84454e3e20d69b8bb1e8faa121c90e5a5",
+      "byte_identical": false,
+      "change": "schema-id rename only"
+    },
+    {
+      "original_path": "scripts/autonomous-visual-draft/run-topic06-canary.js",
+      "original_sha256": "7c32be77014a9ca67b6f56a458555f2ddd1f8436a85f04664caf94e7ac5cc7e8",
+      "quarantined_path": "experiments/quarantine-2026-09-08/autonomous-visual-draft/run-topic06-canary.js",
+      "quarantined_sha256": "52076d56d83ec7173a64a49725194e2308bcf962f4fbee1c6d546a8a011d9f1e",
+      "byte_identical": false,
+      "change": "schema-id rename only"
+    },
+    {
+      "original_path": "scripts/visual-director/blender-qc-runner.js",
+      "original_sha256": "2c6cc8cdd4db6c5d5aec6b09791ae56ca904bb54bd7e00a0f2e8cea4add89fac",
+      "quarantined_path": "experiments/quarantine-2026-09-08/visual-director/blender-qc-runner.js",
+      "quarantined_sha256": "2c6cc8cdd4db6c5d5aec6b09791ae56ca904bb54bd7e00a0f2e8cea4add89fac",
+      "byte_identical": true,
+      "change": null
+    },
+    {
+      "original_path": "scripts/visual-director/blender-suitability-policy.js",
+      "original_sha256": "ff2cba3631525d7502743eab1c95551e29b61b6209a181a24ff7ff7bd391a5e1",
+      "quarantined_path": "experiments/quarantine-2026-09-08/visual-director/blender-suitability-policy.js",
+      "quarantined_sha256": "ff2cba3631525d7502743eab1c95551e29b61b6209a181a24ff7ff7bd391a5e1",
+      "byte_identical": true,
+      "change": null
+    },
+    {
+      "original_path": "scripts/visual-director/blender-visual-mapper.js",
+      "original_sha256": "30ead1ce2b35e2b616f5c1d3f99ca79738d8d90ece5ff0ceaf7210dc97b50948",
+      "quarantined_path": "experiments/quarantine-2026-09-08/visual-director/blender-visual-mapper.js",
+      "quarantined_sha256": "30ead1ce2b35e2b616f5c1d3f99ca79738d8d90ece5ff0ceaf7210dc97b50948",
+      "byte_identical": true,
+      "change": null
+    },
+    {
+      "original_path": "scripts/visual-director/run-integration-suite.js",
+      "original_sha256": "ee0bbe95219c4a3496b3fc01afed348a20b2bbacc891d3f5f84f85290d67f862",
+      "quarantined_path": "experiments/quarantine-2026-09-08/visual-director/run-integration-suite.js",
+      "quarantined_sha256": "ee0bbe95219c4a3496b3fc01afed348a20b2bbacc891d3f5f84f85290d67f862",
+      "byte_identical": true,
+      "change": null
+    },
+    {
+      "original_path": "scripts/visual-director/test_continuity_evolution.py",
+      "original_sha256": "fd1ef10e497dd030d9f4bc9e0631e5293df4e891532fbf2262038f3b74eec18e",
+      "quarantined_path": "experiments/quarantine-2026-09-08/visual-director/test_continuity_evolution.py",
+      "quarantined_sha256": "fd1ef10e497dd030d9f4bc9e0631e5293df4e891532fbf2262038f3b74eec18e",
+      "byte_identical": true,
+      "change": null
+    },
+    {
+      "original_path": "scripts/visual-director/visual-disposition-authority.js",
+      "original_sha256": "f59c1a413fd4cdbcdd1580d5cd1b4ed72dcca033ae4e883413e476134f1abc47",
+      "quarantined_path": "experiments/quarantine-2026-09-08/visual-director/visual-disposition-authority.js",
+      "quarantined_sha256": "f59c1a413fd4cdbcdd1580d5cd1b4ed72dcca033ae4e883413e476134f1abc47",
+      "byte_identical": true,
+      "change": null
+    },
+    {
+      "original_path": "scripts/visual-director/visual-function-authority.js",
+      "original_sha256": "4f85986b905650f62c3092240b149b0f2355c839c0ad2d48d0f02937a9ff2127",
+      "quarantined_path": "experiments/quarantine-2026-09-08/visual-director/visual-function-authority.js",
+      "quarantined_sha256": "4f85986b905650f62c3092240b149b0f2355c839c0ad2d48d0f02937a9ff2127",
+      "byte_identical": true,
+      "change": null
+    }
+  ],
+  "added_files": [
+    {
+      "path": "experiments/quarantine-2026-09-08/README.md",
+      "sha256": "4f2764bcd513f5b105b47c9da3551f40487cde37e527733686daf23414107796"
+    },
+    {
+      "path": "experiments/quarantine-2026-09-08/ORIGINAL-HASHES.sha256",
+      "sha256": "7dd35c1e8d7fac33ca0e871c980822d7c308facacc486e8b6ae0de05345cacb4"
+    },
+    {
+      "path": "experiments/quarantine-2026-09-08/open-directed-draft-inspector.original.sh",
+      "sha256": "1ef38198e4fc78f21ab8f09421c774e64eeea7d9ee014982814de4c4de5e68a3"
+    }
+  ],
+  "launcher": {
+    "path": "/home/vidtoolz/bin/open-directed-draft-inspector",
+    "disposition": "replaced by refusal stub (exit 3); original preserved in quarantine root",
+    "stub_sha256": "cdf31715bd8614ccfc4c3ce9607137bcca3f0c059129a40abc47081a3905eed1"
+  },
+  "review_store": {
+    "path_pattern": "HUMAN-EDITORIAL-VERDICTS.json under prototype output roots",
+    "disposition": "PRESERVE read-only source evidence; NOT a review authority; re-attestation into vidtoolz.draftReview.v2 only by the reviewer with exact draft hash and domain"
+  },
+  "output_roots": [
+    {
+      "root": "/home/vidtoolz/outputs/live-autonomous-directed-draft-topic-06-2026-09-04",
+      "file_count": 43,
+      "file_list_sha256": "2a9f9b7fea0835bb06bdee57009cd864736c7acf63f7593838f976611e05e560",
+      "disposition": "PRESERVE_REFERENCE; no authority; media must pass canonical intake independently"
+    },
+    {
+      "root": "/home/vidtoolz/outputs/controlled-autonomous-visual-generation-v1-2026-09-04",
+      "file_count": 171,
+      "file_list_sha256": "b2ad6c7e9b9c3e9098a2416674607812ec46042b90c24d428689358c36cb9e44",
+      "disposition": "PRESERVE_REFERENCE; no authority; media must pass canonical intake independently"
+    },
+    {
+      "root": "/home/vidtoolz/outputs/autonomous-visual-draft-v1-production-activation-2026-09-04",
+      "file_count": 12,
+      "file_list_sha256": "d052c309b2cefbd3cfa76b341bfbd4be3d5d630611968e39d0f5f671cb461bb8",
+      "disposition": "PRESERVE_REFERENCE; no authority; media must pass canonical intake independently"
+    },
+    {
+      "root": "/home/vidtoolz/outputs/autonomous-directed-draft-small-batch-2026-09-04",
+      "file_count": 86,
+      "file_list_sha256": "809af79e94a6cc5c1b10cada2aad0851eab72a49c2390859b43ec406a6af94ad",
+      "disposition": "PRESERVE_REFERENCE; no authority; media must pass canonical intake independently"
+    },
+    {
+      "root": "/home/vidtoolz/outputs/autonomous-directed-draft-10-episode-pilot-2026-09-04",
+      "file_count": 135,
+      "file_list_sha256": "df3b4d4ed4e30a65f279001020c2966f715f95161a6897c227a94c5cae919677",
+      "disposition": "PRESERVE_REFERENCE; no authority; media must pass canonical intake independently"
+    },
+    {
+      "root": "/home/vidtoolz/outputs/autonomous-directed-draft-6-scripts-2026-09-05",
+      "file_count": 128,
+      "file_list_sha256": "e1c5e44e732f072e8ea0430fe4189e503d001e8cbde93573133127da3b6519c2",
+      "disposition": "PRESERVE_REFERENCE; no authority; media must pass canonical intake independently"
+    },
+    {
+      "root": "/home/vidtoolz/outputs/draft-videos-6-scripts-2026-09-05",
+      "file_count": 165,
+      "file_list_sha256": "5a4ed9215d5aded54190fb3cecba947696132b867371c92c070c4e7d2d93d33b",
+      "disposition": "PRESERVE_REFERENCE; no authority; media must pass canonical intake independently"
+    }
+  ],
+  "finish_test": {
+    "validator_rejects_prototype_handoff": "PASS (HANDOFF_UNKNOWN_FIELD episode_id) on outputs/live-autonomous-directed-draft-topic-06-2026-09-04/handoffs/T06_T06_B02-handoff.json",
+    "validator_accepts_canonical_r2": "PASS",
+    "production_code_references_moved_paths_or_experimental_ids": "0 (only untracked Earth Studio commit-evidence JSON under data/ lists the old paths as historical inventory)",
+    "canonical_schema_id_emitters": [
+      "config/directed-draft-assembly-handoff-schema.json",
+      "scripts/directed-draft-assembly-handoff.js"
+    ],
+    "test_discovery_reaches_experiments": false,
+    "launcher_refuses": "exit 3",
+    "server_refuses_without_optin": "exit 3",
+    "port_8095_listening": false,
+    "systemd_user_units": 0,
+    "crontab": 0
+  },
+  "prohibited": "no artifact produced by these scripts or found under the output roots is production authority; do not import from experiments/ in production code; do not delete (Mikko)"
+}
