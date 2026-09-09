@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveTimebase.v1.1",
+  "title": "Resolve timebase law and frozen profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "status",
+    "blocked_until",
+    "authoritative_fps_source",
+    "profile_v1",
+    "domains",
+    "law",
+    "tolerance",
+    "api_mapping"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveTimebase.v1.1"
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "FROZEN_NOW"
+      ]
+    },
+    "qualification_note": {
+      "type": "string"
+    },
+    "blocked_until": {
+      "enum": [
+        "M3"
+      ]
+    },
+    "authoritative_fps_source": {
+      "type": "object"
+    },
+    "profile_v1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "output_fps",
+        "fps",
+        "timecode",
+        "intended_start_frame_offset",
+        "geometry",
+        "audio_sample_rate_hz"
+      ],
+      "properties": {
+        "output_fps": {
+          "const": 30
+        },
+        "fps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "numerator",
+            "denominator"
+          ],
+          "properties": {
+            "numerator": {
+              "const": 30
+            },
+            "denominator": {
+              "const": 1
+            }
+          }
+        },
+        "timecode": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nominal_fps",
+            "drop_frame",
+            "drop_frames_per_minute",
+            "start"
+          ],
+          "properties": {
+            "nominal_fps": {
+              "const": 30
+            },
+            "drop_frame": {
+              "const": false
+            },
+            "drop_frames_per_minute": {
+              "const": 0
+            },
+            "start": {
+              "const": "01:00:00:00"
+            }
+          }
+        },
+        "intended_start_frame_offset": {
+          "const": 108000
+        },
+        "geometry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "width",
+            "height",
+            "progressive"
+          ],
+          "properties": {
+            "width": {
+              "const": 1080
+            },
+            "height": {
+              "const": 1920
+            },
+            "progressive": {
+              "const": true
+            }
+          }
+        },
+        "audio_sample_rate_hz": {
+          "const": 48000
+        }
+      }
+    },
+    "domains": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "millisecond",
+        "frame",
+        "audio_sample"
+      ],
+      "properties": {
+        "millisecond": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "minimum"
+          ],
+          "properties": {
+            "type": {
+              "const": "integer"
+            },
+            "minimum": {
+              "const": 0
+            }
+          }
+        },
+        "frame": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "minimum"
+          ],
+          "properties": {
+            "type": {
+              "const": "integer"
+            },
+            "minimum": {
+              "const": 0
+            }
+          }
+        },
+        "audio_sample": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "minimum"
+          ],
+          "properties": {
+            "type": {
+              "const": "integer"
+            },
+            "minimum": {
+              "const": 0
+            }
+          }
+        }
+      }
+    },
+    "law": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "rounding",
+        "den",
+        "B(m)",
+        "absolute(m)",
+        "interval",
+        "duration",
+        "coincident_boundaries",
+        "reject",
+        "substitution_allowed",
+        "scope"
+      ],
+      "properties": {
+        "name": {
+          "const": "CEIL_BOUNDARY_V1"
+        },
+        "rounding": {
+          "const": "CEIL"
+        },
+        "den": {
+          "const": "1000*q"
+        },
+        "B(m)": {
+          "const": "floor((m*p + den - 1) / den)"
+        },
+        "absolute(m)": {
+          "type": "string"
+        },
+        "interval": {
+          "type": "string"
+        },
+        "duration": {
+          "const": "B(b) - B(a)"
+        },
+        "coincident_boundaries": {
+          "type": "string"
+        },
+        "reject": {
+          "type": "array",
+          "minItems": 4
+        },
+        "substitution_allowed": {
+          "const": false
+        },
+        "scope": {
+          "type": "string"
+        }
+      }
+    },
+    "tolerance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planned_vs_observed_frames"
+      ],
+      "properties": {
+        "planned_vs_observed_frames": {
+          "const": 0
+        }
+      }
+    },
+    "quantization": {
+      "type": "object"
+    },
+    "legacy_drafts": {
+      "type": "string"
+    },
+    "api_mapping": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "const": "PROVISIONAL_UNTIL_M3"
+        }
+      },
+      "additionalProperties": true
+    },
+    "fixtures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$comment": "The frozen profile is mechanically pinned by const values: 30/1, NDF, CEIL_BOUNDARY_V1, zero frame tolerance, 48 kHz. No other tolerance key is schema-legal. Generalization is a new profile, never an edit."
+}

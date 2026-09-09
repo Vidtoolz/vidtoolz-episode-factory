@@ -1,0 +1,101 @@
+{
+  "fixture": "conflict-other-plan",
+  "layer_expected_failure": "semantic",
+  "schema": "provisional/resolveConflict",
+  "check": "semantic_conflict",
+  "expect_error_contains": "not bound",
+  "document": {
+    "schema": "vidtoolz.resolveConflict.v1",
+    "transaction_id": "tx-fixture",
+    "plan_digest": "9999999999999999999999999999999999999999999999999999999999999999",
+    "code": "UNEXPECTED_DELTA",
+    "drift_class": "POSITION_DRIFT",
+    "object": {
+      "item": "it-3"
+    },
+    "expected": {
+      "start": 108694
+    },
+    "observed": {
+      "start": 108700
+    },
+    "policy": "REQUEST_RECONCILIATION",
+    "next_action_non_mutating": "present to Mikko",
+    "authority_effect": "NONE_UNTIL_HUMAN_ADJUDICATION",
+    "resolved": true,
+    "authority_version": "1.10.0"
+  },
+  "plan": {
+    "schema": "vidtoolz.resolveMutationPlan.v1",
+    "transaction_id": "tx-fixture",
+    "session_id": "sess-2026-09-08-0001",
+    "authority_version": "1.10.0",
+    "milestone": "M3",
+    "dry_run": false,
+    "target": {
+      "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+      "project_unique_id": "proj-fixture-0001",
+      "timeline_unique_id": "tl-fixture-0001",
+      "target_epoch": "epoch-fixture-1",
+      "host_name": "vidnux",
+      "library_name": "VIDTOOLZ Resolve Qualification v1",
+      "library_kind": "Disk",
+      "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "timeline_name": "VIDTOOLZ__fixture__r1",
+      "resolve_version": "21.1.0.0014"
+    },
+    "target_epoch": "epoch-fixture-1",
+    "target_contract_digest": "85687101b5d767889766a4c0398cfba6c748786dceb72268921acab092018495",
+    "binding_set_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "handoff_digest_sha256": "3fd9bdd875c9eb489abf77797613abbc2616eef36073503742ebc9fd80f5bf69",
+    "h0_payload_sha256": "c2a2ce0f947ef1efd1cf330fbb398f03ee4d600eb92de91e9aa9d36e0c9eab9a",
+    "h0_guard_digest": "b32847b2bcecebbc684cfd5dbc87d29b23f68fad62e68bd2f6737c931c503c1b",
+    "capability_matrix_version": "1.10.0-HYPOTHETICAL",
+    "collector_version": "0.0.0-fixture",
+    "timebase_digest": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+    "permission_class": "RESOLVE_ASSEMBLE",
+    "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+    "lease": {},
+    "operations": [
+      {
+        "operation_id": "op-1",
+        "op": "APPEND",
+        "selector": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1",
+          "track_type": "video",
+          "track_index": 1,
+          "expected_media_pool_item_unique_id": "mp-new"
+        },
+        "expected_old": null,
+        "expected_new": {
+          "start": 110194,
+          "end": 110541
+        },
+        "allowed_created": [
+          "one item"
+        ],
+        "allowed_deleted": [],
+        "declared_side_effects": []
+      }
+    ],
+    "operation_set_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+    "plan_digest": "1aecb9f01839cee50e46a24e663658ceb0a90aebe9d0209548d9a977e8440be9",
+    "refs": {
+      "m0_exit": "a9c24501357d9b9ca0572b369d399cf160e7c579c846357b41f170bec944350b",
+      "m1_exit": "a6122b0e6758d594a0c78751aa2a299c7a18adafbffe9d2db58166e2dd17f589",
+      "m2_exit": "38795036f66086c6f260271fbc00b49cba284452576d33167c8a97cadfd935ba",
+      "authorization": "8c8583d5da6df5c1356d0fce9c56bee2b89d0c4a22af68fa1f514de368f4e91c",
+      "exclusive_session": "5718b057266d35b019bff670c3c1dff54f1349c0b7f31f62556396d763b48c33",
+      "read_only_journal": "86d355cbc9b11e246d49a78fbb5377585ea60b5ae47bdc0dceab8c44d22e9bc8",
+      "media_class": "28b0296eb79163e1d89cd7323325710a59cb5f42ec57c3c5f337c604c952ec32",
+      "destination_timeline": "7eb491c9e55855e0e840e77f981233eb4b75cb0b1e46d7efa354122f1367b49c",
+      "journal_prepared": "832cd970ad07f79418f6c0f328007ecb43b06a723a419f2a24078ac5981b483a",
+      "guard": "75a81bf2328a3aa562fa0e261d7ac901124c9b3772dfc8e2a27e7d307c10080e",
+      "plan_validation": "e629ccb874605e896331ceba50dfa3ce533119daf857dee3025fc9eec6a9a407"
+    }
+  }
+}

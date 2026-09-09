@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveM0ABindingValues.v1.10",
+  "title": "M0A binding values v1.10 (the identities a probe package must bind to)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority_version",
+    "purpose",
+    "active_authority_shape",
+    "retention_rule",
+    "manifest_sha256_note",
+    "values"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveM0ABindingValues.v1.10"
+    },
+    "authority_version": {
+      "const": "1.10.0"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "active_authority_shape": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "retention_rule": {
+      "type": "string"
+    },
+    "manifest_sha256_note": {
+      "type": "string"
+    },
+    "values": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active_integrity_law",
+        "attempt_marker_derivation_law",
+        "attempt_tuple_law",
+        "authority_version",
+        "boundary_receipt_file",
+        "boundary_receipt_law",
+        "capture_allowlist_digest",
+        "capture_allowlist_method_count",
+        "closed_world_verification",
+        "codec_version",
+        "evidence_boundary_schema",
+        "evidence_finalization_schema",
+        "evidence_inventory_schema",
+        "evidence_layers",
+        "evidence_session_schema",
+        "evidence_store_authority_class",
+        "evidence_store_module",
+        "evidence_store_platform_scope",
+        "evidence_store_sha256",
+        "evidence_store_version",
+        "filesystem_refusal_vocabulary",
+        "inventory_field_provenance_file",
+        "mode_authority_law",
+        "mode_metadata_law",
+        "path_identifier_constraints",
+        "primitive_spec_sha256",
+        "raw_frame_max_bytes",
+        "raw_ingest_version",
+        "raw_schema_id",
+        "raw_schema_version",
+        "record_key_law",
+        "reference_parser_sha256",
+        "reference_parser_version",
+        "root_session_identity_law",
+        "root_symlink_refusal_law",
+        "schema_registry_file",
+        "schema_registry_sha256",
+        "session_identity_tuple",
+        "session_path_identity_law",
+        "stderr_retention",
+        "stdout_retention",
+        "trusted_shim_authority_sha256",
+        "trusted_shim_file",
+        "trusted_shim_sha256",
+        "trusted_shim_source_path",
+        "trusted_shim_source_sha256",
+        "trusted_shim_version",
+        "verification_counters"
+      ],
+      "properties": {
+        "authority_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "raw_schema_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "raw_schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "codec_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "raw_ingest_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "raw_frame_max_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "trusted_shim_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trusted_shim_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trusted_shim_source_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trusted_shim_source_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trusted_shim_authority_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capture_allowlist_digest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capture_allowlist_method_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reference_parser_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_parser_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "primitive_spec_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_registry_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_registry_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trusted_shim_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_store_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_session_schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_inventory_schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_finalization_schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_boundary_schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "boundary_receipt_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "boundary_receipt_law": {
+          "type": "string",
+          "minLength": 1
+        },
+        "root_session_identity_law": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attempt_marker_derivation_law": {
+          "type": "string",
+          "minLength": 1
+        },
+        "active_integrity_law": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode_authority_law": {
+          "type": "string",
+          "minLength": 1
+        },
+        "filesystem_refusal_vocabulary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inventory_field_provenance_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_store_platform_scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "session_path_identity_law": {
+          "type": "string",
+          "minLength": 1
+        },
+        "session_identity_tuple": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attempt_tuple_law": {
+          "type": "string",
+          "minLength": 1
+        },
+        "record_key_law": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode_metadata_law": {
+          "type": "string",
+          "minLength": 1
+        },
+        "root_symlink_refusal_law": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verification_counters": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_store_module": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_store_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_store_authority_class": {
+          "type": "string",
+          "minLength": 1
+        },
+        "closed_world_verification": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path_identifier_constraints": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_layers": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stdout_retention": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stderr_retention": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

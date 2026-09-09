@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveInventoryFieldProvenance.v1.10",
+  "title": "Inventory field provenance v1.10 (no normative field is self-asserted)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority_version",
+    "law",
+    "sources",
+    "forbidden_source",
+    "fields"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveInventoryFieldProvenance.v1.10"
+    },
+    "authority_version": {
+      "const": "1.10.0"
+    },
+    "law": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_source": {
+      "const": "TRUSTED_FROM_INVENTORY_ITSELF"
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": [
+          "DERIVED_FROM_FILESYSTEM",
+          "DERIVED_FROM_RECORD_BYTES",
+          "DERIVED_FROM_SESSION_AUTHORITY",
+          "DERIVED_FROM_SCHEMA",
+          "FROZEN_CONSTANT",
+          "NON_NORMATIVE"
+        ]
+      }
+    }
+  }
+}

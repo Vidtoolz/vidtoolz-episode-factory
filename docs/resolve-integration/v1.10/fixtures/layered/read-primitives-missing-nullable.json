@@ -1,0 +1,2156 @@
+{
+  "fixture": "read-primitives-missing-nullable",
+  "layer_expected_failure": "schema",
+  "schema": "resolveReadPrimitives",
+  "check": null,
+  "expect_error_contains": "nullable",
+  "document": {
+    "schema": "vidtoolz.resolveReadPrimitives.v1.10",
+    "version": "1.10.0",
+    "status": "FROZEN_NOW",
+    "law": "a logical read operation expands to primitives and declares its target_requirement (SESSION | PROJECT | PROJECT_TIMELINE); a primitive whose evidence_class is not QUALIFIED_READ (with linked reviewed CAPABILITY_EVIDENCE) is never called silently: SNAPSHOT_CAPTURE marks the field UNAVAILABLE or downgrades coverage, REFUSE fallbacks block the operation; only READ_PRIMITIVE_QUALIFICATION_PROBE may call probe_allowed getters, explicitly, in an isolated read-only session, to produce CANDIDATE evidence records; nothing is promoted automatically",
+    "logical_operations": {
+      "READ_PRIMITIVE_QUALIFICATION_PROBE": {
+        "purpose": "M0 preflight: call each DOCUMENTED_NOT_QUALIFIED read getter explicitly and record an evidence record per method",
+        "primitives": [
+          {
+            "method": "Folder.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Folder",
+            "arg_types": [],
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetClipEnabled",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetClipProperty",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          },
+          {
+            "method": "GetCurrentDatabase",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "ProjectManager",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          },
+          {
+            "method": "GetCurrentProject",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "resolve-hermes live validation (docs/render-readiness-field-map.md:43)"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "ProjectManager",
+            "arg_types": [],
+            "nullable": true,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetCurrentTimeline",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "resolve-hermes live validation"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": true,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetDuration",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetDuration(True)",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [
+              "bool"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "float"
+          },
+          {
+            "method": "GetEnd",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetEnd(True)",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [
+              "bool"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "float"
+          },
+          {
+            "method": "GetEndFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetIsTrackEnabled",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [
+              "str",
+              "int"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetIsTrackLocked",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [
+              "str",
+              "int"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetItemListInTrack",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [
+              "str",
+              "int"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "list"
+          },
+          {
+            "method": "GetLeftOffset(True)",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [
+              "bool"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "float"
+          },
+          {
+            "method": "GetMarkerByCustomData",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [
+              "str"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          },
+          {
+            "method": "GetMarkers",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          },
+          {
+            "method": "GetMediaPoolItem",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": true,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetProductName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Resolve",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetProjectLastModifiedTime",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetProjectListInCurrentFolder",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "ProjectManager",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "list"
+          },
+          {
+            "method": "GetProjectManager",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Resolve",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetRightOffset(True)",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [
+              "bool"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "float"
+          },
+          {
+            "method": "GetSourceEndFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetSourceEndTime",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "float"
+          },
+          {
+            "method": "GetSourceStartFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetSourceStartTime",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "float"
+          },
+          {
+            "method": "GetStart",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01 (isolated Resolve, real renders)"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetStart(True)",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [
+              "bool"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "float"
+          },
+          {
+            "method": "GetStartFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetStartTimecode",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetTimelineByIndex",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "arg_types": [
+              "int"
+            ],
+            "nullable": true,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetTimelineCount",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetTrackCount",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [
+              "str"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetTrackName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [
+              "str",
+              "int"
+            ],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetVersionString",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Resolve",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "MediaPoolItem.GetMediaId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "MediaPoolItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "MediaPoolItem.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "MediaPoolItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "Project.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "Project.GetSettings",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          },
+          {
+            "method": "Project.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "Timeline.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "Timeline.GetSettings",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          },
+          {
+            "method": "Timeline.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "TimelineItem.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "TimelineItem.GetProperties",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          },
+          {
+            "method": "TimelineItem.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "PROBE_ONLY",
+            "probe_allowed": true,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          }
+        ],
+        "output": "one RAW_CAPABILITY_CAPTURE record per (method, receiver) attempt + one CONNECTION_OBSERVATION + IDENTITY_UNIQUENESS/STABILITY_OBSERVATION pass lists, all envelope-bound to the session; no parse block, no success flag; a reviewed refreeze (M0C) may later turn rows QUALIFIED_READ",
+        "target_requirement": "SESSION",
+        "purpose_is_qualification": true,
+        "read_only": true,
+        "promotes_capability": false,
+        "evidence_output": "RAW_CAPABILITY_CAPTURE",
+        "contract": "M0-PROBE-CONTRACT.md",
+        "why_allowed": "the getters are DOCUMENTED_NOT_QUALIFIED; calling them is the test, not a use of their result; results are recorded, never acted on",
+        "failure_taxonomy": {
+          "CAPABILITY_FAILURE": [
+            "EXCEPTION",
+            "TIMEOUT",
+            "UNSUPPORTED",
+            "MALFORMED",
+            "RECEIVER_MISMATCH",
+            "ARGS_MISMATCH",
+            "TYPE_MISMATCH",
+            "NULL_NOT_ALLOWED",
+            "TRUNCATED",
+            "TRANSPORT_FAILURE",
+            "REFUSED",
+            "UNSERIALIZABLE"
+          ],
+          "FATAL_TARGET_FAILURE": [
+            "BINDING_MISMATCH",
+            "SHIM_UNTRUSTED",
+            "WRONG_HOST",
+            "WRONG_LIBRARY",
+            "WRONG_LIBRARY_UUID",
+            "WRONG_LIBRARY_ROOT",
+            "STALE_SESSION",
+            "CONFLICTING_TARGET",
+            "WRONG_MANIFEST",
+            "WRONG_AUTHORITY_VERSION",
+            "WRONG_RESOLVE_VERSION"
+          ]
+        },
+        "failure_law": "the probe (M0A) never classifies: it records RAW_CAPABILITY_CAPTURE facts (mechanical outcome RETURNED/RAISED/TIMEOUT/ATTRIBUTE_MISSING/TRANSPORT_FAILURE/REFUSED/UNSERIALIZABLE, typed return, exception facts, truncation facts, shim identity); the reference parser derives the class offline (M0B); a CAPABILITY_FAILURE family class is reviewed REJECT and the probe continues; a BINDING_MISMATCH (capture bound to another host/library/uuid/root/session/manifest/authority/version) is FATAL_TARGET_FAILURE: the probe STOPS and the session derives CONFLICT",
+        "capture_shim_contract": "CAPTURE-SHIM.md",
+        "phases": [
+          "M0A_PROBE",
+          "M0B_REVIEW",
+          "M0C_REFREEZE",
+          "M0D_QUALIFIED_READ"
+        ]
+      },
+      "CONNECT": {
+        "primitives": [
+          {
+            "method": "GetVersionString",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Resolve",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetProductName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Resolve",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetProjectManager",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Resolve",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetCurrentDatabase",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "ProjectManager",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          }
+        ],
+        "target_requirement": "SESSION",
+        "note": "SESSION scope: proves host/library/session identity; requires qualified getters (REFUSE fallback) so it is not eligible before a reviewed refreeze; the probe establishes the same boundary in probe mode"
+      },
+      "ENUMERATE_PROJECTS": {
+        "primitives": [
+          {
+            "method": "GetProjectListInCurrentFolder",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "ProjectManager",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "list"
+          },
+          {
+            "method": "GetCurrentProject",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "resolve-hermes live validation (docs/render-readiness-field-map.md:43)"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "ProjectManager",
+            "arg_types": [],
+            "nullable": true,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "object"
+          },
+          {
+            "method": "Project.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          }
+        ],
+        "target_requirement": "SESSION",
+        "note": "SESSION scope: lists projects; establishes no project binding by itself"
+      },
+      "ENUMERATE_TIMELINES": {
+        "primitives": [
+          {
+            "method": "GetTimelineCount",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetTimelineByIndex",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "arg_types": [
+              "int"
+            ],
+            "nullable": true,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetCurrentTimeline",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "resolve-hermes live validation"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": true,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "object"
+          },
+          {
+            "method": "Timeline.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          }
+        ],
+        "target_requirement": "PROJECT",
+        "note": "PROJECT scope: requires a PROJECT_BINDING_OBSERVATION for expected_project_name"
+      },
+      "SNAPSHOT_CAPTURE": {
+        "primitives": [
+          {
+            "method": "GetTrackCount",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [
+              "str"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetItemListInTrack",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [
+              "str",
+              "int"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "list"
+          },
+          {
+            "method": "GetTrackName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [
+              "str",
+              "int"
+            ],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetStart",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01 (isolated Resolve, real renders)"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetEnd",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetDuration",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "FRB supervised acceptance 2026-08-01"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "TimelineItem.GetName",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetMediaPoolItem",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": true,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "object"
+          },
+          {
+            "method": "GetClipEnabled",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetStartFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetEndFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetStartTimecode",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "Timeline.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "Project.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "TimelineItem.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "MediaPoolItem.GetUniqueId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "MediaPoolItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "MediaPoolItem.GetMediaId",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "MediaPoolItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "GetSourceStartFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetSourceEndFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetIsTrackLocked",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [
+              "str",
+              "int"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetIsTrackEnabled",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [
+              "str",
+              "int"
+            ],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "bool"
+          },
+          {
+            "method": "GetMarkers",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          },
+          {
+            "method": "Timeline.GetSettings",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          },
+          {
+            "method": "Project.GetSettings",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "DOWNGRADE_COVERAGE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          },
+          {
+            "method": "GetClipProperty",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "TimelineItem",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          }
+        ],
+        "target_requirement": "PROJECT_TIMELINE",
+        "note": "PROJECT_TIMELINE scope: requires PROJECT_BINDING_OBSERVATION + TIMELINE_BINDING_OBSERVATION for the expected names; never the current timeline by accident"
+      },
+      "TIMEBASE_OBSERVE": {
+        "primitives": [
+          {
+            "method": "GetStartFrame",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NONE",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "int"
+          },
+          {
+            "method": "GetStartTimecode",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          },
+          {
+            "method": "Timeline.GetSettings",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "REFUSE",
+            "probe_allowed": false,
+            "receiver": "Timeline",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "dict"
+          }
+        ],
+        "target_requirement": "PROJECT_TIMELINE"
+      },
+      "TRIPWIRE_READ": {
+        "primitives": [
+          {
+            "method": "GetProjectLastModifiedTime",
+            "evidence_class": "DOCUMENTED_NOT_QUALIFIED",
+            "evidence_ref": [
+              "none on 21.1.0 build 14"
+            ],
+            "milestones_available": [
+              "M0",
+              "M1",
+              "M2",
+              "M3"
+            ],
+            "fallback_if_unqualified": "MARK_UNAVAILABLE",
+            "probe_allowed": false,
+            "receiver": "Project",
+            "arg_types": [],
+            "nullable": false,
+            "shape_rule": "NON_EMPTY",
+            "completeness": "COMPLETE",
+            "expectation_status": "DOCUMENTED_HYPOTHESIS",
+            "expectation_source": "DaVinci Resolve 21.1 scripting README / DaVinciResolveScript stub (documented return; not yet probe-validated on 21.1.0 build 14)",
+            "expected_type": "str"
+          }
+        ],
+        "target_requirement": "PROJECT"
+      }
+    },
+    "primitive_spec_law": {
+      "statuses": [
+        "DOCUMENTED_HYPOTHESIS",
+        "PROBE_VALIDATED",
+        "FROZEN"
+      ],
+      "frozen_allowed": false,
+      "law": "every expectation (receiver, arg_types, nullable, expected_type, shape_rule, completeness) is DOCUMENTED_HYPOTHESIS until a reviewed refreeze (M0C) validates it against re-parsed captures; the reference parser classifies against the hypothesis, and classification against a hypothesis is not qualification; primitive_spec_sha256 = digest of the probe primitive specs and is bound by every REVIEW_DECISION, REFREEZE_RECORD and matrix evidence entry"
+    },
+    "expected_type_note": "expected_type is the documented 21.1 return type (broad codec type: str|int|bool|float|list|dict|object) under expectation_status DOCUMENTED_HYPOTHESIS; the reference parser (authority_lib.derive_capability_result) classifies the raw capture against it; TYPE_MISMATCH is a derived class, never a probe field",
+    "primitive_spec_sha256": "3a7d7241316297ecc9fb5ba2950a0cae9c23056fab2059683a45b9f7ed8ff13a",
+    "capture_allowlist_digest": "ead63126d6e4032f2854f16db036ed27494940764d2069b9deaf87963f539030",
+    "capture_allowlist_law": "the ONE static getter allowlist a trusted capture may have been invoked under is exactly the probe_allowed primitives of READ_PRIMITIVE_QUALIFICATION_PROBE; capture_allowlist_digest is its canonical content digest (domain vidtoolz.resolveShimAllowlist.v1) and TRUSTED-SHIM.json pins it. A capture of a method outside this allowlist is refused before any derivation (v1.7, C16-B3)"
+  }
+}
