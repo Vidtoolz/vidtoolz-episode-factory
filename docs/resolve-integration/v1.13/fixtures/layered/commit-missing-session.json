@@ -1,0 +1,39 @@
+{
+  "fixture": "commit-missing-session",
+  "layer_expected_failure": "schema",
+  "schema": "provisional/resolveCommitManifest",
+  "check": null,
+  "expect_error_contains": "session_id",
+  "document": {
+    "schema": "vidtoolz.resolveCommitManifest.v1",
+    "transaction_id": "tx-fixture",
+    "plan_digest": "697b1e5c8fafd44b097bff455a5c97b84c1670d594fe510f46f538701bfac408",
+    "target": {
+      "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+      "project_unique_id": "proj-fixture-0001",
+      "timeline_unique_id": "tl-fixture-0001",
+      "target_epoch": "epoch-fixture-1",
+      "host_name": "vidnux",
+      "library_name": "VIDTOOLZ Resolve Qualification v1",
+      "library_kind": "Disk",
+      "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "timeline_name": "VIDTOOLZ__fixture__r1",
+      "resolve_version": "21.1.0.0014"
+    },
+    "authority_version": "1.13.0",
+    "operation_set_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+    "terminal_state": "COMMITTED",
+    "binding_observation_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "binding_set_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "receipt_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "journal_head_sha256": "370409208a22a047fdb6dc72cf5939eb54e7f282699bc9c63f0c804b63b317dc",
+    "verification_result_sha256": "dc5ea3c7c7559892be0f6ac209f23aaef5ef4a7f2f11db3bb47d6c87e8657d10",
+    "guard_digest": "007cd1d6941d21774413aba01881b99b5f695128cb05079a3ec486388e7d4f3a",
+    "s1_guard_digest": "feacdd6fb22fc43833f502e135ee7bd4252443a9f8a9b918254e855d6d3d5996",
+    "s1_snapshot_sha256": "56ff4043e4952739860fdc0366d22848d57c4ccdd48d241517a948785a1f47da",
+    "unresolved_conflicts": [],
+    "ef_source_pins": {},
+    "published_at": "2026-09-08T11:59:00Z"
+  }
+}

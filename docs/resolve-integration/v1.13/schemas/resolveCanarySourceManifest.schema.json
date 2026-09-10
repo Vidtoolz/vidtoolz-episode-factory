@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveCanarySourceManifest.v1.1",
+  "title": "Canary source relocation manifest v1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "run_id",
+    "preserved_root",
+    "relocation_rule",
+    "handoff",
+    "approved_comparison_artifact",
+    "media",
+    "media_match_count",
+    "human_review",
+    "lock",
+    "blueprint_manual_not_target",
+    "grants_gate_approval"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveCanarySourceManifest.v1.1"
+    },
+    "status": {
+      "enum": [
+        "FROZEN_NOW"
+      ]
+    },
+    "run_id": {
+      "const": "2026-08-31-claude-real-20-bespoke-still-draft-successor"
+    },
+    "preserved_root": {
+      "type": "string",
+      "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+      "minLength": 2
+    },
+    "live_root_declared_in_handoff": {
+      "type": "string",
+      "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+      "minLength": 2
+    },
+    "live_root_status": {
+      "type": "string"
+    },
+    "relocation_rule": {
+      "type": "string"
+    },
+    "handoff": {
+      "type": "object",
+      "required": [
+        "handoff_id",
+        "revision",
+        "handoff_digest_sha256",
+        "file_sha256",
+        "duration_ms",
+        "beat_count"
+      ],
+      "properties": {
+        "handoff_id": {
+          "const": "directed-draft-handoff-3fd9bdd875c9eb489abf7779"
+        },
+        "revision": {
+          "const": 2
+        },
+        "handoff_digest_sha256": {
+          "const": "3fd9bdd875c9eb489abf77797613abbc2616eef36073503742ebc9fd80f5bf69"
+        },
+        "file_sha256": {
+          "const": "b675b8f33acfa0134d70c5205d66984e981b2b069fd35eb81071319b2eebdf66"
+        },
+        "duration_ms": {
+          "const": 225183
+        },
+        "beat_count": {
+          "const": 20
+        }
+      }
+    },
+    "story_pin": {
+      "type": "object"
+    },
+    "approved_comparison_artifact": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256",
+        "ffprobe"
+      ],
+      "properties": {
+        "sha256": {
+          "const": "b5ba7bc097ce450714afef5a8f38ad82d64010b2e1129d01766e9cd80a515348"
+        },
+        "ffprobe": {
+          "type": "object",
+          "required": [
+            "nb_read_frames"
+          ],
+          "properties": {
+            "nb_read_frames": {
+              "const": 6756
+            }
+          }
+        }
+      }
+    },
+    "media": {
+      "type": "array",
+      "minItems": 22,
+      "maxItems": 22,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "role",
+          "declared_path",
+          "preserved_path",
+          "declared_sha256",
+          "preserved_sha256",
+          "match"
+        ],
+        "properties": {
+          "role": {
+            "enum": [
+              "DRAFT_BESPOKE_STILL",
+              "NARRATION",
+              "MUSIC"
+            ]
+          },
+          "asset_id": {
+            "type": "string",
+            "pattern": "^draft-still-[0-9]{3}$"
+          },
+          "declared_path": {
+            "type": "string",
+            "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+            "minLength": 2
+          },
+          "preserved_path": {
+            "type": "string",
+            "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+            "minLength": 2
+          },
+          "declared_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "preserved_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "match": {
+            "const": true
+          }
+        }
+      }
+    },
+    "media_match_count": {
+      "const": "22/22"
+    },
+    "asset_manifest": {
+      "type": "object"
+    },
+    "composition": {
+      "type": "object"
+    },
+    "human_review": {
+      "type": "object",
+      "required": [
+        "draft_verdict",
+        "notes"
+      ],
+      "properties": {
+        "draft_verdict": {
+          "const": "KEEP"
+        },
+        "notes": {
+          "const": 0
+        }
+      }
+    },
+    "lock": {
+      "type": "object"
+    },
+    "blueprint_manual_not_target": {
+      "type": "object",
+      "required": [
+        "edit_mode"
+      ],
+      "properties": {
+        "edit_mode": {
+          "const": "MANUAL"
+        }
+      }
+    },
+    "story_binding_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "negative_fixture_only": {
+      "type": "object"
+    },
+    "grants_gate_approval": {
+      "const": false
+    }
+  },
+  "$comment": "Semantic validator: exactly 20 stills + 1 narration + 1 music; unique asset ids; unique shas; declared == preserved sha; absolute paths without traversal."
+}

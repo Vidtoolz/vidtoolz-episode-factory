@@ -1,0 +1,19 @@
+{
+  "purpose": "payload digest alone does not prove target context; identity observation status and reason are part of the guard; provenance authority is part of the guard (v3)",
+  "provenance_changes_guard": {
+    "payload_sha256_equal": true,
+    "guard_digest_equal": false
+  },
+  "same_payload_different_project": {
+    "payload_sha256_equal": true,
+    "guard_digest_equal": false
+  },
+  "unavailable_vs_error_identity": {
+    "payload_sha256_equal": true,
+    "guard_digest_equal": false,
+    "a_status": "UNAVAILABLE",
+    "b_status": "ERROR"
+  },
+  "guard_a": "801a750c07a0efb10e8af6f0e721f8e28a97c1114415f0406ad87cdc95e6f0a9",
+  "guard_b": "3887fd8b2242fa9835b308e8fb925eee4b53d39e730142ee0c46922d864394f2"
+}

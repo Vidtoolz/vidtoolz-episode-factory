@@ -1,0 +1,73 @@
+{
+  "schema": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
+  "authority_version": "1.13.0",
+  "adjudication": "Codex independent v1.10 result: 1911/1911 supplied validation twice and deterministic, with exactly four release-relevant findings remaining - F110-A, F110-B and F110-C BLOCKERs and F110-D a MERGE MAJOR / M0A MAJOR",
+  "law": "each finding names the v1.10 defect as reproduced against the frozen v1.10 bundle at 9c6643430d2dc66741afe9852668d8e6e19c0630, the v1.11 correction, at least one negative fixture, the layer the attack must fail at, and the validate_v1_13.py sections that prove it. validate_v1_13.py refuses to pass unless every named section exists and every check in it passes.",
+  "operational_closure": "the v1.9 evidence-store matrix (S110-1..S110-5) is retained as FINDING-RESOLUTION-MATRIX-v1.10.json and its corrections are re-run as v1.12 regressions; this file is HISTORICAL under v1.12, whose ACTIVE matrix is FINDING-RESOLUTION-MATRIX-v1.12.json. Codex's PARTIAL filesystem-normalization observation (raw os.close and walk-iteration coverage) was NOT one of the four release findings and is DELIBERATELY out of v1.11 scope: the 13-label frozen FS_* vocabulary, the mapped errno conditions, the TypeError/programming-error distinction and the fs() normalization behaviour are retained and re-run unchanged, and the item is left for separate adjudication rather than broadened into a filesystem wrapper rewrite.",
+  "inherited_matrices": [
+    "FINDING-RESOLUTION-MATRIX-v1.10.json",
+    "FINDING-RESOLUTION-MATRIX-v1.9.json",
+    "FINDING-RESOLUTION-MATRIX-v1.8.json",
+    "FINDING-RESOLUTION-MATRIX-v1.7.json"
+  ],
+  "findings": [
+    {
+      "id": "F110-A",
+      "severity": "BLOCKER",
+      "codex_finding": "The boundary receipt contains normative fields that can be consistently rewritten and still authorize: schema, evidence_store_version, authority_version, platform_scope and created_at are stored and digested but never compared to anything outside the receipt.",
+      "prior_defect": "Reproduced against the frozen v1.10 bundle at 9c66434: for each of the five fields, an ACTIVE session's BOUNDARY.json was edited, boundary_sha256 was recomputed with the bundle's own boundary_digest(), the canonical 0o444 mode was restored, and the next put_raw() SUCCEEDED in all five cases. v1.10's boundary_receipt() checked only the field SET and the receipt's own digest, so a self-consistent forgery - a receipt claiming another schema, another evidence-store version, another authority version or WINDOWS platform scope - authorized every subsequent operation. INVENTORY-FIELD-PROVENANCE.json published four of them as FROZEN_CONSTANT while nothing compared them.",
+      "correction": "BOUNDARY_PROVENANCE classifies every BOUNDARY.json field with EXACTLY ONE of DERIVED_FROM_FILESYSTEM, DERIVED_FROM_SESSION_AUTHORITY, FROZEN_CONSTANT or INFORMATIONAL_NON_AUTHORIZING; there is no ambiguous category and the table is asserted complete against BOUNDARY_FIELDS. _boundary_receipt() now reconciles the four FROZEN_CONSTANT fields against BOUNDARY_FROZEN_CONSTANTS - EVIDENCE_BOUNDARY_SCHEMA, EVIDENCE_STORE_VERSION, authority_lib.AUTHORITY_VERSION and PLATFORM_SCOPE - applies a structural type law to every remaining field, and enforces the L5 internal coherence session_id == session_basename. check_boundary() keeps the already-passing DERIVED_FROM_FILESYSTEM reconciliation of root path/device/inode and session basename/device/inode against a fresh lstat. created_at is DELIBERATELY classified INFORMATIONAL_NON_AUTHORIZING (option A): this store governs no independent creation-event authority, so it is type-checked, excluded from boundary_identity() and the session identity, still covered by boundary_sha256 for byte integrity, and a consistent rewrite of it explicitly does not refuse. boundary_sha256 is documented as byte integrity over the stored receipt and never as semantic truth: authorization requires the stored receipt AND independent reconciliation.",
+      "negative_fixture": "validate_v1_13.py section evidence-boundary-fields: the full receipt attack matrix - all twelve normative fields mutated one at a time with a recomputed boundary_sha256 and the canonical mode restored, each refusing the next canonical operation inside the frozen BOUNDARY precedence class; created_at asserted to behave exactly as its documented informational law (consistent rewrite authorizes, unrecomputed edit refuses as byte tampering, excluded from boundary_identity); four structural attacks (non-string created_at, non-integer inode, empty root path, session_id/session_basename disagreement); an extra and a removed receipt field; and a Store.v4 receipt refused under v1.11. Section property adds 24 seeded single-field mutations.",
+      "expected_layer": "evidence store (boundary receipt reconciliation)",
+      "validation_sections": [
+        "evidence-boundary-fields",
+        "evidence-boundary-receipt",
+        "evidence-provenance"
+      ]
+    },
+    {
+      "id": "F110-B",
+      "severity": "BLOCKER",
+      "codex_finding": "The inventory contains six normative header/path fields that are not independently compared - record_count, entry_count, total_bytes, attempt_count, self_path and finalized_marker_path - and an extra semantic header field can survive verification.",
+      "prior_defect": "Reproduced against the frozen v1.10 bundle at 9c66434: for each of the six fields, a FINALIZED session's INVENTORY.json was edited, inventory_sha256 was recomputed with the bundle's own inventory_digest(), the FINALIZED marker's inventory_sha256 reference was updated, both canonical 0o444 modes were restored, and verify() returned CLEAN in all six cases. A syntactically valid extra top-level semantic field also verified clean. v1.10's verify_summary() compared nine header fields and the mode table and simply never looked at the other six, and it accepted any superset of the field set - while INVENTORY-FIELD-PROVENANCE.json published all six as DERIVED_FROM_FILESYSTEM or FROZEN_CONSTANT.",
+      "correction": "INVENTORY_FIELDS freezes the EXACT top-level inventory vocabulary and INVENTORY_FIELD_SET is compared before any field is interpreted: a missing normative field, an unknown extra semantic field or a wrong type is INVENTORY_FIELD_SET_INVALID, and a duplicate top-level key is already refused by authority_lib.strict_loads at the parse boundary. All six fields are then RECOMPUTED and compared for exact equality: record_count and attempt_count from the KIND_RECORD and KIND_ATTEMPT_MARKER entries of the independent expected_model(), entry_count from the length of the governed entry set, total_bytes from the byte_count sum over the frozen TOTAL_BYTES_SCOPE (every governed regular file except INVENTORY.json and FINALIZED, which finalization itself creates), and self_path and finalized_marker_path from the frozen INVENTORY_FILE and FINALIZED_FILE store-layout constants. expected_model() is NOT redesigned - Codex confirmed its independence passes - it is only consumed. Semantic extension now requires a schema version, which is why resolveEvidenceInventory.v3 became v4. FINALIZATION_FIELDS names the nine finalization fields explicitly without redesigning the marker format.",
+      "negative_fixture": "validate_v1_13.py section evidence-inventory-fields: the six-field mutation matrix (each mutated field with a recomputed inventory digest AND an updated finalization reference, overstated and understated), the extra-semantic-field attack, a removed normative field, five wrong-type attacks, a duplicate top-level key, an assertion that the frozen vocabulary partitions exactly into the reconciliation routes, and an assertion that expected_model() still consumes no inventory or finalization claim. Section property adds 24 seeded counter perturbations.",
+      "expected_layer": "evidence store (inventory header reconciliation / field vocabulary)",
+      "validation_sections": [
+        "evidence-inventory-fields",
+        "evidence-recomputed-model",
+        "evidence-finalization-fields",
+        "evidence-provenance"
+      ]
+    },
+    {
+      "id": "F110-C",
+      "severity": "BLOCKER",
+      "codex_finding": "Attempt marker/record reconciliation checks semantic derivation but not exact one-to-one cardinality: two distinct attempt ids over the same session, layer, logical identity and record bytes create two markers resolving to one content-addressed record, and finalization and verify() still pass.",
+      "prior_defect": "Reproduced against the frozen v1.10 bundle at 9c66434: put_raw(\"a1\", B, logical_identity=\"L\") followed by put_raw(\"a2\", B, logical_identity=\"L\") both SUCCEEDED and returned the SAME record_key; active_integrity() was clean, attempts() listed both, finalize() succeeded, verify() was clean, and the stored inventory recorded record_count 1 with attempt_count 2 and the record carrying attempt_ids [a1, a2]. v1.10 required every marker to resolve to a record whose key recomputes from its tuple, and every record to have AT LEAST one such marker, but never required exactly one - so the published one-to-one claim was false in the many-to-one direction.",
+      "correction": "L7 is now a BIJECTION with EXACT cardinality in both directions. expected_model() computes the set of valid markers claiming each authoritative record: zero is ORPHANED_RECORD (retained) and more than one is MARKER_CARDINALITY_VIOLATION, so a persisted many-to-one state is refused by active_integrity(), session_state(), finalize(), verify_summary() and every write, which all consume the same model. _put() additionally refuses the second attempt id BEFORE anything is persisted: after _require_can_write() has established that every existing record already has exactly one marker, an existing record at the computed content-addressed path whose marker is not this attempt's own marker means another attempt owns it. With cardinality one, a record's attempt_ids and attempt_keys are exactly one value each. Every already-passing attempt law is retained unchanged: same-tuple/same-bytes idempotence, same-tuple/different-bytes ATTEMPT_ID_REUSED, cross-layer and cross-identity refusals, the record-key law, content addressing, foreign-marker detection, orphan detection and duplicate persisted attempt ids.",
+      "negative_fixture": "validate_v1_13.py section evidence-marker-cardinality: the pinned second-write attack (refused MARKER_CARDINALITY_VIOLATION with the ATTEMPTS directory asserted unchanged, so no ambiguous state is persisted), a manually planted second valid marker on an ACTIVE session (refused by ACTIVE integrity, session_state INVALID, finalize and further writes refused), the same planted twin on an ALREADY FINALIZED session (refused by verify()), and eleven retained-law regressions including idempotence, cross-layer, cross-identity, different-identity-same-bytes, foreign markers and orphans. Section property adds 8 seeded sessions over random bytes and identities.",
+      "expected_layer": "evidence store (attempt marker bijection)",
+      "validation_sections": [
+        "evidence-marker-cardinality",
+        "evidence-attempt-derivation",
+        "evidence-attempt-tuple",
+        "evidence-provenance"
+      ]
+    },
+    {
+      "id": "F110-D",
+      "severity": "MERGE MAJOR / M0A MAJOR",
+      "codex_finding": "Several public authority-bearing read/model methods do not perform the required boundary recheck first: attempts(), expected_model(), manifest() and identity() return live data after session replacement, and inventory() checks finalization state first and answers SESSION_NOT_FINALIZED, masking the boundary violation.",
+      "prior_defect": "Reproduced against the frozen v1.10 bundle at 9c66434 by replacing the session directory with a copy (a new inode, same basename and content): attempts(), expected_model(), manifest(), identity(), manifest_sha256(), scan_tree(), boundary_receipt() and authority_errors() all RETURNED LIVE AUTHORITY-BEARING DATA, identity_errors() returned CLEAN, and inventory() and finalization_marker() answered SESSION_NOT_FINALIZED - masking a session substitution with a state error. Only check_boundary(), active_integrity(), verify(), verify_summary() and session_state() refused. The reproduction found four unchecked surfaces beyond the five Codex named.",
+      "correction": "PUBLIC_AUTHORITY_METHODS is an explicit inventory built by discovery, asserted COMPLETE against dir(EvidenceStore) and split into raising readers, reporting readers, writers and properties, with PUBLIC_NON_AUTHORITY naming record_path and the construction attributes as the only non-authority-bearing public members. Every authority-bearing member checks the persisted boundary FIRST: members that return data raise, and members whose contract is to return a refusal list or a state label express the boundary refusal first in their own vocabulary. The previously unchecked internals became private (_boundary_receipt, _scan_tree, _manifest, _manifest_sha256, _inventory, _finalization_marker, _identity_errors, _finalized) with checked public wrappers, because check_boundary() is built from them. ERROR_PRECEDENCE freezes BOUNDARY > SESSION_STATE > MODEL > READ with ERROR_PRECEDENCE_CLASS naming the codes of each class, so a lower class can never be reported while a higher one holds; inventory() and finalization_marker() therefore answer the boundary refusal and no longer mask it.",
+      "negative_fixture": "validate_v1_13.py section evidence-public-surface: the method inventory asserted complete against dir(EvidenceStore), the private/wrapper split asserted, the frozen precedence asserted, a source-level assertion that every public authority-bearing reader checks the boundary or delegates to one that does, and the full post-replacement negative test over EVERY discovered method on both an ACTIVE and a FINALIZED session, plus the specific assertion that inventory() no longer answers SESSION_NOT_FINALIZED. Section property adds 6 seeded replaced sessions x 6 sampled methods.",
+      "expected_layer": "evidence store (public authority surface / error precedence)",
+      "validation_sections": [
+        "evidence-public-surface",
+        "evidence-provenance",
+        "property"
+      ]
+    }
+  ]
+}

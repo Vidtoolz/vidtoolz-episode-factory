@@ -20,7 +20,7 @@ beat hand-maintained prose.
 | Draft music (dual-model A/B/C) | `draft-music-package.json` per run/canary; orchestration authority in `scripts/draft-music-orchestrator.js` (entry `scripts/generate-draft-music.js`) | `docs/draft-music-automation.md`; `node scripts/generate-draft-music.js status` |
 | Package-runs discovery index | `package-runs-index.json` — DERIVED, REBUILDABLE, NON-AUTHORITATIVE projection over canonical run identity (`scripts/package-runs-index.js`). Directory count under `package-runs/` ≠ genuine run count: proof/canary/acceptance/legacy directories carry no run identity and are excluded by design. | `node scripts/package-runs-index.js --check` (read-only); `node scripts/package-runs-index.js` rebuilds atomically |
 | Index freshness | `scripts/package-runs-index.js --freshness` | rebuild with `node scripts/package-runs-index.js` |
-| Resolve execution subsystem (doctrine, transport, host/library, identity/timebase, capability matrix, canary authority, permissions, freeze status, evidence store) | `docs/resolve-integration/v1.12/FREEZE-MANIFEST.json` (current; self-identifying and hash-pinned by its own contents; `AUTHORITY-PRECEDENCE.json` decides conflicts; v1.11, v1.10, v1.9, v1.8, v1.7, v1.6, v1.5, v1.4, v1.3, v1.2, v1.1 and v1.0 are immutable history — see the lineage table below) | read the current `FREEZE-MANIFEST.json` first; a document disagreeing with the manifest hash is not the frozen version; `SCHEMA-VALID != AUTHORIZED TO MUTATE`; `PERMISSION DECLARATION != ELIGIBILITY`. Nothing in the bundle is human approval of any run. v1.12 is a CANDIDATE under independent review: it is the current authority bundle for reading, and it authorizes no run, gate, refreeze or mutation. Evidence storage has exactly one authority, `docs/resolve-integration/v1.12/tools/evidence_store.py`, and pre-M0A evidence-set authoring has exactly one, `docs/resolve-integration/v1.12/tools/evidence_authoring.py`. |
+| Resolve execution subsystem (doctrine, transport, host/library, identity/timebase, capability matrix, canary authority, permissions, freeze status, evidence store) | `docs/resolve-integration/v1.13/FREEZE-MANIFEST.json` (current; self-identifying and hash-pinned by its own contents; `AUTHORITY-PRECEDENCE.json` decides conflicts; v1.12, v1.11, v1.10, v1.9, v1.8, v1.7, v1.6, v1.5, v1.4, v1.3, v1.2, v1.1 and v1.0 are immutable history — see the lineage table below) | read the current `FREEZE-MANIFEST.json` first; a document disagreeing with the manifest hash is not the frozen version; `SCHEMA-VALID != AUTHORIZED TO MUTATE`; `PERMISSION DECLARATION != ELIGIBILITY`. Nothing in the bundle is human approval of any run. v1.13 is a CANDIDATE under independent review: it is the current authority bundle for reading, and it authorizes no run, gate, refreeze or mutation. Evidence storage has exactly one authority, `docs/resolve-integration/v1.13/tools/evidence_store.py`; pre-M0A evidence-set authoring has exactly one, `docs/resolve-integration/v1.13/tools/evidence_authoring.py`; and the attachment evidence root is the single frozen path `/home/vidtoolz/resolve-qualification-evidence/attachment`, which no caller may change. |
 | Test count | none — it is not hardcoded | run `scripts/verify.sh` |
 
 ## Current / authoritative docs
@@ -32,7 +32,7 @@ beat hand-maintained prose.
 - `config/production-stages.json` — generated stage data (mirror of the canonical spec).
 - `docs/production-mode.md` — run-level production mode (DRAFT / REVIEW / PRODUCTION) and gate-7/8 semantics per mode.
 - `docs/draft-bespoke-successor-authority.md` — immutable current-Story Draft successor and registry-to-Directed-Draft assembly authority.
-- `docs/resolve-integration/v1.12/` — Resolve execution subsystem authority bundle, current version (v1.12 correction of the v1.11 pre-M0A workflow gap V112-1 … V112-4; `docs/resolve-integration/v1.11/`, `v1.10/`, `v1.9/`, `v1.8/`, `v1.7/`, `v1.6/`, `v1.5/`, `v1.4/`, `v1.3/`, `v1.2/`, `v1.1/` and `v1/` are immutable history; `experiments/quarantine-2026-09-08/` holds the quarantined non-authoritative prototypes).
+- `docs/resolve-integration/v1.13/` — Resolve execution subsystem authority bundle, current version (v1.13 correction of the v1.12 governed-root defect V112-RP1; `docs/resolve-integration/v1.12/`, `v1.11/`, `v1.10/`, `v1.9/`, `v1.8/`, `v1.7/`, `v1.6/`, `v1.5/`, `v1.4/`, `v1.3/`, `v1.2/`, `v1.1/` and `v1/` are immutable history; `experiments/quarantine-2026-09-08/` holds the quarantined non-authoritative prototypes).
 
 ## Resolve authority lineage (immutable history)
 
@@ -42,7 +42,8 @@ supersedes by reference only.
 
 | version | bundle | manifest sha256 | status |
 | --- | --- | --- | --- |
-| 1.12.0 | `docs/resolve-integration/v1.12/` | read `docs/resolve-integration/v1.12/FREEZE-MANIFEST.json` (self-identifying; not restated here, see the note below) | **CURRENT** — candidate for independent review, correction of the v1.11 pre-M0A workflow gap V112-1 … V112-4 |
+| 1.13.0 | `docs/resolve-integration/v1.13/` | read `docs/resolve-integration/v1.13/FREEZE-MANIFEST.json` (self-identifying; not restated here, see the note below) | **CURRENT** — candidate for independent review, correction of the v1.12 governed-root defect V112-RP1 |
+| 1.12.0 | `docs/resolve-integration/v1.12/` | `e5eace278a1b6130971a38f55ef207620cdc97d7b3872d11ce9ab8909e4014fb` | historical — REJECTED: Hermes operational PASS, Codex runtime-parity FAIL (V112-RP1, WORKFLOW_CONTRADICTORY); caller-selectable and symlinked evidence roots derived ATTACHMENT_READY |
 | 1.11.0 | `docs/resolve-integration/v1.11/` | `0c47f0cefdd63b971489a46274e3b782927f2c6ad26e4251de21860abc50c44e` | historical — F110-A … F110-D closed, both independent reviews PASS, merged; held on the pre-M0A workflow gap (AUTHORITY_UNDERSPECIFIED) |
 | 1.10.0 | `docs/resolve-integration/v1.10/` | `46491cee979dc59a306993de8cc66308884967dca46304168096f935939f6156` | historical — supplied suite 1911/1911 twice, deterministic; held on four release-relevant evidence-store findings |
 | 1.9.0 | `docs/resolve-integration/v1.9/` | `5aac34dae6c2ec9842aaa3499d7c20ffd104f65966ba7cb8b0c79d32d42eb9fe` | historical — v1.7/v1.8 regressions 211/211; held on five evidence-store findings |
@@ -56,12 +57,20 @@ supersedes by reference only.
 | 1.1.0 | `docs/resolve-integration/v1.1/` | `83d8a307098cdc18931f6f09de2ce782afa0bdef94ec8540c2a143910cd448c5` | historical |
 | 1.0.0 | `docs/resolve-integration/v1/` | `d9cd54780e0a123ae2045ac575bbc41638039ef3e878f1b608afbce3989a8821` | historical — first freeze |
 
-**v1.12 registration** (current):
+**v1.13 registration** (current):
+
+```
+branch    docs/resolve-authority-freeze-v1.13
+parent    73150d00a72820b155caf357c412f46b8ec4a9ba   (v1.12 branch HEAD, which is also its semantic commit)
+manifest  read docs/resolve-integration/v1.13/FREEZE-MANIFEST.json
+```
+
+**v1.12 registration** (historical, REJECTED):
 
 ```
 branch    docs/resolve-authority-freeze-v1.12
 parent    5889efa8ed12bd6626c43a657f27ea2367e54d23   (v1.11 branch HEAD, which is also its semantic commit)
-manifest  read docs/resolve-integration/v1.12/FREEZE-MANIFEST.json
+manifest  e5eace278a1b6130971a38f55ef207620cdc97d7b3872d11ce9ab8909e4014fb
 ```
 
 **v1.11 registration** (historical):
@@ -97,12 +106,12 @@ inherited ebc2dd4db2462f73db20054ba60cf36691ab29b3   (v1.7 semantic commit)
 manifest  727bcaad6ee49f1439eb84b33bf36cb11d2c94d41165b4b092f728a167626d86
 ```
 
-The **current** bundle's manifest digest is deliberately **not** restated here — today that is v1.12.
+The **current** bundle's manifest digest is deliberately **not** restated here — today that is v1.13.
 `DOC-AUTHORITY.md` is pinned by that manifest's `external_pins.doc_authority`, so a digest quoted here would depend on
 a manifest that depends on this file: the two would never converge. The manifest is self-identifying; read it. Once a
 bundle becomes history its manifest stops changing, so its digest is restated above. This registration is committed
-in the same commit as the v1.12 bundle, so the pin is fresh rather than a follow-up, and the four intake identities
-including the commit HEAD are published in the v1.12 authoring report and handoff.
+in the same commit as the v1.13 bundle, so the pin is fresh rather than a follow-up, and the four intake identities
+including the commit HEAD are published in the v1.13 authoring report and handoff.
 
 **v1.7 registration identities** (historical):
 
