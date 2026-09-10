@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveSequenceLineage.v1",
+  "title": "Sequence lineage (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "sequence_lineage_id",
+    "run_id",
+    "story_pin",
+    "initial_handoff",
+    "successors"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveSequenceLineage.v1"
+    },
+    "sequence_lineage_id": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "story_pin": {
+      "type": "object"
+    },
+    "initial_handoff": {
+      "type": "object",
+      "required": [
+        "handoff_id",
+        "handoff_digest_sha256",
+        "file_sha256"
+      ]
+    },
+    "successors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "handoff_id",
+          "handoff_digest_sha256",
+          "predecessor_handoff_id"
+        ]
+      }
+    },
+    "binding_id_allocation": {
+      "const": "sequence_lineage_id + semantic scope/key"
+    }
+  }
+}

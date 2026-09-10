@@ -20,7 +20,7 @@ beat hand-maintained prose.
 | Draft music (dual-model A/B/C) | `draft-music-package.json` per run/canary; orchestration authority in `scripts/draft-music-orchestrator.js` (entry `scripts/generate-draft-music.js`) | `docs/draft-music-automation.md`; `node scripts/generate-draft-music.js status` |
 | Package-runs discovery index | `package-runs-index.json` — DERIVED, REBUILDABLE, NON-AUTHORITATIVE projection over canonical run identity (`scripts/package-runs-index.js`). Directory count under `package-runs/` ≠ genuine run count: proof/canary/acceptance/legacy directories carry no run identity and are excluded by design. | `node scripts/package-runs-index.js --check` (read-only); `node scripts/package-runs-index.js` rebuilds atomically |
 | Index freshness | `scripts/package-runs-index.js --freshness` | rebuild with `node scripts/package-runs-index.js` |
-| Resolve execution subsystem (doctrine, transport, host/library, identity/timebase, capability matrix, canary authority, permissions, freeze status, evidence store) | `docs/resolve-integration/v1.10/FREEZE-MANIFEST.json` (current; self-identifying and hash-pinned by its own contents; `AUTHORITY-PRECEDENCE.json` decides conflicts; v1.9, v1.8, v1.7, v1.6, v1.5, v1.4, v1.3, v1.2, v1.1 and v1.0 are immutable history — see the lineage table below) | read the current `FREEZE-MANIFEST.json` first; a document disagreeing with the manifest hash is not the frozen version; `SCHEMA-VALID != AUTHORIZED TO MUTATE`; `PERMISSION DECLARATION != ELIGIBILITY`. Nothing in the bundle is human approval of any run. v1.10 is a CANDIDATE under independent review: it is the current authority bundle for reading, and it authorizes no run, gate, refreeze or mutation. Evidence storage has exactly one authority, `docs/resolve-integration/v1.10/tools/evidence_store.py`. |
+| Resolve execution subsystem (doctrine, transport, host/library, identity/timebase, capability matrix, canary authority, permissions, freeze status, evidence store) | `docs/resolve-integration/v1.11/FREEZE-MANIFEST.json` (current; self-identifying and hash-pinned by its own contents; `AUTHORITY-PRECEDENCE.json` decides conflicts; v1.10, v1.9, v1.8, v1.7, v1.6, v1.5, v1.4, v1.3, v1.2, v1.1 and v1.0 are immutable history — see the lineage table below) | read the current `FREEZE-MANIFEST.json` first; a document disagreeing with the manifest hash is not the frozen version; `SCHEMA-VALID != AUTHORIZED TO MUTATE`; `PERMISSION DECLARATION != ELIGIBILITY`. Nothing in the bundle is human approval of any run. v1.11 is a CANDIDATE under independent review: it is the current authority bundle for reading, and it authorizes no run, gate, refreeze or mutation. Evidence storage has exactly one authority, `docs/resolve-integration/v1.11/tools/evidence_store.py`. |
 | Test count | none — it is not hardcoded | run `scripts/verify.sh` |
 
 ## Current / authoritative docs
@@ -32,7 +32,7 @@ beat hand-maintained prose.
 - `config/production-stages.json` — generated stage data (mirror of the canonical spec).
 - `docs/production-mode.md` — run-level production mode (DRAFT / REVIEW / PRODUCTION) and gate-7/8 semantics per mode.
 - `docs/draft-bespoke-successor-authority.md` — immutable current-Story Draft successor and registry-to-Directed-Draft assembly authority.
-- `docs/resolve-integration/v1.10/` — Resolve execution subsystem authority bundle, current version (v1.10 correction of v1.9's evidence-store findings; `docs/resolve-integration/v1.9/`, `v1.8/`, `v1.7/`, `v1.6/`, `v1.5/`, `v1.4/`, `v1.3/`, `v1.2/`, `v1.1/` and `v1/` are immutable history; `experiments/quarantine-2026-09-08/` holds the quarantined non-authoritative prototypes).
+- `docs/resolve-integration/v1.11/` — Resolve execution subsystem authority bundle, current version (v1.11 correction of v1.10's four remaining evidence-store findings F110-A … F110-D; `docs/resolve-integration/v1.10/`, `v1.9/`, `v1.8/`, `v1.7/`, `v1.6/`, `v1.5/`, `v1.4/`, `v1.3/`, `v1.2/`, `v1.1/` and `v1/` are immutable history; `experiments/quarantine-2026-09-08/` holds the quarantined non-authoritative prototypes).
 
 ## Resolve authority lineage (immutable history)
 
@@ -42,7 +42,8 @@ supersedes by reference only.
 
 | version | bundle | manifest sha256 | status |
 | --- | --- | --- | --- |
-| 1.10.0 | `docs/resolve-integration/v1.10/` | read `docs/resolve-integration/v1.10/FREEZE-MANIFEST.json` (self-identifying; not restated here, see the note below) | **CURRENT** — candidate for independent review, correction of the v1.9 evidence-store findings S110-1 … S110-5 |
+| 1.11.0 | `docs/resolve-integration/v1.11/` | read `docs/resolve-integration/v1.11/FREEZE-MANIFEST.json` (self-identifying; not restated here, see the note below) | **CURRENT** — candidate for independent review, correction of the four release-relevant v1.10 findings F110-A … F110-D |
+| 1.10.0 | `docs/resolve-integration/v1.10/` | `46491cee979dc59a306993de8cc66308884967dca46304168096f935939f6156` | historical — supplied suite 1911/1911 twice, deterministic; held on four release-relevant evidence-store findings |
 | 1.9.0 | `docs/resolve-integration/v1.9/` | `5aac34dae6c2ec9842aaa3499d7c20ffd104f65966ba7cb8b0c79d32d42eb9fe` | historical — v1.7/v1.8 regressions 211/211; held on five evidence-store findings |
 | 1.8.0 | `docs/resolve-integration/v1.8/` | `727bcaad6ee49f1439eb84b33bf36cb11d2c94d41165b4b092f728a167626d86` | historical — ES-1 and ES-2 closed; held on four evidence-store integrity defects |
 | 1.7.0 | `docs/resolve-integration/v1.7/` | `8da668fcb3df771b645e7feb092e88ce381d9fa5a4f9de931bfaf1bc2f55fb5d` | historical — Codex intake PASS, independent harness 210/211, held on evidence-store integrity |
@@ -54,12 +55,20 @@ supersedes by reference only.
 | 1.1.0 | `docs/resolve-integration/v1.1/` | `83d8a307098cdc18931f6f09de2ce782afa0bdef94ec8540c2a143910cd448c5` | historical |
 | 1.0.0 | `docs/resolve-integration/v1/` | `d9cd54780e0a123ae2045ac575bbc41638039ef3e878f1b608afbce3989a8821` | historical — first freeze |
 
-**v1.10 registration** (current):
+**v1.11 registration** (current):
+
+```
+branch    docs/resolve-authority-freeze-v1.11
+parent    9c6643430d2dc66741afe9852668d8e6e19c0630   (v1.10 branch HEAD, which is also its semantic commit)
+manifest  read docs/resolve-integration/v1.11/FREEZE-MANIFEST.json
+```
+
+**v1.10 registration** (historical):
 
 ```
 branch    docs/resolve-authority-freeze-v1.10
 parent    863fe4fb5944935bad51a318a50b25ed748be22d   (v1.9 branch HEAD, which is also its semantic commit)
-manifest  read docs/resolve-integration/v1.10/FREEZE-MANIFEST.json
+manifest  46491cee979dc59a306993de8cc66308884967dca46304168096f935939f6156
 ```
 
 **v1.9 registration** (historical):
@@ -79,12 +88,12 @@ inherited ebc2dd4db2462f73db20054ba60cf36691ab29b3   (v1.7 semantic commit)
 manifest  727bcaad6ee49f1439eb84b33bf36cb11d2c94d41165b4b092f728a167626d86
 ```
 
-The **current** bundle's manifest digest is deliberately **not** restated here — today that is v1.10.
+The **current** bundle's manifest digest is deliberately **not** restated here — today that is v1.11.
 `DOC-AUTHORITY.md` is pinned by that manifest's `external_pins.doc_authority`, so a digest quoted here would depend on
 a manifest that depends on this file: the two would never converge. The manifest is self-identifying; read it. Once a
 bundle becomes history its manifest stops changing, so its digest is restated above. This registration is committed
-in the same commit as the v1.10 bundle, so the pin is fresh rather than a follow-up, and the four intake identities
-including the commit HEAD are published in the v1.10 authoring report and handoff.
+in the same commit as the v1.11 bundle, so the pin is fresh rather than a follow-up, and the four intake identities
+including the commit HEAD are published in the v1.11 authoring report and handoff.
 
 **v1.7 registration identities** (historical):
 

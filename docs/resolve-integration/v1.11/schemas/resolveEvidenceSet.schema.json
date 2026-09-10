@@ -1,0 +1,3717 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveEvidenceSet.v1.10",
+  "title": "Linked evidence set (content-addressed, envelope-bound records)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "current_session_id",
+    "evaluated_at",
+    "records"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveEvidenceSet.v1.10"
+    },
+    "current_session_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "evaluated_at": {
+      "type": "string",
+      "minLength": 20
+    },
+    "records": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "record_type",
+          "record_id",
+          "envelope",
+          "recorded_at"
+        ],
+        "properties": {
+          "record_type": {
+            "enum": [
+              "BUNDLE_VERIFICATION",
+              "CONNECTION_OBSERVATION",
+              "DERIVED_CAPABILITY_RESULT",
+              "DESTINATION_TIMELINE",
+              "EXCLUSIVE_SESSION_ATTESTATION",
+              "GUARD_SNAPSHOT",
+              "IDENTITY_STABILITY_OBSERVATION",
+              "IDENTITY_UNIQUENESS_OBSERVATION",
+              "JOURNAL_PREPARED",
+              "LAUNCH_RECIPE",
+              "M3_AUTHORIZATION",
+              "MEDIA_CLASS_ATTESTATION",
+              "MILESTONE_EXIT",
+              "OPERATOR_PROVISIONED_PROJECT",
+              "PLAN_VALIDATION",
+              "PROJECT_BINDING_OBSERVATION",
+              "PROVISIONING_RECORD",
+              "RAW_CAPABILITY_CAPTURE",
+              "RAW_EVIDENCE",
+              "READ_ONLY_JOURNAL",
+              "REFREEZE_RECORD",
+              "REVIEW_DECISION",
+              "TIMELINE_BINDING_OBSERVATION"
+            ]
+          },
+          "record_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "envelope": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "authority_version",
+              "manifest_sha256",
+              "host_name",
+              "product",
+              "resolve_version",
+              "build",
+              "library_name",
+              "library_uuid",
+              "library_root",
+              "session_id",
+              "provisioning_id",
+              "project_name",
+              "project_unique_id",
+              "timeline_name",
+              "timeline_unique_id",
+              "target_epoch",
+              "sequence",
+              "captured_at",
+              "record_type_version"
+            ],
+            "properties": {
+              "authority_version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "manifest_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "host_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "product": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "resolve_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "build": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "library_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "library_uuid": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "library_root": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+                    "minLength": 2
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "session_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "provisioning_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "project_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "project_unique_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "timeline_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "timeline_unique_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "target_epoch": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "captured_at": {
+                "type": "string",
+                "minLength": 20
+              },
+              "record_type_version": {
+                "const": "1.10"
+              }
+            }
+          },
+          "recorded_at": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "PROVISIONING_RECORD"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "instance_uuid",
+                "library_kind",
+                "provisioned_by",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "root_path"
+              ],
+              "properties": {
+                "library_kind": {
+                  "const": "Disk"
+                },
+                "root_path": {
+                  "type": "string",
+                  "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+                  "minLength": 2
+                },
+                "instance_uuid": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                },
+                "provisioned_by": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "LAUNCH_RECIPE"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "external_scripting_preference",
+                "recipe_sha256",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "resolve_binary_sha256",
+                "resolve_version"
+              ],
+              "properties": {
+                "recipe_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "resolve_version": {
+                  "type": "string"
+                },
+                "resolve_binary_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "external_scripting_preference": {
+                  "enum": [
+                    "Local",
+                    "Network",
+                    "None"
+                  ]
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "BUNDLE_VERIFICATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "authority_version",
+                "envelope",
+                "historical",
+                "manifest_sha256",
+                "prepared_by",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "verifier"
+              ],
+              "properties": {
+                "authority_version": {
+                  "type": "string"
+                },
+                "manifest_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "verifier": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "prepared_by": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "historical": {
+                  "type": "boolean"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "CONNECTION_OBSERVATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "db_name",
+                "db_type",
+                "envelope",
+                "instance_uuid",
+                "product",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "resolve_version",
+                "root_path"
+              ],
+              "properties": {
+                "db_type": {
+                  "type": "string"
+                },
+                "db_name": {
+                  "type": "string"
+                },
+                "product": {
+                  "type": "string"
+                },
+                "resolve_version": {
+                  "type": "string"
+                },
+                "root_path": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "instance_uuid": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "PROJECT_BINDING_OBSERVATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "project_name",
+                "project_unique_id",
+                "project_unique_id_status",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "project_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "project_unique_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "project_unique_id_status": {
+                  "enum": [
+                    "OBSERVED",
+                    "UNAVAILABLE",
+                    "UNSUPPORTED",
+                    "ERROR",
+                    "NOT_REQUESTED"
+                  ]
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "TIMELINE_BINDING_OBSERVATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "project_name",
+                "project_unique_id",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "timeline_name",
+                "timeline_unique_id",
+                "timeline_unique_id_status"
+              ],
+              "properties": {
+                "project_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "timeline_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "timeline_unique_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "timeline_unique_id_status": {
+                  "enum": [
+                    "OBSERVED",
+                    "UNAVAILABLE",
+                    "UNSUPPORTED",
+                    "ERROR",
+                    "NOT_REQUESTED"
+                  ]
+                },
+                "project_unique_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "timeline_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "OPERATOR_PROVISIONED_PROJECT"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "project_name",
+                "provisioned_by",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "project_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "provisioned_by": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "RAW_CAPABILITY_CAPTURE"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "capture",
+                "envelope",
+                "ingest_receipt",
+                "raw_capture_sha256",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "capture": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "schema",
+                    "probe_id",
+                    "getter_attempt_id",
+                    "sequence",
+                    "captured_at",
+                    "authority_version",
+                    "manifest_sha256",
+                    "host_name",
+                    "product",
+                    "resolve_version",
+                    "build",
+                    "session_id",
+                    "library_uuid",
+                    "library_root",
+                    "receiver",
+                    "method",
+                    "args",
+                    "outcome",
+                    "serialization",
+                    "stdout_sha256",
+                    "stderr_sha256",
+                    "duration_ms",
+                    "capture_shim_version",
+                    "capture_shim_sha256",
+                    "operator",
+                    "raw_digest"
+                  ],
+                  "properties": {
+                    "schema": {
+                      "const": "vidtoolz.resolveRawCapabilityCapture.v1"
+                    },
+                    "probe_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "getter_attempt_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sequence": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "captured_at": {
+                      "type": "string",
+                      "minLength": 20
+                    },
+                    "authority_version": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "manifest_sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "host_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "product": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "resolve_version": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "build": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "session_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "library_uuid": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "library_root": {
+                      "type": "string",
+                      "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+                      "minLength": 2
+                    },
+                    "receiver": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "class",
+                        "path",
+                        "handle_token",
+                        "runtime_type"
+                      ],
+                      "properties": {
+                        "class": {
+                          "enum": [
+                            "Resolve",
+                            "ProjectManager",
+                            "Project",
+                            "MediaPool",
+                            "Folder",
+                            "Timeline",
+                            "TimelineItem",
+                            "MediaPoolItem"
+                          ]
+                        },
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "handle_token": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "runtime_type": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "method": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/pyvalue"
+                      }
+                    },
+                    "outcome": {
+                      "enum": [
+                        "RETURNED",
+                        "RAISED",
+                        "TIMEOUT",
+                        "ATTRIBUTE_MISSING",
+                        "TRANSPORT_FAILURE",
+                        "REFUSED",
+                        "UNSERIALIZABLE"
+                      ]
+                    },
+                    "returned": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "python_type",
+                        "value"
+                      ],
+                      "properties": {
+                        "python_type": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "value": {
+                          "$ref": "#/$defs/pyvalue"
+                        }
+                      }
+                    },
+                    "raised": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "exception_class",
+                        "module",
+                        "message"
+                      ],
+                      "properties": {
+                        "exception_class": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "module": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "timeout_ms": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "transport": {
+                      "type": "object",
+                      "required": [
+                        "reason"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "refused": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "reason",
+                        "invoked"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "invoked": {
+                          "const": false
+                        }
+                      }
+                    },
+                    "unserializable": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "python_type",
+                        "reason",
+                        "path",
+                        "repr_sha256"
+                      ],
+                      "properties": {
+                        "python_type": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "path": {
+                          "type": "string"
+                        },
+                        "repr_sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      }
+                    },
+                    "serialization": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "codec",
+                        "depth_limit",
+                        "length_limit",
+                        "string_limit",
+                        "truncated",
+                        "elided_paths"
+                      ],
+                      "properties": {
+                        "codec": {
+                          "const": "vidtoolz.resolvePyValue.v1"
+                        },
+                        "depth_limit": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "length_limit": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "string_limit": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        },
+                        "elided_paths": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "stdout_sha256": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "stderr_sha256": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "duration_ms": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    },
+                    "capture_shim_version": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "capture_shim_sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "operator": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "raw_digest": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "allOf": [
+                    {
+                      "if": {
+                        "properties": {
+                          "outcome": {
+                            "const": "RETURNED"
+                          }
+                        }
+                      },
+                      "then": {
+                        "required": [
+                          "returned"
+                        ]
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "outcome": {
+                            "const": "RAISED"
+                          }
+                        }
+                      },
+                      "then": {
+                        "required": [
+                          "raised"
+                        ]
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "outcome": {
+                            "const": "TIMEOUT"
+                          }
+                        }
+                      },
+                      "then": {
+                        "required": [
+                          "timeout_ms"
+                        ]
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "outcome": {
+                            "const": "REFUSED"
+                          }
+                        }
+                      },
+                      "then": {
+                        "required": [
+                          "refused"
+                        ]
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "outcome": {
+                            "const": "UNSERIALIZABLE"
+                          }
+                        }
+                      },
+                      "then": {
+                        "required": [
+                          "unserializable"
+                        ]
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "outcome": {
+                            "const": "TRANSPORT_FAILURE"
+                          }
+                        }
+                      },
+                      "then": {
+                        "required": [
+                          "transport"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "raw_capture_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "ingest_receipt": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "schema",
+                    "ingest_version",
+                    "authority_version",
+                    "raw_schema_version",
+                    "codec_version",
+                    "raw_bytes_sha256",
+                    "byte_count",
+                    "strict_parse",
+                    "duplicate_keys_rejected",
+                    "control_characters_rejected",
+                    "single_json_object",
+                    "capture_digest",
+                    "receipt_sha256"
+                  ],
+                  "properties": {
+                    "schema": {
+                      "const": "vidtoolz.resolveRawIngestReceipt.v1"
+                    },
+                    "ingest_version": {
+                      "const": "vidtoolz.resolveRawIngest.v1"
+                    },
+                    "authority_version": {
+                      "const": "1.11.0"
+                    },
+                    "raw_schema_version": {
+                      "const": "vidtoolz.resolveRawCapabilityCapture.v1"
+                    },
+                    "codec_version": {
+                      "const": "vidtoolz.resolvePyValue.v1"
+                    },
+                    "raw_bytes_sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "byte_count": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "strict_parse": {
+                      "const": true
+                    },
+                    "duplicate_keys_rejected": {
+                      "const": true
+                    },
+                    "control_characters_rejected": {
+                      "const": true
+                    },
+                    "single_json_object": {
+                      "const": true
+                    },
+                    "capture_digest": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "receipt_sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  }
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "DERIVED_CAPABILITY_RESULT"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "derived",
+                "derived_result_sha256",
+                "envelope",
+                "raw_capture_sha256",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "raw_capture_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "derived_result_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "derived": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "schema",
+                    "parser_version",
+                    "parser_sha256",
+                    "raw_capture_sha256",
+                    "spec_digest",
+                    "method",
+                    "receiver_class",
+                    "expectation_status",
+                    "classification",
+                    "family",
+                    "facts",
+                    "reasons",
+                    "derived_result_sha256"
+                  ],
+                  "properties": {
+                    "schema": {
+                      "const": "vidtoolz.resolveDerivedCapabilityResult.v1"
+                    },
+                    "parser_version": {
+                      "const": "vidtoolz.resolveProbeParser.v1"
+                    },
+                    "parser_sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "raw_capture_sha256": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "spec_digest": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "method": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "receiver_class": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "expectation_status": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "DOCUMENTED_HYPOTHESIS",
+                            "PROBE_VALIDATED",
+                            "FROZEN"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "classification": {
+                      "enum": [
+                        "SUCCESS",
+                        "EXCEPTION",
+                        "TIMEOUT",
+                        "UNSUPPORTED",
+                        "MALFORMED",
+                        "BINDING_MISMATCH",
+                        "SHIM_UNTRUSTED",
+                        "RECEIVER_MISMATCH",
+                        "ARGS_MISMATCH",
+                        "TYPE_MISMATCH",
+                        "NULL_NOT_ALLOWED",
+                        "TRUNCATED",
+                        "TRANSPORT_FAILURE",
+                        "REFUSED",
+                        "UNSERIALIZABLE"
+                      ]
+                    },
+                    "family": {
+                      "type": "string"
+                    },
+                    "facts": {
+                      "type": "object"
+                    },
+                    "reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "derived_result_sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  }
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "REVIEW_DECISION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "decision",
+                "derived_result_sha256",
+                "envelope",
+                "method",
+                "parser_sha256",
+                "parser_version",
+                "primitive_spec_sha256",
+                "probe_id",
+                "rationale",
+                "raw_capture_sha256",
+                "receiver_class",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "reviewed_at",
+                "reviewer",
+                "session_id"
+              ],
+              "properties": {
+                "supersedes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "uniqueItems": true
+                },
+                "raw_capture_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "derived_result_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "parser_version": {
+                  "const": "vidtoolz.resolveProbeParser.v1"
+                },
+                "parser_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "primitive_spec_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "method": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "receiver_class": {
+                  "enum": [
+                    "Resolve",
+                    "ProjectManager",
+                    "Project",
+                    "MediaPool",
+                    "Folder",
+                    "Timeline",
+                    "TimelineItem",
+                    "MediaPoolItem"
+                  ]
+                },
+                "probe_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "session_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reviewer": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "decision": {
+                  "enum": [
+                    "ACCEPT",
+                    "REJECT",
+                    "DEFER"
+                  ]
+                },
+                "rationale": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reviewed_at": {
+                  "type": "string",
+                  "minLength": 20
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "RAW_EVIDENCE"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "content",
+                "content_sha256",
+                "envelope",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "content": {
+                  "type": "string"
+                },
+                "content_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "REFREEZE_RECORD"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "approver",
+                "authority_version",
+                "build",
+                "capability_matrix_sha256",
+                "envelope",
+                "host_name",
+                "kind",
+                "manifest_sha256",
+                "parent_capability_matrix_sha256",
+                "parser_sha256",
+                "parser_version",
+                "primitive_spec_sha256",
+                "probe_id",
+                "product",
+                "promoted_derived_result_sha256",
+                "promoted_probe_ids",
+                "promoted_raw_capture_sha256",
+                "promoted_review_decision_sha256",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "resolve_version",
+                "reviewed",
+                "session_id"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "M0_READ_REQUALIFICATION"
+                  ]
+                },
+                "reviewed": {
+                  "type": "boolean"
+                },
+                "manifest_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "authority_version": {
+                  "type": "string"
+                },
+                "parent_capability_matrix_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "capability_matrix_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "parser_version": {
+                  "const": "vidtoolz.resolveProbeParser.v1"
+                },
+                "parser_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "primitive_spec_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "probe_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "session_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "promoted_probe_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "promoted_raw_capture_sha256": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "promoted_derived_result_sha256": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "promoted_review_decision_sha256": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "host_name": {
+                  "type": "string"
+                },
+                "product": {
+                  "type": "string"
+                },
+                "resolve_version": {
+                  "type": "string"
+                },
+                "build": {
+                  "type": "integer"
+                },
+                "approver": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "supersedes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "uniqueItems": true
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "IDENTITY_UNIQUENESS_OBSERVATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "claims",
+                "envelope",
+                "method",
+                "passes",
+                "project_name",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "timeline_name"
+              ],
+              "properties": {
+                "method": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "passes": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  }
+                },
+                "claims": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "claim_A_callable",
+                    "claim_B_unique_within_pass",
+                    "claim_C_stable_across_passes",
+                    "passes",
+                    "items",
+                    "duplicates",
+                    "null_paths",
+                    "input_errors",
+                    "observation_count",
+                    "raw_capture_sha256s",
+                    "derived_result_sha256s",
+                    "not_claimed"
+                  ],
+                  "properties": {
+                    "claim_A_callable": {
+                      "type": "boolean"
+                    },
+                    "claim_B_unique_within_pass": {
+                      "type": "boolean"
+                    },
+                    "claim_C_stable_across_passes": {
+                      "type": "boolean"
+                    },
+                    "passes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "duplicates": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "null_paths": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "input_errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "observation_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "raw_capture_sha256s": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "derived_result_sha256s": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "not_claimed": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "project_name": {
+                  "type": "string"
+                },
+                "timeline_name": {
+                  "type": "string"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "timeline_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "IDENTITY_STABILITY_OBSERVATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "claims",
+                "envelope",
+                "method",
+                "passes",
+                "project_name",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "timeline_name"
+              ],
+              "properties": {
+                "method": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "passes": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  }
+                },
+                "claims": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "claim_A_callable",
+                    "claim_B_unique_within_pass",
+                    "claim_C_stable_across_passes",
+                    "passes",
+                    "items",
+                    "duplicates",
+                    "null_paths",
+                    "input_errors",
+                    "observation_count",
+                    "raw_capture_sha256s",
+                    "derived_result_sha256s",
+                    "not_claimed"
+                  ],
+                  "properties": {
+                    "claim_A_callable": {
+                      "type": "boolean"
+                    },
+                    "claim_B_unique_within_pass": {
+                      "type": "boolean"
+                    },
+                    "claim_C_stable_across_passes": {
+                      "type": "boolean"
+                    },
+                    "passes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "duplicates": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "null_paths": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "input_errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "observation_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "raw_capture_sha256s": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "derived_result_sha256s": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "not_claimed": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "project_name": {
+                  "type": "string"
+                },
+                "timeline_name": {
+                  "type": "string"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "timeline_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "MILESTONE_EXIT"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "authority_version",
+                "envelope",
+                "evidence_dir_sha256",
+                "milestone",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "milestone": {
+                  "enum": [
+                    "M0",
+                    "M1",
+                    "M2"
+                  ]
+                },
+                "authority_version": {
+                  "type": "string"
+                },
+                "evidence_dir_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "M3_AUTHORIZATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "approver",
+                "authority_version",
+                "envelope",
+                "library_name",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "scope"
+              ],
+              "properties": {
+                "scope": {
+                  "const": "SCRATCH_QUALIFICATION_LIBRARY"
+                },
+                "approver": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "authority_version": {
+                  "type": "string"
+                },
+                "library_name": {
+                  "type": "string"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "JOURNAL_PREPARED"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "journal_path_sha256",
+                "plan_digest",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "transaction_id"
+              ],
+              "properties": {
+                "transaction_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "plan_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "journal_path_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "READ_ONLY_JOURNAL"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "journal_path_sha256",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "journal_path_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "EXCLUSIVE_SESSION_ATTESTATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "attested_by",
+                "envelope",
+                "pid_observed",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "attested_by": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pid_observed": {
+                  "type": "integer"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "GUARD_SNAPSHOT"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "authority_version",
+                "envelope",
+                "guard",
+                "guard_digest",
+                "method_provenance",
+                "payload_sha256",
+                "project_name",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "snapshot_object_sha256",
+                "timeline_name"
+              ],
+              "properties": {
+                "guard_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "project_name": {
+                  "type": "string"
+                },
+                "timeline_name": {
+                  "type": "string"
+                },
+                "payload_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "snapshot_object_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "guard": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "hash_domain",
+                    "guard_version",
+                    "library",
+                    "project",
+                    "timeline",
+                    "target_epoch",
+                    "coverage",
+                    "policy",
+                    "provenance_sha256",
+                    "payload_sha256"
+                  ],
+                  "properties": {
+                    "hash_domain": {
+                      "const": "vidtoolz.resolveGuard.v3"
+                    },
+                    "guard_version": {
+                      "const": 3
+                    },
+                    "library": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "db_type",
+                        "db_name",
+                        "instance_uuid"
+                      ],
+                      "properties": {
+                        "db_type": {
+                          "enum": [
+                            "Disk"
+                          ]
+                        },
+                        "db_name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "instance_uuid": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                        }
+                      }
+                    },
+                    "project": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "unique_id",
+                        "unique_id_status",
+                        "unique_id_reason",
+                        "name",
+                        "name_status"
+                      ],
+                      "properties": {
+                        "unique_id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "unique_id_status": {
+                          "enum": [
+                            "OBSERVED",
+                            "UNAVAILABLE",
+                            "UNSUPPORTED",
+                            "ERROR",
+                            "NOT_REQUESTED"
+                          ]
+                        },
+                        "unique_id_reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "name_status": {
+                          "enum": [
+                            "OBSERVED",
+                            "UNAVAILABLE",
+                            "UNSUPPORTED",
+                            "ERROR",
+                            "NOT_REQUESTED"
+                          ]
+                        }
+                      }
+                    },
+                    "timeline": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "unique_id",
+                        "unique_id_status",
+                        "unique_id_reason",
+                        "name",
+                        "name_status"
+                      ],
+                      "properties": {
+                        "unique_id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "unique_id_status": {
+                          "enum": [
+                            "OBSERVED",
+                            "UNAVAILABLE",
+                            "UNSUPPORTED",
+                            "ERROR",
+                            "NOT_REQUESTED"
+                          ]
+                        },
+                        "unique_id_reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "name_status": {
+                          "enum": [
+                            "OBSERVED",
+                            "UNAVAILABLE",
+                            "UNSUPPORTED",
+                            "ERROR",
+                            "NOT_REQUESTED"
+                          ]
+                        }
+                      }
+                    },
+                    "target_epoch": {
+                      "type": "string"
+                    },
+                    "coverage": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "profile",
+                        "complete",
+                        "observed_domains",
+                        "unobservable_domains",
+                        "deferred_domains",
+                        "incomplete_reasons"
+                      ],
+                      "properties": {
+                        "profile": {
+                          "enum": [
+                            "MINIMAL_M0",
+                            "FULL_TIMELINE_READ",
+                            "WRITE_PRECHECK",
+                            "APPEND_VERIFY"
+                          ]
+                        },
+                        "complete": {
+                          "type": "boolean"
+                        },
+                        "observed_domains": {
+                          "type": "array",
+                          "items": {
+                            "enum": [
+                              "adapter_bin_media",
+                              "caches",
+                              "connection",
+                              "fades",
+                              "fusion_graphs",
+                              "grades",
+                              "guard",
+                              "item_identity",
+                              "item_properties",
+                              "item_source_bounds",
+                              "items",
+                              "keyframe_curves",
+                              "library",
+                              "linked_items",
+                              "markers",
+                              "nested_timelines",
+                              "policy",
+                              "project",
+                              "render_queue",
+                              "settings",
+                              "speed",
+                              "takes",
+                              "timeline",
+                              "track_locks",
+                              "tracks",
+                              "unowned_media_hashes"
+                            ]
+                          },
+                          "uniqueItems": true
+                        },
+                        "unobservable_domains": {
+                          "type": "array",
+                          "items": {
+                            "enum": [
+                              "adapter_bin_media",
+                              "caches",
+                              "connection",
+                              "fades",
+                              "fusion_graphs",
+                              "grades",
+                              "guard",
+                              "item_identity",
+                              "item_properties",
+                              "item_source_bounds",
+                              "items",
+                              "keyframe_curves",
+                              "library",
+                              "linked_items",
+                              "markers",
+                              "nested_timelines",
+                              "policy",
+                              "project",
+                              "render_queue",
+                              "settings",
+                              "speed",
+                              "takes",
+                              "timeline",
+                              "track_locks",
+                              "tracks",
+                              "unowned_media_hashes"
+                            ]
+                          },
+                          "uniqueItems": true
+                        },
+                        "deferred_domains": {
+                          "type": "array",
+                          "items": {
+                            "enum": [
+                              "adapter_bin_media",
+                              "caches",
+                              "connection",
+                              "fades",
+                              "fusion_graphs",
+                              "grades",
+                              "guard",
+                              "item_identity",
+                              "item_properties",
+                              "item_source_bounds",
+                              "items",
+                              "keyframe_curves",
+                              "library",
+                              "linked_items",
+                              "markers",
+                              "nested_timelines",
+                              "policy",
+                              "project",
+                              "render_queue",
+                              "settings",
+                              "speed",
+                              "takes",
+                              "timeline",
+                              "track_locks",
+                              "tracks",
+                              "unowned_media_hashes"
+                            ]
+                          },
+                          "uniqueItems": true
+                        },
+                        "incomplete_reasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    },
+                    "policy": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "target_contract_sha256",
+                        "timebase_sha256",
+                        "track_policy_sha256",
+                        "capabilities_version",
+                        "capability_matrix_sha256",
+                        "collector_version",
+                        "canonicalization_version"
+                      ],
+                      "properties": {
+                        "target_contract_sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "timebase_sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "track_policy_sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "capabilities_version": {
+                          "type": "string"
+                        },
+                        "capability_matrix_sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "collector_version": {
+                          "type": "string"
+                        },
+                        "canonicalization_version": {
+                          "const": "1.5"
+                        }
+                      }
+                    },
+                    "provenance_sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "payload_sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  }
+                },
+                "method_provenance": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "observation_class",
+                      "raw_capture_record_id",
+                      "capability_matrix_sha256"
+                    ],
+                    "properties": {
+                      "observation_class": {
+                        "enum": [
+                          "QUALIFIED_OBSERVATION",
+                          "CANDIDATE_OBSERVATION",
+                          "NOT_CALLABLE"
+                        ]
+                      },
+                      "raw_capture_record_id": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "capability_matrix_sha256": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                "authority_version": {
+                  "type": "string"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "timeline_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "PLAN_VALIDATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "authority_version",
+                "envelope",
+                "h0_guard_digest",
+                "h0_snapshot_sha256",
+                "plan_digest",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "result",
+                "stages_completed",
+                "validator"
+              ],
+              "properties": {
+                "plan_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "result": {
+                  "enum": [
+                    "PASS",
+                    "FAIL"
+                  ]
+                },
+                "authority_version": {
+                  "type": "string"
+                },
+                "validator": {
+                  "type": "string"
+                },
+                "h0_guard_digest": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "h0_snapshot_sha256": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "stages_completed": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "evidence_authority",
+                      "capability_provenance",
+                      "schema",
+                      "s0",
+                      "plan",
+                      "journal",
+                      "s1",
+                      "delta",
+                      "effects",
+                      "verification",
+                      "conflicts",
+                      "commit"
+                    ]
+                  }
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "MEDIA_CLASS_ATTESTATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "media_class",
+                "media_sha256",
+                "record_id",
+                "record_type",
+                "recorded_at"
+              ],
+              "properties": {
+                "media_class": {
+                  "enum": [
+                    "SYNTHETIC",
+                    "PRODUCTION"
+                  ]
+                },
+                "media_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "record_type": {
+                  "const": "DESTINATION_TIMELINE"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "envelope",
+                "project_name",
+                "record_id",
+                "record_type",
+                "recorded_at",
+                "timeline_name",
+                "timeline_unique_id"
+              ],
+              "properties": {
+                "project_name": {
+                  "type": "string"
+                },
+                "timeline_name": {
+                  "type": "string"
+                },
+                "timeline_unique_id": {
+                  "type": "string"
+                },
+                "envelope": {
+                  "properties": {
+                    "authority_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "manifest_sha256": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "host_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "product": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "resolve_version": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "build": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_name": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_uuid": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "library_root": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "session_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "provisioning_id": {
+                      "not": {
+                        "type": "null"
+                      }
+                    },
+                    "project_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "timeline_name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$comment": "v1.6: capability evidence is a RAW_CAPABILITY_CAPTURE (facts only: mechanical outcome, typed return/exception, truncation, shim identity, binding; interpretation fields are schema-forbidden). Meaning is derived by the reference parser (authority_lib.derive_capability_result); DERIVED_CAPABILITY_RESULT is a cache that must equal the recomputation; REVIEW_DECISION binds raw+derived+parser+spec; REFREEZE_RECORD binds parent+successor matrix digest, parser, spec, probe/session and the promoted digests; GUARD_SNAPSHOT carries the whole guard object + method_provenance so H0 profile/completeness/provenance/target are proven; IDENTITY_*_OBSERVATION carry pass lists of raw capture digests with recomputed claims. The retired CAPABILITY_EVIDENCE type is rejected. Every record carries the identity envelope; record_id = sha256(domain vidtoolz.resolveEvidenceRecord.v1 + canonical body without record_id); the CURRENT record of a type is the highest envelope.sequence within current_session_id; map order is irrelevant.",
+  "$defs": {
+    "pyvalue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t",
+            "v"
+          ],
+          "properties": {
+            "$t": {
+              "const": "str"
+            },
+            "v": {
+              "type": "string"
+            },
+            "truncated": {
+              "const": true
+            },
+            "full_len": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "full_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t",
+            "v"
+          ],
+          "properties": {
+            "$t": {
+              "const": "int"
+            },
+            "v": {
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t",
+            "v"
+          ],
+          "properties": {
+            "$t": {
+              "const": "bigint"
+            },
+            "v": {
+              "type": "string",
+              "pattern": "^-?[0-9]+$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t",
+            "v"
+          ],
+          "properties": {
+            "$t": {
+              "const": "bool"
+            },
+            "v": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t"
+          ],
+          "properties": {
+            "$t": {
+              "const": "none"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t",
+            "v"
+          ],
+          "properties": {
+            "$t": {
+              "const": "f64"
+            },
+            "v": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t",
+            "v"
+          ],
+          "properties": {
+            "$t": {
+              "const": "f64_nonfinite"
+            },
+            "v": {
+              "enum": [
+                "nan",
+                "+inf",
+                "-inf"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t",
+            "len",
+            "sha256",
+            "head_hex"
+          ],
+          "properties": {
+            "$t": {
+              "const": "bytes"
+            },
+            "len": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "head_hex": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t",
+            "py",
+            "v"
+          ],
+          "properties": {
+            "$t": {
+              "const": "list"
+            },
+            "py": {
+              "enum": [
+                "list",
+                "tuple"
+              ]
+            },
+            "v": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/pyvalue"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t",
+            "v"
+          ],
+          "properties": {
+            "$t": {
+              "const": "dict"
+            },
+            "v": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "$ref": "#/$defs/pyvalue"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t",
+            "class",
+            "module",
+            "handle_token",
+            "repr_sha256"
+          ],
+          "properties": {
+            "$t": {
+              "const": "object"
+            },
+            "class": {
+              "type": "string",
+              "minLength": 1
+            },
+            "module": {
+              "type": "string"
+            },
+            "handle_token": {
+              "type": "string"
+            },
+            "repr_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "$t",
+            "reason"
+          ],
+          "properties": {
+            "$t": {
+              "const": "elided"
+            },
+            "reason": {
+              "enum": [
+                "depth",
+                "length"
+              ]
+            },
+            "py": {
+              "type": "string"
+            },
+            "len": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "omitted": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    }
+  }
+}

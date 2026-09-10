@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveCheckpoint.v1",
+  "title": "Checkpoint (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "transaction_id",
+    "pre_state_payload_sha256",
+    "duplicate_timeline",
+    "drt_export",
+    "save_project_result",
+    "created_at"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveCheckpoint.v1"
+    },
+    "transaction_id": {
+      "type": "string"
+    },
+    "pre_state_payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "duplicate_timeline": {
+      "type": "object",
+      "required": [
+        "name",
+        "unique_id"
+      ]
+    },
+    "drt_export": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256"
+      ]
+    },
+    "save_project_result": {
+      "type": "boolean"
+    },
+    "created_at": {
+      "type": "string"
+    }
+  }
+}

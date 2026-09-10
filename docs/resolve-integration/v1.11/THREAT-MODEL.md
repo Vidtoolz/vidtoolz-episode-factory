@@ -1,0 +1,105 @@
+# THREAT-MODEL.md — defensive controls for the qualification pipeline (v1.6, FROZEN_NOW as doctrine)
+
+Defensive only. The subject is our own evidence chain: a compromised or buggy probe tool, a stale or substituted parser, a substituted matrix or manifest, a misused lower-level validator, a swapped snapshot. No offensive technique is described, and no control here is a substitute for Mikko's approval.
+
+| Threat | v1.5 exposure | v1.6 control | Residual |
+|---|---|---|---|
+| **Probe-tool compromise / bug writes its own success** | the probe wrote the `parse`/`result` block and success was read from it (F15-01, M-RAW) | the capture format has no interpretation field (schema-forbidden); meaning is derived by the reference parser from the immutable capture; every validator recomputes it | a compromised shim can still fabricate a *plausible* `RETURNED` value; that is why review is raw-first, the reviewer is not the operator, and the shim source hash is bound into every capture |
+| **Fake evidence injected into an evidence set** | content-addressed but interpretation-trusting | records are content-addressed **and** their meaning is recomputed; a capture whose digest does not re-hash is `MALFORMED`; forbidden fields make it schema-invalid | an attacker with write access to the whole evidence root and the bundle could build a self-consistent set; mitigated by the append-only root, the mirror, git history and independent review |
+| **Matrix substitution ("matrix-content forgery")** | `primitive_status` compared references but never proved that the supplied matrix was the active one (F15-02) | `active.capability_matrix_sha256` **is** the canonical content digest; `active_authority_errors` refuses any other object with `CAPABILITY_MATRIX_NOT_ACTIVE`, checked by every authorizing entry point before any stage | the operator must supply the active digest from the frozen manifest, not from the matrix file it is validating |
+| **Parser substitution / stale-parser replay** | no parser identity existed | `parser_version` + `parser_sha256` (hash of the parser source) are bound in every review, refreeze, matrix entry and refreeze block; a promotion made under another parser is refused | a parser bug shared by fixtures and implementation; mitigated by independent review of the parser fixtures |
+| **Expectation drift (spec edited under an old promotion)** | `expected_type` was a heuristic with no digest (m-TYPE) | `primitive_spec_sha256` is bound in every review, refreeze and matrix entry; changing an expectation invalidates promotions made against the old one; `FROZEN` expectations are refused in this bundle | expectations remain documented hypotheses until M0C |
+| **Manifest substitution** | envelope binding to the active manifest | unchanged and extended: every record binds `manifest_sha256` + `authority_version`; a `BUNDLE_VERIFICATION` for another manifest counts only as `historical`; the validator re-mints fixtures against the real manifest sha and proves both directions | host-root compromise is out of scope (mirror + git history detect it) |
+| **Lower-level validator misuse (direct commit)** | `schema_validate=None` was the default for the composed path and `commit_eligibility` (F15-04) | the schema validator is a **required** parameter of both authorizing entry points; a call without it refuses instead of reporting the schema stage complete; every per-document helper is `INTERNAL_NON_AUTHORIZING` and refuses partial input; the bypass audit checks names, docstrings, signatures, defaults and behaviour | a caller could still pass a permissive validator; the manifest pins the schemas the validator must load |
+| **S1 substitution / ghost applied operation** | declared `applied_operation_ids` were not compared (F15-06) | the journal's single `READBACK_S1` names the S1 object digest and guard; `applied_operation_ids` and `unobserved_domains` are derived and compared with the declaration | verification remains provisional until M3 |
+| **Degraded H0 passed off as a write precondition** | the early gate compared only guard digests (F15-03, M-H0) | the `GUARD_SNAPSHOT` record carries the guard object and the provenance map; the evaluator recomputes both digests and proves profile, completeness, qualified provenance, matrix, authority and target **before** any mutator | pre-M3 remains blocked; the rule is a reference implementation, not runtime-qualified |
+| **Over-claimed protected surface** | properties were claimed protected but not representable (F15-05) | `PROTECTED_SURFACE_EXCLUSIONS` names item properties, fades, speed, takes, links and unowned media hashes as **not observed, not compared and not covered**; observing them is a snapshot error; every verification result carries `unobserved_domains` | narrower guarantee, honestly stated |
+| **Unsafe script execution (MCP or otherwise)** | denied by policy | unchanged policy + the shim refuses `run_script`/`run_script_unsafe`/`execute_python`/`execute_lua`/render tools before invocation, and only `Get*` names on a static 47-method allowlist are callable | policy plus mechanism at the shim; host-level MCP configuration remains an operator matter |
+
+## v1.7 additions: the attack classes Codex demonstrated against v1.6
+
+| # | attack | v1.6 outcome | v1.7 control | residual |
+|---|---|---|---|---|
+| T-C1 | qualify a chain, then edit the raw capture, spec, review, refreeze, matrix, stored derived result, host or build **in place** | the warm process kept answering QUALIFIED_CALLABLE while a cold process refused | every authority cache key is a content digest plus the authority version; no identity-keyed cache exists; warm equals cold for every mutation in the suite | proven for this reference implementation only; a second evaluator must re-derive it |
+| T-C2 | monkeypatch the reference parser after the identity has been computed | the old parser hash kept being served | parser identity is memoized under a content key over the live parser code objects | a caller who replaces the whole module is outside this boundary |
+| T-C3 | pass an always-true, always-empty, partial or permissive schema validator into the authorizing path | an invalid commit manifest was authorized | there is no validator parameter; schemas come from the pinned registry; any such argument is refused by name | the registry proves which bytes are validated against, not that those schemas are correct |
+| T-C4 | substitute a stale schema from an older bundle | accepted | the registry is pinned per authority version and re-verified per resolution; historical registries validate historical artifacts only | historical registries are trusted only as far as the older bundle's own manifest |
+| T-C5 | claim any capture-shim sha256 | promoted | `TRUSTED-SHIM.json` pins the one shim and is re-verified against its source; a mismatch is the fatal class `SHIM_UNTRUSTED`; the active authority names the trusted shim | the trust root proves identity, never that the shim ran or that the value is true |
+| T-C6 | invoke a getter outside the probe allowlist | recorded and derivable | the allowlist is owned by the read-primitive authority, pinned by the trust root, and a capture outside it is refused | a shim that lies about the method it called is bounded only by the review of the raw frame |
+| T-C7 | promote a chain whose stored derived artifact is absent, or belongs to another raw capture | accepted on the recomputation | the exact stored artifact must resolve by digest and by record id and belong to that raw capture | none known |
+| T-C8 | present two current reviews, or two current reviewed refreeze records, and let iteration order decide | an arbitrary winner | explicit `supersedes` or CONFLICT; order never decides | a reviewer must still resolve the conflict deliberately |
+| T-C9 | feed a raw frame with a duplicate JSON key, malformed UTF-8, trailing bytes, a control character, an invalid number, a non-finite constant, an oversized body or an unknown schema version | the parsed-object API could not see any of it | one strict byte-ingestion boundary with a closed refusal vocabulary and a strict-parse receipt on every record | a frame that is well formed and false is an M0B review question, not a parse question |
+| T-C10 | overwrite, replace, re-attempt, traverse out of, symlink out of, or write after finalizing an evidence session | the layout was prose; nothing enforced it | an executable append-only store with create-exclusive writes, content addressing the store computes itself, attempt-id uniqueness, finalization and full re-verification | file-system-level attacks by a privileged local user are out of scope; the store detects them after the fact rather than preventing them |
+| T-C11 | present an evidence session pinned to another authority, matrix, shim, parser or spec | not checked | `session_manifest_errors` refuses, and qualification refuses the evidence set | none known |
+
+### Residual risks unchanged from v1.6
+
+No probe has run; no capture in this bundle describes real Resolve behaviour; every expectation in the primitive spec
+is a documented hypothesis; M0C requires a human approval that has not been given; and a second implementation in
+another language has not been written, so canonicalization, ingestion and storage conformance is demonstrated for one
+implementation only.
+
+## v1.8 additions: the evidence-store attack classes Codex demonstrated against v1.7
+
+| # | attack | v1.7 outcome | v1.8 control | residual |
+|---|---|---|---|---|
+| T-E1 | finalize a valid session, then plant an unexpected file in the session ROOT (Codex STORE-14) | ignored; `verify()` returned clean | closed-world inventory; any unknown entry is `UNEXPECTED_ENTRY` and the session state becomes `INVALID` | the store detects, it does not prevent |
+| T-E2 | plant an unexpected file inside a layer, a shard directory or the attempts index | caught only incidentally, mis-labelled `PARTIAL_RECORD` | `UNEXPECTED_ENTRY` with the correct code | none known |
+| T-E3 | plant an unexpected directory, at root or nested | ignored entirely | directories are part of the expected set; unknown ones are refused | none known |
+| T-E4 | add an extra, correctly content-addressed RAW or DERIVED record after finalization | accepted as a well-formed record | not in the inventory, so `UNEXPECTED_ENTRY` | none known |
+| T-E5 | alter, delete or rename a stored record after finalization | alteration and deletion were caught; a rename produced a confusing partial result | `EVIDENCE_REPLACED`, `RECORD_MISSING`, and a rename is reported as both | none known |
+| T-E6 | alter the finalization receipt or the hash manifest | caught | `INVENTORY_TAMPERED`, including a receipt that no longer names the inventory | none known |
+| T-E7 | `EvidenceRoot.add_derived("../../x")` and the same shape on `add_capture`, `add_review`, `add_refreeze` | wrote outside the evidence root | the API is removed; the canonical store refuses the identifier before any write, and the validator proves no file appears outside the session root | none known |
+| T-E8 | absolute path, separator injection, dot, empty, over-long or encoded identifier on any store entry point | the legacy surface accepted several | one logical-name gate plus a resolved-path containment proof on all eight entry points | none known |
+| T-E9 | symlink planted inside a session, or a symlinked session name | not checked at verification | `SYMLINK_REJECTED` at creation and at verification; the tree walk never follows links | a symlink created between verification and use is outside this boundary |
+| T-E10 | FIFO, socket or device planted inside a session | not checked | `FILE_TYPE_REJECTED` | none known |
+| T-E11 | two competing storage authorities disagreeing about validity | both existed | exactly one module is `EVIDENCE_STORE_AUTHORIZING`, asserted by a static audit | a future adapter must not add a second |
+
+### Residual risks unchanged from v1.7
+
+No probe has run; no capture describes real Resolve behaviour; every primitive expectation is a documented hypothesis;
+M0C requires a human approval that has not been given; and no second implementation exists in another language.
+
+## v1.9 additions: the evidence-store attack classes Codex demonstrated against v1.8
+
+| # | attack | v1.8 outcome | v1.9 control | residual |
+|---|---|---|---|---|
+| T-S1 | create, finalize and verify a session through a **symlinked evidence root** | accepted; the symlink was resolved away before any check | `lstat` first, no `realpath` on the trust path, `ROOT_SYMLINK_REFUSED` at create, open and list | a root replaced between two operations is detected by device+inode, not prevented |
+| T-S2 | symlinked **session directory** entry | internal symlinks were rejected but the session entry itself was not | `SESSION_SYMLINK_REFUSED` before the entry is used | none known |
+| T-S3 | replace an established root with a symlink or another directory between operations | undetected | `ROOT_SYMLINK_REFUSED` / `ROOT_REPLACED` on the next operation | inode reuse is explicitly not claimed to be detected |
+| T-S4 | **rename a finalized session directory** | verified clean | `SESSION_PATH_MISMATCH` and `SESSION_IDENTITY_MISMATCH`; state becomes INVALID | none known |
+| T-S5 | copy a finalized session, or its inventory, marker, manifest or one record, into another session | inventory/marker/manifest copies were caught by digest; a record copy and a whole-session copy were not | session identity is bound into manifest, inventory and marker, and every record key is bound to the session | none known |
+| T-S6 | move a valid record into another **layer** | undetected | the record key recomputes from (session, layer, logical identity, content), so `LAYER_IDENTITY_MISMATCH` | none known |
+| T-S7 | rebind a stored record to another **logical identity** in the inventory | undetected | `LOGICAL_IDENTITY_MISMATCH` | none known |
+| T-S8 | reuse an attempt id in another layer or under another logical identity | accepted; produced a second distinct record | `ATTEMPT_ID_CROSS_LAYER`, `ATTEMPT_ID_CROSS_IDENTITY` | none known |
+| T-S9 | duplicate attempt tuple keys or duplicate inventory paths | silently overwritten in a map | validated from a list first: `ATTEMPT_TUPLE_DUPLICATE`, `INVENTORY_DUPLICATE_KEY` | none known |
+| T-S10 | `chmod` a record, a directory, the manifest, the inventory or the finalization marker after finalization | undetected | canonical modes frozen in the inventory, `MODE_MISMATCH` | POSIX only; mode is detected, not prevented |
+| T-S11 | replace a regular file with a FIFO, socket or device at a governed path | caught only as a type rejection, with no frozen expectation | file type is frozen per entry and reconciled | none known |
+| T-S12 | tamper with a record's internal session id | undetected | `INTERNAL_IDENTITY_MISMATCH` | a record with no internal identity records `null`, and a later appearance is itself a change |
+
+### Residual risks unchanged from v1.8
+
+No probe has run; no capture describes real Resolve behaviour; every primitive expectation is a documented hypothesis;
+M0C requires a human approval that has not been given; and no second implementation exists in another language.
+
+## v1.10 additions: the evidence-store attack classes Codex demonstrated against v1.9
+
+| # | attack | v1.9 outcome | v1.10 control | residual |
+|---|---|---|---|---|
+| T-B1 | replace a finalized session directory with another directory of the same basename and content | verified clean | persisted boundary receipt binds the session device and inode; `SESSION_BOUNDARY_CHANGED` | inode reuse not claimed |
+| T-B2 | copy a whole session under a second root and open it there | verified clean | root path, device and inode are bound into the session identity; `ROOT_IDENTITY_MISMATCH` | none known |
+| T-B3 | mutate or delete the boundary receipt | no receipt existed | self-digesting receipt; `BOUNDARY_RECEIPT_INVALID` / `BOUNDARY_RECEIPT_MISSING` | none known |
+| T-B4 | mutate the finalization marker's store or authority version | ignored | every normative marker field derived and compared | none known |
+| T-B5 | make an inventory field disagree with reality while keeping its self-digest valid | partly accepted | the model is recomputed from independent sources; the inventory is only ever compared | none known |
+| T-B6 | duplicate a directory entry, or give a directory a conflicting kind or mode | partly accepted | directory kinds and modes derived from path law; duplicates refused before indexing | none known |
+| T-B7 | plant a foreign attempt marker into an ACTIVE session | write, finalize and verify all succeeded | marker/record bijection; `FOREIGN_ATTEMPT_MARKER` blocks the next write | none known |
+| T-B8 | reuse one attempt id under two identities on disk | attempt-key check passed, attempt-id check did not | attempt ids unique in addition to attempt keys | none known |
+| T-B9 | plant a record with no marker | accepted | `ORPHANED_RECORD` | none known |
+| T-B10 | chmod the session directory | ignored | the session directory is inside mode authority | POSIX only, detection not prevention |
+| T-B11 | chmod anything while ACTIVE, then continue | accepted, and the session still finalized | modes enforced continuously; the next operation refuses and finalization is blocked | none known |
+| T-B12 | trigger EACCES, ELOOP, ENAMETOOLONG or a vanished session on the public path | a raw `PermissionError` escaped | one `fs()` boundary and frozen `FS_*` classes | genuine programming defects still raise, deliberately |
+
+### Residual risks unchanged from v1.9
+
+No probe has run; no capture describes real Resolve behaviour; every primitive expectation is a documented hypothesis;
+M0C requires a human approval that has not been given; and no second implementation exists in another language.

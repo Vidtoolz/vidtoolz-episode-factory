@@ -1,0 +1,290 @@
+{
+  "fixture": "journal-operation-failed-aborted",
+  "layer_expected_failure": "none",
+  "schema": "provisional/resolveTransactionJournal",
+  "check": "semantic_journal",
+  "expect_error_contains": null,
+  "document": [
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 0,
+      "previous_record_sha256": null,
+      "state": "PREPARED",
+      "plan_digest": "d698a2ed7556276ee0a009f778d233087afbe4fdbfbd1189b591fc70274655ee",
+      "operation_set_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+      "operation_id": null,
+      "op": null,
+      "intent": {
+        "phase": "PREPARED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T11:55:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "73c8f78e172d8d546adbd96053397ec332aaf3a7c6d141af6a2fb5fa399cfce7",
+      "authority_version": "1.11.0",
+      "recovery_of_transaction_id": null,
+      "session_id": "sess-2026-09-08-0001",
+      "readback_snapshot_sha256": null,
+      "readback_guard_digest": null
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 1,
+      "previous_record_sha256": "f71fb78495957f539e190f32b1507dd7a57b0215dc18994c2a43d107fc2fc5f2",
+      "state": "LEASED",
+      "plan_digest": "d698a2ed7556276ee0a009f778d233087afbe4fdbfbd1189b591fc70274655ee",
+      "operation_set_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+      "operation_id": null,
+      "op": null,
+      "intent": {
+        "phase": "LEASED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T11:55:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "73c8f78e172d8d546adbd96053397ec332aaf3a7c6d141af6a2fb5fa399cfce7",
+      "authority_version": "1.11.0",
+      "recovery_of_transaction_id": null,
+      "session_id": "sess-2026-09-08-0001",
+      "readback_snapshot_sha256": null,
+      "readback_guard_digest": null
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 2,
+      "previous_record_sha256": "4079be408599fb1d057cf6ee3973b3d0f0e86adbba5c931e36872eb39d9410d5",
+      "state": "PREFLIGHT_OK",
+      "plan_digest": "d698a2ed7556276ee0a009f778d233087afbe4fdbfbd1189b591fc70274655ee",
+      "operation_set_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+      "operation_id": null,
+      "op": null,
+      "intent": {
+        "phase": "PREFLIGHT_OK"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T11:55:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "73c8f78e172d8d546adbd96053397ec332aaf3a7c6d141af6a2fb5fa399cfce7",
+      "authority_version": "1.11.0",
+      "recovery_of_transaction_id": null,
+      "session_id": "sess-2026-09-08-0001",
+      "readback_snapshot_sha256": null,
+      "readback_guard_digest": null
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 3,
+      "previous_record_sha256": "73195be83477cd35680a349baa9a512fb0ddb89eeb037e8ce9ea69a6dec89829",
+      "state": "CHECKPOINTED",
+      "plan_digest": "d698a2ed7556276ee0a009f778d233087afbe4fdbfbd1189b591fc70274655ee",
+      "operation_set_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+      "operation_id": null,
+      "op": null,
+      "intent": {
+        "phase": "CHECKPOINTED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": {
+        "checkpoint_sha256": "c1a000a2d98dcebc65dc989030b4ce5be2ab3a64ae81df482afad69bf9fd4478",
+        "duplicate_timeline_name": "VIDTOOLZ__fixture__r1__checkpoint",
+        "drt_export_sha256": "fae4cc860ae0bd31fb5e9e0b7a9ede8629e4205a022b296380e91ec58ec79711",
+        "saved": true
+      },
+      "recorded_at": "2026-09-08T11:55:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "73c8f78e172d8d546adbd96053397ec332aaf3a7c6d141af6a2fb5fa399cfce7",
+      "authority_version": "1.11.0",
+      "recovery_of_transaction_id": null,
+      "session_id": "sess-2026-09-08-0001",
+      "readback_snapshot_sha256": null,
+      "readback_guard_digest": null
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 4,
+      "previous_record_sha256": "f7db5a9f21cdc792791f17c0e74030f2d1417857bd26c3cc79bc16912c9165f1",
+      "state": "OP_STARTED",
+      "plan_digest": "d698a2ed7556276ee0a009f778d233087afbe4fdbfbd1189b591fc70274655ee",
+      "operation_set_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+      "operation_id": "op-1",
+      "op": "APPEND",
+      "intent": {
+        "phase": "OP_STARTED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T11:55:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "73c8f78e172d8d546adbd96053397ec332aaf3a7c6d141af6a2fb5fa399cfce7",
+      "authority_version": "1.11.0",
+      "recovery_of_transaction_id": null,
+      "session_id": "sess-2026-09-08-0001",
+      "readback_snapshot_sha256": null,
+      "readback_guard_digest": null
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 5,
+      "previous_record_sha256": "43404f7201bf24d4f65f7994c76151f121f675e564e19ec0c6e7940172257451",
+      "state": "OP_FAILED",
+      "plan_digest": "d698a2ed7556276ee0a009f778d233087afbe4fdbfbd1189b591fc70274655ee",
+      "operation_set_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+      "operation_id": "op-1",
+      "op": "APPEND",
+      "intent": {
+        "phase": "OP_FAILED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T11:55:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "73c8f78e172d8d546adbd96053397ec332aaf3a7c6d141af6a2fb5fa399cfce7",
+      "authority_version": "1.11.0",
+      "recovery_of_transaction_id": null,
+      "session_id": "sess-2026-09-08-0001",
+      "readback_snapshot_sha256": null,
+      "readback_guard_digest": null
+    },
+    {
+      "schema": "vidtoolz.resolveTransactionJournal.v1",
+      "transaction_id": "tx-fixture",
+      "sequence": 6,
+      "previous_record_sha256": "265783fd5199293e4c5c55fa0fab2ce7a40b2e6cd37737ae08b42c4b2c136421",
+      "state": "ABORTED",
+      "plan_digest": "d698a2ed7556276ee0a009f778d233087afbe4fdbfbd1189b591fc70274655ee",
+      "operation_set_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+      "operation_id": null,
+      "op": null,
+      "intent": {
+        "phase": "ABORTED"
+      },
+      "result": null,
+      "readback_payload_sha256": null,
+      "checkpoint": null,
+      "recorded_at": "2026-09-08T11:55:00Z",
+      "target_ref": {
+        "project_unique_id": "proj-fixture-0001",
+        "timeline_unique_id": "tl-fixture-0001",
+        "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+      },
+      "guard_digest": "73c8f78e172d8d546adbd96053397ec332aaf3a7c6d141af6a2fb5fa399cfce7",
+      "authority_version": "1.11.0",
+      "recovery_of_transaction_id": null,
+      "session_id": "sess-2026-09-08-0001",
+      "readback_snapshot_sha256": null,
+      "readback_guard_digest": null
+    }
+  ],
+  "plan": {
+    "schema": "vidtoolz.resolveMutationPlan.v1",
+    "transaction_id": "tx-fixture",
+    "session_id": "sess-2026-09-08-0001",
+    "authority_version": "1.11.0",
+    "milestone": "M3",
+    "dry_run": false,
+    "target": {
+      "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+      "project_unique_id": "proj-fixture-0001",
+      "timeline_unique_id": "tl-fixture-0001",
+      "target_epoch": "epoch-fixture-1",
+      "host_name": "vidnux",
+      "library_name": "VIDTOOLZ Resolve Qualification v1",
+      "library_kind": "Disk",
+      "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "timeline_name": "VIDTOOLZ__fixture__r1",
+      "resolve_version": "21.1.0.0014"
+    },
+    "target_epoch": "epoch-fixture-1",
+    "target_contract_digest": "f0502e9633b23e9b83f3345cb5e78655a2cbb6bb9672c0c579c43917ea7bd837",
+    "binding_set_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "handoff_digest_sha256": "3fd9bdd875c9eb489abf77797613abbc2616eef36073503742ebc9fd80f5bf69",
+    "h0_payload_sha256": "c2a2ce0f947ef1efd1cf330fbb398f03ee4d600eb92de91e9aa9d36e0c9eab9a",
+    "h0_guard_digest": "73c8f78e172d8d546adbd96053397ec332aaf3a7c6d141af6a2fb5fa399cfce7",
+    "capability_matrix_version": "1.11.0-HYPOTHETICAL",
+    "collector_version": "0.0.0-fixture",
+    "timebase_digest": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+    "permission_class": "RESOLVE_ASSEMBLE",
+    "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+    "lease": {},
+    "operations": [
+      {
+        "operation_id": "op-1",
+        "op": "APPEND",
+        "selector": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1",
+          "track_type": "video",
+          "track_index": 1,
+          "expected_media_pool_item_unique_id": "mp-new"
+        },
+        "expected_old": null,
+        "expected_new": {
+          "start": 110194,
+          "end": 110541
+        },
+        "allowed_created": [
+          "one item"
+        ],
+        "allowed_deleted": [],
+        "declared_side_effects": []
+      }
+    ],
+    "operation_set_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+    "plan_digest": "d698a2ed7556276ee0a009f778d233087afbe4fdbfbd1189b591fc70274655ee",
+    "refs": {
+      "m0_exit": "66418abc1715db4e9728d799645c3457cd0082ce86341e9ada3c907acaf1f878",
+      "m1_exit": "6078c64514439e2a0ecc701150c5cfd2c515dd7c7db544159404a4514349e17f",
+      "m2_exit": "7ec03ce9d2615fa686cdd8573070cf99577827e47b8a135f8f82dab75c959ffb",
+      "authorization": "c0d8fa7cb6911e2839e3de7df35c2ab0a9a6c11f454054f3cb77068e51a3980f",
+      "exclusive_session": "ae55a0bbb3aafee8a0a9837b4e514a0e718c445644c69a2e35c4fcafcf07747b",
+      "read_only_journal": "e3f00c88df5c79e3f4b77dfcad55798f1bd0fc44bd5630f7fc932ed38a071aed",
+      "media_class": "42477d74cff9e72fb63b77d9358824b681b794536f098ee27ecb49e85764bbc0",
+      "destination_timeline": "55c13ada690f779261e19bce40b94fea44aa259f7ad75fae81dc4e3fe3e23c1f",
+      "journal_prepared": "a24cfea1b4a53b62fee3afee71b0cf10c5546c698bfc3f6cbc19d95c819626d3",
+      "guard": "b57af76d4d1d7acf67e78e60c973d100a4fe17afdb6e4ecf0ffd9e160bcc6402",
+      "plan_validation": "715ca972da1554c89c5ab1bf81071fbdd74148ed3d92e8754812adfd9cf3eb66"
+    }
+  }
+}
