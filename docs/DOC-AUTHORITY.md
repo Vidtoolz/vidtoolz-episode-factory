@@ -20,7 +20,7 @@ beat hand-maintained prose.
 | Draft music (dual-model A/B/C) | `draft-music-package.json` per run/canary; orchestration authority in `scripts/draft-music-orchestrator.js` (entry `scripts/generate-draft-music.js`) | `docs/draft-music-automation.md`; `node scripts/generate-draft-music.js status` |
 | Package-runs discovery index | `package-runs-index.json` — DERIVED, REBUILDABLE, NON-AUTHORITATIVE projection over canonical run identity (`scripts/package-runs-index.js`). Directory count under `package-runs/` ≠ genuine run count: proof/canary/acceptance/legacy directories carry no run identity and are excluded by design. | `node scripts/package-runs-index.js --check` (read-only); `node scripts/package-runs-index.js` rebuilds atomically |
 | Index freshness | `scripts/package-runs-index.js --freshness` | rebuild with `node scripts/package-runs-index.js` |
-| Resolve execution subsystem | `docs/resolve-integration/v1.18/FREEZE-MANIFEST.json` (current authority) | Candidate for independent review only. Evidence store and authoring implementations are in `docs/resolve-integration/v1.18/tools/`. No run or human authorization is implied. |
+| Resolve execution subsystem | `docs/resolve-integration/v1.19/FREEZE-MANIFEST.json` (current authority) | Candidate for independent review only. Evidence store and authoring implementations are in `docs/resolve-integration/v1.19/tools/`. No run or human authorization is implied. |
 | Test count | none — it is not hardcoded | run `scripts/verify.sh` |
 
 ## Current / authoritative docs
@@ -32,7 +32,7 @@ beat hand-maintained prose.
 - `config/production-stages.json` — generated stage data (mirror of the canonical spec).
 - `docs/production-mode.md` — run-level production mode (DRAFT / REVIEW / PRODUCTION) and gate-7/8 semantics per mode.
 - `docs/draft-bespoke-successor-authority.md` — immutable current-Story Draft successor and registry-to-Directed-Draft assembly authority.
-- `docs/resolve-integration/v1.18/` — Resolve execution subsystem authority bundle, current version (release-coherence and scanner correction; `docs/resolve-integration/v1.16/`, `v1.15/`, `v1.14/`, `v1.13/`, `v1.12/`, `v1.11/`, `v1.10/`, `v1.9/`, `v1.8/`, `v1.7/`, `v1.6/`, `v1.5/`, `v1.4/`, `v1.3/`, `v1.2/`, `v1.1/` and `v1/` are immutable history; `experiments/quarantine-2026-09-08/` holds the quarantined non-authoritative prototypes).
+- `docs/resolve-integration/v1.19/` — Resolve execution subsystem authority bundle, current version (release-coherence and scanner correction; `docs/resolve-integration/v1.16/`, `v1.15/`, `v1.14/`, `v1.13/`, `v1.12/`, `v1.11/`, `v1.10/`, `v1.9/`, `v1.8/`, `v1.7/`, `v1.6/`, `v1.5/`, `v1.4/`, `v1.3/`, `v1.2/`, `v1.1/` and `v1/` are immutable history; `experiments/quarantine-2026-09-08/` holds the quarantined non-authoritative prototypes).
 
 ## Resolve authority lineage (immutable history)
 
@@ -42,7 +42,8 @@ supersedes by reference only.
 
 | version | bundle | manifest sha256 | status |
 | --- | --- | --- | --- |
-| 1.18.0 | `docs/resolve-integration/v1.18/` | read `docs/resolve-integration/v1.18/FREEZE-MANIFEST.json` | **CURRENT** — implementation-author candidate; independent review required |
+| 1.19.0 | `docs/resolve-integration/v1.19/` | read `docs/resolve-integration/v1.19/FREEZE-MANIFEST.json` | **CURRENT** — implementation-author candidate; independent review required |
+| 1.18.0 | `docs/resolve-integration/v1.18/` | `80b108e4e142841af38827d3b6170c1260c543740f21b03ebb3d934278723ae9` | HISTORICAL — REJECTED: four MAJOR and three MINOR independent findings |
 | 1.17.0 | `docs/resolve-integration/v1.17/` | `5dff9c98f1086ea6a4edfab0073770597554ab338e276ed88125e94796eb91af` | HISTORICAL — REJECTED: intake incoherence and current slot omissions; no independent approval |
 | 1.16.0 | `docs/resolve-integration/v1.16/` | `ba77bfa2226696b61be27f2a7c74cf551720f601f57b8c11c9f2f6f50a159507` | historical — REJECTED: independent assertions 84/85, one BLOCKER (V116-B1), zero merge majors, zero minors. Intake, supplied suite, receipt parity and all 57 v1.15 functional regressions passed |
 | 1.15.0 | `docs/resolve-integration/v1.15/` | `af2c1b11485233f5c2b6b5447a6695a3b6cbe6ba4cbdb06f3727973f4b2c9fe2` | historical — REJECTED: independent harness 54/57, one BLOCKER (current TARGET-CONTRACT and SCHEMA-REGISTRY authority classifications contradictory) and one MERGE MAJOR (machine-readable location-receipt binding omitted three runtime-bound fields). Every executable v1.15 repair was confirmed CLOSED |
@@ -62,14 +63,23 @@ supersedes by reference only.
 | 1.1.0 | `docs/resolve-integration/v1.1/` | `83d8a307098cdc18931f6f09de2ce782afa0bdef94ec8540c2a143910cd448c5` | historical |
 | 1.0.0 | `docs/resolve-integration/v1/` | `d9cd54780e0a123ae2045ac575bbc41638039ef3e878f1b608afbce3989a8821` | historical — first freeze |
 
-<!-- resolve-current-selector {"version":"1.18.0","status":"CURRENT","branch":"docs/resolve-authority-freeze-v1.18","parent":"24ead748eec4bce46dc2e945d24ad403fc9472b3","manifest":"docs/resolve-integration/v1.18/FREEZE-MANIFEST.json"} -->
+<!-- resolve-current-selector {"version":"1.19.0","status":"CURRENT","branch":"docs/resolve-authority-freeze-v1.19","parent":"5d9dbba7c9f136caf694debe177f61168e5c4271","manifest":"docs/resolve-integration/v1.19/FREEZE-MANIFEST.json"} -->
 
-**v1.18 registration** (current):
+**v1.19 registration** (current):
+
+```
+branch    docs/resolve-authority-freeze-v1.19
+parent    5d9dbba7c9f136caf694debe177f61168e5c4271
+manifest  read docs/resolve-integration/v1.19/FREEZE-MANIFEST.json
+```
+
+**v1.18 registration** (historical, REJECTED):
 
 ```
 branch    docs/resolve-authority-freeze-v1.18
+head      5d9dbba7c9f136caf694debe177f61168e5c4271
 parent    24ead748eec4bce46dc2e945d24ad403fc9472b3
-manifest  read docs/resolve-integration/v1.18/FREEZE-MANIFEST.json
+manifest  80b108e4e142841af38827d3b6170c1260c543740f21b03ebb3d934278723ae9
 ```
 
 **v1.17 registration** (historical, REJECTED):
@@ -153,12 +163,12 @@ inherited ebc2dd4db2462f73db20054ba60cf36691ab29b3   (v1.7 semantic commit)
 manifest  727bcaad6ee49f1439eb84b33bf36cb11d2c94d41165b4b092f728a167626d86
 ```
 
-The **current** bundle's manifest digest is deliberately **not** restated here — today that is v1.18.
+The **current** bundle's manifest digest is deliberately **not** restated here — today that is v1.19.
 `DOC-AUTHORITY.md` is pinned by that manifest's `external_pins.doc_authority`, so a digest quoted here would depend on
 a manifest that depends on this file: the two would never converge. The manifest is self-identifying; read it. Once a
 bundle becomes history its manifest stops changing, so its digest is restated above. This registration is committed
-in the same commit as the v1.18 bundle, so the pin is fresh rather than a follow-up, and the four intake identities
-including the commit HEAD are published in the v1.18 authoring report and handoff.
+in the same commit as the v1.19 bundle, so the pin is fresh rather than a follow-up, and the four intake identities
+including the commit HEAD are published in the v1.19 authoring report and handoff.
 
 **v1.7 registration identities** (historical):
 

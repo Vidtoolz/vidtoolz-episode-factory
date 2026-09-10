@@ -1,0 +1,243 @@
+{
+  "schema": "vidtoolz.resolveTargetContract.v1.10",
+  "version": "1.19.0",
+  "status": "FROZEN_NOW",
+  "qualification_note": "library root_path/instance_uuid/launch recipe are required future observations, not fabricated; the AUTHORIZING attachment state is derived by tools/authority_lib.py#derive_attachment_state_authorizing (or #derive_attachment_state_for_session) from a GovernedEvidenceSet minted by #load_governed_evidence_set, never declared. The bare-evidence #derive_attachment_state is DIAGNOSTIC / NON_AUTHORIZING.",
+  "qualification_mode": "SCRATCH_QUALIFICATION_LIBRARY",
+  "accepts_current_open_session_as_target": false,
+  "host": {
+    "name": "vidnux",
+    "os": "Linux",
+    "lan_ip_observed": "192.168.50.32"
+  },
+  "resolve": {
+    "product": "DaVinci Resolve Studio",
+    "version": "21.1.0",
+    "build": 14,
+    "license": "permanent RLM node-locked",
+    "install_root": "/opt/resolve",
+    "pins": {
+      "/opt/resolve/bin/resolve": "124caa502547f85a2e17ad6a59269918ae561c0f82d701b9fc4e7f42127ffee7",
+      "/opt/resolve/libs/Fusion/fusionscript.so": "de7d6c131a218c6c8b686693023bbc6e293333f0a4384d61e731e0707730a88a",
+      "/opt/resolve/Developer/Scripting/DaVinciResolveScript.pyi": "00078fa1256851b9807621a4eea5e670f4266b0e7003763cba4a62655543f0ec",
+      "/opt/resolve/Developer/Scripting/README.md": "5f58c94da8ec3c1f390d77ad9c60675263591dc101159b302e50b5774513830b",
+      "/opt/resolve/Developer/Scripting/README.txt": "7f42d7f65678ae70f7eff16d168cae8bcd3815494b75bd6da7119e0250397964",
+      "/opt/resolve/Developer/Scripting/CHANGELOG.md": "b12c961176d79a5fc87757a21dc7ce2e147f13fb4dab927ed9154943c7de1491",
+      "/opt/resolve/docs/ReadMe.html": "fb415b3e1e7fd4fda0abdc960541da60e055619ef9e9360908f3a22198f3968a",
+      "/opt/resolve/DaVinciResolve.mcpb": "e45df3c4532cfc5514a05d0814b149b075ec73376cf6287f78b2fe48eeed0f64",
+      "/opt/resolve/bin/ResolveMCP": "5205a17b03fdcead992ad3f16b258087612faeacc2e65e72eb496b31b1e7c252"
+    }
+  },
+  "interpreter": {
+    "bundled": "/opt/resolve/bin/ResolvePython (3.14, no pip)",
+    "external_env": {
+      "RESOLVE_SCRIPT_API": "/opt/resolve/Developer/Scripting",
+      "RESOLVE_SCRIPT_LIB": "/opt/resolve/libs/Fusion/fusionscript.so",
+      "PYTHONPATH": "$RESOLVE_SCRIPT_API/Modules/"
+    }
+  },
+  "library": {
+    "kind": "Disk",
+    "name": "VIDTOOLZ Resolve Qualification v1",
+    "provisioning_status": "UNPROVISIONED",
+    "root_path": null,
+    "instance_uuid": null,
+    "prohibited_library_names": [
+      "EKA",
+      "EKA192.168.50.199",
+      "nelja",
+      "Local Database"
+    ],
+    "rule": "newly provisioned isolated disk library; adapter refuses when GetCurrentDatabase() != this library; never the user's existing Local Database; never a PostgreSQL library"
+  },
+  "required_future_observations": [
+    {
+      "field": "PROVISIONING_RECORD.root_path/instance_uuid",
+      "source": "operator provisioning record (external UUID minted at provisioning)",
+      "blocks": "PROVISIONED_NOT_VERIFIED"
+    },
+    {
+      "field": "LAUNCH_RECIPE.recipe_sha256/resolve_binary_sha256",
+      "source": "recorded launch script pinned to /opt/resolve/bin/resolve",
+      "blocks": "ATTACHMENT_READY"
+    },
+    {
+      "field": "BUNDLE_VERIFICATION.manifest_sha256",
+      "source": "independent verifier (not the preparer) of FREEZE-MANIFEST.json 1.19.0",
+      "blocks": "ATTACHMENT_READY"
+    },
+    {
+      "field": "CONNECTION_OBSERVATION.db_name/db_type/product/resolve_version",
+      "source": "M0 READ_PRIMITIVE_QUALIFICATION_PROBE (session-scope)",
+      "blocks": "ATTACHED_READ_ONLY"
+    },
+    {
+      "field": "session.external_scripting_preference_observed",
+      "source": "M0 connection evidence",
+      "blocks": "M0 exit"
+    }
+  ],
+  "session": {
+    "kind": "dedicated interactive qualification session",
+    "isolation": "separate BMD support/config/cache/log roots",
+    "launch_recipe_sha256": null,
+    "launcher_rule": "~/bin/resolve-launch MUST NOT be adopted unchanged (deletes singleton lock files); resolve-hermes/start-resolve-vidnux.sh LD_PRELOAD variant and vendor desktop entry are the other two incompatible launchers",
+    "external_scripting_preference_required": "Local",
+    "external_scripting_preference_observed": null,
+    "network_port_1144": "closed",
+    "exclusivity_required_for_writes": true
+  },
+  "prohibited_targets": {
+    "network_library": {
+      "name": "EKA",
+      "host": "ROJEKTI 192.168.50.199",
+      "status": "NETWORK_LIBRARY_PROHIBITED_DURING_QUALIFICATION",
+      "known": "version string 18.1.0.004 at connect 2026-09-08 14:20; PYSTY UHD opened from it in 21.1 at 14:26; collaboration project locks in use",
+      "unknown": "client versions on PRESTO/VIDLAP2; any library-level change",
+      "not_claimed": "that connecting or opening upgrades the library schema"
+    },
+    "user_local_database": "not used for qualification",
+    "credential_files": ".dblist/.activedb (mode 0666, plaintext) MUST NOT be copied into qualification config"
+  },
+  "naming": {
+    "project_prefix": "VIDTOOLZ_RESOLVE_QUAL_V1_",
+    "timeline": "VIDTOOLZ__<run_id>__<handoff_id[0:8]>__r<N>",
+    "bin": "VIDTOOLZ/<run_id>/",
+    "rule": "prefixes are labels; UUID bindings and ownership records authorize access"
+  },
+  "denied_calls_all_scopes": [
+    "SetCurrentDatabase",
+    "CloseProject",
+    "ImportProject",
+    "DeleteTimelines(non-owned)",
+    "ReplaceClip",
+    "ReplaceClipPreserveSubClip",
+    "RelinkClips",
+    "DeleteClips(ripple=true)",
+    "run_script",
+    "run_script_unsafe",
+    "execute_python",
+    "execute_lua"
+  ],
+  "attachment_states": {
+    "UNPROVISIONED": {
+      "required_records": [],
+      "meaning": "no attachment permitted; no valid PROVISIONING_RECORD for contract host+library"
+    },
+    "PROVISIONED_NOT_VERIFIED": {
+      "required_records": [
+        "PROVISIONING_RECORD"
+      ],
+      "meaning": "library exists on disk (root_path absolute, instance_uuid, provisioned_by); host/library identity not yet proven against launch recipe and bundle"
+    },
+    "ATTACHMENT_READY": {
+      "required_records": [
+        "PROVISIONING_RECORD",
+        "LAUNCH_RECIPE",
+        "BUNDLE_VERIFICATION"
+      ],
+      "meaning": "current session (evidence_set.current_session_id) opened by a LAUNCH_RECIPE bound to the provisioning record (provisioning_id, uuid, root), pinned to contract version/binary/Local scripting; independent BUNDLE_VERIFICATION bound to the ACTIVE reviewed manifest + authority version on this host; all session records coherent"
+    },
+    "ATTACHED_READ_ONLY": {
+      "required_records": [
+        "PROVISIONING_RECORD",
+        "LAUNCH_RECIPE",
+        "BUNDLE_VERIFICATION",
+        "CONNECTION_OBSERVATION"
+      ],
+      "meaning": "the CURRENT CONNECTION_OBSERVATION of the current session (highest envelope.sequence, not stale, not ambiguous) shows db_type Disk, db_name == contract library, product/version == contract, root and uuid == provisioning record; any mismatch stays ATTACHMENT_READY with OBSERVED_TARGET_MISMATCH"
+    },
+    "SCRATCH_WRITE_READY": {
+      "required_records": [
+        "PROVISIONING_RECORD",
+        "LAUNCH_RECIPE",
+        "BUNDLE_VERIFICATION",
+        "CONNECTION_OBSERVATION",
+        "M3_AUTHORIZATION",
+        "EXCLUSIVE_SESSION_ATTESTATION",
+        "REFREEZE_RECORD"
+      ],
+      "meaning": "all read-only requirements plus Mikko's scratch-scope authorization for authority 1.3.0, exclusive-session attestation and a reviewed M0_READ_REQUALIFICATION refreeze record; scope is always SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    "CONFLICT": {
+      "required_records": [],
+      "meaning": "contradictory, ambiguous or fatal evidence: incoherent envelopes in the current session, multiple provisioning identities, two current observations with the same sequence, timestamp/sequence disorder, a FATAL_TARGET_FAILURE probe record, or an evidence set not bound to the active reviewed manifest; rank below UNPROVISIONED; nothing is eligible"
+    }
+  },
+  "attachment_law": "schema validity != attachment eligibility; the AUTHORIZING state is a function of (TARGET-CONTRACT, GovernedEvidenceSet, active authority {authority_version, manifest_sha256, capability_matrix_sha256}) computed by tools/authority_lib.py#derive_attachment_state_authorizing - or #derive_attachment_state_for_session, which loads through #load_governed_evidence_set itself (the bare-evidence #derive_attachment_state is DIAGNOSTIC / NON_AUTHORIZING and must never be selected for an authority decision); a document that declares a state is rejected; inconsistent records never compose (CONFLICT); M0 probe requires derived ATTACHMENT_READY; every other M0 read op requires derived ATTACHED_READ_ONLY plus its operation-specific project/timeline binding; any M3 write requires derived SCRATCH_WRITE_READY",
+  "attachment_state_is_declared": false,
+  "attachment_derivation": "tools/authority_lib.py#derive_attachment_state_authorizing(target_contract, GovernedEvidenceSet, active_authority) - or #derive_attachment_state_for_session(session_id, target_contract, active_authority), which loads through #load_governed_evidence_set itself. The GovernedEvidenceSet is minted ONLY by tools/authority_lib.py#load_governed_evidence_set and carries the validated bytes; the evidence consumed is re-derived from those bytes on every authorizing call.",
+  "evidence_envelope_law": {
+    "schema": "schemas/resolveEvidenceSet.schema.json",
+    "levels": {
+      "BUNDLE": [
+        "authority_version",
+        "manifest_sha256",
+        "host_name"
+      ],
+      "LIBRARY": [
+        "authority_version",
+        "manifest_sha256",
+        "host_name",
+        "library_name",
+        "library_uuid",
+        "library_root"
+      ],
+      "SESSION": [
+        "authority_version",
+        "manifest_sha256",
+        "host_name",
+        "product",
+        "resolve_version",
+        "build",
+        "library_name",
+        "library_uuid",
+        "library_root",
+        "session_id",
+        "provisioning_id"
+      ]
+    },
+    "record_levels": {
+      "BUNDLE_VERIFICATION": "BUNDLE",
+      "MILESTONE_EXIT": "BUNDLE",
+      "M3_AUTHORIZATION": "BUNDLE",
+      "REFREEZE_RECORD": "BUNDLE",
+      "PLAN_VALIDATION": "BUNDLE",
+      "MEDIA_CLASS_ATTESTATION": "BUNDLE",
+      "REVIEW_DECISION": "BUNDLE",
+      "DERIVED_CAPABILITY_RESULT": "BUNDLE",
+      "PROVISIONING_RECORD": "LIBRARY",
+      "OPERATOR_PROVISIONED_PROJECT": "LIBRARY",
+      "LAUNCH_RECIPE": "SESSION",
+      "CONNECTION_OBSERVATION": "SESSION",
+      "PROJECT_BINDING_OBSERVATION": "SESSION",
+      "TIMELINE_BINDING_OBSERVATION": "SESSION",
+      "RAW_CAPABILITY_CAPTURE": "SESSION",
+      "RAW_EVIDENCE": "SESSION",
+      "IDENTITY_UNIQUENESS_OBSERVATION": "SESSION",
+      "IDENTITY_STABILITY_OBSERVATION": "SESSION",
+      "JOURNAL_PREPARED": "SESSION",
+      "READ_ONLY_JOURNAL": "SESSION",
+      "EXCLUSIVE_SESSION_ATTESTATION": "SESSION",
+      "GUARD_SNAPSHOT": "SESSION",
+      "DESTINATION_TIMELINE": "SESSION"
+    },
+    "coherence_fields": [
+      "authority_version",
+      "manifest_sha256",
+      "host_name",
+      "product",
+      "resolve_version",
+      "build",
+      "library_name",
+      "library_uuid",
+      "library_root",
+      "session_id",
+      "provisioning_id"
+    ],
+    "currency": "CURRENT record of a type in the current session = highest envelope.sequence; equal highest sequences with distinct content = AMBIGUOUS (CONFLICT); captured_at older than MAX_OBSERVATION_AGE_S relative to evidence_set.evaluated_at = STALE; records of other sessions are never current; JSON/map/array order never matters",
+    "max_observation_age_s": 3600,
+    "binding": "every record binds envelope.manifest_sha256 and envelope.authority_version to the ACTIVE reviewed authority; a BUNDLE_VERIFICATION for another manifest is tolerated only with historical:true and never counts"
+  },
+  "attachment_derivation_diagnostic_non_authorizing": "tools/authority_lib.py#derive_attachment_state(target_contract, evidence_set, active_authority) is DIAGNOSTIC / NON_AUTHORIZING (v1.14 V113-B1): semantic derivation only, no location authority, no receipt. It is for fixtures and diagnosis and must never be selected for an authority decision."
+}

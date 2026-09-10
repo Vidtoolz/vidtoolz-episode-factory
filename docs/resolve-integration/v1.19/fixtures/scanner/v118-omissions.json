@@ -1,0 +1,248 @@
+{
+  "restricted_model_slots": 74,
+  "restricted_model_references": 261,
+  "authorizing_array_omissions": [
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[0]",
+      "function": "callable_method_set",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[6]",
+      "function": "evidence_set_add_bundle_verification",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[7]",
+      "function": "evidence_set_add_launch_recipe",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[8]",
+      "function": "evidence_set_add_provisioning",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[9]",
+      "function": "evidence_set_create",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[10]",
+      "function": "evidence_set_derive_attachment_state",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[11]",
+      "function": "evidence_set_mark_prepared",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[12]",
+      "function": "evidence_snapshot_digest",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[14]",
+      "function": "governed_provenance_errors",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[15]",
+      "function": "governed_structure_errors",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[16]",
+      "function": "ingest_raw_frame",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[17]",
+      "function": "internal_schema_errors",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[19]",
+      "function": "location_errors",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[20]",
+      "function": "location_receipt",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[21]",
+      "function": "may_write",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[22]",
+      "function": "primitive_status",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[23]",
+      "function": "principal_errors",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[24]",
+      "function": "promotion_state",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[25]",
+      "function": "resolve_stored_chain",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[26]",
+      "function": "schema_registry",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[27]",
+      "function": "session_manifest_errors",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "authorizing.[28]",
+      "function": "trusted_capture_shim",
+      "role": "AUTHORIZING_DESIGNATION",
+      "present": false
+    }
+  ],
+  "decision_key_omissions": [
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.derive_attachment_state",
+      "function": "derive_attachment_state",
+      "authority_class": "diagnostic_non_authorizing",
+      "inventory_occurrences": 0
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.derive_attachment_state_authorizing",
+      "function": "derive_attachment_state_authorizing",
+      "authority_class": "authorizing",
+      "inventory_occurrences": 0
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.derive_attachment_state_for_session",
+      "function": "derive_attachment_state_for_session",
+      "authority_class": "authorizing",
+      "inventory_occurrences": 0
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.evaluate_eligibility",
+      "function": "evaluate_eligibility",
+      "authority_class": "diagnostic_non_authorizing",
+      "inventory_occurrences": 0
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.evaluate_eligibility_authorizing",
+      "function": "evaluate_eligibility_authorizing",
+      "authority_class": "authorizing",
+      "inventory_occurrences": 0
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.evaluate_eligibility_for_session",
+      "function": "evaluate_eligibility_for_session",
+      "authority_class": "authorizing",
+      "inventory_occurrences": 0
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.validate_transaction_set",
+      "function": "validate_transaction_set",
+      "authority_class": "provisional_until_m3_non_authorizing",
+      "inventory_occurrences": 0
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.validate_transaction_set_authorizing",
+      "function": "validate_transaction_set_authorizing",
+      "authority_class": "authorizing",
+      "inventory_occurrences": 0
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.commit_eligibility",
+      "function": "commit_eligibility",
+      "authority_class": "provisional_until_m3_non_authorizing",
+      "inventory_occurrences": 0
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.commit_eligibility_authorizing",
+      "function": "commit_eligibility_authorizing",
+      "authority_class": "authorizing",
+      "inventory_occurrences": 0
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.load_governed_evidence_set",
+      "function": "load_governed_evidence_set",
+      "authority_class": "authorizing",
+      "inventory_occurrences": 0
+    },
+    {
+      "artifact": "AUTHORITY-FUNCTION-CLASSES.json",
+      "location": "decision_functions.governed_consume",
+      "function": "governed_consume",
+      "authority_class": "authorizing",
+      "inventory_occurrences": 0
+    }
+  ],
+  "minimum_authorizing_slots": 104,
+  "minimum_reference_count": 295
+}

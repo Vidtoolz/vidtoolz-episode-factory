@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveTransactionJournal.v1",
+  "title": "Transaction journal record (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "authority_version",
+    "guard_digest",
+    "intent",
+    "op",
+    "operation_set_digest",
+    "plan_digest",
+    "previous_record_sha256",
+    "readback_guard_digest",
+    "readback_snapshot_sha256",
+    "recorded_at",
+    "recovery_of_transaction_id",
+    "schema",
+    "sequence",
+    "session_id",
+    "state",
+    "target_ref",
+    "transaction_id"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveTransactionJournal.v1"
+    },
+    "transaction_id": {
+      "type": "string"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "previous_record_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "state": {
+      "enum": [
+        "ABORTED",
+        "APPLIED",
+        "CHECKPOINTED",
+        "COMMITTED",
+        "COMMITTED_RECOVERED",
+        "CONFLICT",
+        "LEASED",
+        "NOT_APPLIED",
+        "OP_FAILED",
+        "OP_STARTED",
+        "ORPHANED_AMBIGUOUS",
+        "ORPHANED_PARTIAL",
+        "PREFLIGHT_OK",
+        "PREPARED",
+        "PUBLISHED",
+        "READBACK_S1",
+        "RECOVERY_RECONCILING",
+        "SAVED",
+        "VERIFIED"
+      ]
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "operation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "intent": {
+      "type": "object"
+    },
+    "result": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "readback_payload_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "checkpoint": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "recorded_at": {
+      "type": "string"
+    },
+    "target_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_unique_id",
+        "timeline_unique_id",
+        "library_instance_uuid"
+      ],
+      "properties": {
+        "project_unique_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeline_unique_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "library_instance_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      }
+    },
+    "guard_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authority_version": {
+      "const": "1.19.0"
+    },
+    "recovery_of_transaction_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "operation_set_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "op": {
+      "anyOf": [
+        {
+          "enum": [
+            "APPEND",
+            "CHECKPOINT_DUPLICATE",
+            "CHECKPOINT_EXPORT_DRT",
+            "DELETE",
+            "DISABLE",
+            "ENABLE",
+            "IMPORT_MEDIA",
+            "SAVE_PROJECT",
+            "SET_PROPERTIES",
+            "SET_TAKE",
+            "UPSERT_MARKER"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "readback_snapshot_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "readback_guard_digest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "$comment": "Append-only; contiguous sequence from 0; single transaction_id, plan_digest and operation_set_digest; constant target_ref; constant guard_digest except across RECOVERY_RECONCILING; hash chain; transitions per JOURNAL_TRANSITIONS (operation lifecycle OP_STARTED -> APPLIED | OP_FAILED); OPERATION MEMBERSHIP: OP_STARTED/APPLIED/OP_FAILED name an operation_id of the bound plan with matching op, each started/applied at most once, APPLIED only after its OP_STARTED, READBACK_S1 only after every plan operation is APPLIED; non-operation records carry null operation_id/op."
+}

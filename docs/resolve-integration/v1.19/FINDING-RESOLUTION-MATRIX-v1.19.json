@@ -1,0 +1,96 @@
+{
+  "schema": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
+  "authority_version": "1.19.0",
+  "adjudication": "IMPLEMENTATION AUTHOR candidate; independent review required.",
+  "law": "Each independently adjudicated finding is separately reproduced and tested.",
+  "operational_closure": "No live operational execution.",
+  "inherited_matrices": [
+    "FINDING-RESOLUTION-MATRIX-v1.18.json"
+  ],
+  "findings": [
+    {
+      "id": "V118-M1",
+      "severity": "MAJOR",
+      "codex_finding": "22 authorizing-array names and 12 decision-function keys omitted; completeness claim false",
+      "prior_defect": "22 authorizing-array names and 12 decision-function keys omitted; completeness claim false",
+      "correction": "Canonical successor source and semantic/scanner regressions; see tools/v119_defect_tests.py. Historical bundle preserved.",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v119-defect-regressions"
+      ]
+    },
+    {
+      "id": "V118-M2",
+      "severity": "MAJOR",
+      "codex_finding": "Correctly source-bound diagnostic annotation suppresses governs/controls authority predicates",
+      "prior_defect": "Correctly source-bound diagnostic annotation suppresses governs/controls authority predicates",
+      "correction": "Canonical successor source and semantic/scanner regressions; see tools/v119_defect_tests.py. Historical bundle preserved.",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v119-defect-regressions"
+      ]
+    },
+    {
+      "id": "V118-M3",
+      "severity": "MAJOR",
+      "codex_finding": "GetClipProperty assigned TimelineItem; pinned source assigns MediaPoolItem",
+      "prior_defect": "GetClipProperty assigned TimelineItem; pinned source assigns MediaPoolItem",
+      "correction": "Canonical successor source and semantic/scanner regressions; see tools/v119_defect_tests.py. Historical bundle preserved.",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v119-defect-regressions"
+      ]
+    },
+    {
+      "id": "V118-M4",
+      "severity": "MAJOR",
+      "codex_finding": "GetProjectLastModifiedTime wrong receiver, arguments and result type",
+      "prior_defect": "GetProjectLastModifiedTime wrong receiver, arguments and result type",
+      "correction": "Canonical successor source and semantic/scanner regressions; see tools/v119_defect_tests.py. Historical bundle preserved.",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v119-defect-regressions"
+      ]
+    },
+    {
+      "id": "V118-N1",
+      "severity": "MINOR",
+      "codex_finding": "Published signal precedence/own-clause law differs from implementation; unrelated predicate produces false positive",
+      "prior_defect": "Published signal precedence/own-clause law differs from implementation; unrelated predicate produces false positive",
+      "correction": "Canonical successor source and semantic/scanner regressions; see tools/v119_defect_tests.py. Historical bundle preserved.",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v119-defect-regressions"
+      ]
+    },
+    {
+      "id": "V118-N2",
+      "severity": "MINOR",
+      "codex_finding": "Historical statements assigned DIAGNOSTIC_DECLARATION; equivalent JSON rows classified historical",
+      "prior_defect": "Historical statements assigned DIAGNOSTIC_DECLARATION; equivalent JSON rows classified historical",
+      "correction": "Canonical successor source and semantic/scanner regressions; see tools/v119_defect_tests.py. Historical bundle preserved.",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v119-defect-regressions"
+      ]
+    },
+    {
+      "id": "V118-N3",
+      "severity": "MINOR",
+      "codex_finding": "Current evidence-binding prose retains 1.3.0 and 1.6.0 despite active 1.18",
+      "prior_defect": "Current evidence-binding prose retains 1.3.0 and 1.6.0 despite active 1.18",
+      "correction": "Canonical successor source and semantic/scanner regressions; see tools/v119_defect_tests.py. Historical bundle preserved.",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v119-defect-regressions"
+      ]
+    }
+  ]
+}

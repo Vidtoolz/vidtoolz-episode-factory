@@ -1,0 +1,62 @@
+{
+  "schema": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
+  "authority_version": "1.19.0",
+  "adjudication": "Codex final v1.8 adjudication: 1856/1856 supplied validation twice, ES-1 and ES-2 closed, all v1.7 regressions passing, with four remaining evidence-store integrity defects S19-1..S19-4",
+  "law": "each finding names the v1.8 defect, the v1.9 correction, at least one negative fixture, the layer the attack must fail at, and the validate_v1_19.py sections that prove it. validate_v1_19.py refuses to pass unless every named section exists and every check in it passes.",
+  "operational_closure": "the v1.7 evidence-store matrix (ES-1, ES-2) is retained as FINDING-RESOLUTION-MATRIX-v1.8.json and its corrections are re-run as v1.9 regressions; this file is the ACTIVE matrix.",
+  "inherited_matrices": [
+    "FINDING-RESOLUTION-MATRIX-v1.8.json",
+    "FINDING-RESOLUTION-MATRIX-v1.7.json"
+  ],
+  "findings": [
+    {
+      "id": "S19-1",
+      "severity": "BLOCKER",
+      "codex_finding": "Path confinement fails when the session root itself is a symlink: internal symlinks are rejected, but canonicalization can accept a symlinked session directory before the root trust boundary is established.",
+      "prior_defect": "v1.8 called os.path.realpath() on the configured root in EvidenceStore.__init__, create_session, open_session and _safe_join BEFORE any trust boundary existed. The symlink was resolved away and never seen, so a session could be created, finalized and verified through a symlinked evidence root (reproduced against the frozen v1.8 bundle).",
+      "correction": "RootBoundary establishes the trust boundary FIRST: lstat on the configured root with no resolution, refusing ROOT_SYMLINK_REFUSED for a symlink and ROOT_NOT_A_DIRECTORY otherwise, then lstat on the session directory entry itself (SESSION_SYMLINK_REFUSED). The boundary keeps the literal path, never a resolved one, and records the root's device and inode; every later operation re-checks them, so replacing the root between operations is ROOT_REPLACED. Reads use O_NOFOLLOW.",
+      "negative_fixture": "validate_v1_19.py section evidence-root-trust: symlinked evidence root and symlinked session root refused at create, open, finalize and verify; root replaced by a symlink and by another directory between operations; non-directory root.",
+      "expected_layer": "evidence store (root trust boundary)",
+      "validation_sections": [
+        "evidence-root-trust"
+      ]
+    },
+    {
+      "id": "S19-2",
+      "severity": "BLOCKER",
+      "codex_finding": "The finalized inventory verifies bytes, files and directories but does not fully reconcile semantic identity between session manifest, inventory, stored records, layer, logical identity, attempt identity and session identity. A renamed or cross-session directory can still validate.",
+      "prior_defect": "v1.8 reconciled paths, digests and byte counts only. Renaming a finalized session directory left verify() returning clean while the manifest still named the old session (reproduced). Nothing bound a record to its layer, its logical identity or its session.",
+      "correction": "A frozen session identity tuple (session id, probe id, authority version and manifest, store version, host/product/version/build, library, trusted shim, primitive spec, schema registry, directory basename) is digested into session_identity_sha256 and carried by the manifest, the inventory and the finalization marker. The session directory basename IS the session id (policy A) and the verifier recomputes it. Every record's storage name is its semantic key, recomputed from (session, layer, logical identity, content digest), and the inventory records layer, logical identity, attempt ids and keys, and record-internal session and probe ids, all reconciled at verification.",
+      "negative_fixture": "validate_v1_19.py sections evidence-session-identity and evidence-semantic-inventory: renamed session, cross-session copies of the whole session, the inventory alone, the marker alone, one record and the manifest; wrong layer; wrong logical identity; tampered internal session id.",
+      "expected_layer": "evidence store (semantic reconciliation)",
+      "validation_sections": [
+        "evidence-session-identity",
+        "evidence-semantic-inventory"
+      ]
+    },
+    {
+      "id": "S19-3",
+      "severity": "BLOCKER",
+      "codex_finding": "Attempt IDs are effectively digest-bound rather than bound to the tuple of session, layer, logical identity, attempt ID and record bytes, permitting identity and layer collision cases.",
+      "prior_defect": "v1.8 kept one marker per attempt id whose content was only a digest. Reusing an attempt id in another layer with the same bytes was accepted and produced a SECOND distinct record rather than being idempotent or refused (reproduced).",
+      "correction": "The canonical attempt key is the tuple (session_id, layer, logical_identity, attempt_id), bound to the record bytes. The marker carries the whole tuple, so reuse under a different layer is ATTEMPT_ID_CROSS_LAYER, under a different logical identity is ATTEMPT_ID_CROSS_IDENTITY, under a different session is SESSION_IDENTITY_MISMATCH, and the same tuple with different bytes is ATTEMPT_ID_REUSED. Only the identical tuple with identical bytes is idempotent. A logical identity is now required on every write. Attempt indexes are built from a list and duplicate tuple keys refuse before any map exists.",
+      "negative_fixture": "validate_v1_19.py section evidence-attempt-tuple: the full collision table plus RAW attempt reused in DERIVED, DERIVED reused in HUMAN_REVIEW, one digest under two logical identities, one record's bytes in two layers, one attempt id across two sessions, and duplicate attempt keys in an inventory.",
+      "expected_layer": "evidence store (attempt identity)",
+      "validation_sections": [
+        "evidence-attempt-tuple"
+      ]
+    },
+    {
+      "id": "S19-4",
+      "severity": "MAJOR",
+      "codex_finding": "Direct chmod or permission mutation after finalization is not detected. The store need not prevent hostile filesystem tampering, but verification must detect all frozen metadata that authority claims to preserve.",
+      "prior_defect": "v1.8 recorded no filesystem metadata in the inventory, so chmod of a record, a directory, the inventory or the finalization marker after finalization left verify() returning clean (reproduced).",
+      "correction": "Canonical modes are set explicitly with chmod after creation rather than left to the umask (directories 0o700, records 0o400, attempt markers 0o400, session manifest 0o444, inventory 0o444, finalization marker 0o444, journal 0o600). File type and permission mode are recorded for every governed file and directory and reconciled at verification as MODE_MISMATCH. Only POSIX type and permission bits are frozen: no inode, no timestamps, no owner.",
+      "negative_fixture": "validate_v1_19.py section evidence-mode-authority: chmod of a record, a layer directory, the session manifest, the inventory and the finalization marker; a regular file replaced by another filesystem type.",
+      "expected_layer": "evidence store (metadata authority, POSIX)",
+      "validation_sections": [
+        "evidence-mode-authority"
+      ]
+    }
+  ]
+}

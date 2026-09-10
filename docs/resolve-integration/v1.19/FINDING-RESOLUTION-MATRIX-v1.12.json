@@ -1,0 +1,70 @@
+{
+  "schema": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
+  "authority_version": "1.19.0",
+  "adjudication": "Architectural adjudication of the failed A2 repair under v1.11: AUTHORITY_UNDERSPECIFIED on the evidence-set container and write axis. Derivation correctness and record-form specification were both COMPLETE and demonstrated (17/17 positive and negative canonical record-form tests); the failure was operational authority completeness.",
+  "law": "each finding names the v1.11 gap, the v1.12 correction, at least one negative fixture, the layer the attack must fail at, and the validate_v1_19.py sections that prove it. validate_v1_19.py refuses to pass unless every named section exists and every check in it passes.",
+  "operational_closure": "the v1.10 evidence-store matrix (F110-A..F110-D) is retained as FINDING-RESOLUTION-MATRIX-v1.11.json and its corrections are re-run as v1.13 regressions; this file is HISTORICAL under v1.13, whose ACTIVE matrix is FINDING-RESOLUTION-MATRIX-v1.13.json. v1.12 changes NO Store.v5 semantics, no Boundary.v1 or Inventory.v4 law, no marker cardinality, no mode law, no content addressing, no cache, no schema-registry architecture, no trusted shim, no strict raw ingestion, no exact stored chain, no H0, no commit authority, no precedence and no M0B/M0C/M0D phase design. The only derivation change is the additive BUNDLE_VERIFICATION binding of V112-4, and every v1.11 positive and negative attachment case is re-run unchanged.",
+  "inherited_matrices": [
+    "FINDING-RESOLUTION-MATRIX-v1.11.json",
+    "FINDING-RESOLUTION-MATRIX-v1.10.json",
+    "FINDING-RESOLUTION-MATRIX-v1.9.json",
+    "FINDING-RESOLUTION-MATRIX-v1.8.json",
+    "FINDING-RESOLUTION-MATRIX-v1.7.json"
+  ],
+  "findings": [
+    {
+      "id": "V112-1",
+      "severity": "BLOCKER (AUTHORITY_UNDERSPECIFIED)",
+      "codex_finding": "v1.11 froze the resolveEvidenceSet schema, the record_id law, make_record(), envelope validation, all three record shapes and the attachment derivation - and proved them correct - but froze no governed persistence location for the evidence-set document, no writer, no permission law and no production constructor. ATTACHMENT_READY was therefore reachable only from fixtures.",
+      "prior_defect": "Reproduced twice operationally: two A2 repair cycles failed the same way, writing Store.v5 session objects where registered evidence-set records were required, because an implementer had to invent the container mapping. The only reference record constructor was tools/fixture_evidence.py, which FREEZE-MANIFEST.json labels 'TOOL: mints fixture evidence ... never an authority', and make_record/record_id were absent from AUTHORITY_SURFACE entirely.",
+      "correction": "ONE normative topology: QUALIFICATION_EVIDENCE_ROOT/attachment/<current_session_id>/{EVIDENCE-SET.json, WORKFLOW.json, LOCK}, derived from the session id alone. Directory 0700, document 0600 while writable and 0400 once VERIFIED. Every write is an atomic sibling-temp + fsync + os.replace under an O_EXCL writer lock recording the holder's principal and pid. WORKFLOW.json records governed_root and session_id, and loading refuses SET_LOCATION_MISMATCH when the derived path is not where the document was found, so a copied or moved document is not authority. A session id must be a safe basename, so the path law cannot be escaped. The two container models are deliberately NOT merged: this module never creates, opens, finalizes or reads a Store.v5 session, and current_session_id remains a LABEL naming the Resolve session under evaluation.",
+      "negative_fixture": "validate_v1_19.py section workflow-persistence: forbidden-location and absoluteness assertions, seven path-escape session ids, a copied document refused SET_LOCATION_MISMATCH, a held lock refusing a second writer LOCK_HELD, lock release, SET_EXISTS and SET_NOT_FOUND.",
+      "expected_layer": "pre-M0A workflow (governed persistence)",
+      "validation_sections": [
+        "workflow-persistence",
+        "workflow-static"
+      ]
+    },
+    {
+      "id": "V112-2",
+      "severity": "BLOCKER (AUTHORITY_UNDERSPECIFIED)",
+      "codex_finding": "The evidence-set document had no ACTIVE/finalized lifecycle, so nothing sequenced the preparer against the verifier and nothing prevented a stale or post-verification write.",
+      "prior_defect": "v1.11 had no state at all on this document. A verifier could only attest to inputs that remained editable, and the failed repair imported the Store.v5 finalization law into a place it does not apply - which is why a FINALIZED store session was mistaken for a blocker on BUNDLE_VERIFICATION.",
+      "correction": "OPEN -> PREPARED -> VERIFIED, with writes granted by (state, role) and VERIFIED granting nothing to any role, so there is no append-after-finalization path and no successor-document mechanism is needed. mark_prepared() requires exactly one PROVISIONING_RECORD and one LAUNCH_RECIPE and seals prepared_content_sha256 over both record ids; add_bundle_verification() seals evidence_set_sha256 over the whole document and re-checks it on every load. The governed derivation entry point additionally refuses a document whose evaluated_at is older than MAX_OBSERVATION_AGE_S or more than 60s in the future (SET_STALE). authority_lib's derivation, which has no concept of a governed document, is untouched by the staleness law.",
+      "negative_fixture": "validate_v1_19.py section workflow-lifecycle: the preparer refused every record type after PREPARED, PREPARED not re-enterable, mark_prepared without both records, no write of any kind after VERIFIED, second verification refused, sealed modes and sealed digest asserted; sections workflow-e2e-negative stale document, future document, tamper-after-verification for both preparer records.",
+      "expected_layer": "pre-M0A workflow (document lifecycle)",
+      "validation_sections": [
+        "workflow-lifecycle",
+        "workflow-e2e-negative"
+      ]
+    },
+    {
+      "id": "V112-3",
+      "severity": "BLOCKER (AUTHORITY_UNDERSPECIFIED)",
+      "codex_finding": "Nobody was designated to author any record, and verifier independence rested on `verifier != prepared_by` - a lexical inequality between two self-declared free-text strings that one actor could satisfy alone.",
+      "prior_defect": "The v1.11 threat model documented this as a process mitigation rather than a mechanism, which was honest but left the operational role separation unenforceable: any non-empty string differing from prepared_by satisfied the gate, and no tool owned the write.",
+      "correction": "A frozen principal registry of role-bound labels '<ROLE>:<actor>' (PRINCIPALS.json), with no ACTOR permitted in two roles (role_separation_errors asserted empty). WRITE_GRANTS gives the PREPARER exactly LAUNCH_RECIPE / PROVISIONING_RECORD / READ_ONLY_JOURNAL, the VERIFIER exactly BUNDLE_VERIFICATION and the APPROVER none. Every writing entry point stamps the principal for the ONE role it implements and routes through a single _authorize choke point, so a preparer cannot author a bundle verification and a verifier cannot author a preparer record. The derivation now requires both principals to be registered under exactly their role and to be DIFFERENT ACTORS. Envelope fields are derived from the target contract, the active authority, the provisioning record and the document; a caller may supply only sequence and captured_at and is refused FORBIDDEN_ENVELOPE_INPUT otherwise. HONESTY: a principal is an operational label, not an authenticated identity - no key, no signature, no certificate - and a human who runs both tools is still one human (THREAT-MODEL.md).",
+      "negative_fixture": "validate_v1_19.py section workflow-principals: seven invalid principals refused PRINCIPAL_INVALID, a PREPARER refused BUNDLE_VERIFICATION, a VERIFIER refused every preparer entry point, role separation asserted, frozen grants asserted; section workflow-e2e-negative unauthorized verifier, unregistered verifier principal, same-actor principals, preparer self-verification; the ready-self-verified-bundle fixture now collapses BOTH the free-text pair and the registered principals to the preparer.",
+      "expected_layer": "pre-M0A workflow (principal and write-permission law)",
+      "validation_sections": [
+        "workflow-principals",
+        "workflow-e2e-negative"
+      ]
+    },
+    {
+      "id": "V112-4",
+      "severity": "BLOCKER (AUTHORITY_UNDERSPECIFIED)",
+      "codex_finding": "No production law permitted any actor or workflow to author a BUNDLE_VERIFICATION after another actor prepared the A2 evidence, and no positive ATTACHMENT_READY state was reachable without fixture synthesis. Fixture/runtime parity was false.",
+      "prior_defect": "Classified NO_WRITE_WORKFLOW_IS_FROZEN in the A2 canonical-workflow adjudication. The record form was fully specified and demonstrably correct, but nothing said who could write it, where, or in what order - the single reason A2 could not lawfully reach ATTACHMENT_READY.",
+      "correction": "tools/a2_verify.py is the ONE production path that authors a BUNDLE_VERIFICATION, named A2V and governed as a DISTINCT human authorization (not A2, not A1, not M0B). It requires a registered VERIFIER principal of a different actor than the preparer and a document in PREPARED. Everything the record asserts is computed by the verifier itself: the manifest digest from this bundle's own FREEZE-MANIFEST.json, the nine target-contract pinned file digests hashed from disk, the exact provisioning and launch record ids read from the document, and the preparer principal read from the workflow transitions. add_bundle_verification takes NO caller-supplied result, principal-pair, record ids or digest map. The record gains verification_result (only PASS satisfies the gate; a FAIL record is written for audit and refused), verifier_principal, preparer_principal, verified_provisioning_id, verified_launch_recipe_id and pinned_file_digests, and derive_attachment_state binds all of them - including that the digest map equals the contract's own pinned set and that the named launch recipe is the one that resolves for the session. The v1.11 body fields are retained verbatim. The evidence-set schema id moves to vidtoolz.resolveEvidenceSet.v1.12 because its accepted instance set changed; the envelope law, the record_id law and every other record shape are unchanged.",
+      "negative_fixture": "validate_v1_19.py section workflow-e2e-positive: the MANDATORY end-to-end runtime path using only production tools derives ATTACHMENT_READY, plus the same path driven through both CLIs; section workflow-e2e-negative: 28 cases, none of which may derive ATTACHMENT_READY; section workflow-parity: the production record field sets are asserted identical to the fixture field sets for all four record types, so no positive state is reachable from a shape production cannot build.",
+      "expected_layer": "pre-M0A workflow (BUNDLE_VERIFICATION write authority)",
+      "validation_sections": [
+        "workflow-e2e-positive",
+        "workflow-e2e-negative",
+        "workflow-parity",
+        "workflow-static"
+      ]
+    }
+  ]
+}
