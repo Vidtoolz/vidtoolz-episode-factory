@@ -1,0 +1,368 @@
+{
+  "fixture": "snapshot-m0-complete-claimed-nothing-qualified",
+  "layer_expected_failure": "snapshot",
+  "schema": "resolveSnapshot",
+  "check": "semantic_snapshot",
+  "expect_error_contains": "mandatory domains",
+  "document": {
+    "schema": "vidtoolz.resolveSnapshot.v1.10",
+    "collector_version": "0.0.0-fixture",
+    "canonicalization_version": "1.5",
+    "target_epoch": "epoch-fixture-1",
+    "resolve_build": "21.1.0.0014",
+    "library": {
+      "db_type": "Disk",
+      "db_name": "VIDTOOLZ Resolve Qualification v1",
+      "instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca"
+    },
+    "project": {
+      "unique_id": null,
+      "name": null,
+      "last_modified_time": null,
+      "field_status": {
+        "unique_id": "UNAVAILABLE",
+        "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+        "name": "UNAVAILABLE",
+        "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+        "last_modified_time": "UNAVAILABLE",
+        "last_modified_time_reason": "last_modified_time: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+      }
+    },
+    "collection": {
+      "started_at": "2026-09-08T11:50:00Z",
+      "ended_at": "2026-09-08T11:50:01Z",
+      "generation": 1,
+      "stable_pair": true,
+      "session_id": "sess-2026-09-08-0001",
+      "method_provenance": {
+        "Folder.GetUniqueId": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetClipEnabled": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetClipProperty": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetCurrentDatabase": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetCurrentProject": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetCurrentTimeline": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetDuration": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetDuration(True)": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetEnd": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetEnd(True)": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetEndFrame": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetIsTrackEnabled": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetIsTrackLocked": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetItemListInTrack": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetLeftOffset(True)": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetMarkerByCustomData": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetMarkers": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetMediaPoolItem": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetProductName": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetProjectLastModifiedTime": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetProjectListInCurrentFolder": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetProjectManager": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetRightOffset(True)": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetSourceEndFrame": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetSourceEndTime": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetSourceStartFrame": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetSourceStartTime": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetStart": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetStart(True)": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetStartFrame": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetStartTimecode": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetTimelineByIndex": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetTimelineCount": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetTrackCount": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetTrackName": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "GetVersionString": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "MediaPoolItem.GetMediaId": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "MediaPoolItem.GetUniqueId": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "Project.GetName": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "Project.GetSettings": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "Project.GetUniqueId": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "Timeline.GetName": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "Timeline.GetSettings": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "Timeline.GetUniqueId": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "TimelineItem.GetName": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "TimelineItem.GetProperties": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        },
+        "TimelineItem.GetUniqueId": {
+          "observation_class": "NOT_CALLABLE",
+          "raw_capture_record_id": null,
+          "capability_matrix_sha256": null
+        }
+      }
+    },
+    "coverage": {
+      "profile": "MINIMAL_M0",
+      "complete": true,
+      "observed_domains": [
+        "connection",
+        "library"
+      ],
+      "unobservable_domains": [
+        "grades",
+        "fusion_graphs",
+        "caches",
+        "nested_timelines",
+        "keyframe_curves"
+      ],
+      "deferred_domains": [
+        "project",
+        "timeline",
+        "tracks",
+        "items",
+        "item_identity",
+        "item_source_bounds",
+        "markers",
+        "settings",
+        "track_locks",
+        "adapter_bin_media",
+        "item_properties",
+        "fades",
+        "speed",
+        "takes",
+        "linked_items",
+        "unowned_media_hashes"
+      ],
+      "incomplete_reasons": []
+    },
+    "policy": {
+      "target_contract_sha256": "841b34a51d787b0cecb375ecaf9b620baea70bda734c0f211241689c70e8912e",
+      "timebase_sha256": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+      "track_policy_sha256": "0c1996f8cb183e27f393eb53113871098e492e43bd49ec8c07e7d49b25f0caa7",
+      "capabilities_version": "1.18.0",
+      "capability_matrix_sha256": "47064da123409c54c03771214591c437b8bafbfbbd0e9d01e08b72c4bf0b9a20",
+      "collector_version": "0.0.0-fixture",
+      "canonicalization_version": "1.5"
+    },
+    "payload": {
+      "timeline": {
+        "unique_id": null,
+        "name": null,
+        "start_frame": null,
+        "start_timecode": null,
+        "fps": null,
+        "width": null,
+        "height": null,
+        "end_frame": null,
+        "is_current": null,
+        "duration_convention": "UNQUALIFIED",
+        "settings": null,
+        "field_status": {
+          "unique_id": "UNAVAILABLE",
+          "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "name": "UNAVAILABLE",
+          "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "start_frame": "UNAVAILABLE",
+          "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "end_frame": "UNAVAILABLE",
+          "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "start_timecode": "UNAVAILABLE",
+          "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "fps": "UNAVAILABLE",
+          "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "width": "UNAVAILABLE",
+          "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "height": "UNAVAILABLE",
+          "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "is_current": "UNAVAILABLE",
+          "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+          "settings": "UNAVAILABLE",
+          "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+        }
+      },
+      "tracks": [],
+      "markers": [],
+      "media_dependencies": [],
+      "observation_failures": []
+    },
+    "hash_domains": {
+      "payload": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "guard": "vidtoolz.resolveGuard.v3"
+    },
+    "payload_sha256": "7da0bdbd0271e5dd26db8433eead95b73809d9f3e3a950fad2bc31eecce437f6",
+    "guard_digest": "5d29111f0a2c41d3077750e116567e1ea0ade533f2defdb788b371eaf47b9724"
+  },
+  "capabilities": "CAPABILITIES.json",
+  "evidence_set": "attached"
+}

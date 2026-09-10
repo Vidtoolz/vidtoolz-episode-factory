@@ -1,0 +1,47 @@
+{
+  "role": "IMPLEMENTATION_AUTHOR",
+  "independent_approval": false,
+  "protected_v115": {
+    "FAIL": 0,
+    "PASS": 57
+  },
+  "families": {
+    "B1": {
+      "FAIL": 0,
+      "PASS": 17
+    },
+    "B2": {
+      "FAIL": 0,
+      "PASS": 9
+    },
+    "B3": {
+      "FAIL": 0,
+      "PASS": 4
+    },
+    "B4": {
+      "FAIL": 0,
+      "PASS": 9
+    },
+    "M1": {
+      "FAIL": 0,
+      "PASS": 13
+    },
+    "N1": {
+      "FAIL": 0,
+      "PASS": 2
+    },
+    "positive": {
+      "FAIL": 0,
+      "PASS": 2
+    },
+    "regression": {
+      "FAIL": 0,
+      "PASS": 1
+    }
+  },
+  "source_result_sha256": "16b3755b0f81b9f1266250b15bcfb79e9d0381b0753c2a8bcc4bba3c60496a2f",
+  "scanner_regression_corpus": 30,
+  "property_seed": 20261118,
+  "full_candidate_result": "See VALIDATION-REPORT.md; this record does not assert an unexecuted pass.",
+  "runtime_semantics": "Frozen; exact-byte tripwire on four runtime tools; authority_lib AST changes limited to version metadata and manifest lineage helper."
+}

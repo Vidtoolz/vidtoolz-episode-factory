@@ -1,0 +1,343 @@
+{
+  "schema": "vidtoolz.resolveAuthorReproduction.v1",
+  "role": "IMPLEMENTATION_AUTHOR",
+  "parent": "24ead748eec4bce46dc2e945d24ad403fc9472b3",
+  "five_slots": [
+    {
+      "artifact": "PERMISSIONS.json",
+      "location": "law",
+      "text": "PERMISSION DECLARATION (allowed:true) != AUTHORIZATION ELIGIBILITY. Eligibility is evaluated deterministically by authority_lib.evaluate_eligibility_authorizing(perms, request, read_primitives, capabilities, target_contract, GovernedEvidenceSet, active_authority) - or evaluate_eligibility_for_session(session_id, ...), which loads through load_governed_evidence_set itself. authority_lib.evaluate_eligibility(..., evidence_set, ...) is DIAGNOSTIC / NON_AUTHORIZING (v1.14 V113-B1) and must never be selected for an authority decision. Under the authorizing gate: attachment state, primitive qualification and every prerequisite are DERIVED from the frozen authorities plus envelope-bound, content-addressed evidence records of the CURRENT session bound to the ACTIVE reviewed manifest; record order never matters; contradictory evidence is CONFLICT; unknown or unlinked input fails closed",
+      "actual": [
+        {
+          "artifact": "PERMISSIONS.json",
+          "location": "law",
+          "reference": "authority_lib.evaluate_eligibility_authorizing",
+          "function": "evaluate_eligibility_authorizing",
+          "clause": "Eligibility is evaluated deterministically by authority_lib.evaluate_eligibility_authorizing(perms, request, read_primitives, capabilities, target_contract, GovernedEvidenceSet, active_authority) - or evaluate_eligibility_for_session(session_id, ...)",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        },
+        {
+          "artifact": "PERMISSIONS.json",
+          "location": "law",
+          "reference": "evaluate_eligibility_for_session",
+          "function": "evaluate_eligibility_for_session",
+          "clause": "Eligibility is evaluated deterministically by authority_lib.evaluate_eligibility_authorizing(perms, request, read_primitives, capabilities, target_contract, GovernedEvidenceSet, active_authority) - or evaluate_eligibility_for_session(session_id, ...)",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        },
+        {
+          "artifact": "PERMISSIONS.json",
+          "location": "law",
+          "reference": "load_governed_evidence_set",
+          "function": "load_governed_evidence_set",
+          "clause": "which loads through load_governed_evidence_set itself",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        },
+        {
+          "artifact": "PERMISSIONS.json",
+          "location": "law",
+          "reference": "authority_lib.evaluate_eligibility",
+          "function": "evaluate_eligibility",
+          "clause": "authority_lib.evaluate_eligibility(..., evidence_set, ...) is DIAGNOSTIC / NON_AUTHORIZING (v1.14 V113-B1) and must never be selected for an authority decision",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "absent": true
+    },
+    {
+      "artifact": "M0A-BINDING-VALUES.json",
+      "location": "values.verification_result_law",
+      "text": "only PASS satisfies the attachment gate; a FAIL record is written for audit and refused by the attachment derivation (#derive_attachment_state_authorizing on the authorizing path; the diagnostic #derive_attachment_state applies the same semantic rule)",
+      "actual": [
+        {
+          "artifact": "M0A-BINDING-VALUES.json",
+          "location": "values.verification_result_law",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "a FAIL record is written for audit and refused by the attachment derivation (#derive_attachment_state_authorizing on the authorizing path; the diagnostic #derive_attachment_state applies the same semantic rule)",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        },
+        {
+          "artifact": "M0A-BINDING-VALUES.json",
+          "location": "values.verification_result_law",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "a FAIL record is written for audit and refused by the attachment derivation (#derive_attachment_state_authorizing on the authorizing path; the diagnostic #derive_attachment_state applies the same semantic rule)",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "absent": true
+    },
+    {
+      "artifact": "M0A-BINDING-VALUES.json",
+      "location": "values.toctou_law",
+      "text": "a BUNDLE_VERIFICATION names the exact provisioning and launch record ids it verified; a record id is a content digest, so editing a verified preparer record breaks the binding and the attachment derivation refuses (#derive_attachment_state_authorizing on the authorizing path; the diagnostic #derive_attachment_state applies the same semantic rule)",
+      "actual": [
+        {
+          "artifact": "M0A-BINDING-VALUES.json",
+          "location": "values.toctou_law",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "so editing a verified preparer record breaks the binding and the attachment derivation refuses (#derive_attachment_state_authorizing on the authorizing path; the diagnostic #derive_attachment_state applies the same semantic rule)",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        },
+        {
+          "artifact": "M0A-BINDING-VALUES.json",
+          "location": "values.toctou_law",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "so editing a verified preparer record breaks the binding and the attachment derivation refuses (#derive_attachment_state_authorizing on the authorizing path; the diagnostic #derive_attachment_state applies the same semantic rule)",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "absent": true
+    },
+    {
+      "artifact": "FREEZE-MANIFEST.json",
+      "location": "files.[76].qualification_note",
+      "text": "declaration only; eligibility via the AUTHORIZING evaluate_eligibility_authorizing over a GovernedEvidenceSet and the active authority (v1.15: the bare-evidence evaluate_eligibility is DIAGNOSTIC / NON_AUTHORIZING)",
+      "actual": [
+        {
+          "artifact": "FREEZE-MANIFEST.json",
+          "location": "files.[76].qualification_note",
+          "reference": "evaluate_eligibility_authorizing",
+          "function": "evaluate_eligibility_authorizing",
+          "clause": "eligibility via the AUTHORIZING evaluate_eligibility_authorizing over a GovernedEvidenceSet and the active authority (v1.15: the bare-evidence evaluate_eligibility is DIAGNOSTIC / NON_AUTHORIZING)",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        },
+        {
+          "artifact": "FREEZE-MANIFEST.json",
+          "location": "files.[76].qualification_note",
+          "reference": "evaluate_eligibility",
+          "function": "evaluate_eligibility",
+          "clause": "eligibility via the AUTHORIZING evaluate_eligibility_authorizing over a GovernedEvidenceSet and the active authority (v1.15: the bare-evidence evaluate_eligibility is DIAGNOSTIC / NON_AUTHORIZING)",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "absent": true
+    },
+    {
+      "artifact": "FREEZE-MANIFEST.json",
+      "location": "rules.[4]",
+      "text": "mutation-capable schemas remain PROVISIONAL_UNTIL_M3; verification is derived from S0/S1 over the protected surface (verify_transaction) and never declared; commit_eligibility_authorizing -> validate_transaction_set_authorizing over a GovernedEvidenceSet is the ONLY authorizing commit path (v1.15 V114-B2; the bare-dict commit_eligibility/validate_transaction_set pair is PROVISIONAL_UNTIL_M3 and NON-AUTHORIZING, and every per-document helper is INTERNAL_NON_AUTHORIZING); capability meaning is DERIVED by the versioned reference parser from an immutable facts-only raw capture (never from a probe-written flag), the ACTIVE capability authority is the matrix's own content digest, a degraded H0 can never be a write precondition, and schema enforcement in the composed path is mandatory; no adapter mutation implementation exists; no Resolve write was executed; M0 has not begun",
+      "actual": [
+        {
+          "artifact": "FREEZE-MANIFEST.json",
+          "location": "rules.[4]",
+          "reference": "commit_eligibility_authorizing",
+          "function": "commit_eligibility_authorizing",
+          "clause": "commit_eligibility_authorizing -> validate_transaction_set_authorizing over a GovernedEvidenceSet is the ONLY authorizing commit path (v1.15 V114-B2; the bare-dict commit_eligibility/validate_transaction_set pair is PROVISIONAL_UNTIL_M3 and NON-AUTHORIZING, and every per-document helper is INTERNAL_NON_AUTHORIZING)",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        },
+        {
+          "artifact": "FREEZE-MANIFEST.json",
+          "location": "rules.[4]",
+          "reference": "validate_transaction_set_authorizing",
+          "function": "validate_transaction_set_authorizing",
+          "clause": "commit_eligibility_authorizing -> validate_transaction_set_authorizing over a GovernedEvidenceSet is the ONLY authorizing commit path (v1.15 V114-B2; the bare-dict commit_eligibility/validate_transaction_set pair is PROVISIONAL_UNTIL_M3 and NON-AUTHORIZING, and every per-document helper is INTERNAL_NON_AUTHORIZING)",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        },
+        {
+          "artifact": "FREEZE-MANIFEST.json",
+          "location": "rules.[4]",
+          "reference": "commit_eligibility",
+          "function": "commit_eligibility",
+          "clause": "commit_eligibility_authorizing -> validate_transaction_set_authorizing over a GovernedEvidenceSet is the ONLY authorizing commit path (v1.15 V114-B2; the bare-dict commit_eligibility/validate_transaction_set pair is PROVISIONAL_UNTIL_M3 and NON-AUTHORIZING, and every per-document helper is INTERNAL_NON_AUTHORIZING)",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "provisional_until_m3_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        },
+        {
+          "artifact": "FREEZE-MANIFEST.json",
+          "location": "rules.[4]",
+          "reference": "validate_transaction_set",
+          "function": "validate_transaction_set",
+          "clause": "commit_eligibility_authorizing -> validate_transaction_set_authorizing over a GovernedEvidenceSet is the ONLY authorizing commit path (v1.15 V114-B2; the bare-dict commit_eligibility/validate_transaction_set pair is PROVISIONAL_UNTIL_M3 and NON-AUTHORIZING, and every per-document helper is INTERNAL_NON_AUTHORIZING)",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "provisional_until_m3_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "absent": true
+    }
+  ],
+  "intake": {
+    "branch": "docs/resolve-authority-freeze-v1.17",
+    "head": "24ead748eec4bce46dc2e945d24ad403fc9472b3",
+    "parent": "a03923cd4b09e8e11d40e8cf13819f8df763063a",
+    "manifest": "5dff9c98f1086ea6a4edfab0073770597554ab338e276ed88125e94796eb91af",
+    "file_count": 551,
+    "manifest_errors": [],
+    "historical_changes": [],
+    "status": "",
+    "historical_manifest_pins": [
+      {
+        "version": "1.16.0",
+        "match": true
+      },
+      {
+        "version": "1.15.0",
+        "match": true
+      },
+      {
+        "version": "1.14.0",
+        "match": true
+      },
+      {
+        "version": "1.13.0",
+        "match": true
+      },
+      {
+        "version": "1.12.0",
+        "match": true
+      },
+      {
+        "version": "1.11.0",
+        "match": true
+      },
+      {
+        "version": "1.10.0",
+        "match": true
+      },
+      {
+        "version": "1.9.0",
+        "match": true
+      },
+      {
+        "version": "1.8.0",
+        "match": true
+      },
+      {
+        "version": "1.7.0",
+        "match": true
+      },
+      {
+        "version": "1.6.0",
+        "match": true
+      },
+      {
+        "version": "1.5.0",
+        "match": true
+      },
+      {
+        "version": "1.4.0",
+        "match": true
+      },
+      {
+        "version": "1.3.0",
+        "match": true
+      },
+      {
+        "version": "1.2.0",
+        "match": true
+      },
+      {
+        "version": "1.1.0",
+        "match": true
+      },
+      {
+        "version": "1.0.0",
+        "match": true
+      }
+    ],
+    "execution_state": "No execution-state change in pinned delta; only v1.17 bundle and DOC-AUTHORITY changed. No operational actions performed.",
+    "result": "FAIL",
+    "supersedes": "Initial intake assessment was provisional and is withdrawn after complete DOC-AUTHORITY/external-pin inspection.",
+    "failures": [
+      {
+        "id": "V117-I1",
+        "file": "docs/DOC-AUTHORITY.md",
+        "lines": [
+          23,
+          145,
+          149
+        ],
+        "reason": "Authority table and current-bundle explanatory note still designate v1.13 as current, conflicting with v1.17 registration."
+      },
+      {
+        "id": "V117-I1",
+        "file": "docs/resolve-integration/v1.17/FREEZE-MANIFEST.json",
+        "field": "external_pins.doc_authority",
+        "expected_sha256": "77764a5fa81a2dfbcbdaef890c2079cc6fcaa1ac9e08502d4531a1e8c6a2349b",
+        "actual_sha256": "144ccf740b34ed12aa805d8c82ca03e17aa4704f2584234365d79334f9242fcb",
+        "expected_bytes": 14232,
+        "actual_bytes": 14862,
+        "reason": "Pinned digest is exactly parent DOC-AUTHORITY, not candidate DOC-AUTHORITY; no v1.17 exception is documented."
+      }
+    ]
+  },
+  "preserved_misregistration_result": "2454/2454 passed\n",
+  "preserved_evidence_hashes": {
+    "FORENSIC-ADJUDICATION.md": "1c8328c44f7752cc52d50d253e6a5fed4219555a5151ab3bbf510907f40c0d49",
+    "INTAKE-AND-SCANNER-EXTRACTION.md": "36c0c2e1bfc306c2490ca3075d5e0bb581d01b89208f1e4e16d545d82db12989",
+    "candidate-attacks.json": "781cc7e3f5231ec9c9810ee001cdc178d982428fda683308ed7b4d6893e88b41",
+    "bound-prepared-analysis.json": "81dc15f925057a21309cd81062f5ae5f276c28d41470ccc01fc92b2bb0973883",
+    "mutation-registration.log": "1606231248e268ddfcd0b8d7c08554b42a83def0b78d46d2aebdc4cf6a3e29d4"
+  },
+  "prior_build_order_conclusion": "Recorded bytes prove stale parent-generation pin retention, not the exact editing command sequence. Existing builder hashes live DOC-AUTHORITY; finalization/build ordering or stale output retention is inferred."
+}

@@ -1,0 +1,568 @@
+{
+  "schema": "vidtoolz.resolveDocumentUniverse.v1",
+  "authority_version": "1.18.0",
+  "parent_manifest": "5dff9c98f1086ea6a4edfab0073770597554ab338e276ed88125e94796eb91af",
+  "law": "Parent registration plus explicit successor artifacts, independently compared against directory membership and current registration. An inherited normative document may not be silently demoted.",
+  "documents": [
+    {
+      "path": "ADJUDICATION-FREEZE-CONTRACT.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "AUTHOR-REGRESSION-RESULTS.json",
+      "status": "STILL_ACTIVE",
+      "role": "GENERATED_EVIDENCE"
+    },
+    {
+      "path": "AUTHORITY-ARCHITECTURE-ADJUDICATION-M0-M3.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "AUTHORITY-CACHING.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "AUTHORITY-DOCUMENT-UNIVERSE.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "AUTHORITY-FUNCTION-CLASSES.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "AUTHORITY-PRECEDENCE.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "AUTHORITY-PRECEDENCE.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "AUTHORITY-REFERENCE-METADATA.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "AUTHORITY-SLOT-INVENTORY.json",
+      "status": "STILL_ACTIVE",
+      "role": "GENERATED_EVIDENCE"
+    },
+    {
+      "path": "AUTHORIZATION-2026-09-08.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "CANARIES.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "CANARY-SOURCE-MANIFEST.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "CANONICALIZATION.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "CAPABILITIES.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "CAPTURE-SHIM.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "CHANGELOG-v1.1.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.10.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.11.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.12.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.13.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.14.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.15.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.16.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.17.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.18.md",
+      "status": "STILL_ACTIVE",
+      "role": "CORRECTION_RECORD"
+    },
+    {
+      "path": "CHANGELOG-v1.2.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.3.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.4.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.5.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.6.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.7.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.8.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CHANGELOG-v1.9.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "CLIENT-VERSION-INVENTORY.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "DOCTRINE.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "DRIFT-POLICY.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "ELIGIBILITY.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "EVIDENCE-ROOT.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "EVIDENCE-SET-WORKFLOW.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.10.json",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.10.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.11.json",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.11.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.12.json",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.12.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.13.json",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.13.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.14.json",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.14.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.15.json",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.15.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.16.json",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.16.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.17.json",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.17.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.18.json",
+      "status": "STILL_ACTIVE",
+      "role": "CORRECTION_RECORD"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.18.md",
+      "status": "STILL_ACTIVE",
+      "role": "CORRECTION_RECORD"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.2.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.3.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.4.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.5.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.6.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.7.json",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.7.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.8.json",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.8.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.9.json",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.9.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX.md",
+      "status": "HISTORICAL",
+      "role": "HISTORICAL_INPUT"
+    },
+    {
+      "path": "FREEZE-MANIFEST.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "GUARD-AUTHORITY.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "IDENTITY-BINDING.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "IDENTITY-EVIDENCE.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "INVENTORY-FIELD-PROVENANCE.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "M0-PHASES.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "M0-PROBE-CONTRACT.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "M0A-BINDING-VALUES.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "M0A-PROBE-COMPATIBILITY.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "M3-MATRIX.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "M3-PROBES.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "MILESTONE-MATRIX.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "MILESTONES.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "PERMISSIONS.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "PRIMITIVE-SPEC.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "PRINCIPALS.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "PROVISIONAL.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "QUARANTINE-MANIFEST.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "RAW-CAPTURE.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "READ-PRIMITIVES.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "README.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "REFERENCE-PARSER.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "RELEASE-AUTHORITY.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "REQUIRED-VALIDATION-CHECKS.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "REVIEW-MARKER-POLICY.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "REVIEW-REFREEZE.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "SCHEMA-REGISTRY.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "SCHEMA-REGISTRY.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "SCORECRAFT-EXTRACTION.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "SEMANTIC-VALIDATION.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "SNAPSHOT-COMPLETENESS.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "SNAPSHOT-CONCURRENCY-RECOVERY.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "STORED-CHAIN.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "TARGET-ATTACHMENT-GATE.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "TARGET-CONTRACT.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "THREAT-MODEL.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "TIMEBASE.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "TRANSPORT.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "TRUSTED-SHIM.json",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "TRUSTED-SHIM.md",
+      "status": "STILL_ACTIVE",
+      "role": "NORMATIVE_AUTHORITY"
+    },
+    {
+      "path": "V117-REPRODUCTION.json",
+      "status": "STILL_ACTIVE",
+      "role": "GENERATED_EVIDENCE"
+    },
+    {
+      "path": "VALIDATION-REPORT.md",
+      "status": "STILL_ACTIVE",
+      "role": "GENERATED_EVIDENCE"
+    }
+  ]
+}

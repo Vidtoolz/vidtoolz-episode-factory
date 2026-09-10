@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveEvidenceSetWorkflow.v1",
+  "title": "Evidence-set workflow state v1 (governed location, lifecycle, transitions)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority_version",
+    "manifest_sha256",
+    "session_id",
+    "governed_root",
+    "state",
+    "transitions",
+    "prepared_content_sha256",
+    "evidence_set_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveEvidenceSetWorkflow.v1"
+    },
+    "authority_version": {
+      "const": "1.18.0"
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "governed_root": {
+      "type": "string",
+      "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+      "minLength": 2
+    },
+    "state": {
+      "enum": [
+        "OPEN",
+        "PREPARED",
+        "VERIFIED"
+      ]
+    },
+    "transitions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "state",
+          "principal",
+          "at"
+        ],
+        "properties": {
+          "state": {
+            "enum": [
+              "OPEN",
+              "PREPARED",
+              "VERIFIED"
+            ]
+          },
+          "principal": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          },
+          "verification_result": {
+            "enum": [
+              "PASS",
+              "FAIL"
+            ]
+          },
+          "failed_checks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "prepared_content_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "evidence_set_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}
