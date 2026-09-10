@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveInventoryFieldProvenance.v1.11",
+  "title": "Boundary and inventory field provenance v1.11 (no normative field is self-asserted, and every classified field is actually compared)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority_version",
+    "law",
+    "sources",
+    "forbidden_source",
+    "fields",
+    "boundary_sources",
+    "boundary_field_set",
+    "boundary_fields",
+    "boundary_frozen_constants",
+    "boundary_digest_law",
+    "created_at_classification",
+    "created_at_law",
+    "inventory_field_set",
+    "finalization_field_set",
+    "field_set_law",
+    "total_bytes_scope",
+    "total_bytes_scope_law",
+    "public_authority_methods",
+    "public_non_authority_members",
+    "boundary_dominance_law",
+    "error_precedence",
+    "error_precedence_classes",
+    "error_precedence_law",
+    "marker_cardinality_law",
+    "verifier_binding"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveInventoryFieldProvenance.v1.11"
+    },
+    "authority_version": {
+      "const": "1.14.0"
+    },
+    "law": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_source": {
+      "const": "TRUSTED_FROM_INVENTORY_ITSELF"
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": [
+          "DERIVED_FROM_FILESYSTEM",
+          "DERIVED_FROM_RECORD_BYTES",
+          "DERIVED_FROM_SESSION_AUTHORITY",
+          "DERIVED_FROM_SCHEMA",
+          "FROZEN_CONSTANT",
+          "NON_NORMATIVE"
+        ]
+      }
+    },
+    "boundary_sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "boundary_field_set": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "boundary_fields": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": [
+          "DERIVED_FROM_FILESYSTEM",
+          "DERIVED_FROM_SESSION_AUTHORITY",
+          "FROZEN_CONSTANT",
+          "INFORMATIONAL_NON_AUTHORIZING"
+        ]
+      }
+    },
+    "boundary_frozen_constants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "boundary_digest_law": {
+      "type": "string"
+    },
+    "created_at_classification": {
+      "const": "INFORMATIONAL_NON_AUTHORIZING"
+    },
+    "created_at_law": {
+      "type": "string"
+    },
+    "inventory_field_set": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "finalization_field_set": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "field_set_law": {
+      "type": "string"
+    },
+    "total_bytes_scope": {
+      "const": "GOVERNED_ENTRIES_EXCLUDING_INVENTORY_AND_FINALIZATION_MARKER"
+    },
+    "total_bytes_scope_law": {
+      "type": "string"
+    },
+    "public_authority_methods": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "public_non_authority_members": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "boundary_dominance_law": {
+      "type": "string"
+    },
+    "error_precedence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "error_precedence_classes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "error_precedence_law": {
+      "type": "string"
+    },
+    "marker_cardinality_law": {
+      "type": "string"
+    },
+    "verifier_binding": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  }
+}

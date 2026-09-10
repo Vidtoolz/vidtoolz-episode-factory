@@ -32,7 +32,7 @@ beat hand-maintained prose.
 - `config/production-stages.json` — generated stage data (mirror of the canonical spec).
 - `docs/production-mode.md` — run-level production mode (DRAFT / REVIEW / PRODUCTION) and gate-7/8 semantics per mode.
 - `docs/draft-bespoke-successor-authority.md` — immutable current-Story Draft successor and registry-to-Directed-Draft assembly authority.
-- `docs/resolve-integration/v1.13/` — Resolve execution subsystem authority bundle, current version (v1.13 correction of the v1.12 governed-root defect V112-RP1; `docs/resolve-integration/v1.12/`, `v1.11/`, `v1.10/`, `v1.9/`, `v1.8/`, `v1.7/`, `v1.6/`, `v1.5/`, `v1.4/`, `v1.3/`, `v1.2/`, `v1.1/` and `v1/` are immutable history; `experiments/quarantine-2026-09-08/` holds the quarantined non-authoritative prototypes).
+- `docs/resolve-integration/v1.14/` — Resolve execution subsystem authority bundle, current version (v1.14 correction of the v1.13 authorizing location bypass V113-B1; `docs/resolve-integration/v1.13/`, `v1.12/`, `v1.11/`, `v1.10/`, `v1.9/`, `v1.8/`, `v1.7/`, `v1.6/`, `v1.5/`, `v1.4/`, `v1.3/`, `v1.2/`, `v1.1/` and `v1/` are immutable history; `experiments/quarantine-2026-09-08/` holds the quarantined non-authoritative prototypes).
 
 ## Resolve authority lineage (immutable history)
 
@@ -42,7 +42,8 @@ supersedes by reference only.
 
 | version | bundle | manifest sha256 | status |
 | --- | --- | --- | --- |
-| 1.13.0 | `docs/resolve-integration/v1.13/` | read `docs/resolve-integration/v1.13/FREEZE-MANIFEST.json` (self-identifying; not restated here, see the note below) | **CURRENT** — candidate for independent review, correction of the v1.12 governed-root defect V112-RP1 |
+| 1.14.0 | `docs/resolve-integration/v1.14/` | read `docs/resolve-integration/v1.14/FREEZE-MANIFEST.json` (self-identifying; not restated here, see the note below) | **CURRENT** — candidate for independent review, correction of the v1.13 authorizing location bypass V113-B1 |
+| 1.13.0 | `docs/resolve-integration/v1.13/` | `436e12c8616ea6704fef2dbd0e14517cf33092aec1a7ff064dd4b10fb3dad573` | historical — REJECTED: Hermes operational PASS, Codex 93/96 with one BLOCKER (V113-B1, authorizing location bypass: the core derivation and eligibility authorized a forbidden-location evidence set) and one MINOR |
 | 1.12.0 | `docs/resolve-integration/v1.12/` | `e5eace278a1b6130971a38f55ef207620cdc97d7b3872d11ce9ab8909e4014fb` | historical — REJECTED: Hermes operational PASS, Codex runtime-parity FAIL (V112-RP1, WORKFLOW_CONTRADICTORY); caller-selectable and symlinked evidence roots derived ATTACHMENT_READY |
 | 1.11.0 | `docs/resolve-integration/v1.11/` | `0c47f0cefdd63b971489a46274e3b782927f2c6ad26e4251de21860abc50c44e` | historical — F110-A … F110-D closed, both independent reviews PASS, merged; held on the pre-M0A workflow gap (AUTHORITY_UNDERSPECIFIED) |
 | 1.10.0 | `docs/resolve-integration/v1.10/` | `46491cee979dc59a306993de8cc66308884967dca46304168096f935939f6156` | historical — supplied suite 1911/1911 twice, deterministic; held on four release-relevant evidence-store findings |
@@ -57,12 +58,20 @@ supersedes by reference only.
 | 1.1.0 | `docs/resolve-integration/v1.1/` | `83d8a307098cdc18931f6f09de2ce782afa0bdef94ec8540c2a143910cd448c5` | historical |
 | 1.0.0 | `docs/resolve-integration/v1/` | `d9cd54780e0a123ae2045ac575bbc41638039ef3e878f1b608afbce3989a8821` | historical — first freeze |
 
-**v1.13 registration** (current):
+**v1.14 registration** (current):
+
+```
+branch    docs/resolve-authority-freeze-v1.14
+parent    65895c6dedceadff012a08c1bafcdf9e92b65221   (v1.13 branch HEAD, which is also its semantic commit)
+manifest  read docs/resolve-integration/v1.14/FREEZE-MANIFEST.json
+```
+
+**v1.13 registration** (historical, REJECTED):
 
 ```
 branch    docs/resolve-authority-freeze-v1.13
 parent    73150d00a72820b155caf357c412f46b8ec4a9ba   (v1.12 branch HEAD, which is also its semantic commit)
-manifest  read docs/resolve-integration/v1.13/FREEZE-MANIFEST.json
+manifest  436e12c8616ea6704fef2dbd0e14517cf33092aec1a7ff064dd4b10fb3dad573
 ```
 
 **v1.12 registration** (historical, REJECTED):

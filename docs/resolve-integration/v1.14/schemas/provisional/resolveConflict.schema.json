@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveConflict.v1",
+  "title": "Conflict / drift record (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "authority_effect",
+    "authority_version",
+    "code",
+    "next_action_non_mutating",
+    "object",
+    "plan_digest",
+    "policy",
+    "resolved",
+    "schema",
+    "transaction_id"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveConflict.v1"
+    },
+    "transaction_id": {
+      "type": "string"
+    },
+    "code": {
+      "enum": [
+        "TARGET_MISMATCH",
+        "LIBRARY_NOT_QUALIFIED",
+        "SESSION_NOT_EXCLUSIVE",
+        "LEASE_BUSY",
+        "CAPABILITY_MISMATCH",
+        "SNAPSHOT_UNSTABLE",
+        "SNAPSHOT_INCOMPLETE",
+        "SNAPSHOT_CONFLICT",
+        "AUTHORITY_CHANGED",
+        "TIMEBASE_MISMATCH",
+        "TIMEBASE_UNRESOLVED",
+        "TIMEBASE_COLLAPSED_INTERVAL",
+        "IDENTITY_AMBIGUOUS",
+        "IDENTITY_EPOCH_CHANGED",
+        "UNOWNED_CONTENT",
+        "MARKER_COLLISION",
+        "MEDIA_CHANGED",
+        "MEDIA_UNAVAILABLE",
+        "UNOBSERVABLE_STATE",
+        "EXPECTED_DELTA_MISSING",
+        "UNEXPECTED_DELTA",
+        "SAVE_UNVERIFIED",
+        "MUTATION_OUTCOME_UNKNOWN",
+        "RECOVERY_REQUIRED",
+        "JOURNAL_CORRUPT"
+      ]
+    },
+    "drift_class": {
+      "enum": [
+        "NO_DRIFT",
+        "EXPECTED_HUMAN_OVERRIDE",
+        "STALE_ASSET",
+        "MISSING_ASSET",
+        "POSITION_DRIFT",
+        "DURATION_DRIFT",
+        "UNKNOWN_TIMELINE_ITEM",
+        "POLICY_VIOLATION"
+      ]
+    },
+    "object": {
+      "type": "object"
+    },
+    "expected": {},
+    "observed": {},
+    "policy": {
+      "enum": [
+        "PRESERVE",
+        "PROPOSE_REVIEW_NOTE",
+        "REQUEST_RECONCILIATION",
+        "STOP"
+      ]
+    },
+    "next_action_non_mutating": {
+      "type": "string"
+    },
+    "authority_effect": {
+      "const": "NONE_UNTIL_HUMAN_ADJUDICATION"
+    },
+    "plan_digest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "resolved": {
+      "type": "boolean"
+    },
+    "authority_version": {
+      "const": "1.14.0"
+    }
+  },
+  "$comment": "PROVISIONAL_UNTIL_M3. The former IMPORT_OVERRIDE is renamed PROPOSE_REVIEW_NOTE: a Resolve observation may only produce an unsubmitted, non-authoritative draftReview.v2 proposal. STALE_ASSET is evaluated against the Episode Factory canonical head, never against the newest Resolve observation or any 'newer handoff' inferred from Resolve. v1.3: bound to plan_digest (null only for pre-plan attach conflicts) and transaction_id; resolved is a human adjudication flag, never set by the adapter. v1.3: bound to plan_digest (null only for pre-plan attach conflicts) and transaction_id; resolved is a human adjudication flag, never set by the adapter. v1.3: bound to plan_digest (null only for pre-plan attach conflicts) and transaction_id; resolved is a human adjudication flag, never set by the adapter. v1.3: bound to plan_digest (null only for pre-plan attach conflicts) and transaction_id; resolved is a human adjudication flag, never set by the adapter."
+}

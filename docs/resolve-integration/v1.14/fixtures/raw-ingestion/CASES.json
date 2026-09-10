@@ -1,0 +1,137 @@
+{
+  "schema": "vidtoolz.resolveRawIngestionCases.v1.10",
+  "authority_version": "1.14.0",
+  "law": "each case is the EXACT frame bytes of fixtures/raw-ingestion/<name>.frame. Replay it through authority_lib.ingest_raw_frame(open(path,'rb').read(), env, active, rp): the honest frame must ingest and produce a closing strict-parse receipt; every other case must raise RawIngestError with exactly the expected_code. Several files are deliberately not valid UTF-8 or not valid JSON, which is why they are bytes on disk and not JSON documents.",
+  "codes": [
+    "NOT_BYTES",
+    "FRAME_TOO_LARGE",
+    "EMPTY_FRAME",
+    "MALFORMED_UTF8",
+    "BOM_PRESENT",
+    "CONTROL_CHARACTER",
+    "DUPLICATE_JSON_KEY",
+    "INVALID_NUMBER_SYNTAX",
+    "NON_FINITE_NUMBER",
+    "TRAILING_BYTES",
+    "MULTIPLE_JSON_VALUES",
+    "NOT_A_JSON_OBJECT",
+    "UNKNOWN_SCHEMA_VERSION",
+    "STRUCTURE_INVALID",
+    "DIGEST_MISMATCH",
+    "PARSED_OBJECT_NOT_AUTHORITY"
+  ],
+  "cases": [
+    {
+      "name": "honest-frame",
+      "file": "fixtures/raw-ingestion/honest-frame.frame",
+      "byte_count": 1271,
+      "sha256": "da0219d7b449dee6e9ef27b2bb714e7464ee2cc4555e5de4f08f66e43f90e1aa",
+      "expected_code": null,
+      "why": "the canonical frame bytes of an honest capture; ingests to a record whose digest and strict-parse receipt both close"
+    },
+    {
+      "name": "duplicate-json-key",
+      "file": "fixtures/raw-ingestion/duplicate-json-key.frame",
+      "byte_count": 1299,
+      "sha256": "1a84ed5f254a578aaeb1eba93a849117814e2d0a367bb1e9dbaf6f6943260862",
+      "expected_code": "DUPLICATE_JSON_KEY",
+      "why": "a second 'method' key; the standard parser would silently keep this one"
+    },
+    {
+      "name": "malformed-utf8",
+      "file": "fixtures/raw-ingestion/malformed-utf8.frame",
+      "byte_count": 1273,
+      "sha256": "7b2827421d7e09aa22e8f12cd2206f4a9511ff417ee271a77a7c15f96193acba",
+      "expected_code": "MALFORMED_UTF8",
+      "why": "two bytes that are not valid UTF-8"
+    },
+    {
+      "name": "trailing-bytes",
+      "file": "fixtures/raw-ingestion/trailing-bytes.frame",
+      "byte_count": 1280,
+      "sha256": "3f4bcc71d67e2a0f66f98a99c53858d4c5a29b68fef59f87cdc3bea5ef7d3ca9",
+      "expected_code": "TRAILING_BYTES",
+      "why": "non-whitespace after the object"
+    },
+    {
+      "name": "multiple-json-values",
+      "file": "fixtures/raw-ingestion/multiple-json-values.frame",
+      "byte_count": 1279,
+      "sha256": "009a222ed79e45bd11fdd6b3ae4eda6bd6f407217f67abd47d7c78c275c2871e",
+      "expected_code": "MULTIPLE_JSON_VALUES",
+      "why": "a second complete JSON value in one frame"
+    },
+    {
+      "name": "invalid-number-syntax",
+      "file": "fixtures/raw-ingestion/invalid-number-syntax.frame",
+      "byte_count": 1272,
+      "sha256": "e2697cda8dc58da779b0cdf0445fd839a281640f453aa0409b43bfd3a7acc83e",
+      "expected_code": "STRUCTURE_INVALID",
+      "why": "a leading zero in a number"
+    },
+    {
+      "name": "non-finite-number",
+      "file": "fixtures/raw-ingestion/non-finite-number.frame",
+      "byte_count": 1272,
+      "sha256": "039fb61eb41b326b9ee3813ed717d8fa2b96c59434a274169c6058fe118d0955",
+      "expected_code": "NON_FINITE_NUMBER",
+      "why": "the non-finite constant NaN, which the standard parser accepts by default"
+    },
+    {
+      "name": "control-character",
+      "file": "fixtures/raw-ingestion/control-character.frame",
+      "byte_count": 1272,
+      "sha256": "0fd3e34a629748e2bdb2b40a735199e113f6488cc938c026d657ba907cdd9dd3",
+      "expected_code": "CONTROL_CHARACTER",
+      "why": "a raw control character inside a key"
+    },
+    {
+      "name": "oversized-frame",
+      "file": "fixtures/raw-ingestion/oversized-frame.frame",
+      "byte_count": 1048608,
+      "sha256": "243eb9f9ff199b683950b19063165d8d19732e9c71392e72a33db8183c9a9222",
+      "expected_code": "FRAME_TOO_LARGE",
+      "why": "a frame larger than RAW_FRAME_MAX_BYTES"
+    },
+    {
+      "name": "byte-order-mark",
+      "file": "fixtures/raw-ingestion/byte-order-mark.frame",
+      "byte_count": 1274,
+      "sha256": "f0a807c3aeac848c1ecb251387234f3e28aaa9329979ea8e27359c88dca8e937",
+      "expected_code": "BOM_PRESENT",
+      "why": "a UTF-8 byte order mark before the object"
+    },
+    {
+      "name": "unknown-schema-version",
+      "file": "fixtures/raw-ingestion/unknown-schema-version.frame",
+      "byte_count": 1271,
+      "sha256": "6346b84c16a1c3e54e6fa97cf2199aca83764cd6dbd62b38bfa1e3316433ec22",
+      "expected_code": "UNKNOWN_SCHEMA_VERSION",
+      "why": "a raw frame schema this authority version does not implement"
+    },
+    {
+      "name": "top-level-array",
+      "file": "fixtures/raw-ingestion/top-level-array.frame",
+      "byte_count": 1273,
+      "sha256": "40773a4576d00c81125893c4d828fa233976d077896d3a1f7d61280e6023cd97",
+      "expected_code": "NOT_A_JSON_OBJECT",
+      "why": "a top-level array instead of an object"
+    },
+    {
+      "name": "empty-frame",
+      "file": "fixtures/raw-ingestion/empty-frame.frame",
+      "byte_count": 4,
+      "sha256": "2106c36011520fe73876d45bfb9ef8bf7b2e9f4362096a320376d8ee9b27ef12",
+      "expected_code": "EMPTY_FRAME",
+      "why": "whitespace only"
+    },
+    {
+      "name": "digest-mismatch",
+      "file": "fixtures/raw-ingestion/digest-mismatch.frame",
+      "byte_count": 1254,
+      "sha256": "84497b0a1227feb5c1c5403c7f706550fb073a9a2c2974639c0bb9b9e32fe1de",
+      "expected_code": "DIGEST_MISMATCH",
+      "why": "content edited after raw_digest was computed"
+    }
+  ]
+}

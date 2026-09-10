@@ -1,0 +1,2442 @@
+{
+  "schema": "vidtoolz.resolveEligibilityFixtures.v1.10",
+  "law": "expect_eligible/expect_attachment_state are computed by evaluate_eligibility/derive_attachment_state over (PERMISSIONS, request, READ-PRIMITIVES, capabilities file, TARGET-CONTRACT, fixtures/evidence/<evidence_set>.json, active authority = {1.7.0, placeholder manifest sha, CONTENT DIGEST of the capabilities object}); forge_matrix cases replace the matrix content while keeping the active digest and must be refused with CAPABILITY_MATRIX_NOT_ACTIVE; results must be identical under randomized record order",
+  "cases": [
+    {
+      "name": "m0-probe-allow-attachment-ready",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "ready",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": "ATTACHMENT_READY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-unprovisioned",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "empty",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_ATTACHMENT_READY",
+      "expect_attachment_state": "UNPROVISIONED",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-provisioned-not-verified",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "provisioned-only",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_ATTACHMENT_READY",
+      "expect_attachment_state": "PROVISIONED_NOT_VERIFIED",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-launch-wrong-binary",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "ready-wrong-binary-pin",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_ATTACHMENT_READY",
+      "expect_attachment_state": "PROVISIONED_NOT_VERIFIED",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-self-verified-bundle",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "ready-self-verified-bundle",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "BUNDLE_INDEPENDENTLY_VERIFIED",
+      "expect_attachment_state": "PROVISIONED_NOT_VERIFIED",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-bundle-other-host",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "ready-bundle-other-host",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "BUNDLE_INDEPENDENTLY_VERIFIED",
+      "expect_attachment_state": "PROVISIONED_NOT_VERIFIED",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-bundle-historical-only",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "ready-bundle-historical-only",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "BUNDLE_INDEPENDENTLY_VERIFIED",
+      "expect_attachment_state": "PROVISIONED_NOT_VERIFIED",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-no-current-session",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "ready-no-current-session",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_ATTACHMENT_READY",
+      "expect_attachment_state": "PROVISIONED_NOT_VERIFIED",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-launch-previous-session-only",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "ready-launch-previous-session-only",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_ATTACHMENT_READY",
+      "expect_attachment_state": "PROVISIONED_NOT_VERIFIED",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-no-read-only-journal-ref",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {}
+      },
+      "evidence_set": "ready",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "READ_ONLY_JOURNAL_OPEN",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-declared-state-ignored",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "attachment_state": "ATTACHMENT_READY"
+      },
+      "evidence_set": "empty",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_ATTACHMENT_READY",
+      "expect_attachment_state": null,
+      "request_schema_valid": false,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-tampered-record",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "invalid-tampered-record",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": "CONFLICT",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-provisioning-without-root",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "invalid-provisioning-without-root",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": "CONFLICT",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-wrong-manifest-record",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "invalid-connection-wrong-manifest",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": "CONFLICT",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-other-authority-record",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "invalid-connection-other-authority",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": "CONFLICT",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-bundle-other-manifest-not-historical",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "invalid-bundle-other-manifest-not-historical",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": "CONFLICT",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-deny-fatal-probe-failure-in-session",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-fatal-probe-failure",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": "CONFLICT",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-probe-allow-after-capability-failure-only",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "READ_PRIMITIVE_QUALIFICATION_PROBE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-capability-failure-only",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": "ATTACHED_READ_ONLY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-allow-degraded-attached",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": "ATTACHED_READ_ONLY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-allow-reversed-record-order",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-reversed-order",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": "ATTACHED_READ_ONLY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-attachment-ready-only",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "ready",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_ATTACHED_READ_ONLY",
+      "expect_attachment_state": "ATTACHMENT_READY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-stale-good-current-eka",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-stale-good-current-eka",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_ATTACHED_READ_ONLY",
+      "expect_attachment_state": "ATTACHMENT_READY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-allow-current-good-stale-eka",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-current-good-stale-eka",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": "ATTACHED_READ_ONLY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-duplicate-sequence-conflict",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-duplicate-sequence-conflict",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": "CONFLICT",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-allow-duplicate-timestamp-distinct-sequence",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-duplicate-timestamp-distinct-sequence",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": "ATTACHED_READ_ONLY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-connection-previous-session-only",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-connection-previous-session-only",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_ATTACHED_READ_ONLY",
+      "expect_attachment_state": "ATTACHMENT_READY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-ancient-observation",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-ancient-observation",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "STALE",
+      "expect_attachment_state": "ATTACHMENT_READY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-sequence-timestamp-disorder",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-sequence-timestamp-disorder",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": "CONFLICT",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-missing-root-in-connection",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-missing-root-in-connection",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "root",
+      "expect_attachment_state": "ATTACHMENT_READY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-changed-uuid-in-connection",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-changed-uuid-in-connection",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "uuid",
+      "expect_attachment_state": "ATTACHMENT_READY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-second-provisioning-other-uuid",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-second-provisioning-other-uuid",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": "CONFLICT",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-cross-library-timeline-binding",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-cross-library-timeline-binding",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": "CONFLICT",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-binding-from-other-session",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-binding-other-session",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "PROJECT_BINDING_OBSERVATION",
+      "expect_attachment_state": "ATTACHED_READ_ONLY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-no-timeline-binding",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__other__r1"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TIMELINE_BINDING_OBSERVATION",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-no-expected-timeline",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "expected_timeline_name",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-no-expected-project",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "expected_project_name",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-unbound-project-name",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_GHOST",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "PROJECT_BINDING_OBSERVATION",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-enumerate-timelines-deny-human-project-without-operator-record",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "ENUMERATE_TIMELINES",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "PYSTY UHD"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "neither adapter-prefixed nor operator-provisioned",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-enumerate-timelines-allow-operator-provisioned-project",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "ENUMERATE_TIMELINES",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "Mikko human scratch"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-enumerate-projects-allow-session-scope-no-project",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "ENUMERATE_PROJECTS",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-enumerate-projects-allow-without-any-binding-records",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "ENUMERATE_PROJECTS",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-current-good-stale-eka",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-enumerate-timelines-deny-no-project",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "ENUMERATE_TIMELINES",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "expected_project_name",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-eka-observed",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-eka-observed",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_ATTACHED_READ_ONLY",
+      "expect_attachment_state": "ATTACHMENT_READY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-local-database-observed",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-local-database-observed",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_ATTACHED_READ_ONLY",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-snapshot-deny-version-mismatch",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached-version-mismatch",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "RESOLVE_VERSION_MATCHES",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-refuse-fallback-no-qualified-rows",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-qualified-read-string-ignored",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "capability_state": {
+          "GetVersionString": "QUALIFIED_READ"
+        }
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": false,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-reviewed-evidence-but-matrix-not-refrozen",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-reviewed-evidence",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-allow-hypothetical-refrozen-matrix",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-reviewed-evidence",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-unreviewed-candidates",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-candidate-evidence-unreviewed",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-failed-getters",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-failed-getters",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-wrong-build",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-wrong-build",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-old-refreeze",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-old-refreeze",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-old-authority",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-old-authority",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-no-raw-evidence",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-no-raw",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-raw-tampered",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-raw-tampered",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-wrong-receiver",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-wrong-receiver",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-no-linked-evidence",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-raised-accepted",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-raised-accepted",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-raised-fake-parse-block",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-raised-fake-parse-block",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "ATTACHMENT_CONFLICT",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-timeout-accepted",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-timeout-accepted",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-attribute-missing-accepted",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-attribute-missing-accepted",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-wrong-type-accepted",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-wrong-type-accepted",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-null-accepted",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-null-accepted",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-truncated-accepted",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-truncated-accepted",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-unserializable-accepted",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-unserializable-accepted",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-review-other-raw",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-review-other-raw",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-review-stale-parser",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-review-stale-parser",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-review-stale-spec",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-review-stale-spec",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-reviewer-is-operator",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-reviewer-is-operator",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-review-reject",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-review-reject",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-refreeze-stale-parser",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-refreeze-stale-parser",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-refreeze-stale-spec",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-refreeze-stale-spec",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-refreeze-other-session",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-refreeze-other-session",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-refreeze-unreviewed",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-refreeze-unreviewed",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-refreeze-unlisted-raw",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-refreeze-unlisted-raw",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-no-refreeze-record",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-no-refreeze-record",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-deny-hyp-derived-cache-forged",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-derived-cache-forged",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "REFUSE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-connect-allow-hyp-derived-cache-honest",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "CONNECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        }
+      },
+      "evidence_set": "attached-evidence-derived-cache-honest",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-deny-write-op",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "write-ready-base",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "NOT_PERMITTED_BY_POLICY",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-deny-ref-empty-string",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": ""
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "not a sha256",
+      "expect_attachment_state": null,
+      "request_schema_valid": false,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-deny-ref-false-string",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "false"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "not a sha256",
+      "expect_attachment_state": null,
+      "request_schema_valid": false,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-deny-ref-unlinked-sha",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "9999999999999999999999999999999999999999999999999999999999999999"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "not in evidence set",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m0-deny-ref-wrong-record-type",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M0",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "10326f1518219bdd66b3f5be540f3540a9952e8bc7ec6b500a956d18a08f79c3"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "has type CONNECTION_OBSERVATION",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m2-set-current-timeline-deny-production-project-name",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M2",
+        "operation": "SetCurrentTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b"
+        },
+        "expected_project_name": "PYSTY UHD",
+        "expected_timeline_name": "traileri"
+      },
+      "evidence_set": "write-ready-base",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "PROJECT_ADAPTER_PREFIXED",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m2-set-current-timeline-allow",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M2",
+        "operation": "SetCurrentTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "write-ready-base",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-without-authorization",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-1",
+        "plan_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "plan_h0_guard_digest": "f56246b64e7302547415eb2bf6792cf76240802999afc03246d0ea707a39f0d3"
+      },
+      "evidence_set": "write-ready-without-authorization",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "MIKKO_M3_AUTHORIZATION",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-authorization-old-authority",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-1",
+        "plan_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "plan_h0_guard_digest": "f56246b64e7302547415eb2bf6792cf76240802999afc03246d0ea707a39f0d3"
+      },
+      "evidence_set": "write-ready-authorization-old-authority",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "MIKKO_M3_AUTHORIZATION",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-refreeze-unreviewed",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-1",
+        "plan_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "plan_h0_guard_digest": "f56246b64e7302547415eb2bf6792cf76240802999afc03246d0ea707a39f0d3"
+      },
+      "evidence_set": "write-ready-refreeze-unreviewed",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_SCRATCH_WRITE_READY",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-refreeze-for-other-matrix",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-1",
+        "plan_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "plan_h0_guard_digest": "f56246b64e7302547415eb2bf6792cf76240802999afc03246d0ea707a39f0d3"
+      },
+      "evidence_set": "write-ready-refreeze-other-matrix",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "TARGET_STATE_SCRATCH_WRITE_READY",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-no-journal-guard-plan-records",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-1",
+        "plan_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "plan_h0_guard_digest": "f56246b64e7302547415eb2bf6792cf76240802999afc03246d0ea707a39f0d3"
+      },
+      "evidence_set": "write-ready-base",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "JOURNAL_PREPARED",
+      "expect_attachment_state": "SCRATCH_WRITE_READY",
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-save-deny-ids-unavailable",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "SAVE_PROJECT",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "transaction_id": "tx-1",
+        "plan_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "evidence_set": "attached-no-ids",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "OBSERVED project_unique_id",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-deny-shared-library-scope",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "NETWORK_LIBRARY_EKA",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "write-ready-base",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "NOT_PERMITTED_BY_POLICY",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m4-deny-unknown-milestone",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M4",
+        "operation": "SNAPSHOT_CAPTURE",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "attached",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "NOT_PERMITTED_BY_POLICY",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "deny-unknown-operation",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "FrobnicateTimeline",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1"
+      },
+      "evidence_set": "write-ready-base",
+      "capabilities": "CAPABILITIES.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "NOT_PERMITTED_BY_POLICY",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-h0-minimal-m0",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "827a4b460640a5a0ea135e826aa799a9b82cdadd01ee7201a372c31b7c9cf7f5",
+          "plan_validation": "f0bbc5360398e63f4a24aaaf4959c15b4dfc8b8176ae5655448ee31fc9ca8f96"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "cfb0438a8b52477534780b77b6dd1e830480f50db4b4b09442ff70e39ddd8218",
+        "plan_h0_guard_digest": "14f9bc9c03cc7ebc0190243d4809cf6dccab7c754e25bca42e3518ae3d06b91e"
+      },
+      "evidence_set": "write-ready-h0-minimal-m0",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "H0_PROFILE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-h0-full-timeline-read",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "1eded35ce416441694d387515518aa62edafc15efd7b73b620ed0f054e13af0c",
+          "plan_validation": "4b741ba1c2503422dc8e86cd10ae392a2b1e4874c1b194759ce99667dda79c41"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "3a6a5b213c6c2e7efe776ddbbbfc0b7e8fa23230f32df395df5328ca8be3e558",
+        "plan_h0_guard_digest": "f56246b64e7302547415eb2bf6792cf76240802999afc03246d0ea707a39f0d3"
+      },
+      "evidence_set": "write-ready-h0-full-timeline-read",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "H0_PROFILE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-h0-incomplete-write-precheck",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "4d22f232a12b346432f500170b789c7c0e1d364f1dfea5853b11c173ebf6e6f4",
+          "plan_validation": "feba973c5907afe97c5a4b1a836cbeca8356d0ebff89fbbc81688935ca6f348a"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "5cc1e8822eac2d72c3ff19d4cdb575bc3c7588f7b91cc0833aaa7d020cfda9cf",
+        "plan_h0_guard_digest": "7cb82ccfa6853514f17518ede3f33074b38f06b3707b7247954f921416fefc76"
+      },
+      "evidence_set": "write-ready-h0-incomplete-write-precheck",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "H0_INCOMPLETE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-h0-candidate-provenance",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "3133b042cd038bf75f340368daebd6e47da83c40bcb9768924493e278475244e",
+          "plan_validation": "5da4cfedf042dc9814f092af5c61fad966248360c9f0a81d2b81ac5897e37d37"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "3627514ef8723dbc6b912e986644b7a55af63ed9237750762919cc3d36377575",
+        "plan_h0_guard_digest": "a0456b69af3149c53a7ee237abd9b44b5f5a5b1cc3070641875e1d43059dd557"
+      },
+      "evidence_set": "write-ready-h0-candidate-provenance",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "H0_PROVENANCE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-h0-other-matrix",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "5fae86bf55f36823988b9b8ededc8dc0a36c6acab7d51b779d4ba1aab0ccc6d8",
+          "plan_validation": "eeea64e47b0f3adafb2faa19277b133d61d718b245f7d39508a88422ca415e1c"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "d30ef1cb19e61cc1c1c7461ee832724fb5a3bfe18bb67d128c1333989c44e67c",
+        "plan_h0_guard_digest": "fe2c1be36c66a8ac877163e2e984d31c89d8e680874c5acab5efdb7d256ef4ec"
+      },
+      "evidence_set": "write-ready-h0-other-matrix",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "H0_MATRIX",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-h0-other-target",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "02be42e213a37e5eae329bb4e8fe76c003006ad36d38e23e8a8da1fc2926563d",
+          "plan_validation": "04ebed23c5a7f1803736502bceb39e585308b5d17b7144e5a667750144ba2b28"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "c0dd5885d108e40dbcc8ac644a51565eccb3ea7787707c29f952aca809c890eb",
+        "plan_h0_guard_digest": "301920562efa177f515c885ad05dbf4df12712e4c945bb84a9f79f5030262444"
+      },
+      "evidence_set": "write-ready-h0-other-target",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "H0_TARGET",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-h0-forged-guard-object",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "d31885a3f957067ff9297a75fcd94304dec1e0ae293e9e35860a10eecd9e349f",
+          "plan_validation": "f215aadeb271abb27abdcc9d841a0d236f8e940997aa31147998c6e219aa211c"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "58c74b3caf9b6852f0a629387018fc95390c0c356bc677dc819740f8934995f9",
+        "plan_h0_guard_digest": "14f9bc9c03cc7ebc0190243d4809cf6dccab7c754e25bca42e3518ae3d06b91e"
+      },
+      "evidence_set": "write-ready-h0-forged-guard-object",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "does not re-hash",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-h0-provenance-swapped",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "c2264d2127aeeca564de2748e22d07d8606adc0efb94469f9e818f76fc0fa2ad",
+          "plan_validation": "f215aadeb271abb27abdcc9d841a0d236f8e940997aa31147998c6e219aa211c"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "58c74b3caf9b6852f0a629387018fc95390c0c356bc677dc819740f8934995f9",
+        "plan_h0_guard_digest": "14f9bc9c03cc7ebc0190243d4809cf6dccab7c754e25bca42e3518ae3d06b91e"
+      },
+      "evidence_set": "write-ready-h0-provenance-swapped",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "does not re-hash",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-allow-complete-write-precheck-h0",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "e04cb9b4bee7d31311da4b8f2713fe7fdf00753f08ba98db42d2992ccae2d07c",
+          "plan_validation": "226d6e6b0e81b36672be3b0df901b1cf85d1a13ce2f946a46728b1d319ff7aba"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "58c74b3caf9b6852f0a629387018fc95390c0c356bc677dc819740f8934995f9",
+        "plan_h0_guard_digest": "ebc507925cc73d9a2154e903011ba2f17cdbc65599aa82d5c98eb34e0fd1e54f"
+      },
+      "evidence_set": "write-ready-full",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": true,
+      "expect_failed_contains": null,
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-plan-validation-from-helper",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "e04cb9b4bee7d31311da4b8f2713fe7fdf00753f08ba98db42d2992ccae2d07c",
+          "plan_validation": "722c402404fbf47213b2e2b4ba2d9195b444d732881c63889871d76bad276787"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "58c74b3caf9b6852f0a629387018fc95390c0c356bc677dc819740f8934995f9",
+        "plan_h0_guard_digest": "ebc507925cc73d9a2154e903011ba2f17cdbc65599aa82d5c98eb34e0fd1e54f"
+      },
+      "evidence_set": "write-ready-plan-validation-from-helper",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "PLAN_VALIDATED",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-plan-validation-other-h0",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "e04cb9b4bee7d31311da4b8f2713fe7fdf00753f08ba98db42d2992ccae2d07c",
+          "plan_validation": "5b174c4b6acf0df45c6e32a5714ad9b9c2eb588bed41781c7a6050f163fcb9cd"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "58c74b3caf9b6852f0a629387018fc95390c0c356bc677dc819740f8934995f9",
+        "plan_h0_guard_digest": "ebc507925cc73d9a2154e903011ba2f17cdbc65599aa82d5c98eb34e0fd1e54f"
+      },
+      "evidence_set": "write-ready-plan-validation-other-h0",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "PLAN_VALIDATED",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": false
+    },
+    {
+      "name": "m3-append-deny-forged-matrix-under-active-digest",
+      "request": {
+        "schema": "vidtoolz.resolveEligibilityRequest.v1.10",
+        "milestone": "M3",
+        "operation": "APPEND",
+        "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+        "refs": {
+          "m0_exit": "0c2e0457fa0c139e62e2cd174d3acd3c939f32a167bf628c344c457b3b4d5ccb",
+          "m1_exit": "eb301a720ceca56ce737047fddb04d068f712f1ea62fdbe2f892df816b7abc2b",
+          "m2_exit": "f6a93e2adfe1d6be034aa5b6689c3b3387eba3553d01679cfa84a407a6b7dfc8",
+          "authorization": "c184b7eee895fa978bd2e3eb09d0069a7d85b933631bbab3ca833067fd5198fe",
+          "exclusive_session": "bc30cbf884aedaf9807f2eb16ebcbc78f27157a293f1b8b5173bce99539cf47b",
+          "read_only_journal": "06b3ba72dfbbf79594a4755109bffb7b8d4444ed25c12a9ab8e02ba41ce9b3e2",
+          "media_class": "4b35558f5323703ba5ae0a00d6874089e5ab9c9e952d1acb3af1a8ab3a34da60",
+          "destination_timeline": "1036bba73d06521249934100e219c96417c06d33e73477ea9891a6d88c88fa50",
+          "journal_prepared": "f15f0f747827234ac4c63e6486193776c4c3846440a4ec68733f6ff58f00f714",
+          "guard": "e04cb9b4bee7d31311da4b8f2713fe7fdf00753f08ba98db42d2992ccae2d07c",
+          "plan_validation": "226d6e6b0e81b36672be3b0df901b1cf85d1a13ce2f946a46728b1d319ff7aba"
+        },
+        "plan_target": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1"
+        },
+        "expected_project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+        "expected_timeline_name": "VIDTOOLZ__fixture__r1",
+        "transaction_id": "tx-fixture",
+        "plan_digest": "58c74b3caf9b6852f0a629387018fc95390c0c356bc677dc819740f8934995f9",
+        "plan_h0_guard_digest": "ebc507925cc73d9a2154e903011ba2f17cdbc65599aa82d5c98eb34e0fd1e54f"
+      },
+      "evidence_set": "write-ready-full",
+      "capabilities": "fixtures/eligibility/capabilities-hypothetical-refreeze.json",
+      "expect_eligible": false,
+      "expect_failed_contains": "CAPABILITY_MATRIX_NOT_ACTIVE",
+      "expect_attachment_state": null,
+      "request_schema_valid": true,
+      "forge_matrix": true
+    }
+  ]
+}

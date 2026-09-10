@@ -1,0 +1,154 @@
+{
+  "schema": "vidtoolz.resolveSchemaRegistry.v1",
+  "authority_version": "1.14.0",
+  "registry_version": "vidtoolz.resolveSchemaRegistry.v1",
+  "schema_count": 29,
+  "schemas": {
+    "resolveCanarySourceManifest": {
+      "path": "schemas/resolveCanarySourceManifest.schema.json",
+      "sha256": "4b9e2b6cb44c6435738c8dfceda74b74ad2a594376e9f283646486ad906e8940",
+      "byte_count": 4873
+    },
+    "resolveCapabilityMatrix": {
+      "path": "schemas/resolveCapabilityMatrix.schema.json",
+      "sha256": "5b144b1a359adeaded8b51ce743312ae0adf06e4c056a1b6a245cd16f5dba87b",
+      "byte_count": 10152
+    },
+    "resolveEligibilityRequest": {
+      "path": "schemas/resolveEligibilityRequest.schema.json",
+      "sha256": "d5bfedbe898a330976c6fc0197bbafa8d4da7b626909bad608c3e51c0956ca79",
+      "byte_count": 3912
+    },
+    "resolveEvidenceSet": {
+      "path": "schemas/resolveEvidenceSet.schema.json",
+      "sha256": "0111603495808192e873c180f46a3d0614d8bdf4601543ee1715e0330827716a",
+      "byte_count": 116878
+    },
+    "resolveEvidenceSetWorkflow": {
+      "path": "schemas/resolveEvidenceSetWorkflow.schema.json",
+      "sha256": "0899a2549c0abb2ae227e252bad2e330b109a2ad6c749282cdf5d03d4e7b01f5",
+      "byte_count": 2185
+    },
+    "resolveFindingResolutionMatrix": {
+      "path": "schemas/resolveFindingResolutionMatrix.schema.json",
+      "sha256": "630633f8e0d35b21a04b3160e2984842eafb52eb47c8e25d3d643c41d96ef148",
+      "byte_count": 2233
+    },
+    "resolveFreezeManifest": {
+      "path": "schemas/resolveFreezeManifest.schema.json",
+      "sha256": "710a6420f0fc68a4f2dec8662c4b3eea99a188994361cea283f4cc0c7a5b2969",
+      "byte_count": 4659
+    },
+    "resolveGuard": {
+      "path": "schemas/resolveGuard.schema.json",
+      "sha256": "b2cd31097163e33660bcfdbf3cdf15d1b92f6d623615fc4bba91a146a84a8141",
+      "byte_count": 8329
+    },
+    "resolveInventoryFieldProvenance": {
+      "path": "schemas/resolveInventoryFieldProvenance.schema.json",
+      "sha256": "a9dc513533dd1a6474f5db9ff689e7c98fe453efeb18027279fd5ff9e5930ad5",
+      "byte_count": 3980
+    },
+    "resolveM0ABindingValues": {
+      "path": "schemas/resolveM0ABindingValues.schema.json",
+      "sha256": "2a9f26e0977b2987fc289ebc3d111c060b83861e4caabe24478c4806043354da",
+      "byte_count": 14777
+    },
+    "resolvePermissions": {
+      "path": "schemas/resolvePermissions.schema.json",
+      "sha256": "7e07ee77cdfd77455d953ea82c50f11240b72af7826ceee4e370f2c51d4e27bb",
+      "byte_count": 7459
+    },
+    "resolvePrincipalRegistry": {
+      "path": "schemas/resolvePrincipalRegistry.schema.json",
+      "sha256": "58f11fb8be8a6352247974ac0c22064c01f6424e7eea760eec2fc29e9f42607b",
+      "byte_count": 1677
+    },
+    "resolveRawIngestionCases": {
+      "path": "schemas/resolveRawIngestionCases.schema.json",
+      "sha256": "279e2c3edce30d3b9f805020f6773daa5255c667fea95a81109e60f8d24e6f4c",
+      "byte_count": 2295
+    },
+    "resolveReadPrimitives": {
+      "path": "schemas/resolveReadPrimitives.schema.json",
+      "sha256": "f402af6cf48285f02d7f37a2e663e735f9e8deb8b9cacfca5b07c53fb8b99aa3",
+      "byte_count": 7469
+    },
+    "resolveSchemaRegistry": {
+      "path": "schemas/resolveSchemaRegistry.schema.json",
+      "sha256": "b655335af22798d9ab5da988ce7b79d7f0ecd703a9f520151bcc6c28f98e8de7",
+      "byte_count": 2120
+    },
+    "resolveSnapshot": {
+      "path": "schemas/resolveSnapshot.schema.json",
+      "sha256": "a8dca3ea0b4432df801d493cee4fd8e8f97a64b0ea13fefdeee9901a889e1a13",
+      "byte_count": 55102
+    },
+    "resolveTargetContract": {
+      "path": "schemas/resolveTargetContract.schema.json",
+      "sha256": "9cf373a728a59c5c1e07985be577160dc60fea629ddbe7d643bf5ab9066bb0e0",
+      "byte_count": 16812
+    },
+    "resolveTimebase": {
+      "path": "schemas/resolveTimebase.schema.json",
+      "sha256": "e78b896528d2bf789baafd79ec5058e46e385fb49c50a83aaf0dd91a40a7b61a",
+      "byte_count": 5984
+    },
+    "resolveTrackPolicy": {
+      "path": "schemas/resolveTrackPolicy.schema.json",
+      "sha256": "f7d2f10c162c2b04dcf7c578308b1a3eac6047e5e2786917dff2eb7f34f0fef7",
+      "byte_count": 2158
+    },
+    "resolveTrustedCaptureShim": {
+      "path": "schemas/resolveTrustedCaptureShim.schema.json",
+      "sha256": "9d5122899731eeef9a4859bd53577d5ecbffa88642373f06efe49d7cae3df15d",
+      "byte_count": 2275
+    },
+    "provisional/resolveBindingObservation": {
+      "path": "schemas/provisional/resolveBindingObservation.schema.json",
+      "sha256": "4095c8e2a2d83cd2ca539066e4c176caebe4fb57d082c28550d49e522639571c",
+      "byte_count": 1367
+    },
+    "provisional/resolveBindingSet": {
+      "path": "schemas/provisional/resolveBindingSet.schema.json",
+      "sha256": "9e76a67b6bfbc8f5b5f3b1d2a7e90d002724ac2f84dd1b9e677c40849349af4d",
+      "byte_count": 4404
+    },
+    "provisional/resolveCheckpoint": {
+      "path": "schemas/provisional/resolveCheckpoint.schema.json",
+      "sha256": "12d1e9556b8a4992e52cf165e85313bf19696b114ff58bd065fb922d17bd4e1b",
+      "byte_count": 974
+    },
+    "provisional/resolveCommitManifest": {
+      "path": "schemas/provisional/resolveCommitManifest.schema.json",
+      "sha256": "47ea28b73bc53a6240e370e3a4788a99f4e8f58209afa681430539fa08a4baaa",
+      "byte_count": 4071
+    },
+    "provisional/resolveConflict": {
+      "path": "schemas/provisional/resolveConflict.schema.json",
+      "sha256": "c2664676db71b8906abacdc4a4a716bb535aecf9aad9c9890768e3128c4f7ee9",
+      "byte_count": 3273
+    },
+    "provisional/resolveMutationPlan": {
+      "path": "schemas/provisional/resolveMutationPlan.schema.json",
+      "sha256": "07c833be4bf619bb2119c9b45a45ca14d9d1822d66e9b69e84b73f1c7f002f5e",
+      "byte_count": 9866
+    },
+    "provisional/resolveSequenceLineage": {
+      "path": "schemas/provisional/resolveSequenceLineage.schema.json",
+      "sha256": "24fd7d7212176a4bb1405d132cff5abab4a111105b99a2249d614ae48ea62ad8",
+      "byte_count": 1086
+    },
+    "provisional/resolveTransactionJournal": {
+      "path": "schemas/provisional/resolveTransactionJournal.schema.json",
+      "sha256": "e3d93bf6b4a28be7b7516cfedebcde61b8be4d6602f4d45cbe5e836c705aca71",
+      "byte_count": 4561
+    },
+    "provisional/resolveVerificationResult": {
+      "path": "schemas/provisional/resolveVerificationResult.schema.json",
+      "sha256": "d55e48a965a0d948d5d75987787b9e945b5c9f2fa459660af06a60d686823250",
+      "byte_count": 4848
+    }
+  },
+  "schema_registry_sha256": "957bc7e18539a681f31b22fafb742ee52551025cbc982d5a1ef99e9a56b563a1"
+}

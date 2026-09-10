@@ -1,0 +1,965 @@
+{
+  "schema": "vidtoolz.resolveAuthorityPrecedence.v1.6",
+  "version": "1.14.0",
+  "status": "FROZEN_NOW",
+  "law": "when two frozen statements conflict, the entry here decides; a document marked HISTORICAL is never an implementation authority; a SUPERSEDED statement is kept only as history v1.7 adds S39-S45: the caching, schema-authority, shim-trust, stored-chain, identity-input, raw-ingestion and evidence-store laws supersede their v1.6 statements. v1.8 adds S46-S47: closed-world finalization supersedes expectation-only verification, and the single evidence-store authority supersedes the competing EvidenceRoot surface. v1.9 adds S48-S49: the lstat-first root trust boundary supersedes resolve-then-confine, and semantic session/record/attempt identity plus frozen POSIX metadata supersede byte-only closed-world verification. v1.10 adds S50-S51: the persisted boundary receipt supersedes in-memory boundary state, and the independently recomputed model supersedes inventory-as-truth verification.",
+  "retired_terms": [
+    "--dump-tools",
+    "18 probes",
+    "APPLIED_n",
+    "CAPABILITY_EVIDENCE",
+    "EvidenceRoot",
+    "IMPORT_OVERRIDE",
+    "QUALIFIED_READ (inspect row)",
+    "_ES_INDEX",
+    "add_derived(",
+    "attachment_evidence",
+    "attachment_state:",
+    "authorization_token",
+    "callable_methods=",
+    "canonicalization_version: 1.1",
+    "canonicalization_version: 1.2",
+    "canonicalization_version: 1.3",
+    "canonicalization_version: 1.4",
+    "capability_evidence_record_id",
+    "capability_record_qualifies",
+    "capability_state",
+    "capability_success",
+    "collection.primitive_status",
+    "conns[-1]",
+    "id(caps)",
+    "id(es)",
+    "journal_available",
+    "parsed_observation",
+    "promoted_evidence_sha256",
+    "raw_evidence_sha256",
+    "resolveGuard.v2\"",
+    "resolveSnapshot.v1.1",
+    "resolveSnapshot.v1.2",
+    "resolveSnapshot.v1.3",
+    "resolveSnapshot.v1.4",
+    "review_raw_evidence_sha256",
+    "schema_validate,",
+    "schema_validate=None",
+    "target.host_name",
+    "target_attachment_state"
+  ],
+  "retired_term_exempt": [
+    "AUTHORITY-CACHING.md",
+    "AUTHORITY-PRECEDENCE.md",
+    "CANONICALIZATION.md",
+    "CAPTURE-SHIM.md",
+    "CHANGELOG-v1.10.md",
+    "CHANGELOG-v1.2.md",
+    "CHANGELOG-v1.3.md",
+    "CHANGELOG-v1.4.md",
+    "CHANGELOG-v1.5.md",
+    "CHANGELOG-v1.6.md",
+    "CHANGELOG-v1.7.md",
+    "CHANGELOG-v1.8.md",
+    "CHANGELOG-v1.9.md",
+    "DRIFT-POLICY.md",
+    "ELIGIBILITY.md",
+    "EVIDENCE-ROOT.md",
+    "FINDING-RESOLUTION-MATRIX-v1.10.md",
+    "FINDING-RESOLUTION-MATRIX-v1.2.md",
+    "FINDING-RESOLUTION-MATRIX-v1.3.md",
+    "FINDING-RESOLUTION-MATRIX-v1.4.md",
+    "FINDING-RESOLUTION-MATRIX-v1.5.md",
+    "FINDING-RESOLUTION-MATRIX-v1.6.md",
+    "FINDING-RESOLUTION-MATRIX-v1.7.md",
+    "FINDING-RESOLUTION-MATRIX-v1.8.md",
+    "FINDING-RESOLUTION-MATRIX-v1.9.md",
+    "GUARD-AUTHORITY.md",
+    "IDENTITY-EVIDENCE.md",
+    "M0-PROBE-CONTRACT.md",
+    "M0A-PROBE-COMPATIBILITY.md",
+    "PRIMITIVE-SPEC.md",
+    "PROVISIONAL.md",
+    "RAW-CAPTURE.md",
+    "README.md",
+    "REFERENCE-PARSER.md",
+    "REVIEW-REFREEZE.md",
+    "SCHEMA-REGISTRY.md",
+    "SCORECRAFT-EXTRACTION.md",
+    "SEMANTIC-VALIDATION.md",
+    "SNAPSHOT-COMPLETENESS.md",
+    "SNAPSHOT-CONCURRENCY-RECOVERY.md",
+    "STORED-CHAIN.md",
+    "THREAT-MODEL.md",
+    "TRUSTED-SHIM.md",
+    "VALIDATION-REPORT.md"
+  ],
+  "documents": [
+    {
+      "path": "ADJUDICATION-FREEZE-CONTRACT.md",
+      "status": "HISTORICAL",
+      "reason": "2026-09-08 three-way adjudication; input to v1.0; several sections superseded (see superseded_statements)"
+    },
+    {
+      "path": "AUTHORITY-ARCHITECTURE-ADJUDICATION-M0-M3.md",
+      "status": "HISTORICAL",
+      "reason": "input to v1.1; M0 definition and marker wording superseded"
+    },
+    {
+      "path": "AUTHORITY-CACHING.md",
+      "status": "STILL_ACTIVE",
+      "note": "v1.7 caching law: no authority cache may be keyed on object identity; content keys plus the authority version only (Codex C16-B1)"
+    },
+    {
+      "path": "AUTHORITY-PRECEDENCE.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "AUTHORIZATION-2026-09-08.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "CANARIES.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "CANONICALIZATION.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "CAPTURE-SHIM.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document (v1.6)"
+    },
+    {
+      "path": "CHANGELOG-v1.1.md",
+      "status": "HISTORICAL",
+      "reason": "v1.1 history"
+    },
+    {
+      "path": "CHANGELOG-v1.10.md",
+      "status": "HISTORICAL",
+      "note": "the v1.10 correction record",
+      "reason": "input to v1.11; the v1.10 evidence-store statements S50-S51 stand, and the four v1.10 findings F110-A..F110-D are superseded by S52-S55"
+    },
+    {
+      "path": "CHANGELOG-v1.11.md",
+      "status": "HISTORICAL",
+      "reason": "input to v1.12; the v1.11 evidence-store statements S52-S55 stand and the pre-M0A workflow gap is superseded by S56-S59"
+    },
+    {
+      "path": "CHANGELOG-v1.12.md",
+      "status": "HISTORICAL",
+      "reason": "input to v1.13; the v1.12 workflow statements S56-S59 stand and the governed-root contradiction is superseded by S60"
+    },
+    {
+      "path": "CHANGELOG-v1.13.md",
+      "status": "HISTORICAL",
+      "reason": "input to v1.14; the v1.13 governed-root statement S60 stands and the authorizing-surface half of it is superseded by S61"
+    },
+    {
+      "path": "CHANGELOG-v1.14.md",
+      "status": "STILL_ACTIVE",
+      "reason": "the current changelog: the narrowly scoped correction of the v1.13 authorizing location-check bypass V113-B1"
+    },
+    {
+      "path": "CHANGELOG-v1.2.md",
+      "status": "HISTORICAL",
+      "reason": "v1.2 history"
+    },
+    {
+      "path": "CHANGELOG-v1.3.md",
+      "status": "HISTORICAL",
+      "reason": "v1.3 history"
+    },
+    {
+      "path": "CHANGELOG-v1.4.md",
+      "status": "HISTORICAL",
+      "reason": "v1.4 history"
+    },
+    {
+      "path": "CHANGELOG-v1.5.md",
+      "status": "HISTORICAL",
+      "reason": "v1.5 history"
+    },
+    {
+      "path": "CHANGELOG-v1.6.md",
+      "status": "HISTORICAL",
+      "reason": "current normative or reference document (v1.6)",
+      "note": "the v1.6 correction record; superseded as an active law by the v1.7 changelog and matrix, retained as the input of record"
+    },
+    {
+      "path": "CHANGELOG-v1.7.md",
+      "status": "HISTORICAL",
+      "note": "the v1.7 correction record; superseded as active law by the v1.8 changelog and matrix, retained as the input of record"
+    },
+    {
+      "path": "CHANGELOG-v1.8.md",
+      "status": "HISTORICAL",
+      "note": "the v1.8 correction record; superseded as active law by the v1.9 changelog and matrix, retained as the input of record"
+    },
+    {
+      "path": "CHANGELOG-v1.9.md",
+      "status": "HISTORICAL",
+      "note": "the v1.9 correction record; superseded as active law by the v1.10 changelog and matrix, retained as the input of record"
+    },
+    {
+      "path": "CLIENT-VERSION-INVENTORY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "DOCTRINE.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "DRIFT-POLICY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "ELIGIBILITY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "EVIDENCE-ROOT.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document (v1.6)"
+    },
+    {
+      "path": "EVIDENCE-SET-WORKFLOW.json",
+      "status": "STILL_ACTIVE",
+      "reason": "v1.12 (V112-1, V112-2): the ONE governed persistence topology, document lifecycle, envelope-derivation law and tool inventory for the resolveEvidenceSet document; v1.14 (V113-B1) adds the core_authority block naming the authorizing and diagnostic entry points"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.10.md",
+      "status": "HISTORICAL",
+      "note": "how each Codex v1.9 evidence-store finding is answered, with the negative fixture and expected failure layer",
+      "reason": "the Codex v1.9 matrix; retained as history and re-run as v1.11 regressions. The ACTIVE matrix is FINDING-RESOLUTION-MATRIX-v1.11.md"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.11.md",
+      "status": "HISTORICAL",
+      "reason": "the F110 evidence-store matrix; retained as history and re-run as v1.12 regressions. The ACTIVE matrix is FINDING-RESOLUTION-MATRIX-v1.12.md"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.12.md",
+      "status": "HISTORICAL",
+      "reason": "the V112 pre-M0A workflow matrix; retained as history and re-run as v1.13 regressions. The ACTIVE matrix is FINDING-RESOLUTION-MATRIX-v1.13.md"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.13.md",
+      "status": "HISTORICAL",
+      "reason": "the V112-RP1 governed-root matrix; retained as history and re-run as v1.14 regressions. The ACTIVE matrix is FINDING-RESOLUTION-MATRIX-v1.14.md"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.14.md",
+      "status": "STILL_ACTIVE",
+      "reason": "the ACTIVE finding-resolution matrix: V113-B1 with its reproduction, root cause, correction and validation sections"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.2.md",
+      "status": "HISTORICAL",
+      "reason": "v1.2 history; v1.3 map is FINDING-RESOLUTION-MATRIX-v1.3.md"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.3.md",
+      "status": "HISTORICAL",
+      "reason": "v1.3 finding map; v1.4 map is FINDING-RESOLUTION-MATRIX-v1.4.md"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.4.md",
+      "status": "HISTORICAL",
+      "reason": "v1.4 finding map; v1.5 map is FINDING-RESOLUTION-MATRIX-v1.5.md"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.5.md",
+      "status": "HISTORICAL",
+      "reason": "v1.5 finding map; v1.6 map is FINDING-RESOLUTION-MATRIX-v1.6.md"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.6.md",
+      "status": "HISTORICAL",
+      "reason": "current normative or reference document (v1.6)",
+      "note": "the v1.6 correction record; superseded as an active law by the v1.7 changelog and matrix, retained as the input of record"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.7.md",
+      "status": "HISTORICAL",
+      "note": "the v1.7 correction record; superseded as active law by the v1.8 changelog and matrix, retained as the input of record"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.8.md",
+      "status": "HISTORICAL",
+      "note": "the v1.8 correction record; superseded as active law by the v1.9 changelog and matrix, retained as the input of record"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX-v1.9.md",
+      "status": "HISTORICAL",
+      "note": "the v1.9 correction record; superseded as active law by the v1.10 changelog and matrix, retained as the input of record"
+    },
+    {
+      "path": "FINDING-RESOLUTION-MATRIX.md",
+      "status": "HISTORICAL",
+      "reason": "v1.1 finding map; v1.2 map is FINDING-RESOLUTION-MATRIX-v1.2.md"
+    },
+    {
+      "path": "GUARD-AUTHORITY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "IDENTITY-BINDING.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "IDENTITY-EVIDENCE.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document (v1.6)"
+    },
+    {
+      "path": "M0-PHASES.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document (v1.6)"
+    },
+    {
+      "path": "M0-PROBE-CONTRACT.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "M0A-PROBE-COMPATIBILITY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document (v1.6)"
+    },
+    {
+      "path": "M3-MATRIX.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "MILESTONES.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "PRIMITIVE-SPEC.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document (v1.6)"
+    },
+    {
+      "path": "PRINCIPALS.json",
+      "status": "STILL_ACTIVE",
+      "reason": "TRUST ROOT (v1.12, V112-3): the frozen role-bound principal registry and write grants the authoring tools enforce and the derivation binds"
+    },
+    {
+      "path": "PROVISIONAL.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "RAW-CAPTURE.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document (v1.6)"
+    },
+    {
+      "path": "README.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "REFERENCE-PARSER.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document (v1.6)"
+    },
+    {
+      "path": "REVIEW-MARKER-POLICY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "REVIEW-REFREEZE.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document (v1.6)"
+    },
+    {
+      "path": "SCHEMA-REGISTRY.md",
+      "status": "STILL_ACTIVE",
+      "note": "v1.7 schema-authority law: the authority owns the validator and resolves schemas from the pinned registry; the caller supplies artifacts only (Codex C16-B2)"
+    },
+    {
+      "path": "SCORECRAFT-EXTRACTION.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "SEMANTIC-VALIDATION.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "SNAPSHOT-COMPLETENESS.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "SNAPSHOT-CONCURRENCY-RECOVERY.md",
+      "status": "STILL_ACTIVE",
+      "reason": "doctrine, verified facts, guarantees/non-guarantees, recovery and conflict codes only; its transaction state-machine enumeration and snapshot field enumeration are SUPERSEDED (S32, S33)"
+    },
+    {
+      "path": "STORED-CHAIN.md",
+      "status": "STILL_ACTIVE",
+      "note": "v1.7 chain law: the exact stored raw, derived, review and refreeze artifacts must resolve by digest, and multiplicity is a conflict unless explicit supersession leaves one (Codex C16-B4)"
+    },
+    {
+      "path": "TARGET-ATTACHMENT-GATE.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "THREAT-MODEL.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document (v1.6)"
+    },
+    {
+      "path": "TRANSPORT.md",
+      "status": "STILL_ACTIVE",
+      "reason": "current normative or reference document"
+    },
+    {
+      "path": "TRUSTED-SHIM.md",
+      "status": "STILL_ACTIVE",
+      "note": "v1.7 shim-trust law: the one capture shim a promotable capture may come from, re-verified against its source (Codex C16-B3)"
+    },
+    {
+      "path": "VALIDATION-REPORT.md",
+      "status": "STILL_ACTIVE",
+      "reason": "generated report; not normative"
+    }
+  ],
+  "superseded_statements": [
+    {
+      "id": "S1",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#10 (M0: 'any Resolve call beyond --dump-tools' forbidden; M0 = static inventory only)",
+      "new_authority": "MILESTONES.md#M0",
+      "status": "SUPERSEDED",
+      "reason": "v1.1/v1.2 M0 is a read-only connection/observation milestone gated by TARGET-ATTACHMENT-GATE.md and ELIGIBILITY.md; the static inventory became bundle v1.0 itself",
+      "effective_version": "1.1.0"
+    },
+    {
+      "id": "S2",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#5.2, #6 (payload_sha256 / 'H0 = payload digest' as the version token)",
+      "new_authority": "GUARD-AUTHORITY.md",
+      "status": "SUPERSEDED",
+      "reason": "composite guard digest (model A) is the version token; payload digest proves content only",
+      "effective_version": "1.1.0"
+    },
+    {
+      "id": "S3",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#5.2 snapshot context wording ('target_contract_digest', 'target epoch' inside snapshot envelope hash)",
+      "new_authority": "schemas/resolveSnapshot.schema.json; SNAPSHOT-COMPLETENESS.md",
+      "status": "SUPERSEDED",
+      "reason": "v1.2 snapshot carries coverage profile, per-field observation status, guard digest and hash domains",
+      "effective_version": "1.2.0"
+    },
+    {
+      "id": "S4",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#7, #10, #16 (milestone table and refreeze wording; v1.1 M3-MATRIX '18 probes')",
+      "new_authority": "MILESTONES.md; M3-MATRIX.md; M3-PROBES.json",
+      "status": "SUPERSEDED",
+      "reason": "v1.2 milestone boundaries are machine-checked against PERMISSIONS.json (MILESTONE-MATRIX.json); M3 has 19 probes P1-P19 and P0 is an M0 preflight",
+      "effective_version": "1.2.0"
+    },
+    {
+      "id": "S5",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#7 M9 row and AUTHORITY-ARCHITECTURE-ADJUDICATION-M0-M3.md ('markers -> review notes with target_domain from colour/name')",
+      "new_authority": "REVIEW-MARKER-POLICY.md",
+      "status": "SUPERSEDED",
+      "reason": "markers locate candidates only; dispositions require human attestation",
+      "effective_version": "1.1.0"
+    },
+    {
+      "id": "S6",
+      "old_authority": "ADJUDICATION-FREEZE-CONTRACT.md#5.5 and v1.0 SNAPSHOT-CONCURRENCY-RECOVERY.md drift table (IMPORT_OVERRIDE; STALE_ASSET vs 'newer handoff')",
+      "new_authority": "DRIFT-POLICY.md; schemas/provisional/resolveConflict.schema.json",
+      "status": "SUPERSEDED",
+      "reason": "PROPOSE_REVIEW_NOTE; STALE_ASSET vs EF canonical head",
+      "effective_version": "1.1.0"
+    },
+    {
+      "id": "S7",
+      "old_authority": "v1.1 PERMISSIONS.json entries with prose 'evidence_prerequisite' only",
+      "new_authority": "PERMISSIONS.json; ELIGIBILITY.md; tools/authority_lib.py#evaluate_eligibility",
+      "status": "SUPERSEDED",
+      "reason": "declaration vs eligibility split; machine-evaluable prerequisites",
+      "effective_version": "1.2.0",
+      "new_authority_note": "prerequisites[] per entry + eligibility evaluator"
+    },
+    {
+      "id": "S8",
+      "old_authority": "v1.1 CAPABILITIES.json rows with evidence_class QUALIFIED_READ citing scripts",
+      "new_authority": "CAPABILITIES.json#evidence_records",
+      "status": "SUPERSEDED",
+      "reason": "no exact evidence exists on 21.1.0 build 14; rows downgraded",
+      "effective_version": "1.2.0",
+      "new_authority_note": "evidence records per row"
+    },
+    {
+      "id": "S9",
+      "old_authority": "v1.1 CANONICALIZATION.md marker sort key (object_address, frame, custom_data, name, color)",
+      "new_authority": "CANONICALIZATION.md#3",
+      "status": "SUPERSEDED",
+      "reason": "total order incl. duration and note; (object_address, frame) collision rejection",
+      "effective_version": "1.2.0",
+      "new_authority_note": "total marker order"
+    },
+    {
+      "id": "S10",
+      "old_authority": "v1.1 SCORECRAFT-EXTRACTION.md ('guards exist only in the hardlink fixture')",
+      "new_authority": "SCORECRAFT-EXTRACTION.md",
+      "status": "SUPERSEDED",
+      "reason": "guards also exist in scorecraft-resolve-driver.py and scorecraft-resolve-production-fixture.py; production driver still lacks one",
+      "effective_version": "1.2.0",
+      "new_authority_note": "corrected guard facts"
+    },
+    {
+      "id": "S11",
+      "old_authority": "v1.2 ELIGIBILITY.md / evaluate_eligibility(perms, request, read_primitives, capabilities) trusting request.target.attachment_state, capability_state, evidence strings, journal_available, guard_available, authorization_token",
+      "new_authority": "ELIGIBILITY.md; TARGET-ATTACHMENT-GATE.md; schemas/resolveEligibilityRequest.schema.json; schemas/resolveEvidenceSet.schema.json; tools/authority_lib.py#evaluate_eligibility",
+      "status": "SUPERSEDED",
+      "reason": "evaluator consumes frozen authorities + content-addressed evidence; state and qualification derived, never declared",
+      "effective_version": "1.3.0",
+      "new_authority_note": "evidence-derived eligibility"
+    },
+    {
+      "id": "S12",
+      "old_authority": "v1.2 TARGET-CONTRACT.json attachment_state / attachment_evidence fields and TARGET-ATTACHMENT-GATE.md evidence-field table",
+      "new_authority": "TARGET-ATTACHMENT-GATE.md; TARGET-CONTRACT.json; tools/authority_lib.py#derive_attachment_state",
+      "status": "SUPERSEDED",
+      "reason": "attachment state is a function of (contract, evidence set); declared state is schema-invalid",
+      "effective_version": "1.3.0",
+      "new_authority_note": "derived attachment state"
+    },
+    {
+      "id": "S13",
+      "old_authority": "v1.2 PERMISSIONS.json/READ-PRIMITIVES.json without target requirements (CONNECT and other M0 ops accepted any project name)",
+      "new_authority": "PERMISSIONS.json; READ-PRIMITIVES.json; MILESTONE-MATRIX.json; ELIGIBILITY.md",
+      "status": "SUPERSEDED",
+      "reason": "operation-specific target_requirement SESSION/PROJECT/PROJECT_TIMELINE with binding observations",
+      "effective_version": "1.3.0",
+      "new_authority_note": "target requirements"
+    },
+    {
+      "id": "S14",
+      "old_authority": "v1.2 READ_PRIMITIVE_QUALIFICATION_PROBE described only as PROBE_ONLY fallback; QUALIFIED_READ assertable by request",
+      "new_authority": "M0-PROBE-CONTRACT.md; CAPABILITIES.json; READ-PRIMITIVES.json",
+      "status": "SUPERSEDED",
+      "reason": "PROBE_ALLOWED != QUALIFIED_READ; probe_candidate/probe_allowed flags; candidate evidence; reviewed refreeze required",
+      "effective_version": "1.3.0",
+      "new_authority_note": "probe contract"
+    },
+    {
+      "id": "S15",
+      "old_authority": "v1.2 SNAPSHOT-COMPLETENESS.md (status on 5 identity fields only; items sorted by numeric end; complete:false without reasons) and resolveSnapshot.v1.2 / resolveSnapshotPayload.v1.2 domain",
+      "new_authority": "SNAPSHOT-COMPLETENESS.md; CANONICALIZATION.md; schemas/resolveSnapshot.schema.json",
+      "status": "SUPERSEDED",
+      "reason": "status on all frame/identity fields; status-aware order; failure ledger; incomplete_reasons; per-profile completeness incl. WRITE_PRECHECK fail-closed",
+      "effective_version": "1.3.0",
+      "new_authority_note": "snapshot v1.3"
+    },
+    {
+      "id": "S16",
+      "old_authority": "v1.2 CANONICALIZATION.md §2 $f64 validation via prefix match; v1.2 SEMANTIC-VALIDATION.md per-document checks without cross-artifact binding; v1.2 commit checker trusting verification by hash",
+      "new_authority": "CANONICALIZATION.md; SEMANTIC-VALIDATION.md; tools/authority_lib.py#validate_transaction_set",
+      "status": "SUPERSEDED",
+      "reason": "fullmatch f64; binding tuple across plan/journal/verification/conflict/commit; composed commit validation; linked-set validator",
+      "effective_version": "1.3.0",
+      "new_authority_note": "binding + f64"
+    },
+    {
+      "id": "S17",
+      "old_authority": "v1.2 M3-PROBES.json/M3-MATRIX.md P15 \"identity stable across rename/save/reopen\"; v1.2 SCORECRAFT-EXTRACTION.md referring to resolveTargetContract.v1.1 / resolveSnapshot.v1.1 as extraction targets; v1.2 manifest validation without byte counts",
+      "new_authority": "M3-PROBES.json; M3-MATRIX.md; SCORECRAFT-EXTRACTION.md; schemas/resolveFreezeManifest.schema.json",
+      "status": "SUPERSEDED",
+      "reason": "rename claim removed (option B); active references v1.3; byte-count equality",
+      "effective_version": "1.3.0",
+      "new_authority_note": "P15 / Scorecraft / manifest"
+    },
+    {
+      "id": "S18",
+      "old_authority": "v1.3 evidence records tagged only with a target {host_name, library_name}; BUNDLE_VERIFICATION matched by authority_version alone (any manifest sha); latest CONNECTION_OBSERVATION / binding chosen by record position (conns[-1], pb[-1], tb[-1]); no session identity",
+      "new_authority": "schemas/resolveEvidenceSet.schema.json; TARGET-CONTRACT.json; TARGET-ATTACHMENT-GATE.md; tools/authority_lib.py#derive_attachment_state",
+      "status": "SUPERSEDED",
+      "reason": "envelope law (level BUNDLE/LIBRARY/SESSION), exact active-manifest binding, current_session_id + sequence-based currency with AMBIGUOUS/STALE, coherence -> CONFLICT; no positional selection",
+      "effective_version": "1.4.0",
+      "new_authority_note": "envelope / currency / CONFLICT"
+    },
+    {
+      "id": "S19",
+      "old_authority": "v1.3 CAPABILITY_EVIDENCE record (method, host, resolve_version, build, observed_result, evidence_sha256, reviewed_refreeze_version string) and primitive_status accepting any linked record with a non-null reviewed_refreeze_version; probe failures recorded as observed_result 'FAILED:' strings",
+      "new_authority": "CAPABILITIES.json; READ-PRIMITIVES.json; M0-PROBE-CONTRACT.md; tools/authority_lib.py#capability_record_qualifies",
+      "status": "SUPERSEDED",
+      "reason": "QUALIFIED_CALLABLE requires active matrix row + reviewed refreeze block + linked SUCCESS record with exact receiver/host/product/version/build, reviewed ACCEPT, promotion by the active authority version and matrix sha, RAW_EVIDENCE re-hashing; failure taxonomy CAPABILITY_FAILURE / FATAL_TARGET_FAILURE",
+      "effective_version": "1.4.0",
+      "new_authority_note": "capability authenticity"
+    },
+    {
+      "id": "S20",
+      "old_authority": "v1.3 resolveSnapshot.v1.3 timeline block with mandatory numeric start_frame/end_frame/width/height/start_timecode (status only on identity); MINIMAL_M0 fixture built from probe-enumerated tracks; payload domain vidtoolz.resolveSnapshotPayload.v1.3",
+      "new_authority": "schemas/resolveSnapshot.schema.json; SNAPSHOT-COMPLETENESS.md; CANONICALIZATION.md",
+      "status": "SUPERSEDED",
+      "reason": "status on every timeline/project/track/item field, nullable values, capability->coverage coupling, pre-qualification capture defined; payload domain v1.4",
+      "effective_version": "1.4.0",
+      "new_authority_note": "degraded timeline observation"
+    },
+    {
+      "id": "S21",
+      "old_authority": "v1.3 guard v1 (vidtoolz.resolveGuard.v1: project/timeline identity without observation status or reason)",
+      "new_authority": "GUARD-AUTHORITY.md; schemas/resolveGuard.schema.json",
+      "status": "SUPERSEDED",
+      "reason": "guard v2 carries unique_id_status, unique_id_reason, name_status; UNAVAILABLE != ERROR; policy.capability_matrix_sha256",
+      "effective_version": "1.4.0",
+      "new_authority_note": "guard status"
+    },
+    {
+      "id": "S22",
+      "old_authority": "v1.3 journal law: APPLIED with any operation_id (uniqueness only), PREFLIGHT_OK/CHECKPOINTED -> APPLIED directly, no operation_set_digest in records",
+      "new_authority": "schemas/provisional/resolveTransactionJournal.schema.json; SEMANTIC-VALIDATION.md; tools/authority_lib.py#semantic_journal",
+      "status": "SUPERSEDED",
+      "reason": "operation membership against the bound plan (id + op type), OP_STARTED -> APPLIED | OP_FAILED lifecycle, READBACK_S1 after all applied, operation_set_digest in every record",
+      "effective_version": "1.4.0",
+      "new_authority_note": "journal membership / execution law"
+    },
+    {
+      "id": "S23",
+      "old_authority": "v1.3 verification and commit trusting declared added/removed/unrelated/missing_expected lists and s1_guard_digest / readback_snapshot_sha256 strings",
+      "new_authority": "schemas/provisional/resolveVerificationResult.schema.json; schemas/provisional/resolveCommitManifest.schema.json; SEMANTIC-VALIDATION.md; tools/authority_lib.py#verify_transaction",
+      "status": "SUPERSEDED",
+      "reason": "S0/S1 resolved by digest and lineage, delta derived, expected effects (provisional APPEND law), declared result must equal derived truth; commit binds s1_guard_digest",
+      "effective_version": "1.4.0",
+      "new_authority_note": "derived verification"
+    },
+    {
+      "id": "S24",
+      "old_authority": "v1.3 validate_transaction_set over {plan, journal, verification, commit, conflicts} without S0/S1",
+      "new_authority": "tools/authority_lib.py#validate_transaction_set; SEMANTIC-VALIDATION.md",
+      "status": "SUPERSEDED",
+      "reason": "composed S0 -> plan -> journal -> S1 -> derived delta -> expected effect -> verification -> commit; no commit-by-hash shortcut",
+      "effective_version": "1.4.0",
+      "new_authority_note": "composed linked-set validation"
+    },
+    {
+      "id": "S25",
+      "old_authority": "v1.4 capability_record_qualifies trusting result.classification SUCCESS / qualification.reviewed labels; review and promotion not bound to the exact raw evidence hash; refreeze block without promoted_evidence_sha256",
+      "new_authority": "CAPABILITIES.json; READ-PRIMITIVES.json; M0-PROBE-CONTRACT.md; schemas/resolveEvidenceSet.schema.json; tools/authority_lib.py#capability_success",
+      "status": "SUPERSEDED",
+      "reason": "success DERIVED from RAW_EVIDENCE + parse block; review_raw_evidence_sha256 and promoted_by.raw_evidence_sha256 bind the exact evidence; refreeze lists promoted_evidence_sha256",
+      "effective_version": "1.5.0",
+      "new_authority_note": "capability pipeline (F1)"
+    },
+    {
+      "id": "S26",
+      "old_authority": "v1.4 _item_index / derive_delta trusting item unique_id as unique (last occurrence wins)",
+      "new_authority": "SNAPSHOT-COMPLETENESS.md; tools/authority_lib.py#occurrence_index",
+      "status": "SUPERSEDED",
+      "reason": "DUPLICATE_OCCURRENCE_IDENTITY fails closed before any index; canonical address order; no positional pick",
+      "effective_version": "1.5.0",
+      "new_authority_note": "occurrence uniqueness (F2)"
+    },
+    {
+      "id": "S27",
+      "old_authority": "v1.4 derive_delta comparing only track/start/end/enabled/media-pool-id/name and timeline markers",
+      "new_authority": "SEMANTIC-VALIDATION.md; tools/authority_lib.py#derive_delta",
+      "status": "SUPERSEDED",
+      "reason": "protected surface: occurrence identity/range/source bounds/media identity/properties/markers, timeline identity/frames/timebase/geometry/settings, track topology+fields, media linkage; unrelated-change law",
+      "effective_version": "1.5.0",
+      "new_authority_note": "delta surface (F3)"
+    },
+    {
+      "id": "S28",
+      "old_authority": "v1.4 semantic_commit_manifest / semantic_verification_result accepting s0=None, s1=None, active=None (direct commit path) and validate_transaction_set(callable_methods=...) caller override",
+      "new_authority": "SEMANTIC-VALIDATION.md; tools/authority_lib.py#commit_eligibility; tools/authority_lib.py#validate_transaction_set",
+      "status": "SUPERSEDED",
+      "reason": "commit_eligibility -> validate_transaction_set is the only authorizing path; helpers INTERNAL_NON_AUTHORIZING and refuse partial input; no callable-set parameter; AUTHORITY_SURFACE + bypass audit",
+      "effective_version": "1.5.0",
+      "new_authority_note": "commit single authority (F4, BLOCKER)"
+    },
+    {
+      "id": "S29",
+      "old_authority": "v1.4 journal READBACK_S1 without readback digests or session; verification/commit not bound to the journal's readback or to the execution session",
+      "new_authority": "schemas/provisional/resolveTransactionJournal.schema.json; schemas/provisional/resolveMutationPlan.schema.json; schemas/provisional/resolveVerificationResult.schema.json; schemas/provisional/resolveCommitManifest.schema.json; SEMANTIC-VALIDATION.md; tools/authority_lib.py#semantic_journal",
+      "status": "SUPERSEDED",
+      "reason": "session_id on plan/journal/verification/commit; READBACK_S1 names S1 object digest + guard; verification and commit name the same S1; S1 from another session rejected",
+      "effective_version": "1.5.0",
+      "new_authority_note": "journal/S1 binding (F5)"
+    },
+    {
+      "id": "S30",
+      "old_authority": "v1.4 semantic_snapshot(snap, callable_methods) coupling only by a caller-supplied callable set and a collection status map; resolveGuard.v2 without provenance",
+      "new_authority": "schemas/resolveSnapshot.schema.json; schemas/resolveGuard.schema.json; SNAPSHOT-COMPLETENESS.md; GUARD-AUTHORITY.md; tools/authority_lib.py#provenance_errors",
+      "status": "SUPERSEDED",
+      "reason": "collection.method_provenance (QUALIFIED_OBSERVATION / CANDIDATE_OBSERVATION / NOT_CALLABLE) cited per method and verified against the active authority inside the composed validator; guard v3 binds provenance_sha256",
+      "effective_version": "1.5.0",
+      "new_authority_note": "snapshot provenance (F6)"
+    },
+    {
+      "id": "S31",
+      "old_authority": "v1.4 linked set accepting any complete S1 profile",
+      "new_authority": "SNAPSHOT-COMPLETENESS.md; tools/authority_lib.py#required_s1_profile",
+      "status": "SUPERSEDED",
+      "reason": "OPERATION_VERIFY_PROFILE (APPEND -> APPEND_VERIFY), S0 WRITE_PRECHECK incl. source bounds, profile_satisfies superset law, S1 complete",
+      "effective_version": "1.5.0",
+      "new_authority_note": "S1 coverage law (F7)"
+    },
+    {
+      "id": "S32",
+      "old_authority": "SNAPSHOT-CONCURRENCY-RECOVERY.md#Transaction state machine (APPLIED_n with intermediate readback per phase; VERIFIED as a declared-list condition; no OP_STARTED/OP_FAILED; no readback binding)",
+      "new_authority": "tools/authority_lib.py#JOURNAL_TRANSITIONS; SEMANTIC-VALIDATION.md; tools/authority_lib.py#commit_eligibility",
+      "status": "SUPERSEDED",
+      "effective_version": "1.6.0",
+      "reason": "one active transaction lifecycle: PREPARED -> LEASED -> PREFLIGHT_OK -> CHECKPOINTED (mandatory, with checkpoint evidence) -> OP_STARTED -> APPLIED | OP_FAILED -> READBACK_S1 (naming the exact S1) -> VERIFIED (derived from S0/S1) -> SAVED -> PUBLISHED -> COMMITTED; a commit is decided only by commit_eligibility -> validate_transaction_set",
+      "new_authority_note": "the document keeps doctrine, guarantees, recovery principles and conflict codes; no other STILL_ACTIVE document enumerates journal states (machine-checked)"
+    },
+    {
+      "id": "S33",
+      "old_authority": "SNAPSHOT-CONCURRENCY-RECOVERY.md#Snapshot (fixed envelope/payload field enumeration incl. speed, transforms/audio properties, fades, links, takes and effect coverage)",
+      "new_authority": "schemas/resolveSnapshot.schema.json; SNAPSHOT-COMPLETENESS.md; GUARD-AUTHORITY.md",
+      "status": "SUPERSEDED",
+      "effective_version": "1.6.0",
+      "reason": "snapshot content, per-field observation status, coverage profiles and completeness are defined by the schema and SNAPSHOT-COMPLETENESS.md; item properties, fades, speed, takes, links and unowned media hashes are explicitly NOT represented (PROTECTED_SURFACE_EXCLUSIONS)",
+      "new_authority_note": "the document keeps the stable-collection procedure (two equal guard digests within <=3 pairs) and the UNOBSERVABLE_STATE doctrine"
+    },
+    {
+      "id": "S34",
+      "old_authority": "v1.5 CAPABILITY_EVIDENCE record with a probe-authored parse block / parsed_observation / result, and capability_success reading those claims",
+      "new_authority": "RAW-CAPTURE.md; CAPTURE-SHIM.md; REFERENCE-PARSER.md; schemas/resolveEvidenceSet.schema.json; tools/authority_lib.py#derive_capability_result",
+      "status": "SUPERSEDED",
+      "effective_version": "1.6.0",
+      "reason": "the probe records mechanical facts only (interpretation fields are schema-forbidden); meaning is derived by the versioned reference parser and recomputed by every validator; CAPABILITY_EVIDENCE is a retired record type"
+    },
+    {
+      "id": "S35",
+      "old_authority": "v1.5 primitive_status / capability matrix comparing references without proving that the supplied matrix is the matrix named by active.capability_matrix_sha256",
+      "new_authority": "REVIEW-REFREEZE.md; tools/authority_lib.py#capability_matrix_digest; tools/authority_lib.py#active_authority_errors",
+      "status": "SUPERSEDED",
+      "effective_version": "1.6.0",
+      "reason": "the active capability authority is the canonical content digest of the matrix object; every authorizing entry point refuses any other content with CAPABILITY_MATRIX_NOT_ACTIVE"
+    },
+    {
+      "id": "S36",
+      "old_authority": "v1.5 GUARD_SNAPSHOT record (guard_digest + payload_sha256 only) and GUARD_CURRENT / PLAN_VALIDATION accepting it as a write precondition",
+      "new_authority": "GUARD-AUTHORITY.md; ELIGIBILITY.md; tools/authority_lib.py#guard_record_errors",
+      "status": "SUPERSEDED",
+      "effective_version": "1.6.0",
+      "reason": "the guard record carries the guard object and the provenance map; the pre-write gate recomputes both digests and proves profile, completeness, qualified provenance, matrix, authority and target before any mutator; PLAN_VALIDATION must come from the composed validator and name this plan's H0"
+    },
+    {
+      "id": "S37",
+      "old_authority": "v1.5 validate_transaction_set(..., schema_validate=None) and commit_eligibility(..., schema_validate=None) defaults, and verification comparison omitting applied_operation_ids",
+      "new_authority": "SEMANTIC-VALIDATION.md; tools/authority_lib.py#validate_transaction_set; tools/authority_lib.py#semantic_verification_result",
+      "status": "SUPERSEDED",
+      "effective_version": "1.6.0",
+      "reason": "schema enforcement is a required parameter of both authorizing entry points (a call without it refuses); applied_operation_ids and unobserved_domains are derived and compared"
+    },
+    {
+      "id": "S38",
+      "old_authority": "v1.5 READ-PRIMITIVES.expected_type as a single heuristic expectation without nullability, argument types, shape rule, completeness, status or digest",
+      "new_authority": "PRIMITIVE-SPEC.md; READ-PRIMITIVES.json#primitive_spec_sha256; tools/authority_lib.py#primitive_spec_digest",
+      "status": "SUPERSEDED",
+      "effective_version": "1.6.0",
+      "reason": "a versioned expectation authority: every primitive declares receiver, arg_types, nullable, expected_type, shape_rule, completeness and expectation_status DOCUMENTED_HYPOTHESIS with its source; the spec digest is bound by every review, refreeze and matrix entry"
+    },
+    {
+      "id": "S39",
+      "status": "SUPERSEDED",
+      "effective_version": "1.7.0",
+      "old_statement": "Derived authority results may be memoized per authority object identity plus content (v1.6 authority_lib: qualification keyed on id(caps)/id(es)/id(rp), the primitive-spec digest keyed on the read-primitive object, the evidence record index keyed on the evidence set, the parser identity computed once per process).",
+      "new_authority": "AUTHORITY-CACHING.md; tools/authority_lib.py#content_key",
+      "reason": "Codex v1.6 BLOCKER C16-B1: an object identity is not its content. Mutating a qualified chain in place left the warm answer QUALIFIED_CALLABLE while a cold process refused, so two evaluators reading the same bytes disagreed."
+    },
+    {
+      "id": "S40",
+      "status": "SUPERSEDED",
+      "effective_version": "1.7.0",
+      "old_statement": "The composed validation path requires the caller to supply a schema validator, and requiring it (rather than defaulting it) makes schema enforcement mandatory (v1.6 F15-04 correction).",
+      "new_authority": "SCHEMA-REGISTRY.md; tools/authority_lib.py#internal_schema_errors",
+      "reason": "Codex v1.6 BLOCKER C16-B2: a required parameter still lets the caller define validity. An always-empty, partial, permissive or stale validator authorized an invalid commit manifest. The authority now owns the law and refuses any caller-supplied validator by name."
+    },
+    {
+      "id": "S41",
+      "status": "SUPERSEDED",
+      "effective_version": "1.7.0",
+      "old_statement": "A raw capture records its capture shim version and shim sha256 as provenance facts (v1.6 RAW-CAPTURE.md, CAPTURE-SHIM.md).",
+      "new_authority": "TRUSTED-SHIM.md; TRUSTED-SHIM.json; tools/authority_lib.py#capture_shim_trust_errors",
+      "reason": "Codex v1.6 BLOCKER C16-B3: recorded provenance that nothing compares is not provenance. A capture declaring any shim hash qualified. The bundle now pins one trusted shim and refuses every other, and the active authority must name it."
+    },
+    {
+      "id": "S42",
+      "status": "SUPERSEDED",
+      "effective_version": "1.7.0",
+      "old_statement": "A stored derived capability result is a cache: qualification recomputes it and compares digests, and any stored copy must equal the recomputation (v1.6 REVIEW-REFREEZE.md).",
+      "new_authority": "STORED-CHAIN.md; tools/authority_lib.py#resolve_stored_chain",
+      "reason": "Codex v1.6 BLOCKER C16-B4: comparing digests closes forgery of the value but not substitution of the artifact. A claimed derived artifact that was absent, or that belonged to another raw capture, still authorized, and multiple current reviews or refreeze records were selected implicitly."
+    },
+    {
+      "id": "S43",
+      "status": "SUPERSEDED",
+      "effective_version": "1.7.0",
+      "old_statement": "Identity claims are derived by mapping each observed receiver path to its returned identity value within a pass, and claim C compares those maps across passes (v1.6 IDENTITY-EVIDENCE.md).",
+      "new_authority": "IDENTITY-EVIDENCE.md#v17; tools/authority_lib.py#identity_claim_input_errors",
+      "reason": "Codex v1.6 M0A MAJOR C16-M1: writing each observation into a map keyed by receiver path let a duplicate path overwrite the first observation, so the conflict disappeared and uniqueness was asserted over a pass that had observed one path twice. Stability was also asserted while uniqueness was false."
+    },
+    {
+      "id": "S44",
+      "status": "SUPERSEDED",
+      "effective_version": "1.7.0",
+      "old_statement": "A RAW_CAPABILITY_CAPTURE enters the authority as a parsed capture object whose structure and digest are validated (v1.6 RAW-CAPTURE.md).",
+      "new_authority": "RAW-CAPTURE.md#v17; tools/authority_lib.py#ingest_raw_frame",
+      "reason": "Codex v1.6 M0A MAJOR C16-M2: a parsed object cannot show that duplicate JSON keys, control characters or trailing bytes were ever rejected, and the standard parser silently keeps the last duplicate key. Raw evidence now enters only as bytes through one strict boundary that leaves a receipt."
+    },
+    {
+      "id": "S45",
+      "status": "SUPERSEDED",
+      "effective_version": "1.7.0",
+      "old_statement": "The append-only evidence root is defined by the layout and rules of EVIDENCE-ROOT.md, with EvidenceRoot in the reference capture shim as an illustration (v1.6).",
+      "new_authority": "EVIDENCE-ROOT.md#v17; tools/evidence_store.py",
+      "reason": "Codex v1.6 M0A MAJOR C16-M3: the layout was prose. Nothing could be run to prove that an evidence root refuses an overwrite, a reused attempt id, a write after finalization or a replaced record. The law is now executable and the validator attacks it."
+    },
+    {
+      "id": "S46",
+      "status": "SUPERSEDED",
+      "effective_version": "1.8.0",
+      "old_statement": "An evidence session is verified by recomputing the digests of the records the verifier expects to find: record files under the four layers, the session manifest, the attempts index and HASHES.json (v1.7 tools/evidence_store.py#verify).",
+      "new_authority": "EVIDENCE-ROOT.md; tools/evidence_store.py#finalize; tools/evidence_store.py#verify",
+      "reason": "Codex v1.7 BLOCKER ES-1, independent attack STORE-14: a verifier that only examines what it expects cannot notice what it does not. A file planted in a finalized session root was ignored and verification returned clean. Finalization now records the complete allowed inventory of every governed file and directory, and verification requires missing == 0, unexpected == 0 and changed == 0."
+    },
+    {
+      "id": "S47",
+      "status": "SUPERSEDED",
+      "effective_version": "1.8.0",
+      "old_statement": "The append-only evidence root has a reference implementation in the capture shim (EvidenceRoot in tools/capture_shim_reference.py) alongside the normative executable store (v1.6 S45, carried into v1.7).",
+      "new_authority": "EVIDENCE-ROOT.md; tools/evidence_store.py",
+      "reason": "Codex v1.7 BLOCKER ES-2: two competing evidence-storage surfaces existed, and the legacy one built filesystem paths from caller-supplied strings. All four of its write methods escaped the evidence root on '../../x'. EvidenceRoot is removed; exactly one module is EVIDENCE_STORE_AUTHORIZING, and no caller anywhere supplies a path."
+    },
+    {
+      "id": "S48",
+      "status": "SUPERSEDED",
+      "effective_version": "1.9.0",
+      "old_statement": "An evidence root and a session directory are located by resolving the caller-supplied path (os.path.realpath) and then confining every component beneath the resolved base; symlinks inside the session are rejected (v1.8 tools/evidence_store.py).",
+      "new_authority": "EVIDENCE-ROOT.md#v19; tools/evidence_store.py#RootBoundary",
+      "reason": "Codex v1.8 BLOCKER S19-1: resolving first destroys the evidence needed to refuse. A symlinked evidence root was resolved away and a session was created, finalized and verified through it. The trust boundary is now established by lstat before any resolution, the literal path is kept, and the root's device and inode are re-checked on every operation."
+    },
+    {
+      "id": "S49",
+      "status": "SUPERSEDED",
+      "effective_version": "1.9.0",
+      "old_statement": "A finalized evidence session is verified as a closed world of paths, digests, byte counts and directories, with attempt uniqueness keyed on the attempt id bound to a record digest (v1.8 S46 and tools/evidence_store.py).",
+      "new_authority": "EVIDENCE-ROOT.md#v19; tools/evidence_store.py#session_identity; tools/evidence_store.py#record_key; tools/evidence_store.py#attempt_key",
+      "reason": "Codex v1.8 BLOCKERs S19-2 and S19-3 and MAJOR S19-4: bytes alone are not identity. A renamed session directory verified clean, one attempt id produced records in two layers, and chmod after finalization was invisible. v1.9 freezes a session identity tuple and the basename-is-session-id path law, derives each record's name from its semantics, keys attempt uniqueness on (session, layer, logical identity, attempt id), records POSIX file type and permission mode, and adds a fourth verification counter, semantic_mismatch, which must also be zero."
+    },
+    {
+      "id": "S50",
+      "status": "SUPERSEDED",
+      "effective_version": "1.10.0",
+      "old_statement": "The evidence root trust boundary is established by lstat at open time and held in process memory as a RootBoundary, whose device and inode are re-checked on later operations (v1.9 S48).",
+      "new_authority": "EVIDENCE-ROOT.md#v110; tools/evidence_store.py#create_session; tools/evidence_store.py#check_boundary",
+      "reason": "Codex v1.9 BLOCKER S110-1: a boundary that exists only in memory cannot survive the process that built it. Replacing a finalized session directory with another of the same basename and content verified clean, and copying the session under a second root verified clean. v1.10 persists a SESSION_BOUNDARY receipt as governed evidence, binds root and session directory identity into the session identity tuple, and re-lstats both against the receipt before every authorizing operation."
+    },
+    {
+      "id": "S51",
+      "status": "SUPERSEDED",
+      "effective_version": "1.10.0",
+      "old_statement": "A finalized session is verified by comparing the stored inventory against the filesystem, with stored attempt markers, directory entries and finalization-marker fields taken as recorded (v1.9 S49).",
+      "new_authority": "EVIDENCE-ROOT.md#v110; tools/evidence_store.py#expected_model; INVENTORY-FIELD-PROVENANCE.json",
+      "reason": "Codex v1.9 BLOCKERs S110-2 and S110-3 and MAJOR S110-4: recording a field and then trusting it is not verification. Finalization-marker store and authority versions were ignored, a foreign attempt marker planted on disk was accepted through write, finalize and verify, directory semantics were partly self-asserted, and mode drift before finalization went unnoticed. v1.10 recomputes the expected model from filesystem facts, record bytes, the session manifest, the boundary receipt and frozen store law, reconciles markers and records as a bijection, derives every mode from entry kind and enforces it continuously, and publishes a provenance table forbidding any normative field from being trusted from the inventory itself."
+    },
+    {
+      "id": "S52",
+      "status": "SUPERSEDED",
+      "effective_version": "1.11.0",
+      "old_statement": "The persisted SESSION_BOUNDARY receipt is authoritative once its own boundary_sha256 recomputes over its stored bytes and its field set is canonical (v1.10 S50).",
+      "new_authority": "EVIDENCE-ROOT.md#v111; tools/evidence_store.py#BOUNDARY_PROVENANCE; tools/evidence_store.py#_boundary_receipt; INVENTORY-FIELD-PROVENANCE.json#boundary_fields",
+      "reason": "Codex v1.10 BLOCKER F110-A: digest consistency is not semantic truth. Five receipt fields - schema, evidence_store_version, authority_version, platform_scope and created_at - were stored and digested but never compared outside the receipt, so rewriting one and recomputing boundary_sha256 left the next put_raw() authorized. v1.11 classifies every field with exactly one provenance class, reconciles every normative one against the frozen constant or filesystem fact it claims, and classifies created_at INFORMATIONAL_NON_AUTHORIZING because this store governs no independent creation-event authority."
+    },
+    {
+      "id": "S53",
+      "status": "SUPERSEDED",
+      "effective_version": "1.11.0",
+      "old_statement": "The stored inventory is verified by comparing its recorded entries, directories and nine normative header fields against the independently recomputed model, and additional top-level fields are tolerated (v1.10 S51).",
+      "new_authority": "EVIDENCE-ROOT.md#v111; tools/evidence_store.py#INVENTORY_FIELDS; tools/evidence_store.py#verify_summary; INVENTORY-FIELD-PROVENANCE.json#inventory_field_set",
+      "reason": "Codex v1.10 BLOCKER F110-B: six normative header fields - record_count, entry_count, total_bytes, attempt_count, self_path and finalized_marker_path - were written, digested, published as derived and never compared, and an extra semantic top-level field survived verification. v1.11 freezes the exact inventory vocabulary (a missing, unknown, duplicate or mistyped field is INVENTORY_FIELD_SET_INVALID), recomputes all six from the independent model and the frozen store layout, and moves the inventory schema from v3 to v4 so semantic extension is a version and not an extra key."
+    },
+    {
+      "id": "S54",
+      "status": "SUPERSEDED",
+      "effective_version": "1.11.0",
+      "old_statement": "Stored attempt markers and records reconcile as a bijection: every marker resolves to a record whose semantic key recomputes from the marker tuple, and every record has such a marker (v1.10 L7).",
+      "new_authority": "EVIDENCE-ROOT.md#v111; tools/evidence_store.py#expected_model; tools/evidence_store.py#_put; INVENTORY-FIELD-PROVENANCE.json#marker_cardinality_law",
+      "reason": "Codex v1.10 BLOCKER F110-C: the claim was one-to-one but only the one-record-per-marker direction was enforced. Two distinct attempt ids over the same session, layer, logical identity and bytes produced two valid markers resolving to one content-addressed record, and finalize() and verify() both passed. v1.11 requires EXACT cardinality in both directions - zero is ORPHANED_RECORD, more than one is MARKER_CARDINALITY_VIOLATION - and refuses the second write before any ambiguous state is persisted, so the public API and the persisted verifier enforce the same rule."
+    },
+    {
+      "id": "S55",
+      "status": "SUPERSEDED",
+      "effective_version": "1.11.0",
+      "old_statement": "check_boundary() is called before every authorizing operation, and read and model accessors evaluate their own preconditions (v1.10 L3).",
+      "new_authority": "EVIDENCE-ROOT.md#v111; tools/evidence_store.py#PUBLIC_AUTHORITY_METHODS; tools/evidence_store.py#ERROR_PRECEDENCE; INVENTORY-FIELD-PROVENANCE.json#boundary_dominance_law",
+      "reason": "Codex v1.10 MERGE MAJOR / M0A MAJOR F110-D: attempts(), expected_model(), manifest(), identity(), manifest_sha256(), identity_errors(), scan_tree(), boundary_receipt() and authority_errors() returned live authority-bearing data after session replacement, and inventory() and finalization_marker() answered SESSION_NOT_FINALIZED, masking the substitution with a lesser status error. v1.11 publishes the explicit public authority-bearing method inventory, makes every member check the persisted boundary before any other precondition, makes the previously unchecked internals private behind checked wrappers, and freezes the error precedence BOUNDARY > SESSION_STATE > MODEL > READ."
+    },
+    {
+      "id": "S56",
+      "status": "SUPERSEDED",
+      "effective_version": "1.12.0",
+      "old_statement": "The resolveEvidenceSet document is defined by schemas/resolveEvidenceSet.schema.json and consumed by derive_attachment_state; where it lives, who writes it and whether it has a lifecycle are unspecified (v1.11).",
+      "new_authority": "EVIDENCE-SET-WORKFLOW.json; tools/evidence_authoring.py#set_path; tools/evidence_authoring.py#_load",
+      "reason": "AUTHORITY_UNDERSPECIFIED V112-1: with no governed location, no writer and no persistence law, an implementer had to invent the container mapping, and two A2 repair cycles failed the same way by writing Store.v5 session objects where registered evidence-set records were required. v1.12 freezes one topology under QUALIFICATION_EVIDENCE_ROOT with a path law, atomic replace, an O_EXCL writer lock and a self-location check, and keeps Store.v5 and the evidence set as two deliberately unmerged container models."
+    },
+    {
+      "id": "S57",
+      "status": "SUPERSEDED",
+      "effective_version": "1.12.0",
+      "old_statement": "The resolveEvidenceSet document has no state: it is re-validated and re-derived from its current bytes on every call (v1.11).",
+      "new_authority": "EVIDENCE-SET-WORKFLOW.json#lifecycle; tools/authority_lib.py#EVIDENCE_SET_STATE_GRANTS; tools/evidence_authoring.py#mark_prepared",
+      "reason": "AUTHORITY_UNDERSPECIFIED V112-2: nothing sequenced the preparer against the verifier, so a verifier could only attest to inputs that remained editable, and the failed repair imported the Store.v5 finalization law into a place it does not apply. v1.12 freezes OPEN -> PREPARED -> VERIFIED with (state, role) write grants, VERIFIED granting nothing to anyone, a prepared seal, a verified seal and a governed staleness law."
+    },
+    {
+      "id": "S58",
+      "status": "SUPERSEDED",
+      "effective_version": "1.12.0",
+      "old_statement": "BUNDLE_VERIFICATION independence is established by verifier != prepared_by, a lexical inequality between two caller-supplied free-text strings (v1.11 S55 residual).",
+      "new_authority": "PRINCIPALS.json; tools/authority_lib.py#principal_errors; tools/authority_lib.py#may_write; tools/evidence_authoring.py#_authorize",
+      "reason": "AUTHORITY_UNDERSPECIFIED V112-3: any non-empty string differing from prepared_by satisfied the gate, no tool owned the write, and no actor law existed. v1.12 freezes a role-bound principal registry with actor disjointness and per-role write grants, stamps the principal in the tool for the one role it implements, and makes the derivation require both principals registered under exactly their role and of DIFFERENT actors. A principal remains an operational label, not an authenticated identity; that residual is stated in THREAT-MODEL.md."
+    },
+    {
+      "id": "S59",
+      "status": "SUPERSEDED",
+      "effective_version": "1.12.0",
+      "old_statement": "A BUNDLE_VERIFICATION is a record whose presence, manifest binding and verifier/prepared_by inequality satisfy the attachment gate (v1.11).",
+      "new_authority": "tools/a2_verify.py; tools/evidence_authoring.py#add_bundle_verification; tools/authority_lib.py#derive_attachment_state",
+      "reason": "AUTHORITY_UNDERSPECIFIED V112-4: no production law permitted any actor to author it after another prepared the evidence, and no positive ATTACHMENT_READY state was reachable without fixture synthesis. v1.12 names the action A2V, makes tools/a2_verify.py the one production path, computes the result, both principals, both verified record ids, the manifest digest and the nine pinned-file digests inside the verifier, and binds all of it in the derivation with only PASS satisfying the gate."
+    },
+    {
+      "id": "S60",
+      "status": "SUPERSEDED",
+      "effective_version": "1.13.0",
+      "old_statement": "The resolveEvidenceSet document lives at one governed location; the authoring API accepts a root parameter so the validation suite can exercise the real code in a temporary directory, and the document records which root it was written under (v1.12 S56).",
+      "new_authority": "tools/authority_lib.py#GOVERNED_ATTACHMENT_ROOT; tools/evidence_authoring.py#governed_attachment_root; tools/evidence_authoring.py#require_governed_root; tools/evidence_authoring.py#require_governed_session_dir; tools/evidence_authoring_testkit.py",
+      "reason": "Codex v1.12 runtime-parity oracle FAIL, WORKFLOW_CONTRADICTORY, finding V112-RP1: the one-root law lived in prose while every authorizing function took root= and both CLIs took --evidence-root, so a complete workflow under an arbitrary OR SYMLINKED root derived ATTACHMENT_READY. A test convenience had been placed on the authorizing surface. v1.13 freezes GOVERNED_ATTACHMENT_ROOT, gives the resolver no argument, removes every root parameter from the authorizing surface and both CLIs, classifies the root and session entries with lstat before any resolution (no .resolve() anywhere, realpath only as a later alias check), re-checks the canonical location on every authorizing load, requires the frozen authority_root and written_under_production_root at the authorizing derivation, and moves scratch roots to an INTERNAL_NON_AUTHORIZING testkit that neither CLI imports and whose documents the authorizing derivation refuses."
+    },
+    {
+      "id": "S61",
+      "status": "SUPERSEDED",
+      "effective_version": "1.14.0",
+      "old_statement": "Attachment readiness and eligibility are decided by authority_lib.derive_attachment_state and authority_lib.evaluate_eligibility - the two functions the v1.13 authority surface declared AUTHORIZING - over whatever evidence set the caller supplies, and the governed-location law is enforced one layer up, in the authoring wrapper (v1.13 S60).",
+      "new_authority": "tools/authority_lib.py#load_governed_evidence_set; tools/authority_lib.py#GovernedEvidenceSet; tools/authority_lib.py#governed_provenance_errors; tools/authority_lib.py#derive_attachment_state_authorizing; tools/authority_lib.py#evaluate_eligibility_authorizing; tools/authority_lib.py#location_errors; tools/authority_lib.py#location_receipt; tools/evidence_authoring.py#derive_attachment_state",
+      "reason": "Codex v1.13 BLOCKER V113-B1: the governed-location law lived in the authoring wrapper, so a document authored under a forbidden root - which the wrapper refused with NOT_PRODUCTION_ROOT - was accepted by authority_lib.derive_attachment_state and returned ATTACHMENT_READY, and by authority_lib.evaluate_eligibility and returned eligible=true. Location authority did not dominate the authorizing call graph. v1.14 moves location reconciliation INTO the core: load_governed_evidence_set is the only door and mints a GovernedEvidenceSet that only it can construct; the *_authorizing entry points accept nothing else and re-verify the location receipt against the real filesystem before any semantic work; and derive_attachment_state and evaluate_eligibility are demoted to DIAGNOSTIC / NON_AUTHORIZING. The wrapper's own checks are retained as defence in depth, but the wrapper is no longer the only guard."
+    }
+  ],
+  "journal_state_enumeration_authority": [
+    "SEMANTIC-VALIDATION.md",
+    "tools/authority_lib.py"
+  ]
+}

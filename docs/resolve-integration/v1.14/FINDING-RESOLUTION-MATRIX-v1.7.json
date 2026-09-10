@@ -1,0 +1,96 @@
+{
+  "schema": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
+  "authority_version": "1.14.0",
+  "adjudication": "Codex final v1.6 forensic adjudication (4 BLOCKER, 3 M0A MAJOR, 1 operational)",
+  "law": "each finding names the v1.6 defect, the v1.7 correction, at least one negative fixture, the layer the attack must fail at, and the validate_v1_14.py sections that prove it. validate_v1_14.py refuses to pass unless every named section exists and every check in it passes.",
+  "operational_closure": "C16-OP1 (Hermes M0A cannot bind to v1.6 because the trusted shim, parser, spec and raw identities are not operationally closed) is closed by M0A-BINDING-VALUES.json, which publishes every value with no placeholder and is verified against the running code by validate_v1_14.py section m0a-binding.",
+  "findings": [
+    {
+      "id": "C16-B1",
+      "severity": "BLOCKER",
+      "codex_finding": "Content-insensitive authority caches allow stale or modified evidence, parser, spec, refreeze and matrix state to remain qualified.",
+      "v16_defect": "capability_qualification memoized on (id(caps), id(es), id(rp), method, canon(active)); primitive_spec_digest on id(rp); the evidence-record index on id(es); parser_sha256 on a process-local flag. Mutating a qualified chain in place kept the warm result QUALIFIED_CALLABLE while a cold process refused it.",
+      "correction": "Authority-result caching is keyed ONLY by content: content_key() = AUTHORITY_VERSION + content digests of matrix, read-primitive authority, evidence set, contract environment and active authority + the live parser identity + the trusted shim digest. The identity-keyed record index is gone: find_records re-derives record_id from current content on every call. parser_sha256 is keyed on the live parser code objects. clear_authority_caches()/authority_cache_stats() exist for warm/cold equality proofs.",
+      "negative_fixture": "validate_v1_14.py section cache-mutation: nine in-place mutations of a qualified chain (raw->RAISED, primitive spec, review->REJECT, refreeze un-reviewed, matrix row demoted, stored derived edited, host_name, build, matrix evidence reference), each asserting warm == cold and NOT QUALIFIED, plus parser replacement, callable-set mutation and cross-evidence-set contamination.",
+      "expected_layer": "capability (capability_qualification / callable_method_set)",
+      "validation_sections": [
+        "cache-law",
+        "cache-mutation",
+        "matrix-forgery-warm"
+      ]
+    },
+    {
+      "id": "C16-B2",
+      "severity": "BLOCKER",
+      "codex_finding": "Caller-supplied schema-validator trust allows permissive or wrong validators to authorize invalid artifacts.",
+      "v16_defect": "validate_transaction_set and commit_eligibility took schema_validate as a REQUIRED parameter, so an always-empty, partial, wrong-schema or permissive callback authorized a commit manifest carrying unapproved_authority_extension.",
+      "correction": "SCHEMA-REGISTRY.json pins (authority_version, artifact_schema_id) -> exact schema bytes, digest and byte count. schema_registry() re-verifies every pinned file on every resolution; internal_schema_errors() resolves schemas internally; the authorizing signatures have NO validator parameter and refuse any extra positional or validator-named keyword by name. validate_transaction_set_diagnostic is INTERNAL_NON_AUTHORIZING and returns no eligibility. historical_schema_errors validates historical artifacts against historical registries only.",
+      "negative_fixture": "validate_v1_14.py section validator-injection: five injected validators x (positional, keyword) x both entry points, five validator-named keywords, the diagnostic surface, and one changed byte of one pinned schema file making the whole registry untrusted.",
+      "expected_layer": "schema (composed validation stage 3)",
+      "validation_sections": [
+        "validator-injection",
+        "schema-registry"
+      ]
+    },
+    {
+      "id": "C16-B3",
+      "severity": "BLOCKER",
+      "codex_finding": "Capture-shim digest is not bound to an exact trusted authority; a wrong shim SHA can still qualify.",
+      "v16_defect": "A capture carried capture_shim_version and capture_shim_sha256 that nothing compared against anything, so a capture declaring capture_shim_sha256 = 000...0 qualified.",
+      "correction": "TRUSTED-SHIM.json pins the one trusted shim: version, its own self-hash, its source path and source bytes, the allowlist digest, the codec, the raw schema and the raw-ingest version, closed by its own digest. trusted_capture_shim() re-verifies all of it against the files on disk. capture_shim_trust_errors() refuses any capture that does not match, the parser classifies such a capture SHIM_UNTRUSTED (family FATAL_TARGET_FAILURE), and the ACTIVE authority itself must name the trusted shim digest.",
+      "negative_fixture": "validate_v1_14.py section shim-trust: wrong sha, stale build, unknown shim, same version with changed code, other codec, other raw schema, a method outside the trusted allowlist, an active authority missing or misnaming the trusted shim, and a whole chain over a wrong-shim capture.",
+      "expected_layer": "capability (reference parser + record law)",
+      "validation_sections": [
+        "shim-trust"
+      ]
+    },
+    {
+      "id": "C16-B4",
+      "severity": "BLOCKER",
+      "codex_finding": "Derived, review and refreeze substitutions can authorize because the exact stored chain is not always resolved and compared.",
+      "v16_defect": "Qualification recomputed the derived result and compared digests, but never required the stored DERIVED_CAPABILITY_RESULT the chain claims to resolve by digest, and selected among multiple reviews or refreeze records without an explicit rule.",
+      "correction": "resolve_stored_chain() resolves the EXACT stored artifacts one promoted evidence entry names: the single raw capture, the single stored derived record (by derived digest AND by record id, belonging to that raw, bound to the active parser and spec, byte-equal to the recomputation), the single CURRENT review referencing exactly that stored derived digest, and the single CURRENT reviewed refreeze record promoting exactly that triple. supersession_resolve() makes multiplicity a CONFLICT unless an explicit supersedes chain leaves exactly one record; insertion order never decides. A promoted row binds the whole chain (ENTRY_BOUND_FIELDS), including the refreeze BLOCK digest, the trusted shim identity and the probe/session.",
+      "negative_fixture": "evidence sets attached-evidence-derived-artifact-missing, -derived-artifact-of-other-raw, -duplicate-current-review, -superseded-review, -conflicting-current-reviews, -duplicate-current-refreeze; plus entry-field-dropping and derived-record-substitution cases in section stored-chain.",
+      "expected_layer": "capability (stored-chain resolution)",
+      "validation_sections": [
+        "stored-chain"
+      ]
+    },
+    {
+      "id": "C16-M1",
+      "severity": "MAJOR",
+      "codex_finding": "Duplicate receiver paths can overwrite identity observations before uniqueness or stability derivation.",
+      "v16_defect": "identity_claims built ids[path] = value, so a second observation of the same receiver path overwrote the first and the conflict disappeared; claim B was then asserted true. Stability was also asserted while uniqueness was false.",
+      "correction": "identity_claim_inputs() builds each pass as an ORDERED LIST of observations; identity_claim_input_errors() validates receiver-path uniqueness, path/handle-token binding, path/identity-value agreement and getter-attempt-id uniqueness BEFORE any index exists. Any refusal yields no claims at all, claim C now requires claim B, and every pass must observe the same receiver-path set.",
+      "negative_fixture": "validate_v1_14.py section identity-duplicates: duplicate path, path with two handle tokens, path with two identity values, duplicate attempt id, two paths returning one id, and a pass-set mismatch.",
+      "expected_layer": "capability (identity evidence)",
+      "validation_sections": [
+        "identity-duplicates"
+      ]
+    },
+    {
+      "id": "C16-M2",
+      "severity": "MAJOR",
+      "codex_finding": "Strict byte-level JSON ingestion is absent; a parsed-object API cannot detect duplicate keys or malformed raw-frame structure.",
+      "v16_defect": "Raw captures entered the authority as already-parsed dictionaries. json.loads keeps the LAST duplicate key, so a frame with two 'method' keys would have been accepted with the attacker's value and nothing recorded that a strict parse ever happened.",
+      "correction": "ingest_raw_frame() is the ONE canonical boundary: bytes -> strict single-object parse (duplicate keys, malformed UTF-8, byte-order mark, control characters, invalid number syntax, non-finite constants, trailing bytes, multiple values, non-object top level, oversized frame, unknown schema version) -> structure validation -> trusted-shim check -> content digest -> immutable record plus a strict-parse receipt. Every RAW_CAPABILITY_CAPTURE record must carry a receipt that closes over its own digest and names the exact frame bytes; a pre-parsed dictionary is inadmissible.",
+      "negative_fixture": "validate_v1_14.py section raw-ingestion: thirteen malformed frames each asserting its closed RAW_INGEST_CODES refusal, plus records with a missing, mis-bound or non-strict receipt.",
+      "expected_layer": "raw parse (byte boundary)",
+      "validation_sections": [
+        "raw-ingestion"
+      ]
+    },
+    {
+      "id": "C16-M3",
+      "severity": "MAJOR",
+      "codex_finding": "Append-only evidence-root behaviour is documented but not implemented or testable as executable authority.",
+      "v16_defect": "EVIDENCE-ROOT.md described the layout in prose. Nothing in the bundle could be run to prove that an evidence root refuses an overwrite, a reused attempt id, a record after finalization, or a replaced record.",
+      "correction": "tools/evidence_store.py implements the law: session creation by mkdir, O_CREAT|O_EXCL writes at mode 0o400, content-addressed paths derived from digests the store computes itself, idempotence only for byte-identical content, attempt-id uniqueness via O_EXCL markers, atomic temp->hard-link->unlink writes, finalization into a self-digesting HASHES manifest plus a FINALIZED marker, a closed ERROR_CODES vocabulary, and verify() recomputing everything from bytes on disk. session_manifest_errors() binds a session to the active authority, registry, matrix, trusted shim, parser and primitive spec.",
+      "negative_fixture": "validate_v1_14.py section evidence-store: session re-creation, caller-declared digest mismatch, attempt-id reuse, path traversal, unknown layer, symlinked session, write after finalization, re-finalization, replaced record bytes, tampered HASHES, removed record, unfinalized session, partially written record, mismatched pinned authority, and a static audit that no code path opens a record for writing, truncates, renames over one or unlinks one.",
+      "expected_layer": "evidence store (byte layer)",
+      "validation_sections": [
+        "evidence-store"
+      ]
+    }
+  ]
+}
