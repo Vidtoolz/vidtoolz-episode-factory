@@ -1,0 +1,75 @@
+{
+  "schema": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
+  "authority_version": "1.15.0",
+  "adjudication": "Codex independent v1.9 result: all v1.7/v1.8 regressions 211/211 PASS, with five remaining evidence-store findings S110-1..S110-5",
+  "law": "each finding names the v1.9 defect, the v1.10 correction, at least one negative fixture, the layer the attack must fail at, and the validate_v1_15.py sections that prove it. validate_v1_15.py refuses to pass unless every named section exists and every check in it passes.",
+  "operational_closure": "the v1.8 evidence-store matrix (S19-1..S19-4) is retained as FINDING-RESOLUTION-MATRIX-v1.9.json and its corrections are re-run as v1.11 regressions; this file is HISTORICAL under v1.11, whose ACTIVE matrix is FINDING-RESOLUTION-MATRIX-v1.11.json.",
+  "inherited_matrices": [
+    "FINDING-RESOLUTION-MATRIX-v1.9.json",
+    "FINDING-RESOLUTION-MATRIX-v1.8.json",
+    "FINDING-RESOLUTION-MATRIX-v1.7.json"
+  ],
+  "findings": [
+    {
+      "id": "S110-1",
+      "severity": "BLOCKER",
+      "codex_finding": "Session boundary not persisted or rechecked: after creation a session directory can be replaced, the same basename accepted under another root, root identity is absent from session semantic identity, and the session directory entry is not sufficiently rechecked on later operations.",
+      "prior_defect": "v1.9's RootBoundary lived only in process memory. Reproduced against the frozen v1.9 bundle: replacing the session directory with another directory of the same basename and content verified clean, and copying the whole session under a second root verified clean. The evidence root was not part of the session identity tuple.",
+      "correction": "create_session persists a SESSION_BOUNDARY receipt (BOUNDARY.json, mode 0o444, governed evidence) binding the configured root literal path, device and inode, the session basename, device and inode, the session id, the authority and store versions and the platform scope, closed by its own digest. boundary_identity() digests it into the session identity tuple, so the same bytes under another root or another directory inode are a different, invalid session. check_boundary() re-lstats the root AND the session directory against the receipt - path, device, inode, non-symlink type, directory type and frozen mode - before every authorizing operation, and fails closed with ROOT_IDENTITY_MISMATCH or SESSION_BOUNDARY_CHANGED.",
+      "negative_fixture": "validate_v1_15.py section evidence-boundary-receipt: session directory replaced by another with the same basename, same-basename session under an alternate root, boundary receipt mutation and deletion, root replaced by symlink and by another directory, plus randomized boundary-replacement property tests.",
+      "expected_layer": "evidence store (persisted boundary)",
+      "validation_sections": [
+        "evidence-boundary-receipt"
+      ]
+    },
+    {
+      "id": "S110-2",
+      "severity": "BLOCKER",
+      "codex_finding": "Inventory and finalization semantics still partly self-asserted: directory semantic duplicates not fully rejected, attempt-ID duplicates survive where attempt-key duplicates do not, finalization marker store_version and authority_version are ignored, and some inventory semantic fields are not independently derived.",
+      "prior_defect": "v1.9 recorded normative fields and then trusted them. Reproduced: mutating the finalization marker's evidence_store_version and authority_version left verify() returning clean.",
+      "correction": "expected_model() rebuilds the whole semantic model from INDEPENDENT sources only - filesystem facts, record bytes, the session manifest, the boundary receipt and frozen store law - and never reads the inventory. verify_summary() then compares the stored inventory and finalization marker against that model field by field, including every inventory header field and every normative marker field. Directory kinds and modes are derived from path law, duplicates in entries, record keys, attempt keys and directories are refused before any index is built, and a published provenance table classifies every normative inventory field by source.",
+      "negative_fixture": "validate_v1_15.py sections evidence-recomputed-model and evidence-finalization-fields: the seven-field finalization attack matrix, inventory header mutation, directory duplicate and conflicting-kind cases, and the provenance table assertion that no normative field is trusted from the inventory itself.",
+      "expected_layer": "evidence store (recomputed model)",
+      "validation_sections": [
+        "evidence-recomputed-model",
+        "evidence-finalization-fields"
+      ]
+    },
+    {
+      "id": "S110-3",
+      "severity": "BLOCKER",
+      "codex_finding": "Stored attempt marker authority incomplete: the public attempt tuple API is enforced, but a foreign or pre-finalization attempt marker can be inserted and accepted, so the persisted layer is weaker than the API.",
+      "prior_defect": "Reproduced: a syntactically valid marker naming another session was planted into an ACTIVE session, and the subsequent write, finalize and verify all succeeded.",
+      "correction": "Stored markers are never trusted from filename or content. expected_model() derives, for every marker, the record path its tuple requires and matches it against the records actually present, and derives, for every record, the marker whose tuple recomputes that record's semantic key. The relation must be a bijection: a marker with no record is FOREIGN_ATTEMPT_MARKER, a record with no marker is ORPHANED_RECORD, a marker naming another session is FOREIGN_ATTEMPT_MARKER, and attempt ids are unique in addition to attempt keys (ATTEMPT_ID_DUPLICATE). This runs in the ACTIVE integrity check, so a corrupted ACTIVE session cannot progress to FINALIZED.",
+      "negative_fixture": "validate_v1_15.py section evidence-attempt-derivation: foreign marker planted while ACTIVE, duplicate attempt id, orphaned record, marker field mutation property tests, and the cross-session ACTIVE insertion matrix.",
+      "expected_layer": "evidence store (attempt marker derivation)",
+      "validation_sections": [
+        "evidence-attempt-derivation"
+      ]
+    },
+    {
+      "id": "S110-4",
+      "severity": "MAJOR",
+      "codex_finding": "Mode authority incomplete before finalization: session-directory chmod is accepted, pre-finalization chmod can be accepted, and mode invariants are not enforced continuously.",
+      "prior_defect": "Reproduced: chmod of the session directory on a finalized session verified clean, and chmod of a record while ACTIVE allowed the next write and a successful finalize.",
+      "correction": "A frozen MODE_TABLE derives the expected mode of every governed entry from its KIND, including the evidence session directory, the layer, shard, attempts and temp directories, records, attempt markers, the manifest, the boundary receipt, the journal, the inventory and the finalization marker. expected_model() compares derived modes against the filesystem, so the check runs continuously from creation onward, and _require_can_write() refuses any further operation on a session whose modes have drifted.",
+      "negative_fixture": "validate_v1_15.py section evidence-mode-authority: ACTIVE chmod of session directory, layer directory, manifest, record, attempt marker and journal each blocking the next canonical operation; the finalized chmod matrix retained; randomized permission-bit property tests in both states.",
+      "expected_layer": "evidence store (continuous metadata authority, POSIX)",
+      "validation_sections": [
+        "evidence-mode-authority"
+      ]
+    },
+    {
+      "id": "S110-5",
+      "severity": "MINOR",
+      "codex_finding": "Filesystem failures need deterministic conversion into frozen refusal classes rather than leaking platform or runtime exceptions.",
+      "prior_defect": "Reproduced: a write into a layer directory with mode 0o000 raised a raw PermissionError out of the public authority path.",
+      "correction": "One normalization boundary, fs(), wraps every os-level call, and ERRNO_TO_CODE maps ENOENT, EEXIST, ENOTDIR, EISDIR, ELOOP, EACCES, EPERM, ENAMETOOLONG, EXDEV, ENOTEMPTY, ENOSPC, EROFS and EOPNOTSUPP to frozen FS_* classes, with FS_UNAVAILABLE as the closed default. Programming defects are deliberately not caught and still surface.",
+      "negative_fixture": "validate_v1_15.py section evidence-fs-errors: missing path, permission denied, symlink loop, wrong file type, name too long, cross-device, and concurrent disappearance, each asserting a frozen class and no raw OSError.",
+      "expected_layer": "evidence store (filesystem error vocabulary)",
+      "validation_sections": [
+        "evidence-fs-errors"
+      ]
+    }
+  ]
+}

@@ -32,7 +32,7 @@ beat hand-maintained prose.
 - `config/production-stages.json` — generated stage data (mirror of the canonical spec).
 - `docs/production-mode.md` — run-level production mode (DRAFT / REVIEW / PRODUCTION) and gate-7/8 semantics per mode.
 - `docs/draft-bespoke-successor-authority.md` — immutable current-Story Draft successor and registry-to-Directed-Draft assembly authority.
-- `docs/resolve-integration/v1.14/` — Resolve execution subsystem authority bundle, current version (v1.14 correction of the v1.13 authorizing location bypass V113-B1; `docs/resolve-integration/v1.13/`, `v1.12/`, `v1.11/`, `v1.10/`, `v1.9/`, `v1.8/`, `v1.7/`, `v1.6/`, `v1.5/`, `v1.4/`, `v1.3/`, `v1.2/`, `v1.1/` and `v1/` are immutable history; `experiments/quarantine-2026-09-08/` holds the quarantined non-authoritative prototypes).
+- `docs/resolve-integration/v1.15/` — Resolve execution subsystem authority bundle, current version (v1.15 correction of Codex's six v1.14 release findings V114-B1…B4, V114-M1, V114-N1; `docs/resolve-integration/v1.14/`, `v1.13/`, `v1.12/`, `v1.11/`, `v1.10/`, `v1.9/`, `v1.8/`, `v1.7/`, `v1.6/`, `v1.5/`, `v1.4/`, `v1.3/`, `v1.2/`, `v1.1/` and `v1/` are immutable history; `experiments/quarantine-2026-09-08/` holds the quarantined non-authoritative prototypes).
 
 ## Resolve authority lineage (immutable history)
 
@@ -42,7 +42,8 @@ supersedes by reference only.
 
 | version | bundle | manifest sha256 | status |
 | --- | --- | --- | --- |
-| 1.14.0 | `docs/resolve-integration/v1.14/` | read `docs/resolve-integration/v1.14/FREEZE-MANIFEST.json` (self-identifying; not restated here, see the note below) | **CURRENT** — candidate for independent review, correction of the v1.13 authorizing location bypass V113-B1 |
+| 1.15.0 | `docs/resolve-integration/v1.15/` | read `docs/resolve-integration/v1.15/FREEZE-MANIFEST.json` (self-identifying; not restated here, see the note below) | **CURRENT** — candidate for independent review, correction of Codex's six v1.14 release findings (V114-B1 … V114-B4, V114-M1, V114-N1) |
+| 1.14.0 | `docs/resolve-integration/v1.14/` | `0d4fc9915923d17ef6ec469cc01fb164b4d2ee1001fc7983d557bf4c9d9032b8` | historical — REJECTED: four BLOCKERs (consumed evidence not bound to the validated governed bytes; diagnostic eligibility reaching commit authority; active authority naming diagnostic entrypoints; governed loader following a symlinked WORKFLOW.json), one MERGE MAJOR (malformed nominal carrier leaking AttributeError) and one MINOR |
 | 1.13.0 | `docs/resolve-integration/v1.13/` | `436e12c8616ea6704fef2dbd0e14517cf33092aec1a7ff064dd4b10fb3dad573` | historical — REJECTED: Hermes operational PASS, Codex 93/96 with one BLOCKER (V113-B1, authorizing location bypass: the core derivation and eligibility authorized a forbidden-location evidence set) and one MINOR |
 | 1.12.0 | `docs/resolve-integration/v1.12/` | `e5eace278a1b6130971a38f55ef207620cdc97d7b3872d11ce9ab8909e4014fb` | historical — REJECTED: Hermes operational PASS, Codex runtime-parity FAIL (V112-RP1, WORKFLOW_CONTRADICTORY); caller-selectable and symlinked evidence roots derived ATTACHMENT_READY |
 | 1.11.0 | `docs/resolve-integration/v1.11/` | `0c47f0cefdd63b971489a46274e3b782927f2c6ad26e4251de21860abc50c44e` | historical — F110-A … F110-D closed, both independent reviews PASS, merged; held on the pre-M0A workflow gap (AUTHORITY_UNDERSPECIFIED) |
@@ -58,12 +59,20 @@ supersedes by reference only.
 | 1.1.0 | `docs/resolve-integration/v1.1/` | `83d8a307098cdc18931f6f09de2ce782afa0bdef94ec8540c2a143910cd448c5` | historical |
 | 1.0.0 | `docs/resolve-integration/v1/` | `d9cd54780e0a123ae2045ac575bbc41638039ef3e878f1b608afbce3989a8821` | historical — first freeze |
 
-**v1.14 registration** (current):
+**v1.15 registration** (current):
+
+```
+branch    docs/resolve-authority-freeze-v1.15
+parent    b61f248238ec7ed60deca79aa9728ec0cde86edd   (v1.14 branch HEAD, which is also its semantic commit)
+manifest  read docs/resolve-integration/v1.15/FREEZE-MANIFEST.json
+```
+
+**v1.14 registration** (historical, REJECTED):
 
 ```
 branch    docs/resolve-authority-freeze-v1.14
 parent    65895c6dedceadff012a08c1bafcdf9e92b65221   (v1.13 branch HEAD, which is also its semantic commit)
-manifest  read docs/resolve-integration/v1.14/FREEZE-MANIFEST.json
+manifest  0d4fc9915923d17ef6ec469cc01fb164b4d2ee1001fc7983d557bf4c9d9032b8
 ```
 
 **v1.13 registration** (historical, REJECTED):

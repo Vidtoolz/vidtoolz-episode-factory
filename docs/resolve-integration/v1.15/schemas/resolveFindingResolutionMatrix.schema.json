@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
+  "title": "Finding resolution matrix v1.7 (Codex v1.6 adjudication)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority_version",
+    "adjudication",
+    "law",
+    "operational_closure",
+    "findings"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveFindingResolutionMatrix.v1.10"
+    },
+    "authority_version": {
+      "const": "1.15.0"
+    },
+    "adjudication": {
+      "type": "string"
+    },
+    "law": {
+      "type": "string"
+    },
+    "operational_closure": {
+      "type": "string"
+    },
+    "inherited_matrices": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "severity",
+          "codex_finding",
+          "correction",
+          "negative_fixture",
+          "expected_layer",
+          "validation_sections"
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^(C16-(B|M)[0-9]|ES-[0-9]|S19-[0-9]|S110-[0-9])$"
+          },
+          "severity": {
+            "enum": [
+              "BLOCKER",
+              "MAJOR",
+              "OPERATIONAL"
+            ]
+          },
+          "codex_finding": {
+            "type": "string",
+            "minLength": 20
+          },
+          "v16_defect": {
+            "type": "string",
+            "minLength": 20
+          },
+          "prior_defect": {
+            "type": "string",
+            "minLength": 20
+          },
+          "correction": {
+            "type": "string",
+            "minLength": 20
+          },
+          "negative_fixture": {
+            "type": "string",
+            "minLength": 20
+          },
+          "expected_layer": {
+            "type": "string",
+            "minLength": 3
+          },
+          "validation_sections": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

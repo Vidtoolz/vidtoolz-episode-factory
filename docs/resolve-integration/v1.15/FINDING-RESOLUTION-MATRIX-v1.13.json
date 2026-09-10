@@ -1,0 +1,32 @@
+{
+  "schema": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
+  "authority_version": "1.15.0",
+  "adjudication": "Hermes v1.12 operational review PASS on the intended path (lifecycle, positive runtime-only E2E, canonical records, 9/9 checked files, role separation, TOCTOU, NO_RERUN_RISK, zero Resolve/EKA contact). Codex v1.12: intake PASS, semantic delta PASS, runtime-parity oracle FAIL - classification WORKFLOW_CONTRADICTORY, finding V112-RP1.",
+  "law": "the single finding names the v1.12 defect as reproduced against the frozen v1.12 bundle at 73150d00a72820b155caf357c412f46b8ec4a9ba, its root cause, the v1.13 correction, the negative and property fixtures, and the validate_v1_15.py sections that prove it. validate_v1_15.py refuses to pass unless every named section exists and every check in it passes.",
+  "operational_closure": "the v1.11 pre-M0A workflow matrix (V112-1..V112-4) is retained as FINDING-RESOLUTION-MATRIX-v1.12.json and its corrections are re-run as v1.13 regressions; this file is HISTORICAL under v1.14, whose ACTIVE matrix is FINDING-RESOLUTION-MATRIX-v1.14.json. v1.13 changes NOTHING that passed the v1.12 operational review: principal roles, A2V semantics, the OPEN/PREPARED/VERIFIED lifecycle, the record constructors, the BUNDLE_VERIFICATION content, the TOCTOU law, the checked-file law, Store.v5, cache, shim, strict ingestion, H0, commit authority, precedence, the capability matrix and M0B/M0C/M0D are all untouched. tools/evidence_store.py differs from v1.12 by EXACTLY ONE COMMENT LINE (the validator's filename, carried by the tool rename) and by nothing else: every semantic constant is identical - Store.v5, Session.v4, Boundary.v1, Inventory.v4, Finalization.v2, 13 MODE_TABLE entries, 64 error codes, 22 inventory fields, 25 public authority methods and the precedence BOUNDARY > SESSION_STATE > MODEL > READ.",
+  "inherited_matrices": [
+    "FINDING-RESOLUTION-MATRIX-v1.12.json",
+    "FINDING-RESOLUTION-MATRIX-v1.11.json",
+    "FINDING-RESOLUTION-MATRIX-v1.10.json",
+    "FINDING-RESOLUTION-MATRIX-v1.9.json",
+    "FINDING-RESOLUTION-MATRIX-v1.8.json",
+    "FINDING-RESOLUTION-MATRIX-v1.7.json"
+  ],
+  "findings": [
+    {
+      "id": "V112-RP1",
+      "severity": "BLOCKER (WORKFLOW_CONTRADICTORY)",
+      "codex_finding": "Runtime-parity oracle FAIL. The v1.12 production APIs and CLIs accepted arbitrary evidence roots AND symlinked evidence roots, and a complete workflow under such a forbidden root still derived ATTACHMENT_READY. This contradicted the frozen v1.12 law that there is exactly one governed attachment evidence root. Consequences: MERGE BLOCKED, A2 and A2V NOT AUTHORITY_READY, ATTACHMENT_READY FAIL, A1 authority-ready NO.",
+      "prior_defect": "Reproduced against the frozen v1.12 bundle at 73150d00: `a2_prepare.py adopt/prepare --evidence-root /tmp/<dir>` followed by `a2_verify.py verify --evidence-root /tmp/<dir>` printed `derived state ATTACHMENT_READY`, and the same sequence with the root pointing at a SYMLINK also printed ATTACHMENT_READY, with both documents living under /tmp. Root cause: every authorizing function in tools/evidence_authoring.py took `root=None` and both CLIs took `--evidence-root`, introduced deliberately so the validation suite could exercise the real code in a temporary directory. The test convenience was placed on the AUTHORIZING surface, so the law lived only in prose while the code let any caller choose the authority location. governed_root(root) also called os.path.abspath on the caller's value and never classified the entry, so a symlink was followed rather than refused.",
+      "correction": "Root selection is removed from the authorizing surface entirely. authority_lib freezes GOVERNED_ATTACHMENT_ROOT and GOVERNED_ROOT_MODE; evidence_authoring.governed_attachment_root() takes NO ARGUMENT; no authorizing function and neither CLI accepts root, evidence_root, output_root, base_dir, directory, path, dir or prefix, and the preparer's Resolve-library option was renamed --library-root so no production CLI carries an option literally called --root. require_governed_root() classifies the root ENTRY with lstat before anything is resolved - absolute, already normalised, existing, a directory, not a symlink, mode 0700 - and only afterwards consults realpath as an alias check; the module contains no .resolve() call. require_governed_session_dir() applies the same no-follow law to <root>/<session_id> plus the basename, containment and alias checks. Both run on EVERY authorizing load, so update, verify, finalize and derive are as protected as create, and the authorizing derivation additionally requires the document's recorded authority_root to equal the frozen constant and written_under_production_root to be true. Scratch roots for the suite live in tools/evidence_authoring_testkit.py (AUTHORITY_CLASS INTERNAL_NON_AUTHORIZING), which neither CLI imports, which refuses to sandbox the frozen root, and whose documents the authorizing derivation refuses; the sandbox changes the root prefix ONLY, so every trust, lifecycle, principal, TOCTOU and freshness check runs unchanged on the same code.",
+      "negative_fixture": "validate_v1_15.py sections root-law (the pinned v1.12 attack invocations now rejected by argument parsing; symlinked root refused before any write; file/mode/absent root entries; symlinked session directory refused on load and on derive; relocation to /tmp, a sibling root and an alternate user path; the production path refusing outright when the frozen root is absent; the full session-id reject list), root-parity (the sandbox differs in prefix only, and a mechanically sound sandboxed document is refused by the authorizing derivation), root-property (24 seeded root/symlink/relocation/sibling-prefix/relative/normalisation attacks and 40 seeded session-id shapes) and root-static (ten audits including no authorizing root parameter, one governed constant, no symlink-follow-before-check, no /tmp production path, no Store.v5 or EKA root, derive and verify both re-checking the canonical location, and the test override being unreachable from production).",
+      "expected_layer": "pre-M0A workflow (governed evidence-set location)",
+      "validation_sections": [
+        "root-law",
+        "root-parity",
+        "root-property",
+        "root-static"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "schema": "vidtoolz.resolvePrincipalRegistry.v1",
+  "authority_version": "1.15.0",
+  "law": "a principal is a ROLE-BOUND OPERATIONAL LABEL of the form '<ROLE>:<actor>', registered here and stamped by the authoring tool for the ONE role that tool implements. It is NOT an authenticated identity: there is no key, no signature and no certificate. What the law buys is that a caller cannot invent two labels inside one record and that no actor id may hold two roles, so BUNDLE_VERIFICATION independence is no longer satisfiable by relabelling. A human who runs both tools is still one human; that residual risk is stated in THREAT-MODEL.md, not closed.",
+  "roles": [
+    "PREPARER",
+    "VERIFIER",
+    "APPROVER"
+  ],
+  "registry": {
+    "APPROVER": [
+      "APPROVER:mikko"
+    ],
+    "PREPARER": [
+      "PREPARER:hermes-m0a-driver",
+      "PREPARER:mikko-operator"
+    ],
+    "VERIFIER": [
+      "VERIFIER:codex-independent"
+    ]
+  },
+  "write_grants": {
+    "APPROVER": [],
+    "PREPARER": [
+      "LAUNCH_RECIPE",
+      "PROVISIONING_RECORD",
+      "READ_ONLY_JOURNAL"
+    ],
+    "VERIFIER": [
+      "BUNDLE_VERIFICATION"
+    ]
+  },
+  "state_grants": {
+    "OPEN": {
+      "PREPARER": [
+        "LAUNCH_RECIPE",
+        "PROVISIONING_RECORD",
+        "READ_ONLY_JOURNAL"
+      ]
+    },
+    "PREPARED": {
+      "VERIFIER": [
+        "BUNDLE_VERIFICATION"
+      ]
+    },
+    "VERIFIED": {}
+  },
+  "role_separation": "no ACTOR may appear under two roles; authority_lib.role_separation_errors() is asserted empty by validate_v1_15.py",
+  "actor_disjointness_now": {
+    "APPROVER": [
+      "mikko"
+    ],
+    "PREPARER": [
+      "hermes-m0a-driver",
+      "mikko-operator"
+    ],
+    "VERIFIER": [
+      "codex-independent"
+    ]
+  },
+  "verification_results": [
+    "PASS",
+    "FAIL"
+  ],
+  "enforced_by": [
+    "tools/evidence_authoring.py#_authorize",
+    "authority_lib.py#principal_errors",
+    "authority_lib.py#may_write",
+    "authority_lib.py#derive_attachment_state_authorizing (BUNDLE_VERIFICATION filter)"
+  ]
+}
