@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveTrustedCaptureShim.v1",
+  "title": "Trusted capture shim authority v1.10 (the one shim identity a promotable capture may carry)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority_version",
+    "shim_version",
+    "shim_sha256",
+    "shim_source_path",
+    "shim_source_sha256",
+    "allowlist_digest",
+    "allowlist_method_count",
+    "codec_version",
+    "raw_schema_version",
+    "raw_ingest_version",
+    "evidence_store_version",
+    "trusted_shim_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveTrustedCaptureShim.v1"
+    },
+    "authority_version": {
+      "const": "1.17.0"
+    },
+    "shim_version": {
+      "const": "vidtoolz.captureShim.reference.v1"
+    },
+    "shim_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "shim_source_path": {
+      "const": "tools/capture_shim_reference.py"
+    },
+    "shim_source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "allowlist_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "allowlist_method_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "codec_version": {
+      "const": "vidtoolz.resolvePyValue.v1"
+    },
+    "raw_schema_version": {
+      "const": "vidtoolz.resolveRawCapabilityCapture.v1"
+    },
+    "raw_ingest_version": {
+      "const": "vidtoolz.resolveRawIngest.v1"
+    },
+    "evidence_store_version": {
+      "const": "vidtoolz.resolveEvidenceStore.v5"
+    },
+    "trusted_shim_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$comment": "v1.7 (C16-B3): in v1.6 a capture carried capture_shim_version and capture_shim_sha256 that nothing was ever compared against, so a capture claiming any shim sha qualified. Here the bundle pins ONE trusted shim: its source path and source bytes, its own self-hash, the allowlist it may invoke, the codec and raw schema it may emit. trusted_capture_shim() re-verifies all of that against the files on disk on every resolution, and capture_shim_trust_errors() refuses any capture that does not match. This file is itself pinned by FREEZE-MANIFEST.json."
+}

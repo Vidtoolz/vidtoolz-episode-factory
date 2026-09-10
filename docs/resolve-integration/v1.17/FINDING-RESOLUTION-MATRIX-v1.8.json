@@ -1,0 +1,40 @@
+{
+  "schema": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
+  "authority_version": "1.17.0",
+  "adjudication": "Codex final v1.7 forensic adjudication: intake PASS, supplied validation 1800/1800 twice, independent harness 210/211, one remaining defect class (EVIDENCE STORE INTEGRITY / COMPETING STORE AUTHORITY): ES-1 and ES-2",
+  "law": "each finding names the v1.7 defect, the v1.8 correction, at least one negative fixture, the layer the attack must fail at, and the validate_v1_17.py sections that prove it. validate_v1_17.py refuses to pass unless every named section exists and every check in it passes.",
+  "operational_closure": "the v1.6 finding matrix (C16-B1..B4, C16-M1..M3, C16-OP1) is retained as FINDING-RESOLUTION-MATRIX-v1.7.json and its corrections are re-run as v1.8 regressions; this file is the ACTIVE matrix.",
+  "inherited_matrices": [
+    "FINDING-RESOLUTION-MATRIX-v1.7.json",
+    "FINDING-RESOLUTION-MATRIX-v1.6.md",
+    "FINDING-RESOLUTION-MATRIX-v1.5.md"
+  ],
+  "findings": [
+    {
+      "id": "ES-1",
+      "severity": "BLOCKER",
+      "codex_finding": "The normative evidence-store verifier ignores unexpected files placed in a finalized session root.",
+      "prior_defect": "v1.7 verify() enumerated only the four evidence layers plus a fixed set of known names. A file planted in the finalized session ROOT after finalization was not looked at at all, so verify() returned no errors: independent attack STORE-14 passed. A file planted inside a layer directory was noticed only incidentally and mis-reported as PARTIAL_RECORD, which describes a torn write rather than a hostile addition. An unexpected DIRECTORY was ignored entirely.",
+      "correction": "Finalization is now a CLOSED WORLD. finalize() enumerates every governed entry - every file and every directory, at every depth - hashes all bytes, and records the complete allowed inventory in INVENTORY.json (path, kind, layer, digest, byte count, schema type, logical identity, attempt ids, plus the expected directory set), self-digesting and read-only, with a FINALIZED marker naming that inventory digest. verify() walks the whole tree and compares EXPECTED against ACTUAL, requiring missing == 0, unexpected == 0 and changed == 0. An unknown file or directory anywhere under the session root is UNEXPECTED_ENTRY. Nothing is ignored.",
+      "negative_fixture": "validate_v1_17.py section evidence-closed-world: the pinned STORE-14 regression (finalize, plant an unexpected root file, verify) plus unexpected nested file, unexpected directory, extra RAW record, extra DERIVED record, altered record, deleted record, renamed record, altered inventory and altered finalization receipt.",
+      "expected_layer": "evidence store (closed-world verification)",
+      "validation_sections": [
+        "evidence-closed-world",
+        "evidence-store"
+      ]
+    },
+    {
+      "id": "ES-2",
+      "severity": "BLOCKER",
+      "codex_finding": "A legacy/competing EvidenceRoot surface remains in tools/capture_shim_reference.py; its add_derived() path accepts traversal such as '../../...' and lacks the verification/finalization guarantees of the normative evidence_store.py.",
+      "prior_defect": "The capture shim carried a second evidence-storage implementation with its own layout, its own path construction and no verification, no inventory and no closed-world finalization. All FOUR of its write entry points built a filesystem path by interpolating a caller-supplied string (add_capture from raw_digest, add_derived from raw_capture_sha256, add_review and add_refreeze from record_id), so each of them escaped the evidence root on '../../x'. Two competing storage authorities existed for the same evidence.",
+      "correction": "EvidenceRoot is REMOVED from the capture shim, which now captures facts and serializes frames and never creates a directory, derives an evidence path or writes evidence. tools/evidence_store.py is the single EVIDENCE_STORE_AUTHORIZING implementation. Its write API takes a layer, a logical identity and bytes - never a path - and derives the content-addressed destination itself (put_raw / put_derived / put_review / put_promotion). Every caller-supplied identifier passes one NAME_RE logical-name gate and a resolved-path containment proof before any filesystem use.",
+      "negative_fixture": "validate_v1_17.py sections evidence-single-authority (static audit: exactly one EVIDENCE_STORE_AUTHORIZING module, EvidenceRoot absent, no storage primitives in the shim) and evidence-traversal (the exact legacy attack plus twelve traversal, absolute-path, separator, symlink, dot, empty and over-long identifier shapes against every write API, each proving no file appears outside the session root).",
+      "expected_layer": "evidence store (path law) / authority surface",
+      "validation_sections": [
+        "evidence-single-authority",
+        "evidence-traversal"
+      ]
+    }
+  ]
+}

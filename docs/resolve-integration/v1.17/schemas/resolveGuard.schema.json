@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveGuard.v3",
+  "title": "Composite pre-write / revalidation guard v3 (identity with observation status + reason; provenance binding)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "hash_domain",
+    "guard_version",
+    "library",
+    "project",
+    "timeline",
+    "target_epoch",
+    "coverage",
+    "policy",
+    "provenance_sha256",
+    "payload_sha256"
+  ],
+  "properties": {
+    "hash_domain": {
+      "const": "vidtoolz.resolveGuard.v3"
+    },
+    "guard_version": {
+      "const": 3
+    },
+    "library": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "db_type",
+        "db_name",
+        "instance_uuid"
+      ],
+      "properties": {
+        "db_type": {
+          "enum": [
+            "Disk"
+          ]
+        },
+        "db_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instance_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unique_id",
+        "unique_id_status",
+        "unique_id_reason",
+        "name",
+        "name_status"
+      ],
+      "properties": {
+        "unique_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "unique_id_status": {
+          "enum": [
+            "OBSERVED",
+            "UNAVAILABLE",
+            "UNSUPPORTED",
+            "ERROR",
+            "NOT_REQUESTED"
+          ]
+        },
+        "unique_id_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name_status": {
+          "enum": [
+            "OBSERVED",
+            "UNAVAILABLE",
+            "UNSUPPORTED",
+            "ERROR",
+            "NOT_REQUESTED"
+          ]
+        }
+      }
+    },
+    "timeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unique_id",
+        "unique_id_status",
+        "unique_id_reason",
+        "name",
+        "name_status"
+      ],
+      "properties": {
+        "unique_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "unique_id_status": {
+          "enum": [
+            "OBSERVED",
+            "UNAVAILABLE",
+            "UNSUPPORTED",
+            "ERROR",
+            "NOT_REQUESTED"
+          ]
+        },
+        "unique_id_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name_status": {
+          "enum": [
+            "OBSERVED",
+            "UNAVAILABLE",
+            "UNSUPPORTED",
+            "ERROR",
+            "NOT_REQUESTED"
+          ]
+        }
+      }
+    },
+    "target_epoch": {
+      "type": "string"
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "complete",
+        "observed_domains",
+        "unobservable_domains",
+        "deferred_domains",
+        "incomplete_reasons"
+      ],
+      "properties": {
+        "profile": {
+          "enum": [
+            "MINIMAL_M0",
+            "FULL_TIMELINE_READ",
+            "WRITE_PRECHECK",
+            "APPEND_VERIFY"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "observed_domains": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "adapter_bin_media",
+              "caches",
+              "connection",
+              "fades",
+              "fusion_graphs",
+              "grades",
+              "guard",
+              "item_identity",
+              "item_properties",
+              "item_source_bounds",
+              "items",
+              "keyframe_curves",
+              "library",
+              "linked_items",
+              "markers",
+              "nested_timelines",
+              "policy",
+              "project",
+              "render_queue",
+              "settings",
+              "speed",
+              "takes",
+              "timeline",
+              "track_locks",
+              "tracks",
+              "unowned_media_hashes"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "unobservable_domains": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "adapter_bin_media",
+              "caches",
+              "connection",
+              "fades",
+              "fusion_graphs",
+              "grades",
+              "guard",
+              "item_identity",
+              "item_properties",
+              "item_source_bounds",
+              "items",
+              "keyframe_curves",
+              "library",
+              "linked_items",
+              "markers",
+              "nested_timelines",
+              "policy",
+              "project",
+              "render_queue",
+              "settings",
+              "speed",
+              "takes",
+              "timeline",
+              "track_locks",
+              "tracks",
+              "unowned_media_hashes"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "deferred_domains": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "adapter_bin_media",
+              "caches",
+              "connection",
+              "fades",
+              "fusion_graphs",
+              "grades",
+              "guard",
+              "item_identity",
+              "item_properties",
+              "item_source_bounds",
+              "items",
+              "keyframe_curves",
+              "library",
+              "linked_items",
+              "markers",
+              "nested_timelines",
+              "policy",
+              "project",
+              "render_queue",
+              "settings",
+              "speed",
+              "takes",
+              "timeline",
+              "track_locks",
+              "tracks",
+              "unowned_media_hashes"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "incomplete_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_contract_sha256",
+        "timebase_sha256",
+        "track_policy_sha256",
+        "capabilities_version",
+        "capability_matrix_sha256",
+        "collector_version",
+        "canonicalization_version"
+      ],
+      "properties": {
+        "target_contract_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "timebase_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "track_policy_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "capabilities_version": {
+          "type": "string"
+        },
+        "capability_matrix_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "collector_version": {
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.5"
+        }
+      }
+    },
+    "provenance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$comment": "Guard digest = sha256(domain vidtoolz.resolveGuard.v3 + canonical guard object). v3 carries project/timeline identity WITH observation status and reason, and provenance_sha256 = digest(collection.method_provenance, vidtoolz.resolveProvenance.v1) so the guard binds which raw captures produced the OBSERVED fields. v1.6: the GUARD_SNAPSHOT evidence record carries this whole object plus method_provenance so the pre-write evaluator recomputes both digests and proves profile/completeness/provenance/target before any mutator. Payload digest alone is never a version token."
+}

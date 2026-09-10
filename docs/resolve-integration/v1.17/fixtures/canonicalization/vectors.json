@@ -1,0 +1,1934 @@
+{
+  "schema": "vidtoolz.resolveCanonicalizationVectors.v1.10",
+  "spec": "CANONICALIZATION.md v1.10",
+  "digest_rule": "sha256(utf8(domain) + 0x0A + canonical_bytes)",
+  "registered_domains": [
+    "vidtoolz.resolveBindingSet.v1",
+    "vidtoolz.resolveCapabilityMatrix.v1",
+    "vidtoolz.resolveContentKey.v1",
+    "vidtoolz.resolveDerivedCapabilityResult.v1",
+    "vidtoolz.resolveEvidenceAttemptKey.v1",
+    "vidtoolz.resolveEvidenceBoundary.v1",
+    "vidtoolz.resolveEvidenceInventory.v4",
+    "vidtoolz.resolveEvidenceRecord.v1",
+    "vidtoolz.resolveEvidenceRecordKey.v1",
+    "vidtoolz.resolveEvidenceSession.v4",
+    "vidtoolz.resolveEvidenceSessionIdentity.v2",
+    "vidtoolz.resolveEvidenceSet.v1",
+    "vidtoolz.resolveEvidenceSetSnapshot.v1",
+    "vidtoolz.resolveGeneric.v1",
+    "vidtoolz.resolveGuard.v3",
+    "vidtoolz.resolveIdentityClaimSet.v1",
+    "vidtoolz.resolveJournalRecord.v1",
+    "vidtoolz.resolveLocationReceipt.v1",
+    "vidtoolz.resolveMutationPlan.v1",
+    "vidtoolz.resolveOperationSet.v1",
+    "vidtoolz.resolvePrimitiveSpec.v1",
+    "vidtoolz.resolveProvenance.v1",
+    "vidtoolz.resolveRawCapabilityCapture.v1",
+    "vidtoolz.resolveRawIngestReceipt.v1",
+    "vidtoolz.resolveReadPrimitiveAuthority.v1",
+    "vidtoolz.resolveRefreezeBlock.v1",
+    "vidtoolz.resolveSchemaRegistry.v1",
+    "vidtoolz.resolveShimAllowlist.v1",
+    "vidtoolz.resolveSnapshotObject.v1",
+    "vidtoolz.resolveSnapshotPayload.v1.5",
+    "vidtoolz.resolveStoredChain.v1",
+    "vidtoolz.resolveTrustedCaptureShim.v1",
+    "vidtoolz.resolveVerificationResult.v1"
+  ],
+  "reference_implementation": "tools/authority_lib.py",
+  "vectors": [
+    {
+      "name": "empty_object",
+      "note": null,
+      "input": {},
+      "domain": "vidtoolz.resolveGeneric.v1",
+      "canonical_utf8": "{}",
+      "canonical_byte_length": 2,
+      "sha256": "448dc79af36fe0c78b8a60dfec7e118bcdd2821ff87242582d14e7693beb798a"
+    },
+    {
+      "name": "key_order_codepoint",
+      "note": null,
+      "input": {
+        "b": 1,
+        "a": 2,
+        "B": 3,
+        "ä": 4,
+        "aa": 5
+      },
+      "domain": "vidtoolz.resolveGeneric.v1",
+      "canonical_utf8": "{\"B\":3,\"a\":2,\"aa\":5,\"b\":1,\"ä\":4}",
+      "canonical_byte_length": 33,
+      "sha256": "a7ec8f3c8359da97b6e51107ed8ae63e69d8179f42f12402e3c7ed739a958f5a"
+    },
+    {
+      "name": "string_escapes",
+      "note": null,
+      "input": {
+        "s": "quote\" back\\ tab\t nl\n cr\r del slash/ emoji😀 ä"
+      },
+      "domain": "vidtoolz.resolveGeneric.v1",
+      "canonical_utf8": "{\"s\":\"quote\\\" back\\\\ tab\\t nl\\n cr\\r del slash/ emoji😀 ä\"}",
+      "canonical_byte_length": 62,
+      "sha256": "0da54761c10f82d8088090b9b55b1bf5e22cd0c4b5cac275cc0eb3df1d511649"
+    },
+    {
+      "name": "integers_and_tagged",
+      "note": null,
+      "input": {
+        "frames": 6756,
+        "ms": 225183,
+        "zero": 0,
+        "neg": -17,
+        "fps": {
+          "$rational": "30/1"
+        },
+        "gain": {
+          "$f64": "3ff0000000000000"
+        }
+      },
+      "domain": "vidtoolz.resolveGeneric.v1",
+      "canonical_utf8": "{\"fps\":{\"$rational\":\"30/1\"},\"frames\":6756,\"gain\":{\"$f64\":\"3ff0000000000000\"},\"ms\":225183,\"neg\":-17,\"zero\":0}",
+      "canonical_byte_length": 108,
+      "sha256": "065bc2b5ca71642c97476cfe4c9171d907cf64ac4442120fd9c1f05c94699a69"
+    },
+    {
+      "name": "f64_one_canonical_form_positive_zero",
+      "note": null,
+      "input": {
+        "z": {
+          "$f64": "0000000000000000"
+        }
+      },
+      "domain": "vidtoolz.resolveGeneric.v1",
+      "canonical_utf8": "{\"z\":{\"$f64\":\"0000000000000000\"}}",
+      "canonical_byte_length": 33,
+      "sha256": "0a938eb273ee9d2c1c2cb80ae27d469553bc432eb29b24fd16adfddf5a673037"
+    },
+    {
+      "name": "numeric_track_index_2_before_10",
+      "note": null,
+      "input": {
+        "timeline": {
+          "unique_id": null,
+          "name": null,
+          "start_frame": null,
+          "start_timecode": null,
+          "fps": null,
+          "width": null,
+          "height": null,
+          "end_frame": null,
+          "is_current": null,
+          "duration_convention": "UNQUALIFIED",
+          "settings": null,
+          "field_status": {
+            "unique_id": "UNAVAILABLE",
+            "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "name": "UNAVAILABLE",
+            "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_frame": "UNAVAILABLE",
+            "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "end_frame": "UNAVAILABLE",
+            "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_timecode": "UNAVAILABLE",
+            "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "fps": "UNAVAILABLE",
+            "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "width": "UNAVAILABLE",
+            "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "height": "UNAVAILABLE",
+            "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "is_current": "UNAVAILABLE",
+            "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "settings": "UNAVAILABLE",
+            "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+          }
+        },
+        "tracks": [
+          {
+            "type": "video",
+            "index": 10,
+            "name": "video10",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": []
+          },
+          {
+            "type": "video",
+            "index": 2,
+            "name": "video2",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": []
+          }
+        ],
+        "markers": [],
+        "media_dependencies": [],
+        "observation_failures": []
+      },
+      "domain": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "canonical_utf8": "{\"markers\":[],\"media_dependencies\":[],\"observation_failures\":[],\"timeline\":{\"duration_convention\":\"UNQUALIFIED\",\"end_frame\":null,\"field_status\":{\"end_frame\":\"UNAVAILABLE\",\"end_frame_reason\":\"end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"fps\":\"UNAVAILABLE\",\"fps_reason\":\"fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"height\":\"UNAVAILABLE\",\"height_reason\":\"height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"is_current\":\"UNAVAILABLE\",\"is_current_reason\":\"is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"settings\":\"UNAVAILABLE\",\"settings_reason\":\"settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_frame\":\"UNAVAILABLE\",\"start_frame_reason\":\"start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_timecode\":\"UNAVAILABLE\",\"start_timecode_reason\":\"start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"width\":\"UNAVAILABLE\",\"width_reason\":\"width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"fps\":null,\"height\":null,\"is_current\":null,\"name\":null,\"settings\":null,\"start_frame\":null,\"start_timecode\":null,\"unique_id\":null,\"width\":null},\"tracks\":[{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":2,\"items\":[],\"locked\":false,\"name\":\"video2\",\"type\":\"video\"},{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":10,\"items\":[],\"locked\":false,\"name\":\"video10\",\"type\":\"video\"}]}",
+      "canonical_byte_length": 1699,
+      "sha256": "854939658eed85f1aced029dec6772f6c7f9df91aa3cbeab194f5d3afc8c6dd0"
+    },
+    {
+      "name": "track_type_order_video_audio_subtitle",
+      "note": null,
+      "input": {
+        "timeline": {
+          "unique_id": null,
+          "name": null,
+          "start_frame": null,
+          "start_timecode": null,
+          "fps": null,
+          "width": null,
+          "height": null,
+          "end_frame": null,
+          "is_current": null,
+          "duration_convention": "UNQUALIFIED",
+          "settings": null,
+          "field_status": {
+            "unique_id": "UNAVAILABLE",
+            "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "name": "UNAVAILABLE",
+            "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_frame": "UNAVAILABLE",
+            "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "end_frame": "UNAVAILABLE",
+            "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_timecode": "UNAVAILABLE",
+            "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "fps": "UNAVAILABLE",
+            "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "width": "UNAVAILABLE",
+            "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "height": "UNAVAILABLE",
+            "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "is_current": "UNAVAILABLE",
+            "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "settings": "UNAVAILABLE",
+            "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+          }
+        },
+        "tracks": [
+          {
+            "type": "subtitle",
+            "index": 1,
+            "name": "subtitle1",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": []
+          },
+          {
+            "type": "audio",
+            "index": 1,
+            "name": "audio1",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": []
+          },
+          {
+            "type": "video",
+            "index": 1,
+            "name": "video1",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": []
+          }
+        ],
+        "markers": [],
+        "media_dependencies": [],
+        "observation_failures": []
+      },
+      "domain": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "canonical_utf8": "{\"markers\":[],\"media_dependencies\":[],\"observation_failures\":[],\"timeline\":{\"duration_convention\":\"UNQUALIFIED\",\"end_frame\":null,\"field_status\":{\"end_frame\":\"UNAVAILABLE\",\"end_frame_reason\":\"end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"fps\":\"UNAVAILABLE\",\"fps_reason\":\"fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"height\":\"UNAVAILABLE\",\"height_reason\":\"height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"is_current\":\"UNAVAILABLE\",\"is_current_reason\":\"is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"settings\":\"UNAVAILABLE\",\"settings_reason\":\"settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_frame\":\"UNAVAILABLE\",\"start_frame_reason\":\"start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_timecode\":\"UNAVAILABLE\",\"start_timecode_reason\":\"start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"width\":\"UNAVAILABLE\",\"width_reason\":\"width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"fps\":null,\"height\":null,\"is_current\":null,\"name\":null,\"settings\":null,\"start_frame\":null,\"start_timecode\":null,\"unique_id\":null,\"width\":null},\"tracks\":[{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":1,\"items\":[],\"locked\":false,\"name\":\"video1\",\"type\":\"video\"},{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":1,\"items\":[],\"locked\":false,\"name\":\"audio1\",\"type\":\"audio\"},{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":1,\"items\":[],\"locked\":false,\"name\":\"subtitle1\",\"type\":\"subtitle\"}]}",
+      "canonical_byte_length": 1863,
+      "sha256": "dd4a9045e0764bb016ad775e15755fb6cc4e7bd9cf65b8076e853394e561a1be"
+    },
+    {
+      "name": "markers_total_order_A",
+      "note": null,
+      "input": {
+        "timeline": {
+          "unique_id": null,
+          "name": null,
+          "start_frame": null,
+          "start_timecode": null,
+          "fps": null,
+          "width": null,
+          "height": null,
+          "end_frame": null,
+          "is_current": null,
+          "duration_convention": "UNQUALIFIED",
+          "settings": null,
+          "field_status": {
+            "unique_id": "UNAVAILABLE",
+            "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "name": "UNAVAILABLE",
+            "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_frame": "UNAVAILABLE",
+            "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "end_frame": "UNAVAILABLE",
+            "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_timecode": "UNAVAILABLE",
+            "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "fps": "UNAVAILABLE",
+            "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "width": "UNAVAILABLE",
+            "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "height": "UNAVAILABLE",
+            "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "is_current": "UNAVAILABLE",
+            "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "settings": "UNAVAILABLE",
+            "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+          }
+        },
+        "tracks": [],
+        "markers": [
+          {
+            "object_address": "timeline",
+            "frame": 10,
+            "duration": 1,
+            "custom_data": "",
+            "name": "m",
+            "color": "Blue",
+            "note": "second"
+          },
+          {
+            "object_address": "timeline",
+            "frame": 5,
+            "duration": 1,
+            "custom_data": "",
+            "name": "m",
+            "color": "Blue",
+            "note": ""
+          },
+          {
+            "object_address": "item:it-1",
+            "frame": 5,
+            "duration": 3,
+            "custom_data": "",
+            "name": "m",
+            "color": "Blue",
+            "note": ""
+          },
+          {
+            "object_address": "timeline",
+            "frame": 7,
+            "duration": 2,
+            "custom_data": "vidtoolz:x",
+            "name": "a",
+            "color": "Red",
+            "note": "n1"
+          }
+        ],
+        "media_dependencies": [],
+        "observation_failures": []
+      },
+      "domain": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "canonical_utf8": "{\"markers\":[{\"color\":\"Blue\",\"custom_data\":\"\",\"duration\":3,\"frame\":5,\"name\":\"m\",\"note\":\"\",\"object_address\":\"item:it-1\"},{\"color\":\"Blue\",\"custom_data\":\"\",\"duration\":1,\"frame\":5,\"name\":\"m\",\"note\":\"\",\"object_address\":\"timeline\"},{\"color\":\"Red\",\"custom_data\":\"vidtoolz:x\",\"duration\":2,\"frame\":7,\"name\":\"a\",\"note\":\"n1\",\"object_address\":\"timeline\"},{\"color\":\"Blue\",\"custom_data\":\"\",\"duration\":1,\"frame\":10,\"name\":\"m\",\"note\":\"second\",\"object_address\":\"timeline\"}],\"media_dependencies\":[],\"observation_failures\":[],\"timeline\":{\"duration_convention\":\"UNQUALIFIED\",\"end_frame\":null,\"field_status\":{\"end_frame\":\"UNAVAILABLE\",\"end_frame_reason\":\"end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"fps\":\"UNAVAILABLE\",\"fps_reason\":\"fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"height\":\"UNAVAILABLE\",\"height_reason\":\"height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"is_current\":\"UNAVAILABLE\",\"is_current_reason\":\"is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"settings\":\"UNAVAILABLE\",\"settings_reason\":\"settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_frame\":\"UNAVAILABLE\",\"start_frame_reason\":\"start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_timecode\":\"UNAVAILABLE\",\"start_timecode_reason\":\"start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"width\":\"UNAVAILABLE\",\"width_reason\":\"width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"fps\":null,\"height\":null,\"is_current\":null,\"name\":null,\"settings\":null,\"start_frame\":null,\"start_timecode\":null,\"unique_id\":null,\"width\":null},\"tracks\":[]}",
+      "canonical_byte_length": 1820,
+      "sha256": "f8c103670e5f63f33c3b88c640c82b7c23427a81159e547651a0f7ac7f8259e1"
+    },
+    {
+      "name": "markers_total_order_B_reversed_same_digest",
+      "note": null,
+      "input": {
+        "timeline": {
+          "unique_id": null,
+          "name": null,
+          "start_frame": null,
+          "start_timecode": null,
+          "fps": null,
+          "width": null,
+          "height": null,
+          "end_frame": null,
+          "is_current": null,
+          "duration_convention": "UNQUALIFIED",
+          "settings": null,
+          "field_status": {
+            "unique_id": "UNAVAILABLE",
+            "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "name": "UNAVAILABLE",
+            "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_frame": "UNAVAILABLE",
+            "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "end_frame": "UNAVAILABLE",
+            "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_timecode": "UNAVAILABLE",
+            "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "fps": "UNAVAILABLE",
+            "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "width": "UNAVAILABLE",
+            "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "height": "UNAVAILABLE",
+            "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "is_current": "UNAVAILABLE",
+            "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "settings": "UNAVAILABLE",
+            "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+          }
+        },
+        "tracks": [],
+        "markers": [
+          {
+            "object_address": "timeline",
+            "frame": 7,
+            "duration": 2,
+            "custom_data": "vidtoolz:x",
+            "name": "a",
+            "color": "Red",
+            "note": "n1"
+          },
+          {
+            "object_address": "item:it-1",
+            "frame": 5,
+            "duration": 3,
+            "custom_data": "",
+            "name": "m",
+            "color": "Blue",
+            "note": ""
+          },
+          {
+            "object_address": "timeline",
+            "frame": 5,
+            "duration": 1,
+            "custom_data": "",
+            "name": "m",
+            "color": "Blue",
+            "note": ""
+          },
+          {
+            "object_address": "timeline",
+            "frame": 10,
+            "duration": 1,
+            "custom_data": "",
+            "name": "m",
+            "color": "Blue",
+            "note": "second"
+          }
+        ],
+        "media_dependencies": [],
+        "observation_failures": []
+      },
+      "domain": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "canonical_utf8": "{\"markers\":[{\"color\":\"Blue\",\"custom_data\":\"\",\"duration\":3,\"frame\":5,\"name\":\"m\",\"note\":\"\",\"object_address\":\"item:it-1\"},{\"color\":\"Blue\",\"custom_data\":\"\",\"duration\":1,\"frame\":5,\"name\":\"m\",\"note\":\"\",\"object_address\":\"timeline\"},{\"color\":\"Red\",\"custom_data\":\"vidtoolz:x\",\"duration\":2,\"frame\":7,\"name\":\"a\",\"note\":\"n1\",\"object_address\":\"timeline\"},{\"color\":\"Blue\",\"custom_data\":\"\",\"duration\":1,\"frame\":10,\"name\":\"m\",\"note\":\"second\",\"object_address\":\"timeline\"}],\"media_dependencies\":[],\"observation_failures\":[],\"timeline\":{\"duration_convention\":\"UNQUALIFIED\",\"end_frame\":null,\"field_status\":{\"end_frame\":\"UNAVAILABLE\",\"end_frame_reason\":\"end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"fps\":\"UNAVAILABLE\",\"fps_reason\":\"fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"height\":\"UNAVAILABLE\",\"height_reason\":\"height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"is_current\":\"UNAVAILABLE\",\"is_current_reason\":\"is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"settings\":\"UNAVAILABLE\",\"settings_reason\":\"settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_frame\":\"UNAVAILABLE\",\"start_frame_reason\":\"start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_timecode\":\"UNAVAILABLE\",\"start_timecode_reason\":\"start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"width\":\"UNAVAILABLE\",\"width_reason\":\"width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"fps\":null,\"height\":null,\"is_current\":null,\"name\":null,\"settings\":null,\"start_frame\":null,\"start_timecode\":null,\"unique_id\":null,\"width\":null},\"tracks\":[]}",
+      "canonical_byte_length": 1820,
+      "sha256": "f8c103670e5f63f33c3b88c640c82b7c23427a81159e547651a0f7ac7f8259e1"
+    },
+    {
+      "name": "permutation_invariance_A",
+      "note": null,
+      "input": {
+        "timeline": {
+          "unique_id": null,
+          "name": null,
+          "start_frame": null,
+          "start_timecode": null,
+          "fps": null,
+          "width": null,
+          "height": null,
+          "end_frame": null,
+          "is_current": null,
+          "duration_convention": "UNQUALIFIED",
+          "settings": null,
+          "field_status": {
+            "unique_id": "UNAVAILABLE",
+            "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "name": "UNAVAILABLE",
+            "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_frame": "UNAVAILABLE",
+            "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "end_frame": "UNAVAILABLE",
+            "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_timecode": "UNAVAILABLE",
+            "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "fps": "UNAVAILABLE",
+            "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "width": "UNAVAILABLE",
+            "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "height": "UNAVAILABLE",
+            "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "is_current": "UNAVAILABLE",
+            "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "settings": "UNAVAILABLE",
+            "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+          }
+        },
+        "tracks": [
+          {
+            "type": "video",
+            "index": 1,
+            "name": "V1",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": [
+              {
+                "unique_id": "it-1",
+                "observation_ordinal": 0,
+                "name": "still-001",
+                "start": 108000,
+                "end": 108347,
+                "duration": 347,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "COMPLETE",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "OBSERVED",
+                  "media_id": "UNAVAILABLE",
+                  "source_start": "OBSERVED",
+                  "source_end": "OBSERVED",
+                  "media_id_reason": "GetMediaId returned None on fixture"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": "mp-1",
+                "media_id": null,
+                "source_locator": "/qual/media/still-001.png",
+                "source_status": "HASHED",
+                "source_sha256": "06ada57c26aa5cf429e9f2c0a99e3e4a42daecd45fc4c955d7c1399ab4227ae8",
+                "source_start": 0,
+                "source_end": 347
+              },
+              {
+                "unique_id": "it-2",
+                "observation_ordinal": 1,
+                "name": "Text+",
+                "start": 108347,
+                "end": 108694,
+                "duration": 347,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "PARTIAL",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "NOT_REQUESTED",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNSUPPORTED",
+                  "source_end": "UNSUPPORTED"
+                },
+                "provenance": {
+                  "kind": "TITLE"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "NO_FILE_BACKED_SOURCE",
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": "it-3",
+                "observation_ordinal": 2,
+                "name": "human-broll",
+                "start": 108694,
+                "end": 109174,
+                "duration": 480,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "COMPLETE",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "OBSERVED",
+                  "media_id": "UNAVAILABLE",
+                  "source_start": "OBSERVED",
+                  "source_end": "OBSERVED",
+                  "media_id_reason": "GetMediaId returned None on fixture"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": "mp-2",
+                "media_id": null,
+                "source_locator": "/qual/media/human-broll.png",
+                "source_status": "UNHASHED_UNOWNED",
+                "source_sha256": null,
+                "source_start": 0,
+                "source_end": 480
+              },
+              {
+                "unique_id": "it-4",
+                "observation_ordinal": 3,
+                "name": "Solid Color",
+                "start": 109174,
+                "end": 109654,
+                "duration": 480,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "PARTIAL",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "NOT_REQUESTED",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNSUPPORTED",
+                  "source_end": "UNSUPPORTED"
+                },
+                "provenance": {
+                  "kind": "GENERATOR"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "NO_MEDIA_POOL_ITEM",
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": "it-5",
+                "observation_ordinal": 4,
+                "name": "Compound Clip 1",
+                "start": 109654,
+                "end": 109924,
+                "duration": 270,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "PARTIAL",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "NOT_REQUESTED",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNSUPPORTED",
+                  "source_end": "UNSUPPORTED"
+                },
+                "provenance": {
+                  "kind": "COMPOUND"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "NO_FILE_BACKED_SOURCE",
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": "it-6",
+                "observation_ordinal": 5,
+                "name": "missing-media",
+                "start": 109924,
+                "end": 110194,
+                "duration": 270,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "COMPLETE",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "OBSERVED",
+                  "media_id": "UNAVAILABLE",
+                  "source_start": "OBSERVED",
+                  "source_end": "OBSERVED",
+                  "media_id_reason": "GetMediaId returned None on fixture"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": "mp-3",
+                "media_id": null,
+                "source_locator": "/qual/media/missing-media.png",
+                "source_status": "OFFLINE",
+                "source_sha256": null,
+                "source_start": 0,
+                "source_end": 270
+              }
+            ]
+          },
+          {
+            "type": "video",
+            "index": 2,
+            "name": "V2",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": [
+              {
+                "unique_id": "it-7",
+                "observation_ordinal": 0,
+                "name": "Adjustment Clip",
+                "start": 108000,
+                "end": 108694,
+                "duration": 694,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "PARTIAL",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "NOT_REQUESTED",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNSUPPORTED",
+                  "source_end": "UNSUPPORTED"
+                },
+                "provenance": {
+                  "kind": "ADJUSTMENT"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "NO_MEDIA_POOL_ITEM",
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": "it-8",
+                "observation_ordinal": 1,
+                "name": "Fusion Composition",
+                "start": 108694,
+                "end": 109174,
+                "duration": 480,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "PARTIAL",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "NOT_REQUESTED",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNSUPPORTED",
+                  "source_end": "UNSUPPORTED"
+                },
+                "provenance": {
+                  "kind": "FUSION_OR_GENERATED"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "UNOBSERVED_BY_API",
+                "source_start": null,
+                "source_end": null
+              }
+            ]
+          },
+          {
+            "type": "audio",
+            "index": 1,
+            "name": "A1",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": [
+              {
+                "unique_id": "it-9",
+                "observation_ordinal": 0,
+                "name": "narration",
+                "start": 108000,
+                "end": 114756,
+                "duration": 6756,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "COMPLETE",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "OBSERVED",
+                  "media_id": "UNAVAILABLE",
+                  "source_start": "OBSERVED",
+                  "source_end": "OBSERVED",
+                  "media_id_reason": "GetMediaId returned None on fixture"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": "mp-4",
+                "media_id": null,
+                "source_locator": "/qual/media/narration.png",
+                "source_status": "HASHED",
+                "source_sha256": "f9ff04d26379f94f9eb199f10132e8aed31b1e59e0312720540d8fefbe086cec",
+                "source_start": 0,
+                "source_end": 6756
+              }
+            ]
+          }
+        ],
+        "markers": [],
+        "media_dependencies": [],
+        "observation_failures": []
+      },
+      "domain": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "canonical_utf8": "{\"markers\":[],\"media_dependencies\":[],\"observation_failures\":[],\"timeline\":{\"duration_convention\":\"UNQUALIFIED\",\"end_frame\":null,\"field_status\":{\"end_frame\":\"UNAVAILABLE\",\"end_frame_reason\":\"end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"fps\":\"UNAVAILABLE\",\"fps_reason\":\"fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"height\":\"UNAVAILABLE\",\"height_reason\":\"height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"is_current\":\"UNAVAILABLE\",\"is_current_reason\":\"is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"settings\":\"UNAVAILABLE\",\"settings_reason\":\"settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_frame\":\"UNAVAILABLE\",\"start_frame_reason\":\"start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_timecode\":\"UNAVAILABLE\",\"start_timecode_reason\":\"start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"width\":\"UNAVAILABLE\",\"width_reason\":\"width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"fps\":null,\"height\":null,\"is_current\":null,\"name\":null,\"settings\":null,\"start_frame\":null,\"start_timecode\":null,\"unique_id\":null,\"width\":null},\"tracks\":[{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":1,\"items\":[{\"duration\":347,\"enabled\":true,\"end\":108347,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"GetMediaId returned None on fixture\",\"media_pool_item_unique_id\":\"OBSERVED\",\"name\":\"OBSERVED\",\"source_end\":\"OBSERVED\",\"source_start\":\"OBSERVED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"COMPLETE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":\"mp-1\",\"name\":\"still-001\",\"observation_ordinal\":0,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":347,\"source_locator\":\"/qual/media/still-001.png\",\"source_sha256\":\"06ada57c26aa5cf429e9f2c0a99e3e4a42daecd45fc4c955d7c1399ab4227ae8\",\"source_start\":0,\"source_status\":\"HASHED\",\"start\":108000,\"unique_id\":\"it-1\"},{\"absence_reason\":\"NO_FILE_BACKED_SOURCE\",\"duration\":347,\"enabled\":true,\"end\":108694,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"NOT_REQUESTED\",\"name\":\"OBSERVED\",\"source_end\":\"UNSUPPORTED\",\"source_start\":\"UNSUPPORTED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"PARTIAL\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"Text+\",\"observation_ordinal\":1,\"provenance\":{\"kind\":\"TITLE\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":108347,\"unique_id\":\"it-2\"},{\"duration\":480,\"enabled\":true,\"end\":109174,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"GetMediaId returned None on fixture\",\"media_pool_item_unique_id\":\"OBSERVED\",\"name\":\"OBSERVED\",\"source_end\":\"OBSERVED\",\"source_start\":\"OBSERVED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"COMPLETE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":\"mp-2\",\"name\":\"human-broll\",\"observation_ordinal\":2,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":480,\"source_locator\":\"/qual/media/human-broll.png\",\"source_sha256\":null,\"source_start\":0,\"source_status\":\"UNHASHED_UNOWNED\",\"start\":108694,\"unique_id\":\"it-3\"},{\"absence_reason\":\"NO_MEDIA_POOL_ITEM\",\"duration\":480,\"enabled\":true,\"end\":109654,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"NOT_REQUESTED\",\"name\":\"OBSERVED\",\"source_end\":\"UNSUPPORTED\",\"source_start\":\"UNSUPPORTED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"PARTIAL\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"Solid Color\",\"observation_ordinal\":3,\"provenance\":{\"kind\":\"GENERATOR\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":109174,\"unique_id\":\"it-4\"},{\"absence_reason\":\"NO_FILE_BACKED_SOURCE\",\"duration\":270,\"enabled\":true,\"end\":109924,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"NOT_REQUESTED\",\"name\":\"OBSERVED\",\"source_end\":\"UNSUPPORTED\",\"source_start\":\"UNSUPPORTED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"PARTIAL\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"Compound Clip 1\",\"observation_ordinal\":4,\"provenance\":{\"kind\":\"COMPOUND\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":109654,\"unique_id\":\"it-5\"},{\"duration\":270,\"enabled\":true,\"end\":110194,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"GetMediaId returned None on fixture\",\"media_pool_item_unique_id\":\"OBSERVED\",\"name\":\"OBSERVED\",\"source_end\":\"OBSERVED\",\"source_start\":\"OBSERVED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"COMPLETE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":\"mp-3\",\"name\":\"missing-media\",\"observation_ordinal\":5,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":270,\"source_locator\":\"/qual/media/missing-media.png\",\"source_sha256\":null,\"source_start\":0,\"source_status\":\"OFFLINE\",\"start\":109924,\"unique_id\":\"it-6\"}],\"locked\":false,\"name\":\"V1\",\"type\":\"video\"},{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":2,\"items\":[{\"absence_reason\":\"NO_MEDIA_POOL_ITEM\",\"duration\":694,\"enabled\":true,\"end\":108694,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"NOT_REQUESTED\",\"name\":\"OBSERVED\",\"source_end\":\"UNSUPPORTED\",\"source_start\":\"UNSUPPORTED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"PARTIAL\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"Adjustment Clip\",\"observation_ordinal\":0,\"provenance\":{\"kind\":\"ADJUSTMENT\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":108000,\"unique_id\":\"it-7\"},{\"absence_reason\":\"UNOBSERVED_BY_API\",\"duration\":480,\"enabled\":true,\"end\":109174,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"NOT_REQUESTED\",\"name\":\"OBSERVED\",\"source_end\":\"UNSUPPORTED\",\"source_start\":\"UNSUPPORTED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"PARTIAL\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"Fusion Composition\",\"observation_ordinal\":1,\"provenance\":{\"kind\":\"FUSION_OR_GENERATED\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":108694,\"unique_id\":\"it-8\"}],\"locked\":false,\"name\":\"V2\",\"type\":\"video\"},{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":1,\"items\":[{\"duration\":6756,\"enabled\":true,\"end\":114756,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"GetMediaId returned None on fixture\",\"media_pool_item_unique_id\":\"OBSERVED\",\"name\":\"OBSERVED\",\"source_end\":\"OBSERVED\",\"source_start\":\"OBSERVED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"COMPLETE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":\"mp-4\",\"name\":\"narration\",\"observation_ordinal\":0,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":6756,\"source_locator\":\"/qual/media/narration.png\",\"source_sha256\":\"f9ff04d26379f94f9eb199f10132e8aed31b1e59e0312720540d8fefbe086cec\",\"source_start\":0,\"source_status\":\"HASHED\",\"start\":108000,\"unique_id\":\"it-9\"}],\"locked\":false,\"name\":\"A1\",\"type\":\"audio\"}]}",
+      "canonical_byte_length": 8085,
+      "sha256": "1e8f8ced3e976682dbbf93b788149b8176aacfd08d09b2b09df0dfb1dee005fd"
+    },
+    {
+      "name": "permutation_invariance_B_same_digest",
+      "note": null,
+      "input": {
+        "timeline": {
+          "unique_id": null,
+          "name": null,
+          "start_frame": null,
+          "start_timecode": null,
+          "fps": null,
+          "width": null,
+          "height": null,
+          "end_frame": null,
+          "is_current": null,
+          "duration_convention": "UNQUALIFIED",
+          "settings": null,
+          "field_status": {
+            "unique_id": "UNAVAILABLE",
+            "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "name": "UNAVAILABLE",
+            "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_frame": "UNAVAILABLE",
+            "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "end_frame": "UNAVAILABLE",
+            "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_timecode": "UNAVAILABLE",
+            "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "fps": "UNAVAILABLE",
+            "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "width": "UNAVAILABLE",
+            "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "height": "UNAVAILABLE",
+            "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "is_current": "UNAVAILABLE",
+            "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "settings": "UNAVAILABLE",
+            "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+          }
+        },
+        "tracks": [
+          {
+            "type": "audio",
+            "index": 1,
+            "name": "A1",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": [
+              {
+                "unique_id": "it-9",
+                "observation_ordinal": 0,
+                "name": "narration",
+                "start": 108000,
+                "end": 114756,
+                "duration": 6756,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "COMPLETE",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "OBSERVED",
+                  "media_id": "UNAVAILABLE",
+                  "source_start": "OBSERVED",
+                  "source_end": "OBSERVED",
+                  "media_id_reason": "GetMediaId returned None on fixture"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": "mp-4",
+                "media_id": null,
+                "source_locator": "/qual/media/narration.png",
+                "source_status": "HASHED",
+                "source_sha256": "f9ff04d26379f94f9eb199f10132e8aed31b1e59e0312720540d8fefbe086cec",
+                "source_start": 0,
+                "source_end": 6756
+              }
+            ]
+          },
+          {
+            "type": "video",
+            "index": 2,
+            "name": "V2",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": [
+              {
+                "unique_id": "it-8",
+                "observation_ordinal": 1,
+                "name": "Fusion Composition",
+                "start": 108694,
+                "end": 109174,
+                "duration": 480,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "PARTIAL",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "NOT_REQUESTED",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNSUPPORTED",
+                  "source_end": "UNSUPPORTED"
+                },
+                "provenance": {
+                  "kind": "FUSION_OR_GENERATED"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "UNOBSERVED_BY_API",
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": "it-7",
+                "observation_ordinal": 0,
+                "name": "Adjustment Clip",
+                "start": 108000,
+                "end": 108694,
+                "duration": 694,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "PARTIAL",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "NOT_REQUESTED",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNSUPPORTED",
+                  "source_end": "UNSUPPORTED"
+                },
+                "provenance": {
+                  "kind": "ADJUSTMENT"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "NO_MEDIA_POOL_ITEM",
+                "source_start": null,
+                "source_end": null
+              }
+            ]
+          },
+          {
+            "type": "video",
+            "index": 1,
+            "name": "V1",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": [
+              {
+                "unique_id": "it-6",
+                "observation_ordinal": 5,
+                "name": "missing-media",
+                "start": 109924,
+                "end": 110194,
+                "duration": 270,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "COMPLETE",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "OBSERVED",
+                  "media_id": "UNAVAILABLE",
+                  "source_start": "OBSERVED",
+                  "source_end": "OBSERVED",
+                  "media_id_reason": "GetMediaId returned None on fixture"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": "mp-3",
+                "media_id": null,
+                "source_locator": "/qual/media/missing-media.png",
+                "source_status": "OFFLINE",
+                "source_sha256": null,
+                "source_start": 0,
+                "source_end": 270
+              },
+              {
+                "unique_id": "it-5",
+                "observation_ordinal": 4,
+                "name": "Compound Clip 1",
+                "start": 109654,
+                "end": 109924,
+                "duration": 270,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "PARTIAL",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "NOT_REQUESTED",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNSUPPORTED",
+                  "source_end": "UNSUPPORTED"
+                },
+                "provenance": {
+                  "kind": "COMPOUND"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "NO_FILE_BACKED_SOURCE",
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": "it-4",
+                "observation_ordinal": 3,
+                "name": "Solid Color",
+                "start": 109174,
+                "end": 109654,
+                "duration": 480,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "PARTIAL",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "NOT_REQUESTED",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNSUPPORTED",
+                  "source_end": "UNSUPPORTED"
+                },
+                "provenance": {
+                  "kind": "GENERATOR"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "NO_MEDIA_POOL_ITEM",
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": "it-3",
+                "observation_ordinal": 2,
+                "name": "human-broll",
+                "start": 108694,
+                "end": 109174,
+                "duration": 480,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "COMPLETE",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "OBSERVED",
+                  "media_id": "UNAVAILABLE",
+                  "source_start": "OBSERVED",
+                  "source_end": "OBSERVED",
+                  "media_id_reason": "GetMediaId returned None on fixture"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": "mp-2",
+                "media_id": null,
+                "source_locator": "/qual/media/human-broll.png",
+                "source_status": "UNHASHED_UNOWNED",
+                "source_sha256": null,
+                "source_start": 0,
+                "source_end": 480
+              },
+              {
+                "unique_id": "it-2",
+                "observation_ordinal": 1,
+                "name": "Text+",
+                "start": 108347,
+                "end": 108694,
+                "duration": 347,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "PARTIAL",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "NOT_REQUESTED",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNSUPPORTED",
+                  "source_end": "UNSUPPORTED"
+                },
+                "provenance": {
+                  "kind": "TITLE"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "NO_FILE_BACKED_SOURCE",
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": "it-1",
+                "observation_ordinal": 0,
+                "name": "still-001",
+                "start": 108000,
+                "end": 108347,
+                "duration": 347,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "COMPLETE",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "OBSERVED",
+                  "media_id": "UNAVAILABLE",
+                  "source_start": "OBSERVED",
+                  "source_end": "OBSERVED",
+                  "media_id_reason": "GetMediaId returned None on fixture"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": "mp-1",
+                "media_id": null,
+                "source_locator": "/qual/media/still-001.png",
+                "source_status": "HASHED",
+                "source_sha256": "06ada57c26aa5cf429e9f2c0a99e3e4a42daecd45fc4c955d7c1399ab4227ae8",
+                "source_start": 0,
+                "source_end": 347
+              }
+            ]
+          }
+        ],
+        "markers": [],
+        "media_dependencies": [],
+        "observation_failures": []
+      },
+      "domain": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "canonical_utf8": "{\"markers\":[],\"media_dependencies\":[],\"observation_failures\":[],\"timeline\":{\"duration_convention\":\"UNQUALIFIED\",\"end_frame\":null,\"field_status\":{\"end_frame\":\"UNAVAILABLE\",\"end_frame_reason\":\"end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"fps\":\"UNAVAILABLE\",\"fps_reason\":\"fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"height\":\"UNAVAILABLE\",\"height_reason\":\"height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"is_current\":\"UNAVAILABLE\",\"is_current_reason\":\"is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"settings\":\"UNAVAILABLE\",\"settings_reason\":\"settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_frame\":\"UNAVAILABLE\",\"start_frame_reason\":\"start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_timecode\":\"UNAVAILABLE\",\"start_timecode_reason\":\"start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"width\":\"UNAVAILABLE\",\"width_reason\":\"width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"fps\":null,\"height\":null,\"is_current\":null,\"name\":null,\"settings\":null,\"start_frame\":null,\"start_timecode\":null,\"unique_id\":null,\"width\":null},\"tracks\":[{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":1,\"items\":[{\"duration\":347,\"enabled\":true,\"end\":108347,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"GetMediaId returned None on fixture\",\"media_pool_item_unique_id\":\"OBSERVED\",\"name\":\"OBSERVED\",\"source_end\":\"OBSERVED\",\"source_start\":\"OBSERVED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"COMPLETE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":\"mp-1\",\"name\":\"still-001\",\"observation_ordinal\":0,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":347,\"source_locator\":\"/qual/media/still-001.png\",\"source_sha256\":\"06ada57c26aa5cf429e9f2c0a99e3e4a42daecd45fc4c955d7c1399ab4227ae8\",\"source_start\":0,\"source_status\":\"HASHED\",\"start\":108000,\"unique_id\":\"it-1\"},{\"absence_reason\":\"NO_FILE_BACKED_SOURCE\",\"duration\":347,\"enabled\":true,\"end\":108694,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"NOT_REQUESTED\",\"name\":\"OBSERVED\",\"source_end\":\"UNSUPPORTED\",\"source_start\":\"UNSUPPORTED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"PARTIAL\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"Text+\",\"observation_ordinal\":1,\"provenance\":{\"kind\":\"TITLE\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":108347,\"unique_id\":\"it-2\"},{\"duration\":480,\"enabled\":true,\"end\":109174,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"GetMediaId returned None on fixture\",\"media_pool_item_unique_id\":\"OBSERVED\",\"name\":\"OBSERVED\",\"source_end\":\"OBSERVED\",\"source_start\":\"OBSERVED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"COMPLETE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":\"mp-2\",\"name\":\"human-broll\",\"observation_ordinal\":2,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":480,\"source_locator\":\"/qual/media/human-broll.png\",\"source_sha256\":null,\"source_start\":0,\"source_status\":\"UNHASHED_UNOWNED\",\"start\":108694,\"unique_id\":\"it-3\"},{\"absence_reason\":\"NO_MEDIA_POOL_ITEM\",\"duration\":480,\"enabled\":true,\"end\":109654,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"NOT_REQUESTED\",\"name\":\"OBSERVED\",\"source_end\":\"UNSUPPORTED\",\"source_start\":\"UNSUPPORTED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"PARTIAL\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"Solid Color\",\"observation_ordinal\":3,\"provenance\":{\"kind\":\"GENERATOR\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":109174,\"unique_id\":\"it-4\"},{\"absence_reason\":\"NO_FILE_BACKED_SOURCE\",\"duration\":270,\"enabled\":true,\"end\":109924,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"NOT_REQUESTED\",\"name\":\"OBSERVED\",\"source_end\":\"UNSUPPORTED\",\"source_start\":\"UNSUPPORTED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"PARTIAL\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"Compound Clip 1\",\"observation_ordinal\":4,\"provenance\":{\"kind\":\"COMPOUND\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":109654,\"unique_id\":\"it-5\"},{\"duration\":270,\"enabled\":true,\"end\":110194,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"GetMediaId returned None on fixture\",\"media_pool_item_unique_id\":\"OBSERVED\",\"name\":\"OBSERVED\",\"source_end\":\"OBSERVED\",\"source_start\":\"OBSERVED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"COMPLETE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":\"mp-3\",\"name\":\"missing-media\",\"observation_ordinal\":5,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":270,\"source_locator\":\"/qual/media/missing-media.png\",\"source_sha256\":null,\"source_start\":0,\"source_status\":\"OFFLINE\",\"start\":109924,\"unique_id\":\"it-6\"}],\"locked\":false,\"name\":\"V1\",\"type\":\"video\"},{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":2,\"items\":[{\"absence_reason\":\"NO_MEDIA_POOL_ITEM\",\"duration\":694,\"enabled\":true,\"end\":108694,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"NOT_REQUESTED\",\"name\":\"OBSERVED\",\"source_end\":\"UNSUPPORTED\",\"source_start\":\"UNSUPPORTED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"PARTIAL\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"Adjustment Clip\",\"observation_ordinal\":0,\"provenance\":{\"kind\":\"ADJUSTMENT\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":108000,\"unique_id\":\"it-7\"},{\"absence_reason\":\"UNOBSERVED_BY_API\",\"duration\":480,\"enabled\":true,\"end\":109174,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"NOT_REQUESTED\",\"name\":\"OBSERVED\",\"source_end\":\"UNSUPPORTED\",\"source_start\":\"UNSUPPORTED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"PARTIAL\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"Fusion Composition\",\"observation_ordinal\":1,\"provenance\":{\"kind\":\"FUSION_OR_GENERATED\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":108694,\"unique_id\":\"it-8\"}],\"locked\":false,\"name\":\"V2\",\"type\":\"video\"},{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":1,\"items\":[{\"duration\":6756,\"enabled\":true,\"end\":114756,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"GetMediaId returned None on fixture\",\"media_pool_item_unique_id\":\"OBSERVED\",\"name\":\"OBSERVED\",\"source_end\":\"OBSERVED\",\"source_start\":\"OBSERVED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"COMPLETE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":\"mp-4\",\"name\":\"narration\",\"observation_ordinal\":0,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":6756,\"source_locator\":\"/qual/media/narration.png\",\"source_sha256\":\"f9ff04d26379f94f9eb199f10132e8aed31b1e59e0312720540d8fefbe086cec\",\"source_start\":0,\"source_status\":\"HASHED\",\"start\":108000,\"unique_id\":\"it-9\"}],\"locked\":false,\"name\":\"A1\",\"type\":\"audio\"}]}",
+      "canonical_byte_length": 8085,
+      "sha256": "1e8f8ced3e976682dbbf93b788149b8176aacfd08d09b2b09df0dfb1dee005fd"
+    },
+    {
+      "name": "same_frame_items_deterministic",
+      "note": null,
+      "input": {
+        "timeline": {
+          "unique_id": null,
+          "name": null,
+          "start_frame": null,
+          "start_timecode": null,
+          "fps": null,
+          "width": null,
+          "height": null,
+          "end_frame": null,
+          "is_current": null,
+          "duration_convention": "UNQUALIFIED",
+          "settings": null,
+          "field_status": {
+            "unique_id": "UNAVAILABLE",
+            "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "name": "UNAVAILABLE",
+            "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_frame": "UNAVAILABLE",
+            "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "end_frame": "UNAVAILABLE",
+            "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_timecode": "UNAVAILABLE",
+            "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "fps": "UNAVAILABLE",
+            "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "width": "UNAVAILABLE",
+            "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "height": "UNAVAILABLE",
+            "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "is_current": "UNAVAILABLE",
+            "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "settings": "UNAVAILABLE",
+            "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+          }
+        },
+        "tracks": [
+          {
+            "type": "video",
+            "index": 1,
+            "name": "V1",
+            "enabled": true,
+            "locked": false,
+            "field_status": {
+              "name": "OBSERVED",
+              "enabled": "OBSERVED",
+              "locked": "OBSERVED"
+            },
+            "items": [
+              {
+                "unique_id": "z-id",
+                "observation_ordinal": 2,
+                "name": "t",
+                "start": 5,
+                "end": 9,
+                "duration": 4,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "PARTIAL",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "NOT_REQUESTED",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNSUPPORTED",
+                  "source_end": "UNSUPPORTED"
+                },
+                "provenance": {
+                  "kind": "TITLE"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "NO_FILE_BACKED_SOURCE",
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": "a-id",
+                "observation_ordinal": 1,
+                "name": "m",
+                "start": 5,
+                "end": 9,
+                "duration": 4,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "COMPLETE",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "OBSERVED",
+                  "media_id": "UNAVAILABLE",
+                  "source_start": "OBSERVED",
+                  "source_end": "OBSERVED",
+                  "media_id_reason": "GetMediaId returned None on fixture"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": "mp",
+                "media_id": null,
+                "source_locator": "/qual/media/m.png",
+                "source_status": "UNHASHED_UNOWNED",
+                "source_sha256": null,
+                "source_start": 0,
+                "source_end": 4
+              },
+              {
+                "unique_id": "b-id",
+                "observation_ordinal": 0,
+                "name": "n",
+                "start": 5,
+                "end": 7,
+                "duration": 2,
+                "enabled": true,
+                "markers": [],
+                "identity_observed": "COMPLETE",
+                "field_status": {
+                  "unique_id": "OBSERVED",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "OBSERVED",
+                  "duration": "OBSERVED",
+                  "enabled": "OBSERVED",
+                  "media_pool_item_unique_id": "OBSERVED",
+                  "media_id": "UNAVAILABLE",
+                  "source_start": "OBSERVED",
+                  "source_end": "OBSERVED",
+                  "media_id_reason": "GetMediaId returned None on fixture"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": "mp",
+                "media_id": null,
+                "source_locator": "/qual/media/n.png",
+                "source_status": "UNHASHED_UNOWNED",
+                "source_sha256": null,
+                "source_start": 0,
+                "source_end": 2
+              }
+            ]
+          }
+        ],
+        "markers": [],
+        "media_dependencies": [],
+        "observation_failures": []
+      },
+      "domain": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "canonical_utf8": "{\"markers\":[],\"media_dependencies\":[],\"observation_failures\":[],\"timeline\":{\"duration_convention\":\"UNQUALIFIED\",\"end_frame\":null,\"field_status\":{\"end_frame\":\"UNAVAILABLE\",\"end_frame_reason\":\"end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"fps\":\"UNAVAILABLE\",\"fps_reason\":\"fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"height\":\"UNAVAILABLE\",\"height_reason\":\"height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"is_current\":\"UNAVAILABLE\",\"is_current_reason\":\"is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"settings\":\"UNAVAILABLE\",\"settings_reason\":\"settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_frame\":\"UNAVAILABLE\",\"start_frame_reason\":\"start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_timecode\":\"UNAVAILABLE\",\"start_timecode_reason\":\"start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"width\":\"UNAVAILABLE\",\"width_reason\":\"width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"fps\":null,\"height\":null,\"is_current\":null,\"name\":null,\"settings\":null,\"start_frame\":null,\"start_timecode\":null,\"unique_id\":null,\"width\":null},\"tracks\":[{\"enabled\":true,\"field_status\":{\"enabled\":\"OBSERVED\",\"locked\":\"OBSERVED\",\"name\":\"OBSERVED\"},\"index\":1,\"items\":[{\"duration\":2,\"enabled\":true,\"end\":7,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"GetMediaId returned None on fixture\",\"media_pool_item_unique_id\":\"OBSERVED\",\"name\":\"OBSERVED\",\"source_end\":\"OBSERVED\",\"source_start\":\"OBSERVED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"COMPLETE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":\"mp\",\"name\":\"n\",\"observation_ordinal\":0,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":2,\"source_locator\":\"/qual/media/n.png\",\"source_sha256\":null,\"source_start\":0,\"source_status\":\"UNHASHED_UNOWNED\",\"start\":5,\"unique_id\":\"b-id\"},{\"duration\":4,\"enabled\":true,\"end\":9,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"GetMediaId returned None on fixture\",\"media_pool_item_unique_id\":\"OBSERVED\",\"name\":\"OBSERVED\",\"source_end\":\"OBSERVED\",\"source_start\":\"OBSERVED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"COMPLETE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":\"mp\",\"name\":\"m\",\"observation_ordinal\":1,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":4,\"source_locator\":\"/qual/media/m.png\",\"source_sha256\":null,\"source_start\":0,\"source_status\":\"UNHASHED_UNOWNED\",\"start\":5,\"unique_id\":\"a-id\"},{\"absence_reason\":\"NO_FILE_BACKED_SOURCE\",\"duration\":4,\"enabled\":true,\"end\":9,\"field_status\":{\"duration\":\"OBSERVED\",\"enabled\":\"OBSERVED\",\"end\":\"OBSERVED\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"NOT_REQUESTED\",\"name\":\"OBSERVED\",\"source_end\":\"UNSUPPORTED\",\"source_start\":\"UNSUPPORTED\",\"start\":\"OBSERVED\",\"unique_id\":\"OBSERVED\"},\"identity_observed\":\"PARTIAL\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"t\",\"observation_ordinal\":2,\"provenance\":{\"kind\":\"TITLE\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":5,\"unique_id\":\"z-id\"}],\"locked\":false,\"name\":\"V1\",\"type\":\"video\"}]}",
+      "canonical_byte_length": 3503,
+      "sha256": "c7b42f8290f89fcf319f760c13a4b5056efd71707fa2412aff845e2f3972a11a"
+    },
+    {
+      "name": "partial_items_status_aware_order_A",
+      "note": null,
+      "input": {
+        "timeline": {
+          "unique_id": null,
+          "name": null,
+          "start_frame": null,
+          "start_timecode": null,
+          "fps": null,
+          "width": null,
+          "height": null,
+          "end_frame": null,
+          "is_current": null,
+          "duration_convention": "UNQUALIFIED",
+          "settings": null,
+          "field_status": {
+            "unique_id": "UNAVAILABLE",
+            "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "name": "UNAVAILABLE",
+            "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_frame": "UNAVAILABLE",
+            "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "end_frame": "UNAVAILABLE",
+            "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_timecode": "UNAVAILABLE",
+            "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "fps": "UNAVAILABLE",
+            "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "width": "UNAVAILABLE",
+            "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "height": "UNAVAILABLE",
+            "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "is_current": "UNAVAILABLE",
+            "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "settings": "UNAVAILABLE",
+            "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+          }
+        },
+        "tracks": [
+          {
+            "type": "video",
+            "index": 1,
+            "name": null,
+            "enabled": null,
+            "locked": null,
+            "field_status": {
+              "name": "UNAVAILABLE",
+              "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+              "enabled": "UNAVAILABLE",
+              "enabled_reason": "enabled: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+              "locked": "UNAVAILABLE",
+              "locked_reason": "locked: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+            },
+            "items": [
+              {
+                "unique_id": null,
+                "observation_ordinal": 3,
+                "name": "p3",
+                "start": 20,
+                "end": null,
+                "duration": null,
+                "enabled": null,
+                "markers": [],
+                "identity_observed": "NONE",
+                "field_status": {
+                  "unique_id": "UNAVAILABLE",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "UNAVAILABLE",
+                  "duration": "UNAVAILABLE",
+                  "enabled": "UNAVAILABLE",
+                  "media_pool_item_unique_id": "UNAVAILABLE",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNAVAILABLE",
+                  "source_end": "UNAVAILABLE",
+                  "unique_id_reason": "unique_id: getter not callable in this session",
+                  "end_reason": "end: getter not callable in this session",
+                  "duration_reason": "duration: getter not callable in this session",
+                  "enabled_reason": "enabled: getter not callable in this session",
+                  "media_pool_item_unique_id_reason": "media_pool_item_unique_id: getter not callable in this session",
+                  "source_start_reason": "source_start: getter not callable in this session",
+                  "source_end_reason": "source_end: getter not callable in this session"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "UNHASHED_UNOWNED",
+                "source_sha256": null,
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": null,
+                "observation_ordinal": 0,
+                "name": null,
+                "start": null,
+                "end": null,
+                "duration": null,
+                "enabled": null,
+                "markers": [],
+                "identity_observed": "NONE",
+                "field_status": {
+                  "unique_id": "UNAVAILABLE",
+                  "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "name": "UNAVAILABLE",
+                  "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "start": "UNAVAILABLE",
+                  "start_reason": "start: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "end": "UNAVAILABLE",
+                  "end_reason": "end: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "duration": "UNAVAILABLE",
+                  "duration_reason": "duration: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "enabled": "UNAVAILABLE",
+                  "enabled_reason": "enabled: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "media_pool_item_unique_id": "UNAVAILABLE",
+                  "media_pool_item_unique_id_reason": "media_pool_item_unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "media_id": "UNAVAILABLE",
+                  "media_id_reason": "media_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "source_start": "UNAVAILABLE",
+                  "source_start_reason": "source_start: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "source_end": "UNAVAILABLE",
+                  "source_end_reason": "source_end: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+                },
+                "provenance": {
+                  "kind": "OTHER_OBSERVED"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "UNOBSERVED_BY_API",
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": null,
+                "observation_ordinal": 1,
+                "name": "p1",
+                "start": 20,
+                "end": null,
+                "duration": null,
+                "enabled": null,
+                "markers": [],
+                "identity_observed": "NONE",
+                "field_status": {
+                  "unique_id": "UNAVAILABLE",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "UNAVAILABLE",
+                  "duration": "UNAVAILABLE",
+                  "enabled": "UNAVAILABLE",
+                  "media_pool_item_unique_id": "UNAVAILABLE",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNAVAILABLE",
+                  "source_end": "UNAVAILABLE",
+                  "unique_id_reason": "unique_id: getter not callable in this session",
+                  "end_reason": "end: getter not callable in this session",
+                  "duration_reason": "duration: getter not callable in this session",
+                  "enabled_reason": "enabled: getter not callable in this session",
+                  "media_pool_item_unique_id_reason": "media_pool_item_unique_id: getter not callable in this session",
+                  "source_start_reason": "source_start: getter not callable in this session",
+                  "source_end_reason": "source_end: getter not callable in this session"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "UNHASHED_UNOWNED",
+                "source_sha256": null,
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": null,
+                "observation_ordinal": 2,
+                "name": "p2",
+                "start": 5,
+                "end": null,
+                "duration": null,
+                "enabled": null,
+                "markers": [],
+                "identity_observed": "NONE",
+                "field_status": {
+                  "unique_id": "UNAVAILABLE",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "UNAVAILABLE",
+                  "duration": "UNAVAILABLE",
+                  "enabled": "UNAVAILABLE",
+                  "media_pool_item_unique_id": "UNAVAILABLE",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNAVAILABLE",
+                  "source_end": "UNAVAILABLE",
+                  "unique_id_reason": "unique_id: getter not callable in this session",
+                  "end_reason": "end: getter not callable in this session",
+                  "duration_reason": "duration: getter not callable in this session",
+                  "enabled_reason": "enabled: getter not callable in this session",
+                  "media_pool_item_unique_id_reason": "media_pool_item_unique_id: getter not callable in this session",
+                  "source_start_reason": "source_start: getter not callable in this session",
+                  "source_end_reason": "source_end: getter not callable in this session"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "UNHASHED_UNOWNED",
+                "source_sha256": null,
+                "source_start": null,
+                "source_end": null
+              }
+            ]
+          }
+        ],
+        "markers": [],
+        "media_dependencies": [],
+        "observation_failures": []
+      },
+      "domain": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "canonical_utf8": "{\"markers\":[],\"media_dependencies\":[],\"observation_failures\":[],\"timeline\":{\"duration_convention\":\"UNQUALIFIED\",\"end_frame\":null,\"field_status\":{\"end_frame\":\"UNAVAILABLE\",\"end_frame_reason\":\"end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"fps\":\"UNAVAILABLE\",\"fps_reason\":\"fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"height\":\"UNAVAILABLE\",\"height_reason\":\"height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"is_current\":\"UNAVAILABLE\",\"is_current_reason\":\"is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"settings\":\"UNAVAILABLE\",\"settings_reason\":\"settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_frame\":\"UNAVAILABLE\",\"start_frame_reason\":\"start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_timecode\":\"UNAVAILABLE\",\"start_timecode_reason\":\"start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"width\":\"UNAVAILABLE\",\"width_reason\":\"width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"fps\":null,\"height\":null,\"is_current\":null,\"name\":null,\"settings\":null,\"start_frame\":null,\"start_timecode\":null,\"unique_id\":null,\"width\":null},\"tracks\":[{\"enabled\":null,\"field_status\":{\"enabled\":\"UNAVAILABLE\",\"enabled_reason\":\"enabled: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"locked\":\"UNAVAILABLE\",\"locked_reason\":\"locked: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"index\":1,\"items\":[{\"duration\":null,\"enabled\":null,\"end\":null,\"field_status\":{\"duration\":\"UNAVAILABLE\",\"duration_reason\":\"duration: getter not callable in this session\",\"enabled\":\"UNAVAILABLE\",\"enabled_reason\":\"enabled: getter not callable in this session\",\"end\":\"UNAVAILABLE\",\"end_reason\":\"end: getter not callable in this session\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"UNAVAILABLE\",\"media_pool_item_unique_id_reason\":\"media_pool_item_unique_id: getter not callable in this session\",\"name\":\"OBSERVED\",\"source_end\":\"UNAVAILABLE\",\"source_end_reason\":\"source_end: getter not callable in this session\",\"source_start\":\"UNAVAILABLE\",\"source_start_reason\":\"source_start: getter not callable in this session\",\"start\":\"OBSERVED\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: getter not callable in this session\"},\"identity_observed\":\"NONE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"p2\",\"observation_ordinal\":2,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"UNHASHED_UNOWNED\",\"start\":5,\"unique_id\":null},{\"duration\":null,\"enabled\":null,\"end\":null,\"field_status\":{\"duration\":\"UNAVAILABLE\",\"duration_reason\":\"duration: getter not callable in this session\",\"enabled\":\"UNAVAILABLE\",\"enabled_reason\":\"enabled: getter not callable in this session\",\"end\":\"UNAVAILABLE\",\"end_reason\":\"end: getter not callable in this session\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"UNAVAILABLE\",\"media_pool_item_unique_id_reason\":\"media_pool_item_unique_id: getter not callable in this session\",\"name\":\"OBSERVED\",\"source_end\":\"UNAVAILABLE\",\"source_end_reason\":\"source_end: getter not callable in this session\",\"source_start\":\"UNAVAILABLE\",\"source_start_reason\":\"source_start: getter not callable in this session\",\"start\":\"OBSERVED\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: getter not callable in this session\"},\"identity_observed\":\"NONE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"p1\",\"observation_ordinal\":1,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"UNHASHED_UNOWNED\",\"start\":20,\"unique_id\":null},{\"duration\":null,\"enabled\":null,\"end\":null,\"field_status\":{\"duration\":\"UNAVAILABLE\",\"duration_reason\":\"duration: getter not callable in this session\",\"enabled\":\"UNAVAILABLE\",\"enabled_reason\":\"enabled: getter not callable in this session\",\"end\":\"UNAVAILABLE\",\"end_reason\":\"end: getter not callable in this session\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"UNAVAILABLE\",\"media_pool_item_unique_id_reason\":\"media_pool_item_unique_id: getter not callable in this session\",\"name\":\"OBSERVED\",\"source_end\":\"UNAVAILABLE\",\"source_end_reason\":\"source_end: getter not callable in this session\",\"source_start\":\"UNAVAILABLE\",\"source_start_reason\":\"source_start: getter not callable in this session\",\"start\":\"OBSERVED\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: getter not callable in this session\"},\"identity_observed\":\"NONE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"p3\",\"observation_ordinal\":3,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"UNHASHED_UNOWNED\",\"start\":20,\"unique_id\":null},{\"absence_reason\":\"UNOBSERVED_BY_API\",\"duration\":null,\"enabled\":null,\"end\":null,\"field_status\":{\"duration\":\"UNAVAILABLE\",\"duration_reason\":\"duration: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"enabled\":\"UNAVAILABLE\",\"enabled_reason\":\"enabled: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"end\":\"UNAVAILABLE\",\"end_reason\":\"end: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"media_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"media_pool_item_unique_id\":\"UNAVAILABLE\",\"media_pool_item_unique_id_reason\":\"media_pool_item_unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"source_end\":\"UNAVAILABLE\",\"source_end_reason\":\"source_end: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"source_start\":\"UNAVAILABLE\",\"source_start_reason\":\"source_start: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start\":\"UNAVAILABLE\",\"start_reason\":\"start: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"identity_observed\":\"NONE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":null,\"observation_ordinal\":0,\"provenance\":{\"kind\":\"OTHER_OBSERVED\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":null,\"unique_id\":null}],\"locked\":null,\"name\":null,\"type\":\"video\"}]}",
+      "canonical_byte_length": 6659,
+      "sha256": "db8c98049d28bcd24351cfcc2de9a678a23ecc210e11b7e841433453cfdde98f"
+    },
+    {
+      "name": "partial_items_status_aware_order_B_same_digest",
+      "note": null,
+      "input": {
+        "timeline": {
+          "unique_id": null,
+          "name": null,
+          "start_frame": null,
+          "start_timecode": null,
+          "fps": null,
+          "width": null,
+          "height": null,
+          "end_frame": null,
+          "is_current": null,
+          "duration_convention": "UNQUALIFIED",
+          "settings": null,
+          "field_status": {
+            "unique_id": "UNAVAILABLE",
+            "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "name": "UNAVAILABLE",
+            "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_frame": "UNAVAILABLE",
+            "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "end_frame": "UNAVAILABLE",
+            "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_timecode": "UNAVAILABLE",
+            "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "fps": "UNAVAILABLE",
+            "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "width": "UNAVAILABLE",
+            "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "height": "UNAVAILABLE",
+            "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "is_current": "UNAVAILABLE",
+            "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "settings": "UNAVAILABLE",
+            "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+          }
+        },
+        "tracks": [
+          {
+            "type": "video",
+            "index": 1,
+            "name": null,
+            "enabled": null,
+            "locked": null,
+            "field_status": {
+              "name": "UNAVAILABLE",
+              "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+              "enabled": "UNAVAILABLE",
+              "enabled_reason": "enabled: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+              "locked": "UNAVAILABLE",
+              "locked_reason": "locked: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+            },
+            "items": [
+              {
+                "unique_id": null,
+                "observation_ordinal": 2,
+                "name": "p2",
+                "start": 5,
+                "end": null,
+                "duration": null,
+                "enabled": null,
+                "markers": [],
+                "identity_observed": "NONE",
+                "field_status": {
+                  "unique_id": "UNAVAILABLE",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "UNAVAILABLE",
+                  "duration": "UNAVAILABLE",
+                  "enabled": "UNAVAILABLE",
+                  "media_pool_item_unique_id": "UNAVAILABLE",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNAVAILABLE",
+                  "source_end": "UNAVAILABLE",
+                  "unique_id_reason": "unique_id: getter not callable in this session",
+                  "end_reason": "end: getter not callable in this session",
+                  "duration_reason": "duration: getter not callable in this session",
+                  "enabled_reason": "enabled: getter not callable in this session",
+                  "media_pool_item_unique_id_reason": "media_pool_item_unique_id: getter not callable in this session",
+                  "source_start_reason": "source_start: getter not callable in this session",
+                  "source_end_reason": "source_end: getter not callable in this session"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "UNHASHED_UNOWNED",
+                "source_sha256": null,
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": null,
+                "observation_ordinal": 1,
+                "name": "p1",
+                "start": 20,
+                "end": null,
+                "duration": null,
+                "enabled": null,
+                "markers": [],
+                "identity_observed": "NONE",
+                "field_status": {
+                  "unique_id": "UNAVAILABLE",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "UNAVAILABLE",
+                  "duration": "UNAVAILABLE",
+                  "enabled": "UNAVAILABLE",
+                  "media_pool_item_unique_id": "UNAVAILABLE",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNAVAILABLE",
+                  "source_end": "UNAVAILABLE",
+                  "unique_id_reason": "unique_id: getter not callable in this session",
+                  "end_reason": "end: getter not callable in this session",
+                  "duration_reason": "duration: getter not callable in this session",
+                  "enabled_reason": "enabled: getter not callable in this session",
+                  "media_pool_item_unique_id_reason": "media_pool_item_unique_id: getter not callable in this session",
+                  "source_start_reason": "source_start: getter not callable in this session",
+                  "source_end_reason": "source_end: getter not callable in this session"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "UNHASHED_UNOWNED",
+                "source_sha256": null,
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": null,
+                "observation_ordinal": 0,
+                "name": null,
+                "start": null,
+                "end": null,
+                "duration": null,
+                "enabled": null,
+                "markers": [],
+                "identity_observed": "NONE",
+                "field_status": {
+                  "unique_id": "UNAVAILABLE",
+                  "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "name": "UNAVAILABLE",
+                  "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "start": "UNAVAILABLE",
+                  "start_reason": "start: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "end": "UNAVAILABLE",
+                  "end_reason": "end: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "duration": "UNAVAILABLE",
+                  "duration_reason": "duration: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "enabled": "UNAVAILABLE",
+                  "enabled_reason": "enabled: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "media_pool_item_unique_id": "UNAVAILABLE",
+                  "media_pool_item_unique_id_reason": "media_pool_item_unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "media_id": "UNAVAILABLE",
+                  "media_id_reason": "media_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "source_start": "UNAVAILABLE",
+                  "source_start_reason": "source_start: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+                  "source_end": "UNAVAILABLE",
+                  "source_end_reason": "source_end: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+                },
+                "provenance": {
+                  "kind": "OTHER_OBSERVED"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "NOT_APPLICABLE",
+                "source_sha256": null,
+                "absence_reason": "UNOBSERVED_BY_API",
+                "source_start": null,
+                "source_end": null
+              },
+              {
+                "unique_id": null,
+                "observation_ordinal": 3,
+                "name": "p3",
+                "start": 20,
+                "end": null,
+                "duration": null,
+                "enabled": null,
+                "markers": [],
+                "identity_observed": "NONE",
+                "field_status": {
+                  "unique_id": "UNAVAILABLE",
+                  "name": "OBSERVED",
+                  "start": "OBSERVED",
+                  "end": "UNAVAILABLE",
+                  "duration": "UNAVAILABLE",
+                  "enabled": "UNAVAILABLE",
+                  "media_pool_item_unique_id": "UNAVAILABLE",
+                  "media_id": "NOT_REQUESTED",
+                  "source_start": "UNAVAILABLE",
+                  "source_end": "UNAVAILABLE",
+                  "unique_id_reason": "unique_id: getter not callable in this session",
+                  "end_reason": "end: getter not callable in this session",
+                  "duration_reason": "duration: getter not callable in this session",
+                  "enabled_reason": "enabled: getter not callable in this session",
+                  "media_pool_item_unique_id_reason": "media_pool_item_unique_id: getter not callable in this session",
+                  "source_start_reason": "source_start: getter not callable in this session",
+                  "source_end_reason": "source_end: getter not callable in this session"
+                },
+                "provenance": {
+                  "kind": "MEDIA_BACKED"
+                },
+                "media_pool_item_unique_id": null,
+                "media_id": null,
+                "source_locator": null,
+                "source_status": "UNHASHED_UNOWNED",
+                "source_sha256": null,
+                "source_start": null,
+                "source_end": null
+              }
+            ]
+          }
+        ],
+        "markers": [],
+        "media_dependencies": [],
+        "observation_failures": []
+      },
+      "domain": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "canonical_utf8": "{\"markers\":[],\"media_dependencies\":[],\"observation_failures\":[],\"timeline\":{\"duration_convention\":\"UNQUALIFIED\",\"end_frame\":null,\"field_status\":{\"end_frame\":\"UNAVAILABLE\",\"end_frame_reason\":\"end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"fps\":\"UNAVAILABLE\",\"fps_reason\":\"fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"height\":\"UNAVAILABLE\",\"height_reason\":\"height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"is_current\":\"UNAVAILABLE\",\"is_current_reason\":\"is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"settings\":\"UNAVAILABLE\",\"settings_reason\":\"settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_frame\":\"UNAVAILABLE\",\"start_frame_reason\":\"start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_timecode\":\"UNAVAILABLE\",\"start_timecode_reason\":\"start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"width\":\"UNAVAILABLE\",\"width_reason\":\"width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"fps\":null,\"height\":null,\"is_current\":null,\"name\":null,\"settings\":null,\"start_frame\":null,\"start_timecode\":null,\"unique_id\":null,\"width\":null},\"tracks\":[{\"enabled\":null,\"field_status\":{\"enabled\":\"UNAVAILABLE\",\"enabled_reason\":\"enabled: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"locked\":\"UNAVAILABLE\",\"locked_reason\":\"locked: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"index\":1,\"items\":[{\"duration\":null,\"enabled\":null,\"end\":null,\"field_status\":{\"duration\":\"UNAVAILABLE\",\"duration_reason\":\"duration: getter not callable in this session\",\"enabled\":\"UNAVAILABLE\",\"enabled_reason\":\"enabled: getter not callable in this session\",\"end\":\"UNAVAILABLE\",\"end_reason\":\"end: getter not callable in this session\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"UNAVAILABLE\",\"media_pool_item_unique_id_reason\":\"media_pool_item_unique_id: getter not callable in this session\",\"name\":\"OBSERVED\",\"source_end\":\"UNAVAILABLE\",\"source_end_reason\":\"source_end: getter not callable in this session\",\"source_start\":\"UNAVAILABLE\",\"source_start_reason\":\"source_start: getter not callable in this session\",\"start\":\"OBSERVED\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: getter not callable in this session\"},\"identity_observed\":\"NONE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"p2\",\"observation_ordinal\":2,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"UNHASHED_UNOWNED\",\"start\":5,\"unique_id\":null},{\"duration\":null,\"enabled\":null,\"end\":null,\"field_status\":{\"duration\":\"UNAVAILABLE\",\"duration_reason\":\"duration: getter not callable in this session\",\"enabled\":\"UNAVAILABLE\",\"enabled_reason\":\"enabled: getter not callable in this session\",\"end\":\"UNAVAILABLE\",\"end_reason\":\"end: getter not callable in this session\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"UNAVAILABLE\",\"media_pool_item_unique_id_reason\":\"media_pool_item_unique_id: getter not callable in this session\",\"name\":\"OBSERVED\",\"source_end\":\"UNAVAILABLE\",\"source_end_reason\":\"source_end: getter not callable in this session\",\"source_start\":\"UNAVAILABLE\",\"source_start_reason\":\"source_start: getter not callable in this session\",\"start\":\"OBSERVED\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: getter not callable in this session\"},\"identity_observed\":\"NONE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"p1\",\"observation_ordinal\":1,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"UNHASHED_UNOWNED\",\"start\":20,\"unique_id\":null},{\"duration\":null,\"enabled\":null,\"end\":null,\"field_status\":{\"duration\":\"UNAVAILABLE\",\"duration_reason\":\"duration: getter not callable in this session\",\"enabled\":\"UNAVAILABLE\",\"enabled_reason\":\"enabled: getter not callable in this session\",\"end\":\"UNAVAILABLE\",\"end_reason\":\"end: getter not callable in this session\",\"media_id\":\"NOT_REQUESTED\",\"media_pool_item_unique_id\":\"UNAVAILABLE\",\"media_pool_item_unique_id_reason\":\"media_pool_item_unique_id: getter not callable in this session\",\"name\":\"OBSERVED\",\"source_end\":\"UNAVAILABLE\",\"source_end_reason\":\"source_end: getter not callable in this session\",\"source_start\":\"UNAVAILABLE\",\"source_start_reason\":\"source_start: getter not callable in this session\",\"start\":\"OBSERVED\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: getter not callable in this session\"},\"identity_observed\":\"NONE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":\"p3\",\"observation_ordinal\":3,\"provenance\":{\"kind\":\"MEDIA_BACKED\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"UNHASHED_UNOWNED\",\"start\":20,\"unique_id\":null},{\"absence_reason\":\"UNOBSERVED_BY_API\",\"duration\":null,\"enabled\":null,\"end\":null,\"field_status\":{\"duration\":\"UNAVAILABLE\",\"duration_reason\":\"duration: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"enabled\":\"UNAVAILABLE\",\"enabled_reason\":\"enabled: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"end\":\"UNAVAILABLE\",\"end_reason\":\"end: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"media_id\":\"UNAVAILABLE\",\"media_id_reason\":\"media_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"media_pool_item_unique_id\":\"UNAVAILABLE\",\"media_pool_item_unique_id_reason\":\"media_pool_item_unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"source_end\":\"UNAVAILABLE\",\"source_end_reason\":\"source_end: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"source_start\":\"UNAVAILABLE\",\"source_start_reason\":\"source_start: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start\":\"UNAVAILABLE\",\"start_reason\":\"start: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"identity_observed\":\"NONE\",\"markers\":[],\"media_id\":null,\"media_pool_item_unique_id\":null,\"name\":null,\"observation_ordinal\":0,\"provenance\":{\"kind\":\"OTHER_OBSERVED\"},\"source_end\":null,\"source_locator\":null,\"source_sha256\":null,\"source_start\":null,\"source_status\":\"NOT_APPLICABLE\",\"start\":null,\"unique_id\":null}],\"locked\":null,\"name\":null,\"type\":\"video\"}]}",
+      "canonical_byte_length": 6659,
+      "sha256": "db8c98049d28bcd24351cfcc2de9a678a23ecc210e11b7e841433453cfdde98f"
+    },
+    {
+      "name": "unobserved_timeline_all_null_with_status",
+      "note": "a timeline with every field UNAVAILABLE is representable and hashable",
+      "input": {
+        "timeline": {
+          "unique_id": null,
+          "name": null,
+          "start_frame": null,
+          "start_timecode": null,
+          "fps": null,
+          "width": null,
+          "height": null,
+          "end_frame": null,
+          "is_current": null,
+          "duration_convention": "UNQUALIFIED",
+          "settings": null,
+          "field_status": {
+            "unique_id": "UNAVAILABLE",
+            "unique_id_reason": "unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "name": "UNAVAILABLE",
+            "name_reason": "name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_frame": "UNAVAILABLE",
+            "start_frame_reason": "start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "end_frame": "UNAVAILABLE",
+            "end_frame_reason": "end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "start_timecode": "UNAVAILABLE",
+            "start_timecode_reason": "start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "fps": "UNAVAILABLE",
+            "fps_reason": "fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "width": "UNAVAILABLE",
+            "width_reason": "width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "height": "UNAVAILABLE",
+            "height_reason": "height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "is_current": "UNAVAILABLE",
+            "is_current_reason": "is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)",
+            "settings": "UNAVAILABLE",
+            "settings_reason": "settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)"
+          }
+        },
+        "tracks": [],
+        "markers": [],
+        "media_dependencies": [],
+        "observation_failures": []
+      },
+      "domain": "vidtoolz.resolveSnapshotPayload.v1.5",
+      "canonical_utf8": "{\"markers\":[],\"media_dependencies\":[],\"observation_failures\":[],\"timeline\":{\"duration_convention\":\"UNQUALIFIED\",\"end_frame\":null,\"field_status\":{\"end_frame\":\"UNAVAILABLE\",\"end_frame_reason\":\"end_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"fps\":\"UNAVAILABLE\",\"fps_reason\":\"fps: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"height\":\"UNAVAILABLE\",\"height_reason\":\"height: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"is_current\":\"UNAVAILABLE\",\"is_current_reason\":\"is_current: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"name\":\"UNAVAILABLE\",\"name_reason\":\"name: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"settings\":\"UNAVAILABLE\",\"settings_reason\":\"settings: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_frame\":\"UNAVAILABLE\",\"start_frame_reason\":\"start_frame: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"start_timecode\":\"UNAVAILABLE\",\"start_timecode_reason\":\"start_timecode: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"unique_id\":\"UNAVAILABLE\",\"unique_id_reason\":\"unique_id: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\",\"width\":\"UNAVAILABLE\",\"width_reason\":\"width: not qualified on 21.1.0.0014 (no QUALIFIED_READ row)\"},\"fps\":null,\"height\":null,\"is_current\":null,\"name\":null,\"settings\":null,\"start_frame\":null,\"start_timecode\":null,\"unique_id\":null,\"width\":null},\"tracks\":[]}",
+      "canonical_byte_length": 1378,
+      "sha256": "7da0bdbd0271e5dd26db8433eead95b73809d9f3e3a950fad2bc31eecce437f6"
+    },
+    {
+      "name": "nullable_fields_explicit_null",
+      "note": null,
+      "input": {
+        "media_id": null,
+        "source_sha256": null,
+        "source_locator": null
+      },
+      "domain": "vidtoolz.resolveGeneric.v1",
+      "canonical_utf8": "{\"media_id\":null,\"source_locator\":null,\"source_sha256\":null}",
+      "canonical_byte_length": 60,
+      "sha256": "3daa1c3b4c6607d59bef202f3e3c934ce376fa8d2b8e4844cb03324c3e81a3f0"
+    }
+  ]
+}

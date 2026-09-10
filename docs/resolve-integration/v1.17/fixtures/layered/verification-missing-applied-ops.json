@@ -1,0 +1,80 @@
+{
+  "fixture": "verification-missing-applied-ops",
+  "layer_expected_failure": "schema",
+  "schema": "provisional/resolveVerificationResult",
+  "check": null,
+  "expect_error_contains": "applied_operation_ids",
+  "document": {
+    "schema": "vidtoolz.resolveVerificationResult.v1",
+    "plan_digest": "1afd7a08fea7806f7e1e5de9065c5c50dc28f33e86e6dcbc3d760a14f2d1affa",
+    "transaction_id": "tx-fixture",
+    "session_id": "sess-2026-09-08-0001",
+    "target": {
+      "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+      "project_unique_id": "proj-fixture-0001",
+      "timeline_unique_id": "tl-fixture-0001",
+      "target_epoch": "epoch-fixture-1",
+      "host_name": "vidnux",
+      "library_name": "VIDTOOLZ Resolve Qualification v1",
+      "library_kind": "Disk",
+      "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "timeline_name": "VIDTOOLZ__fixture__r1",
+      "resolve_version": "21.1.0.0014"
+    },
+    "h0_guard_digest": "a08578d3a3558984835c87ff6fea971705b8c8a645bae40c4879601a4e48b649",
+    "s1_guard_digest": "dcfae7e897c74343f411920f6f6d7c2d4d5c7447108afff8be0a0527c71973db",
+    "h0_payload_sha256": "c2a2ce0f947ef1efd1cf330fbb398f03ee4d600eb92de91e9aa9d36e0c9eab9a",
+    "s1_payload_sha256": "8720ef25890d635469b7e913c9b5940d6199aec8c4731c380fc8bbe2f8cdf931",
+    "readback_snapshot_sha256": "059bcb1501ed5ef1b6c0956f7d0dccb2c97dfeb7001ebf77e95d323bb5d7cbf1",
+    "expected_delta_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+    "authority_version": "1.17.0",
+    "coverage": {
+      "s0": "WRITE_PRECHECK",
+      "s1": "WRITE_PRECHECK"
+    },
+    "is_human_approval": false,
+    "added": [
+      {
+        "unique_id": "it-new",
+        "track_type": "video",
+        "track_index": 1,
+        "start": 110194,
+        "end": 110541,
+        "duration": 347,
+        "enabled": true,
+        "media_pool_item_unique_id": "mp-new",
+        "media_id": "mid-it-new",
+        "source_start": 0,
+        "source_end": 347,
+        "source_sha256": "9ce3ce1d1e16f4ad5d386c26642515c8f025b123792d900665909e57f4debb1e",
+        "source_locator": "/qual/media/still-021.png",
+        "source_status": "HASHED",
+        "name": "still-021",
+        "provenance_kind": "MEDIA_BACKED",
+        "markers": []
+      }
+    ],
+    "removed": [],
+    "changed": [],
+    "creation_identity_map": {
+      "op-1": "it-new"
+    },
+    "missing_expected": [],
+    "unrelated": [],
+    "unobserved_domains": [
+      "caches",
+      "fades",
+      "fusion_graphs",
+      "grades",
+      "item_properties",
+      "keyframe_curves",
+      "linked_items",
+      "nested_timelines",
+      "speed",
+      "takes",
+      "unowned_media_hashes"
+    ],
+    "verdict": "VERIFIED"
+  }
+}

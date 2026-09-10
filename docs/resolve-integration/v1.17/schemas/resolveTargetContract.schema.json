@@ -1,0 +1,625 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveTargetContract.v1.10",
+  "title": "Resolve target contract v1.10 (attachment gate; derived state; envelope law)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "accepts_current_open_session_as_target",
+    "attachment_derivation",
+    "attachment_derivation_diagnostic_non_authorizing",
+    "attachment_law",
+    "attachment_state_is_declared",
+    "attachment_states",
+    "denied_calls_all_scopes",
+    "evidence_envelope_law",
+    "host",
+    "library",
+    "prohibited_targets",
+    "qualification_mode",
+    "required_future_observations",
+    "resolve",
+    "schema",
+    "session",
+    "status",
+    "version"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveTargetContract.v1.10"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.17\\.[0-9]+$"
+    },
+    "status": {
+      "enum": [
+        "FROZEN_NOW"
+      ]
+    },
+    "qualification_note": {
+      "type": "string"
+    },
+    "qualification_mode": {
+      "const": "SCRATCH_QUALIFICATION_LIBRARY"
+    },
+    "accepts_current_open_session_as_target": {
+      "const": false
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "os"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "os": {
+          "enum": [
+            "Linux"
+          ]
+        },
+        "lan_ip_observed": {
+          "type": "string"
+        }
+      }
+    },
+    "resolve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product",
+        "version",
+        "build",
+        "install_root",
+        "pins"
+      ],
+      "properties": {
+        "product": {
+          "const": "DaVinci Resolve Studio"
+        },
+        "version": {
+          "const": "21.1.0"
+        },
+        "build": {
+          "const": 14
+        },
+        "license": {
+          "type": "string"
+        },
+        "install_root": {
+          "const": "/opt/resolve"
+        },
+        "pins": {
+          "type": "object",
+          "minProperties": 9,
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "interpreter": {
+      "type": "object"
+    },
+    "library": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "name",
+        "provisioning_status",
+        "root_path",
+        "instance_uuid",
+        "prohibited_library_names",
+        "rule"
+      ],
+      "properties": {
+        "kind": {
+          "const": "Disk"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^VIDTOOLZ Resolve Qualification v[0-9]+$"
+        },
+        "provisioning_status": {
+          "enum": [
+            "UNPROVISIONED",
+            "PROVISIONED"
+          ]
+        },
+        "root_path": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+              "minLength": 2
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "instance_uuid": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "prohibited_library_names": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string"
+          },
+          "allOf": [
+            {
+              "contains": {
+                "const": "EKA"
+              }
+            },
+            {
+              "contains": {
+                "const": "Local Database"
+              }
+            }
+          ]
+        },
+        "rule": {
+          "type": "string"
+        }
+      }
+    },
+    "required_future_observations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "source",
+          "blocks"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "blocks": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "isolation",
+        "launch_recipe_sha256",
+        "external_scripting_preference_required",
+        "external_scripting_preference_observed",
+        "network_port_1144",
+        "exclusivity_required_for_writes"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "isolation": {
+          "type": "string"
+        },
+        "launch_recipe_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "launcher_rule": {
+          "type": "string"
+        },
+        "external_scripting_preference_required": {
+          "const": "Local"
+        },
+        "external_scripting_preference_observed": {
+          "anyOf": [
+            {
+              "enum": [
+                "None",
+                "Local",
+                "Network"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "network_port_1144": {
+          "const": "closed"
+        },
+        "exclusivity_required_for_writes": {
+          "const": true
+        }
+      }
+    },
+    "prohibited_targets": {
+      "type": "object"
+    },
+    "naming": {
+      "type": "object"
+    },
+    "denied_calls_all_scopes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "SetCurrentDatabase"
+          }
+        },
+        {
+          "contains": {
+            "const": "CloseProject"
+          }
+        },
+        {
+          "contains": {
+            "const": "ImportProject"
+          }
+        },
+        {
+          "contains": {
+            "const": "ReplaceClip"
+          }
+        },
+        {
+          "contains": {
+            "const": "run_script"
+          }
+        },
+        {
+          "contains": {
+            "const": "run_script_unsafe"
+          }
+        },
+        {
+          "contains": {
+            "const": "execute_python"
+          }
+        },
+        {
+          "contains": {
+            "const": "execute_lua"
+          }
+        }
+      ]
+    },
+    "attachment_states": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "UNPROVISIONED",
+        "PROVISIONED_NOT_VERIFIED",
+        "ATTACHMENT_READY",
+        "ATTACHED_READ_ONLY",
+        "SCRATCH_WRITE_READY",
+        "CONFLICT"
+      ],
+      "properties": {
+        "UNPROVISIONED": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required_records",
+            "meaning"
+          ],
+          "properties": {
+            "required_records": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "BUNDLE_VERIFICATION",
+                  "CONNECTION_OBSERVATION",
+                  "DERIVED_CAPABILITY_RESULT",
+                  "DESTINATION_TIMELINE",
+                  "EXCLUSIVE_SESSION_ATTESTATION",
+                  "GUARD_SNAPSHOT",
+                  "IDENTITY_STABILITY_OBSERVATION",
+                  "IDENTITY_UNIQUENESS_OBSERVATION",
+                  "JOURNAL_PREPARED",
+                  "LAUNCH_RECIPE",
+                  "M3_AUTHORIZATION",
+                  "MEDIA_CLASS_ATTESTATION",
+                  "MILESTONE_EXIT",
+                  "OPERATOR_PROVISIONED_PROJECT",
+                  "PLAN_VALIDATION",
+                  "PROJECT_BINDING_OBSERVATION",
+                  "PROVISIONING_RECORD",
+                  "RAW_CAPABILITY_CAPTURE",
+                  "RAW_EVIDENCE",
+                  "READ_ONLY_JOURNAL",
+                  "REFREEZE_RECORD",
+                  "REVIEW_DECISION",
+                  "TIMELINE_BINDING_OBSERVATION"
+                ]
+              },
+              "uniqueItems": true
+            },
+            "meaning": {
+              "type": "string"
+            }
+          }
+        },
+        "PROVISIONED_NOT_VERIFIED": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required_records",
+            "meaning"
+          ],
+          "properties": {
+            "required_records": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "BUNDLE_VERIFICATION",
+                  "CONNECTION_OBSERVATION",
+                  "DERIVED_CAPABILITY_RESULT",
+                  "DESTINATION_TIMELINE",
+                  "EXCLUSIVE_SESSION_ATTESTATION",
+                  "GUARD_SNAPSHOT",
+                  "IDENTITY_STABILITY_OBSERVATION",
+                  "IDENTITY_UNIQUENESS_OBSERVATION",
+                  "JOURNAL_PREPARED",
+                  "LAUNCH_RECIPE",
+                  "M3_AUTHORIZATION",
+                  "MEDIA_CLASS_ATTESTATION",
+                  "MILESTONE_EXIT",
+                  "OPERATOR_PROVISIONED_PROJECT",
+                  "PLAN_VALIDATION",
+                  "PROJECT_BINDING_OBSERVATION",
+                  "PROVISIONING_RECORD",
+                  "RAW_CAPABILITY_CAPTURE",
+                  "RAW_EVIDENCE",
+                  "READ_ONLY_JOURNAL",
+                  "REFREEZE_RECORD",
+                  "REVIEW_DECISION",
+                  "TIMELINE_BINDING_OBSERVATION"
+                ]
+              },
+              "uniqueItems": true
+            },
+            "meaning": {
+              "type": "string"
+            }
+          }
+        },
+        "ATTACHMENT_READY": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required_records",
+            "meaning"
+          ],
+          "properties": {
+            "required_records": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "BUNDLE_VERIFICATION",
+                  "CONNECTION_OBSERVATION",
+                  "DERIVED_CAPABILITY_RESULT",
+                  "DESTINATION_TIMELINE",
+                  "EXCLUSIVE_SESSION_ATTESTATION",
+                  "GUARD_SNAPSHOT",
+                  "IDENTITY_STABILITY_OBSERVATION",
+                  "IDENTITY_UNIQUENESS_OBSERVATION",
+                  "JOURNAL_PREPARED",
+                  "LAUNCH_RECIPE",
+                  "M3_AUTHORIZATION",
+                  "MEDIA_CLASS_ATTESTATION",
+                  "MILESTONE_EXIT",
+                  "OPERATOR_PROVISIONED_PROJECT",
+                  "PLAN_VALIDATION",
+                  "PROJECT_BINDING_OBSERVATION",
+                  "PROVISIONING_RECORD",
+                  "RAW_CAPABILITY_CAPTURE",
+                  "RAW_EVIDENCE",
+                  "READ_ONLY_JOURNAL",
+                  "REFREEZE_RECORD",
+                  "REVIEW_DECISION",
+                  "TIMELINE_BINDING_OBSERVATION"
+                ]
+              },
+              "uniqueItems": true
+            },
+            "meaning": {
+              "type": "string"
+            }
+          }
+        },
+        "ATTACHED_READ_ONLY": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required_records",
+            "meaning"
+          ],
+          "properties": {
+            "required_records": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "BUNDLE_VERIFICATION",
+                  "CONNECTION_OBSERVATION",
+                  "DERIVED_CAPABILITY_RESULT",
+                  "DESTINATION_TIMELINE",
+                  "EXCLUSIVE_SESSION_ATTESTATION",
+                  "GUARD_SNAPSHOT",
+                  "IDENTITY_STABILITY_OBSERVATION",
+                  "IDENTITY_UNIQUENESS_OBSERVATION",
+                  "JOURNAL_PREPARED",
+                  "LAUNCH_RECIPE",
+                  "M3_AUTHORIZATION",
+                  "MEDIA_CLASS_ATTESTATION",
+                  "MILESTONE_EXIT",
+                  "OPERATOR_PROVISIONED_PROJECT",
+                  "PLAN_VALIDATION",
+                  "PROJECT_BINDING_OBSERVATION",
+                  "PROVISIONING_RECORD",
+                  "RAW_CAPABILITY_CAPTURE",
+                  "RAW_EVIDENCE",
+                  "READ_ONLY_JOURNAL",
+                  "REFREEZE_RECORD",
+                  "REVIEW_DECISION",
+                  "TIMELINE_BINDING_OBSERVATION"
+                ]
+              },
+              "uniqueItems": true
+            },
+            "meaning": {
+              "type": "string"
+            }
+          }
+        },
+        "SCRATCH_WRITE_READY": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required_records",
+            "meaning"
+          ],
+          "properties": {
+            "required_records": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "BUNDLE_VERIFICATION",
+                  "CONNECTION_OBSERVATION",
+                  "DERIVED_CAPABILITY_RESULT",
+                  "DESTINATION_TIMELINE",
+                  "EXCLUSIVE_SESSION_ATTESTATION",
+                  "GUARD_SNAPSHOT",
+                  "IDENTITY_STABILITY_OBSERVATION",
+                  "IDENTITY_UNIQUENESS_OBSERVATION",
+                  "JOURNAL_PREPARED",
+                  "LAUNCH_RECIPE",
+                  "M3_AUTHORIZATION",
+                  "MEDIA_CLASS_ATTESTATION",
+                  "MILESTONE_EXIT",
+                  "OPERATOR_PROVISIONED_PROJECT",
+                  "PLAN_VALIDATION",
+                  "PROJECT_BINDING_OBSERVATION",
+                  "PROVISIONING_RECORD",
+                  "RAW_CAPABILITY_CAPTURE",
+                  "RAW_EVIDENCE",
+                  "READ_ONLY_JOURNAL",
+                  "REFREEZE_RECORD",
+                  "REVIEW_DECISION",
+                  "TIMELINE_BINDING_OBSERVATION"
+                ]
+              },
+              "uniqueItems": true
+            },
+            "meaning": {
+              "type": "string"
+            }
+          }
+        },
+        "CONFLICT": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required_records",
+            "meaning"
+          ],
+          "properties": {
+            "required_records": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "BUNDLE_VERIFICATION",
+                  "CONNECTION_OBSERVATION",
+                  "DERIVED_CAPABILITY_RESULT",
+                  "DESTINATION_TIMELINE",
+                  "EXCLUSIVE_SESSION_ATTESTATION",
+                  "GUARD_SNAPSHOT",
+                  "IDENTITY_STABILITY_OBSERVATION",
+                  "IDENTITY_UNIQUENESS_OBSERVATION",
+                  "JOURNAL_PREPARED",
+                  "LAUNCH_RECIPE",
+                  "M3_AUTHORIZATION",
+                  "MEDIA_CLASS_ATTESTATION",
+                  "MILESTONE_EXIT",
+                  "OPERATOR_PROVISIONED_PROJECT",
+                  "PLAN_VALIDATION",
+                  "PROJECT_BINDING_OBSERVATION",
+                  "PROVISIONING_RECORD",
+                  "RAW_CAPABILITY_CAPTURE",
+                  "RAW_EVIDENCE",
+                  "READ_ONLY_JOURNAL",
+                  "REFREEZE_RECORD",
+                  "REVIEW_DECISION",
+                  "TIMELINE_BINDING_OBSERVATION"
+                ]
+              },
+              "uniqueItems": true
+            },
+            "meaning": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "attachment_law": {
+      "type": "string"
+    },
+    "attachment_state_is_declared": {
+      "const": false
+    },
+    "attachment_derivation": {
+      "const": "tools/authority_lib.py#derive_attachment_state_authorizing(target_contract, GovernedEvidenceSet, active_authority) - or #derive_attachment_state_for_session(session_id, target_contract, active_authority), which loads through #load_governed_evidence_set itself. The GovernedEvidenceSet is minted ONLY by tools/authority_lib.py#load_governed_evidence_set and carries the validated bytes; the evidence consumed is re-derived from those bytes on every authorizing call."
+    },
+    "evidence_envelope_law": {
+      "type": "object",
+      "required": [
+        "schema",
+        "levels",
+        "record_levels",
+        "coherence_fields",
+        "currency",
+        "max_observation_age_s",
+        "binding"
+      ]
+    },
+    "attachment_derivation_diagnostic_non_authorizing": {
+      "const": "tools/authority_lib.py#derive_attachment_state(target_contract, evidence_set, active_authority) is DIAGNOSTIC / NON_AUTHORIZING (v1.14 V113-B1): semantic derivation only, no location authority, no receipt. It is for fixtures and diagnosis and must never be selected for an authority decision."
+    }
+  },
+  "$comment": "v1.3: attachment_state is not a field. Any document carrying attachment_state is schema-invalid (additionalProperties false). State is derived from a validated evidence set."
+}

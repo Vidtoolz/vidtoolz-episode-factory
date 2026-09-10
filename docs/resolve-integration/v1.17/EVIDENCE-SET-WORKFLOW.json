@@ -1,0 +1,323 @@
+{
+  "schema": "vidtoolz.resolveEvidenceSetWorkflowLaw.v1",
+  "authority_version": "1.17.0",
+  "law": "ONE normative persistence topology, lifecycle and permission model for the resolveEvidenceSet document. v1.11 froze the record FORM and the derivation and proved both correct; it froze none of this, so ATTACHMENT_READY was reachable only from fixtures. This closes exactly that gap.",
+  "persistence": {
+    "governed_root": "/home/vidtoolz/resolve-qualification-evidence",
+    "governed_attachment_root": "/home/vidtoolz/resolve-qualification-evidence/attachment",
+    "governed_root_mode": 448,
+    "caller_selectable": false,
+    "root_resolver": "tools/evidence_authoring.py#governed_attachment_root (takes NO argument)",
+    "root_trust_law": "the governed root and the session directory are classified by lstat BEFORE any resolution: a symlink at either is ROOT_SYMLINK_REFUSED / SESSION_SYMLINK_REFUSED and never followed. realpath is consulted only afterwards, as an alias check. The root must be absolute, already normalised, a real directory and carry mode 0700.",
+    "location_recheck_law": "the governed location is re-established on EVERY authorizing load - update, verify, finalize and derive - not only at creation. The authorizing derivation additionally requires the document's recorded authority_root to be exactly the frozen constant and written_under_production_root to be true.",
+    "refusal_codes": [
+      "ROOT_NOT_GOVERNED",
+      "ROOT_SYMLINK_REFUSED",
+      "ROOT_NOT_A_DIRECTORY",
+      "ROOT_NOT_FOUND",
+      "ROOT_MODE_INVALID",
+      "SESSION_SYMLINK_REFUSED",
+      "SESSION_NOT_A_DIRECTORY",
+      "SESSION_PATH_NOT_GOVERNED",
+      "NOT_PRODUCTION_ROOT",
+      "SET_LOCATION_MISMATCH",
+      "SESSION_ID_INVALID"
+    ],
+    "test_override": "scratch roots live in tools/evidence_authoring_testkit.py, AUTHORITY_CLASS INTERNAL_NON_AUTHORIZING. It is not imported by either production CLI, it refuses to sandbox the frozen authority root, and every document it produces records written_under_production_root=false so the authorizing derivation refuses it. The sandbox changes the root prefix ONLY: every trust, lifecycle, principal, TOCTOU and freshness check runs unchanged on the same code.",
+    "path_law": "/home/vidtoolz/resolve-qualification-evidence/attachment/<current_session_id>/{EVIDENCE-SET.json,WORKFLOW.json,LOCK}",
+    "file_identity": "FIXED NAME within a governed per-session directory. Not content-addressed: the document is mutable across its OPEN and PREPARED states by design, and content-addressing a mutable document would rename it on every write. Integrity comes from (a) the per-record content-addressed record_id, (b) prepared_content_sha256 sealed at PREPARED, (c) evidence_set_sha256 sealed at VERIFIED and re-checked on every load, (d) atomic replace, (e) the self-location check.",
+    "ownership": "the qualification authority on the contract host; directory mode 0700, document 0600 while writable and 0400 once VERIFIED",
+    "forbidden_locations": [
+      "/tmp or any transient-only path as production authority",
+      "an arbitrary user path",
+      "a Store.v5 session root",
+      "any EKA or shared network library path"
+    ],
+    "self_location_check": "WORKFLOW.json records governed_root and session_id; loading refuses SET_LOCATION_MISMATCH when the derived path is not where the document was actually found, so a copied or moved document is not authority",
+    "atomicity": "sibling temp + fsync + os.replace; a reader never observes a partial document",
+    "writer_exclusivity": "O_EXCL LOCK file in the document directory recording the holder's principal and pid, released in a finally block. Single-host qualification only; no distributed locking is claimed."
+  },
+  "core_authority": {
+    "law": "location authority is part of the authorizing core, not of a wrapper. Precedence inside any authorizing call is LOCATION AUTHORITY -> ATTACHMENT SEMANTICS -> ELIGIBILITY, and a forbidden-location evidence set never reaches the point where readiness is computed.",
+    "only_door": "tools/authority_lib.py#load_governed_evidence_set(session_id, active) - takes a session id and the active authority and NOTHING else; it derives the canonical path from the frozen constant itself",
+    "provenance_object": "tools/authority_lib.py#GovernedEvidenceSet - constructible ONLY by that loader (a module-private token), __slots__ and no instance dict, so a dict, a namespace object, a subclass or a hand-computed receipt cannot fabricate provenance (LOCATION_PROVENANCE_MISSING)",
+    "authorizing_entrypoints": [
+      "derive_attachment_state_authorizing",
+      "derive_attachment_state_for_session",
+      "evaluate_eligibility_authorizing",
+      "evaluate_eligibility_for_session",
+      "validate_transaction_set_authorizing",
+      "commit_eligibility_authorizing"
+    ],
+    "consumed_evidence_law": "THE EXACT BYTES VALIDATED AS GOVERNED EVIDENCE ARE THE EXACT BYTES CONSUMED BY AUTHORIZING DERIVATION. The carrier holds the validated BYTES and no parsed object: it is frozen after construction (__setattr__/__delattr__ refuse), its evidence_set is a read-only property that strict-parses those bytes afresh on every access, and copy/deepcopy/pickle are refused. On every authorizing call authority_lib.governed_consume() revalidates the live location, re-reads both authority files no-follow, requires the live digests to equal the minted ones AND the carrier's own bytes to digest to the same value, strict-parses those exact bytes, schema-validates them, requires the canonical snapshot digest to equal the one bound into the receipt, and RETURNS the semantic object the authorizing path then consumes. In v1.14 the carrier stored a mutable parsed dict that nothing bound to the validated bytes, so provenance for document A could be presented with semantic evidence B and a false ATTACHMENT_READY derived.",
+    "snapshot_domain": "vidtoolz.resolveEvidenceSetSnapshot.v1",
+    "one_evidence_source": "no authorizing entry point takes both a governed carrier and a separate evidence argument; there is exactly ONE evidence authority input, and it is the carrier.",
+    "authority_files": [
+      "EVIDENCE-SET.json",
+      "WORKFLOW.json"
+    ],
+    "authority_file_law": "both governed files are classified by lstat BEFORE anything is opened: a symlink is <KIND>_SYMLINK_REFUSED and never followed, and a FIFO, socket, device or directory is <KIND>_NOT_A_REGULAR_FILE and never opened. Each is then read with O_NOFOLLOW and O_NONBLOCK and the OPEN FILE is re-verified by fstat to be the same regular file (device, inode) the entry check saw, so an entry swapped between check and open is refused. WORKFLOW.json is authority-bearing - session identity, governed root, production-root claim, lifecycle state and the digest sealed at VERIFIED - so its bytes are digested, bound into the location receipt and re-checked on every authorizing call. In v1.14 it was checked for existence only and then opened through strict_load, which followed a symlink (ACCEPTED_WORKFLOW_SYMLINK), blocked forever on a FIFO and raised a raw IsADirectoryError on a directory.",
+    "malformed_carrier_law": "authority_lib.governed_structure_errors() validates the carrier's type and every field with defaults BEFORE any dereference, so object.__new__, a missing or None slot, a wrong field type, a malformed receipt, a subclass, or a copy/deepcopy/pickle attempt fails closed as GOVERNED_EVIDENCE_INVALID inside the frozen vocabulary. In v1.14 object.__new__(GovernedEvidenceSet) passed isinstance and leaked a raw AttributeError out of both public authorizing boundaries. Genuine internal programming errors are NOT masked: only malformed external authority input is normalised (the v1.10 programming-error distinction is preserved).",
+    "diagnostic_non_authorizing": [
+      "derive_attachment_state",
+      "evaluate_eligibility"
+    ],
+    "provisional_until_m3_non_authorizing": [
+      "validate_transaction_set",
+      "commit_eligibility"
+    ],
+    "transaction_authority_law": "v1.15 (V114-B2): the authorizing transaction and commit entry points require a GovernedEvidenceSet, consume the bytes-bound snapshot, and evaluate plan-time eligibility through evaluate_eligibility_authorizing, so no diagnostic eligibility result can influence transaction validity, mutation-plan acceptance or a commit decision. semantic_mutation_plan stays INTERNAL_NON_AUTHORIZING and chooses its eligibility law BY TYPE - governed carrier -> authorizing gate, bare dict -> diagnostic - never by a caller-supplied callback. The bare-dict validate_transaction_set/commit_eligibility pair is retained unchanged for fixtures and diagnosis and is classified PROVISIONAL_UNTIL_M3 / NON-AUTHORIZING. In v1.14 the complete committed-consistent fixture supplied as a raw dict completed all twelve stages and produced commit_eligibility.eligible=true.",
+    "diagnostic_law": "authority_lib.derive_attachment_state and authority_lib.evaluate_eligibility are the SEMANTIC derivation only. They know nothing about where the evidence set came from, they carry no location receipt, and no authorizing entry point accepts their output. They exist for fixtures, in-memory evidence sets and diagnostics.",
+    "receipt": {
+      "domain": "vidtoolz.resolveLocationReceipt.v1",
+      "binds": [
+        "session_id",
+        "document_path",
+        "workflow_path",
+        "governed_root",
+        "authority_version",
+        "manifest_sha256",
+        "document_sha256",
+        "workflow_sha256",
+        "evidence_snapshot_digest",
+        "location_validated"
+      ],
+      "bound_fields": [
+        {
+          "field": "session_id",
+          "source": "caller-supplied session id, validated by session_id_errors and compared with both authority files' own claims",
+          "normative": true,
+          "in_digest": true,
+          "revalidated_live": true,
+          "consumed_by_authorizing_core": true
+        },
+        {
+          "field": "document_path",
+          "source": "DERIVED: canonical_document_path(session_id) from the frozen governed root",
+          "normative": true,
+          "in_digest": true,
+          "revalidated_live": true,
+          "consumed_by_authorizing_core": true
+        },
+        {
+          "field": "workflow_path",
+          "source": "DERIVED: canonical_workflow_path(session_id) from the frozen governed root (v1.15 V114-B4)",
+          "normative": true,
+          "in_digest": true,
+          "revalidated_live": true,
+          "consumed_by_authorizing_core": true
+        },
+        {
+          "field": "governed_root",
+          "source": "FROZEN CONSTANT: GOVERNED_ATTACHMENT_ROOT; no caller input participates",
+          "normative": true,
+          "in_digest": true,
+          "revalidated_live": true,
+          "consumed_by_authorizing_core": true
+        },
+        {
+          "field": "authority_version",
+          "source": "FROZEN CONSTANT: AUTHORITY_VERSION of this bundle",
+          "normative": true,
+          "in_digest": true,
+          "revalidated_live": true,
+          "consumed_by_authorizing_core": true
+        },
+        {
+          "field": "manifest_sha256",
+          "source": "active authority: active['manifest_sha256'] of the reviewed manifest",
+          "normative": true,
+          "in_digest": true,
+          "revalidated_live": true,
+          "consumed_by_authorizing_core": true
+        },
+        {
+          "field": "document_sha256",
+          "source": "sha256 of the exact EVIDENCE-SET.json bytes read no-follow from the canonical path",
+          "normative": true,
+          "in_digest": true,
+          "revalidated_live": true,
+          "consumed_by_authorizing_core": true
+        },
+        {
+          "field": "workflow_sha256",
+          "source": "sha256 of the exact WORKFLOW.json bytes read no-follow from the canonical path (v1.15 V114-B4)",
+          "normative": true,
+          "in_digest": true,
+          "revalidated_live": true,
+          "consumed_by_authorizing_core": true
+        },
+        {
+          "field": "evidence_snapshot_digest",
+          "source": "evidence_snapshot_digest(parse of those exact document bytes) under vidtoolz.resolveEvidenceSetSnapshot.v1 (v1.15 V114-B1)",
+          "normative": true,
+          "in_digest": true,
+          "revalidated_live": true,
+          "consumed_by_authorizing_core": true
+        },
+        {
+          "field": "location_validated",
+          "source": "CONSTANT True: the receipt is only ever computed after location_errors() returned empty; it is not a caller claim",
+          "normative": true,
+          "in_digest": true,
+          "revalidated_live": true,
+          "consumed_by_authorizing_core": false
+        }
+      ],
+      "digest_law": "sha256(utf8(domain) + 0x0A + canonical_bytes(object of exactly these fields))",
+      "recomputed_on_every_authorizing_call": true,
+      "snapshot_domain_is_distinct": "vidtoolz.resolveEvidenceSetSnapshot.v1",
+      "parity_law": "RUNTIME_BOUND_FIELDS == PUBLISHED_BOUND_FIELDS exactly, in both directions and in order; an omitted field or a claimed field the runtime does not bind is a validation failure",
+      "law": "recomputed from the live filesystem on EVERY authorizing call by governed_consume(), never trusted as a field. Possession of a previously valid object is not authority: a document changed underneath it, a different active manifest or a non-canonical path is LOCATION_RECEIPT_INVALID."
+    },
+    "no_state_parameter": "evaluate_eligibility_authorizing has no attachment-state parameter of any kind; it recomputes the state from the governed document, so a precomputed or diagnostic state cannot bootstrap eligibility",
+    "fail_closed": "absent or invalid location provenance yields eligible=false with reason code LOCATION_AUTHORITY_INVALID, and a derivation of CONFLICT with authorizing=false and no readiness value",
+    "one_implementation": "the root resolver, the session-id law and the directory-entry trust check exist ONCE, in tools/authority_lib.py (authority_attachment_root, session_id_errors, governed_dir_errors). tools/evidence_authoring.py delegates to them and keeps its own earlier checks as DEFENCE IN DEPTH, never as the only guard.",
+    "refusal_codes": [
+      "ROOT_NOT_GOVERNED",
+      "ROOT_SYMLINK_REFUSED",
+      "ROOT_NOT_A_DIRECTORY",
+      "ROOT_NOT_FOUND",
+      "ROOT_MODE_INVALID",
+      "SESSION_SYMLINK_REFUSED",
+      "SESSION_NOT_A_DIRECTORY",
+      "SESSION_PATH_NOT_GOVERNED",
+      "SESSION_ID_INVALID",
+      "SESSION_NOT_FOUND",
+      "DOCUMENT_NOT_FOUND",
+      "DOCUMENT_SYMLINK_REFUSED",
+      "DOCUMENT_NOT_AT_CANONICAL_PATH",
+      "SELF_LOCATION_MISMATCH",
+      "NOT_PRODUCTION_ROOT",
+      "LOCATION_PROVENANCE_MISSING",
+      "LOCATION_RECEIPT_INVALID",
+      "WORKFLOW_NOT_FOUND",
+      "WORKFLOW_SYMLINK_REFUSED",
+      "WORKFLOW_NOT_A_REGULAR_FILE",
+      "WORKFLOW_NOT_AT_CANONICAL_PATH",
+      "GOVERNED_EVIDENCE_INVALID",
+      "EVIDENCE_SNAPSHOT_MISMATCH",
+      "GOVERNED_EVIDENCE_REQUIRED",
+      "RECEIPT_BINDING_DRIFT",
+      "LOCATION_AUTHORITY_INVALID"
+    ],
+    "residual": "v1.14 recorded as a residual that the M3 composed path consumed the diagnostic eligibility. Codex classified that residual a BLOCKER (V114-B2) because commit_eligibility returned eligible=true from a bare evidence dict, and v1.15 closes it: the authorizing transaction/commit pair requires governed provenance and the bare-dict pair is no longer authorizing. What remains outside v1.15's scope is the rest of pre-M3 transaction design, which is unchanged."
+  },
+  "lifecycle": {
+    "states": [
+      "OPEN",
+      "PREPARED",
+      "VERIFIED"
+    ],
+    "transitions": [
+      {
+        "from": null,
+        "to": "OPEN",
+        "by": "PREPARER",
+        "function": "create_evidence_set"
+      },
+      {
+        "from": "OPEN",
+        "to": "PREPARED",
+        "by": "PREPARER",
+        "function": "mark_prepared",
+        "requires": "exactly one PROVISIONING_RECORD and exactly one LAUNCH_RECIPE",
+        "seals": "prepared_content_sha256 over both preparer record ids"
+      },
+      {
+        "from": "PREPARED",
+        "to": "VERIFIED",
+        "by": "VERIFIER",
+        "function": "add_bundle_verification",
+        "seals": "evidence_set_sha256 over the whole document; both files become mode 0400"
+      }
+    ],
+    "state_grants": {
+      "OPEN": {
+        "PREPARER": [
+          "LAUNCH_RECIPE",
+          "PROVISIONING_RECORD",
+          "READ_ONLY_JOURNAL"
+        ]
+      },
+      "PREPARED": {
+        "VERIFIER": [
+          "BUNDLE_VERIFICATION"
+        ]
+      },
+      "VERIFIED": {}
+    },
+    "no_append_after_freeze": "VERIFIED grants no record type to any role, and evidence_set_sha256 is re-checked on every load, so there is no append-after-finalization path and no successor-document mechanism is required",
+    "why_a_lifecycle_is_needed": "the preparer must stop writing before the verifier attests, or the verifier attests to inputs that can still change. The two seals make a post-verification edit detectable and the derivation binding makes it fatal."
+  },
+  "toctou": {
+    "law": "a BUNDLE_VERIFICATION names the exact record ids it verified. A record id is a content digest, so editing a verified preparer record changes its id and the bundle's binding no longer resolves. The AUTHORIZING refusal is tools/authority_lib.py#derive_attachment_state_authorizing (equivalently #derive_attachment_state_for_session, which loads through #load_governed_evidence_set), which refuses such an evidence set. The bare-evidence tools/authority_lib.py#derive_attachment_state is DIAGNOSTIC / NON_AUTHORIZING and applies the same semantic rule for fixtures and diagnosis only.",
+    "additional_seals": [
+      "prepared_content_sha256 re-checked inside add_bundle_verification",
+      "evidence_set_sha256 re-checked on every _load after VERIFIED"
+    ]
+  },
+  "read_only_journal": {
+    "owner": "PREPARER",
+    "layer": "PROBE ELIGIBILITY",
+    "law": "READ_ONLY_JOURNAL satisfies the PERMISSIONS.json prerequisite READ_ONLY_JOURNAL_OPEN for READ_PRIMITIVE_QUALIFICATION_PROBE. It is NOT attachment evidence, the attachment derivation (#derive_attachment_state_authorizing, and equally the diagnostic #derive_attachment_state) ignores it entirely, and it is never a substitute for BUNDLE_VERIFICATION."
+  },
+  "current_session_id": {
+    "law": "a LABEL naming the Resolve session under evaluation. It is NOT a Store.v5 evidence-store session id, and no Store.v5 session-manifest field (probe_id, capability_matrix_sha256, primitive_spec_sha256, ...) belongs in any attachment record.",
+    "container_separation": "Store.v5 carries raw M0A capture evidence and session integrity; the resolveEvidenceSet document carries attachment and provisioning authority. v1.12 freezes the BRIDGE (this document), not a merger. tools/evidence_authoring.py never creates, opens, finalizes or reads a Store.v5 session."
+  },
+  "envelope_derivation": {
+    "derived_from_target_contract": [
+      "host_name",
+      "product",
+      "resolve_version",
+      "build",
+      "library_name"
+    ],
+    "derived_from_active_authority": [
+      "authority_version",
+      "manifest_sha256"
+    ],
+    "derived_from_provisioning_record": [
+      "library_uuid",
+      "library_root",
+      "provisioning_id"
+    ],
+    "derived_from_document": [
+      "session_id"
+    ],
+    "derived_from_store_law": [
+      "record_type_version"
+    ],
+    "caller_supplied": [
+      "sequence",
+      "captured_at"
+    ],
+    "forbidden_to_caller": [
+      "project_name",
+      "project_unique_id",
+      "timeline_name",
+      "timeline_unique_id",
+      "target_epoch"
+    ],
+    "trap_closed": "resolve_version is the COMPUTED contract form (authority_lib._contract_env), not tc.resolve.version; the constructor derives it so the v1.11 trap cannot be reproduced by hand"
+  },
+  "tools": {
+    "authoring_library": "tools/evidence_authoring.py",
+    "preparer_cli": "tools/a2_prepare.py",
+    "verifier_cli": "tools/a2_verify.py",
+    "constructors": [
+      "create_evidence_set",
+      "add_provisioning_record",
+      "add_launch_recipe",
+      "add_read_only_journal",
+      "mark_prepared",
+      "add_bundle_verification",
+      "load_evidence_set",
+      "workflow_state",
+      "validate_evidence_set",
+      "evidence_authoring.derive_attachment_state (the AUTHORIZING wrapper: it loads through authority_lib.load_governed_evidence_set and calls authority_lib.derive_attachment_state_authorizing)"
+    ],
+    "no_body_only_path": "every constructor routes through authority_lib.make_record and authority_lib.envelope_errors; there is no code path that stores a body-only object"
+  }
+}

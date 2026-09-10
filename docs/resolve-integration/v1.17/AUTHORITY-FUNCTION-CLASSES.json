@@ -1,0 +1,386 @@
+{
+  "schema": "vidtoolz.resolveAuthorityFunctionClasses.v1",
+  "authority_version": "1.17.0",
+  "law": "ONE function -> ONE current authority class. This file is generated from tools/authority_lib.py#AUTHORITY_SURFACE and is the single machine-readable classification authority. Where any other current artifact speaks about one of these functions, it must agree with this file, and any slot whose semantics are 'this function authorizes X' must name a function classified authorizing. Authority selection is itself an authorizing decision (Codex v1.15 V115-B1).",
+  "classes": {
+    "authorizing": "may decide an authority question. Requires governed provenance (a GovernedEvidenceSet minted by load_governed_evidence_set) wherever it consumes evidence.",
+    "diagnostic_non_authorizing": "the same SEMANTIC derivation over a bare evidence set. No governed provenance, no location receipt. For fixtures, in-memory evidence and diagnosis. Its result may look like a readiness or eligibility answer and is never authority.",
+    "provisional_until_m3_non_authorizing": "composed transaction/commit validation over a bare evidence set. Every stage law is identical to the authorizing pair, but without governed provenance the result is not write authority.",
+    "internal_non_authorizing": "a helper composed by the authority; never a public decision point."
+  },
+  "classes_are_disjoint": true,
+  "source_of_truth": "tools/authority_lib.py#AUTHORITY_SURFACE via #authority_function_classes()",
+  "decision_functions": {
+    "derive_attachment_state": {
+      "authority_class": "diagnostic_non_authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": false
+    },
+    "derive_attachment_state_authorizing": {
+      "authority_class": "authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": true
+    },
+    "derive_attachment_state_for_session": {
+      "authority_class": "authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": true
+    },
+    "evaluate_eligibility": {
+      "authority_class": "diagnostic_non_authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": false
+    },
+    "evaluate_eligibility_authorizing": {
+      "authority_class": "authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": true
+    },
+    "evaluate_eligibility_for_session": {
+      "authority_class": "authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": true
+    },
+    "validate_transaction_set": {
+      "authority_class": "provisional_until_m3_non_authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": false
+    },
+    "validate_transaction_set_authorizing": {
+      "authority_class": "authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": true
+    },
+    "commit_eligibility": {
+      "authority_class": "provisional_until_m3_non_authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": false
+    },
+    "commit_eligibility_authorizing": {
+      "authority_class": "authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": true
+    },
+    "load_governed_evidence_set": {
+      "authority_class": "authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": true
+    },
+    "governed_consume": {
+      "authority_class": "authorizing",
+      "module": "tools/authority_lib.py",
+      "consumed_by_authorizing_runtime": true
+    }
+  },
+  "authorizing": [
+    "callable_method_set",
+    "commit_eligibility_authorizing",
+    "derive_attachment_state_authorizing",
+    "derive_attachment_state_for_session",
+    "evaluate_eligibility_authorizing",
+    "evaluate_eligibility_for_session",
+    "evidence_set_add_bundle_verification",
+    "evidence_set_add_launch_recipe",
+    "evidence_set_add_provisioning",
+    "evidence_set_create",
+    "evidence_set_derive_attachment_state",
+    "evidence_set_mark_prepared",
+    "evidence_snapshot_digest",
+    "governed_consume",
+    "governed_provenance_errors",
+    "governed_structure_errors",
+    "ingest_raw_frame",
+    "internal_schema_errors",
+    "load_governed_evidence_set",
+    "location_errors",
+    "location_receipt",
+    "may_write",
+    "primitive_status",
+    "principal_errors",
+    "promotion_state",
+    "resolve_stored_chain",
+    "schema_registry",
+    "session_manifest_errors",
+    "trusted_capture_shim",
+    "validate_transaction_set_authorizing"
+  ],
+  "diagnostic_non_authorizing": [
+    "derive_attachment_state",
+    "evaluate_eligibility"
+  ],
+  "provisional_until_m3_non_authorizing": [
+    "commit_eligibility",
+    "validate_transaction_set"
+  ],
+  "internal_non_authorizing": [
+    "active_authority_errors",
+    "authority_cache_stats",
+    "canon_reference",
+    "canon_string_reference",
+    "capability_matrix_digest",
+    "capability_qualification",
+    "capture_shim_trust_errors",
+    "classification_family",
+    "clear_authority_caches",
+    "codec_broad_type",
+    "codec_contains_elision",
+    "codec_errors",
+    "compute_schema_registry",
+    "compute_trusted_capture_shim",
+    "content_digest",
+    "content_key",
+    "derive_capability_result",
+    "derive_delta",
+    "derive_delta_errors",
+    "evidence_set_digest",
+    "expected_effects",
+    "governed_file_errors",
+    "guard_lineage_errors",
+    "guard_record_errors",
+    "historical_schema_errors",
+    "identity_claim_input_errors",
+    "identity_claim_inputs",
+    "identity_claims",
+    "ingest_receipt_errors",
+    "journal_applied_ops",
+    "journal_head",
+    "journal_readback",
+    "occurrence_index",
+    "parser_sha256",
+    "primitive_spec",
+    "primitive_spec_digest",
+    "profile_satisfies",
+    "promotion_step",
+    "raw_capture_digest",
+    "raw_capture_digest_ok",
+    "raw_ingest_receipt",
+    "read_governed_file",
+    "read_primitive_authority_digest",
+    "required_s1_profile",
+    "schema_registry_digest",
+    "semantic_commit_manifest",
+    "semantic_conflict",
+    "semantic_derived_result_record",
+    "semantic_identity_observation",
+    "semantic_journal",
+    "semantic_mutation_plan",
+    "semantic_raw_capture",
+    "semantic_refreeze_record",
+    "semantic_review_decision",
+    "semantic_snapshot",
+    "semantic_verification_result",
+    "shim_allowlist",
+    "shim_allowlist_digest",
+    "stored_chain_digest",
+    "strict_parse_raw_frame",
+    "supersession_resolve",
+    "trusted_shim_digest",
+    "validate_transaction_set_diagnostic",
+    "verify_transaction"
+  ],
+  "slot_discovery_law": {
+    "definition": "A slot is AUTHORIZING if its value or text designates a function as authoritative, deciding, refusing, enforcing, deriving current authority state, gating eligibility or commit, or validating - whatever its key is called. Slot membership follows the SEMANTICS OF THE VALUE, never a key-name allowlist, so an unfamiliar key cannot hide an authority designation.",
+    "roles": [
+      "AUTHORIZING_DESIGNATION",
+      "DIAGNOSTIC_DECLARATION",
+      "HISTORICAL_STATEMENT",
+      "MENTION"
+    ],
+    "authority_tokens": [
+      "refuses",
+      "refusal",
+      "refusing",
+      "decides",
+      "deciding",
+      "decision",
+      "authoritative",
+      "evaluator",
+      "decider",
+      "refuser",
+      "authorizes",
+      "authorizing",
+      "authorises",
+      "enforce",
+      "enforces",
+      "enforcing",
+      "derives",
+      "derived by",
+      "computed by",
+      "evaluated by",
+      "gates",
+      "gating",
+      "validates",
+      "validated by",
+      "the only",
+      "ONLY",
+      "must use",
+      "entry point",
+      "entrypoint",
+      "authority",
+      "loader"
+    ],
+    "class_tokens": [
+      "DIAGNOSTIC",
+      "diagnostic",
+      "NON_AUTHORIZING",
+      "NON-AUTHORIZING",
+      "non-authorizing",
+      "non_authorizing",
+      "PROVISIONAL_UNTIL_M3",
+      "provisional-until-M3",
+      "provisional_until_m3",
+      "not authority",
+      "never be selected",
+      "NOT authority"
+    ],
+    "history_tokens": [
+      "SUPERSEDED",
+      "superseded",
+      "HISTORICAL",
+      "historical",
+      "was then",
+      "then named",
+      "of its era",
+      "reads as its",
+      "in v1.1",
+      "as of v1.1",
+      "v1.12",
+      "v1.13",
+      "v1.14",
+      "v1.15",
+      "v1.16",
+      "V112-",
+      "V113-",
+      "V114-",
+      "V115-",
+      "V116-",
+      "authorizing counterpart",
+      "corrected"
+    ],
+    "clause_law": "A claim is read ONLY from the clause containing the reference. Clauses break at '.', ';', ':', ',' and newline, at parenthesis depth zero, and only where the delimiter is followed by whitespace or the end of the text - so an argument list, a dotted module path and a version number stay intact while ordinary punctuation ends a clause. Wrapped markdown prose is rejoined into logical lines first, so where a line happens to wrap cannot change a classification.",
+    "negation_law": "Negation is LOCAL, never a phrase search. 'X is no longer authoritative; Y is authoritative' classifies X non-authorizing and Y authorizing, because each clause is read separately. No bare negation appears in any token list: the v1.16 scanner exempted any sentence containing the phrase 'no longer', and in the TOCTOU law that phrase modified 'the bundle's binding no longer resolves' - an unrelated clause - which suppressed a real diagnostic-name violation (V116-B1).",
+    "signal_precedence": [
+      "an explicit class or history token in the reference's OWN clause",
+      "the structured key path (a key whose name declares diagnostic/provisional/authorizing)",
+      "the authority verbs of the reference's own clause"
+    ],
+    "reference_forms": [
+      "bare",
+      "module-qualified",
+      "anchor (module.py#name)",
+      "path-qualified (tools/module.py#name)",
+      "markdown code (`name`)",
+      "call form name(args)"
+    ],
+    "module_awareness": "A same-named function in another module is a DIFFERENT symbol: evidence_authoring.derive_attachment_state is the AUTHORIZING authoring wrapper, not the diagnostic authority_lib core function, and is recorded as a foreign-module symbol rather than judged against the authority_lib class map.",
+    "laws": {
+      "R1": "every reference to a demoted function in a CURRENT artifact carries an explicit class token in its own clause",
+      "R2": "every clause that designates authority names a function whose canonical class is authorizing"
+    },
+    "artifact_scope": "derived from AUTHORITY-PRECEDENCE.json: status STILL_ACTIVE and role in (NORMATIVE_AUTHORITY, CORRECTION_RECORD). Never a filename pattern. GENERATED_EVIDENCE (the validation report and the generated inventory) reports what the suite checked and quotes its own check names, so it is out of scope by published role; HISTORICAL_INPUT is out of scope by status.",
+    "generated_inventory": "AUTHORITY-SLOT-INVENTORY.json",
+    "generator": "tools/authority_slots.py, used by both this build and validate_v1_17.py"
+  },
+  "runtime_lookup_law": "NO authorizing runtime code resolves a function by name from any artifact. Functions are bound statically by Python import; there is no getattr/eval/dispatch-table lookup keyed on an artifact string anywhere in the authority. A stale artifact can therefore mislead a HUMAN or an external consumer - which is why this file exists and why the validator compares every current artifact against it - but it cannot make the authority itself call a diagnostic function.",
+  "receipt_binding": {
+    "domain": "vidtoolz.resolveLocationReceipt.v1",
+    "binds": [
+      "session_id",
+      "document_path",
+      "workflow_path",
+      "governed_root",
+      "authority_version",
+      "manifest_sha256",
+      "document_sha256",
+      "workflow_sha256",
+      "evidence_snapshot_digest",
+      "location_validated"
+    ],
+    "bound_fields": [
+      {
+        "field": "session_id",
+        "source": "caller-supplied session id, validated by session_id_errors and compared with both authority files' own claims",
+        "normative": true,
+        "in_digest": true,
+        "revalidated_live": true,
+        "consumed_by_authorizing_core": true
+      },
+      {
+        "field": "document_path",
+        "source": "DERIVED: canonical_document_path(session_id) from the frozen governed root",
+        "normative": true,
+        "in_digest": true,
+        "revalidated_live": true,
+        "consumed_by_authorizing_core": true
+      },
+      {
+        "field": "workflow_path",
+        "source": "DERIVED: canonical_workflow_path(session_id) from the frozen governed root (v1.15 V114-B4)",
+        "normative": true,
+        "in_digest": true,
+        "revalidated_live": true,
+        "consumed_by_authorizing_core": true
+      },
+      {
+        "field": "governed_root",
+        "source": "FROZEN CONSTANT: GOVERNED_ATTACHMENT_ROOT; no caller input participates",
+        "normative": true,
+        "in_digest": true,
+        "revalidated_live": true,
+        "consumed_by_authorizing_core": true
+      },
+      {
+        "field": "authority_version",
+        "source": "FROZEN CONSTANT: AUTHORITY_VERSION of this bundle",
+        "normative": true,
+        "in_digest": true,
+        "revalidated_live": true,
+        "consumed_by_authorizing_core": true
+      },
+      {
+        "field": "manifest_sha256",
+        "source": "active authority: active['manifest_sha256'] of the reviewed manifest",
+        "normative": true,
+        "in_digest": true,
+        "revalidated_live": true,
+        "consumed_by_authorizing_core": true
+      },
+      {
+        "field": "document_sha256",
+        "source": "sha256 of the exact EVIDENCE-SET.json bytes read no-follow from the canonical path",
+        "normative": true,
+        "in_digest": true,
+        "revalidated_live": true,
+        "consumed_by_authorizing_core": true
+      },
+      {
+        "field": "workflow_sha256",
+        "source": "sha256 of the exact WORKFLOW.json bytes read no-follow from the canonical path (v1.15 V114-B4)",
+        "normative": true,
+        "in_digest": true,
+        "revalidated_live": true,
+        "consumed_by_authorizing_core": true
+      },
+      {
+        "field": "evidence_snapshot_digest",
+        "source": "evidence_snapshot_digest(parse of those exact document bytes) under vidtoolz.resolveEvidenceSetSnapshot.v1 (v1.15 V114-B1)",
+        "normative": true,
+        "in_digest": true,
+        "revalidated_live": true,
+        "consumed_by_authorizing_core": true
+      },
+      {
+        "field": "location_validated",
+        "source": "CONSTANT True: the receipt is only ever computed after location_errors() returned empty; it is not a caller claim",
+        "normative": true,
+        "in_digest": true,
+        "revalidated_live": true,
+        "consumed_by_authorizing_core": false
+      }
+    ],
+    "digest_law": "sha256(utf8(domain) + 0x0A + canonical_bytes(object of exactly these fields))",
+    "recomputed_on_every_authorizing_call": true,
+    "snapshot_domain_is_distinct": "vidtoolz.resolveEvidenceSetSnapshot.v1",
+    "parity_law": "RUNTIME_BOUND_FIELDS == PUBLISHED_BOUND_FIELDS exactly, in both directions and in order; an omitted field or a claimed field the runtime does not bind is a validation failure"
+  }
+}
