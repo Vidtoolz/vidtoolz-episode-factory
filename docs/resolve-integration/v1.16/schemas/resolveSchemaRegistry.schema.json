@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveSchemaRegistry.v1",
+  "title": "Schema registry v1.10 (the exact schema bytes this authority version validates against)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority_version",
+    "registry_version",
+    "schema_count",
+    "schemas",
+    "schema_registry_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveSchemaRegistry.v1"
+    },
+    "authority_version": {
+      "const": "1.16.0"
+    },
+    "registry_version": {
+      "const": "vidtoolz.resolveSchemaRegistry.v1"
+    },
+    "schema_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "schemas": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "byte_count"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^schemas/"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "byte_count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "schema_registry_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$comment": "v1.7 (C16-B2): in v1.6 every authorizing entry point took a caller-supplied schema_validate callback, so an always-empty, partial, wrong-schema or stale-schema callback authorized artifacts the real schemas reject. In v1.7 the authority owns the law: this registry maps artifact schema id -> exact schema bytes for THIS authority version, authority_lib.schema_registry() re-verifies every listed file's bytes and byte count on every resolution, internal_schema_errors() resolves schemas from it internally, and the authorizing functions have no validator parameter at all. Historical artifacts are validated against historical registries by historical_schema_errors(), which is INTERNAL_NON_AUTHORIZING."
+}

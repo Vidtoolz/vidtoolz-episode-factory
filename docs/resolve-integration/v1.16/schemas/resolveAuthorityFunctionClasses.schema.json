@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveAuthorityFunctionClasses.v1",
+  "title": "Canonical function -> authority class map (v1.16, V115-B1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority_version",
+    "law",
+    "classes",
+    "classes_are_disjoint",
+    "source_of_truth",
+    "decision_functions",
+    "authorizing",
+    "diagnostic_non_authorizing",
+    "provisional_until_m3_non_authorizing",
+    "internal_non_authorizing",
+    "authorizing_slots",
+    "diagnostic_slots",
+    "runtime_lookup_law",
+    "receipt_binding"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveAuthorityFunctionClasses.v1"
+    },
+    "authority_version": {
+      "const": "1.16.0"
+    },
+    "law": {
+      "type": "string",
+      "minLength": 1
+    },
+    "classes": {
+      "type": "object"
+    },
+    "classes_are_disjoint": {
+      "const": true
+    },
+    "source_of_truth": {
+      "type": "string"
+    },
+    "decision_functions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "authority_class",
+          "module",
+          "consumed_by_authorizing_runtime"
+        ],
+        "properties": {
+          "authority_class": {
+            "enum": [
+              "authorizing",
+              "diagnostic_non_authorizing",
+              "internal_non_authorizing",
+              "provisional_until_m3_non_authorizing"
+            ]
+          },
+          "module": {
+            "type": "string"
+          },
+          "consumed_by_authorizing_runtime": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "authorizing": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "diagnostic_non_authorizing": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "provisional_until_m3_non_authorizing": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "internal_non_authorizing": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "authorizing_slots": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "diagnostic_slots": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "runtime_lookup_law": {
+      "type": "string",
+      "minLength": 1
+    },
+    "receipt_binding": {
+      "type": "object"
+    }
+  }
+}
