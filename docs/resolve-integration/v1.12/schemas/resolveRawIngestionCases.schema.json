@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveRawIngestionCases.v1.10",
+  "title": "Strict raw-ingestion negative fixtures v1.10",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority_version",
+    "law",
+    "codes",
+    "cases"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveRawIngestionCases.v1.10"
+    },
+    "authority_version": {
+      "const": "1.12.0"
+    },
+    "law": {
+      "type": "string"
+    },
+    "codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 14,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "file",
+          "byte_count",
+          "sha256",
+          "expected_code",
+          "why"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "file": {
+            "type": "string",
+            "pattern": "^fixtures/raw-ingestion/"
+          },
+          "byte_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expected_code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "NOT_BYTES",
+                  "FRAME_TOO_LARGE",
+                  "EMPTY_FRAME",
+                  "MALFORMED_UTF8",
+                  "BOM_PRESENT",
+                  "CONTROL_CHARACTER",
+                  "DUPLICATE_JSON_KEY",
+                  "INVALID_NUMBER_SYNTAX",
+                  "NON_FINITE_NUMBER",
+                  "TRAILING_BYTES",
+                  "MULTIPLE_JSON_VALUES",
+                  "NOT_A_JSON_OBJECT",
+                  "UNKNOWN_SCHEMA_VERSION",
+                  "STRUCTURE_INVALID",
+                  "DIGEST_MISMATCH",
+                  "PARSED_OBJECT_NOT_AUTHORITY"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "why": {
+            "type": "string",
+            "minLength": 5
+          }
+        }
+      }
+    }
+  }
+}
