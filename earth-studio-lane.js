@@ -377,17 +377,21 @@ function frameGlob(packageDir) {
 // looks stale, ONE more stat on the lexicographically-last frame (sequential
 // exports rewrite it last) decides. Bounded at two stats + one readdir; never
 // a per-frame scan on the NAS mount.
+// Shared currency boundary: equality is fresh, matching export timestamp granularity.
+function outputStale(job, mtimeMs) {
+  return mtimeMs < Date.parse(job && job.created_at);
+}
+
 function framesStale(packageDir, job, frameCount) {
   if (!frameCount || !job || !job.created_at) return false;
   const framesDir = path.join(laneDir(packageDir), 'frames');
   try {
-    const createdAt = Date.parse(job.created_at);
-    if (fs.statSync(framesDir).mtimeMs >= createdAt) return false;
+    if (!outputStale(job, fs.statSync(framesDir).mtimeMs)) return false;
     const names = fs.readdirSync(framesDir)
       .filter((f) => FRAME_EXTENSIONS.includes(path.extname(f).slice(1).toLowerCase()))
       .sort();
     if (!names.length) return false;
-    return fs.statSync(path.join(framesDir, names[names.length - 1])).mtimeMs < createdAt;
+    return outputStale(job, fs.statSync(path.join(framesDir, names[names.length - 1])).mtimeMs);
   } catch (_) { return false; }
 }
 
@@ -395,6 +399,40 @@ function renderPath(packageDir) {
   const job = readJob(packageDir);
   const slug = (job && job.slug) || 'map-animation';
   return path.join(laneDir(packageDir), 'renders', `${slug}.mp4`);
+}
+
+// MA-002: existence is not current-render authority. Reuse the frame freshness
+// boundary, then check only container/video metadata (no frame decode or QC).
+// ffprobe ships with the ffmpeg toolchain already used by this lane.
+function renderState(packageDir, job = readJob(packageDir), frameCount = countFrames(packageDir)) {
+  const out = renderPath(packageDir);
+  const result = (state, reason, bytes = 0) => ({ state, reason, bytes });
+  let stat;
+  try { stat = fs.lstatSync(out); }
+  catch (error) { return result(error.code === 'ENOENT' ? 'missing' : 'unverified', 'output_unavailable'); }
+  if (!stat.isFile() || stat.size === 0) return result('invalid', 'not_nonempty_regular_file');
+  if (!job || !Number.isFinite(Date.parse(job.created_at)) || !fs.existsSync(path.join(laneDir(packageDir), 'shot-plan.json'))) {
+    return result('unverified', 'plan_currency_unavailable');
+  }
+  if (outputStale(job, stat.mtimeMs) || framesStale(packageDir, job, frameCount)) return result('stale', 'output_precedes_plan');
+  try {
+    const probe = childProcess.spawnSync('ffprobe', [
+      '-v', 'error', '-select_streams', 'v:0',
+      '-show_entries', 'stream=codec_name,width,height:format=format_name,duration',
+      '-of', 'json', out,
+    ], { encoding: 'utf8', timeout: 3000, maxBuffer: 256 * 1024 });
+    if (probe.error) return result('unverified', 'probe_unavailable');
+    if (probe.status !== 0) return result('invalid', 'probe_failed');
+    const media = JSON.parse(probe.stdout), video = (media.streams || [])[0];
+    const duration = Number(media.format && media.format.duration);
+    if (!media.format || !String(media.format.format_name).split(',').includes('mp4') ||
+        !video || !video.codec_name || !(video.width > 0 && video.height > 0) ||
+        !Number.isFinite(duration) || duration <= 0) return result('invalid', 'no_mp4_video_metadata');
+    const after = fs.lstatSync(out);
+    if (!after.isFile() || after.ino !== stat.ino || after.size !== stat.size ||
+        after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs) return result('unverified', 'output_changed_during_probe');
+    return result('current', null, stat.size);
+  } catch (_) { return result('unverified', 'metadata_unreadable'); }
 }
 
 function serializeJob(job, active, now) {
@@ -433,8 +471,9 @@ function readLaneJson(packageDir, file) {
 function status(packageDir, projectId) {
   const job = readJob(packageDir);
   const out = renderPath(packageDir);
-  const rendered = fs.existsSync(out);
   const frameCount = countFrames(packageDir);
+  const render = renderState(packageDir, job, frameCount);
+  const rendered = render.state === 'current';
   return {
     ok: true,
     project_id: projectId,
@@ -445,7 +484,9 @@ function status(packageDir, projectId) {
     frames_stale: framesStale(packageDir, job, frameCount),
     frames_dir: path.join(laneDir(packageDir), 'frames'),
     rendered_mp4: rendered ? path.relative(packageDir, out) : null,
-    rendered_bytes: rendered ? fs.statSync(out).size : 0,
+    rendered_bytes: render.bytes,
+    render_state: render.state,
+    render_reason: render.reason,
     render_job: currentJobStatus(),
     // Journey builder state so the GUI can restore the exact camera journey,
     // and the ending camera state so a continuation can be started from it.
@@ -517,7 +558,8 @@ function cancelRender(options = {}) {
 // Stage the rendered MP4 into the VIDNAS sandbox (never approved media).
 function stageToVidnas(packageDir, projectId, options = {}) {
   const out = renderPath(packageDir);
-  if (!fs.existsSync(out)) { const e = new Error('No rendered MP4 to stage. Render frames first.'); e.statusCode = 400; throw e; }
+  const render = renderState(packageDir);
+  if (render.state !== 'current') { const e = new Error(`No current rendered MP4 to stage (${render.state}: ${render.reason}). Render current frames first.`); e.statusCode = 400; throw e; }
   const stageDir = options.stageDir || VIDNAS_STAGE_DIR;
   if (/v\d+-approved|v1-approved|03_SHARED_MEDIA_LIBRARY\/.*approved/i.test(stageDir)) {
     const e = new Error('Refusing to stage into approved media.'); e.statusCode = 400; throw e;
@@ -531,7 +573,7 @@ function stageToVidnas(packageDir, projectId, options = {}) {
 
 module.exports = {
   LANE_DIR, VIDNAS_STAGE_DIR, STATE, MOUNT_DOWN_TTL_MS, MOUNT_PROBE_TIMEOUT_MS,
-  laneDir, writeJob, readJob, readLaneJson, countFrames, frameGlob, renderPath, framesStale,
+  laneDir, writeJob, readJob, readLaneJson, countFrames, frameGlob, renderPath, framesStale, renderState,
   status, startRender, cancelRender, currentJobStatus, stageToVidnas,
   probeMount, resetMountLatch,
 };

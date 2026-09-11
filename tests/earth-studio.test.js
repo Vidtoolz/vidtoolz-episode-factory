@@ -120,7 +120,7 @@ test("earth-studio lane: stageToVidnas copies the MP4 and refuses approved paths
   const { root, pkg } = tmpPackage();
   lane.writeJob(pkg, { jobName: "J", description: "fly to Paris in 3 seconds" });
   const out = lane.renderPath(pkg);
-  fs.writeFileSync(out, "fake-mp4");
+  fs.writeFileSync(out, ma002Video());
   const stageDir = fs.mkdtempSync(path.join(os.tmpdir(), "es-stage-"));
   const res = lane.stageToVidnas(pkg, "es-test-project", { stageDir });
   assert.equal(res.ok, true);
@@ -1331,4 +1331,149 @@ test("earth-studio v0.9.3: motion transfer propagates aspect (9:16 stays vertica
   const wideEsp = JSON.parse(fs.readFileSync(path.join(outDir, wideDir, "earth-studio.esp"), "utf8"));
   assert.deepEqual(wideEsp.settings.dimensions, { width: 1920, height: 1080 });
   fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+// MA-002: synthetic, locally encoded ISO-BMFF video; no Earth Studio session.
+const ma002Video = () => fs.readFileSync(path.join(__dirname, 'fixtures/earth-studio-ma002.mp4'));
+const MA002_TIME = '2026-09-11T10:00:00.000Z';
+function ma002Package(fn) {
+  const { root, pkg } = tmpPackage();
+  try {
+    lane.writeJob(pkg, { jobName: 'MA002', description: 'hover over Helsinki for 3 seconds' }, { now: MA002_TIME });
+    const out = lane.renderPath(pkg);
+    const stamp = (file, seconds = 0) => { const d = new Date(Date.parse(MA002_TIME) + seconds * 1000); fs.utimesSync(file, d, d); };
+    const video = (seconds = 1) => { fs.writeFileSync(out, ma002Video()); stamp(out, seconds); };
+    const frames = (seconds = 1) => {
+      const dir = path.join(lane.laneDir(pkg), 'frames'), file = path.join(dir, 'frame0001.png');
+      fs.writeFileSync(file, 'timestamp-only frame fixture'); stamp(file, seconds); stamp(dir, seconds);
+      return { dir, file };
+    };
+    fn({ root, pkg, out, stamp, video, frames, status: () => lane.status(pkg, 'ma002') });
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+}
+
+test('MA-002: valid current MP4 is exposed and can be staged through the same authority', () => {
+  ma002Package(({ root, pkg, out, video, status }) => {
+    video(); const s = status();
+    assert.equal(s.rendered_mp4, path.relative(pkg, out));
+    assert.equal(s.render_state, 'current'); assert.equal(s.rendered_bytes, ma002Video().length);
+    const staged = lane.stageToVidnas(pkg, 'ma002', { stageDir: path.join(root, 'stage') });
+    assert.deepEqual(fs.readFileSync(staged.staged_to), ma002Video());
+  });
+});
+
+test('MA-002: actual plan regeneration invalidates an old valid MP4 and old frames without cleanup', () => {
+  ma002Package(({ root, pkg, out, video, frames, status }) => {
+    video(1); frames(1); const p1 = lane.readJob(pkg);
+    assert.ok(status().rendered_mp4);
+    lane.writeJob(pkg, { jobName: 'MA002', description: 'hover over Stockholm for 3 seconds' }, { now: '2026-09-11T10:00:02.000Z' });
+    const p2 = lane.readJob(pkg); assert.notEqual(p1.created_at, p2.created_at);
+    assert.notEqual(p1.description, p2.description); assert.equal(lane.renderPath(pkg), out);
+    const s = status(); assert.equal(s.rendered_mp4, null); assert.equal(s.render_state, 'stale');
+    assert.equal(s.rendered_bytes, 0); assert.equal(s.frames_stale, true);
+    assert.deepEqual(fs.readFileSync(out), ma002Video(), 'old media retained as historical bytes');
+    assert.throws(() => lane.stageToVidnas(pkg, 'ma002', { stageDir: path.join(root, 'stage') }), /stale/);
+    assert.equal(fs.existsSync(path.join(root, 'stage')), false);
+  });
+});
+
+for (const [name, bytes] of [['15-byte garbage', Buffer.from('not an mp4 file')], ['zero bytes', Buffer.alloc(0)], ['truncated MP4', ma002Video().subarray(0, 64)]]) {
+  test(`MA-002: temporally fresh ${name} is not current or stageable`, () => {
+    ma002Package(({ root, pkg, out, stamp, status }) => {
+      fs.writeFileSync(out, bytes); stamp(out, 1);
+      const s = status(); assert.equal(s.rendered_mp4, null); assert.equal(s.render_state, 'invalid'); assert.equal(s.rendered_bytes, 0);
+      assert.throws(() => lane.stageToVidnas(pkg, 'ma002', { stageDir: path.join(root, 'stage') }), /invalid/);
+    });
+  });
+}
+
+for (const kind of ['directory', 'symlink', 'fifo']) {
+  test(`MA-002: MP4 path containing a ${kind} is not a regular render`, () => {
+    ma002Package(({ root, out, status }) => {
+      if (kind === 'directory') fs.mkdirSync(out);
+      else if (kind === 'symlink') { const target = path.join(root, 'valid.mp4'); fs.writeFileSync(target, ma002Video()); fs.symlinkSync(target, out); }
+      else require('child_process').execFileSync('mkfifo', [out]);
+      const s = status(); assert.equal(s.rendered_mp4, null); assert.equal(s.render_state, 'invalid');
+    });
+  });
+}
+
+for (const seconds of [-1, 0, 0.001, 1]) {
+  test(`MA-002: MP4 and frame timestamp boundary at ${seconds}s uses the same strict staleness law`, () => {
+    ma002Package(({ video, frames, status }) => {
+      video(seconds); frames(seconds); const s = status();
+      assert.equal(s.frames_stale, seconds < 0);
+      assert.equal(Boolean(s.rendered_mp4), seconds >= 0);
+      assert.equal(s.render_state, seconds < 0 ? 'stale' : 'current');
+    });
+  });
+}
+
+test('MA-002: in-place frame re-export remains fresh when the final frame is newer than the directory', () => {
+  ma002Package(({ video, frames, stamp, status }) => {
+    video(1); const { file } = frames(-1); stamp(file, 1);
+    assert.equal(status().frames_stale, false); assert.equal(status().render_state, 'current');
+  });
+});
+
+test('MA-002: re-encoding old frames does not make them a current plan render', () => {
+  ma002Package(({ video, frames, status }) => {
+    frames(-1); video(1); const s = status();
+    assert.equal(s.frames_stale, true); assert.equal(s.rendered_mp4, null); assert.equal(s.render_state, 'stale');
+  });
+});
+
+test('MA-002: missing MP4 remains absent', () => {
+  ma002Package(({ status }) => { assert.equal(status().rendered_mp4, null); assert.equal(status().render_state, 'missing'); });
+});
+
+for (const authority of ['missing job', 'invalid date', 'missing plan']) {
+  test(`MA-002: ${authority} cannot establish current render currency`, () => {
+    ma002Package(({ pkg, video, status }) => {
+      video(); const dir = lane.laneDir(pkg);
+      if (authority === 'missing job') fs.unlinkSync(path.join(dir, 'job.json'));
+      else if (authority === 'missing plan') fs.unlinkSync(path.join(dir, 'shot-plan.json'));
+      else { const job = lane.readJob(pkg); job.created_at = 'not-a-date'; fs.writeFileSync(path.join(dir, 'job.json'), JSON.stringify(job)); }
+      assert.equal(status().rendered_mp4, null);
+    });
+  });
+}
+
+test('MA-002: ffprobe unavailable or malformed metadata fails closed without throwing', () => {
+  ma002Package(({ video, status }) => {
+    video(); const cp = require('child_process'), original = cp.spawnSync;
+    try {
+      for (const response of [{ error: new Error('ENOENT') }, { status: 0, stdout: '{bad' }, { status: 0, stdout: JSON.stringify({ streams: [], format: { format_name: 'mov,mp4', duration: '1' } }) }]) {
+        cp.spawnSync = () => response;
+        assert.equal(status().rendered_mp4, null);
+      }
+    } finally { cp.spawnSync = original; }
+  });
+});
+
+test('MA-002: metadata requires MP4 video dimensions and positive finite duration', () => {
+  ma002Package(({ video, status }) => {
+    video(); const cp = require('child_process'), original = cp.spawnSync;
+    const good = { streams: [{ codec_name: 'h264', width: 16, height: 16 }], format: { format_name: 'mov,mp4,m4a,3gp,3g2,mj2', duration: '1' } };
+    try {
+      for (const media of [
+        { ...good, format: { ...good.format, format_name: 'matroska,webm' } },
+        { ...good, streams: [{ codec_name: 'h264', width: 0, height: 16 }] },
+        ...['0', '-1', 'NaN', 'Infinity'].map(duration => ({ ...good, format: { ...good.format, duration } })),
+      ]) {
+        cp.spawnSync = () => ({ status: 0, stdout: JSON.stringify(media) });
+        assert.equal(status().rendered_mp4, null);
+      }
+    } finally { cp.spawnSync = original; }
+  });
+});
+
+test('MA-002: output replaced during metadata probe cannot be promoted current', () => {
+  ma002Package(({ out, video, status }) => {
+    video(); const cp = require('child_process'), original = cp.spawnSync;
+    try {
+      cp.spawnSync = (...args) => { const result = original(...args); fs.writeFileSync(out, 'not an mp4 file'); return result; };
+      assert.equal(status().rendered_mp4, null);
+    } finally { cp.spawnSync = original; }
+  });
 });
