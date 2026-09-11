@@ -210,21 +210,22 @@ test("terrain handoff: the product's continuation grammar (settle hold, then orb
   assert.equal(orbit.altitude_m, 10214); assert.equal(orbit.tilt_deg, 74);
 });
 
-test("terrain handoff: repeated continuation and serializer re-entry are fixed points (Matterhorn, Fuji)", () => {
+test("terrain handoff: repeated continuation preserves terrain pose and same-seed serialization (Matterhorn, Fuji)", () => {
   [["Matterhorn", 74], ["Mount Fuji", 45]].forEach(([place, rake]) => {
     let built = viaJourney(APPROACHES.fly_high(place === "Matterhorn" ? "Zurich" : "Tokyo", place)).built;
     const expected = terminalPose(built, place).altitude_m;
-    let previous = null; let identical = 0;
     for (let i = 0; i < 4; i += 1) {
       const state = journey.continuationStateFromPlan(built.plan, { planner });
       const seed = planner.normalizeInitialCamera(JSON.parse(JSON.stringify(state)));
       assert.equal(seed.altitude_m, expected); assert.equal(seed.tilt_deg, rake);
+      assert.deepEqual(state.camera, planner.finalCameraStateFromTrajectory(planner.compileTrajectory(built.plan, { ...OPT, initialCamera: built.plan.initial_camera })));
       built = build(`orbit ${place} once clockwise for 20 seconds`, { initialCamera: seed });
       assert.equal(terminalPose(built, place).altitude_m, expected);
-      if (previous === built.artifacts["earth-studio.esp"]) identical += 1;
-      previous = built.artifacts["earth-studio.esp"];
+      // MA-001 preserves accumulated pan: different continuation seeds need not
+      // serialize identically. Replaying the SAME seed must remain byte-stable.
+      const replay = build(`orbit ${place} once clockwise for 20 seconds`, { initialCamera: seed });
+      assert.equal(built.artifacts["earth-studio.esp"], replay.artifacts["earth-studio.esp"]);
     }
-    assert.ok(identical >= 2, `${place}: repeated continuation converges`);
   });
 });
 

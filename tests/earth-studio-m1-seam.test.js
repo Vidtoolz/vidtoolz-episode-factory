@@ -124,7 +124,12 @@ test('199 natural plans: exact artifacts, all legacy keys, terminal output and s
       const a={captureState:{sentinel:true},orbitTiming:[],orbitBearing:[],initialCamera}, b=structuredClone(a);
       assert.deepEqual(planner.buildEspKeyframes(plan,b),old.buildEspKeyframes(plan,a),file);
       assert.deepEqual(b,a,file);
-      assert.deepEqual(planner.finalCameraState(plan,b),old.finalCameraState(plan,a),file);
+      // MA-001 intentionally corrects the previously frozen no-seed terminal
+      // query. Keep the old planner and all plans unchanged; give the old
+      // planner this plan's seed explicitly to observe the intended behavior.
+      const oldFinalOptions = initialCamera === undefined && plan.initial_camera
+        ? { ...a, initialCamera: plan.initial_camera } : a;
+      assert.deepEqual(planner.finalCameraState(plan,b),old.finalCameraState(plan,oldFinalOptions),file);
     }
     const context=planner.buildArtifactContextFromPlan(structuredClone(plan));
     assert.deepEqual(quality.evaluateTrajectory(context),quality.evaluate({plan:context.plan,esp:old.buildEsp(plan)}),file);

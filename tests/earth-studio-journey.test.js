@@ -1370,3 +1370,154 @@ test("smoothness: a freeform plan keeps the template's original easing roles", (
   assert.ok(abruptOnsets(plain).length > 0, "the freeform path still has the template's linear onsets");
   assert.deepEqual(abruptOnsets(directed), [], "the directed path does not");
 });
+
+// MA-001 intentional correctness migration: the continuation writer must use
+// the artifact's plan seed when no public caller seed overrides it. These cases
+// capture the context from the REAL lane build, not an independently rebuilt
+// approximation. No historical oracle file is modified.
+function ma001Lane(payload, check) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'es-ma001-'));
+  const build = planner.buildArtifactContextFromPlan;
+  let context;
+  planner.buildArtifactContextFromPlan = (...args) => (context = build(...args));
+  try {
+    const result = lane.writeJob(root, payload, { now: '2026-09-11T00:00:00.000Z' });
+    assert.equal(result.ok, true, JSON.stringify(result.camera_quality));
+    assert.ok(context, 'capture the actual production artifact context');
+    const writtenPlan = readJson(laneFile(root, 'shot-plan.json'));
+    const sidecar = readJson(laneFile(root, 'continuation-state.json'));
+    const projected = planner.finalCameraStateFromTrajectory(context.trajectory);
+    assert.deepEqual(readJson(laneFile(root, 'earth-studio.esp')), context.esp);
+    assert.deepEqual(writtenPlan.initial_camera, context.plan.initial_camera);
+    check({ context, writtenPlan, sidecar, projected });
+    assert.deepEqual(sidecar.camera, projected, 'written continuation must equal the actual artifact trajectory projection');
+    assert.deepEqual(planner.finalCameraState(writtenPlan), projected);
+  } finally {
+    planner.buildArtifactContextFromPlan = build;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+for (const pan of [0, 210, 359.75, 360.25]) {
+  test(`MA-001: real continuation lane preserves seed heading ${pan}`, () => {
+    const state = {
+      continuation_state_version: 1, aspect: '16:9',
+      camera: { latitude: 60.1699, longitude: 24.9384, altitude_m: 2500, pan_deg: pan, tilt_deg: 45 },
+      target: { name: 'Helsinki' },
+    };
+    const continued = journey.journeyFromContinuationState(state);
+    continued.start_movements[0].duration_seconds = 3;
+    const compiled = journey.compileJourney(continued);
+    assert.equal(compiled.initial_camera.pan_deg, pan);
+    ma001Lane({ jobName: 'ma001-continuation', journey: continued }, ({ context, writtenPlan, projected }) => {
+      assert.deepEqual(writtenPlan.initial_camera, compiled.initial_camera);
+      assert.equal(context.trajectory.keyed.pan[0].value, pan);
+      assert.equal(context.trajectory.terminal_camera.pan, pan);
+      assert.equal(projected.pan_deg, pan);
+      assert.equal(projected.heading_deg, pan === 360.25 ? 0.25 : pan);
+    });
+  });
+
+  test(`MA-001: real Director openingCamera lane preserves partial seed ${pan}`, () => {
+    const openingCamera = { pan, tilt: 33 }; // aliases and partial seed accepted by the real normalizer
+    ma001Lane({ jobName: 'ma001-opening', description: 'hover over Helsinki for 3 seconds', openingCamera },
+      ({ context, writtenPlan, projected }) => {
+        assert.deepEqual(writtenPlan.initial_camera, { pan_deg: pan, tilt_deg: 33 });
+        assert.equal(context.trajectory.keyed.pan[0].value, pan);
+        assert.equal(context.trajectory.keyed.tilt[0].value, 33);
+        assert.equal(context.trajectory.terminal_camera.pan, pan);
+        assert.equal(projected.heading_deg, pan === 360.25 ? 0.25 : pan);
+      });
+    assert.deepEqual(openingCamera, { pan, tilt: 33 }, 'caller seed is not mutated');
+  });
+}
+
+function ma001BaselinePlanner() {
+  const cp = require('node:child_process');
+  const Module = require('node:module');
+  const root = path.resolve(__dirname, '..');
+  const file = path.join(root, 'ma001-baseline-in-memory.cjs');
+  const loaded = new Module(file);
+  loaded.filename = file;
+  loaded.paths = module.paths;
+  loaded._compile(cp.execFileSync('git', ['show', 'c621d0f324ac114fc681f390d0e44e0f13217a6b:earth-studio-job-planner.js'],
+    { cwd: root, encoding: 'utf8' }), file);
+  return loaded.exports;
+}
+
+const ma001Plan = () => planner.buildShotPlan('ma001-public', 'hover over Helsinki for 3 seconds',
+  '2026-09-11T00:00:00.000Z', { initialCamera: { pan_deg: 210, tilt_deg: 33 } });
+
+test('MA-001: explicit public initialCamera wins over plan seed without mutation', () => {
+  const plan = ma001Plan();
+  const options = { initialCamera: { pan_deg: 359.75, tilt_deg: 12 } };
+  const before = JSON.stringify({ plan, options });
+  const expected = planner.finalCameraStateFromTrajectory(planner.compileTrajectory(plan, options));
+  assert.equal(expected.pan_deg, 359.75);
+  assert.deepEqual(planner.finalCameraState(plan, options), expected);
+  assert.deepEqual(planner.finalCameraState(plan, options), ma001BaselinePlanner().finalCameraState(plan, options));
+  assert.equal(JSON.stringify({ plan, options }), before);
+});
+
+test('MA-001: undefined uses plan fallback; explicit null keeps the existing no-seed behavior', () => {
+  const plan = ma001Plan();
+  assert.equal(planner.finalCameraState(plan, { initialCamera: undefined }).pan_deg, 210);
+  const noSeed = planner.finalCameraState(plan, { initialCamera: null });
+  assert.deepEqual(noSeed, ma001BaselinePlanner().finalCameraState(plan, { initialCamera: null }));
+  assert.equal(noSeed.pan_deg, 0);
+});
+
+test('MA-001: fully unseeded final state and artifacts remain byte-identical to pinned baseline', () => {
+  const plan = planner.buildShotPlan('ma001-unseeded',
+    'fly to Helsinki for 5 seconds then orbit Helsinki for 12 seconds', '2026-09-11T00:00:00.000Z');
+  const old = ma001BaselinePlanner();
+  assert.ok(!Object.hasOwn(plan, 'initial_camera'));
+  assert.equal(JSON.stringify(planner.finalCameraState(plan)), JSON.stringify(old.finalCameraState(plan)));
+  assert.deepEqual(planner.buildArtifactsFromPlan(structuredClone(plan)), old.buildArtifactsFromPlan(structuredClone(plan)));
+});
+
+test('MA-001: public option side effects match baseline, including private capture and timing/bearing', () => {
+  const old = ma001BaselinePlanner();
+  const plan = planner.buildShotPlan('ma001-options',
+    'fly to Helsinki for 5 seconds then orbit Helsinki for 20 seconds then fly to Stockholm for 60 seconds',
+    '2026-09-11T00:00:00.000Z', { initialCamera: { pan_deg: 210 },
+      motionPolicy: { coherent_trajectory: true, dedupe_keyframes: true } });
+  for (const compareLegacyMotion of [false, true]) {
+    const options = { initialCamera: { pan_deg: 359.75 }, motionPolicy: { sentinel: true },
+      captureState: { sentinel: true }, orbitTiming: [], orbitBearing: [], compareLegacyMotion,
+      cruiseProfile: 'balanced', framingStableAcquisition: false };
+    const prior = structuredClone(options);
+    assert.deepEqual(planner.finalCameraState(plan, options), old.finalCameraState(plan, prior));
+    assert.deepEqual(options, prior, 'all existing option side effects must match baseline');
+    assert.deepEqual(options.captureState, { sentinel: true }, 'finalCameraState historically uses private capture');
+    assert.ok(options.orbitTiming.length > 0);
+    assert.ok(options.orbitBearing.length > 0);
+  }
+});
+
+test('MA-001: browser public options are forwarded intact except historical private capture', () => {
+  const vm = require('node:vm');
+  const context = vm.createContext({});
+  const root = path.resolve(__dirname, '..');
+  const load = file => vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+  load('earth-studio-camera-trajectory.js');
+  load('earth-studio-serializer.js');
+  const create = context.EarthStudioCameraTrajectory.createCompiler;
+  const seen = [];
+  context.EarthStudioCameraTrajectory.createCompiler = (...args) => {
+    const compiler = create(...args);
+    return { compileTrajectory(plan, options) { seen.push(options); return compiler.compileTrajectory(plan, options); } };
+  };
+  load('earth-studio-job-planner.js');
+  load('earth-studio-terrain-morphology.js');
+  const options = { motionPolicy: { sentinel: true }, captureState: { sentinel: true }, orbitTiming: [],
+    orbitBearing: [], cruiseProfile: 'balanced', framingStableAcquisition: false };
+  const plan = ma001Plan();
+  const result = context.EarthStudioJobPlanner.finalCameraState(plan, options);
+  assert.equal(result.pan_deg, 210);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].initialCamera, plan.initial_camera);
+  for (const key of Object.keys(options).filter(k => k !== 'captureState')) assert.equal(seen[0][key], options[key], key);
+  assert.notEqual(seen[0].captureState, options.captureState);
+  assert.deepEqual(options.captureState, { sentinel: true });
+});

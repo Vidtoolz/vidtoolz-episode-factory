@@ -1657,6 +1657,14 @@
     return out;
   }
 
+  // MA-001: resolve only the seed; never filter public compile options.
+  // Undefined means absent. An explicit null still requests the legacy
+  // unseeded path, and partial camera objects remain valid seeds.
+  function withInitialCamera(plan, options) {
+    if (options.initialCamera !== undefined || !plan.initial_camera || typeof plan.initial_camera !== "object") return options;
+    return { ...options, initialCamera: plan.initial_camera };
+  }
+
   // The camera state the animation ENDS on, in real-world units, derived by
   // running the same keyframe engine that writes the .esp — never re-derived by
   // a parallel implementation. `pan_deg` is the engine's accumulated heading
@@ -1665,7 +1673,7 @@
   // `heading_deg` is the same angle wrapped into [0, 360) for humans.
   // Longitude is wrapped into the exported ±180 contract.
   function finalCameraState(plan, options = {}) {
-    const cameraTrajectory = compileTrajectory(plan, { ...options, captureState: {} });
+    const cameraTrajectory = compileTrajectory(plan, withInitialCamera(plan, { ...options, captureState: {} }));
     return finalCameraStateFromTrajectory(cameraTrajectory);
   }
 
@@ -2419,8 +2427,7 @@ This checklist is technical planning support only. It is not creative approval, 
     }
     if (Array.isArray(options.orbitTiming)) resolved.orbitTiming = options.orbitTiming;
     if (Array.isArray(options.orbitBearing)) resolved.orbitBearing = options.orbitBearing;
-    if (plan.initial_camera && typeof plan.initial_camera === "object") resolved.initialCamera = plan.initial_camera;
-    return resolved;
+    return withInitialCamera(plan, resolved);
   }
 
   function buildEsp(plan, options = {}) {

@@ -324,15 +324,17 @@ test("terrain complete pose: an authored orbit altitude is explicit operator aut
   // above the summit but below the safety floor: the floor (rank 1) lifts it, then the pose follows the lifted altitude
   const floored = measure(build("orbit Matterhorn once clockwise at 5000m tilted 74 degrees for 20 seconds"), "Matterhorn");
   assert.equal(floored.orbit.altitude_m, 5500); assert.ok(Math.abs(floored.ring_m - (5500 - 4478) * tan(74)) < 2); assert.ok(floored.aim_deg < 0.25);
-  // repeated explicit continuation converges to a byte-stable animation
-  let chain = build("orbit Matterhorn once clockwise at 8000m tilted 74 degrees for 10 seconds", { initialCamera: seed }); let previousEsp = null; let identical = 0;
+  // MA-001 preserves accumulated pan across continuations. Require byte-stable
+  // replay of the same seed, not equality across different continuation seeds.
+  let chain = build("orbit Matterhorn once clockwise at 8000m tilted 74 degrees for 10 seconds", { initialCamera: seed });
   for (let i = 0; i < 4; i += 1) {
-    chain = build("orbit Matterhorn once clockwise at 8000m tilted 74 degrees for 10 seconds", { initialCamera: planner.finalCameraState(chain.plan, OPT) });
+    const nextSeed = planner.finalCameraState(chain.plan, OPT);
+    assert.deepEqual(nextSeed, planner.finalCameraStateFromTrajectory(planner.compileTrajectory(chain.plan, { ...OPT, initialCamera: chain.plan.initial_camera })));
+    chain = build("orbit Matterhorn once clockwise at 8000m tilted 74 degrees for 10 seconds", { initialCamera: nextSeed });
     assert.equal(orbitOf(chain, "Matterhorn").altitude_m, 8000);
-    if (previousEsp === chain.artifacts["earth-studio.esp"]) identical += 1;
-    previousEsp = chain.artifacts["earth-studio.esp"];
+    const replay = build("orbit Matterhorn once clockwise at 8000m tilted 74 degrees for 10 seconds", { initialCamera: nextSeed });
+    assert.equal(chain.artifacts["earth-studio.esp"], replay.artifacts["earth-studio.esp"]);
   }
-  assert.ok(identical >= 2, "repeated explicit continuation converges");
   // the director never serializes a derived altitude as authored (AUTO stays AUTO)
   const directed = director.autoDirect({ aspect: "16:9", stops: [{ location: "Zurich", role: "STARTING_CONTEXT" }, { location: "Matterhorn", role: "FINAL_REVEAL", importance: "HERO", purposes: ["SHOW_TERRAIN", "REVEAL"] }] });
   directed.journey.legs.forEach((l) => l.movements.forEach((mv) => assert.equal(mv.altitude_m, null)));
@@ -467,23 +469,24 @@ test("terrain complete pose: an elevated focal point on the antimeridian is phys
 });
 
 // ── 18–19. serialization round trip, determinism ─────────────────────────────
-test("terrain complete pose: serialize → parse → continue cycles reach a fixed point and TEXT/DIRECT stay byte-identical", () => {
+test("terrain complete pose: serialize → parse → continue preserves terrain pose and TEXT/DIRECT stay byte-identical", () => {
   const raw = J("Helsinki", [leg("Matterhorn", [st("fly_low", { duration_seconds: 12 })], [st("hold", { duration_seconds: 4 }), st("orbit", { duration_seconds: 14 })])]);
   const r = viaJourney(raw);
   const reparsed = planner.parseDescription(r.compiled.description, { aspect: "16:9" });
   assert.equal(journey.verifyParsedEquivalence(reparsed, r.direct.parsed).ok, true);
   assert.deepEqual(reparsed.segments.map((s) => s.altitude_m), r.direct.parsed.segments.map((s) => s.altitude_m));
-  let built = r.built; let lastEsp = null; let identicalCycles = 0;
+  let built = r.built;
   for (let i = 0; i < 4; i += 1) {
     const seed = planner.finalCameraState(built.plan, OPT);
+    assert.deepEqual(seed, planner.finalCameraStateFromTrajectory(planner.compileTrajectory(built.plan, { ...OPT, initialCamera: built.plan.initial_camera })));
     assert.equal(seed.altitude_m, 10214, `cycle ${i}: seed altitude (canonical rake, whatever the approach was)`);
     assert.equal(seed.tilt_deg, 74);
     built = build("orbit Matterhorn once clockwise tilted 74 degrees for 14 seconds", { initialCamera: seed });
     assert.equal(orbitOf(built, "Matterhorn").altitude_m, 10214);
-    if (lastEsp === built.artifacts["earth-studio.esp"]) identicalCycles += 1;
-    lastEsp = built.artifacts["earth-studio.esp"];
+    // MA-001: heading winding changes with the seed; same-seed replay is deterministic.
+    const replay = build("orbit Matterhorn once clockwise tilted 74 degrees for 14 seconds", { initialCamera: seed });
+    assert.equal(built.artifacts["earth-studio.esp"], replay.artifacts["earth-studio.esp"]);
   }
-  assert.ok(identicalCycles >= 2, "repeated continuation converges to a byte-stable animation");
 });
 
 test("terrain complete pose: repeated generation is deterministic for director, journey and freeform requests", () => {
