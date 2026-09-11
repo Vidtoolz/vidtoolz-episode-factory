@@ -22,6 +22,7 @@
 const path = require('node:path');
 
 const music = require('./final-music-production.js');
+const generatorProvider = require('./music-generator-provider.js');
 const directed = require('./directed-draft-assembly-handoff.js');
 
 const COMMANDS = Object.freeze([
@@ -134,7 +135,7 @@ function renderList(value) {
   return lines.join('\n');
 }
 
-async function run(argv = process.argv.slice(2)) {
+async function run(argv = process.argv.slice(2), deps = {}) {
   const args = parseArgs(argv);
   if (args.command === 'help') return { text: usage(), value: null, exitCode: 0 };
   const runDir = directed.resolveRunDir(args.repo, args.runId);
@@ -153,11 +154,22 @@ async function run(argv = process.argv.slice(2)) {
     return { text: renderList(value), value, exitCode: 0 };
   }
   if (args.command === 'generate') {
+    /* The generator dependency is EXPLICIT and injectable. Before this, no
+     * caller supplied one and every `generate` died with
+     * FINAL_MUSIC_GENERATOR_REQUIRED, leaving manual ingest as the only Final
+     * path. The provider is constructed here - at the CLI edge, where the
+     * operator's routing flags live - and passed down, rather than reached for
+     * inside the authority via a hidden global. */
+    const generator = deps.generator || generatorProvider.createMusicGenerator({
+      model: args.model, experimentalMinimax: args.experimentalMinimax,
+    });
     const value = await music.generateFinalCandidates(runDir, {
       count: args.count, model: args.model, experimentalMinimax: args.experimentalMinimax,
+      generator,
     });
     const text = [
       `GENERATED ${value.candidates.length} Final music candidate(s) with ${value.model} (${value.routing_policy})`,
+      `  generator   ${generatorProvider.PROVIDER_CONTRACT}`,
       ...value.candidates.map((item) => `  ${item.candidate_slot}  ${item.candidate_id}  ${item.acceptance}`),
       '',
       'None is selected. Audition them with `final-music list`, then select one yourself.',
@@ -224,9 +236,9 @@ async function run(argv = process.argv.slice(2)) {
   return { text: usage(), value: null, exitCode: 2 };
 }
 
-async function main(argv = process.argv.slice(2)) {
+async function main(argv = process.argv.slice(2), deps = {}) {
   try {
-    const result = await run(argv);
+    const result = await run(argv, deps);
     if (result.text) process.stdout.write(`${result.text}\n`);
     if (argvWantsJson(argv) && result.value) process.stdout.write(`${JSON.stringify(result.value, null, 2)}\n`);
     return result.exitCode;
@@ -238,6 +250,6 @@ async function main(argv = process.argv.slice(2)) {
 
 function argvWantsJson(argv) { return argv.includes('--json'); }
 
-module.exports = { COMMANDS, parseArgs, usage, run, main, renderStatus, renderList };
+module.exports = { COMMANDS, parseArgs, usage, run, main, renderStatus, renderList, generatorProvider };
 
 if (require.main === module) main().then((code) => { process.exitCode = code; });

@@ -54,7 +54,7 @@ function trackProvenance(pkg) {
  *   }
  * Immutable: a second registration must be byte-identical or it fails.
  */
-function registerHumanVerdict(outRoot, input) {
+function registerHumanVerdict(outRoot, input, options = {}) {
   const packagePath = path.join(outRoot, 'draft-music-package.json');
   if (!fs.existsSync(packagePath)) fail('DRAFT_MUSIC_VERDICT_PACKAGE_MISSING', packagePath);
   const pkg = readJson(packagePath);
@@ -115,7 +115,116 @@ function registerHumanVerdict(outRoot, input) {
     return { registered: false, record, path: file };
   }
   fs.writeFileSync(file, payload, { flag: 'wx' });
-  return { registered: true, record, path: file };
+  /* Corpus accumulation is an EXPLICIT act, never a side effect of registering
+   * a verdict. The first cut appended by default, and the existing verdict
+   * tests - which register synthetic verdicts under the authority string
+   * 'Mikko Pakkala' - immediately wrote seven fabricated entries into the
+   * repository's real dataset. A calibration corpus polluted with test rows
+   * attributed to a real person is worse than no corpus at all, so the caller
+   * must ask. */
+  const corpus = (options.corpus === true || options.corpusFile)
+    ? appendCalibrationCorpus(record, pkg, options)
+    : { appended: 0, ok: true, skipped: 'CORPUS_APPEND_NOT_REQUESTED' };
+  return { registered: true, record, path: file, corpus };
+}
+
+/* ── the durable calibration corpus ──────────────────────────────────────────
+ * A per-run verdict answered "which bed does this video use". It did NOT
+ * accumulate: the labelled corpus that every coherence threshold rests on is a
+ * hand-built file in outputs/, still holding six labels whose USE/REJECT split
+ * coincides exactly with Stable Audio vs MiniMax. Nothing grew it from use, so
+ * it would have stayed at six forever.
+ *
+ * This appends one line PER TRACK to an append-only JSONL dataset, keyed by the
+ * track's own sha256, so future calibration has real single-model positives AND
+ * negatives to work from.
+ *
+ * It deliberately does NOT retune anything. Gate V2 stays the anti-degeneracy
+ * layer and reads none of this; quality calibration is a separate system that
+ * does not exist yet. Appending is best-effort: a corpus write must never cost
+ * Mikko a registered verdict, so a failure here is reported, not thrown. */
+const CORPUS_FILE = path.join('data', 'music-human-verdict-corpus.jsonl');
+const CORPUS_SCHEMA = 'vidtoolz.musicHumanVerdictCorpusEntry.v1';
+
+function corpusPath(options = {}) {
+  return options.corpusFile
+    ? path.resolve(options.corpusFile)
+    : path.join(path.resolve(__dirname, '..'), CORPUS_FILE);
+}
+
+function corpusEntriesFor(record, pkg) {
+  const bySlot = new Map((pkg.candidates || []).map((candidate) => [candidate.candidate_slot, candidate]));
+  return Object.keys(record.tracks).sort().map((label) => {
+    const track = record.tracks[label];
+    const candidate = bySlot.get(label) || {};
+    const coherence = candidate.coherence || {};
+    const development = coherence.metrics ? coherence.metrics.development || null : null;
+    return {
+      schema: CORPUS_SCHEMA,
+      /* identity: the bytes, not the slot - a slot is reused every run */
+      track_sha256: track.output_sha256 || null,
+      run_id: record.run_id,
+      candidate_slot: label,
+      candidate_id: track.candidate_id || null,
+      decided_at: record.decided_at,
+      authority: record.authority,
+      /* the human decision */
+      human_verdict: track.verdict,
+      human_solid_song: track.solid_song,
+      human_quality_10: track.quality_10,
+      human_fit_10: track.fit_10,
+      human_interest_10: track.interest_10,
+      human_rank: Array.isArray(record.human_ranking) && record.human_ranking.includes(label)
+        ? record.human_ranking.indexOf(label) + 1 : null,
+      verbatim: record.verbatim_comments ? record.verbatim_comments[label] || null : null,
+      /* generation configuration - what produced these bytes */
+      model: candidate.model || null,
+      model_contract: candidate.model_contract || null,
+      concept_label: candidate.concept_label || null,
+      prompt_sha256: candidate.prompt_sha256 || null,
+      seed: candidate.seed === undefined ? null : candidate.seed,
+      requested_duration_s: candidate.qc ? candidate.qc.requested_duration_s : null,
+      /* measurements at the time of judgement */
+      measured_duration_s: candidate.qc ? candidate.qc.duration_s : null,
+      integrated_lufs: candidate.qc ? candidate.qc.integrated_lufs : null,
+      true_peak_dbfs: candidate.qc ? candidate.qc.true_peak_dbfs : null,
+      ending_class: candidate.qc ? candidate.qc.ending_class : null,
+      coherence_class: coherence.coherence_class || null,
+      coherence_score: coherence.coherence_score === undefined ? null : coherence.coherence_score,
+      development_degenerate: coherence.development_degenerate === true,
+      gate_v2_development: development,
+      /* provenance of the judgement itself */
+      package_digest_sha256: record.package_digest_sha256,
+      verdict_digest_sha256: record.verdict_digest_sha256,
+      corpus_note: 'append-only observation; NOT an input to Gate V2, which is an anti-degeneracy gate and is never retuned from this dataset',
+    };
+  });
+}
+
+function appendCalibrationCorpus(record, pkg, options = {}) {
+  const file = corpusPath(options);
+  try {
+    const entries = corpusEntriesFor(record, pkg);
+    /* append-only and idempotent: a re-registration of the same verdict must
+     * not double-count a track. Keyed by (verdict digest, track sha). */
+    const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+    const seen = new Set(existing.split('\n').filter(Boolean).map((line) => {
+      try { const parsed = JSON.parse(line); return `${parsed.verdict_digest_sha256}:${parsed.track_sha256}`; } catch (_) { return ''; }
+    }));
+    const fresh = entries.filter((entry) => !seen.has(`${entry.verdict_digest_sha256}:${entry.track_sha256}`));
+    if (!fresh.length) return { file, appended: 0, total_entries: seen.size, ok: true };
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.appendFileSync(file, `${fresh.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
+    return { file, appended: fresh.length, total_entries: seen.size + fresh.length, ok: true };
+  } catch (error) {
+    return { file, appended: 0, ok: false, error: error.message };
+  }
+}
+
+function readCalibrationCorpus(options = {}) {
+  const file = corpusPath(options);
+  if (!fs.existsSync(file)) return [];
+  return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
 }
 
 /* HUMAN_RANKING_ALIGNMENT: how the machine ranking relates to the human
@@ -196,4 +305,5 @@ function effectiveSelection(pkg, verdictRecord) {
 module.exports = {
   SCHEMA, VERDICT_FILE, VERDICTS, DraftMusicHumanVerdictError,
   registerHumanVerdict, loadHumanVerdict, verifyHumanVerdict, effectiveSelection, alignment, trackProvenance, digest,
+  CORPUS_FILE, CORPUS_SCHEMA, corpusPath, corpusEntriesFor, appendCalibrationCorpus, readCalibrationCorpus,
 };

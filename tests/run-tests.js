@@ -126,6 +126,7 @@ require("./final-music-production.test.js");
 require("./final-production-core-lanes-integration.test.js");
 require("./draft-successor-music-history.test.js");
 require("./draft-music-automation.test.js");
+require("./package-run-draft-music.test.js");
 require("./draft-synthetic-narration.test.js");
 require("./draft-proxy-presenter.test.js");
 require("./draft-assembly-v0.test.js");

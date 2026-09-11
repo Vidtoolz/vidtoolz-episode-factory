@@ -111,6 +111,25 @@ class DraftMusicError extends Error {
   constructor(code, message) { super(message); this.name = 'DraftMusicError'; this.code = code; }
 }
 function fail(code, message) { throw new DraftMusicError(code, message); }
+
+/* §5 uniqueness (2026-09-10): the default base seed was the CONSTANT 1, so every
+ * run generated seeds 1/101/201 from byte-deterministic prompts — two videos
+ * whose analysis landed on a similar concept produced the SAME audio, and no
+ * cross-run check existed to notice. The default is now derived from the run
+ * identity and the analysis digest, which is simultaneously:
+ *   - unique per run     (a different run id yields different music),
+ *   - stable within a run (resume re-derives the same seed for the same slot,
+ *                          so a retry is deterministic and auditable),
+ *   - reproducible       (the effective seed is recorded on every attempt, so
+ *                          an accepted attempt is replayed with --seed).
+ * An explicit --seed still wins: that is the reproduction path, not the default.
+ * Bounded to 2e9 so the slot (+0/100/200) and attempt (+1000..+5000) offsets
+ * cannot push the seed past the 32-bit range the runtime accepts. */
+const BASE_SEED_MODULUS = 2000000000;
+function deriveBaseSeed(runId, analysisDigest) {
+  const material = `draft-music-base-seed\u0000${String(runId)}\u0000${String(analysisDigest)}`;
+  return crypto.createHash('sha256').update(material).digest().readUInt32BE(0) % BASE_SEED_MODULUS;
+}
 function canonicalize(value) { return analysisAuthority.canonicalize(value); }
 function digest(value) { return analysisAuthority.digest(value); }
 function nowIso() { return new Date().toISOString(); }
@@ -438,6 +457,7 @@ function rankCandidates(results, warnings, analysis) {
       usable: verdict.usable,
       usable_failures: verdict.failures,
       coherence_class: candidateCoherence.coherence_class,
+      development_degenerate: candidateCoherence.development_degenerate === true,
       score,
       factors: {
         coherence_score: candidateCoherence.coherence_score,
@@ -451,8 +471,19 @@ function rankCandidates(results, warnings, analysis) {
     };
   });
   /* Usable candidates always outrank unusable ones; within a tier the score
-   * decides; slot order keeps it deterministic. */
-  return scored.sort((a, b) => (b.usable ? 1 : 0) - (a.usable ? 1 : 0) || b.score - a.score || a.slot.localeCompare(b.slot));
+   * decides; slot order keeps it deterministic.
+   *
+   * Gate V2 ordering guard (2026-09-10): a DEGENERATE track (nothing happens —
+   * see draft-music-coherence classifyDevelopment) ranks below every
+   * non-degenerate candidate in its tier. Every score component here is an
+   * absence-of-badness measure, so a static track maxes out coherence, energy
+   * continuity and identity and posts a HIGH score; without this guard
+   * `--degraded-selection` would still prefer a drone to an imperfect real
+   * song. This is an ORDERING guard only — no weight is changed, so the
+   * human-aligned A>B>C ranking is untouched when nothing is degenerate. */
+  return scored.sort((a, b) => (b.usable ? 1 : 0) - (a.usable ? 1 : 0)
+    || (a.development_degenerate ? 1 : 0) - (b.development_degenerate ? 1 : 0)
+    || b.score - a.score || a.slot.localeCompare(b.slot));
 }
 
 /* ── narration-first Draft mix (bounded ducking; renderer untouched) ─────── */
@@ -533,7 +564,9 @@ async function generateDraftMusic(input, options = {}) {
   /* 3. sequential bounded generation */
   const context = {
     analysis, durationS, mediaRoot, transport, host: availability.host,
-    baseSeed: Number.isInteger(input.seed) ? input.seed : 1, completed: [],
+    baseSeed: Number.isInteger(input.seed) ? input.seed : deriveBaseSeed(runId, analysis.analysis_digest_sha256),
+    seedBasis: Number.isInteger(input.seed) ? 'EXPLICIT_OPERATOR_SEED' : 'DERIVED_FROM_RUN_AND_ANALYSIS',
+    completed: [],
     generationTimeoutMs: options.generationTimeoutMs, timers: timings,
   };
   const results = [];
@@ -757,7 +790,8 @@ module.exports = {
   PACKAGE_SCHEMA, ATTEMPT_SCHEMA, METRICS_SCHEMA, ANALYSIS_FILE, PACKAGE_FILE, AUDITION_FILE, METRICS_FILE,
   MEDIA_DIR, MODELS, MODEL_TERRITORY, AUDIO_MIN_DISTANCE, DURATION_TOLERANCE_S, GENERATION_TIMEOUT_MS,
   ROUTING_POLICY, MINIMAX_ROLE, USABLE_CONTRACT, RANKING_WEIGHTS, COHERENCE_REPLACEMENT_PROMPT,
-  DraftMusicError, modelAvailability, territoryScore, routeCandidates, buildGraph, runGeneration,
+  DraftMusicError, BASE_SEED_MODULUS, deriveBaseSeed,
+  modelAvailability, territoryScore, routeCandidates, buildGraph, runGeneration,
   generateCandidate, usableVerdict, rankCandidates, buildDuckedMix, buildDraftMusicDecision, resolveRunScript,
   generateDraftMusic, parseArgs, main,
 };

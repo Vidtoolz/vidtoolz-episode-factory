@@ -51,20 +51,49 @@ function media() {
  * same candidate, so a shared recipe would test deduplication, not the loop. */
 const RECIPES = Object.freeze({
   /* ending classes, verified empirically against the reused Draft classifier */
-  clean: { hz: 200, seconds: 30, fade: 'afade=t=out:st=20:d=10' }, // CLEAN_END
-  longfade: { hz: 190, seconds: 30, fade: 'afade=t=out:st=12:d=18' }, // FADE_ACCEPTABLE
-  abrupt: { hz: 210, seconds: 30, fade: null }, // ABRUPT_END
-  truncated: { hz: 240, seconds: 12, fade: null }, // TRUNCATED (too few windows)
+  clean: { seconds: 30, fade: 'afade=t=out:st=20:d=10' }, // CLEAN_END
+  longfade: { seconds: 30, fade: 'afade=t=out:st=12:d=18' }, // FADE_ACCEPTABLE
+  abrupt: { seconds: 30, fade: null }, // ABRUPT_END
+  truncated: { seconds: 12, fade: null }, // TRUNCATED (too few windows)
 });
+
+/* GATE V2 (2026-09-10). These fixtures used to be a single sine tone with a
+ * slow tremolo — that is, a drone. Gate V2 classifies a track with no
+ * development as DEVELOPMENT_DEGENERATE, so a sine tone can no longer stand in
+ * for music, and FM11/FM12/FM13 — which test ENDING handling and the acceptance
+ * ladder, not development — were failing on the fixture rather than on the
+ * behaviour under test. Each fixture is now ONE identity carried through a
+ * lowpass sweep (1200→2400 Hz, 4 voices, 3 s crossfades, trimmed to the recipe
+ * length), built in a single ffmpeg call.
+ *
+ * Uniqueness is now collision-free BY CONSTRUCTION: a monotonic per-label noise
+ * seed. The previous `% 40` tone offset had only 40 possible values for 39
+ * labels, so two same-recipe fixtures colliding would have produced identical
+ * bytes — which this authority deliberately treats as the SAME candidate,
+ * turning an unrelated test into a silent deduplication test.
+ *
+ * Ending classes are unchanged and re-verified: clean → CLEAN_END, longfade →
+ * FADE_ACCEPTABLE, abrupt → ABRUPT_END, truncated → TRUNCATED. */
+const LABEL_SEEDS = new Map();
+function labelSeed(label) {
+  if (!LABEL_SEEDS.has(label)) LABEL_SEEDS.set(label, 101 + LABEL_SEEDS.size);
+  return LABEL_SEEDS.get(label);
+}
+const SWEEP_CUTOFFS = Object.freeze([1200, 1600, 2000, 2400]);
 function makeTrack(label, recipeName = 'clean') {
   const recipe = RECIPES[recipeName];
   const file = path.join(media(), `${label}.wav`);
   if (fs.existsSync(file)) return file;
-  /* the label perturbs the tone so every fixture has unique bytes */
-  const offset = parseInt(crypto.createHash('sha256').update(label).digest('hex').slice(0, 2), 16) % 40;
-  const chain = [`volume=-8dB`, `tremolo=f=0.3:d=0.45`];
-  if (recipe.fade) chain.push(recipe.fade);
-  ffmpeg(['-f', 'lavfi', '-i', `sine=frequency=${recipe.hz + offset}:duration=${recipe.seconds}`, '-af', chain.join(','), file]);
+  const seed = labelSeed(label);
+  /* four voices crossfaded by 3 s each land on exactly recipe.seconds */
+  const segment = +(((recipe.seconds + 9) / 4).toFixed(3));
+  const chain = [
+    ...SWEEP_CUTOFFS.map((cutoff, index) => `[${index}:a]lowpass=f=${cutoff},volume=-8dB,tremolo=f=0.3:d=0.45[a${index}]`),
+    '[a0][a1]acrossfade=d=3[x1]', '[x1][a2]acrossfade=d=3[x2]', '[x2][a3]acrossfade=d=3[x3]',
+    `[x3]atrim=duration=${recipe.seconds},asetpts=PTS-STARTPTS${recipe.fade ? `,${recipe.fade}` : ''}[o]`,
+  ].join(';');
+  const inputs = SWEEP_CUTOFFS.flatMap(() => ['-f', 'lavfi', '-i', `anoisesrc=color=pink:seed=${seed}:duration=${segment}:r=44100`]);
+  ffmpeg([...inputs, '-filter_complex', chain, '-map', '[o]', file]);
   return file;
 }
 function makeSilentTrack(label) {

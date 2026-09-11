@@ -52,10 +52,14 @@ node --check scripts/draft-bespoke-still-policy.js
 node --check scripts/draft-music-analysis.js
 node --check scripts/draft-music-prompts.js
 node --check scripts/draft-music-qc.js
+node --check scripts/draft-music-coherence.js
+node --check scripts/music-generator-provider.js
+node --check scripts/package-run-draft-music.js
 node --check scripts/draft-music-orchestrator.js
 node --check scripts/generate-draft-music.js
 node --check score-engine/adapters/stable-audio-3-medium.js
 node --check tests/draft-music-automation.test.js
+node --check tests/package-run-draft-music.test.js
 node --check scripts/package-run-draft-bespoke-stills.js
 node --check tests/draft-bespoke-still-policy.test.js
 node --check scripts/draft-bespoke-successor-authority.js

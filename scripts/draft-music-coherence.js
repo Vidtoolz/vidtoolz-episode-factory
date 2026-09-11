@@ -26,6 +26,20 @@
  *     diagnostics only: chroma continuity proved genre-confounded on the
  *     calibration corpus (legitimate acoustic harmonic movement scores below
  *     an incoherent electronic track), so it must not gate.
+ *
+ * GATE V2 (2026-09-10 audit repair). Every floor above is an ABSENCE-OF-BADNESS
+ * measure, so they all reach their best value when nothing happens: a 3-minute
+ * unchanging two-sine drone measured timbral-flow p90 0.0000, scored 7.90 and
+ * was classified SOLID_SONG - the top class - outranking two of the three
+ * tracks Mikko had actually approved. A gate built only from upper bounds
+ * cannot distinguish music from silence-with-a-pitch.
+ *
+ * V2 therefore adds the LOWER side: POSITIVE measurements of development
+ * (measureDevelopment) and one falsifiable degeneracy floor
+ * (classifyDevelopment). The degeneracy floor needs no human labels - it asks
+ * "did anything happen at all?", not "is this good?" - which is why it can ship
+ * before the calibration corpus exists. Everything else V2 measures is recorded
+ * as an UNCALIBRATED candidate signal and gates nothing.
  */
 
 const qc = require('./draft-music-qc.js');
@@ -81,6 +95,40 @@ const COHERENCE_CONTRACT = Object.freeze({
     min_score_as_usability: 'score ranks; it does not separate usable from reject',
   },
   calibration: 'outputs/claude-stable-audio-human-calibration-2026-09-01/COHERENCE-RECALIBRATION.json',
+
+  /* ---- GATE V2: the lower side (2026-09-10) --------------------------------
+   * A track that does not move on at least two of these three axes is not a
+   * song, whatever its coherence numbers say. These floors are NOT a quality
+   * judgement and are NOT calibrated against human verdicts: they separate
+   * MUSIC from NON-MUSIC, which is a far easier question than usable-vs-reject
+   * and needs no labels. Each floor sits below EVERY track ever measured -
+   * including r2_bed, the most minimal human-approved bed in the corpus - and
+   * far above the synthetic degenerate control.
+   *
+   * Measured 2026-09-10 over all 6 human-labeled tracks + 1 control + the
+   * legacy r2 bed + 2 synthetic controls (see margins_observed below). Note
+   * timbral flow is deliberately NOT a degeneracy axis: human-USE old_A sits at
+   * tf_mean 0.0015, BELOW the synthetic music control at 0.0047, so legitimate
+   * music can be extremely smooth. Spectral spread, dynamic range and
+   * worst-case self-dissimilarity are what separate music from non-music. */
+  development_floors: {
+    band_profile_std_mean_min: 0.02,
+    energy_range_db_min: 0.5,
+    dissimilarity_max_min: 0.004,
+    degenerate_when_axes_below_floor: 2, // of 3
+  },
+  development_margins_observed_2026_09_10: {
+    band_profile_std_mean: { floor: 0.02, lowest_music: 0.0732, lowest_music_id: 'r2_bed (human USE)', margin: '3.7x', degenerate_control: 0.0001 },
+    energy_range_db: { floor: 0.5, lowest_music: 1.4413, lowest_music_id: 'synthetic evolving control', lowest_labeled: 4.661, margin: '2.9x (9.3x to nearest labeled)', degenerate_control: 0.0004 },
+    dissimilarity_max: { floor: 0.004, lowest_music: 0.0135, lowest_music_id: 'r2_bed (human USE)', margin: '3.4x', degenerate_control: 0.0 },
+    note: 'all 10 measured music tracks clear ALL THREE floors; the degenerate control fails ALL THREE by 200-1250x. No labeled track is within 2.9x of any floor.',
+  },
+  development_role: 'DEGENERACY GATE ONLY - answers "did anything happen?", never "is this good?". It cannot rank and must never be read as a quality score.',
+  development_advisory_uncalibrated: [
+    'timbral_flow_p10', 'band_profile_std_max', 'energy_std_db', 'energy_trend_r',
+    'event_density_mean', 'event_density_p90', 'event_density_std',
+  ],
+  v2_validation_status: 'GATE V2 IS NOT VALIDATED AGAINST HUMAN JUDGEMENT. It is proven only to (a) reject a categorically degenerate track and (b) not reject any of the 10 tracks measured on 2026-09-10. The corpus still holds 6 exact labels whose USE/REJECT split coincides exactly with Stable Audio vs MiniMax, so NO threshold here - old or new - has been shown to track musical quality on single-model output. Do not present a coherence class as a quality verdict until the calibration corpus carries real Stable Audio REJECTs.',
 });
 
 const CLASSES = Object.freeze(['SOLID_SONG', 'DRAFT_MUSIC_USABLE', 'REJECT_COHERENCE', 'NOT_ASSESSABLE']);
@@ -109,6 +157,36 @@ function classifyCoherence({ timbralFlowP90, coherenceScore, endingClass, blockC
     solid_song: solid,
     catastrophic: false,
     floor_failures: [],
+  };
+}
+
+/* THE ONE DOOR. coherenceReport must not compose the two classifiers itself:
+ * a law enforced at the call site is a property of that call site, not of the
+ * gate. Every coherence class for an assessable track is produced here, so a
+ * track cannot acquire SOLID_SONG or draft_usable without clearing BOTH the
+ * calibrated coherence floors and the falsifiable degeneracy floor.
+ *
+ * A degenerate track is REJECTED, not merely denied SOLID_SONG. The audit found
+ * two distinct harms - the drone was classified SOLID_SONG, and it OUTRANKED
+ * human-approved music. Only draft_usable:false fixes the second, because
+ * rankCandidates sorts usable candidates above unusable ones unconditionally
+ * and generateDraftMusic selects only from the usable tier. */
+function classifyTrack({ timbralFlowP90, coherenceScore, endingClass, blockCount, development }) {
+  const coherence = classifyCoherence({ timbralFlowP90, coherenceScore, endingClass, blockCount });
+  if (coherence.coherence_class === 'NOT_ASSESSABLE') return { ...coherence, development_degenerate: false, development_axes_below_floor: [] };
+  const dev = classifyDevelopment(development);
+  if (!dev.development_degenerate) return { ...coherence, ...dev };
+  return {
+    coherence_class: 'REJECT_COHERENCE',
+    draft_usable: false,
+    solid_song: false,
+    /* Degeneracy is NOT catastrophic: catastrophic triggers a targeted
+     * regeneration retry, and a static output is a prompt/model problem that a
+     * reworded coherence retry will not fix. Preserve whatever the calibrated
+     * classifier concluded rather than inventing a retry. */
+    catastrophic: coherence.catastrophic,
+    floor_failures: [...coherence.floor_failures, 'DEVELOPMENT_DEGENERATE'],
+    ...dev,
   };
 }
 
@@ -191,7 +269,90 @@ function trackProfile(file) {
       rms_db: mean(rows.map((row) => row.rms_db)),
     });
   }
-  return { blocks, seconds: perSecond.length };
+  /* GATE V2 event density (ADVISORY, uncalibrated): positive spectral flux
+   * across the 24 log bands between consecutive SECONDS, level-normalised.
+   * Dense by construction - every second, not one 93 ms frame per 5 s window
+   * as the qc feature proxy does - so a static track reads exactly 0. */
+  const flux = [];
+  for (let i = 1; i < perSecond.length; i += 1) {
+    let positive = 0; let total = 0;
+    for (let b = 0; b < BANDS; b += 1) {
+      const delta = perSecond[i].bands[b] - perSecond[i - 1].bands[b];
+      if (delta > 0) positive += delta;
+      total += perSecond[i].bands[b];
+    }
+    flux.push(total > 0 ? positive / total : 0);
+  }
+  const sortedFlux = [...flux].sort((a, b) => a - b);
+  const eventDensity = {
+    advisory: true,
+    mean: +mean(flux).toFixed(5),
+    std: +std(flux).toFixed(5),
+    p90: +(sortedFlux.length ? sortedFlux[Math.floor(0.9 * (sortedFlux.length - 1))] : 0).toFixed(5),
+  };
+  return { blocks, seconds: perSecond.length, event_density: eventDensity };
+}
+
+/* ── GATE V2: positive development measurement ───────────────────────────────
+ * Every number here rises when the music DOES something. Three of them carry a
+ * degeneracy floor (see COHERENCE_CONTRACT.development_floors); the rest are
+ * recorded as uncalibrated candidate signals for the calibration mission and
+ * gate nothing. This function decides nothing - classifyDevelopment does. */
+function measureDevelopment(blocks, adjacent) {
+  const n = blocks.length;
+  const bandCount = blocks[0].bands.length;
+  const bandStd = [];
+  for (let b = 0; b < bandCount; b += 1) bandStd.push(std(blocks.map((block) => block.bands[b])));
+  const rms = blocks.map((block) => block.rms_db);
+  /* worst-case self-dissimilarity anywhere in the track: the single strongest
+   * evidence that the piece is not one frozen frame repeated. */
+  let dissimilarityMax = 0;
+  for (let i = 0; i < n; i += 1) {
+    for (let j = i + 1; j < n; j += 1) {
+      const d = 1 - cosineSimilarity(blocks[i].bands, blocks[j].bands);
+      if (d > dissimilarityMax) dissimilarityMax = d;
+    }
+  }
+  /* energy trend (ADVISORY): correlation of level with time - does the track go
+   * anywhere, as opposed to merely wobbling? */
+  const times = blocks.map((_, index) => index);
+  const mt = mean(times); const mr = mean(rms);
+  let num = 0; let dt = 0; let dr = 0;
+  for (let i = 0; i < n; i += 1) { num += (times[i] - mt) * (rms[i] - mr); dt += (times[i] - mt) ** 2; dr += (rms[i] - mr) ** 2; }
+  const trend = dt > 0 && dr > 0 ? num / Math.sqrt(dt * dr) : 0;
+  const sortedAdjacent = [...adjacent].sort((a, b) => a - b);
+  return {
+    /* --- degeneracy axes (these three gate) --- */
+    band_profile_std_mean: +mean(bandStd).toFixed(5),
+    energy_range_db: +(Math.max(...rms) - Math.min(...rms)).toFixed(4),
+    dissimilarity_max: +dissimilarityMax.toFixed(5),
+    /* --- uncalibrated candidate signals (these gate nothing) --- */
+    advisory_uncalibrated: {
+      band_profile_std_max: +Math.max(...bandStd).toFixed(5),
+      energy_std_db: +std(rms).toFixed(4),
+      energy_trend_r: +trend.toFixed(4),
+      timbral_flow_p10: +(sortedAdjacent.length ? sortedAdjacent[Math.floor(0.1 * (sortedAdjacent.length - 1))] : 0).toFixed(5),
+    },
+  };
+}
+
+/* Pure degeneracy classifier - the falsifiable half of Gate V2. Independently
+ * unit-testable against the 2026-09-10 measurement table without decoding
+ * audio. It answers "did anything happen at all?" and nothing else. */
+function classifyDevelopment(development) {
+  const floors = COHERENCE_CONTRACT.development_floors;
+  if (!development || typeof development !== 'object') {
+    fail('DRAFT_MUSIC_COHERENCE_DEVELOPMENT_REQUIRED', 'Gate V2 requires a development measurement; a coherence class must never be derived without one');
+  }
+  const below = [];
+  if (!(development.band_profile_std_mean >= floors.band_profile_std_mean_min)) below.push('BAND_PROFILE_STATIC');
+  if (!(development.energy_range_db >= floors.energy_range_db_min)) below.push('ENERGY_STATIC');
+  if (!(development.dissimilarity_max >= floors.dissimilarity_max_min)) below.push('SELF_IDENTICAL');
+  return {
+    development_degenerate: below.length >= floors.degenerate_when_axes_below_floor,
+    development_axes_below_floor: below,
+    development_axes_required: floors.degenerate_when_axes_below_floor,
+  };
 }
 
 function analyzeBlocks(blocks) {
@@ -271,6 +432,7 @@ function analyzeBlocks(blocks) {
     },
     ending_body_similarity: +cosineSimilarity(blocks[n - 1].bands, meanVectors(body.map((block) => block.bands))).toFixed(4),
     energy_series_db: blocks.map((block) => +block.rms_db.toFixed(2)),
+    development: measureDevelopment(blocks, adjacent),
   };
 }
 
@@ -285,6 +447,7 @@ function coherenceReport(file, options = {}) {
       schema: SCHEMA, coherence_class: 'NOT_ASSESSABLE', draft_usable: false, solid_song: false, catastrophic: false,
       coherence_score: 0, metrics: { block_count: profile.blocks.length }, scores: null,
       floor_failures: ['DRAFT_MUSIC_COHERENCE_TOO_SHORT_TO_ASSESS'],
+      development_degenerate: false, development_axes_below_floor: [],
       contract: COHERENCE_CONTRACT,
     };
   }
@@ -306,11 +469,13 @@ function coherenceReport(file, options = {}) {
   };
   const coherenceScore = +Object.values(scores).reduce((a, b) => a + b, 0).toFixed(3);
 
-  const classified = classifyCoherence({
+  if (profile.event_density) metrics.event_density = profile.event_density;
+  const classified = classifyTrack({
     timbralFlowP90: metrics.timbral_flow.adjacent_discontinuity_p90,
     coherenceScore,
     endingClass,
     blockCount: metrics.block_count,
+    development: metrics.development,
   });
   return {
     schema: SCHEMA,
@@ -354,6 +519,7 @@ function scriptFitScore(energySeriesDb, energyCurve) {
 
 module.exports = {
   SCHEMA, COHERENCE_CONTRACT, CLASSES, BLOCK_S, DraftMusicCoherenceError,
-  classifyCoherence, trackProfile, analyzeBlocks, coherenceReport, scriptFitScore, ENERGY_CURVE_TEMPLATES,
+  classifyCoherence, classifyDevelopment, classifyTrack, measureDevelopment,
+  trackProfile, analyzeBlocks, coherenceReport, scriptFitScore, ENERGY_CURVE_TEMPLATES,
   cosineSimilarity, piecewise,
 };

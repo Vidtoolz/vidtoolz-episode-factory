@@ -635,8 +635,28 @@ function coherenceFixtures() {
   if (COH.root) return COH;
   COH.root = tmpdir('coherence-fixtures');
   const out = (name) => path.join(COH.root, `${name}.wav`);
-  ffmpeg(['-f', 'lavfi', '-i', `anoisesrc=color=pink:seed=7:duration=${COH_DURATION_S}`, '-af', `lowpass=f=2000,volume=-14dB,tremolo=f=0.4:d=0.3,afade=t=out:st=${COH_DURATION_S - 5}:d=5`, out('solid')]);
-  ffmpeg(['-f', 'lavfi', '-i', `anoisesrc=color=pink:seed=7:duration=${COH_DURATION_S}`, '-af', 'lowpass=f=2000,volume=-14dB,tremolo=f=0.4:d=0.3', out('solidAbrupt')]);
+  /* GATE V2 (2026-09-10). `solid`/`solidAbrupt` were STATIONARY filtered pink
+   * noise whose ONLY development was the fade-out: dissimilarity_max 0.00109,
+   * twelve times below the least-developed real track in the corpus. Gate V2
+   * classifies that as DEVELOPMENT_DEGENERATE — correctly — so the pair was not
+   * a valid stand-in for music, and it differed in DEVELOPMENT as well as in
+   * ending, which is the one thing DM33 claims to isolate. Both are now built
+   * from ONE identity carried through a gentle lowpass sweep, and `solid` is
+   * literally `solidAbrupt` plus a fade, so the ending is the only difference.
+   * The old stationary recipe is kept as `stationary` and DM35j pins that Gate
+   * V2 rejects it regardless of how it ends — the floor is not being relaxed
+   * to accommodate a fixture. */
+  const sweep = [1500, 1700, 1900, 2100, 2300, 2500];
+  sweep.forEach((cutoff, index) => ffmpeg(['-f', 'lavfi', '-i', 'anoisesrc=color=pink:seed=7:duration=15',
+    '-af', `lowpass=f=${cutoff},volume=-14dB,tremolo=f=0.4:d=0.3`, out(`sweep-${index}`)]));
+  const sweepChain = sweep.slice(1).map((_, index) => index === 0
+    ? '[0:a][1:a]acrossfade=d=5[x1]'
+    : `[x${index}][${index + 1}:a]acrossfade=d=5[x${index + 1}]`).join(';');
+  ffmpeg([...sweep.flatMap((_, index) => ['-i', out(`sweep-${index}`)]),
+    '-filter_complex', `${sweepChain};[x${sweep.length - 1}]atrim=duration=${COH_DURATION_S},asetpts=PTS-STARTPTS[body]`,
+    '-map', '[body]', out('solidAbrupt')]);
+  ffmpeg(['-i', out('solidAbrupt'), '-af', `afade=t=out:st=${COH_DURATION_S - 5}:d=5`, out('solid')]);
+  ffmpeg(['-f', 'lavfi', '-i', `anoisesrc=color=pink:seed=7:duration=${COH_DURATION_S}`, '-af', 'lowpass=f=2000,volume=-14dB,tremolo=f=0.4:d=0.3', out('stationary')]);
   ffmpeg(['-f', 'lavfi', '-i', `sine=frequency=220:duration=${COH_DURATION_S}`, '-af', `volume=-10dB,tremolo=f=0.5:d=0.5,afade=t=out:st=${COH_DURATION_S - 5}:d=5`, out('solid2')]);
   const segment = (name, source, filter) => ffmpeg(['-f', 'lavfi', '-i', source, '-af', filter, out(name)]);
   segment('seg-a', 'sine=frequency=220:duration=20', 'volume=-10dB');
@@ -652,7 +672,7 @@ function coherenceFixtures() {
     ? `[0:a][1:a]acrossfade=d=5[x1]`
     : `[x${index}][${index + 1}:a]acrossfade=d=5[x${index + 1}]`).join(';');
   ffmpeg([...inputs, '-filter_complex', `${chain};[x${cutoffs.length - 1}]afade=t=out:st=60:d=5[evo]`, '-map', '[evo]', out('evolution')]);
-  for (const name of ['solid', 'solidAbrupt', 'solid2', 'incoherent1', 'incoherent2', 'incoherent3', 'evolution']) COH[name] = out(name);
+  for (const name of ['solid', 'solidAbrupt', 'stationary', 'solid2', 'incoherent1', 'incoherent2', 'incoherent3', 'evolution']) COH[name] = out(name);
   return COH;
 }
 
@@ -732,6 +752,187 @@ test('DM35b classifier reproduces every human-labeled calibration point exactly 
   assert.equal(coherenceGate.classifyCoherence({ timbralFlowP90: 0.001, coherenceScore: 8, endingClass: 'TRUNCATED', blockCount: 35 }).coherence_class, 'REJECT_COHERENCE');
   assert.equal(coherenceGate.classifyCoherence({ timbralFlowP90: 0.001, coherenceScore: 2.0, endingClass: 'CLEAN_END', blockCount: 35 }).floor_failures.includes('DEGENERATE_SCORE'), true);
   assert.equal(coherenceGate.classifyCoherence({ timbralFlowP90: 0.001, coherenceScore: 8, endingClass: 'CLEAN_END', blockCount: 3 }).coherence_class, 'NOT_ASSESSABLE');
+});
+
+/* ── GATE V2 (2026-09-10 audit repair): the lower side of the gate ───────────
+ * Every pre-V2 floor was an absence-of-badness measure, so a 3-minute
+ * unchanging two-sine drone scored 7.90, was classified SOLID_SONG and
+ * outranked two of the three tracks Mikko approved. These tests pin the
+ * falsifiable degeneracy floor and prove it costs no human alignment. */
+
+/* Development measurements taken 2026-09-10 by measureDevelopment over every
+ * track in the corpus (6 exact human labels + 1 control + the legacy r2 bed)
+ * plus two synthetic controls. Pure numbers: no audio decode needed. */
+const DEVELOPMENT_CORPUS = [
+  { label: 'old_A USE', band: 0.16182, range: 16.056, diss: 0.02448, music: true },
+  { label: 'old_B REJECT', band: 0.32701, range: 18.191, diss: 0.13011, music: true },
+  { label: 'old_C REJECT', band: 0.26589, range: 10.8797, diss: 0.09325, music: true },
+  { label: 'new_A USE', band: 0.33406, range: 26.7675, diss: 0.18051, music: true },
+  { label: 'new_B USE', band: 0.49587, range: 49.8276, diss: 0.20742, music: true },
+  { label: 'new_C USE', band: 0.33991, range: 20.9568, diss: 0.13424, music: true },
+  { label: 'ctl_mp SA3M control', band: 0.40302, range: 35.8748, diss: 0.16253, music: true },
+  { label: 'r2_bed human USE (most minimal real bed)', band: 0.07317, range: 4.661, diss: 0.01347, music: true },
+  { label: 'synthetic evolving control', band: 0.14403, range: 1.4413, diss: 0.02138, music: true },
+  { label: 'synthetic static drone', band: 0.00007, range: 0.0004, diss: 0, music: false },
+];
+function devOf(row) {
+  return { band_profile_std_mean: row.band, energy_range_db: row.range, dissimilarity_max: row.diss };
+}
+
+test('DM35c GATE V2 degeneracy floor: every measured music track clears it, the static control fails all three axes', () => {
+  for (const row of DEVELOPMENT_CORPUS) {
+    const verdict = coherenceGate.classifyDevelopment(devOf(row));
+    assert.equal(verdict.development_degenerate, !row.music, `${row.label}: ${JSON.stringify(verdict.development_axes_below_floor)}`);
+  }
+  // the degenerate control must fail EVERY axis, not scrape past on a technicality
+  const drone = coherenceGate.classifyDevelopment(devOf(DEVELOPMENT_CORPUS.at(-1)));
+  assert.deepEqual(drone.development_axes_below_floor.sort(), ['BAND_PROFILE_STATIC', 'ENERGY_STATIC', 'SELF_IDENTICAL']);
+  // a track static on exactly ONE axis is NOT degenerate (2-of-3 required)
+  const oneAxis = coherenceGate.classifyDevelopment({ band_profile_std_mean: 0.3, energy_range_db: 0.01, dissimilarity_max: 0.15 });
+  assert.equal(oneAxis.development_degenerate, false);
+  assert.deepEqual(oneAxis.development_axes_below_floor, ['ENERGY_STATIC']);
+});
+
+test('DM35d GATE V2 floors stay below every measured music observation (no floor may creep into real material)', () => {
+  const floors = coherenceGate.COHERENCE_CONTRACT.development_floors;
+  const music = DEVELOPMENT_CORPUS.filter((row) => row.music);
+  const lowest = {
+    band: Math.min(...music.map((row) => row.band)),
+    range: Math.min(...music.map((row) => row.range)),
+    diss: Math.min(...music.map((row) => row.diss)),
+  };
+  assert.ok(floors.band_profile_std_mean_min < lowest.band, `floor ${floors.band_profile_std_mean_min} must stay under lowest music ${lowest.band}`);
+  assert.ok(floors.energy_range_db_min < lowest.range, `floor ${floors.energy_range_db_min} must stay under lowest music ${lowest.range}`);
+  assert.ok(floors.dissimilarity_max_min < lowest.diss, `floor ${floors.dissimilarity_max_min} must stay under lowest music ${lowest.diss}`);
+  // and comfortably above the degenerate control on all three
+  const drone = DEVELOPMENT_CORPUS.at(-1);
+  assert.ok(floors.band_profile_std_mean_min > drone.band * 10);
+  assert.ok(floors.energy_range_db_min > drone.range * 10);
+  assert.ok(floors.dissimilarity_max_min > drone.diss);
+  assert.equal(floors.degenerate_when_axes_below_floor, 2);
+});
+
+test('DM35e GATE V2 is fail-closed: no coherence class can be derived without a development measurement', () => {
+  errorCode(() => coherenceGate.classifyDevelopment(undefined), 'DRAFT_MUSIC_COHERENCE_DEVELOPMENT_REQUIRED');
+  errorCode(() => coherenceGate.classifyDevelopment(null), 'DRAFT_MUSIC_COHERENCE_DEVELOPMENT_REQUIRED');
+  errorCode(() => coherenceGate.classifyTrack({
+    timbralFlowP90: 0.001, coherenceScore: 8, endingClass: 'CLEAN_END', blockCount: 35,
+  }), 'DRAFT_MUSIC_COHERENCE_DEVELOPMENT_REQUIRED');
+});
+
+test('DM35f GATE V2 classifyTrack: degeneracy overrides SOLID_SONG and revokes draft_usable, otherwise nothing changes', () => {
+  const healthy = { timbralFlowP90: 0.001, coherenceScore: 8, endingClass: 'CLEAN_END', blockCount: 35 };
+  const musical = devOf(DEVELOPMENT_CORPUS[0]);
+  const staticDev = devOf(DEVELOPMENT_CORPUS.at(-1));
+  // a perfect-scoring STATIC track — exactly the drone the audit found — cannot be SOLID or usable
+  const degenerate = coherenceGate.classifyTrack({ ...healthy, development: staticDev });
+  assert.equal(degenerate.coherence_class, 'REJECT_COHERENCE');
+  assert.equal(degenerate.solid_song, false);
+  assert.equal(degenerate.draft_usable, false);
+  assert.equal(degenerate.development_degenerate, true);
+  assert.ok(degenerate.floor_failures.includes('DEVELOPMENT_DEGENERATE'), JSON.stringify(degenerate.floor_failures));
+  // degeneracy must NOT be treated as catastrophic: a reworded coherence retry cannot fix a static model output
+  assert.equal(degenerate.catastrophic, false);
+  // and with real development the verdict is byte-identical to the calibrated classifier
+  const plain = coherenceGate.classifyCoherence(healthy);
+  const composed = coherenceGate.classifyTrack({ ...healthy, development: musical });
+  for (const key of Object.keys(plain)) assert.deepEqual(composed[key], plain[key], key);
+  // every human-labeled point keeps its class under the composed gate
+  for (const row of DEVELOPMENT_CORPUS.filter((r) => r.music)) {
+    const composedRow = coherenceGate.classifyTrack({ ...healthy, development: devOf(row) });
+    assert.equal(composedRow.coherence_class, plain.coherence_class, row.label);
+    assert.equal(composedRow.draft_usable, plain.draft_usable, row.label);
+  }
+  // too-short tracks are NOT_ASSESSABLE before development is consulted
+  const short = coherenceGate.classifyTrack({ ...healthy, blockCount: 3, development: staticDev });
+  assert.equal(short.coherence_class, 'NOT_ASSESSABLE');
+  assert.equal(short.development_degenerate, false);
+});
+
+test('DM35g GATE V2 ranking guard: a degenerate candidate never outranks a real one in its tier', () => {
+  const coherenceOf = (degenerate, score) => ({
+    coherence_score: score, coherence_class: degenerate ? 'REJECT_COHERENCE' : 'DRAFT_MUSIC_USABLE',
+    draft_usable: !degenerate, solid_song: false, development_degenerate: degenerate,
+    metrics: { energy_series_db: [-20, -18, -19, -21, -20, -19] },
+  });
+  const make = (slot, degenerate, score) => ({
+    candidateId: `cand-${slot}`, pairDistances: {},
+    final: {
+      candidate_slot: slot,
+      qc: { ok: true, integrated_lufs: -18, ending_class: 'FADE_ACCEPTABLE' },
+      coherence: coherenceOf(degenerate, score),
+    },
+  });
+  const analysis = { master_brief: { energy_curve: 'flat-low' } };
+  // the degenerate candidate posts the HIGHER raw score (absence-of-badness maxes out) …
+  const degenerate = make('A', true, 9.9);
+  const real = make('B', false, 6.0);
+  for (const x of [degenerate, real]) for (const y of [degenerate, real]) if (x !== y) x.pairDistances[y.candidateId] = 0.5;
+  const ranking = orchestrator.rankCandidates([degenerate, real], [], analysis);
+  assert.ok(ranking[0].score < ranking[1].score, 'the guard must beat raw score, not agree with it');
+  assert.equal(ranking[0].candidate_id, 'cand-B', JSON.stringify(ranking));
+  assert.equal(ranking.at(-1).development_degenerate, true);
+  // two non-degenerate candidates still rank purely by score — no calibration drift
+  const hi = make('A', false, 8.354); const lo = make('B', false, 6.146);
+  for (const x of [hi, lo]) for (const y of [hi, lo]) if (x !== y) x.pairDistances[y.candidateId] = 0.5;
+  const plain = orchestrator.rankCandidates([hi, lo], [], analysis);
+  assert.deepEqual(plain.map((entry) => entry.candidate_id), ['cand-A', 'cand-B']);
+});
+
+test('DM35h GATE V2 declares its own unvalidated status and keeps its new signals advisory', () => {
+  const contract = coherenceGate.COHERENCE_CONTRACT;
+  // the gate must keep saying out loud that it is not calibrated against human judgement
+  assert.match(contract.v2_validation_status, /NOT VALIDATED AGAINST HUMAN JUDGEMENT/);
+  assert.match(contract.v2_validation_status, /coincides exactly with Stable Audio vs MiniMax/);
+  assert.match(contract.development_role, /never "is this good\?"/);
+  // the candidate signals collected for the calibration mission must not gate
+  for (const signal of ['timbral_flow_p10', 'band_profile_std_max', 'energy_std_db', 'energy_trend_r', 'event_density_mean']) {
+    assert.ok(contract.development_advisory_uncalibrated.includes(signal), `${signal} must be advisory`);
+  }
+  assert.ok(contract.development_margins_observed_2026_09_10.band_profile_std_mean.lowest_music_id.includes('r2_bed'));
+});
+
+test('DM35j GATE V2 rejects a stationary texture on real media whatever its ending (the pre-V2 fixture)', () => {
+  const fx = coherenceFixtures();
+  // exactly the recipe `solid`/`solidAbrupt` used before V2: filtered pink noise,
+  // one slow tremolo, no spectral movement, no development of any kind.
+  for (const endingClass of ['FADE_ACCEPTABLE', 'ABRUPT_END', 'CLEAN_END']) {
+    const report = coherenceGate.coherenceReport(fx.stationary, { endingClass });
+    assert.equal(report.development_degenerate, true, `${endingClass}: ${JSON.stringify(report.metrics.development)}`);
+    assert.equal(report.coherence_class, 'REJECT_COHERENCE', endingClass);
+    assert.equal(report.solid_song, false, endingClass);
+    assert.equal(report.draft_usable, false, endingClass);
+    assert.ok(report.floor_failures.includes('DEVELOPMENT_DEGENERATE'), endingClass);
+  }
+  // and it is rejected for LACK OF DEVELOPMENT, not for incoherence: its
+  // timbral flow is pristine, which is precisely why the pre-V2 gate loved it.
+  const stationary = coherenceGate.coherenceReport(fx.stationary, { endingClass: 'FADE_ACCEPTABLE' });
+  assert.ok(stationary.metrics.timbral_flow.adjacent_discontinuity_p90 <= coherenceGate.COHERENCE_CONTRACT.solid.timbral_flow_p90_max,
+    'the stationary texture must still pass the OLD upper-bound floor — otherwise this proves nothing');
+  assert.equal(stationary.floor_failures.includes('TIMBRAL_FLOW_P90'), false);
+  // the developing pair built from one identity is NOT degenerate
+  for (const name of ['solid', 'solidAbrupt', 'solid2', 'evolution']) {
+    const report = coherenceGate.coherenceReport(fx[name], { endingClass: 'FADE_ACCEPTABLE' });
+    assert.equal(report.development_degenerate, false, `${name}: ${JSON.stringify(report.metrics.development)}`);
+  }
+});
+
+test('DM35i GATE V2 measures positive development on real media and records it on the report', () => {
+  const fx = coherenceFixtures();
+  const report = coherenceGate.coherenceReport(fx.solid, { endingClass: 'FADE_ACCEPTABLE' });
+  const dev = report.metrics.development;
+  assert.ok(dev, 'the report must carry a development measurement');
+  for (const axis of ['band_profile_std_mean', 'energy_range_db', 'dissimilarity_max']) {
+    assert.equal(typeof dev[axis], 'number', axis);
+    assert.ok(dev[axis] > 0, `${axis} must be positive on real music (${dev[axis]})`);
+  }
+  for (const signal of ['band_profile_std_max', 'energy_std_db', 'energy_trend_r', 'timbral_flow_p10']) {
+    assert.equal(typeof dev.advisory_uncalibrated[signal], 'number', signal);
+  }
+  // dense per-second event density is recorded and is non-zero for real music
+  assert.equal(report.metrics.event_density.advisory, true);
+  assert.ok(report.metrics.event_density.mean > 0);
+  assert.equal(report.development_degenerate, false);
 });
 
 /* 60 s analysis payload + run options for the coherence-scale department runs. */

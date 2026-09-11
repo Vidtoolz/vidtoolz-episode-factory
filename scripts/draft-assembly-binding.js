@@ -48,6 +48,17 @@ const VISUAL_SOURCE_KINDS = Object.freeze([
 const MUSIC_SOURCE_KINDS = Object.freeze([
   // A Scorecraft score project's approved/ directory.
   'SCORECRAFT_APPROVED_MIX',
+  // The run's OWN Draft music department selection, carrying
+  // draft-music-package.json as its provenance record.
+  //
+  // Added 2026-09-10. Before this kind existed the Draft music lane could only
+  // reach assembly as EXPLICIT_ASSET, which deliberately records
+  // provenance_file: null - so the only route in dropped exactly the provenance
+  // this module exists to preserve, and a generated bed became indistinguishable
+  // from "a wav that happens to sit in a folder". Per this module's own rule,
+  // adding a kind means teaching it to read an EXISTING canonical producer; it
+  // invents no new place for media to live.
+  'DRAFT_MUSIC_SELECTED',
   // An explicit path to an already accepted audio file.
   'EXPLICIT_ASSET',
 ]);
@@ -229,6 +240,101 @@ function buildMusicBinding(spec) {
   if (!MUSIC_SOURCE_KINDS.includes(kind)) {
     fail('DRAFT_BINDING_MUSIC_KIND_INVALID', `music source_kind must be one of ${MUSIC_SOURCE_KINDS.join(', ')}`);
   }
+  if (kind === 'DRAFT_MUSIC_SELECTED') {
+    const runDir = path.resolve(spec.run_dir || '');
+    const manifestFile = path.join(runDir, 'draft-music-package.json');
+    if (!fs.existsSync(manifestFile)) {
+      fail('DRAFT_BINDING_MUSIC_PACKAGE_MISSING',
+        `no draft-music-package.json in ${runDir}; the Draft music department has not run for this run`);
+    }
+    let pkg;
+    try { pkg = JSON.parse(fs.readFileSync(manifestFile, 'utf8')); } catch (_) {
+      return fail('DRAFT_BINDING_MUSIC_PACKAGE_UNREADABLE', `draft-music-package.json is not valid JSON: ${manifestFile}`);
+    }
+    const candidates = Array.isArray(pkg.candidates) ? pkg.candidates : [];
+    if (!candidates.length) fail('DRAFT_BINDING_MUSIC_PACKAGE_EMPTY', 'draft-music-package.json registers no candidates');
+
+    /* WHICH candidate. A human blind-audition verdict OUTRANKS the machine
+     * recommendation: binding the machine's pick over a recorded human choice
+     * would be this module silently overruling the music authority. */
+    let slot = spec.slot || null;
+    let basis = slot ? 'EXPLICIT_OPERATOR_SLOT' : null;
+    if (!slot) {
+      const verdictFile = path.join(runDir, 'draft-music-human-verdict.json');
+      if (fs.existsSync(verdictFile)) {
+        let verdict = null;
+        try { verdict = JSON.parse(fs.readFileSync(verdictFile, 'utf8')); } catch (_) { verdict = null; }
+        const ranked = verdict && Array.isArray(verdict.human_ranking) ? verdict.human_ranking : null;
+        const used = verdict && verdict.tracks
+          ? Object.keys(verdict.tracks).filter((label) => verdict.tracks[label] && verdict.tracks[label].verdict === 'USE').sort()
+          : [];
+        if (ranked && ranked.length) { slot = ranked[0]; basis = 'HUMAN_BLIND_AUDITION_RANKING'; }
+        else if (used.length === 1) { slot = used[0]; basis = 'HUMAN_BLIND_AUDITION_SOLE_USE'; }
+        else if (used.length > 1) {
+          fail('DRAFT_BINDING_MUSIC_HUMAN_CHOICE_AMBIGUOUS',
+            `the human verdict marks ${used.join('/')} usable without a ranking; pass slot to say which bed this draft uses`);
+        }
+      }
+    }
+    if (!slot) {
+      const selected = pkg.draft_selected_music;
+      if (!selected || !selected.candidate_id) {
+        fail('DRAFT_BINDING_MUSIC_NO_SELECTION',
+          `draft-music-package.json selected nothing (${pkg.selection_mode || 'NO_USABLE_DRAFT_MUSIC'}); nothing may be bound`);
+      }
+      const match = candidates.find((item) => item.candidate_id === selected.candidate_id);
+      if (!match) fail('DRAFT_BINDING_MUSIC_SELECTION_UNKNOWN', `selected candidate ${selected.candidate_id} is not registered`);
+      slot = match.candidate_slot;
+      basis = 'AUTONOMOUS_DRAFT_RECOMMENDATION';
+    }
+    const candidate = candidates.find((item) => item.candidate_slot === slot);
+    if (!candidate) fail('DRAFT_BINDING_MUSIC_SLOT_UNKNOWN', `no candidate in slot ${slot}`);
+    if (!candidate.output_path) fail('DRAFT_BINDING_MUSIC_SLOT_UNRENDERED', `candidate ${slot} records no audio path`);
+
+    /* A bed that the gate rejected is never bound. This is the same refusal
+     * SCORECRAFT_APPROVED_MIX makes about an unprovenanced mix: the binding is
+     * where "which bytes own this draft" is decided, so it must not adopt bytes
+     * the acceptance authority already refused. */
+    if (candidate.coherence && candidate.coherence.draft_usable === false) {
+      fail('DRAFT_BINDING_MUSIC_NOT_USABLE',
+        `candidate ${slot} is ${candidate.coherence.coherence_class}${candidate.coherence.development_degenerate ? ' (DEVELOPMENT_DEGENERATE)' : ''}; a bed the acceptance gate refused may not be bound`);
+    }
+
+    const absolute = path.resolve(candidate.output_path);
+    if (!fs.existsSync(absolute)) fail('DRAFT_BINDING_ASSET_MISSING', `Draft music asset not found: ${absolute}`);
+    const stat = fs.statSync(absolute);
+    if (!stat.isFile() || stat.size === 0) fail('DRAFT_BINDING_ASSET_EMPTY', `Draft music asset is empty: ${absolute}`);
+    const observed = sha256File(absolute);
+    if (candidate.output_sha256 && observed !== candidate.output_sha256) {
+      fail('DRAFT_BINDING_MUSIC_BYTES_DRIFTED',
+        `candidate ${slot} bytes no longer match draft-music-package.json; regenerate or re-audition rather than binding drift`);
+    }
+    return {
+      source_kind: kind,
+      root: runDir,
+      variant: null,
+      relative_path: path.relative(runDir, absolute).replace(/\\/g, '/'),
+      sha256: observed,
+      bytes: stat.size,
+      provenance_file: 'draft-music-package.json',
+      provenance_sha256: sha256File(manifestFile),
+      draft_music: {
+        candidate_slot: slot,
+        candidate_id: candidate.candidate_id || null,
+        concept_label: candidate.concept_label || null,
+        selection_basis: basis,
+        model: candidate.model || null,
+        seed: candidate.seed === undefined ? null : candidate.seed,
+        prompt_sha256: candidate.prompt_sha256 || null,
+        measured_duration_s: candidate.qc ? candidate.qc.duration_s : null,
+        coherence_class: candidate.coherence ? candidate.coherence.coherence_class : null,
+        development_degenerate: candidate.coherence ? candidate.coherence.development_degenerate === true : null,
+        final_music_authority: false,
+        note: 'a DRAFT bed for rough-cut review; it is not Final music and confers no publication authority',
+      },
+    };
+  }
+
   if (kind === 'EXPLICIT_ASSET') {
     const absolute = path.resolve(spec.path || '');
     if (!fs.existsSync(absolute)) fail('DRAFT_BINDING_ASSET_MISSING', `music asset not found: ${absolute}`);
