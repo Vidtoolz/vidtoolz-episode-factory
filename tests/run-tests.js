@@ -88,6 +88,7 @@ require("./project-video-review.test.js");
 require("./presto-video-profile.test.js");
 require("./project-media-kit.test.js");
 require("./earth-studio.test.js");
+for (const row of require("./earth-studio-plan-playability.test.js").cases) tests.push(row);
 for (const row of require("./earth-studio-m1-seam.test.js").cases) tests.push(row);
 require("./earth-studio-journey.test.js");
 require("./earth-studio-journey-validation-authority.test.js");

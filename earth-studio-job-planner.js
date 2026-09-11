@@ -2498,6 +2498,12 @@ This checklist is technical planning support only. It is not creative approval, 
   }
 
   function buildArtifactContextFromPlan(plan, options = {}) {
+    const errors = validatePlanPlayability(plan);
+    if (errors.length) {
+      const e = new Error(`this camera plan cannot be generated yet:\n- ${errors.join("\n- ")}`);
+      e.statusCode = 400; e.code = "PLAN_NOT_PLAYABLE"; e.plan_errors = errors;
+      throw e;
+    }
     // The .esp is built FIRST so the derived acquisition is known before the plan
     // is serialised — it is only knowable from the keyframe walk, and the operator
     // reading shot-plan.json is exactly who needs to see its cost.
@@ -2521,8 +2527,38 @@ This checklist is technical planning support only. It is not creative approval, 
     return [...EXPECTED_FILES];
   }
 
-  function validateShotPlanPayload(payload) {
+  // Admission authority for artifact generation and camera QC. Draft plans remain
+  // inspectable; every requested segment must survive compilation and own at
+  // least one frame under the existing cumulative, end-exclusive clock.
+  function validatePlanPlayability(plan) {
     const errors = [];
+    if (!plan || plan.frame_rate !== FRAME_RATE) errors.push("frame_rate must be 30");
+    if (!plan || !Number.isFinite(plan.total_duration_seconds) || plan.total_duration_seconds <= 0) errors.push("plan has no positive duration");
+    if (!plan || !Number.isInteger(plan.total_frames) || plan.total_frames < 1
+        || plan.total_frames !== frameForSeconds(plan.total_duration_seconds, FRAME_RATE)) errors.push("plan has no valid playable frame extent");
+    const segments = plan && Array.isArray(plan.segments) ? plan.segments : [];
+    if (!segments.length) errors.push("plan has no playable camera segments");
+    let previousEnd = 0;
+    for (const segment of segments) {
+      const label = `segment ${segment && segment.segment_id || "?"}`;
+      if (!segment || !segment.location) errors.push(`${label} has unresolved geography`);
+      if (!segment || !Number.isFinite(segment.duration_seconds) || segment.duration_seconds <= 0
+          || !Number.isFinite(segment.start_seconds) || !Number.isFinite(segment.end_seconds)
+          || segment.start_seconds < 0 || segment.end_seconds <= segment.start_seconds
+          || !Number.isInteger(segment.start_frame) || !Number.isInteger(segment.end_frame)
+          || segment.start_frame !== previousEnd || segment.end_frame <= segment.start_frame
+          || segment.start_frame !== frameForSeconds(segment.start_seconds, FRAME_RATE)
+          || segment.end_frame !== frameForSeconds(segment.end_seconds, FRAME_RATE)) {
+        errors.push(`${label} has no valid playable frame extent`);
+      }
+      previousEnd = segment && segment.end_frame;
+    }
+    if (segments.length && previousEnd !== plan.total_frames) errors.push("segments do not cover the plan frame extent");
+    return errors;
+  }
+
+  function validateShotPlanPayload(payload) {
+    const errors = validatePlanPlayability(payload);
     [
       "job_name",
       "version",
@@ -2541,7 +2577,6 @@ This checklist is technical planning support only. It is not creative approval, 
     ].forEach((key) => {
       if (!Object.hasOwn(payload || {}, key)) errors.push(`missing shot-plan field: ${key}`);
     });
-    if (payload && payload.frame_rate !== FRAME_RATE) errors.push("frame_rate must be 30");
     if (payload && payload.frame_convention) {
       if (payload.frame_convention.start_frame !== "inclusive") errors.push("start_frame convention must be inclusive");
       if (payload.frame_convention.end_frame !== "exclusive") errors.push("end_frame convention must be exclusive");
@@ -2553,7 +2588,6 @@ This checklist is technical planning support only. It is not creative approval, 
       ["segment_id", "action", "start_seconds", "end_seconds", "duration_seconds", "start_frame", "end_frame", "resolution_status"].forEach((key) => {
         if (!Object.hasOwn(segment, key)) errors.push(`segment ${index + 1} missing ${key}`);
       });
-      if (segment.end_frame < segment.start_frame) errors.push(`segment ${index + 1} has invalid frame boundary`);
     });
     (payload && payload.locations || []).forEach((location) => {
       const lat = Number(location && location.latitude);
@@ -2636,6 +2670,7 @@ This checklist is technical planning support only. It is not creative approval, 
     dropRedundantKeyframes,
     expectedFiles,
     validateShotPlanPayload,
+    validatePlanPlayability,
     haversineMeters,
     orbitRadiusMeters,
     orbitRingRadiusMeters,

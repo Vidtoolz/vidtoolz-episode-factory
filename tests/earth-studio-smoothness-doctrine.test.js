@@ -71,7 +71,9 @@ function planFor(segments, totalFrames = 300) {
     total_duration_seconds: totalFrames / 30,
     frame_rate: 30,
     motion_policy: { coherent_trajectory: true, source: 'smoothness_doctrine_test' },
-    segments,
+    // MA-004: synthetic QC inputs carry the canonical temporal fields too.
+    segments: segments.map(segment => ({ start_seconds: segment.start_frame / 30,
+      end_seconds: segment.end_frame / 30, ...segment })),
   };
 }
 

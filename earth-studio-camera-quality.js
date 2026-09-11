@@ -1014,16 +1014,13 @@ function segmentTrackReversals({ plan, tracks }) {
 function evaluate({ plan, esp }) {
   const tracks = cameraTracks(esp);
   const trackReports = Object.fromEntries(FINITE_TRACKS.map((name) => [name, trackReport(tracks[name])]));
-  const errors = [];
+  const errors = require('./earth-studio-job-planner').validatePlanPlayability(plan);
   const warnings = [];
   const missing = FINITE_TRACKS.filter((name) => !tracks[name]);
   if (missing.length) errors.push(`camera tracks missing: ${missing.join(', ')}`);
   if (!FINITE_TRACKS.every((name) => trackReports[name].finite)) errors.push('camera tracks contain NaN or Infinity');
-  if (!plan || !Number.isFinite(plan.total_duration_seconds) || plan.total_duration_seconds <= 0) errors.push('plan has no positive duration');
   const segments = (plan && plan.segments || []).filter((segment) => segment && segment.duration_seconds > 0);
-  if (!segments.length) errors.push('plan has no playable camera segments');
   segments.forEach((segment) => {
-    if (!Number.isFinite(segment.start_frame) || !Number.isFinite(segment.end_frame) || segment.end_frame < segment.start_frame) errors.push(`segment ${segment.segment_id || '?'} has invalid frame bounds`);
     if (!Number.isFinite(segment.altitude_m) || !Number.isFinite(segment.tilt_deg)) errors.push(`segment ${segment.segment_id || '?'} has incomplete camera framing values`);
     if (segment.target_offset_half_frames > 1 && segment.action !== 'orbit') warnings.push(`segment ${segment.segment_id || '?'} target is outside the guaranteed frame centre margin`);
   });

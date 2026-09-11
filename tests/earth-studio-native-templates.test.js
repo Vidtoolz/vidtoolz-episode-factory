@@ -496,13 +496,12 @@ test("gate3E lane: template selection persists provenance in job.json; untemplat
   assert.match(out.template.note, /never invented/);
   const job = JSON.parse(fs.readFileSync(path.join(pkg, "earth-studio/job.json")));
   assert.equal(job.template.requested_via, "selector");
-  // description intent alone also records provenance
-  const out2 = lane.writeJob(pkg, { jobName: "Tpl2", description: "template: spiral over the Eiffel Tower" });
-  assert.equal(out2.template.template_id, "ges_spiral_derived_v1");
-  assert.equal(out2.template.requested_via, "description");
+  // MA-003/004: template intent alone is not a resolved playable generic plan.
+  assert.throws(() => lane.writeJob(pkg, { jobName: "Tpl2", description: "template: spiral over the Eiffel Tower" }),
+    e => e.statusCode === 400 && e.code === 'PLAN_NOT_PLAYABLE');
   // full params: native .esp is generated beside the generic one
   const out3 = lane.writeJob(pkg, {
-    jobName: "TplFull", description: "template: orbit the London Eye", template: "orbit",
+    jobName: "TplFull", description: "orbit London for 50 seconds", template: "orbit",
     template_params: { target: { lonDeg: -0.119344, latDeg: 51.503077, altitudeM: 34.34 }, radiusM: 624, cameraAltitudeM: 346, durationS: 50 },
   });
   assert.equal(out3.template.native_esp, "earth-studio-native-template.esp");
@@ -512,7 +511,7 @@ test("gate3E lane: template selection persists provenance in job.json; untemplat
   assert.ok(fs.existsSync(path.join(pkg, "earth-studio/earth-studio.esp")), "generic .esp still written");
   // bad template / bad params -> 400s
   assert.throws(() => lane.writeJob(pkg, { jobName: "X", description: "fly to London in 5 seconds", template: "corkscrew" }), /unknown template/);
-  assert.throws(() => lane.writeJob(pkg, { jobName: "X", description: "d", template: "orbit", template_params: { radiusM: 624 } }), /required explicit input/);
+  assert.throws(() => lane.writeJob(pkg, { jobName: "X", description: "orbit London for 50 seconds", template: "orbit", template_params: { radiusM: 624 } }), /required explicit input/);
   fs.rmSync(root, { recursive: true, force: true });
 });
 
