@@ -1,0 +1,248 @@
+{
+ "schema": "vidtoolz.ma021.authorityCrosswalk.v1",
+ "prepared": "2026-09-11",
+ "status": "MATERIALIZED_UNCOMMITTED \u2014 AUTH-3 evidence on reconcile/ma021-oracle-metadata, uncommitted; POST-IR-02 lifecycle/path corrections applied after the independent post-regularization review (AUTH3_ACCEPTED, evidence commit readiness withheld pending those corrections). This file records authority only and changes no corpus byte.",
+ "law": "baseline_commit label, source_hashes planner, browser bundle planner and freeze commit MUST name one identity: f30e4543 planner sha a9098560\u2026 inside freeze 091476bf. Any manifest mixing identities is drift, never authority.",
+ "entries": [
+  {
+   "id": "FROZEN_PLANNER",
+   "object": "f30e4543b0af17d047f803ae9044aef859ef13bc:earth-studio-job-planner.js",
+   "ROLE": "planner identity the frozen oracle measured",
+   "MUTABILITY": "IMMUTABLE (git blob)",
+   "CANONICAL": true,
+   "HASH": {
+    "git_blob": "0756764b5657791b3308c890db582467f6a120c1",
+    "sha256": "a90985609e7d92080cf1d38e7d94abbc7f8f8c7a71a3569523b8a610a1024ead"
+   },
+   "PROVENANCE": "commit f30e4543 2026-09-07 'feat(earth-studio): qualify text-direction v2'; same blob at 091476bf",
+   "DISPOSITION": "PRESERVE AS CANONICAL AUTHORITY \u2014 never re-pin to a newer planner identity"
+  },
+  {
+   "id": "FREEZE_COMMIT",
+   "object": "091476bf74b3fef71e1f2ded715ab7786d9f0acc",
+   "ROLE": "commit that froze corpus.json, fixtures.json, REPORT.md and the harness as authority",
+   "MUTABILITY": "IMMUTABLE",
+   "CANONICAL": true,
+   "HASH": {
+    "commit": "091476bf74b3fef71e1f2ded715ab7786d9f0acc"
+   },
+   "PROVENANCE": "2026-09-08 16:20 +0300 'oracle: freeze qualified M1 self-baseline authority'; ancestor of HEAD 3592641e",
+   "DISPOSITION": "PRESERVE AS CANONICAL AUTHORITY \u2014 ancestor of HEAD; the oracle's reference point"
+  },
+  {
+   "id": "FROZEN_CORPUS",
+   "object": "package-runs/2026-09-08-earth-studio-m1-self-baseline/corpus.json @ 091476bf == HEAD == INDEX",
+   "ROLE": "frozen manifest: identities, discovery, hashes, 199 case summaries",
+   "MUTABILITY": "IMMUTABLE as committed blob; the WORKING FILE is mutable and currently drifted",
+   "CANONICAL": true,
+   "HASH": {
+    "git_blob": "064ff86cc3f0b5f0ba178f0801fe4438d2caf4e6",
+    "sha256": "59747708886d954a8ba8690c92a1b6f14ef650865eb9d6cc3a44c6217007b53e",
+    "bytes": 111987
+   },
+   "PROVENANCE": "written by harness run started 2026-09-08T12:42:30.024Z against the f30e4543 planner; committed in 091476bf",
+   "DISPOSITION": "AUTHORITY IS THE COMMITTED BLOB 064ff86c\u2026 (already canonical at HEAD, c621d0f3, 091476bf and INDEX). The working file's drift is NOT corrected here \u2014 the original dirty worktree is untouched until AUTH-4."
+  },
+  {
+   "id": "199_PLANS",
+   "object": "discovery.sorted_order -> 199 committed shot-plan.json files",
+   "ROLE": "frozen inputs",
+   "MUTABILITY": "IMMUTABLE (committed; F == D == worktree)",
+   "CANONICAL": true,
+   "HASH": {
+    "aggregate_sha256_of_blob_list": "4ed24afc306b657fa5ac1eefae1d3442f263aef011112d1766706f53056cfc04",
+    "per_file": "docs/earth-studio/ma021-evidence/hash-manifests-199-plans-209-observations.json"
+   },
+   "PROVENANCE": "historical package runs 2026-06-27 \u2026 2026-09-08 discovered by the harness",
+   "DISPOSITION": "PRESERVE \u2014 frozen inputs; regeneration or re-pinning is forbidden"
+  },
+  {
+   "id": "MOTION_CONFIG",
+   "object": "config/earth-studio-motion/** (13 files)",
+   "ROLE": "frozen inputs (easing corpus/profile/references)",
+   "MUTABILITY": "IMMUTABLE (recorded hashes match D and worktree 13/13)",
+   "CANONICAL": true,
+   "HASH": {
+    "recorded_in": "package-runs/2026-09-08-earth-studio-m1-self-baseline/corpus.json config_earth_studio_motion_hashes"
+   },
+   "PROVENANCE": "committed config; hashes pinned in frozen corpus",
+   "DISPOSITION": "PRESERVE \u2014 recorded hashes match the reference tree 13/13"
+  },
+  {
+   "id": "WORKING_CORPUS",
+   "object": "package-runs/2026-09-08-earth-studio-m1-self-baseline/corpus.json (dirty worktree bytes)",
+   "ROLE": "drifted working manifest = frozen payload + 3 stale metadata fields",
+   "MUTABILITY": "MUTABLE",
+   "CANONICAL": false,
+   "HASH": {
+    "git_blob": "d79dfdbb43000aa9abe6bd2e5a841d190b9b8f0e",
+    "sha256": "ec9db10a0f57da1d6015febecd52b3e3201033261120326e8187caac8bfb4c17"
+   },
+   "PROVENANCE": "harness rerun started 2026-09-08T13:50:57.908Z with the 4593b38e planner on disk (label left at f30e4543); operator/mission unrecorded; classification ACCIDENTAL_STALE_METADATA",
+   "DISPOSITION": "PRESERVE_AS_EVIDENCE (in-tree byte copy docs/earth-studio/ma021-evidence/corpus-dirty-2026-09-08T13-50-57.json; AUTH-1 archive copy 03-oracle/corpus-worktree.json under the named package root /home/vidtoolz/outputs/map-animator-ma021-preservation-2026-09-11) then REVERT_TO_CANON in the original at G6"
+  },
+  {
+   "id": "209_OBSERVATIONS",
+   "object": "package-runs/2026-09-08-earth-studio-m1-self-baseline/{cases 199, round-trip 5, side-channels 5} (untracked)",
+   "ROLE": "working/derived replay observations",
+   "MUTABILITY": "MUTABLE (regenerated by every harness run)",
+   "CANONICAL": false,
+   "HASH": {
+    "per_file": "docs/earth-studio/ma021-evidence/hash-manifests-199-plans-209-observations.json"
+   },
+   "PROVENANCE": "byte-identical (209/209) to the archived correction observations; NOT promoted by recency",
+   "DISPOSITION": "hash-manifest evidence; removal/relocation only under AUTH-4"
+  },
+  {
+   "id": "ARCHIVED_CORRECTION_OBSERVATIONS",
+   "object": "/home/vidtoolz/outputs/earth-studio-m1-correction-2026-09-08/oracle-observations/{baseline,candidate} (424 files)",
+   "ROLE": "derived evidence of the 2026-09-08 correction mission",
+   "MUTABILITY": "should be treated IMMUTABLE (outside repo)",
+   "CANONICAL": false,
+   "HASH": {
+    "baseline/corpus.json": "3d59bf4c2576\u2026 started 14:20:48 planner a9098560",
+    "candidate/corpus.json": "67fe0c485985\u2026 started 14:30:24 planner d628ade5 (c621d0f3)"
+   },
+   "PROVENANCE": "correction mission outputs; both manifests keep baseline_commit f30e4543",
+   "DISPOSITION": "PRESERVE AS ARCHIVED DERIVED EVIDENCE \u2014 hash-only parity, never promoted to authority, no replay"
+  }
+ ],
+ "excluded_from_authority": [
+  "4593b38e planner identity (b5626854\u2026) \u2014 M1 seam extraction, never frozen",
+  "HEAD planner 1ff78ab1\u2026 \u2014 current production, not the oracle identity",
+  "any manifest with started_at != 2026-09-08T12:42:30.024Z"
+ ],
+ "materialized_by": "MA-021 AUTH-3 (documentation/evidence only)",
+ "materialized_at_local": "2026-09-11T16:33:03+03:00",
+ "no_change_law": "This file records authority. It changes no corpus bytes: the committed corpus blob at this branch's base is already the canonical 064ff86c\u2026, so there is nothing to repair in the repository. Correction of the drifted working copy in the contaminated original worktree is AUTH-4 territory.",
+ "reference_resolution": {
+  "rule": "Reference resolution is typed. Each operational reference is interpreted according to its declared kind and root: REPOSITORY_RELATIVE at the repository top (and must resolve inside this branch's tree), GIT_OBJECT_REVISION in the Git object database, PACKAGE_RELATIVE at the named package/worktree root, EXTERNAL_ABSOLUTE as a labelled external non-portable pointer, SOURCE_LOCAL_SHORTHAND by the named owning artifact. No single global namespace applies to all references.",
+  "declared_kinds": [
+   "REPOSITORY_RELATIVE",
+   "GIT_OBJECT_REVISION",
+   "PACKAGE_RELATIVE",
+   "EXTERNAL_ABSOLUTE",
+   "SOURCE_LOCAL_SHORTHAND"
+  ],
+  "types": {
+   "REPOSITORY_RELATIVE": {
+    "definition": "Path rooted at the repository top level; must resolve inside this branch's tree.",
+    "root": "repository top (/home/vidtoolz/ef-reconcile-ma021-oracle)",
+    "portability": "portable inside the repository",
+    "resolution": "exist inside the branch tree; hash-checkable from the repo root"
+   },
+   "GIT_OBJECT_REVISION": {
+    "definition": "Revision:path reference resolved by Git itself (object database), not by the filesystem.",
+    "root": "Git object database",
+    "portability": "portable with the repository's object database",
+    "resolution": "git rev-parse <rev>:<path>"
+   },
+   "PACKAGE_RELATIVE": {
+    "definition": "Path rooted at a named package/worktree root that is not the repository top; the root must be named.",
+    "root": "named per reference (e.g. the original dirty worktree, or an external evidence archive)",
+    "portability": "portable only within that named package",
+    "resolution": "join the named root and the relative path; hash-checkable there"
+   },
+   "EXTERNAL_ABSOLUTE": {
+    "definition": "Host-local absolute path used purely as an external provenance/evidence pointer.",
+    "root": "host filesystem",
+    "portability": "NOT portable; external; never branch content",
+    "resolution": "existence may be verified on this host only"
+   },
+   "SOURCE_LOCAL_SHORTHAND": {
+    "definition": "Shorthand whose meaning is fixed by a named owning artifact/context (e.g. a JSON pointer into the frozen corpus, or a directory set under the original worktree).",
+    "root": "the named owning artifact/context, stated per reference",
+    "portability": "portable with that artifact",
+    "resolution": "evaluate inside the named artifact/context"
+   }
+  },
+  "operational_references": [
+   {
+    "entry": "FROZEN_PLANNER",
+    "path": "/entries/0/object",
+    "kind": "GIT_OBJECT_REVISION",
+    "root": "Git object database"
+   },
+   {
+    "entry": "FROZEN_CORPUS",
+    "path": "/entries/2/object",
+    "kind": "REPOSITORY_RELATIVE",
+    "root": "repository top",
+    "root_qualifier": "the trailing '@ 091476bf == HEAD == INDEX' is an identity qualifier, not part of the path"
+   },
+   {
+    "entry": "199_PLANS",
+    "path": "/entries/3/object",
+    "kind": "SOURCE_LOCAL_SHORTHAND",
+    "root": "the frozen corpus entry (FROZEN_CORPUS); 'discovery.sorted_order' is a JSON pointer inside that corpus"
+   },
+   {
+    "entry": "199_PLANS",
+    "path": "/entries/3/HASH/per_file",
+    "kind": "REPOSITORY_RELATIVE",
+    "root": "repository top"
+   },
+   {
+    "entry": "209_OBSERVATIONS",
+    "path": "/entries/6/HASH/per_file",
+    "kind": "REPOSITORY_RELATIVE",
+    "root": "repository top"
+   },
+   {
+    "entry": "MOTION_CONFIG",
+    "path": "/entries/4/object",
+    "kind": "REPOSITORY_RELATIVE",
+    "root": "repository top",
+    "root_qualifier": "'**' is a glob over the 13 recorded files"
+   },
+   {
+    "entry": "MOTION_CONFIG",
+    "path": "/entries/4/HASH/recorded_in",
+    "kind": "REPOSITORY_RELATIVE",
+    "root": "repository top",
+    "root_qualifier": "the corpus.json token was bare shorthand and now carries its full repository-relative path"
+   },
+   {
+    "entry": "WORKING_CORPUS",
+    "path": "/entries/5/object",
+    "kind": "PACKAGE_RELATIVE",
+    "root": "the original dirty worktree /home/vidtoolz/vidtoolz-episode-factory",
+    "root_qualifier": "same relative string as FROZEN_CORPUS.object, different root: the dirty bytes exist only in the original worktree"
+   },
+   {
+    "entry": "WORKING_CORPUS",
+    "path": "/entries/5/DISPOSITION",
+    "kind": "REPOSITORY_RELATIVE",
+    "root": "repository top",
+    "root_qualifier": "the evidence byte copy is the in-tree file named in the text; the AUTH-1 archive is named separately as a PACKAGE_RELATIVE source"
+   },
+   {
+    "entry": "209_OBSERVATIONS",
+    "path": "/entries/6/object",
+    "kind": "SOURCE_LOCAL_SHORTHAND",
+    "root": "the original dirty worktree /home/vidtoolz/vidtoolz-episode-factory",
+    "root_qualifier": "the {cases, round-trip, side-channels} set exists only as untracked derived evidence there"
+   },
+   {
+    "entry": "ARCHIVED_CORRECTION_OBSERVATIONS",
+    "path": "/entries/7/object",
+    "kind": "EXTERNAL_ABSOLUTE",
+    "root": "host filesystem (external, non-portable, never branch content)"
+   },
+   {
+    "entry": "ARCHIVED_CORRECTION_OBSERVATIONS",
+    "path": "/entries/7/HASH/baseline/corpus.json",
+    "kind": "PACKAGE_RELATIVE",
+    "root": "/home/vidtoolz/outputs/earth-studio-m1-correction-2026-09-08/oracle-observations"
+   },
+   {
+    "entry": "ARCHIVED_CORRECTION_OBSERVATIONS",
+    "path": "/entries/7/HASH/candidate/corpus.json",
+    "kind": "PACKAGE_RELATIVE",
+    "root": "/home/vidtoolz/outputs/earth-studio-m1-correction-2026-09-08/oracle-observations"
+   }
+  ],
+  "non_operational_note": "Prose filenames, commit-only identities and repeated mentions are not operational references; the prose filenames that do appear in this file (sibling evidence files) resolve within docs/earth-studio/ma021-evidence/ and are verified in the accompanying reference census.",
+  "unlisted_reference_policy": "Any reference not listed above is not an operational reference. A new operational reference must be added here with its kind and root; it does not inherit a global default."
+ }
+}

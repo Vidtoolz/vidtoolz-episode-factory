@@ -1,0 +1,2674 @@
+{
+ "plans": [
+  {
+   "path": "package-runs/2026-06-27-london-proof/earth-studio/shot-plan.json",
+   "blob": "d2374efe7a60bfb0a4168e7a0b5cea28354f053d",
+   "sha256": "08d2ce266b55c622482267f58239c024913647f9c8c699bb87bd183102ae055a"
+  },
+  {
+   "path": "package-runs/2026-08-07-earth-studio-v04-acceptance/earth-studio/shot-plan.json",
+   "blob": "95cfd26e461306cc91c5914e604d56c587f96b11",
+   "sha256": "c1694bcd5b3647e97a0b298be9bfd72aa744f0da7be47c73d9651d26dae49a2d"
+  },
+  {
+   "path": "package-runs/2026-08-12-earth-studio-antimeridian-real-import-v094/earth-studio/shot-plan.json",
+   "blob": "a8c3e1ebb912aa81c2c6689e2d816b2ee7351e39",
+   "sha256": "3efa4bd9a51fa54e274745caeb003ec8131d8e2f62c51848c700104d580e9500"
+  },
+  {
+   "path": "package-runs/2026-08-12-earth-studio-hover-real-import-v094/earth-studio/shot-plan.json",
+   "blob": "6d65c93b78ab2a4bb98162fe7ba0d2507df70eed",
+   "sha256": "c72227f3945102700f3e96b09ec8dfcea903162a4fa19faf0655b0bc3593d0e6"
+  },
+  {
+   "path": "package-runs/2026-08-12-earth-studio-space-zoom-v094-candidate/earth-studio/shot-plan.json",
+   "blob": "3866df4ef0ce28cedbea0435704e495c86ca2a48",
+   "sha256": "d4df7dd8ef139347337505c4ee639d0d1780b05ead13ac2e8159046eefdc644d"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-A-landmark-subject/earth-studio/shot-plan.json",
+   "blob": "4842a820a903d97ea752be1aab307ff28764380e",
+   "sha256": "506b816b90d3ebb2ea7ebecb0a22688fdd81469c43320eaa47c6d718d02c1027"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B-city-to-city-hero/earth-studio/shot-plan.json",
+   "blob": "036361812a0936457a67b819a17e2077ac2ca8a5",
+   "sha256": "7dea67526570aa74104ae8b278b8634244ac55c1fe27aeaf581b951d33e187de"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-B2-same-geography-route-story/earth-studio/shot-plan.json",
+   "blob": "c7da60d81587eef9277fe3d8a2c90dac3166e36d",
+   "sha256": "357b265cd0bb310b30460386650f398b3395bec9e458e9fe9f80fd6bffbe7417"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-D-scale-reveal/earth-studio/shot-plan.json",
+   "blob": "51e2697099f76f9eb15a142306ef3664067d6ec3",
+   "sha256": "a7464b03cb01c32dc399d45fb9071a3bc6e22bec03ddc52a99edd1a4c0c80d1f"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-GLOBAL-network/earth-studio/shot-plan.json",
+   "blob": "d054802019164b0e5146222f1eba5f72c051ae7d",
+   "sha256": "0208ac3958ebc4299f816b403cd3209a40015de8f9b07b9eddd8cf64d66074f0"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-HERO-landmark-reveal/earth-studio/shot-plan.json",
+   "blob": "7cb1ae922f8fcaf10196f35a1980586020f43a95",
+   "sha256": "2a9e2d804a035f5db490f59217f71209275fe82e84630bef07437c26d40f1b94"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-ROUTE-restraint/earth-studio/shot-plan.json",
+   "blob": "e505eeaf1b03cb378146c6b2ac56e16e1c28b74c",
+   "sha256": "adc541a2060fae40675bcf10270ecf0e9e1b529d181c4a1b4cfa612f03728433"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-director-acceptance/canaries/DIRECTOR-TERRAIN-mountain/earth-studio/shot-plan.json",
+   "blob": "e7a0a8ad8fc59d9c152832efb55bb8be1c617cd2",
+   "sha256": "4e2c24bf9e7a619352b4ec0de5e37472b274ef8e6af1da9fc757ba4fce558f70"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/A-local-landmark-to-landmark-16x9/earth-studio/shot-plan.json",
+   "blob": "86622f5f4f381565d903a9b2e8ed4dabbbfd18d8",
+   "sha256": "b7859c30c77fe2439b30ec9b7c00aeb290a2c34c0084e40c943eeb2f9e9b2d3c"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/B-city-to-city-helsinki-stockholm-16x9/earth-studio/shot-plan.json",
+   "blob": "9dcb53dbab1c1c2b01f9e1d08e91391b2488039f",
+   "sha256": "64661129a6ec3d76384252bbf0ba37992d09dc475709408bc30abd0222781c96"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/C-region-to-city-finland-helsinki-16x9/earth-studio/shot-plan.json",
+   "blob": "0629a06a0cbeb19e05028bf57075d32c56d81105",
+   "sha256": "f3edcd3f784640c04ce58e539ac8994d90aaeb16a820c1c4cc4a6408898061ad"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/D-long-distance-helsinki-new-york-orbit-16x9/earth-studio/shot-plan.json",
+   "blob": "91f8c223ba323ecd04a222dd5588fc4fe781c92f",
+   "sha256": "0b8ab32bdfafdc614a9f9a27d40fbf4c7ddeeec1664d94e5935cc7fd5128d80e"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/E-multi-destination-helsinki-stockholm-copenhagen-16x9/earth-studio/shot-plan.json",
+   "blob": "a49875524627fcd4a49dedaed67737873add687c",
+   "sha256": "2c65e22e23c7bfe12cb35d298c791805ccfd61f75a7d61eda43a05b661a1571e"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F1-continuation-source-helsinki-stockholm-16x9/earth-studio/shot-plan.json",
+   "blob": "ddf53c0c5fc4485227067b52d22494534af739c6",
+   "sha256": "b9c966f2cc87410f473fcd6412a12b7cd99273d5e067034c796636f3274879d2"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/F2-continuation-target-stockholm-copenhagen-16x9/earth-studio/shot-plan.json",
+   "blob": "83eaa52badfdb6dc932c53c1c449553d59aeec1a",
+   "sha256": "4cd68168dcf477691fbe66527975ed1657c005912432147bfad24a55280a3547"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/G-standalone-orbit-colosseum-16x9/earth-studio/shot-plan.json",
+   "blob": "94f4f3bca20803607eb953c2175d044bca76b5e3",
+   "sha256": "99afa5296c00d0c384f7e939f02d6b8842a7224f641897077aae62abeb1c0962"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/H-fly-into-orbit-eiffel-16x9/earth-studio/shot-plan.json",
+   "blob": "32e1b327adf92b34307c275b8addeccf72c0842f",
+   "sha256": "4203d479fd906227e6025d6f2cc31de64c05d931c75698d80441030d468ffeb3"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/I-landmark-push-helsinki-cathedral-16x9/earth-studio/shot-plan.json",
+   "blob": "bd80cf56c2922cd6cd3a901122e9d0039f8cab31",
+   "sha256": "5041433333c3de3d0aa6cfd79848b3561cc9e5b79bb06aafc465531b4cb7ed2b"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/J-country-scale-finland-16x9/earth-studio/shot-plan.json",
+   "blob": "43a54b36733a70d71ea2fd611d7027a996f93f36",
+   "sha256": "537c72bbedc47dbe933fb48689ca77833d46851f8c9549ab1b558be715d27539"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/K-hover-into-orbit-colosseum-16x9/earth-studio/shot-plan.json",
+   "blob": "3c6a636dbffeddfbaa3d31847a87ef4ca596a436",
+   "sha256": "fe6d9a892c94ea9eb46827a5cc525fc5d697fcda814a076aea4cc988e4f276dd"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/L-globe-pullback-finland-16x9/earth-studio/shot-plan.json",
+   "blob": "c3ed698b8128b55613559f77cf588ccebed12fd0",
+   "sha256": "6c9e2568c67e9387189bf2183f08c2aff659787cbb1e19854da1c99c0d45914d"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance-v2/projects/M-long-crossing-control-16x9/earth-studio/shot-plan.json",
+   "blob": "a839b559e9e787d5c20f3a02dc0209f96d0866b8",
+   "sha256": "b6a1b8459643794ddb97cd9e1f8c9d040eb87ba35fcd387ca80218e52b70f723"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/A-landmark-16x9/earth-studio/shot-plan.json",
+   "blob": "a25ae744a615db98d25da5ebaf57ec7d1108137b",
+   "sha256": "3e3faa21c2684977a2b7d5cbda5e2f047898dedf8436f63601bc7ee7716ba5dc"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-16x9/earth-studio/shot-plan.json",
+   "blob": "65a12f96e4c2764c357c54418d64be1688284dc2",
+   "sha256": "9ae190224e19d42b5ae66ec2a93c10d37c800dc3c1d91351b160954fc8068f5f"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/B-city-to-city-9x16/earth-studio/shot-plan.json",
+   "blob": "5fbe5ee734e11f4875414387f7f5f30dbae7048c",
+   "sha256": "e1be24c2c8b0d274d484b00ca80d16eb47cc59e75a5cae70def678d561f1269d"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/C-multi-stop-16x9/earth-studio/shot-plan.json",
+   "blob": "267198728f3a26c32c36b0d33fc832e99a96ecbe",
+   "sha256": "2e861e8e515d4739f81bfe2a7450f81c87e3f146592cfc8eedf9c4521d7de8dc"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/D-scale-contrast-16x9/earth-studio/shot-plan.json",
+   "blob": "a3baabc0d8b60af8bd891d2e5156d0459d31f107",
+   "sha256": "f998a8ea9467cd6237d92f7cb7ef95f1a0facc1e8e8adbffb6a94f273de2c2c9"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E1-continuation-source-16x9/earth-studio/shot-plan.json",
+   "blob": "cf79af80cb8b470afa901e4bf40069d71dbe6312",
+   "sha256": "9e31e3c92bfbc56d98ca358a6b1b2c754f7bdd449562611053adf6aa85e129b1"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/E2-continuation-target-16x9/earth-studio/shot-plan.json",
+   "blob": "2c2d390cd3878060155063486116052ef6e2ef6f",
+   "sha256": "35c02eeff31e31d320b815699b21ed1a2ab3a1acd5ef9ceaabf0e7e6773ad103"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/G-hold-then-orbit-16x9/earth-studio/shot-plan.json",
+   "blob": "b35612dd29752e0006224b98414906b4ac06b10b",
+   "sha256": "b618a2311fe4def3fd3cb6dc1e53e9397802df96ddbb282e394df5df98de9cfd"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/H-orbit-large-scale-16x9/earth-studio/shot-plan.json",
+   "blob": "92c861dff5a1a5ab11e7253d55eaae97e1b8aaa4",
+   "sha256": "1856b0b712125818f7d4f201c880f112201012a5ef75ba5496878986d310338b"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-16x9/earth-studio/shot-plan.json",
+   "blob": "7abca86deed0d8d15b1b85f5163e35e9244211cf",
+   "sha256": "473108ec7bb9d6c16142fcb00d6dea8e619fcd41da846981bd96b7fca4984b3a"
+  },
+  {
+   "path": "package-runs/2026-08-19-earth-studio-journey-visual-acceptance/canaries/I-wide-target-9x16/earth-studio/shot-plan.json",
+   "blob": "61e2b2c430675e18481b91e32af6a765d419d8ab",
+   "sha256": "6f858b26094be296c6508983314fa2ef09465f3da100c03a66c1cedc1a1fd0b0"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-01-landmark-establish/earth-studio/shot-plan.json",
+   "blob": "ed07b6370dcf999f519a72a5ec73af2d1e2b2dd2",
+   "sha256": "67cb68214656655250953fe6bf1b3aeb29474c2c978fdb80afd556e9902613e4"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-02-landmark-push-in/earth-studio/shot-plan.json",
+   "blob": "0008ece2d702e8c4a004d6fe1130196895c9bf40",
+   "sha256": "8c26546f3207e691a132ed46a83b6bb6aa9b17a72b45bdffc511ebd19488a2b0"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-03-landmark-orbit/earth-studio/shot-plan.json",
+   "blob": "71c0f5de90c80007e9dc7a9d4510008695b7949e",
+   "sha256": "9853abb62e4bf9cffbc96b1cc598b1289467188152eb91b220c328941b589c95"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-04-orbit-inappropriate-route/earth-studio/shot-plan.json",
+   "blob": "f5b341f7fe269024ac4d54de225e10a49ee3d800",
+   "sha256": "13103a554a5dd6f3b6be18693126c9fcb42b310d72c708540fcc4499325a13bc"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-05-local-point-to-point/earth-studio/shot-plan.json",
+   "blob": "ffbc708cd380ecb9e586ad280cb0bdbcde7e5371",
+   "sha256": "9be0e21fc025ea9c8e2a26ee6d2e6c49d85338341a87ccac7695491f77803681"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-06-city-to-city/earth-studio/shot-plan.json",
+   "blob": "8fbf318b369d668c3fa98f601923e2bc0f71768c",
+   "sha256": "d6f65ecaab4efb866b881036d92025cff2af4b497843344d01f8a002f8e9282b"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-07-long-distance/earth-studio/shot-plan.json",
+   "blob": "2e16f85c7fbdde2612de455629b412bf0f367dcf",
+   "sha256": "9713dc1a873f90b9a2c306988310bd4dbf791926be6d0b84def936f7e5aaf6bd"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-08-globe-inappropriate/earth-studio/shot-plan.json",
+   "blob": "60dcee54082ad9237c4846224cfc21b6865d701b",
+   "sha256": "5e2dedff28b0b30da5019c369982ab6d590615973c19d26f0f5b94b2cbaee805"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-09-country-scale/earth-studio/shot-plan.json",
+   "blob": "b1ddf5e5a7cfff58979f2183de2669157e44b466",
+   "sha256": "7292c607d34a3008c0e11958ac84e0a479c7996ec9342dd18fa9b816376955b8"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-10-very-small-subject/earth-studio/shot-plan.json",
+   "blob": "07bb41841316fe635f0b63a29a9bc97138be661d",
+   "sha256": "f63fb7fba5cec17021c41749ab549b467ebb9aea83afece9e9b80970dd7da20f"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-11-matched-comparison/earth-studio/shot-plan.json",
+   "blob": "761f1202f1986fc0d59e8742e1575ba0cb2f107a",
+   "sha256": "d832283526e902a1e839490135e3c66df02e3f52a3302bc1d304cd53d4c4ef07"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-12-unequal-scale-comparison/earth-studio/shot-plan.json",
+   "blob": "77bfee80efc215e0a8c9156a79f5b8cac74a806f",
+   "sha256": "d047832a450f8ede1d3f9e33d6748555e0bcd372d3ef241f14f15ec84470fa14"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-13-multi-destination/earth-studio/shot-plan.json",
+   "blob": "1f2cf49361c175d49ebe31203235f54550f0cc2c",
+   "sha256": "2e2f3ded30889ece71d31bf398e83c12b589f7aa78decea7b6cff05f01cbf35f"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-14-return-conclusion/earth-studio/shot-plan.json",
+   "blob": "c34691a7521d8d917ce882eaf3b4c552558279e7",
+   "sha256": "0cb5f43ed9d796f79de34eddf3b0ce53bda7ead6f113bcebd710a99f7e691d77"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-15-final-emphasis/earth-studio/shot-plan.json",
+   "blob": "2728b60949134324135e7a2cf35ba23373b5eb77",
+   "sha256": "a598f45bb1aa0d8d38bb56eee441ad599db697a604b881b87845a222fd7b84d7"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16a-continuation-source/earth-studio/shot-plan.json",
+   "blob": "5b84bde9262d4b28cab01f82b9f20c4c52304617",
+   "sha256": "767c8e088e2334bebf2bbc852985badd250c05fc0a9092e1bcd385902e138249"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-16b-continuation-target/earth-studio/shot-plan.json",
+   "blob": "ce943fed8d0df22b538258e92e43a413ccb11e7b",
+   "sha256": "4ee4956b7562aaebe515b6a58bc3bc31d48b14245e5e47eec2bf3689c9a25622"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-17-nl-complex-story/earth-studio/shot-plan.json",
+   "blob": "806e93b901f8cea416bee6c1c050fdac04133a79",
+   "sha256": "8100ed3cf5505f57f8e8ce52d0800429bf4ed753a8e7a564e903edf569d4b3f2"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-directorial-evaluation/projects/DIRN-18-restraint/earth-studio/shot-plan.json",
+   "blob": "cc643b77e080da27b7ae324dc731e5b19297d61d",
+   "sha256": "227d0d757b02e73d30a66836b3a24c871346a70e8925c3e68b27bf46585cdc73"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-01-landmark-identity-A-default/earth-studio/shot-plan.json",
+   "blob": "acf988f3fe3b85878ca6e0b87fd7cab833866883",
+   "sha256": "d4d733d01191b8434c2c6bcf8cba64c000c1f74fe351033d1576e1114ee00cd7"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-01-landmark-identity-B-composed/earth-studio/shot-plan.json",
+   "blob": "acf988f3fe3b85878ca6e0b87fd7cab833866883",
+   "sha256": "d4d733d01191b8434c2c6bcf8cba64c000c1f74fe351033d1576e1114ee00cd7"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-02-landmark-then-travel-A-default/earth-studio/shot-plan.json",
+   "blob": "29cdb51aa556c59fb483484b6a78a69197f8ba8e",
+   "sha256": "d5156455e784b9ec5c825aa074da7628c1a295beeb889ede370c4d1c24084152"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-02-landmark-then-travel-B-composed/earth-studio/shot-plan.json",
+   "blob": "d37e1580d33b06956e7291c592a567c1f525174d",
+   "sha256": "2849368e5fc976ef6652551de9c9dcbafb267fa6f240e82506e98e95bcbf4627"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-03-elongated-island-A-default/earth-studio/shot-plan.json",
+   "blob": "3068a3246702de31dc501e49f3e73201ada4fe2b",
+   "sha256": "78d14d2fa222b177a9e1ce7f9d4a0d7b4d8aa9d065fd199859250681b8035049"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-03-elongated-island-B-composed/earth-studio/shot-plan.json",
+   "blob": "6bf6f4ac447f01c8a41d062952f5f713992af29d",
+   "sha256": "98e7fb77584a94f9f6592b25c9db8574124d6cc7d078dc78c7bdcd553fc82fde"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-04-coastal-city-A-default/earth-studio/shot-plan.json",
+   "blob": "b9ca1542d28209f56628371d630dbb56dd5b197e",
+   "sha256": "8379a2c813b6bfcb66dbf11d8bc30bd605dfaa5f7a182b899ff6b592ce7d392c"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-04-coastal-city-B-composed/earth-studio/shot-plan.json",
+   "blob": "338be4dde3cb97205ed7373ab646ed49954bf476",
+   "sha256": "ef7172d9864613ccb5cf37c294549a572d8113087bd657c904f8122b228e4d5e"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-05-inland-city-A-default/earth-studio/shot-plan.json",
+   "blob": "ed425c21c6e2147b05589655717123d90d3219d0",
+   "sha256": "ae86091def0f245ef8c6a67a61c71303338904df883a455f5623514cfe0fe87e"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-05-inland-city-B-composed/earth-studio/shot-plan.json",
+   "blob": "a0a928af85c81646f40ce95f0074651bc247465b",
+   "sha256": "5e55dab1a1cdf3598b0c318a19b6364b485e3a400994509ef6659fe57c43de98"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-06-mountain-A-default/earth-studio/shot-plan.json",
+   "blob": "87375afc26ea5428b9bc789782bd00db4172333c",
+   "sha256": "cf59d9035f5b411c0effb59e2dc1cfb125ccdd8491e7416b1984f6ba24c046b3"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-06-mountain-B-composed/earth-studio/shot-plan.json",
+   "blob": "859f9ae037cc0a58b8aa6ed41044b1d56f6b2339",
+   "sha256": "9b6db57aaa9e2fc88a29851e074c12e749b465a280588e374f20eac57d75d842"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-07-elongated-natural-A-default/earth-studio/shot-plan.json",
+   "blob": "662f473cd3cc2d131667775622857bcb7464a4b6",
+   "sha256": "bf886a59bf7dcaf1aa7ab840dd05fa281a2520b3b856f69a9bf87d91707af323"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-07-elongated-natural-B-composed/earth-studio/shot-plan.json",
+   "blob": "73419fb875faa389c17091254d94c718827176b6",
+   "sha256": "f6c4d26eb24a6eff916764d5dafa6a284a47f93e10f1fd843ba5c99d31a55894"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-08-country-scale-A-default/earth-studio/shot-plan.json",
+   "blob": "591a771d7694d904512cb25ceda551aa13731f13",
+   "sha256": "580377d2adb4739938f1dd4a196de1f28f2f147fd887fd4eead14b3fcb72d474"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-08-country-scale-B-composed/earth-studio/shot-plan.json",
+   "blob": "591a771d7694d904512cb25ceda551aa13731f13",
+   "sha256": "580377d2adb4739938f1dd4a196de1f28f2f147fd887fd4eead14b3fcb72d474"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-09-outbound-direction-A-default/earth-studio/shot-plan.json",
+   "blob": "9cefcfc4b5b3306596634b1337ae414f0a5c2def",
+   "sha256": "097dfba3879e1e879558000008d86f3c8e6b8f2e2e96f933a397bb9874440d86"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-09-outbound-direction-B-composed/earth-studio/shot-plan.json",
+   "blob": "aae5ece2097cc57a59911ba2db260ba328e3aea9",
+   "sha256": "a723515bfd9afd3838161f950777adbf6e4789600e5bc78857986969be57354b"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-10-landmark-then-immediate-travel-A-default/earth-studio/shot-plan.json",
+   "blob": "215c93538855c2d7c7e9589ff7c54e80f00b3af9",
+   "sha256": "6463f77d53a0db047cd948ff781c311232c37588b0f7b197655a4e5c9f1d00ee"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-10-landmark-then-immediate-travel-B-composed/earth-studio/shot-plan.json",
+   "blob": "5c0cab1a97b2a4e4fa6a84deed57479fde4fb867",
+   "sha256": "bbcf7cafce8a07a7aa7e7d1e9c98ea2731bd614ee97d685cee137fe52d9bd10b"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-11-opening-orbit-A-default/earth-studio/shot-plan.json",
+   "blob": "a6102146cbf1593b3b7dce6e482a305d6a9d5fd3",
+   "sha256": "117a31344b4de05bd5033faa395a0f6796033b2f7ec16596c1d12db0d20b18e7"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-11-opening-orbit-B-composed/earth-studio/shot-plan.json",
+   "blob": "a6102146cbf1593b3b7dce6e482a305d6a9d5fd3",
+   "sha256": "117a31344b4de05bd5033faa395a0f6796033b2f7ec16596c1d12db0d20b18e7"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-12-matched-comparison-A-default/earth-studio/shot-plan.json",
+   "blob": "1553ae16d88fed4ad5bc35b81368643025ad3cf6",
+   "sha256": "1c6069d57eaa9dd77d7c67554c41681812806916698b5a250292cdcf2c2babb1"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-12-matched-comparison-B-composed/earth-studio/shot-plan.json",
+   "blob": "1553ae16d88fed4ad5bc35b81368643025ad3cf6",
+   "sha256": "1c6069d57eaa9dd77d7c67554c41681812806916698b5a250292cdcf2c2babb1"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-13-continuation-A-default/earth-studio/shot-plan.json",
+   "blob": "bf60547c2c3b69ae72adac13ff454de91a5f343e",
+   "sha256": "e36f4e88d99bdb3cdea897cef5ac9d7740fe1926fd62b8b0e7796841ef0ecd96"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-13-continuation-B-composed/earth-studio/shot-plan.json",
+   "blob": "bf60547c2c3b69ae72adac13ff454de91a5f343e",
+   "sha256": "e36f4e88d99bdb3cdea897cef5ac9d7740fe1926fd62b8b0e7796841ef0ecd96"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-14-explicit-override-A-default/earth-studio/shot-plan.json",
+   "blob": "35b7c1dddf4359ff586a4083ea9d39de90921242",
+   "sha256": "5e70b06f106002e021990f46cec1f77c90fa529089cb72ed69983e41311c02a5"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-14-explicit-override-B-composed/earth-studio/shot-plan.json",
+   "blob": "c326e7c3ca4801e4c1e652f171a66f812e668cd5",
+   "sha256": "6fbd12a7dd57dd2cf365059c6859f01c512d3e8047ad5645037735c526ca5ce3"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-15-low-confidence-A-default/earth-studio/shot-plan.json",
+   "blob": "714fc50913818967fce365489468096d7e7f46c5",
+   "sha256": "32a1dadf392e1b335cd4294637c16333f57936911ed55ed3295ec6bec98eb033"
+  },
+  {
+   "path": "package-runs/2026-08-20-earth-studio-opening-composition-ab/projects/OC-15-low-confidence-B-composed/earth-studio/shot-plan.json",
+   "blob": "714fc50913818967fce365489468096d7e7f46c5",
+   "sha256": "32a1dadf392e1b335cd4294637c16333f57936911ed55ed3295ec6bec98eb033"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-01-landmark-establish-A-baseline/earth-studio/shot-plan.json",
+   "blob": "16ac352f19e79d629461a308a5c700227a5ea3b0",
+   "sha256": "5837c70bf81d230e62c3a48ac47cf7320e4db2ac6edd57775a45c046d03c5c4a"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-01-landmark-establish-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "ce3b411d2de96fa4f3733dcf960293b9a97ce115",
+   "sha256": "592da7ae7ad36076ced9ec75d113acf13b2afac7a52af1f2ed2686310b42a667"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-02-landmark-inspect-A-baseline/earth-studio/shot-plan.json",
+   "blob": "e56b1eef3c8c738f6db983791175d9614d6c173a",
+   "sha256": "24d79796688b432d113d55c7a06452462a9cf9b0a8c9a6103ee4954254931ad1"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-02-landmark-inspect-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "e56b1eef3c8c738f6db983791175d9614d6c173a",
+   "sha256": "24d79796688b432d113d55c7a06452462a9cf9b0a8c9a6103ee4954254931ad1"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-03-landmark-emphasize-A-baseline/earth-studio/shot-plan.json",
+   "blob": "e15ec98bfac4ad37ae273f761dfee2c0e48ed882",
+   "sha256": "3cff93d0192590d1720f6a496fb5db4b944e1677831165ce4b1652db304b49e4"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-03-landmark-emphasize-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "e15ec98bfac4ad37ae273f761dfee2c0e48ed882",
+   "sha256": "3cff93d0192590d1720f6a496fb5db4b944e1677831165ce4b1652db304b49e4"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-04-terrain-matterhorn-A-baseline/earth-studio/shot-plan.json",
+   "blob": "4f7a49770042346c5ef3af8b3d5ed69a8324c0e2",
+   "sha256": "16d57f75c4493d92f32b7473bbc4278fdfe86720ff76ba2529188280a336c21d"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-04-terrain-matterhorn-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "4f7a49770042346c5ef3af8b3d5ed69a8324c0e2",
+   "sha256": "16d57f75c4493d92f32b7473bbc4278fdfe86720ff76ba2529188280a336c21d"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-05-city-establish-A-baseline/earth-studio/shot-plan.json",
+   "blob": "8687f1aa129a3972962eef1cd10af2f5341b4ad9",
+   "sha256": "de9c6090b848e6b3e83fd343488b99648b48365f3495e68a1463289dbdee0843"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-05-city-establish-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "8687f1aa129a3972962eef1cd10af2f5341b4ad9",
+   "sha256": "de9c6090b848e6b3e83fd343488b99648b48365f3495e68a1463289dbdee0843"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-06-city-orient-A-baseline/earth-studio/shot-plan.json",
+   "blob": "b35d31cf7bb972b3bfe7e31e965bc9de5f0aa23f",
+   "sha256": "e0decef02e8365241af3105680409ab9941b476c80f64d8a8267670088d304ed"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-06-city-orient-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "b35d31cf7bb972b3bfe7e31e965bc9de5f0aa23f",
+   "sha256": "e0decef02e8365241af3105680409ab9941b476c80f64d8a8267670088d304ed"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-07-city-arrival-inspect-A-baseline/earth-studio/shot-plan.json",
+   "blob": "fb1c818ebe90fef74e712d382cf0ad98d28b948b",
+   "sha256": "c689dafbba66e4b2b26b0099f881511c8ad90cb5398efc32e0269a4ce2e7a6e0"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-07-city-arrival-inspect-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "fb1c818ebe90fef74e712d382cf0ad98d28b948b",
+   "sha256": "c689dafbba66e4b2b26b0099f881511c8ad90cb5398efc32e0269a4ce2e7a6e0"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-08-compact-island-A-baseline/earth-studio/shot-plan.json",
+   "blob": "e466f91d62f3dcf46c83e4d16d25f3aa20f7732f",
+   "sha256": "47b0bf8ce219943b302b74052338cc4882169aef4f9c46adec1aca5286febf7e"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-08-compact-island-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "311d1a9e63109765d5fe929a766f65167c3cb319",
+   "sha256": "4f5c715e884c474a3180555f5cb09451bc2a722be72fe3d13c5fa7b8411034f5"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-09-country-orient-A-baseline/earth-studio/shot-plan.json",
+   "blob": "12a008a7754bc06c4df4269f0b928a7d350bbd52",
+   "sha256": "75cd8e4fdac1e287988cc14a97fc37e96dcfe0a53973ba81b548147240c02556"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-09-country-orient-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "12a008a7754bc06c4df4269f0b928a7d350bbd52",
+   "sha256": "75cd8e4fdac1e287988cc14a97fc37e96dcfe0a53973ba81b548147240c02556"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-10-large-country-A-baseline/earth-studio/shot-plan.json",
+   "blob": "abe344968f17f197ee357e5369c187026bef2899",
+   "sha256": "40045c267c59c19475ee517f537adf2ffbb59d9ad031ab5dc6a96bbfd0062da2"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-10-large-country-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "abe344968f17f197ee357e5369c187026bef2899",
+   "sha256": "40045c267c59c19475ee517f537adf2ffbb59d9ad031ab5dc6a96bbfd0062da2"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-11-continent-A-baseline/earth-studio/shot-plan.json",
+   "blob": "973b13504c7d7bb0eeeb04d09d104867e49952ed",
+   "sha256": "b0b36174e0257719340db512657c78f79e126d747bd0969a777d79ef709f7575"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-11-continent-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "973b13504c7d7bb0eeeb04d09d104867e49952ed",
+   "sha256": "b0b36174e0257719340db512657c78f79e126d747bd0969a777d79ef709f7575"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-12-landmark-then-travel-A-baseline/earth-studio/shot-plan.json",
+   "blob": "df00a11ec961914b15836e28b15f1470d892beea",
+   "sha256": "215f72e84a7b248c92452d54b1adfd63a00b1976c8726700b76a9490471f6e1b"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-12-landmark-then-travel-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "df00a11ec961914b15836e28b15f1470d892beea",
+   "sha256": "215f72e84a7b248c92452d54b1adfd63a00b1976c8726700b76a9490471f6e1b"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-13-explicit-hover-A-baseline/earth-studio/shot-plan.json",
+   "blob": "0e159b07b8b9207f15a1c38e1ff21c97e2669882",
+   "sha256": "8c3e14e628e40e48210fbc57547ffe8c39b55e0a251f707defd0708b654fa3b9"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-13-explicit-hover-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "0e159b07b8b9207f15a1c38e1ff21c97e2669882",
+   "sha256": "8c3e14e628e40e48210fbc57547ffe8c39b55e0a251f707defd0708b654fa3b9"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-14-explicit-orbit-A-baseline/earth-studio/shot-plan.json",
+   "blob": "598e807d6159ccfb1be72de6cca69b013b2a8dcd",
+   "sha256": "824f16e76b638817a09562e7c298b6578bfe0dabd839c743385198daeddcb950"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-14-explicit-orbit-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "598e807d6159ccfb1be72de6cca69b013b2a8dcd",
+   "sha256": "824f16e76b638817a09562e7c298b6578bfe0dabd839c743385198daeddcb950"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-15-matched-comparison-A-baseline/earth-studio/shot-plan.json",
+   "blob": "99056ea61436a1b01e1d04f8beefa867d95c2faa",
+   "sha256": "982c875a93f4c7de358ffb2506f43ca6c83fc30cf29617c89732ed2b515b1546"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-15-matched-comparison-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "99056ea61436a1b01e1d04f8beefa867d95c2faa",
+   "sha256": "982c875a93f4c7de358ffb2506f43ca6c83fc30cf29617c89732ed2b515b1546"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-16-continuation-A-baseline/earth-studio/shot-plan.json",
+   "blob": "93de41f6b1b08b80f149dca1f33e502fd4df5d7e",
+   "sha256": "6b53c9a809fa7c38215eee4162e0c95184b406c2f6fa815670dc2f324652ebc5"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-16-continuation-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "93de41f6b1b08b80f149dca1f33e502fd4df5d7e",
+   "sha256": "6b53c9a809fa7c38215eee4162e0c95184b406c2f6fa815670dc2f324652ebc5"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-17-explicit-topdown-A-baseline/earth-studio/shot-plan.json",
+   "blob": "483a60995c54d5c464df719fc9f96d983335ce89",
+   "sha256": "9b213e72090c2eeebc240838898f0d3f0b3d6a89763172131556526b0e63a174"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-17-explicit-topdown-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "483a60995c54d5c464df719fc9f96d983335ce89",
+   "sha256": "9b213e72090c2eeebc240838898f0d3f0b3d6a89763172131556526b0e63a174"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-18-explicit-oblique-A-baseline/earth-studio/shot-plan.json",
+   "blob": "766c9367c417a2bf9f4b6377a30e0f3d60ce2c91",
+   "sha256": "bf22843731457748b373ce6a5fde69b1823ab5c3f91cf946a4dff828bc317c9e"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-18-explicit-oblique-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "1a6c54bdafab8facaa69dbf9283d14a275d705fb",
+   "sha256": "90075f81a0dc37564560722beba2cf5086e35e6af0c1c54e9a3ca26cab22a4f7"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-19-explicit-degrees-A-baseline/earth-studio/shot-plan.json",
+   "blob": "c7cf0edb2257a866512d15305dcda92607b4b0f0",
+   "sha256": "6364da5afd20436d9bdb2ca5e341b30ccf645d55ac86144ff15a9121ed2d9f98"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-19-explicit-degrees-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "c7cf0edb2257a866512d15305dcda92607b4b0f0",
+   "sha256": "6364da5afd20436d9bdb2ca5e341b30ccf645d55ac86144ff15a9121ed2d9f98"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-20-route-restraint-A-baseline/earth-studio/shot-plan.json",
+   "blob": "04d743ab142a7f5c68abe00213c15a3a379a8f44",
+   "sha256": "4d085f30403ac9508051b2d09c9211612a8b0f72c4616d453f45f09f70fbf686"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-20-route-restraint-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "04d743ab142a7f5c68abe00213c15a3a379a8f44",
+   "sha256": "4d085f30403ac9508051b2d09c9211612a8b0f72c4616d453f45f09f70fbf686"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-21-hover-oblique-conflict-A-baseline/earth-studio/shot-plan.json",
+   "blob": "41cab66b0995c60494ccbc5965e42a0aa216e770",
+   "sha256": "69bd4ab7d937c472f74bc89f8fe1f0a0c1dfb7d9a27f2a6f99805c233a5a68c7"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-obliquity-ab/projects/OBQ-21-hover-oblique-conflict-B-obliquity/earth-studio/shot-plan.json",
+   "blob": "41cab66b0995c60494ccbc5965e42a0aa216e770",
+   "sha256": "69bd4ab7d937c472f74bc89f8fe1f0a0c1dfb7d9a27f2a6f99805c233a5a68c7"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D01-helsinki-half/A-coarse-30deg/earth-studio/shot-plan.json",
+   "blob": "9cdb7c9be6efab0a05df909d751058e206c61968",
+   "sha256": "335787de96246ddfd3927fdd932526e25e430aa7c7b14382dc77668446c0ea2a"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D01-helsinki-half/B-live-10deg/earth-studio/shot-plan.json",
+   "blob": "9cdb7c9be6efab0a05df909d751058e206c61968",
+   "sha256": "335787de96246ddfd3927fdd932526e25e430aa7c7b14382dc77668446c0ea2a"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D02-promoted-helsinki-establish/A-coarse-30deg/earth-studio/shot-plan.json",
+   "blob": "4ceb77cd8d6bbcdc6d02cc50e3b0e4f066d2e790",
+   "sha256": "c483f6acc59b3618637653f1e0c744373414be3d85da5d0dab386d5f82d58abe"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D02-promoted-helsinki-establish/B-live-10deg/earth-studio/shot-plan.json",
+   "blob": "4ceb77cd8d6bbcdc6d02cc50e3b0e4f066d2e790",
+   "sha256": "c483f6acc59b3618637653f1e0c744373414be3d85da5d0dab386d5f82d58abe"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D03-helsinki-explicit-full/A-coarse-30deg/earth-studio/shot-plan.json",
+   "blob": "f13c3bae82500dd9b0f835b23c5ed1683d32f52d",
+   "sha256": "404f27a7748f43df330c6e71a2a0e72ff1e692deaaa98199c0af95bac8b6c2ba"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D03-helsinki-explicit-full/B-live-10deg/earth-studio/shot-plan.json",
+   "blob": "f13c3bae82500dd9b0f835b23c5ed1683d32f52d",
+   "sha256": "404f27a7748f43df330c6e71a2a0e72ff1e692deaaa98199c0af95bac8b6c2ba"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D04-santorini-half/A-coarse-30deg/earth-studio/shot-plan.json",
+   "blob": "df653abc7cdbcfd2f814ce69c8539e4c2bccc959",
+   "sha256": "95246e3de2885dda4a4927bfee48f2118b40f7276a6c6bc009a7b8801437bb83"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D04-santorini-half/B-live-10deg/earth-studio/shot-plan.json",
+   "blob": "df653abc7cdbcfd2f814ce69c8539e4c2bccc959",
+   "sha256": "95246e3de2885dda4a4927bfee48f2118b40f7276a6c6bc009a7b8801437bb83"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/A-coarse-30deg/earth-studio/shot-plan.json",
+   "blob": "e851e0ae55ed8989a14c442dcfe779a4d87cfa3a",
+   "sha256": "dc0d8ff05540f67d89cf540e44c777eec98c4f031e14a93014f9bb7a576e2685"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D05-matterhorn-terrain/B-live-10deg/earth-studio/shot-plan.json",
+   "blob": "e851e0ae55ed8989a14c442dcfe779a4d87cfa3a",
+   "sha256": "dc0d8ff05540f67d89cf540e44c777eec98c4f031e14a93014f9bb7a576e2685"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/A-coarse-30deg/earth-studio/shot-plan.json",
+   "blob": "9b795a6a9ddd206ae8edafc3a33f9c3ac93e037e",
+   "sha256": "42105aa0ae599ab7e075e3599e4a699a8bd65727fc19c79b5bcc1bfe14df0e74"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D06-paris-space-scale/B-live-10deg/earth-studio/shot-plan.json",
+   "blob": "9b795a6a9ddd206ae8edafc3a33f9c3ac93e037e",
+   "sha256": "42105aa0ae599ab7e075e3599e4a699a8bd65727fc19c79b5bcc1bfe14df0e74"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D07-equator/A-coarse-30deg/earth-studio/shot-plan.json",
+   "blob": "0773d4147da2361dd714c273ee498931b215034c",
+   "sha256": "8c755b8887af7655d0482a74dc1e0a08307859a71e48240412e2df3ea69fd0aa"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D07-equator/B-live-10deg/earth-studio/shot-plan.json",
+   "blob": "0773d4147da2361dd714c273ee498931b215034c",
+   "sha256": "8c755b8887af7655d0482a74dc1e0a08307859a71e48240412e2df3ea69fd0aa"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D08-lat80/A-coarse-30deg/earth-studio/shot-plan.json",
+   "blob": "30d9c9f6f3515d632221da3c25273f61bdb222c7",
+   "sha256": "81c2ee3c9c6b14e99a116031cd023f0d458627feb971861b2ec98892543468e0"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D08-lat80/B-live-10deg/earth-studio/shot-plan.json",
+   "blob": "30d9c9f6f3515d632221da3c25273f61bdb222c7",
+   "sha256": "81c2ee3c9c6b14e99a116031cd023f0d458627feb971861b2ec98892543468e0"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D09-near-pole/A-coarse-30deg/earth-studio/shot-plan.json",
+   "blob": "2daae8b3068afd6ea016ea08a3246838fd3cd2c8",
+   "sha256": "19d8a1e4b4c086ad05618087b4a36a77f722149aae5ccb02a351328b827fedc8"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D09-near-pole/B-live-10deg/earth-studio/shot-plan.json",
+   "blob": "2daae8b3068afd6ea016ea08a3246838fd3cd2c8",
+   "sha256": "19d8a1e4b4c086ad05618087b4a36a77f722149aae5ccb02a351328b827fedc8"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/A-coarse-30deg/earth-studio/shot-plan.json",
+   "blob": "ac4f4d9ddf415ceb120131fb9092827d739edcf0",
+   "sha256": "2077baaefa13c8adbdf1e09ee9bc4894692becf28c9becd0faccf65615f8c7b4"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-density-audit/projects/D10-antimeridian/B-live-10deg/earth-studio/shot-plan.json",
+   "blob": "ac4f4d9ddf415ceb120131fb9092827d739edcf0",
+   "sha256": "2077baaefa13c8adbdf1e09ee9bc4894692becf28c9becd0faccf65615f8c7b4"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-BASELINE/shot-plan.json",
+   "blob": "806e93b901f8cea416bee6c1c050fdac04133a79",
+   "sha256": "8100ed3cf5505f57f8e8ce52d0800429bf4ed753a8e7a564e903edf569d4b3f2"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-SETTLE-THEN-LAUNCH/shot-plan.json",
+   "blob": "806e93b901f8cea416bee6c1c050fdac04133a79",
+   "sha256": "8100ed3cf5505f57f8e8ce52d0800429bf4ed753a8e7a564e903edf569d4b3f2"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-orbit-travel-handoff/candidates/DIRN17-TANGENT-DEPARTURE/shot-plan.json",
+   "blob": "806e93b901f8cea416bee6c1c050fdac04133a79",
+   "sha256": "8100ed3cf5505f57f8e8ce52d0800429bf4ed753a8e7a564e903edf569d4b3f2"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T03-colosseum-explicit-full/earth-studio/shot-plan.json",
+   "blob": "d9c0816f6b86d5b4c61392291f015d63139c0e6d",
+   "sha256": "7313f229dc49d46ed72cc786d5f714e015937dd34ab3a44b0b11f828c9e76f4f"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terminal-settle-audit/projects/T09-helsinki-orbit-to-hold/earth-studio/shot-plan.json",
+   "blob": "e4c5619b11623333b511cbdbc4c95c923c2cd5eb",
+   "sha256": "d5082469dfe61e5a39ef17c0ffabdd065124fa29fd2635956710be7c7f2cf05f"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO/earth-studio/shot-plan.json",
+   "blob": "c3fc75291d5f5b08300945c53475c71e02cee24f",
+   "sha256": "71bd243c57fdf4f80c87a77e8337e0451a2d47f6d27a6083d059a0e9c081a023"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/earth-studio/shot-plan.json",
+   "blob": "afa7f4934b89e618da3d598ed2f46600b59c265c",
+   "sha256": "cc8341d5f1aa128522a871f7a9b1c090438192b342163b1e613674a27a5d78b2"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/earth-studio/shot-plan.json",
+   "blob": "06d412eec9447a7aae6d72dbe66560afcaaf30b0",
+   "sha256": "69c9f226a54abf82938d20f46be1f157a298d95a7927e1a8f2bc0122a46e5c75"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/earth-studio/shot-plan.json",
+   "blob": "b39fb9de35b55361c84baf572b5db8f8399f55b2",
+   "sha256": "e3b174e4a3ef31206f5f69a1142a145a731c6e3872fedc18c3c1c7836dd26709"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/earth-studio/shot-plan.json",
+   "blob": "1c764fa85637536c25b0bda201349e3030d4e90f",
+   "sha256": "a5e23758be8a00ef7756b4a7307c05f31f4538289b54ce943ff7897ac6f6bc2c"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/earth-studio/shot-plan.json",
+   "blob": "99303b7cbf6f59e04714a8a3f042079eed1822c1",
+   "sha256": "bd0b8180fbb5cd39b3248f4ef1602ae17b4f342988ac2150f642f64f657b043f"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO/earth-studio/shot-plan.json",
+   "blob": "b254fc0ac8633a5256f1d3f15f922de7bc8ec8c9",
+   "sha256": "43275af66103858e070fe3d75179a94cc3f5dbddcdd83c315ad6eb4d66ac74df"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/earth-studio/shot-plan.json",
+   "blob": "6299d6b11418444c9143499387ce780d35650a22",
+   "sha256": "6d5ed54a95f0bffafd9bbad33cb293cfeb197ba92a87bc06ad6ff94bb8651f8c"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/earth-studio/shot-plan.json",
+   "blob": "fc8e7a0abc02deda73175797c6e599d908f4a623",
+   "sha256": "953f605708d1040ae2c0aa2b532ced441ee7dcd41be3000f4aa1aaa66a0463d2"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/earth-studio/shot-plan.json",
+   "blob": "20dbbab6750588b24435cc29e5df68f9ccd80236",
+   "sha256": "cac2dca900a39674837baa64c6aca04d164abe859d17b6c54fde20f7c9cb9991"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/earth-studio/shot-plan.json",
+   "blob": "a1da7fc3065738f842c6132985d79d25d45e8c19",
+   "sha256": "57809fcd609e6e24771b4280e2b75836ea657efa56bb6ab8d8348404a01e17e3"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/earth-studio/shot-plan.json",
+   "blob": "a230fce2ad606cf949c8a79d9c39a71819bfb5a3",
+   "sha256": "436a13c2ac8703d61e441602966d4ea4bfb8df2a9ee05022fb2faccb4717960d"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/earth-studio/shot-plan.json",
+   "blob": "cc23cdd3b896f9c71b3f199783be129d3eea1174",
+   "sha256": "828ef252af54a935e9b3618c101614e787783e91b2c3d31813255858b0da43bc"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/earth-studio/shot-plan.json",
+   "blob": "a428b9342d0ee3a1013cc5287f6a0df310d20bec",
+   "sha256": "182139c8e6ab73fcf5d38390cec07e83311a62374323e8c1d9cd67083e29ebf2"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/earth-studio/shot-plan.json",
+   "blob": "a3592e297eae557192b0f2fc4760ad4c105d6ddc",
+   "sha256": "1390e9505e1d745a078e95f9f6cf64d15454fcf2db7eede4e63435cafb7550a4"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-grammar-review/projects/TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/earth-studio/shot-plan.json",
+   "blob": "11d43e27f6adda9b62be0b9a67494cfdfaa49c1b",
+   "sha256": "9b36721333951f53f15af33aab3c39f2111c6f1daae27cc17c7f394a76da8ede"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GEIRANGERFJORD/earth-studio/shot-plan.json",
+   "blob": "975a1f5b6f1586a30632159b8626b63b968b6865",
+   "sha256": "d2781a636a8feb1c395bd37e88528c9c5f9d5aa2a0bd411e7690d0352b056089"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-GRAND-CANYON/earth-studio/shot-plan.json",
+   "blob": "8e2e571b1d5dc3d59ca8e02f1b783f3207138ee9",
+   "sha256": "b2969f0946fe921577b242f57f687615feee752c58d7e4760c474562ac1cd776"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MATTERHORN/earth-studio/shot-plan.json",
+   "blob": "b32f97ca2ebb470fcde2ac55798f007da012dbe0",
+   "sha256": "b86e56e6998410834d004b140aaef11018d9418ebfc9fefa198f48ad68781376"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-CAL-MOUNT-FUJI/earth-studio/shot-plan.json",
+   "blob": "25da8b5a87b1bbdc1557c71e83e0f8c71d1826b4",
+   "sha256": "e5c5abf1b99a0b6c1090a8d56d51aa3dde96d0e4fa9e695ea10e14cd6c792fee"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-ALPS/earth-studio/shot-plan.json",
+   "blob": "b558167f167a00b36d4621deefa212ae344c61f0",
+   "sha256": "3a62eadb7af0a68c783e9555f088e353780680c09219ca315d798d2e40dff74c"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-EVEREST/earth-studio/shot-plan.json",
+   "blob": "bfe086c7869e24e4d6296dc2b85d3cf7431015bf",
+   "sha256": "9c588cd721fbbe74c6da0302f02c35a214d839ed5a6d08076bca1246f3b72489"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-KILIMANJARO/earth-studio/shot-plan.json",
+   "blob": "4619402632e7d4d4c312b775bb5634b42a683e29",
+   "sha256": "5b5e5461587af394fdc5a0d8413122085cfbfd5e606dd78de85bb9f8f1f4f70b"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-morphology/projects/MORPH-UNSEEN-MONT-BLANC/earth-studio/shot-plan.json",
+   "blob": "cbf18c2385166dfd00d143180c7de1e4d1bebddb",
+   "sha256": "ae94279374203e324150a1a848dbe6800d604f9aefc4ae8c867bb78a01c75469"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-45/earth-studio/shot-plan.json",
+   "blob": "40ce49bfcfb33bb369ff9311d1365314bc2e86b6",
+   "sha256": "b2a7ab0479b0623710c278795c174c6aa3ad14ff374697384178545861ae86e8"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-55/earth-studio/shot-plan.json",
+   "blob": "8b3030140fec16d014b27370335a669bd24fbf22",
+   "sha256": "a0c01d28dbc6283a642a10a8b5060a2618a05d8285578e676082ace33e5f92c4"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-65/earth-studio/shot-plan.json",
+   "blob": "461bde8e124fbde96c4d445ec6393246ea38799c",
+   "sha256": "022f558bccd81e0de8efd89f39427962d83ffe2d8b469d46d68f6996e74b89c4"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-72/earth-studio/shot-plan.json",
+   "blob": "95b64f3aa9f4852a524511c84bb4b595a7a97079",
+   "sha256": "9471eac7d578a2a8f1aa889be13f2fbad2e89904e950da583f522ca9cb794cdd"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GEIRANGERFJORD-74/earth-studio/shot-plan.json",
+   "blob": "d91c93edd6ddef931a961acfd56d0213ba2e230c",
+   "sha256": "0c90f79148af06a942308e40e6f125a270fd36e0edb552366198a7541032b64d"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-45/earth-studio/shot-plan.json",
+   "blob": "496e54228950808341e17287c1030e7d4c0039b3",
+   "sha256": "11f84a14f0c8ff23800811a48b1517ac9cd292fed863ced6d9ce9afd574e6afa"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-55/earth-studio/shot-plan.json",
+   "blob": "d632353107928c32b051cece74f8189b4f23d546",
+   "sha256": "6bbcb64808477cb812444eaab812c4137d13f441edb50848639d851582255389"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-65/earth-studio/shot-plan.json",
+   "blob": "93fcc1c6b815f9a51ad95e6921e66c7870027962",
+   "sha256": "68197d7eee9e5278d472c757de858c19dc370a09eb2bbd8b75b69c37bec3f8c8"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-72/earth-studio/shot-plan.json",
+   "blob": "2683d5ec55794d21d29e6220a8310b5194997d49",
+   "sha256": "4ca1f8c45ebdff4ceb5b6a09a456c9f364b6a0346d1a4ad4c989dae0827cade2"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-GRAND-CANYON-74/earth-studio/shot-plan.json",
+   "blob": "7834b9dc5b0131c781420a01e215a442ce35562a",
+   "sha256": "b61cb903e2ec7601053ea876fa1a06927d4a6142821038490c529eeb509c8f5f"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-45/earth-studio/shot-plan.json",
+   "blob": "a5138167c9e018dc357460c1c451d14cdd43e16b",
+   "sha256": "7db78da16a947771ce1a4540006529ee31bfa192a710feec2ea5c4e3627762ad"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-55/earth-studio/shot-plan.json",
+   "blob": "60ade0e007b184625802805561dc8d7f3aba6738",
+   "sha256": "d5a33d1c1c5d96b734247cad902b88c2abd2b20a29e8071af1c0b67efb034420"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-65/earth-studio/shot-plan.json",
+   "blob": "8d1602157f7532822bad19b89042757d7a6e3659",
+   "sha256": "bb124e8dc367f348e73cf54953cf5ac64d8358c5a43ecaec0abe6f23179043b8"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-72/earth-studio/shot-plan.json",
+   "blob": "7046e3657769c9d10a4bc34b184784097e2163c8",
+   "sha256": "19c15a22dc5f05dd7f28a4ac379c22c4798d04535519f61540474084376b49bb"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MATTERHORN-74/earth-studio/shot-plan.json",
+   "blob": "1f47c6f46b71bb55fe6e80b6df4256d3a369d2bc",
+   "sha256": "6db67d29f8488a92ce068345b26baf1111cba4ac7c432ddfca86c85249abb385"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-45/earth-studio/shot-plan.json",
+   "blob": "92f4a073696db6d467543675338d842be38b88d2",
+   "sha256": "442fcf32b1aa65cd342d5e61230d599176eb64724303dce44bb36caf055594b5"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-55/earth-studio/shot-plan.json",
+   "blob": "7016b752896fba13e32ba6d18be47ff1a9e4c16a",
+   "sha256": "34f99e0d0e9f5a2110eccff6280d1fbf8e20c3911abc0c39631b200455126251"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-65/earth-studio/shot-plan.json",
+   "blob": "3e35491bb5f1242b02120dcc5fb0ae1f11e4719e",
+   "sha256": "4c4572630cda0992496c2da647bbec06b8d43c4b832dd151c43a94c6c9aa58f7"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-72/earth-studio/shot-plan.json",
+   "blob": "31e33383511070cb48dd8f94af12ce7ba1d450b5",
+   "sha256": "fbc7ae66b5af81bb808eb921b8bc0bb13bcab1715a0c4c4b0c7584a8e624f6ae"
+  },
+  {
+   "path": "package-runs/2026-08-21-earth-studio-terrain-tilt-review/projects/TERRAIN-MOUNT-FUJI-74/earth-studio/shot-plan.json",
+   "blob": "06118bf471a65f24b0cdd742e623023b77b138ea",
+   "sha256": "5575ee43a2b61408c10043f976d19e9c91c3b4b38ed127aa6b0b287ebadd6898"
+  },
+  {
+   "path": "package-runs/2026-08-22-earth-studio-orbit-travel-promotion/earth-studio/shot-plan.json",
+   "blob": "806e93b901f8cea416bee6c1c050fdac04133a79",
+   "sha256": "8100ed3cf5505f57f8e8ce52d0800429bf4ed753a8e7a564e903edf569d4b3f2"
+  }
+ ],
+ "plans_aggregate_sha256": "4ed24afc306b657fa5ac1eefae1d3442f263aef011112d1766706f53056cfc04",
+ "observations": [
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-06-27-london-proof/record.json",
+   "sha256": "51e557ca6e61c93582ef0159052284aa2d74410c2242e5ea5360e48c8cae6b3e",
+   "archived_equal": [
+    "baseline/cases/2026-06-27-london-proof/record.json",
+    "candidate/cases/2026-06-27-london-proof/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-07-earth-studio-v04-acceptance/record.json",
+   "sha256": "fcad19017bc3a738f10d5bb0182188bf81ffae9177a6f07e9386d26ed365ffa0",
+   "archived_equal": [
+    "baseline/cases/2026-08-07-earth-studio-v04-acceptance/record.json",
+    "candidate/cases/2026-08-07-earth-studio-v04-acceptance/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-12-earth-studio-antimeridian-real-import-v094/record.json",
+   "sha256": "7b2510df37a5c33694e7cbd58ef2ff4513ec7550f3509bcb722bde44105eb5ee",
+   "archived_equal": [
+    "baseline/cases/2026-08-12-earth-studio-antimeridian-real-import-v094/record.json",
+    "candidate/cases/2026-08-12-earth-studio-antimeridian-real-import-v094/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-12-earth-studio-hover-real-import-v094/record.json",
+   "sha256": "f8bd7b7414016930e012bc51bcb6c2e40aeba76151bfa06c4193dead6bf7aa5c",
+   "archived_equal": [
+    "baseline/cases/2026-08-12-earth-studio-hover-real-import-v094/record.json",
+    "candidate/cases/2026-08-12-earth-studio-hover-real-import-v094/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-12-earth-studio-space-zoom-v094-candidate/record.json",
+   "sha256": "96d811c5b28becea03b8b902675e152dc3a905d04ca25fdc91eb2625246e56af",
+   "archived_equal": [
+    "baseline/cases/2026-08-12-earth-studio-space-zoom-v094-candidate/record.json",
+    "candidate/cases/2026-08-12-earth-studio-space-zoom-v094-candidate/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-A-landmark-subject/record.json",
+   "sha256": "3a77b58a1a604acdf77df79d2c1a4a893e6010e705e463ba19aa9fa91b88e2dc",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-A-landmark-subject/record.json",
+    "candidate/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-A-landmark-subject/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-B-city-to-city-hero/record.json",
+   "sha256": "7c77e21b10f4213128caf54bd220bce29d78e0b0c71031cc09b74e57c799616c",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-B-city-to-city-hero/record.json",
+    "candidate/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-B-city-to-city-hero/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-B2-same-geography-route-story/record.json",
+   "sha256": "1f76a916154379876d51ac445f4d22268617c5a8b1648d1ee562d0ee6893b043",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-B2-same-geography-route-story/record.json",
+    "candidate/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-B2-same-geography-route-story/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-D-scale-reveal/record.json",
+   "sha256": "2c367df8bd01fd707a0470f889893b01b9ccf7e921563ebee8e4ddf1af3f7bf9",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-D-scale-reveal/record.json",
+    "candidate/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-D-scale-reveal/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-GLOBAL-network/record.json",
+   "sha256": "b7cd43f9a924594c9e76ae132a4308352c8f94df7c5c5c9da92f3f49c3eae61d",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-GLOBAL-network/record.json",
+    "candidate/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-GLOBAL-network/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-HERO-landmark-reveal/record.json",
+   "sha256": "b61049975d6bc7f8ac175d2c2a874a5dfc5a42e177217be28ba66a47bfb54237",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-HERO-landmark-reveal/record.json",
+    "candidate/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-HERO-landmark-reveal/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-ROUTE-restraint/record.json",
+   "sha256": "6affdf46212b68534076bedfe35bd5c78d7e3a0b4e4385db54f1245ee9c71fd9",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-ROUTE-restraint/record.json",
+    "candidate/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-ROUTE-restraint/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-TERRAIN-mountain/record.json",
+   "sha256": "0ae8e934431bbc402074d8eb41c5722c25e7178c807e7c9fb420c94af9f570d4",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-TERRAIN-mountain/record.json",
+    "candidate/cases/2026-08-19-earth-studio-director-acceptance__canaries__DIRECTOR-TERRAIN-mountain/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__A-local-landmark-to-landmark-16x9/record.json",
+   "sha256": "0dd68d68c5b1d548d239b1bd27b1c7b68a13fd13449d82f287664d61c7e317b1",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__A-local-landmark-to-landmark-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__A-local-landmark-to-landmark-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__B-city-to-city-helsinki-stockholm-16x9/record.json",
+   "sha256": "c4433dd3159bdffd360cfd58239627acaa94d7cb597003f5d70b8514db11007f",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__B-city-to-city-helsinki-stockholm-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__B-city-to-city-helsinki-stockholm-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__C-region-to-city-finland-helsinki-16x9/record.json",
+   "sha256": "d7a61864fdbc53ff8c3d9254c74d2a3ccf4876d849c66f92c71758806cccd879",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__C-region-to-city-finland-helsinki-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__C-region-to-city-finland-helsinki-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__D-long-distance-helsinki-new-york-orbit-16x9/record.json",
+   "sha256": "cf2c84055b291da3a0018684fb77124e54ffaf01714a8b5a9d60fa374bdd71c9",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__D-long-distance-helsinki-new-york-orbit-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__D-long-distance-helsinki-new-york-orbit-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__E-multi-destination-helsinki-stockholm-copenhagen-16x9/record.json",
+   "sha256": "331a2c4ad47901069be2fbebe777c438d266ae04cb2d47650ca7c94bcf3d4c2e",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__E-multi-destination-helsinki-stockholm-copenhagen-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__E-multi-destination-helsinki-stockholm-copenhagen-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__F1-continuation-source-helsinki-stockholm-16x9/record.json",
+   "sha256": "25dc79cbe150e118f17e1dc73b8d86f981fe0c41eb497325cda8f3d67531f3a3",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__F1-continuation-source-helsinki-stockholm-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__F1-continuation-source-helsinki-stockholm-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__F2-continuation-target-stockholm-copenhagen-16x9/record.json",
+   "sha256": "4ba59d134800ec4c5a6ad30e076a5fd92c90aadea2947a6cbd7ed94cfef6987a",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__F2-continuation-target-stockholm-copenhagen-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__F2-continuation-target-stockholm-copenhagen-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__G-standalone-orbit-colosseum-16x9/record.json",
+   "sha256": "fd5007626ac2be48c5829414d7fbc555a5e5df00ae8bdad52704f977bec306ee",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__G-standalone-orbit-colosseum-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__G-standalone-orbit-colosseum-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__H-fly-into-orbit-eiffel-16x9/record.json",
+   "sha256": "af2f4eae8ea25954c1864cb8a0a724287c92e23b030886708a172c11f85f1090",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__H-fly-into-orbit-eiffel-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__H-fly-into-orbit-eiffel-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__I-landmark-push-helsinki-cathedral-16x9/record.json",
+   "sha256": "e6be1215c2b5895f64c7d7d76efffa0d376d847e179e80415821be4c40ab0ee8",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__I-landmark-push-helsinki-cathedral-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__I-landmark-push-helsinki-cathedral-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__J-country-scale-finland-16x9/record.json",
+   "sha256": "cfb32a44305e12ed561483c4c06f9a8a0ee0bc57ef0259e6ea5eab4ee6a30c44",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__J-country-scale-finland-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__J-country-scale-finland-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__K-hover-into-orbit-colosseum-16x9/record.json",
+   "sha256": "4c2391bc64098b0792bbcfeff432034470ed76a85e635a61846d22962f4139a8",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__K-hover-into-orbit-colosseum-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__K-hover-into-orbit-colosseum-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__L-globe-pullback-finland-16x9/record.json",
+   "sha256": "82620ad5d1c1bef6f781c3aaebb76199891ca2e0e0946d15f7b2d607a95e37f2",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__L-globe-pullback-finland-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__L-globe-pullback-finland-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__M-long-crossing-control-16x9/record.json",
+   "sha256": "6f8501911e9103ebf5384922c1acafbeef26082e98ddebe227a5c5f38680d44a",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__M-long-crossing-control-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance-v2__projects__M-long-crossing-control-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__A-landmark-16x9/record.json",
+   "sha256": "96973930ad3ac06f207eb1eff6eba557c838ec46065f407d79d49dfc3b5c0729",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__A-landmark-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__A-landmark-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__B-city-to-city-16x9/record.json",
+   "sha256": "b00e86694ea1adabb12d378d2fa495ab3958a5d7a1e04e8c647f6dd5d7765a19",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__B-city-to-city-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__B-city-to-city-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__B-city-to-city-9x16/record.json",
+   "sha256": "4ff8ca381fe3c286bcb4e1361549d4c3743c6dd957500977f3b157dbf9a4b0d5",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__B-city-to-city-9x16/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__B-city-to-city-9x16/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__C-multi-stop-16x9/record.json",
+   "sha256": "fcf6a6d5c5d4a1f346f9ffcafd0c37f0ba5b356225bd7a834e133df305457734",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__C-multi-stop-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__C-multi-stop-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__D-scale-contrast-16x9/record.json",
+   "sha256": "093226465d9a7e07fd9baa145b6e7ffca5f859d2ca9c1085d9b748582c4db78c",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__D-scale-contrast-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__D-scale-contrast-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__E1-continuation-source-16x9/record.json",
+   "sha256": "ec4469f8c1bb9c2a80c8f364847b6722a8ba47e0b5a8bf8c0a81e1590d1ca6d4",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__E1-continuation-source-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__E1-continuation-source-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__E2-continuation-target-16x9/record.json",
+   "sha256": "6b62b3b0236fbd335d7e57106b0d928c0731463fce75fd9e47534afda95c96b9",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__E2-continuation-target-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__E2-continuation-target-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__G-hold-then-orbit-16x9/record.json",
+   "sha256": "f342b1ccbc29761c46c1e6bcd73be4161b667321624304ae0bc7afb4595d35fa",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__G-hold-then-orbit-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__G-hold-then-orbit-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__H-orbit-large-scale-16x9/record.json",
+   "sha256": "d6967acefc6e32fdcf7394eca9bf45fb1fb0cabe65e6e632557b0a53b750ea59",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__H-orbit-large-scale-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__H-orbit-large-scale-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__I-wide-target-16x9/record.json",
+   "sha256": "aefabd701fd80dd993f68d3b470da5718bf3ab134f74ebbeb3bcb6564ea4ac2b",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__I-wide-target-16x9/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__I-wide-target-16x9/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__I-wide-target-9x16/record.json",
+   "sha256": "ae34de92960a7e13734320b88d3cc20f89a46eda44c777ad1bf8fe6e89f1501a",
+   "archived_equal": [
+    "baseline/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__I-wide-target-9x16/record.json",
+    "candidate/cases/2026-08-19-earth-studio-journey-visual-acceptance__canaries__I-wide-target-9x16/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-01-landmark-establish/record.json",
+   "sha256": "e8f9569e235ad2fd49544bde9187725121aff1ed31e0d4cfa4bfaf31f590921a",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-01-landmark-establish/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-01-landmark-establish/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-02-landmark-push-in/record.json",
+   "sha256": "09e545a3cd5d717eed87a2d085fad1c5750cb5e505df57bdb617a5c59980b2a6",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-02-landmark-push-in/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-02-landmark-push-in/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-03-landmark-orbit/record.json",
+   "sha256": "659228a5315844154f5fb9d90b2b36843f94e81c57be91a23feb99ece5111d4f",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-03-landmark-orbit/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-03-landmark-orbit/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-04-orbit-inappropriate-route/record.json",
+   "sha256": "7dcf9261a3991e9eb80ba43cacedc56ea691c91507afe25d2f9b8ccc6f6c64a4",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-04-orbit-inappropriate-route/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-04-orbit-inappropriate-route/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-05-local-point-to-point/record.json",
+   "sha256": "857aed510b2416a35873fd707c9698e4ef2d6c78018121d643d37419c2f63ccd",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-05-local-point-to-point/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-05-local-point-to-point/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-06-city-to-city/record.json",
+   "sha256": "344b14092d0e549b18bc78b1198176f83797c3de272eae0432f07655ad406f37",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-06-city-to-city/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-06-city-to-city/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-07-long-distance/record.json",
+   "sha256": "deb2bbc642d1ff568b20e1664ee2feb12b56a08e465e9f26831dcdf5b7f7d913",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-07-long-distance/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-07-long-distance/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-08-globe-inappropriate/record.json",
+   "sha256": "4399e584683dcb15cf87430c38ce74aa6971748551cf77ea75de6eb79491a04f",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-08-globe-inappropriate/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-08-globe-inappropriate/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-09-country-scale/record.json",
+   "sha256": "de21d05aaeb7ef19272581b09aee60e359ba1c0375484f094e15f5211a84f798",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-09-country-scale/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-09-country-scale/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-10-very-small-subject/record.json",
+   "sha256": "947be700da3d6c87dee177b3b19413915b3330ec8c6210bb3e2f153768587f92",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-10-very-small-subject/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-10-very-small-subject/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-11-matched-comparison/record.json",
+   "sha256": "36b944d977023937b7fc21569290831f7b1bf3b9263e81e6575709c1df534fdc",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-11-matched-comparison/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-11-matched-comparison/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-12-unequal-scale-comparison/record.json",
+   "sha256": "5c37a6ba2eeaeac74ecb2cf6a6f872ef318e965d8fa86286a12846ab9e6b399e",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-12-unequal-scale-comparison/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-12-unequal-scale-comparison/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-13-multi-destination/record.json",
+   "sha256": "4df4517e6e0a8f8e83fab8b7aff8a34c50c3b5aa26357f8d939a33bbb3c7b4c8",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-13-multi-destination/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-13-multi-destination/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-14-return-conclusion/record.json",
+   "sha256": "95de2e0e6bc5ae6220db2b139eb25c9ddfee0e2f5c3f3b91167a5597b90d41d6",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-14-return-conclusion/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-14-return-conclusion/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-15-final-emphasis/record.json",
+   "sha256": "1768d208ca6478d4831e4bd23bb9fcbaa69c1a89305981e3d6d2d91240c7b7c9",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-15-final-emphasis/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-15-final-emphasis/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-16a-continuation-source/record.json",
+   "sha256": "bf701dbf513605c1a101261641bd4c66378cf4925b5dbd2c7b2e69ef6ac7ad07",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-16a-continuation-source/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-16a-continuation-source/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-16b-continuation-target/record.json",
+   "sha256": "91f8d1efdeb63a4e5c8762dac87a6f796301944e3c2f1f8b4624a165a63548ac",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-16b-continuation-target/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-16b-continuation-target/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-17-nl-complex-story/record.json",
+   "sha256": "07cf0eae476efc7279f79df6b477526ab041f0ff3548177e836e46e188a22146",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-17-nl-complex-story/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-17-nl-complex-story/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-18-restraint/record.json",
+   "sha256": "f93293a55f1ea0ccbe98c51561829d44bebd135d72430ab247574d6bb277c569",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-18-restraint/record.json",
+    "candidate/cases/2026-08-20-earth-studio-directorial-evaluation__projects__DIRN-18-restraint/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-01-landmark-identity-A-default/record.json",
+   "sha256": "e066b3431f6c36ec371307bd65d3a60218dd9b1ddbedede9c981edf36ade1688",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-01-landmark-identity-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-01-landmark-identity-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-01-landmark-identity-B-composed/record.json",
+   "sha256": "4c9ce01fd5c52c8028814b40aa1eefb3467e04d1651889ed3f2268b2ac0b9155",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-01-landmark-identity-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-01-landmark-identity-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-02-landmark-then-travel-A-default/record.json",
+   "sha256": "17c5c4c78737afb8652b880149306ef3d25ae167bbd2368d4d6b5cf6f893304a",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-02-landmark-then-travel-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-02-landmark-then-travel-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-02-landmark-then-travel-B-composed/record.json",
+   "sha256": "3b2d0a5f77e572db1da00011a0953d889760cd8a4cdeab77d9366bf9e90e69cf",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-02-landmark-then-travel-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-02-landmark-then-travel-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-03-elongated-island-A-default/record.json",
+   "sha256": "c5f5e2490a25be6d222e162b0b3fb5b056336d65461107b38dda2ff71e89761f",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-03-elongated-island-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-03-elongated-island-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-03-elongated-island-B-composed/record.json",
+   "sha256": "b37f68ce73feec03337873152ef9f029b5a018cad7728b0095094d347cdb4084",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-03-elongated-island-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-03-elongated-island-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-04-coastal-city-A-default/record.json",
+   "sha256": "84b5a14dc8a0d64a3f000b6337c176c58a99f0317114c3d75c360bc58fce0454",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-04-coastal-city-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-04-coastal-city-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-04-coastal-city-B-composed/record.json",
+   "sha256": "94c23b75c2b8b1ebfbd3ab937ceb957f38bc51f3d3b01a834eb1830aec83368e",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-04-coastal-city-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-04-coastal-city-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-05-inland-city-A-default/record.json",
+   "sha256": "62dec931951700631037d602e295ecd303dfcdfa7d193e7eeb9e2d57ad62a38c",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-05-inland-city-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-05-inland-city-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-05-inland-city-B-composed/record.json",
+   "sha256": "760b978fbe01d6358fa15b31b6e8763228be68f779692781568d73af0009ecd7",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-05-inland-city-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-05-inland-city-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-06-mountain-A-default/record.json",
+   "sha256": "6819a834f33e46c05c87f3f65725b374bfbe0c0adf66196c4ca666cd78eac9e0",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-06-mountain-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-06-mountain-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-06-mountain-B-composed/record.json",
+   "sha256": "165fee07cb5a5a9b12d482bc051d7dbd0ee496941c4d20d5ab9fef80fdfabcb2",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-06-mountain-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-06-mountain-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-07-elongated-natural-A-default/record.json",
+   "sha256": "165bc9cc418632fc1ac674558980e1ec00bd3af6c803b6273b8d8e6c2efb2825",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-07-elongated-natural-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-07-elongated-natural-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-07-elongated-natural-B-composed/record.json",
+   "sha256": "9a5e230a94fae147180e826ddacbf21f1a5d3425dc7750373120a7d3f66e2cab",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-07-elongated-natural-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-07-elongated-natural-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-08-country-scale-A-default/record.json",
+   "sha256": "739402684a607bc238ac8ca04d0cdba8b31c4de7771e41ec7892783c88341eee",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-08-country-scale-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-08-country-scale-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-08-country-scale-B-composed/record.json",
+   "sha256": "9b871795e02a6df3e5269654b5a4db7dbf3858b4b8842986d738b757be4fbde2",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-08-country-scale-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-08-country-scale-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-09-outbound-direction-A-default/record.json",
+   "sha256": "fee832e0572c3d969d16590ad549d768cef26d45b7aa3671e28f556d1e3f2f88",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-09-outbound-direction-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-09-outbound-direction-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-09-outbound-direction-B-composed/record.json",
+   "sha256": "6282c7eaa9be80d94e0f676fd5a577c9d9880912b861fcca1c125909bd959db7",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-09-outbound-direction-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-09-outbound-direction-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-10-landmark-then-immediate-travel-A-default/record.json",
+   "sha256": "b6e8dd2597eb426b3eec0a96138a61e21ba78bf8bfd6b46f8d1b6252db1556e4",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-10-landmark-then-immediate-travel-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-10-landmark-then-immediate-travel-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-10-landmark-then-immediate-travel-B-composed/record.json",
+   "sha256": "610ced6217f575ae104c0b1597e9d1eaeaefe55f9b91c3c066e72f3af8ea1335",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-10-landmark-then-immediate-travel-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-10-landmark-then-immediate-travel-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-11-opening-orbit-A-default/record.json",
+   "sha256": "de014cc06eb0329728362f009556fe49c9df73f3147536d0d41a5d3434221247",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-11-opening-orbit-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-11-opening-orbit-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-11-opening-orbit-B-composed/record.json",
+   "sha256": "244f791f7d021780b372ea6cc2dc9510847820f04d030eeac02ab8ee41ada766",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-11-opening-orbit-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-11-opening-orbit-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-12-matched-comparison-A-default/record.json",
+   "sha256": "59b9ae47e8b1ea258abf6a3838a11a6432d6255b805374ac9773b73c9b8c53c7",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-12-matched-comparison-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-12-matched-comparison-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-12-matched-comparison-B-composed/record.json",
+   "sha256": "65261ec8247f714557cc6bacd5e842891d212abe80d7c04565b9b52ddbe3a139",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-12-matched-comparison-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-12-matched-comparison-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-13-continuation-A-default/record.json",
+   "sha256": "57206efa240c2a27c9c4cf5640287e344563de0212a754c8d5f9057b868ba749",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-13-continuation-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-13-continuation-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-13-continuation-B-composed/record.json",
+   "sha256": "b8cd8901eadc7ad0b6cd6de7fdcd0db602ea7066d04f1bd5573dc436aacfcbf8",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-13-continuation-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-13-continuation-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-14-explicit-override-A-default/record.json",
+   "sha256": "d4644f9bb1ecbd093b04212713c51566c037f857ed6f0a1dbf3038f5bffefab3",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-14-explicit-override-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-14-explicit-override-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-14-explicit-override-B-composed/record.json",
+   "sha256": "840ea14716bcd699798c2bf90a7072f33b4d11313b08b87bb89c67a806ab781e",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-14-explicit-override-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-14-explicit-override-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-15-low-confidence-A-default/record.json",
+   "sha256": "59ad4671c70ef65dee15f2c3079beb039e5358e1997a4179a020feb492cd2222",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-15-low-confidence-A-default/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-15-low-confidence-A-default/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-15-low-confidence-B-composed/record.json",
+   "sha256": "5cf6fc46c1c155b42754a05591a6724b00d90af7007be6860df10e3f480bf894",
+   "archived_equal": [
+    "baseline/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-15-low-confidence-B-composed/record.json",
+    "candidate/cases/2026-08-20-earth-studio-opening-composition-ab__projects__OC-15-low-confidence-B-composed/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-01-landmark-establish-A-baseline/record.json",
+   "sha256": "95da7ada072402f338facf1c72fe6a81663b0ed90073b4faca884c292c354ba7",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-01-landmark-establish-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-01-landmark-establish-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-01-landmark-establish-B-obliquity/record.json",
+   "sha256": "501f685a8b32d9718b4fbb677212fa6f268e5e0e16d8244a7cfc6f76cb2be20a",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-01-landmark-establish-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-01-landmark-establish-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-A-baseline/record.json",
+   "sha256": "0b262c6ba2965f43f554019a872c607c485f61ec8794caef7620d62511785ed8",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-B-obliquity/record.json",
+   "sha256": "ec4e60396a36a2081bf2179db54b67b01b4dff5b9cb681063e83a9c7b0f72219",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-A-baseline/record.json",
+   "sha256": "faa13b56bbbb89760b9a8363970c6686fa3fd56220bc2b2a22814744d03bbbb9",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-B-obliquity/record.json",
+   "sha256": "c7aa9ef41af6805f939bd43aa6b542c8a2bf218574b31da1f38c3a5cce2269c5",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-A-baseline/record.json",
+   "sha256": "367b3b0fe518796d0baec21729dcf77ed4140f452aefd01135976050d2309936",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-B-obliquity/record.json",
+   "sha256": "aaff6d1579d1cec0bcf5ccb7df37be629a0df243d462e3834374e6a85e425d9f",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-05-city-establish-A-baseline/record.json",
+   "sha256": "95fe72b1f6a83f468d22878976ab4cc075e325e040e2e7ffe7210106b8aec606",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-05-city-establish-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-05-city-establish-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-05-city-establish-B-obliquity/record.json",
+   "sha256": "080bfa245c1c5e7ab017b9c7ce5f7db148600f4e5b7f7e519412c52378872845",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-05-city-establish-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-05-city-establish-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-06-city-orient-A-baseline/record.json",
+   "sha256": "dc2cb71d1454241b04c17d9db24bbf8713a02077677792c9d8460b140ecae87b",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-06-city-orient-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-06-city-orient-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-06-city-orient-B-obliquity/record.json",
+   "sha256": "2cc53b222fd43cabb1bac1889d00ef1f26b3f3bd7e63aa39da2fc1fe2168151d",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-06-city-orient-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-06-city-orient-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-07-city-arrival-inspect-A-baseline/record.json",
+   "sha256": "5e6e9ccc206c3cf7b11f04118d0e8d89bbfa6b8ff2cb81634850a1d7cb15aa39",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-07-city-arrival-inspect-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-07-city-arrival-inspect-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-07-city-arrival-inspect-B-obliquity/record.json",
+   "sha256": "d45055f73448ae32e110c4a72fc0cd4d0fc6f4dadb1fef1d8a74b2f4acd2acd1",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-07-city-arrival-inspect-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-07-city-arrival-inspect-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-08-compact-island-A-baseline/record.json",
+   "sha256": "8961fb4797274109c8bfd76d8c93c8c5b4e767e3e31fc57db291af74e046b22b",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-08-compact-island-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-08-compact-island-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-08-compact-island-B-obliquity/record.json",
+   "sha256": "993f7c3a507d265a4f58c72b36de48d2dff99304acf130abf0d27a6943eb4e38",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-08-compact-island-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-08-compact-island-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-09-country-orient-A-baseline/record.json",
+   "sha256": "b0f22d41edb5a211ed94ff2916223d3a290b4e128eaa31a88a7ddc0ba44e84b9",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-09-country-orient-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-09-country-orient-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-09-country-orient-B-obliquity/record.json",
+   "sha256": "563ae81eb106402f701e87df05f14c87536dadb1880a75a78005f52d3187c838",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-09-country-orient-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-09-country-orient-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-10-large-country-A-baseline/record.json",
+   "sha256": "a6c101c6a825975f126bc9a2291f473105443473f6c8f883e80b8794f99c566b",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-10-large-country-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-10-large-country-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-10-large-country-B-obliquity/record.json",
+   "sha256": "6cd87536e53368bc830f13508d61702a6ee86a467cb254358b16bb9003a60b13",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-10-large-country-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-10-large-country-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-11-continent-A-baseline/record.json",
+   "sha256": "127b247c02d35a2dea3e0cdb11614f1a55d865154a5c37894dcde1131b3e1d6c",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-11-continent-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-11-continent-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-11-continent-B-obliquity/record.json",
+   "sha256": "3fc632e619389ac0811794037f2d0288fccb0454bcc4d87447447486231b4f14",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-11-continent-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-11-continent-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-12-landmark-then-travel-A-baseline/record.json",
+   "sha256": "d78c4ac3613ef7bcd9b5003f5c172f037dcba842d11fafe3bbdfac277d9b5baa",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-12-landmark-then-travel-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-12-landmark-then-travel-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-12-landmark-then-travel-B-obliquity/record.json",
+   "sha256": "22f04daa429565112a6ca0d6dfa0e0e672f5338c31ce2ef8daa75dcb1c0cdb4d",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-12-landmark-then-travel-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-12-landmark-then-travel-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-13-explicit-hover-A-baseline/record.json",
+   "sha256": "02b92fbb36509d017da3d6ccf8d2588bfe57e7874fed48b62c6ae07786958c2b",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-13-explicit-hover-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-13-explicit-hover-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-13-explicit-hover-B-obliquity/record.json",
+   "sha256": "b0888936915aa2dcb157c72d31a04d829c287275409b60c7acb908dc6740b040",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-13-explicit-hover-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-13-explicit-hover-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-14-explicit-orbit-A-baseline/record.json",
+   "sha256": "2e14b8f8ab075d31a1109aaec140e17a20adbeee6bc9b41773308bca1245311a",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-14-explicit-orbit-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-14-explicit-orbit-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-14-explicit-orbit-B-obliquity/record.json",
+   "sha256": "07ba9abe243378eb70483987df9e76da56977ed2cf1fe5fbb11b9add54da70d3",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-14-explicit-orbit-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-14-explicit-orbit-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-15-matched-comparison-A-baseline/record.json",
+   "sha256": "f98f82e790d9e9ae295bad69de23fbb9e0a0a1fa4a8d7b79d6cd298af2c237fb",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-15-matched-comparison-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-15-matched-comparison-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-15-matched-comparison-B-obliquity/record.json",
+   "sha256": "4696771c7df69214dd71272fc018180f0ba07f979f9598741b3e7058f30059a8",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-15-matched-comparison-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-15-matched-comparison-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-16-continuation-A-baseline/record.json",
+   "sha256": "7160e6d6a071d8e7475f5323c0d21d385b773c189ba14170a12af1c3f26f92f6",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-16-continuation-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-16-continuation-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-16-continuation-B-obliquity/record.json",
+   "sha256": "5f0917651df5855b4120522810aaaa9ece12fef3c730013e5772be898582b30d",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-16-continuation-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-16-continuation-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-17-explicit-topdown-A-baseline/record.json",
+   "sha256": "c64977d9e0fbcbee4730f09005cf8d40704df2ffe62f6a82a4d5033f118dbce0",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-17-explicit-topdown-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-17-explicit-topdown-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-17-explicit-topdown-B-obliquity/record.json",
+   "sha256": "fa76c4d3fcf8a44cffd166cb515ab7f66ff1363938b05250fea757cb8d43d2aa",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-17-explicit-topdown-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-17-explicit-topdown-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-18-explicit-oblique-A-baseline/record.json",
+   "sha256": "8c2e0fc55b287fb653cb54892cebc9106a9f5248dd5fcf34b2ff32c4fa3b0e4d",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-18-explicit-oblique-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-18-explicit-oblique-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-18-explicit-oblique-B-obliquity/record.json",
+   "sha256": "e55fc5a0f6650d17b7803e9d9bfeb6ffe468b72f4e802a19c92cc2c8abbe9ece",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-18-explicit-oblique-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-18-explicit-oblique-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-19-explicit-degrees-A-baseline/record.json",
+   "sha256": "bc05f68d76da66589bd124e0a4603f7c0ade62a0a673dd0287df3a213fd714e6",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-19-explicit-degrees-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-19-explicit-degrees-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-19-explicit-degrees-B-obliquity/record.json",
+   "sha256": "d888cf0e4b418936d1e00f39abd7fc4268d8a870ec84fa8683d1e56c46631159",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-19-explicit-degrees-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-19-explicit-degrees-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-20-route-restraint-A-baseline/record.json",
+   "sha256": "82dc761b75a38d47c773c770a0e4e715880c735d32db3e6ce279ea5938468e9a",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-20-route-restraint-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-20-route-restraint-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-20-route-restraint-B-obliquity/record.json",
+   "sha256": "a050b9651801643c93709ede74f5ba5cf6521cefce755c396d7178628ae28e35",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-20-route-restraint-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-20-route-restraint-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-21-hover-oblique-conflict-A-baseline/record.json",
+   "sha256": "bbd6b6059f99bfb1641529f6a6517ee1cd2f96c47606eade2e924eb1f90f2fea",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-21-hover-oblique-conflict-A-baseline/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-21-hover-oblique-conflict-A-baseline/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-21-hover-oblique-conflict-B-obliquity/record.json",
+   "sha256": "727984200a3147cdb1c15e1bc4288f158d5cfec02053ca63dbd7e2cfc5b6285e",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-21-hover-oblique-conflict-B-obliquity/record.json",
+    "candidate/cases/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-21-hover-oblique-conflict-B-obliquity/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D01-helsinki-half__A-coarse-30deg/record.json",
+   "sha256": "1e86f3c52f2ad7a0ffe89f5fb111fc3f9e845ac9969d84ba7eb0a384b7c4cc8d",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D01-helsinki-half__A-coarse-30deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D01-helsinki-half__A-coarse-30deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D01-helsinki-half__B-live-10deg/record.json",
+   "sha256": "f6c03c0aa79c72896b638ca3568be66bd65dafd17594f8f0dd74d8e24c8677a8",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D01-helsinki-half__B-live-10deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D01-helsinki-half__B-live-10deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D02-promoted-helsinki-establish__A-coarse-30deg/record.json",
+   "sha256": "606d28125520de700d24e380ca1f272ec8d2d3e2d6e3cb6afa1aa47834ce597a",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D02-promoted-helsinki-establish__A-coarse-30deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D02-promoted-helsinki-establish__A-coarse-30deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D02-promoted-helsinki-establish__B-live-10deg/record.json",
+   "sha256": "5957f5c512c0afb860c2624fcafea4089bc01caf97601a07db46a3e372605e1d",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D02-promoted-helsinki-establish__B-live-10deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D02-promoted-helsinki-establish__B-live-10deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D03-helsinki-explicit-full__A-coarse-30deg/record.json",
+   "sha256": "f06599173feb0c7bff511d23bfb81c02ddef6615b7e8a73eb89d41fa22781165",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D03-helsinki-explicit-full__A-coarse-30deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D03-helsinki-explicit-full__A-coarse-30deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D03-helsinki-explicit-full__B-live-10deg/record.json",
+   "sha256": "be6ca445dcc7fbabb21c37c2f55ac6ed9e310a8d211c234533f8ff0258e03583",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D03-helsinki-explicit-full__B-live-10deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D03-helsinki-explicit-full__B-live-10deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D04-santorini-half__A-coarse-30deg/record.json",
+   "sha256": "fc52ef2b43d31096ded68e3394c4531f3eee4027425334f717dcd2061aa79aaa",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D04-santorini-half__A-coarse-30deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D04-santorini-half__A-coarse-30deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D04-santorini-half__B-live-10deg/record.json",
+   "sha256": "2bd7212d62fd9c6f1f7047bde32c07a9dd4772db0cc77e5f64f6aca11f4f199d",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D04-santorini-half__B-live-10deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D04-santorini-half__B-live-10deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D05-matterhorn-terrain__A-coarse-30deg/record.json",
+   "sha256": "9c8f87da1561e428a88c4241f71c7321e3564d8986dc1d60ea9f10792944494e",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D05-matterhorn-terrain__A-coarse-30deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D05-matterhorn-terrain__A-coarse-30deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D05-matterhorn-terrain__B-live-10deg/record.json",
+   "sha256": "f751f657f42150c749c1bcadc5e8be8fc99d046694c76e7c23b12441cd514fce",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D05-matterhorn-terrain__B-live-10deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D05-matterhorn-terrain__B-live-10deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D06-paris-space-scale__A-coarse-30deg/record.json",
+   "sha256": "d681306d33d972507bbb396764f3cb93955a1f7681277855230d93183c6543bc",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D06-paris-space-scale__A-coarse-30deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D06-paris-space-scale__A-coarse-30deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D06-paris-space-scale__B-live-10deg/record.json",
+   "sha256": "6c6ef67e49e9b6c50d7a53be1f1bdbad8d5df5ae8fe5259b7f6e005b29a886f7",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D06-paris-space-scale__B-live-10deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D06-paris-space-scale__B-live-10deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D07-equator__A-coarse-30deg/record.json",
+   "sha256": "12cd549435fbc267ba45947be6a2e6f9b34023c87c9063e90d5be22d4c3e0b0a",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D07-equator__A-coarse-30deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D07-equator__A-coarse-30deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D07-equator__B-live-10deg/record.json",
+   "sha256": "0213af4bc3a2f3cd11eab9a184dcc7bd46f49a32e8b865e572fc2a75397d6579",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D07-equator__B-live-10deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D07-equator__B-live-10deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D08-lat80__A-coarse-30deg/record.json",
+   "sha256": "a12abed8bf32c626077c08b6326fa090364cb9e5a00e1ec5f8858a2bf8e50f53",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D08-lat80__A-coarse-30deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D08-lat80__A-coarse-30deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D08-lat80__B-live-10deg/record.json",
+   "sha256": "1990fb505bc2780e89bdaa6577d8087bb3b550d5e62a8e33eb06ab8a88ea01d8",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D08-lat80__B-live-10deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D08-lat80__B-live-10deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D09-near-pole__A-coarse-30deg/record.json",
+   "sha256": "f2a60f01d5bb4e8f4ff2f72fa498612d5002b21d0ae4fef161f0c5d52b09583a",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D09-near-pole__A-coarse-30deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D09-near-pole__A-coarse-30deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D09-near-pole__B-live-10deg/record.json",
+   "sha256": "94145f5ea931986efb764785b58a714d203eb2a698d2bb870c25a0af96765eda",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D09-near-pole__B-live-10deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D09-near-pole__B-live-10deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D10-antimeridian__A-coarse-30deg/record.json",
+   "sha256": "cf15bae92c57508aa75a7246745125383e049a99d443f3ad56dae6867b383768",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D10-antimeridian__A-coarse-30deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D10-antimeridian__A-coarse-30deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D10-antimeridian__B-live-10deg/record.json",
+   "sha256": "2dc8c785db9844278bbc164c1f739efa6cc84a6d2fb44ccb17e77badf5748a0e",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D10-antimeridian__B-live-10deg/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-density-audit__projects__D10-antimeridian__B-live-10deg/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-BASELINE/record.json",
+   "sha256": "4719ef447cbefbc91a239a72bd3d7c5b237b2ede4abc075dc9f7890e75d64de7",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-BASELINE/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-BASELINE/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-SETTLE-THEN-LAUNCH/record.json",
+   "sha256": "a3633ecdb784a15d43e810f3047ea833026398cf52ffc7d71c844509ab8d7d1d",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-SETTLE-THEN-LAUNCH/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-SETTLE-THEN-LAUNCH/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-TANGENT-DEPARTURE/record.json",
+   "sha256": "9f03da3c0d5f7f5eb830db7b7691b9d3bc5b397fe3c5d4c6906e36c1767ecb2e",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-TANGENT-DEPARTURE/record.json",
+    "candidate/cases/2026-08-21-earth-studio-orbit-travel-handoff__candidates__DIRN17-TANGENT-DEPARTURE/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terminal-settle-audit__projects__T03-colosseum-explicit-full/record.json",
+   "sha256": "02f46d0a47257b8a0a86620cc4610d758370f1d4be096b43157d6860d4eb6c34",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terminal-settle-audit__projects__T03-colosseum-explicit-full/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terminal-settle-audit__projects__T03-colosseum-explicit-full/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terminal-settle-audit__projects__T09-helsinki-orbit-to-hold/record.json",
+   "sha256": "5c72f2c71907317f80b59fc07c13068a6b37783e0d1e5a8c59a44b4bf77773cb",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terminal-settle-audit__projects__T09-helsinki-orbit-to-hold/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terminal-settle-audit__projects__T09-helsinki-orbit-to-hold/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO/record.json",
+   "sha256": "9636b61667ef99a6323dae6f7d4a4aef1c61fc5bf4807be491a4519c28915cd6",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GEIRANGERFJORD-CURRENT-AUTO/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/record.json",
+   "sha256": "9284282f1c0e296cf5445150a306662e74f9ce67620112c3cd5bce2665a7892f",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GEIRANGERFJORD-TERRAIN-FORM/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/record.json",
+   "sha256": "eb7972692fafacdb40fe848573d9850329919aed998a089335eef2a41a7d4b1c",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GRAND-CANYON-CURRENT-AUTO/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/record.json",
+   "sha256": "717435de68e3bb85bf322f55da0a91caec35b2eee0ddf3cad66f5f8561b01ae0",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-GRAND-CANYON-TERRAIN-FORM/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/record.json",
+   "sha256": "36d3725809e3e32c35aa9d4d4741d700488b60f5d8b480e16554d2b504c4b12d",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MATTERHORN-CURRENT-AUTO/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/record.json",
+   "sha256": "aafff951b747f2033241aa74313e74e35f5c5f65a6091dc7446e6920a00112d5",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MATTERHORN-TERRAIN-FORM/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO/record.json",
+   "sha256": "26feef8179a08495ef1d8625a123c0efc7c17d6c130cc4e4ebdc8d1e57a12536",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MOUNT-FUJI-CURRENT-AUTO/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/record.json",
+   "sha256": "e8f05f71a447060ba86bb9c899e67c6ba2e012cdcb82e93d583ed35d7f304191",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-MOUNT-FUJI-TERRAIN-FORM/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/record.json",
+   "sha256": "93465a22e607e5dbf973a1ce30d672e1d298c2bd5e394caf6cc9a0dc0dbc7f80",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-ALPS-CURRENT-AUTO/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/record.json",
+   "sha256": "02f28409ddbd66e406ee41b997ddc2cf1b6c67603b43ce750d04bf08f3f068cf",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-ALPS-TERRAIN-FORM/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/record.json",
+   "sha256": "0bb6fac0e3d79fd000441a5b8c2bb008e73155ce790c6af0933de44254ac64ae",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-HIMALAYAS-CURRENT-AUTO/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/record.json",
+   "sha256": "bd52553bf5223dbeda5208a388fd596a01e81e10630123eff06c2d024a5f312d",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-THE-HIMALAYAS-TERRAIN-FORM/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/record.json",
+   "sha256": "4d856abbe5c64d74840114452f199f5d8d8891a12866a3eab290f6b4dc6cb675",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YELLOWSTONE-CURRENT-AUTO/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/record.json",
+   "sha256": "221c25394d3749012fb033448912de7e36d0f48ab4efcd9761b1617f4e72ad22",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YELLOWSTONE-TERRAIN-FORM/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/record.json",
+   "sha256": "ff1b5b26b3d8a5e7625d013c45557cfad303232e553f934e070dbe778eac6776",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YOSEMITE-CURRENT-AUTO/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/record.json",
+   "sha256": "a3f0beb1642e0fbb347350596b79c947a881e09b529517a2b99b0ae39a537911",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-grammar-review__projects__TERRAIN-GRAMMAR-YOSEMITE-TERRAIN-FORM/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-GEIRANGERFJORD/record.json",
+   "sha256": "d054726fcfde0428083a91637ed5cfe541467979845692a51ab4db939640e81e",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-GEIRANGERFJORD/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-GEIRANGERFJORD/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-GRAND-CANYON/record.json",
+   "sha256": "f44e38f574a22b6c791a71b14fe05b23b870464c09af246f990a321d589a35c3",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-GRAND-CANYON/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-GRAND-CANYON/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-MATTERHORN/record.json",
+   "sha256": "ee353b47f00ba15530bd94f092ecbe07e66f49b40f0fd75ca10c4d9e3a43197e",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-MATTERHORN/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-MATTERHORN/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-MOUNT-FUJI/record.json",
+   "sha256": "dd2b1e80b457fc64df230b02a5d2c6c1385d21f3d632d970c6d0cf42f6c1ddb1",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-MOUNT-FUJI/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-CAL-MOUNT-FUJI/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-ALPS/record.json",
+   "sha256": "573f5fba9934e1ddc7a380d6a6fb85377eab5cb59247e9c3e7d35928b6f844c7",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-ALPS/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-ALPS/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-EVEREST/record.json",
+   "sha256": "3cdb1b462530f40819df05a39c73aae54b59c35584492de532f20ce079c99287",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-EVEREST/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-EVEREST/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-KILIMANJARO/record.json",
+   "sha256": "685ec6f7c9d8ddeab5c6c06e503f35366290b811725d84031386d7c84bec6dd1",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-KILIMANJARO/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-KILIMANJARO/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-MONT-BLANC/record.json",
+   "sha256": "ea2bdf2fd24764a3b34ef169a6c7b78b0e54ae4c6fc3740db792523c13053918",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-MONT-BLANC/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-morphology__projects__MORPH-UNSEEN-MONT-BLANC/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-45/record.json",
+   "sha256": "e7280140cc376963215f346aad6d2212b9d4f501d8cf4340b2a73a678222e895",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-45/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-45/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-55/record.json",
+   "sha256": "329675365a4f22ad4becba20221d8c12e47ee512976816906f020b08a83e6276",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-55/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-55/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-65/record.json",
+   "sha256": "17d0ac96661b391850db1e7671214a4bcaee5b5a3496baf44c22743179cf4fbd",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-65/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-65/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-72/record.json",
+   "sha256": "83a7f7f94d9cd779bfca79b9f2970485bfc75063ab5103db47739ce5ebf8dcf5",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-72/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-72/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-74/record.json",
+   "sha256": "af38a07299b81eb8d05163cdd678913f93251ed496a9434de46fbb3c6f084604",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-74/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GEIRANGERFJORD-74/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-45/record.json",
+   "sha256": "c2f05c1aa65dbfebdb8b16437c46fa6688a1315151752665922ff48b50864af3",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-45/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-45/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-55/record.json",
+   "sha256": "e03d4203c5132804e5bd651378733705aebafc9e189cf6fd3d8fa84597d07a35",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-55/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-55/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-65/record.json",
+   "sha256": "25a566a0a88e7e2356e55dbff4422702082394fe753bde1f6353987e3e88ffc9",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-65/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-65/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-72/record.json",
+   "sha256": "d1f3d8ebdb5c2df4caff792166a7b06862d2c87453e3740bf87f53fe87625435",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-72/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-72/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-74/record.json",
+   "sha256": "c4a093fb70d82974ed9f6b152b9a30bdec63125bae9be0a4a0af0a36ab29c79a",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-74/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-GRAND-CANYON-74/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-45/record.json",
+   "sha256": "29110a35d73b36935d264c06b371ca74aeae72f8fba63c01214a5dedfca6d979",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-45/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-45/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-55/record.json",
+   "sha256": "29d10aa7a09d3fdd0dd25a756bf73c841da645231c1a27c3096f6a9be3097310",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-55/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-55/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-65/record.json",
+   "sha256": "52057c9785abc67638316618f251e3a9ac44a4935f5542184952a74a3f6a1fd3",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-65/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-65/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-72/record.json",
+   "sha256": "bc3e206934bc9bd179c6706b12a777772a1725dd92718eb8cad1dccfc57567f8",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-72/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-72/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-74/record.json",
+   "sha256": "e3c0e0a848319e80d423236110ac1b6fdd4f402b4d7e9c942c5f4ca29517f520",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-74/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MATTERHORN-74/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-45/record.json",
+   "sha256": "3fab58586c3d72a4368411e13931858652b85664422e9d2eb7121e62434b2c9b",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-45/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-45/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-55/record.json",
+   "sha256": "61af0f0198c2e30c13d6074d5249a64f81769d64eeb4e27fcc5697b8a96b3261",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-55/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-55/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-65/record.json",
+   "sha256": "0b457738132e3ef13f0a1e1cddeb85d08d88b12a90e13b874c2a3551756390e1",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-65/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-65/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-72/record.json",
+   "sha256": "aac0067b43ab637f5ccb69ee2f842e103035e93b7baded3e0b678a2da50a02ce",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-72/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-72/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-74/record.json",
+   "sha256": "f5e1cd7583015300d2b477d0a7fd0396b238feec8bfbc6daec8fd5cd93d6e20a",
+   "archived_equal": [
+    "baseline/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-74/record.json",
+    "candidate/cases/2026-08-21-earth-studio-terrain-tilt-review__projects__TERRAIN-MOUNT-FUJI-74/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/cases/2026-08-22-earth-studio-orbit-travel-promotion/record.json",
+   "sha256": "755215bbda19697db558653292045d9289584233238acf3680c02823b077c997",
+   "archived_equal": [
+    "baseline/cases/2026-08-22-earth-studio-orbit-travel-promotion/record.json",
+    "candidate/cases/2026-08-22-earth-studio-orbit-travel-promotion/record.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/round-trip/2026-06-27-london-proof.json",
+   "sha256": "fc7e7eb451bcf6764a4746c47ec73b55da07fa7c45b60a5a36232d5f0a287070",
+   "archived_equal": [
+    "baseline/round-trip/2026-06-27-london-proof.json",
+    "candidate/round-trip/2026-06-27-london-proof.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/round-trip/2026-08-07-earth-studio-v04-acceptance.json",
+   "sha256": "07f83db1bb26d72d0b560ba7d6ff40fcc0393ec2f77686cc2f87b3249c82fa6b",
+   "archived_equal": [
+    "baseline/round-trip/2026-08-07-earth-studio-v04-acceptance.json",
+    "candidate/round-trip/2026-08-07-earth-studio-v04-acceptance.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/round-trip/2026-08-12-earth-studio-antimeridian-real-import-v094.json",
+   "sha256": "d5a6836d72465e85e1f92127688d6469c9ef09ee19042622a13720cec6214226",
+   "archived_equal": [
+    "baseline/round-trip/2026-08-12-earth-studio-antimeridian-real-import-v094.json",
+    "candidate/round-trip/2026-08-12-earth-studio-antimeridian-real-import-v094.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/round-trip/2026-08-12-earth-studio-hover-real-import-v094.json",
+   "sha256": "074dd5c024a70fc4619766061ed5c1c79044c6233d8e38a0778ae8c3e48a919b",
+   "archived_equal": [
+    "baseline/round-trip/2026-08-12-earth-studio-hover-real-import-v094.json",
+    "candidate/round-trip/2026-08-12-earth-studio-hover-real-import-v094.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/round-trip/2026-08-12-earth-studio-space-zoom-v094-candidate.json",
+   "sha256": "d3e8e79b0f3992b9105a01852e88d5ba40b7e729b49d413d5d418fc40506f739",
+   "archived_equal": [
+    "baseline/round-trip/2026-08-12-earth-studio-space-zoom-v094-candidate.json",
+    "candidate/round-trip/2026-08-12-earth-studio-space-zoom-v094-candidate.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-B-obliquity.json",
+   "sha256": "40f70b74c99cff7507af1c0aec905316fed17928d8b37ada754fab2634976a1d",
+   "archived_equal": [
+    "baseline/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-B-obliquity.json",
+    "candidate/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-02-landmark-inspect-B-obliquity.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-A-baseline.json",
+   "sha256": "51d708d8c037461ac1b09086242f927fbda70077ab29713db34d9688434c8e9d",
+   "archived_equal": [
+    "baseline/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-A-baseline.json",
+    "candidate/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-A-baseline.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-B-obliquity.json",
+   "sha256": "93ddec5dd582f7f602f7cb3fb963f7d74368b5ef9bea442441d4d3462525e64a",
+   "archived_equal": [
+    "baseline/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-B-obliquity.json",
+    "candidate/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-03-landmark-emphasize-B-obliquity.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-A-baseline.json",
+   "sha256": "53ba1266207f2981f275bac6e5881523f607cdda121e256f787fc7e0a4241924",
+   "archived_equal": [
+    "baseline/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-A-baseline.json",
+    "candidate/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-A-baseline.json"
+   ]
+  },
+  {
+   "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-B-obliquity.json",
+   "sha256": "b5e6c6f440c5130c08c103b2ce31cfb10489bce738bbd95d73917186dca6a918",
+   "archived_equal": [
+    "baseline/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-B-obliquity.json",
+    "candidate/side-channels/2026-08-21-earth-studio-obliquity-ab__projects__OBQ-04-terrain-matterhorn-B-obliquity.json"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "MA-021-FU-1", "title": "Oracle harness deletes and rewrites the tracked frozen-evidence directory with live metadata",
+  "severity": "MAJOR (recurrence risk for MA-021; not a production-behavior defect)",
+  "component": "scripts/earth-studio-m1-self-baseline.js (HEAD blob a90fce88e9d1, sha256 5d54eaf8…)",
+  "evidence": ["line 38: EVIDENCE_ROOT = <repo>/package-runs/2026-09-08-earth-studio-m1-self-baseline (tracked: corpus.json, fixtures/fixtures.json, REPORT.md committed at 091476bf)", "lines 860-862: if EVIDENCE_ROOT exists -> fs.rmSync(recursive) before regeneration", "line 857: started_at = new Date().toISOString()", "lines 868-871: source_hashes from sha256File(PLANNER_PATH) = whatever planner is on disk", "line 69/938: baseline_commit = BASELINE_COMMIT constant (label never re-derived)", "line 998: writeJson(EVIDENCE_ROOT/corpus.json)", "observed result: dirty manifest 13:50:57 with 4593b38e planner hash under an f30e4543 label = exactly MA-021"],
+  "risk": "Any invocation in a checkout whose planner differs from f30e4543 silently produces a manifest with a false frozen label; the deletion step also removes the committed fixtures/REPORT.md before rewriting them (byte-identical so far, but only because those outputs happen to be deterministic).",
+  "recommended_future_fix": ["require an explicit --out <dir outside the tree> (or refuse when EVIDENCE_ROOT is tracked and the frozen blob is present)", "derive baseline_commit from the planner actually hashed, or assert sha256(planner) == the hash recorded for BASELINE_COMMIT and abort on mismatch", "add a compare-only mode that never writes into package-runs", "add a test: running the harness must not change any tracked file"],
+  "auth3_scope": "NOT part of AUTH-3 (AUTH-3 corrects metadata and publishes the crosswalk); the immediate recurrence is prevented procedurally by the gate rule 'never run the harness in the original checkout' and detected by the corpus blob check.",
+  "owner_decision": "Mikko — schedule as a separate correctness task after MA-021 closure."
+}

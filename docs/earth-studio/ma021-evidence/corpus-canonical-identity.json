@@ -1,0 +1,64 @@
+{
+ "schema": "vidtoolz.ma021.corpusCanonicalIdentity.v1",
+ "path": "package-runs/2026-09-08-earth-studio-m1-self-baseline/corpus.json",
+ "canonical": {
+  "git_blob": "064ff86cc3f0b5f0ba178f0801fe4438d2caf4e6",
+  "sha256": "59747708886d954a8ba8690c92a1b6f14ef650865eb9d6cc3a44c6217007b53e",
+  "bytes": 111987,
+  "present_at": [
+   "091476bf74b3fef71e1f2ded715ab7786d9f0acc",
+   "c621d0f324ac114fc681f390d0e44e0f13217a6b",
+   "3592641ed1d9358ec33b029ba3083c141b03fd37",
+   "INDEX"
+  ],
+  "absent_at": [
+   "f30e4543 (evidence dir did not exist yet)"
+  ]
+ },
+ "dirty_worktree": {
+  "git_blob": "d79dfdbb43000aa9abe6bd2e5a841d190b9b8f0e",
+  "sha256": "ec9db10a0f57da1d6015febecd52b3e3201033261120326e8187caac8bfb4c17",
+  "bytes": 111987
+ },
+ "three_field_deltas": [
+  {
+   "json_path": "/started_at",
+   "dirty": "2026-09-08T13:50:57.908Z",
+   "canonical": "2026-09-08T12:42:30.024Z"
+  },
+  {
+   "json_path": "/source_hashes/earth-studio-job-planner.js",
+   "dirty": "b56268544c7d2becf6d6f2010d3ce462eea06fbfa346b639a07ade8a22dc80ca",
+   "canonical": "a90985609e7d92080cf1d38e7d94abbc7f8f8c7a71a3569523b8a610a1024ead"
+  },
+  {
+   "json_path": "/browser_invariant/bundle_identity/earth-studio-job-planner.js",
+   "dirty": "b56268544c7d2becf6d6f2010d3ce462eea06fbfa346b639a07ade8a22dc80ca",
+   "canonical": "a90985609e7d92080cf1d38e7d94abbc7f8f8c7a71a3569523b8a610a1024ead"
+  }
+ ],
+ "leaf_count_both_versions": 1502,
+ "coherence_law": {
+  "baseline_commit_label": "f30e4543b0af17d047f803ae9044aef859ef13bc",
+  "source_hashes.earth-studio-job-planner.js": "a90985609e7d92080cf1d38e7d94abbc7f8f8c7a71a3569523b8a610a1024ead",
+  "browser_invariant.bundle_identity.earth-studio-job-planner.js": "a90985609e7d92080cf1d38e7d94abbc7f8f8c7a71a3569523b8a610a1024ead",
+  "freeze_commit": "091476bf74b3fef71e1f2ded715ab7786d9f0acc",
+  "rule": "all four must name one identity; any manifest mixing identities is drift, never authority"
+ },
+ "forbidden_planner_hashes": [
+  "4593b38e planner identity (b5626854\u2026) \u2014 M1 seam extraction, never frozen",
+  "HEAD planner 1ff78ab1\u2026 \u2014 current production, not the oracle identity",
+  "any manifest with started_at != 2026-09-08T12:42:30.024Z"
+ ],
+ "plans_199": {
+  "count": 199,
+  "aggregate_sha256_of_blob_list": "4ed24afc306b657fa5ac1eefae1d3442f263aef011112d1766706f53056cfc04",
+  "rule": "sha256 over '\\n'.join(blob list in manifest order)"
+ },
+ "observations_209": {
+  "count": 209,
+  "canonical": false,
+  "rule": "hash-only parity with the archived correction observations; no replay"
+ },
+ "disposition": "The committed corpus at this branch's base already equals the canonical blob; NO change is made here."
+}

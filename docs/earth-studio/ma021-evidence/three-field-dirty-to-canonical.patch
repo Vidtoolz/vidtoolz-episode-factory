@@ -1,0 +1,31 @@
+diff --git a/package-runs/2026-09-08-earth-studio-m1-self-baseline/corpus.json b/package-runs/2026-09-08-earth-studio-m1-self-baseline/corpus.json
+index d79dfdb..064ff86 100644
+--- a/package-runs/2026-09-08-earth-studio-m1-self-baseline/corpus.json
++++ b/package-runs/2026-09-08-earth-studio-m1-self-baseline/corpus.json
+@@ -3,7 +3,7 @@
+   "oracle_version": "1.1.0",
+   "oracle_script_sha256": "5d54eaf896470c770496c368f4c14ae3c71777e007a6532fb46c3b644d0224ad",
+   "frozen_contract_sha": "19f98b6a39b0cb079c46e79fa4293a88c04b64a59d124f033d42be9fb3887171",
+-  "started_at": "2026-09-08T13:50:57.908Z",
++  "started_at": "2026-09-08T12:42:30.024Z",
+   "baseline_commit": "f30e4543b0af17d047f803ae9044aef859ef13bc",
+   "node_version": "v24.17.0",
+   "os_name": "Linux",
+@@ -218,7 +218,7 @@
+     "duplicate_canonical_identities": []
+   },
+   "source_hashes": {
+-    "earth-studio-job-planner.js": "b56268544c7d2becf6d6f2010d3ce462eea06fbfa346b639a07ade8a22dc80ca",
++    "earth-studio-job-planner.js": "a90985609e7d92080cf1d38e7d94abbc7f8f8c7a71a3569523b8a610a1024ead",
+     "earth-studio-camera-quality.js": "a5b9b5a0185e08e036eb428cf61db415f2cdafd45644051725093c7b831162fc"
+   },
+   "config_earth_studio_motion_hashes": {
+@@ -1896,7 +1896,7 @@
+     "bundle_identity": {
+       "project-earth-studio.html": "80033f1c3bbe83dbee20c9678311445994d3cbbf0fbd2cf9b3c46330f3428e91",
+       "ef-nav.js": "dc49652918841b50f8973adc65a0e6202ed6a6f8cb11597c68fc6ee772cc387a",
+-      "earth-studio-job-planner.js": "b56268544c7d2becf6d6f2010d3ce462eea06fbfa346b639a07ade8a22dc80ca",
++      "earth-studio-job-planner.js": "a90985609e7d92080cf1d38e7d94abbc7f8f8c7a71a3569523b8a610a1024ead",
+       "earth-studio-journey.js": "d3f60eba959c4354221a548aa61cecdfa0f854a7fa189e60fb0940f96cde9602",
+       "earth-studio-opening-composition.js": "9e2b993ab7f7dd2a25f051288cdd08a17189605eb661d8bd544673a8f102c05e",
+       "earth-studio-terrain-morphology.js": "4052f667c4c5b496d8cb2b29b09bded62c9663a4cb1c66cfbf4bf302f045c1cf",
