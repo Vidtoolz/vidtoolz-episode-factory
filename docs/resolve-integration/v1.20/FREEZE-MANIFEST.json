@@ -2,8 +2,8 @@
   "schema": "vidtoolz.resolveFreezeManifest.v1.10",
   "bundle": "docs/resolve-integration/v1.20",
   "version": "1.20.0",
-  "frozen_at": "2026-09-10",
-  "prepared_by": "Codex \u2014 IMPLEMENTATION AUTHOR; independent review required",
+  "frozen_at": "2026-09-20",
+  "prepared_by": "Claude Code \u2014 IMPLEMENTATION AUTHOR; independent review required",
   "approval_status": "CANDIDATE_FOR_INDEPENDENT_REVIEW",
   "approver": null,
   "parent": {
@@ -5905,8 +5905,8 @@
     },
     {
       "path": "tools/build_manifest.py",
-      "sha256": "f7f8726972e9d1bdec800f72023a6f01eff817a5545c93fe08aebdecf05ca207",
-      "bytes": 27314,
+      "sha256": "a357d0da27c3e514b7f2907720e616c1caf9dd7883259c6c3f4ebf1942a76c8c",
+      "bytes": 27323,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6149,7 +6149,7 @@
   },
   "counts": {
     "files": 581,
-    "bytes": 41508332,
+    "bytes": 41508341,
     "frozen_now": 570,
     "provisional_until_m3": 11,
     "inherited_unchanged": 117,

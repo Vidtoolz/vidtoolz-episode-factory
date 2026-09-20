@@ -152,7 +152,7 @@ assert exth["v1_3_manifest"]["sha256"] == "ad1e6bfcbcb41d79c230795d64e031438e8e3
 assert exth["v1_2_manifest"]["sha256"] == "69e1caecf9ba9bd16875b7625c58902e3e5f613372165c8d11d80ff48939b5e6"
 assert exth["v1_1_manifest"]["sha256"] == "83d8a307098cdc18931f6f09de2ce782afa0bdef94ec8540c2a143910cd448c5"
 assert exth["v1_0_manifest"]["sha256"] == "d9cd54780e0a123ae2045ac575bbc41638039ef3e878f1b608afbce3989a8821"
-m = {"schema": "vidtoolz.resolveFreezeManifest.v1.10", "bundle": "docs/resolve-integration/v1.20", "version": "1.20.0", "frozen_at": "2026-09-10", "prepared_by": "Claude Code (Opus 5)", "approval_status": "CANDIDATE_FOR_INDEPENDENT_REVIEW", "approver": None,
+m = {"schema": "vidtoolz.resolveFreezeManifest.v1.10", "bundle": "docs/resolve-integration/v1.20", "version": "1.20.0", "frozen_at": "2026-09-20", "prepared_by": "Claude Code (Fable 5.1)", "approval_status": "CANDIDATE_FOR_INDEPENDENT_REVIEW", "approver": None,
      "parent": {"version": "1.16.0", "branch": "docs/resolve-authority-freeze-v1.16", "head": PARENT_HEAD, "semantic_head": PARENT_SEMANTIC_HEAD, "manifest_sha256": PARENT_MANIFEST, "immutable": True,
                 "ancestors": [
                     {"version": "1.15.0", "branch": "docs/resolve-authority-freeze-v1.15", "head": "459bd29e358574896f0cf69f4b0bfb347bf2902d", "manifest_sha256": V115_MANIFEST},
@@ -188,7 +188,7 @@ for e in _m18['files']:
     old=_pv17.get(e['path']);same=old is not None and old['sha256']==e['sha256']
     e.update(inherited_from_parent=same, changed_from_parent=old is not None and not same, new_in_this_version=old is None)
 _m18['removed_from_this_version_present_in_parent']=sorted(set(_pv17)-{e['path'] for e in _m18['files']})
-_m18['prepared_by']='Codex — IMPLEMENTATION AUTHOR; independent review required'
+_m18['prepared_by']='Claude Code — IMPLEMENTATION AUTHOR; independent review required'
 _m18['external_pins']['v1_19_parent_manifest']={'path':'../v1.19/FREEZE-MANIFEST.json','sha256':'06811f07b422d1cdf30ae6c076bae2bc0b598fc3ac464a0e180a8553a76a2848','bytes':os.path.getsize(os.path.join(os.path.dirname(B),'v1.18/FREEZE-MANIFEST.json'))}
 _m18['external_pins']['v1_18_manifest']={'path':'../v1.18/FREEZE-MANIFEST.json','sha256':'80b108e4e142841af38827d3b6170c1260c543740f21b03ebb3d934278723ae9','bytes':os.path.getsize(os.path.join(os.path.dirname(B),'v1.18','FREEZE-MANIFEST.json'))}
 _m18['counts'].update(inherited_unchanged=sum(e['inherited_from_parent'] for e in _m18['files']),changed_from_parent=sum(e['changed_from_parent'] for e in _m18['files']),new_in_this_version=sum(e['new_in_this_version'] for e in _m18['files']))
