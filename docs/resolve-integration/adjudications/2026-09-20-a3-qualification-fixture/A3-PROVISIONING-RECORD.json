@@ -1,0 +1,82 @@
+{
+ "candidate_under_qualification": {
+  "commit": "77c26103",
+  "component": "resolve-control-plane phase1 0.1.1",
+  "repo": "vidtoolz-episode-factory",
+  "worker_sha256_prefix": "371caf131e5d21cd",
+  "write_authority": "NONE"
+ },
+ "eka_prohibition": "EKA (ROJEKTI 192.168.50.199) is NETWORK_LIBRARY_PROHIBITED_DURING_QUALIFICATION and is not registered in the qualification session at all.",
+ "envelope": {
+  "authority_base_commit": "5d9dbba7",
+  "authority_version": "1.18.0",
+  "host_name": "vidnux",
+  "library_name": "VIDTOOLZ Resolve Qualification v1",
+  "library_root": "/home/vidtoolz/outputs/resolve-qualification-library",
+  "library_uuid": "7bebd326-63b5-4359-8811-23626d862be6",
+  "manifest_sha256": "80b108e4e142841af38827d3b6170c1260c543740f21b03ebb3d934278723ae9"
+ },
+ "isolation_rule": "Qualification on vidnux only, in a dedicated Resolve session started normally from /opt/resolve/bin/resolve with BMD_RESOLVE_SUPPORT_DIR/BMD_RESOLVE_CONFIG_DIR/BMD_RESOLVE_LOGS_DIR/XDG_CACHE_HOME isolated roots whose .dblist registers ONLY this Disk library (no EKA, no Local Database, no credentials copied); production session must be closed; no singleton-lock deletion; External Scripting Local; accepts_current_open_session_as_target=false honoured.",
+ "library": {
+  "canonical_instance_uuid": "7bebd326-63b5-4359-8811-23626d862be6",
+  "canonical_source": "A2 repair evidence session a2-repair-20260910-093844 (authority 1.11.0, manifest 0c47f0ce\u2026), PROVISIONING_RECORD DERIVED/e2/e24f83c1\u2026, FINALIZED, adoption_note: adopted and canonized the existing target",
+  "db_type_observed_via_api": "Disk",
+  "dblist_registration": "VIDTOOLZ Resolve Qualification v1:/home/vidtoolz/outputs/resolve-qualification-library::::DISK",
+  "filesystem_identity": {
+   "device": 66312,
+   "inode": 93061382,
+   "verified_at": "2026-09-20T16:36Z"
+  },
+  "kind": "Disk",
+  "legacy_instance_uuid": "54bf1bdf9dac0c45",
+  "legacy_source": "on-disk PROVISIONING-RECORD.json (authority 1.11.0, 2026-09-10T09:14:47Z, 16-hex non-RFC4122)",
+  "name": "VIDTOOLZ Resolve Qualification v1",
+  "prohibited": [
+   "EKA",
+   "EKA192.168.50.199",
+   "nelja",
+   "Local Database",
+   "any PostgreSQL/network library"
+  ],
+  "root_path": "/home/vidtoolz/outputs/resolve-qualification-library",
+  "supersession": "SAME PHYSICAL LIBRARY \u2014 LEGACY ID SUPERSEDED BY CANONICAL A2 ID; future records MUST use 7bebd326-63b5-4359-8811-23626d862be6. Resolve's scripting API exposes only DbName/DbType; the candidate enforces DbName + DbType=Disk + .dblist root."
+ },
+ "post_state_rule": "fixture is preserved as the repeatable governed qualification fixture; NO FURTHER FIXTURE MUTATION during or after Q1\u2013Q10",
+ "project": {
+  "created_at": "2026-09-20T16:39:49Z",
+  "created_by": "Claude Code provisioning tool (tools/provision_fixture.py) in an isolated provisioning session, journaled in provisioning-journal.jsonl",
+  "fingerprint_spec": "vidtoolz.qualFixtureFingerprint.v1 (run4/FIXTURE-FINGERPRINT-SPEC.md)",
+  "fixture_fingerprint_before_sha256": "30cfabdd0401275750eb4f468a57b538000aa03cd825698570a8831e08d9dec7",
+  "media": "none (empty media pool; no production media, no VIDNAS, no plugins/effects)",
+  "name": "VIDTOOLZ_RESOLVE_QUAL_V1_PHASE1",
+  "naming_rule": "TARGET-CONTRACT.json#naming.project_prefix VIDTOOLZ_RESOLVE_QUAL_V1_",
+  "purpose": "disposable qualification fixture for read-only Phase 1 qualification of resolve-control; not production content",
+  "settings_applied": {
+   "timelineFrameRate": "25",
+   "timelinePlaybackFrameRate": "25 (SetSetting returned False; derived setting)",
+   "timelineResolutionHeight": "1080",
+   "timelineResolutionWidth": "1920"
+  },
+  "timelines": [
+   {
+    "name": "VIDTOOLZ_RESOLVE_QUAL_V1_PHASE1__TL_A",
+    "uuid": "933dc179-ba37-4f3f-b3cf-8b0304544f20"
+   },
+   {
+    "name": "VIDTOOLZ_RESOLVE_QUAL_V1_PHASE1__TL_B",
+    "uuid": "43868e12-b3f5-4e7e-a0db-069c2b7e0998"
+   }
+  ],
+  "uuid": "7ac4210e-5ada-46a3-9821-831bfa83a4cc"
+ },
+ "record_class": "A3 qualification fixture provisioning (governance record, outside frozen v1.18 bundle)",
+ "record_id": "3890544232b9a23a5a1b49a4b5c33e5681f7f101444db099fd76726d482f3d36",
+ "record_type": "OPERATOR_PROVISIONED_PROJECT",
+ "recorded_at": "2026-09-20",
+ "recorded_by": "Claude Code",
+ "schema": "vidtoolz.resolveOperatorProvisionedProject.v1",
+ "scope_adjudication": {
+  "commit": "91bf571e",
+  "path": "docs/resolve-integration/adjudications/2026-09-20-resolve-control-scope/"
+ }
+}
