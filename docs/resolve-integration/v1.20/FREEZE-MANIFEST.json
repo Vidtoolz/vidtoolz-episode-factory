@@ -5915,8 +5915,8 @@
     },
     {
       "path": "tools/build_v1_20.py",
-      "sha256": "b723ae2f8608eee27c9f34be710d1573baf411d45438cece6598462c16bf1bb3",
-      "bytes": 386582,
+      "sha256": "a462e7291cbfccf6cb2b9070ef2b2afbf660c7dc60f531de4725a85db9ba271e",
+      "bytes": 386730,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6149,7 +6149,7 @@
   },
   "counts": {
     "files": 581,
-    "bytes": 41508184,
+    "bytes": 41508332,
     "frozen_now": 570,
     "provisional_until_m3": 11,
     "inherited_unchanged": 117,

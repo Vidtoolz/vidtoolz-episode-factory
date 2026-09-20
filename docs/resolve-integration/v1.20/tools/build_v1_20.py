@@ -76,7 +76,8 @@ tc = load("TARGET-CONTRACT.json")
 tc["schema"] = "vidtoolz.resolveTargetContract.v1.10"; tc["version"] = "1.20.0"
 # v1.20 (Phase 1 R19-F4): the qualification library observations are no longer future; they are bound from governed records
 tc["library"].update({"provisioning_status": "PROVISIONED", "root_path": "/home/vidtoolz/outputs/resolve-qualification-library", "instance_uuid": "7bebd326-63b5-4359-8811-23626d862be6"})
-tc["library"]["rule"] += " v1.20: root_path and instance_uuid are OBSERVED values bound from governed records (A2 PROVISIONING_RECORD e24f83c1 canonical instance 7bebd326-63b5-4359-8811-23626d862be6, provisioned 2026-09-10; A3 record commit 10e8e398; PHASE1-QUALIFICATION-RECORD.json), never fabricated; attachment state remains derived from evidence, never declared by this contract."
+_RULE_SUFFIX = " v1.20: root_path and instance_uuid are OBSERVED values bound from governed records (A2 PROVISIONING_RECORD e24f83c1 canonical instance 7bebd326-63b5-4359-8811-23626d862be6, provisioned 2026-09-10; A3 record commit 10e8e398; PHASE1-QUALIFICATION-RECORD.json), never fabricated; attachment state remains derived from evidence, never declared by this contract."
+tc["library"]["rule"] = tc["library"]["rule"].split(" v1.20: root_path and instance_uuid are OBSERVED")[0] + _RULE_SUFFIX   # idempotent across regenerations
 tc["session"]["network_port_1144"] = "protocol-closed"
 tc["session"]["network_port_1144_semantics"] = "External Scripting = Local refuses remote scripting sessions at the protocol layer; the vendor scripting sockets (1144/49152/15000) may remain bound to non-loopback interfaces. Production control never uses native network scripting (CONTROL-PLANE.md section 1)."
 # V115-B1 (group 1): the inherited note said "attachment state is derived by tools/authority_lib.py#derive_attachment_state",
