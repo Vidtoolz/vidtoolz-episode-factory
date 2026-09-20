@@ -23,7 +23,15 @@ vidnux (operator / future Hermes adapter)
   (`TARGET_MISMATCH`) and never retargets on failure. Every call is journaled (JSONL) on the caller and on the worker.
 * **Expected-state guards**: the caller may pin `project_uuid`, `timeline_uuid`, `resolve_pid`, `resolve_start_time`,
   `worker_instance_id`; the worker refuses with the matching structured error when live state differs.
-* **Timeouts**: the worker runs each operation in a pool thread and returns `TIMEOUT` at the deadline; the Resolve call
-  itself is not interruptible (documented containment: the thread finishes in the background, result discarded).
+* **Timeouts / saturation (0.1.1)**: all Resolve work runs in a fixed 4-slot pool; a call that outlives its deadline returns
+  `TIMEOUT` and its slot is counted `stuck` until the native call returns (not interruptible). When every slot is busy new Resolve
+  work is refused at once with `WORKER_SATURATED`; `health` never needs a slot, so a saturated worker is still observably alive
+  and reports `pool.state = SATURATED | DEGRADED | HEALTHY`; recovery is automatic when the hung calls return.
+* **Replay (0.1.1)**: accepted nonces are appended with fsync to `<state>/replay.jsonl` before acceptance, reloaded at start,
+  expired after 300 s and compacted; a replayed request is refused `REPLAY_DETECTED` after worker restart too.
+* **Controller-path liveness (0.1.1)**: the Windows worker probes a reverse-forwarded loopback port (`ssh -R`) that reaches the
+  controller's sshd through the owning connection; 3 consecutive misses (60 s interval, 10 s probe timeout ⇒ ≤ ~3.5 min) ⇒
+  `CONTROLLER_PATH_LOST` ⇒ exit. This bounds the orphan window that the sshd ancestor anchor alone cannot bound on a host
+  without `ClientAliveInterval` (PRESTO).
 * **Not in Phase 1**: Hermes adapter, MCP facade, write lease, any write operation, project switching, cross-host
   orchestration. Forbidden by design: `Hermes → worker → arbitrary Python → Resolve` (no `exec`/`eval`/script upload path).

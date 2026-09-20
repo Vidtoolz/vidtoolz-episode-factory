@@ -28,6 +28,17 @@ Authentication is checked **before** the body is parsed or routed.
  "project":{"name","uuid","timeline_count","library":"EKA","library_type":"PostgreSQL","library_host":"192.168.50.199"},
  "timeline":{"name","uuid","start_frame","end_frame"},"result":{...},"duration_ms":224}
 ```
-Errors: `ok:false`, `error:{code,message,detail}`; HTTP 409 for operation errors, 401 for authentication, 400 malformed JSON.
-Ordering inside the worker: auth → target check → `READ_ONLY_MODE`/`UNSUPPORTED_OPERATION` gate → Resolve snapshot →
-expected-state guards → operation.
+Errors: `ok:false`, `error:{code,message,detail}`; HTTP 409 for operation errors, 401 for `AUTHENTICATION_FAILED` / `REPLAY_DETECTED`,
+400 malformed JSON or invalid `deadline_ms` (integer 1..600000), 413 body > 1 MiB, 404 wrong path, 500 handler exception (all `TRANSPORT_ERROR`
+except auth). New in 0.1.1: `REPLAY_DETECTED` (durable nonce guard, survives worker restart), `WORKER_SATURATED` (all Resolve slots busy —
+refused immediately, never queued), `LIBRARY_MISMATCH` (§A4 qualification-library gate).
+
+**Ordering inside the worker (0.1.1):** read body (size-bounded) → `verify()` = headers → skew → HMAC → **durable nonce record** → path →
+JSON → `deadline_ms` → target check → `READ_ONLY_MODE`/`UNSUPPORTED_OPERATION` gate → [pool slot or `WORKER_SATURATED`] → Resolve
+attach → `GetCurrentDatabase()` → **library gate** → project/timeline snapshot → expected-state guards → operation → **worker journal
+(lock + fsync)** → respond. Every refusal before execution is also journaled (`AUTH_FAILED`, `REPLAY_DETECTED`, `BAD_PATH`,
+`MALFORMED_JSON`, `BAD_ENVELOPE`, `BODY_TOO_LARGE`, `HANDLER_EXCEPTION`) with method/path/client port/request_id — never headers, keys or bodies.
+
+**`health` (0.1.1)** never waits on a Resolve slot: it reports worker liveness, `resolve.pool {capacity,inflight,stuck,state}` and a bounded
+(≤3 s) Resolve probe (`probe: OK | TIMEOUT | SKIPPED_SATURATED | RESOLVE_UNAVAILABLE | LIBRARY_MISMATCH`) plus `last_observed`.
+A lost response after the worker journal line leaves both journals with the same `request_id` (worker: executed; caller: error).

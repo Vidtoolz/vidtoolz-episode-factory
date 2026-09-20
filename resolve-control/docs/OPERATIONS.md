@@ -17,6 +17,10 @@ python3 -m vrc status
 python3 -m vrc get_current_project --target presto
 python3 -m vrc get_current_timeline --target vidnux --expect-project-uuid 1082f8ac-0803-4335-a0d7-f42bbbe207b6
 ```
+0.1.1 flags: Windows `remote_command` adds `--liveness-port 47301 --liveness-interval 60 --liveness-strikes 3` (the tunnel adds
+`-R 127.0.0.1:47301:127.0.0.1:22` when the registry target has `liveness_port`); `--require-library "VIDTOOLZ Resolve Qualification v1[=<root>]"`
+makes every Resolve op fail closed unless that Disk library is open (root cross-checked against `.dblist` on Linux).
+
 Stop: `kill $(cat ~/.config/vidtoolz-resolve-control/tunnels/<host>.pid)` — the remote worker exits with the session;
 vidnux worker: `kill $(cat ~/.config/vidtoolz-resolve-control/state/vidnux-worker.pid)`.
 Never start a worker with `--bind` other than 127.0.0.1 (it refuses). Never re-enable Resolve Network scripting.

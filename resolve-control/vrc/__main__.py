@@ -15,7 +15,7 @@ def main():
         if a.op == "status":
             out = {}
             for h in sorted(reg.targets):
-                try: r = c.health(h, deadline_ms=8000); out[h] = {"status": reg.status(h), "worker": r["worker"]["worker_instance_id"][:8], "gen": r["worker"]["worker_generation"], "resolve": r.get("resolve", {}).get("version"), "pid": (r.get("resolve", {}).get("process") or {}).get("pid"), "project": (r.get("project") or {}).get("name"), "timeline": (r.get("timeline") or {}).get("name")}
+                try: r = c.health(h, deadline_ms=8000); out[h] = {"status": reg.status(h), "worker": r["worker"]["worker_instance_id"][:8], "gen": r["worker"]["worker_generation"], "pool": (r.get("resolve", {}).get("pool") or {}).get("state"), "probe": r.get("resolve", {}).get("probe"), "library": (r.get("resolve", {}).get("library") or {}).get("name"), "resolve": r.get("resolve", {}).get("version"), "pid": (r.get("resolve", {}).get("process") or {}).get("pid"), "project": (r.get("project") or {}).get("name"), "timeline": (r.get("timeline") or {}).get("name")}
                 except VrcError as e: out[h] = {"status": reg.status(h), "error": e.code}
             print(json.dumps(out, indent=1)); return 0
         exp = {k: v for k, v in {"project_uuid": a.expect_project_uuid, "timeline_uuid": a.expect_timeline_uuid, "resolve_pid": a.expect_resolve_pid, "worker_instance_id": a.expect_worker}.items() if v is not None}

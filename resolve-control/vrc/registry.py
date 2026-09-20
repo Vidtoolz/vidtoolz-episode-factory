@@ -1,4 +1,5 @@
-"""Registry: logical target -> authenticated worker endpoint. Routing is by host_id ONLY, never by open project."""
+"""Registry: logical target -> authenticated worker endpoint. Routing is by host_id ONLY, never by open project.
+Health states: ONLINE_CURRENT | DEGRADED | SATURATED | LIBRARY_MISMATCH | RESOLVE_UNAVAILABLE | STALE | OFFLINE (derived from the last reply)."""
 import json, os, time
 from .errors import VrcError
 DEFAULT_PATH = os.path.expanduser("~/.config/vidtoolz-resolve-control/registry.json")
@@ -23,5 +24,10 @@ class Registry:
         age = time.time() - h["at"]
         if age > self.stale_s: return "OFFLINE"
         if age > self.current_s: return "STALE"
-        if not ((h["snapshot"] or {}).get("resolve") or {}).get("available", False): return "RESOLVE_UNAVAILABLE"
+        res = (h["snapshot"] or {}).get("resolve") or {}; pool = (res.get("pool") or {}).get("state")
+        if pool == "SATURATED": return "SATURATED"                       # worker alive, every Resolve slot busy
+        if res.get("probe") == "LIBRARY_MISMATCH": return "LIBRARY_MISMATCH"   # Resolve reachable but not the configured qualification library: fail closed
+        if res.get("available") is False: return "RESOLVE_UNAVAILABLE"
+        if pool == "DEGRADED" or res.get("probe") == "TIMEOUT": return "DEGRADED"
+        if res.get("available") is None: return "DEGRADED"               # alive, Resolve state unknown this instant
         return "ONLINE_CURRENT"

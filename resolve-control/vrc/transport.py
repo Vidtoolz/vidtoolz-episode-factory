@@ -11,5 +11,5 @@ def send(target, secret, env, connect_timeout=5.0):
         c.request("POST", path, body, auth_headers(secret, "POST", path, body)); r = c.getresponse(); data = json.loads(r.read() or b"{}")
     except (OSError, ValueError, http.client.HTTPException) as e:
         raise VrcError("WORKER_OFFLINE", f"{target['host_id']} worker unreachable on 127.0.0.1:{port}", {"cause": repr(e)[:200]})
-    if r.status == 401: raise VrcError("AUTHENTICATION_FAILED", (data.get("error") or {}).get("message", ""))
+    if r.status == 401: raise VrcError((data.get("error") or {}).get("code") if (data.get("error") or {}).get("code") in ("REPLAY_DETECTED", "AUTHENTICATION_FAILED") else "AUTHENTICATION_FAILED", (data.get("error") or {}).get("message", ""))
     return data

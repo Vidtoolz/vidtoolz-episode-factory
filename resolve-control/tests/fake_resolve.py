@@ -1,6 +1,10 @@
 """Fake DaVinciResolveScript for deterministic tests. Controlled via env VRC_FAKE_STATE (JSON file)."""
 import json, os
 def _state(): return json.load(open(os.environ["VRC_FAKE_STATE"]))
+def _count_attach():
+    p = os.environ["VRC_FAKE_STATE"] + ".attach_count"
+    n = int(open(p).read()) + 1 if os.path.exists(p) else 1
+    open(p, "w").write(str(n))
 class _TL:
     def __init__(s, d): s.d = d
     def GetName(s): return s.d["name"]
@@ -29,8 +33,10 @@ class _Proj:
     def AppendToTimeline(s, *a): raise AssertionError("WRITE CALLED — must never happen")
 class _PM:
     def __init__(s, st): s.st = st
-    def GetCurrentProject(s): return _Proj(s.st) if s.st.get("project") else None
-    def GetCurrentDatabase(s): return {"DbName": "EKA", "DbType": "PostgreSQL", "IpAddress": "192.168.50.199"}
+    def GetCurrentProject(s):
+        if s.st.get("sleep_s"): import time; time.sleep(s.st["sleep_s"])     # synthetic hung Resolve (F-02 tests)
+        return _Proj(s.st) if s.st.get("project") else None
+    def GetCurrentDatabase(s): return s.st.get("database") or {"DbName": "EKA", "DbType": "PostgreSQL", "IpAddress": "192.168.50.199"}
 class _R:
     def __init__(s, st): s.st = st
     def GetProductName(s): return "DaVinci Resolve Studio"
@@ -39,4 +45,4 @@ class _R:
     def GetProjectManager(s): return _PM(s.st)
 def scriptapp(name, *host):
     assert not host, "remote host argument must never be passed by the worker"
-    st = _state(); return None if st.get("unavailable") else _R(st)
+    _count_attach(); st = _state(); return None if st.get("unavailable") else _R(st)

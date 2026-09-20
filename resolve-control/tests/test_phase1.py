@@ -16,7 +16,7 @@ class Env:
     def __init__(self, state, host_id=None):
         self.d = tempfile.mkdtemp(); self.state_path = os.path.join(self.d, "state.json"); self.set_state(state)
         os.environ["VRC_FAKE_RESOLVE"] = os.path.join(HERE, "fake_resolve.py"); os.environ["VRC_FAKE_STATE"] = self.state_path
-        self.secret = os.urandom(32); sf = os.path.join(self.d, "secret"); open(sf, "wb").write(self.secret)
+        self.secret = os.urandom(32).hex().encode(); sf = os.path.join(self.d, "secret"); open(sf, "wb").write(self.secret)
         self.host = host_id or socket.gethostname(); self.port = free_port()
         self.worker = rw.Worker(self.host, self.secret, os.path.join(self.d, "wstate"), rw.load_api())
         self.srv = rw.ThreadingHTTPServer(("127.0.0.1", self.port), rw.Handler); self.srv.worker = self.worker

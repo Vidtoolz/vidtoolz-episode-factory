@@ -5,15 +5,25 @@ One worker per host. Binds 127.0.0.1 only. Attaches to the LOCAL Resolve via
 scriptapp("Resolve") with no host argument — a remote host argument is never
 accepted or constructed. Public surface is an explicit read-only allowlist;
 write-class operations are refused with READ_ONLY_MODE before any Resolve call.
-stdlib only (Python >= 3.10)."""
+stdlib only (Python >= 3.10).
+
+0.1.1 (P2 repair candidate): durable replay guard (F-01), bounded Resolve pool with
+saturation state + health outside the Resolve path (F-02), controller-path liveness
+probe (F-03), security/protocol failure journaling with lock+fsync (F-04), and the
+qualification-library gate (--require-library) demanded by v1.18 §A4."""
 import argparse, hashlib, hmac, json, os, platform, re, socket, subprocess, sys, threading, time, uuid
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutTimeout
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-WORKER_VERSION = "0.1.0"
+WORKER_VERSION = "0.1.1"
 PROTOCOL = "vrc.v1"
 BIND = "127.0.0.1"            # hard requirement: loopback only
 SKEW_S = 120
+REPLAY_WINDOW_S = SKEW_S * 2 + 60   # a nonce is remembered for longer than any timestamp the skew check can still accept
+MAX_BODY = 1 << 20
+POOL_CAPACITY = 4
+HEALTH_PROBE_S = 3.0
+PROHIBITED_LIBRARIES = ("EKA", "EKA192.168.50.199", "nelja", "Local Database")   # v1.18 TARGET-CONTRACT#library.prohibited_library_names
 READ_ONLY_OPS = ("health", "identify", "get_current_project", "get_current_timeline", "list_timelines",
                  "get_project_settings", "get_timeline_settings", "get_media_pool_summary", "get_project_fingerprint")
 # Names refused BEFORE any Resolve call. Kept as data so tests can prove the gate.
@@ -49,15 +59,26 @@ def resolve_process():
     except Exception: pass
     return {"pid": None, "started_at": None}
 
+def resolve_config_dir():
+    return (os.path.join(os.environ.get("APPDATA", ""), "Blackmagic Design", "DaVinci Resolve", "Preferences")
+            if platform.system() == "Windows" else os.path.expanduser("~/.local/share/DaVinciResolve/configs"))
+
 def external_scripting_mode():
-    p = (os.path.join(os.environ.get("APPDATA", ""), "Blackmagic Design", "DaVinci Resolve", "Preferences", "config.dat")
-         if platform.system() == "Windows" else os.path.expanduser("~/.local/share/DaVinciResolve/configs/config.dat"))
     try:
-        m = re.search(rb"System\.Scripting\.Mode = (\d)", open(p, "rb").read())
+        m = re.search(rb"System\.Scripting\.Mode = (\d)", open(os.path.join(resolve_config_dir(), "config.dat"), "rb").read())
         return {"0": "NONE", "1": "LOCAL", "2": "NETWORK"}.get(m.group(1).decode()) if m else "UNKNOWN"
     except OSError: return "UNKNOWN"
 
-# ---------------------------------------------------------------- SSH-session lifetime anchor
+def dblist_root_for(name):
+    """Root path registered for a Disk library in Resolve's .dblist (name:path::::DISK). Credential fields are never read."""
+    try:
+        for line in open(os.path.join(resolve_config_dir(), ".dblist"), "rb").read().decode("utf-8", "replace").splitlines():
+            parts = line.split(":")
+            if len(parts) >= 2 and parts[0] == name and line.rstrip().endswith("DISK"): return parts[1]
+    except OSError: return None
+    return None
+
+# ---------------------------------------------------------------- SSH-session lifetime anchor (F-03 part 1)
 # Live finding (2026-09-20, VIDLAP2): when the controlling ssh session dies, Windows OpenSSH does NOT kill the
 # cmd.exe -> py.exe -> python.exe chain; the worker would linger as an orphan on 127.0.0.1:47021. The worker
 # therefore anchors itself to the nearest sshd.exe ancestor and exits the moment that ancestor exits.
@@ -85,6 +106,28 @@ def watch_session_anchor(anchor, on_exit):
         on_exit()
     threading.Thread(target=run, daemon=True).start()
 
+# ---------------------------------------------------------------- controller-path liveness (F-03 part 2)
+# The anchor only fires when sshd notices the session is gone. On a host whose sshd has no ClientAlive keepalive
+# (PRESTO), a dead network path leaves the session — and the worker — alive until TCP gives up. The worker therefore
+# probes, through the SAME ssh connection, a reverse-forwarded loopback port (ssh -R <port>:127.0.0.1:22) and expects
+# the controller's sshd banner within a bounded time. Consecutive failures => the controlling path is gone => exit.
+def probe_controller_path(port, timeout_s=10.0):
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout_s) as s:
+            s.settimeout(timeout_s); return bool(s.recv(64))
+    except OSError: return False
+
+def watch_controller_path(port, interval_s, strikes, on_lost, on_event=None):
+    def run():
+        misses = 0
+        while True:
+            time.sleep(interval_s)
+            if probe_controller_path(port): misses = 0; continue
+            misses += 1
+            if on_event: on_event({"event": "CONTROLLER_PROBE_MISS", "port": port, "misses": misses, "strikes": strikes})
+            if misses >= strikes: on_lost(misses); return
+    threading.Thread(target=run, daemon=True).start()
+
 # ---------------------------------------------------------------- Resolve API attachment (LOCAL ONLY)
 def load_api():
     if os.environ.get("VRC_FAKE_RESOLVE"):
@@ -109,12 +152,15 @@ def tl_identity(t, index=None):
     if index is not None: d["index"] = index
     return d
 
-def snapshot(api):
-    """Fresh identity every call — project identity is never cached (PRESTO project-switch case)."""
-    r = attach(api); pm = r.GetProjectManager(); p = pm.GetCurrentProject()
-    res = {"available": True, "product": r.GetProductName(), "version": r.GetVersionString(), "page": r.GetCurrentPage()}
+def snapshot(api, library_check=None):
+    """Fresh identity every call — project identity is never cached (PRESTO project-switch case). When a library gate is
+    configured it runs right after GetCurrentDatabase(), BEFORE any project or timeline read (v1.18 §A4 fail-closed)."""
+    r = attach(api); pm = r.GetProjectManager(); db = pm.GetCurrentDatabase() or {}
+    res = {"available": True, "product": r.GetProductName(), "version": r.GetVersionString(), "page": r.GetCurrentPage(),
+           "library": {"name": db.get("DbName"), "type": db.get("DbType"), "host": db.get("IpAddress")}}
+    if library_check: library_check(res)
+    p = pm.GetCurrentProject()
     if not p: return r, pm, None, res, None, None
-    db = pm.GetCurrentDatabase() or {}
     proj = {"name": p.GetName(), "uuid": p.GetUniqueId(), "timeline_count": p.GetTimelineCount(),
             "library": db.get("DbName"), "library_type": db.get("DbType"), "library_host": db.get("IpAddress")}
     tl = tl_identity(p.GetCurrentTimeline())
@@ -134,12 +180,77 @@ def fingerprint(p, proj, tl):
             "w": p.GetSetting("timelineResolutionWidth"), "h": p.GetSetting("timelineResolutionHeight")}
     return {"core": core, "fingerprint": sha(json.dumps(core, sort_keys=True).encode())}
 
+# ---------------------------------------------------------------- F-01 durable replay guard
+class ReplayGuard:
+    """Nonces are appended (fsync) to <state>/replay.jsonl BEFORE a request is accepted, reloaded on start, expired after
+    REPLAY_WINDOW_S and the file compacted when it grows. Only signature-verified nonces reach check(); an invalid
+    signature therefore cannot poison the cache. Per worker state dir, i.e. per host key."""
+    def __init__(self, path, window_s=REPLAY_WINDOW_S, compact_at=20000):
+        self.path, self.window_s, self.compact_at, self.lock, self.seen, self.inserts = path, window_s, compact_at, threading.Lock(), {}, 0
+        now = time.time()
+        try:
+            for line in open(path):
+                try: d = json.loads(line)
+                except ValueError: continue
+                if now - float(d.get("t", 0)) <= window_s: self.seen[d["n"]] = float(d["t"])
+        except OSError: pass
+        self.loaded = len(self.seen)
+    def _prune(self, now): self.seen = {n: t for n, t in self.seen.items() if now - t <= self.window_s}
+    def check(self, nonce, ts):
+        """True = fresh and now recorded; False = replay."""
+        now = time.time()
+        with self.lock:
+            if nonce in self.seen: return False
+            with open(self.path, "a") as f: f.write(json.dumps({"n": nonce, "t": ts}) + "\n"); f.flush(); os.fsync(f.fileno())
+            self.seen[nonce] = ts; self.inserts += 1
+            if self.inserts % 256 == 0: self._prune(now)
+            if self.inserts >= self.compact_at: self._compact(now)
+            return True
+    def _compact(self, now):
+        self._prune(now); tmp = self.path + ".tmp"
+        with open(tmp, "w") as f:
+            for n, t in self.seen.items(): f.write(json.dumps({"n": n, "t": t}) + "\n")
+            f.flush(); os.fsync(f.fileno())
+        os.replace(tmp, self.path); self.inserts = 0
+    def size(self): return len(self.seen)
+
+# ---------------------------------------------------------------- F-02 bounded Resolve pool with truthful state
+class ResolvePool:
+    """All Resolve API work runs here. Capacity is fixed; when every slot is occupied new Resolve work is refused
+    immediately (WORKER_SATURATED) instead of queueing into a TIMEOUT. A slot whose call outlived its deadline is
+    counted as 'stuck' until the native call returns (Python cannot interrupt it). health never depends on a slot."""
+    def __init__(self, capacity=POOL_CAPACITY):
+        self.capacity, self.inflight, self.stuck, self.lock = capacity, 0, 0, threading.RLock()   # RLock: snapshot() is read under the lock in run()
+        self.ex = ThreadPoolExecutor(max_workers=capacity)
+    def run(self, fn, timeout_s):
+        with self.lock:
+            if self.inflight >= self.capacity: raise OpError("WORKER_SATURATED", f"all {self.capacity} Resolve slots busy ({self.stuck} stuck past deadline); refusing rather than queueing", self.snapshot())
+            self.inflight += 1
+        marked = [False]
+        def done(_):
+            with self.lock:
+                self.inflight -= 1
+                if marked[0]: self.stuck -= 1
+        fut = self.ex.submit(fn); fut.add_done_callback(done)
+        try: return fut.result(timeout=timeout_s)
+        except FutTimeout:
+            with self.lock:
+                if not fut.done(): marked[0] = True; self.stuck += 1
+            raise
+    def state(self):
+        with self.lock:
+            if self.inflight >= self.capacity: return "SATURATED"
+            return "DEGRADED" if self.stuck > 0 else "HEALTHY"
+    def snapshot(self):
+        with self.lock: return {"capacity": self.capacity, "inflight": self.inflight, "stuck": self.stuck, "state": "SATURATED" if self.inflight >= self.capacity else ("DEGRADED" if self.stuck > 0 else "HEALTHY")}
+
 # ---------------------------------------------------------------- Worker
 class Worker:
-    def __init__(self, host_id, secret, state_dir, api):
+    def __init__(self, host_id, secret, state_dir, api, require_library=None):
         hn = socket.gethostname()
         if hn.lower() != host_id.lower(): raise SystemExit(f"HOST_ID_MISMATCH: --host-id {host_id} but hostname is {hn}")
         self.host_id, self.secret, self.state_dir, self.api = host_id, secret, state_dir, api
+        self.require_library = require_library            # (name, root_or_None) or None
         os.makedirs(state_dir, exist_ok=True)
         gpath = os.path.join(state_dir, "generation")
         gen = int(open(gpath).read() or 0) + 1 if os.path.exists(gpath) else 1
@@ -147,21 +258,31 @@ class Worker:
         self.identity = {"host_id": host_id, "hostname": hn, "platform": platform.system().lower(),
                          "worker_instance_id": uuid.uuid4().hex, "worker_generation": gen,
                          "worker_started_at": now_iso(), "worker_version": WORKER_VERSION, "protocol": PROTOCOL}
-        self.nonces, self.lock, self.pool = {}, threading.Lock(), ThreadPoolExecutor(max_workers=4)
-        self.journal = open(os.path.join(state_dir, "journal.jsonl"), "a")
+        self.replay = ReplayGuard(os.path.join(state_dir, "replay.jsonl"))
+        self.pool = ResolvePool()
+        self.jlock = threading.Lock(); self.journal = open(os.path.join(state_dir, "journal.jsonl"), "a")
+        self.last_resolve = None                           # last successful snapshot summary {observed_at, available, version, project_uuid}
+        self.journal_event({"event": "WORKER_START", "worker_instance_id": self.identity["worker_instance_id"], "worker_generation": gen,
+                            "replay_entries_loaded": self.replay.loaded, "require_library": require_library and require_library[0]})
 
+    # ---- journaling (F-04): one lock, fsync per line, never headers/keys/bodies
+    def journal_event(self, rec):
+        rec = {"ts": now_iso(), **rec}
+        with self.jlock:
+            self.journal.write(json.dumps(rec, default=str) + "\n"); self.journal.flush(); os.fsync(self.journal.fileno())
+
+    # ---- authentication
     def verify(self, headers, method, path, body):
         ts, nonce, sig = headers.get("X-VRC-Timestamp"), headers.get("X-VRC-Nonce"), headers.get("X-VRC-Signature")
         if not (ts and nonce and sig): raise OpError("AUTHENTICATION_FAILED", "missing auth headers")
-        try: skew = abs(time.time() - int(ts))
+        try: tsi = int(ts); skew = abs(time.time() - tsi)
         except ValueError: raise OpError("AUTHENTICATION_FAILED", "bad timestamp")
         if skew > SKEW_S: raise OpError("AUTHENTICATION_FAILED", "clock skew")
         if not hmac.compare_digest(sig, sign(self.secret, ts, nonce, method, path, body)): raise OpError("AUTHENTICATION_FAILED", "bad signature")
-        with self.lock:
-            if nonce in self.nonces: raise OpError("AUTHENTICATION_FAILED", "replayed nonce")
-            self.nonces[nonce] = time.time()
-            if len(self.nonces) > 5000: self.nonces = {k: v for k, v in self.nonces.items() if time.time() - v < SKEW_S * 2}
+        if len(nonce) > 128: raise OpError("AUTHENTICATION_FAILED", "nonce too long")
+        if not self.replay.check(nonce, tsi): raise OpError("REPLAY_DETECTED", "nonce already accepted by this worker (durable replay guard)")
 
+    # ---- guards
     def check_expected(self, exp, res, proj, tl):
         if not exp: return
         if exp.get("worker_instance_id") and exp["worker_instance_id"] != self.identity["worker_instance_id"]: raise OpError("WORKER_GENERATION_MISMATCH", "worker restarted", {"actual": self.identity["worker_instance_id"]})
@@ -173,21 +294,59 @@ class Worker:
             if exp["project_uuid"] != proj["uuid"]: raise OpError("PROJECT_IDENTITY_MISMATCH", "project differs", {"actual": {"name": proj["name"], "uuid": proj["uuid"]}})
         if exp.get("timeline_uuid") and (not tl or exp["timeline_uuid"] != tl["uuid"]): raise OpError("TIMELINE_IDENTITY_MISMATCH", "current timeline differs", {"actual": tl})
 
-    def execute(self, env):
+    def check_library(self, res):
+        """v1.18 §A4 gate: when configured, the open library MUST be the named Disk qualification library (and, when a
+        root is configured, the .dblist registration of that name must point at that root). Fails closed on anything else."""
+        if not self.require_library: return
+        name, root = self.require_library; lib = res.get("library") or {}
+        actual = {"name": lib.get("name"), "type": lib.get("type"), "host": lib.get("host")}
+        if not lib.get("name"): raise OpError("LIBRARY_MISMATCH", "current library identity unavailable; fail closed", {"required": name, "actual": actual})
+        if lib["name"] in PROHIBITED_LIBRARIES or lib["name"] != name: raise OpError("LIBRARY_MISMATCH", "open library is not the configured qualification library", {"required": name, "actual": actual})
+        if str(lib.get("type", "")).lower() != "disk": raise OpError("LIBRARY_MISMATCH", "qualification library must be a Disk library", {"required": name, "actual": actual})
+        if root:
+            reg = dblist_root_for(name)
+            if reg is None or os.path.normpath(reg) != os.path.normpath(root): raise OpError("LIBRARY_MISMATCH", "library registration root does not match configured root", {"required_root": root, "registered_root": reg})
+
+    # ---- request execution
+    def execute(self, env, deadline_s):
         op, params = env.get("op"), env.get("params") or {}
         if not env.get("target_host"): raise OpError("TARGET_REQUIRED", "envelope has no target_host; there is no default target")
         if str(env["target_host"]).lower() != self.host_id.lower(): raise OpError("TARGET_MISMATCH", f"envelope targets {env.get('target_host')!r}, this worker is {self.host_id}")
         if op in FORBIDDEN_OPS: raise OpError("READ_ONLY_MODE", f"{op} is a write-class operation; Phase 1 worker has no write authority")
         if op not in READ_ONLY_OPS: raise OpError("UNSUPPORTED_OPERATION", str(op))
         base = {"process": resolve_process(), "external_scripting_mode": external_scripting_mode()}
-        try: r, pm, p, res, proj, tl = snapshot(self.api)
+        if op == "health": return self.health(base, deadline_s)
+        try: return self.pool.run(lambda: self.resolve_section(op, params, env.get("expected"), base), deadline_s)
         except OpError as e:
-            if op == "health": return {"resolve": {"available": False, **base}, "project": None, "timeline": None, "result": {"note": e.code}}
-            e.detail = {"resolve": {"available": False, **base}}; raise
-        res.update(base); self.check_expected(env.get("expected"), res, proj, tl)
+            if e.code == "RESOLVE_UNAVAILABLE": e.detail = {"resolve": {"available": False, **base}}
+            raise
+
+    def health(self, base, deadline_s):
+        """Worker liveness + pool state + a BOUNDED Resolve probe that is skipped when the pool is saturated.
+        Never blocks on Resolve longer than HEALTH_PROBE_S; never fails because Resolve is hung or absent."""
+        pool = self.pool.snapshot(); res = {"available": None, "probe": None, "pool": pool, "last_observed": self.last_resolve, **base}
+        proj = tl = None
+        if pool["state"] == "SATURATED": res["probe"] = "SKIPPED_SATURATED"
+        else:
+            try:
+                _, _, _, r, proj, tl = self.pool.run(lambda: snapshot(self.api, self.check_library), min(HEALTH_PROBE_S, deadline_s))
+                res.update(r); res["probe"] = "OK"; self.note_resolve(r, proj)
+            except FutTimeout: res["probe"] = "TIMEOUT"
+            except OpError as e:
+                res["probe"] = e.code; res["available"] = None if e.code == "LIBRARY_MISMATCH" else False   # wrong library: Resolve is there, but this worker may not read it
+                if e.code == "LIBRARY_MISMATCH": res["library_gate"] = e.detail
+        res["pool"] = self.pool.snapshot()
+        return {"resolve": res, "project": proj, "timeline": tl, "result": {"worker_alive": True, "pool_state": res["pool"]["state"]}}
+
+    def note_resolve(self, res, proj):
+        self.last_resolve = {"observed_at": now_iso(), "available": True, "version": res.get("version"), "library": (res.get("library") or {}).get("name"), "project_uuid": proj and proj["uuid"]}
+
+    def resolve_section(self, op, params, expected, base):
+        r, pm, p, res, proj, tl = snapshot(self.api, self.check_library)   # the only Resolve attachment; library gate runs before any project read
+        res.update(base); self.check_expected(expected, res, proj, tl); self.note_resolve(res, proj)
         if op in ("get_current_project", "get_current_timeline") and not p: raise OpError("PROJECT_NOT_OPEN", "no project open on this host")
         if op == "get_current_timeline" and not tl: raise OpError("TIMELINE_NOT_FOUND", "project has no current timeline")
-        if op in ("health", "identify", "get_current_project", "get_current_timeline"): result = {}
+        if op in ("identify", "get_current_project", "get_current_timeline"): result = {}
         elif op == "list_timelines":
             result = {"timelines": [tl_identity(p.GetTimelineByIndex(i), i) for i in range(1, (proj or {}).get("timeline_count", 0) + 1)]} if p else {"timelines": []}
         elif op == "get_project_settings":
@@ -205,23 +364,23 @@ class Worker:
             result = fingerprint(p, proj, tl)
         return {"resolve": res, "project": proj, "timeline": tl, "result": result}
 
-    def handle(self, env, deadline_ms):
+    def handle(self, env, deadline_ms, client=None):
+        """Ordering: (auth + replay already verified by the handler) → gates → execute → JOURNAL → respond."""
         t0 = time.time(); rid = env.get("request_id") or uuid.uuid4().hex
         out = {"protocol": PROTOCOL, "request_id": rid, "host_id": self.host_id, "worker": self.identity, "mode": "READ_ONLY",
                "write_authority": "NONE", "write_lease": None, "observed_at": now_iso()}
         try:
-            fut = self.pool.submit(self.execute, env)
-            out.update(fut.result(timeout=max(1, deadline_ms) / 1000)); out["ok"] = True
-        except FutTimeout: out.update(ok=False, error={"code": "TIMEOUT", "message": f"operation exceeded {deadline_ms} ms (Resolve call not interruptible; thread left to finish)"})
+            out.update(self.execute(env, max(1, deadline_ms) / 1000)); out["ok"] = True
+        except FutTimeout: out.update(ok=False, error={"code": "TIMEOUT", "message": f"operation exceeded {deadline_ms} ms (Resolve call not interruptible; slot counted as stuck until it returns)", "detail": {"pool": self.pool.snapshot()}})
         except OpError as e:
             out.update(ok=False, error={"code": e.code, "message": e.message, "detail": e.detail})
             if e.code == "RESOLVE_UNAVAILABLE" and e.detail: out["resolve"] = e.detail["resolve"]
-        except Exception as e: out.update(ok=False, error={"code": "TRANSPORT_ERROR", "message": repr(e)[:300]})
+        except Exception as e: out.update(ok=False, error={"code": "TRANSPORT_ERROR", "message": "internal error: " + repr(e)[:200]})
         out["duration_ms"] = int((time.time() - t0) * 1000)
-        self.journal.write(json.dumps({"ts": out["observed_at"], "request_id": rid, "op": env.get("op"), "target_host": env.get("target_host"),
-            "caller": env.get("caller"), "ok": out.get("ok"), "error": (out.get("error") or {}).get("code"), "duration_ms": out["duration_ms"],
+        self.journal_event({"event": "OP", "request_id": rid, "op": env.get("op"), "target_host": env.get("target_host"),
+            "caller": env.get("caller"), "client_port": client and client[1], "ok": out.get("ok"), "error": (out.get("error") or {}).get("code"), "duration_ms": out["duration_ms"],
             "worker_instance_id": self.identity["worker_instance_id"], "resolve_pid": ((out.get("resolve") or {}).get("process") or {}).get("pid"),
-            "project_uuid": (out.get("project") or {}).get("uuid"), "timeline_uuid": (out.get("timeline") or {}).get("uuid")}) + "\n"); self.journal.flush()
+            "pool_state": self.pool.state(), "project_uuid": (out.get("project") or {}).get("uuid"), "timeline_uuid": (out.get("timeline") or {}).get("uuid")})
         return out
 
 class Handler(BaseHTTPRequestHandler):
@@ -229,31 +388,62 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     def _send(self, code, obj):
         b = json.dumps(obj).encode(); self.send_response(code); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
+    def _reject(self, http, code, message, event, body=None, extra=None):
+        """Every refusal before execution is journaled (F-04) — sanitized: no headers, no key material, no body bytes."""
+        rid = None
+        if body and len(body) <= 65536:
+            try: rid = json.loads(body).get("request_id")
+            except (ValueError, AttributeError): rid = None
+        self.server.worker.journal_event({"event": event, "code": code, "http": http, "reason": message[:120], "client_port": self.client_address[1],
+                                          "method": self.command, "path": self.path[:200], "content_length": self.headers.get("Content-Length"), "request_id": rid, **(extra or {})})
+        self._send(http, {"ok": False, "host_id": self.server.worker.host_id, "error": {"code": code, "message": message}})
     def do_POST(self):
-        body = self.rfile.read(int(self.headers.get("Content-Length") or 0)); w = self.server.worker
-        try: w.verify(self.headers, "POST", self.path, body)
-        except OpError as e: return self._send(401, {"ok": False, "error": {"code": e.code, "message": e.message}})
-        if self.path != "/v1/op": return self._send(404, {"ok": False, "error": {"code": "UNSUPPORTED_OPERATION", "message": self.path}})
-        try: env = json.loads(body or b"{}")
-        except ValueError: return self._send(400, {"ok": False, "error": {"code": "TRANSPORT_ERROR", "message": "malformed JSON"}})
-        out = w.handle(env, int(env.get("deadline_ms") or 20000)); self._send(200 if out.get("ok") else 409, out)
+        w = self.server.worker
+        try:
+            try: n = int(self.headers.get("Content-Length") or 0)
+            except ValueError: return self._reject(400, "TRANSPORT_ERROR", "bad Content-Length", "MALFORMED_REQUEST")
+            if n > MAX_BODY: return self._reject(413, "TRANSPORT_ERROR", "body too large", "BODY_TOO_LARGE")
+            body = self.rfile.read(n)
+            try: w.verify(self.headers, "POST", self.path, body)
+            except OpError as e: return self._reject(401, e.code, e.message, "REPLAY_DETECTED" if e.code == "REPLAY_DETECTED" else "AUTH_FAILED", body)
+            if self.path != "/v1/op": return self._reject(404, "UNSUPPORTED_OPERATION", self.path[:100], "BAD_PATH", body)
+            try: env = json.loads(body or b"{}"); assert isinstance(env, dict)
+            except (ValueError, AssertionError): return self._reject(400, "TRANSPORT_ERROR", "malformed JSON envelope", "MALFORMED_JSON")
+            dl = env.get("deadline_ms", 20000)
+            if not isinstance(dl, int) or isinstance(dl, bool) or not (1 <= dl <= 600000): return self._reject(400, "TRANSPORT_ERROR", "deadline_ms must be an integer 1..600000", "BAD_ENVELOPE", body)
+            out = w.handle(env, dl, self.client_address); self._send(200 if out.get("ok") else 409, out)
+        except Exception as e:
+            try: self._reject(500, "TRANSPORT_ERROR", "handler exception", "HANDLER_EXCEPTION", extra={"exception": type(e).__name__})
+            except Exception: pass
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--host-id", required=True); ap.add_argument("--port", type=int, default=47021)
     ap.add_argument("--secret-file", required=True); ap.add_argument("--state-dir", required=True); ap.add_argument("--bind", default=BIND)
     ap.add_argument("--exit-with-session", action="store_true", help="exit when the controlling ssh session (nearest sshd ancestor) exits; refuse to start without one")
+    ap.add_argument("--liveness-port", type=int, help="reverse-forwarded loopback port that reaches the controller's sshd through the owning ssh connection; probed periodically")
+    ap.add_argument("--liveness-interval", type=int, default=60); ap.add_argument("--liveness-strikes", type=int, default=3)
+    ap.add_argument("--require-library", help="qualification gate: NAME or NAME=ROOT; every Resolve op fails closed (LIBRARY_MISMATCH) unless the open library is this Disk library")
     a = ap.parse_args()
     if a.bind != BIND: raise SystemExit("LOOPBACK_ONLY: worker binds 127.0.0.1 only; refusing --bind " + a.bind)
     secret = open(a.secret_file, "rb").read().strip()
     if len(secret) < 32: raise SystemExit("REFUSED: secret too short")
-    srv = ThreadingHTTPServer((BIND, a.port), Handler); srv.worker = Worker(a.host_id, secret, a.state_dir, load_api())
+    req = None
+    if a.require_library:
+        name, _, root = a.require_library.partition("="); req = (name, root or None)
+        if name in PROHIBITED_LIBRARIES: raise SystemExit("REFUSED: --require-library names a prohibited library")
+    srv = ThreadingHTTPServer((BIND, a.port), Handler); srv.worker = Worker(a.host_id, secret, a.state_dir, load_api(), req)
     anchor = None
     if a.exit_with_session:
         anchor = find_session_anchor()
         if not anchor: raise SystemExit("SESSION_ANCHOR_REQUIRED: --exit-with-session given but no controlling ssh session found")
         def bye():
-            srv.worker.journal.write(json.dumps({"ts": now_iso(), "event": "SESSION_ANCHOR_EXITED", "anchor_pid": anchor, "worker_instance_id": srv.worker.identity["worker_instance_id"]}) + "\n"); srv.worker.journal.flush(); os._exit(0)
+            srv.worker.journal_event({"event": "SESSION_ANCHOR_EXITED", "anchor_pid": anchor, "worker_instance_id": srv.worker.identity["worker_instance_id"]}); os._exit(0)
         watch_session_anchor(anchor, bye)
-    print(json.dumps({"worker_up": srv.worker.identity, "bind": f"{BIND}:{a.port}", "session_anchor_pid": anchor}), flush=True); srv.serve_forever()
+    if a.liveness_port:
+        def lost(misses):
+            srv.worker.journal_event({"event": "CONTROLLER_PATH_LOST", "port": a.liveness_port, "misses": misses, "worker_instance_id": srv.worker.identity["worker_instance_id"]}); os._exit(0)
+        watch_controller_path(a.liveness_port, a.liveness_interval, a.liveness_strikes, lost, srv.worker.journal_event)
+    print(json.dumps({"worker_up": srv.worker.identity, "bind": f"{BIND}:{a.port}", "session_anchor_pid": anchor, "liveness_port": a.liveness_port,
+                      "require_library": req and req[0], "replay_entries_loaded": srv.worker.replay.loaded}), flush=True); srv.serve_forever()
 
 if __name__ == "__main__": main()
