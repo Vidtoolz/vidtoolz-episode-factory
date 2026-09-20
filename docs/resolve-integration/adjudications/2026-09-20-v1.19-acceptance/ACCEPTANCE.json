@@ -1,0 +1,42 @@
+{
+ "accepted": {
+  "branch": "docs/resolve-authority-freeze-v1.19",
+  "bundle": "docs/resolve-integration/v1.19",
+  "commit": "5efbcae6a36b76d4a359f3e65e503336576575c7",
+  "manifest_sha256": "06811f07b422d1cdf30ae6c076bae2bc0b598fc3ac464a0e180a8553a76a2848",
+  "version": "1.19.0"
+ },
+ "authorizes": {
+  "parent_for_v1_20": true,
+  "successor_candidate": "1.20.0"
+ },
+ "basis": {
+  "independent_review_manifest_sha256": "b9247a558304bc40778b5ce7773cda2db82c82be91d5c717687c8b3c25dd8a13",
+  "p0_p1_p2": 0,
+  "p3": 5,
+  "verdict": "ACCEPT v1.19 WITH NON-BLOCKING FOLLOW-UPS"
+ },
+ "decided_by": "Mikko",
+ "decision_chain": [
+  "Option A lineage selection (conditional on independent acceptance)",
+  "independent review ACCEPT",
+  "v1.20.0 construction directive naming v1.19 as parent"
+ ],
+ "does_not_grant": [
+  "write authority",
+  "Hermes integration",
+  "persistent deployment",
+  "operational qualification"
+ ],
+ "frozen_bytes_modified": false,
+ "predecessor": {
+  "commit": "5d9dbba7c9f136caf694debe177f61168e5c4271",
+  "manifest_sha256": "80b108e4e142841af38827d3b6170c1260c543740f21b03ebb3d934278723ae9",
+  "status": "HISTORICAL \u2014 REJECTED (V118-M1..M4, N1..N3 independently re-verified 2026-09-20)",
+  "version": "1.18.0"
+ },
+ "record_id": "1ce1d263490e2625f1d8105f907957e022b730a662ce5939647f6fd2ec4957ad",
+ "recorded_at": "2026-09-20",
+ "recorded_by": "Claude Code",
+ "schema": "vidtoolz.resolveHumanAcceptance.v1"
+}
