@@ -1,0 +1,39 @@
+{
+ "authority": {
+  "adjudication_freeze_contract_sha256": "e84534a6c1ecd4b78a53ea9507a7556142dda04c2abf8242e955aafc026ffb7f",
+  "base_commit": "5d9dbba7",
+  "branch": "docs/resolve-authority-freeze-v1.18",
+  "freeze_manifest_sha256": "80b108e4e142841af38827d3b6170c1260c543740f21b03ebb3d934278723ae9",
+  "frozen_bytes_modified": false,
+  "target_contract_sha256": "841b34a51d787b0cecb375ecaf9b620baea70bda734c0f211241689c70e8912e",
+  "version": "1.18.0"
+ },
+ "candidate": {
+  "branch": "claude/resolve-control-plane-phase1-20260920",
+  "commit": "b8be09ff0edf7c278c882bdfb4354a15447f90ae",
+  "component": "resolve-control-plane phase1 0.1.0",
+  "protocol": "vrc.v1",
+  "repo": "vidtoolz-episode-factory"
+ },
+ "decided_by": "Mikko",
+ "decision": "IN_SCOPE_SUBORDINATE_IMPLEMENTATION",
+ "effects": {
+  "A4_applies": true,
+  "A5_applies": true,
+  "A5_reading": "prohibits an independently authoritative competing path; permits a subordinate conforming implementation",
+  "acceptance_requires": [
+   "isolated qualification session",
+   "disk library VIDTOOLZ Resolve Qualification v1",
+   "no EKA"
+  ],
+  "eka_q1_q10_2026_09_20": "HISTORICAL_ENGINEERING_EVIDENCE_NOT_ACCEPTANCE_QUALIFICATION",
+  "write_authority": "NONE"
+ },
+ "independent_review_manifest_sha256": "62a973cc9873285037d52d780ab5fa94a6aeb19e0b0884d0d415ac4002c733b3",
+ "next_governed_step": "incorporate into the next frozen Resolve authority bundle (separate release action)",
+ "record_sha256_of_body_without_this_field": "a8180c11d1793bd109044186bba091e6e47a461284e6fabe8b3b77f9d3e7493e",
+ "recorded_at": "2026-09-20",
+ "recorded_by": "Claude Code",
+ "schema": "vidtoolz.resolveHumanAdjudication.v1",
+ "subject": "resolve-control scope under Resolve integration authority v1.18"
+}
