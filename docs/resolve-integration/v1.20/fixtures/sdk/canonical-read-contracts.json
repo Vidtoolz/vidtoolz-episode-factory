@@ -1,0 +1,47 @@
+{
+  "sdk_sha256": "00078fa1256851b9807621a4eea5e670f4266b0e7003763cba4a62655543f0ec",
+  "contracts": [
+    {
+      "symbol": "MediaPoolItem.GetClipProperty",
+      "arg_types": [],
+      "expected_type": "dict",
+      "sdk_contract": {
+        "receiver": "MediaPoolItem",
+        "method": "GetClipProperty",
+        "arguments": [
+          {
+            "name": "propertyName",
+            "type": "str | None",
+            "required": false
+          }
+        ],
+        "returns": "str | ClipProperties",
+        "documentation": "Returns the property value for the key 'propertyName'. If no argument, a dict of all clip properties is returned.",
+        "line": 2050
+      },
+      "evidence_basis": "Pinned SDK signature and accompanying docstring; documentary expectation, not operational qualification."
+    },
+    {
+      "symbol": "ProjectManager.GetProjectLastModifiedTime",
+      "arg_types": [
+        "str"
+      ],
+      "expected_type": "int",
+      "sdk_contract": {
+        "receiver": "ProjectManager",
+        "method": "GetProjectLastModifiedTime",
+        "arguments": [
+          {
+            "name": "projectName",
+            "type": "str",
+            "required": true
+          }
+        ],
+        "returns": "int",
+        "documentation": "Returns the last modified time of the project as an epoch timestamp",
+        "line": 1678
+      },
+      "evidence_basis": "Pinned SDK signature and accompanying docstring; documentary expectation, not operational qualification."
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "vidtoolz.resolveControlPlaneQualificationRecord.v1",
+  "authority_version": "1.20.0",
+  "status": "ACCEPTED_BY_INDEPENDENT_REVIEW",
+  "candidate": {"implementation_commit": "77c26103", "worker_sha256": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3", "component": "resolve-control-plane phase1 0.1.1", "protocol": "vrc.v1"},
+  "qualified_under": {"authority_version": "1.18.0", "authority_commit": "5d9dbba7", "carry_forward": "The governing doctrine text (ADJUDICATION-FREEZE-CONTRACT.md §A4/§A5, AUTHORIZATION-2026-09-08.md, TRANSPORT.md, SNAPSHOT-CONCURRENCY-RECOVERY.md, DOCTRINE.md) is byte-identical in 1.19.0 and 1.20.0; TARGET-CONTRACT semantics unchanged; the qualification is carried forward by identity, not rerun (independent v1.19 review, manifest b9247a558304bc40778b5ce7773cda2db82c82be91d5c717687c8b3c25dd8a13)."},
+  "qualification_environment": {
+    "host": "vidnux",
+    "session": "dedicated isolated Resolve session, /opt/resolve/bin/resolve with BMD_RESOLVE_SUPPORT_DIR/BMD_RESOLVE_CONFIG_DIR/BMD_RESOLVE_LOGS_DIR/XDG_CACHE_HOME isolated roots; authored single-entry .dblist registering only the qualification library; production session closed; no singleton-lock deletion; External Scripting Local",
+    "resolve": {"product": "DaVinci Resolve Studio", "version": "21.1.0.14", "session_pid": 272461, "session_started_at": "2026-09-20T16:40:22Z"},
+    "library": {"name": "VIDTOOLZ Resolve Qualification v1", "kind": "Disk", "root_path": "/home/vidtoolz/outputs/resolve-qualification-library", "canonical_instance_uuid": "7bebd326-63b5-4359-8811-23626d862be6", "legacy_instance_uuid_superseded": "54bf1bdf9dac0c45", "filesystem_identity": {"device": 66312, "inode": 93061382}},
+    "project": {"name": "VIDTOOLZ_RESOLVE_QUAL_V1_PHASE1", "uuid": "7ac4210e-5ada-46a3-9821-831bfa83a4cc", "timelines": [{"name": "VIDTOOLZ_RESOLVE_QUAL_V1_PHASE1__TL_A", "uuid": "933dc179-ba37-4f3f-b3cf-8b0304544f20"}, {"name": "VIDTOOLZ_RESOLVE_QUAL_V1_PHASE1__TL_B", "uuid": "43868e12-b3f5-4e7e-a0db-069c2b7e0998"}], "settings": {"timelineFrameRate": "25", "timelineResolutionWidth": "1920", "timelineResolutionHeight": "1080"}, "observation": "timelinePlaybackFrameRate remained 24 and videoMonitorFormat 'HD 1080p 24' (derived settings; SetSetting returned False during provisioning); fingerprinted as-is; no effect on read-only qualification"},
+    "fixture_fingerprint_sha256": "30cfabdd0401275750eb4f468a57b538000aa03cd825698570a8831e08d9dec7",
+    "fingerprint_spec": "vidtoolz.qualFixtureFingerprint.v1",
+    "eka_contact": 0,
+    "production_contact": 0
+  },
+  "results": {"Q1_Q10": "PASS (doctrine-compliant, isolated session)", "Q11_Q14": "PASS (Q11-Q13 FakeResolve synthetic; Q14 live worker/tunnel lifetime on PRESTO, no Resolve call)", "fixture_before_equals_after": true, "writes_executed": 0},
+  "evidence_manifests_sha256": {
+    "historical_engineering_eka_run_NOT_ACCEPTANCE": "d0204d3e48907748a185230b5557c846659e568aa202280dc5adea5a541161bf",
+    "first_independent_review": "62a973cc9873285037d52d780ab5fa94a6aeb19e0b0884d0d415ac4002c733b3",
+    "doctrine_closure_p2_repair": "3bacfc7a92ae295c701b25f0c934e634b3950e6d2ee17c36c6e3fd5fb7c96f44",
+    "a4_qualification": "130e9241c62430c876892c8b69b222da4c283754885ff965e02aae0ba59a29a1",
+    "phase1_freeze_review": "b2e981bbe4687c9611f9b9ccf70f28c9795032cbf51b10428ba8b9e66755deaa",
+    "v1_19_independent_review": "b9247a558304bc40778b5ce7773cda2db82c82be91d5c717687c8b3c25dd8a13"
+  },
+  "evidence_paths": ["~/outputs/resolve-three-worker-control-plane-2026-09-20/", "~/outputs/resolve-control-plane-phase1-independent-review-2026-09-20/", "~/outputs/resolve-control-plane-phase1-doctrine-closure-2026-09-20/", "~/outputs/resolve-control-plane-phase1-a4-qualification-2026-09-20/", "~/outputs/resolve-control-plane-phase1-freeze-review-2026-09-20/", "~/outputs/resolve-authority-v1.19-independent-review-2026-09-20/"],
+  "governance_records": {"scope_adjudication": {"commit": "91bf571e", "path": "docs/resolve-integration/adjudications/2026-09-20-resolve-control-scope/"}, "a3_provisioning": {"commit": "10e8e398", "path": "docs/resolve-integration/adjudications/2026-09-20-a3-qualification-fixture/"}, "evidence_form_note": "A3 and the launch recipe are carried in the adjudications record class (human-record convention); they were not minted through tools/evidence_store.py. Under this authority the resolve-control qualification evidence class IS the adjudications record class plus the hash-pinned report manifests above; minting canonical evidence-store records is a documented follow-up, not a precondition of this candidate."},
+  "write_authority": "NONE",
+  "hermes_facade": "ABSENT"
+}

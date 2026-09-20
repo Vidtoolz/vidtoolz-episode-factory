@@ -1,0 +1,208 @@
+{
+  "schema": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
+  "authority_version": "1.20.0",
+  "adjudication": "IMPLEMENTATION AUTHOR candidate; independent review required. v1.19 repairs inherited and regression-tested (tools/v120_defect_tests.py).",
+  "law": "Each item is a bounded P3 with an explicit disposition or closure gate; none blocks the read-only substrate.",
+  "operational_closure": "No live operational execution; Phase 1 qualification carried forward by identity, not rerun.",
+  "inherited_matrices": [
+    "FINDING-RESOLUTION-MATRIX-v1.19.json",
+    "FINDING-RESOLUTION-MATRIX-v1.18.json",
+    "FINDING-RESOLUTION-MATRIX-v1.16.json",
+    "FINDING-RESOLUTION-MATRIX-v1.15.json",
+    "FINDING-RESOLUTION-MATRIX-v1.14.json"
+  ],
+  "findings": [
+    {
+      "id": "V119-F1",
+      "severity": "MINOR",
+      "codex_finding": "v1.18 rejection and v1.19 repairs authored by the same agent",
+      "prior_defect": "v1.18 rejection and v1.19 repairs authored by the same agent",
+      "correction": "CLOSED: all seven findings independently re-derived (review manifest b9247a558304bc40778b5ce7773cda2db82c82be91d5c717687c8b3c25dd8a13)",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "V119-F2",
+      "severity": "MINOR",
+      "codex_finding": "v1.19 self-labelled CURRENT candidate",
+      "prior_defect": "v1.19 self-labelled CURRENT candidate",
+      "correction": "CLOSED: 1.19.0 registered HISTORICAL - ACCEPTED; SUPERSEDED after human acceptance",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "V119-F3",
+      "severity": "MINOR",
+      "codex_finding": "stale inherited prose and build-log label",
+      "prior_defect": "stale inherited prose and build-log label",
+      "correction": "CLOSED in v1.20 README and tooling",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "V119-F4",
+      "severity": "MINOR",
+      "codex_finding": "TARGET-CONTRACT library observations null; fixture placeholders",
+      "prior_defect": "TARGET-CONTRACT library observations null; fixture placeholders",
+      "correction": "CLOSED: real observations bound; placeholders remain fixture-only",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "V119-F5",
+      "severity": "MINOR",
+      "codex_finding": "silence on 2026-09-20 live multi-client findings",
+      "prior_defect": "silence on 2026-09-20 live multi-client findings",
+      "correction": "CLOSED: CONTROL-PLANE.md section 10; TRANSPORT.md and SNAPSHOT-CONCURRENCY-RECOVERY.md v1.20 observations",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "P1-F07",
+      "severity": "MINOR",
+      "codex_finding": "duplicate timeline names resolve to first match",
+      "prior_defect": "duplicate timeline names resolve to first match",
+      "correction": "OPEN; gate BEFORE WRITE CAPABILITY",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "P1-F08",
+      "severity": "MINOR",
+      "codex_finding": "registry case-collapse and unstructured config errors",
+      "prior_defect": "registry case-collapse and unstructured config errors",
+      "correction": "OPEN; gate BEFORE HERMES FACADE",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "P1-F09",
+      "severity": "MINOR",
+      "codex_finding": "replies not independently signed",
+      "prior_defect": "replies not independently signed",
+      "correction": "OPEN; gate BEFORE WRITE CAPABILITY",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "P1-F10",
+      "severity": "MINOR",
+      "codex_finding": "fake-Resolve test hook in production module",
+      "prior_defect": "fake-Resolve test hook in production module",
+      "correction": "OPEN; gate BEFORE PERSISTENT WORKER DEPLOYMENT",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "P1-F11",
+      "severity": "MINOR",
+      "codex_finding": "Windows Administrator context and inherited key ACL",
+      "prior_defect": "Windows Administrator context and inherited key ACL",
+      "correction": "OPEN; gate BEFORE PERSISTENT WORKER DEPLOYMENT",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "P1-F12",
+      "severity": "MINOR",
+      "codex_finding": "Phase 1 documentation drift",
+      "prior_defect": "Phase 1 documentation drift",
+      "correction": "CLOSED in v1.20 (CONTROL-PLANE.md from pinned source)",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "P1-R01",
+      "severity": "MINOR",
+      "codex_finding": "precondition capture hygiene",
+      "prior_defect": "precondition capture hygiene",
+      "correction": "CLOSED by hash-pinned evidence index",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "P1-R02",
+      "severity": "MINOR",
+      "codex_finding": "A3 and launch recipe not minted through the evidence store",
+      "prior_defect": "A3 and launch recipe not minted through the evidence store",
+      "correction": "DOCUMENTED evidence class; canonical minting BEFORE WRITE CAPABILITY",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "P1-R03",
+      "severity": "MINOR",
+      "codex_finding": "port-1144 wording: Local scripting is protocol-closed while vendor sockets may stay bound",
+      "prior_defect": "port-1144 wording: Local scripting is protocol-closed while vendor sockets may stay bound",
+      "correction": "CLOSED: TARGET-CONTRACT session network_port_1144 semantics field",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "P1-R04",
+      "severity": "MINOR",
+      "codex_finding": "worker reads live configuration paths",
+      "prior_defect": "worker reads live configuration paths",
+      "correction": "DOCUMENTED; stronger pinning BEFORE WRITE CAPABILITY",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    },
+    {
+      "id": "P1-R05",
+      "severity": "MINOR",
+      "codex_finding": "fixture playback fps 24 vs timeline fps 25",
+      "prior_defect": "fixture playback fps 24 vs timeline fps 25",
+      "correction": "RECORDED fixture observation; no effect on read-only qualification",
+      "negative_fixture": "fixtures/scanner/v118-review-findings.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v120-defect-regressions"
+      ]
+    }
+  ]
+}

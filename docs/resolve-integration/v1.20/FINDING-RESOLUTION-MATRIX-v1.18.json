@@ -1,0 +1,84 @@
+{
+  "schema": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
+  "authority_version": "1.18.0",
+  "adjudication": "IMPLEMENTATION AUTHOR candidate. No independent acceptance or human authorization.",
+  "law": "V117-I1 and the five extraction IDs are preserved; synthetic cases are regressions, not thirty production findings.",
+  "operational_closure": "No operational execution. Independent review required.",
+  "inherited_matrices": [
+    "FINDING-RESOLUTION-MATRIX-v1.17.json"
+  ],
+  "findings": [
+    {
+      "id": "V117-I1",
+      "severity": "BLOCKER",
+      "codex_finding": "DOC-AUTHORITY current registration and external pin coherence",
+      "prior_defect": "Pinned before editing in V117-REPRODUCTION.json; parent 24ead748eec4bce46dc2e945d24ad403fc9472b3 was rejected.",
+      "correction": "Release-only coherent registration/external pin checks and structured source-bound reference roles with independent extraction parity; operational semantics unchanged.",
+      "negative_fixture": "fixtures/scanner/v117-failures.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v118-release-scanner"
+      ]
+    },
+    {
+      "id": "V117-S1",
+      "severity": "MERGE MAJOR",
+      "codex_finding": "PERMISSIONS.json#law",
+      "prior_defect": "Pinned before editing in V117-REPRODUCTION.json; parent 24ead748eec4bce46dc2e945d24ad403fc9472b3 was rejected.",
+      "correction": "Release-only coherent registration/external pin checks and structured source-bound reference roles with independent extraction parity; operational semantics unchanged.",
+      "negative_fixture": "fixtures/scanner/v117-failures.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v118-release-scanner"
+      ]
+    },
+    {
+      "id": "V117-S2",
+      "severity": "MERGE MAJOR",
+      "codex_finding": "M0A-BINDING-VALUES.json#values.verification_result_law",
+      "prior_defect": "Pinned before editing in V117-REPRODUCTION.json; parent 24ead748eec4bce46dc2e945d24ad403fc9472b3 was rejected.",
+      "correction": "Release-only coherent registration/external pin checks and structured source-bound reference roles with independent extraction parity; operational semantics unchanged.",
+      "negative_fixture": "fixtures/scanner/v117-failures.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v118-release-scanner"
+      ]
+    },
+    {
+      "id": "V117-S3",
+      "severity": "MERGE MAJOR",
+      "codex_finding": "M0A-BINDING-VALUES.json#values.toctou_law",
+      "prior_defect": "Pinned before editing in V117-REPRODUCTION.json; parent 24ead748eec4bce46dc2e945d24ad403fc9472b3 was rejected.",
+      "correction": "Release-only coherent registration/external pin checks and structured source-bound reference roles with independent extraction parity; operational semantics unchanged.",
+      "negative_fixture": "fixtures/scanner/v117-failures.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v118-release-scanner"
+      ]
+    },
+    {
+      "id": "V117-S4",
+      "severity": "MERGE MAJOR",
+      "codex_finding": "FREEZE-MANIFEST.json PERMISSIONS qualification note",
+      "prior_defect": "Pinned before editing in V117-REPRODUCTION.json; parent 24ead748eec4bce46dc2e945d24ad403fc9472b3 was rejected.",
+      "correction": "Release-only coherent registration/external pin checks and structured source-bound reference roles with independent extraction parity; operational semantics unchanged.",
+      "negative_fixture": "fixtures/scanner/v117-failures.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v118-release-scanner"
+      ]
+    },
+    {
+      "id": "V117-S5",
+      "severity": "MERGE MAJOR",
+      "codex_finding": "FREEZE-MANIFEST.json#rules.[4]",
+      "prior_defect": "Pinned before editing in V117-REPRODUCTION.json; parent 24ead748eec4bce46dc2e945d24ad403fc9472b3 was rejected.",
+      "correction": "Release-only coherent registration/external pin checks and structured source-bound reference roles with independent extraction parity; operational semantics unchanged.",
+      "negative_fixture": "fixtures/scanner/v117-failures.json",
+      "expected_layer": "semantic",
+      "validation_sections": [
+        "v118-release-scanner"
+      ]
+    }
+  ]
+}

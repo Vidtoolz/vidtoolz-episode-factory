@@ -1,0 +1,15 @@
+{
+  "schema": "vidtoolz.resolveTrustedCaptureShim.v1",
+  "authority_version": "1.20.0",
+  "shim_version": "vidtoolz.captureShim.reference.v1",
+  "shim_sha256": "caf310438232c65d010942a4f8d56632489500d24a18666574e775d2cf61d61f",
+  "shim_source_path": "tools/capture_shim_reference.py",
+  "shim_source_sha256": "4132e5bd30339d68cd80c2bb265fb3d1cc5fceb4c184b7c2aa7a73f865e22195",
+  "allowlist_digest": "ead63126d6e4032f2854f16db036ed27494940764d2069b9deaf87963f539030",
+  "allowlist_method_count": 47,
+  "codec_version": "vidtoolz.resolvePyValue.v1",
+  "raw_schema_version": "vidtoolz.resolveRawCapabilityCapture.v1",
+  "raw_ingest_version": "vidtoolz.resolveRawIngest.v1",
+  "evidence_store_version": "vidtoolz.resolveEvidenceStore.v5",
+  "trusted_shim_sha256": "434c9807bba1a9ba30bd347bd37cda8bd94a75a63dddbc53e137b4b0ec21a0d6"
+}

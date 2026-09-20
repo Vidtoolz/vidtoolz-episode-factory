@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveBindingObservation.v1",
+  "title": "Binding observation (PROVISIONAL_UNTIL_M3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "binding_set_digest",
+    "snapshot_payload_sha256",
+    "target_epoch",
+    "project_unique_id",
+    "timeline_unique_id",
+    "occurrences",
+    "created_by"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveBindingObservation.v1"
+    },
+    "binding_set_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "snapshot_payload_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "target_epoch": {
+      "type": "string"
+    },
+    "project_unique_id": {
+      "type": "string"
+    },
+    "timeline_unique_id": {
+      "type": "string"
+    },
+    "occurrences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "binding_id",
+          "occurrence_id",
+          "item_unique_id",
+          "media_pool_item_unique_id",
+          "media_id",
+          "source_sha256",
+          "observed_start",
+          "observed_end",
+          "marker_custom_data"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "created_by": {
+      "const": "VERIFIED_READBACK"
+    }
+  }
+}

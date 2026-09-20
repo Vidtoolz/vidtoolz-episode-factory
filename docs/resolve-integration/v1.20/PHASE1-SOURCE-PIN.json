@@ -1,0 +1,142 @@
+{
+  "schema": "vidtoolz.resolveControlPlaneSourcePin.v1",
+  "authority_version": "1.20.0",
+  "component": "resolve-control-plane phase1 0.1.1",
+  "protocol": "vrc.v1",
+  "implementation_commit": "77c26103",
+  "implementation_commit_full": "77c26103dfe88c448267a9c1efe7f34a20a39375",
+  "git_tree_sha1_resolve_control": "5e78e8f52654f3f878d842cf10162069e08b6439",
+  "worker_sha256": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3",
+  "file_count": 24,
+  "files": [
+    {
+      "path": "resolve-control/README.md",
+      "sha256": "d6db1b1825eeebd3fa9fb24f2c738537f02605244a5f9eba9df0ee8b0f05049d",
+      "bytes": 1766
+    },
+    {
+      "path": "resolve-control/docs/ARCHITECTURE.md",
+      "sha256": "77883eced39b1e5b712390b6d29747873873b3d4e78a18fb55b9fa21f64ef7bf",
+      "bytes": 3712
+    },
+    {
+      "path": "resolve-control/docs/KNOWN-LIMITATIONS.md",
+      "sha256": "5e0ce373717a4f2c264a9c7f1628d73320a3d95c143c7abdfea8fecca46e1e6b",
+      "bytes": 3058
+    },
+    {
+      "path": "resolve-control/docs/OPERATIONS.md",
+      "sha256": "e817bc4a5cc791d3bb96784849ffeeb8a344806e4a670d23b9402115341874ca",
+      "bytes": 1837
+    },
+    {
+      "path": "resolve-control/docs/PROTOCOL.md",
+      "sha256": "05cd337cd8f1ca1bb5be4e052a7b5f0a04d9e4734e66d9c0fdd796bf77a500e9",
+      "bytes": 3542
+    },
+    {
+      "path": "resolve-control/docs/QUALIFICATION-GATE.md",
+      "sha256": "94ad87403ca13372b940964f483a94084a01f4294ca640c7f819e8772448c4aa",
+      "bytes": 3337
+    },
+    {
+      "path": "resolve-control/docs/READ-ONLY-CAPABILITIES.md",
+      "sha256": "c796767fb2ad48a8429f4de19719fa9de7f6e4bc311b2e34271b670d99917ab5",
+      "bytes": 1542
+    },
+    {
+      "path": "resolve-control/docs/REGISTRY.md",
+      "sha256": "730848bb674a674207260c9eba3f8da58421069a913281a732e60f540fb24f05",
+      "bytes": 1255
+    },
+    {
+      "path": "resolve-control/docs/SECURITY.md",
+      "sha256": "2d22dfe49f6e6c2cc80af6a30f7ecb7904203908010fbb1320fd3dfb08da3456",
+      "bytes": 2903
+    },
+    {
+      "path": "resolve-control/docs/WORKER-IDENTITY.md",
+      "sha256": "6f64cb6bd5280e2a552ae7cb4eb8156413133117890afddde7cd5a9ad17b25e1",
+      "bytes": 1781
+    },
+    {
+      "path": "resolve-control/registry.example.json",
+      "sha256": "dc363ddf33d82e52de70c1681767fa4cc8a24e8e445e3268306a9cdedc2ea1ef",
+      "bytes": 1064
+    },
+    {
+      "path": "resolve-control/tests/fake_resolve.py",
+      "sha256": "26099c9ae64e9d4ae8be50bc23cc4f631d7d34fce75c744f0f6399b498602afd",
+      "bytes": 2570
+    },
+    {
+      "path": "resolve-control/tests/test_phase1.py",
+      "sha256": "e569b215f11b5c20e220d03d6a213793201c094b9773a746647f852b48918a5c",
+      "bytes": 12637
+    },
+    {
+      "path": "resolve-control/tests/test_repairs.py",
+      "sha256": "4a65c9d6615d0fc81b7c93f0b5b0fa1cb87269f3c77d4a97d749bdb8c3d7cacb",
+      "bytes": 17142
+    },
+    {
+      "path": "resolve-control/vrc/__init__.py",
+      "sha256": "b084e000a03d44a1f8a0b6d8c61b94ef0b9f5b76c2021ff5c1008500cb5d5ac9",
+      "bytes": 136
+    },
+    {
+      "path": "resolve-control/vrc/__main__.py",
+      "sha256": "336a14a284b5e30ce2ddd08bd1e78c5f52dbf039a00a03ddc7e1b669faa7d5d1",
+      "bytes": 2424
+    },
+    {
+      "path": "resolve-control/vrc/client.py",
+      "sha256": "a4ed85dcae4e8fe0b413f193a767b534d421f92b27f2167d80e3b822216440c3",
+      "bytes": 2321
+    },
+    {
+      "path": "resolve-control/vrc/errors.py",
+      "sha256": "05e5e8784c07c1af5d57f4698d8d4eb42cd64d7dc334d83a48ec069b5248bba2",
+      "bytes": 788
+    },
+    {
+      "path": "resolve-control/vrc/journal.py",
+      "sha256": "5a61e4d2cf087e73579d04d0224a22af8a27202bff6ca61e98f808ea09b354ec",
+      "bytes": 1040
+    },
+    {
+      "path": "resolve-control/vrc/protocol.py",
+      "sha256": "0fb4cad85acd040b5c3a3347d9300f3684804adb8d0f5819803004a220b6bf00",
+      "bytes": 1020
+    },
+    {
+      "path": "resolve-control/vrc/registry.py",
+      "sha256": "2f7a13b7eaab92782b29cca3636d025a7d42ffa1991802fdbc1118255748aa15",
+      "bytes": 2540
+    },
+    {
+      "path": "resolve-control/vrc/transport.py",
+      "sha256": "4553bf8eb5232dba34908004897a2fae4a8cf52c30e9a7926c1af204f0f301f5",
+      "bytes": 1239
+    },
+    {
+      "path": "resolve-control/vrc/tunnel.py",
+      "sha256": "35b0de571df2e4f3feffba24889231709267ff150304f42eb93f28584a057d9f",
+      "bytes": 1343
+    },
+    {
+      "path": "resolve-control/worker/resolve_worker.py",
+      "sha256": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3",
+      "bytes": 31975
+    }
+  ],
+  "law": "The accepted Phase 1 implementation is exactly these bytes. Any byte difference is a different, unreviewed implementation. resolve-control/** on the freeze branch must equal this pin (cherry-picked with provenance from claude/resolve-control-plane-phase1-20260920).",
+  "governance": {
+    "scope_adjudication_commit": "91bf571e",
+    "a3_provisioning_commit": "10e8e398",
+    "records_path": "docs/resolve-integration/adjudications/",
+    "acceptance_of_parent_v1_19": "docs/resolve-integration/adjudications/2026-09-20-v1.19-acceptance/"
+  },
+  "write_authority": "NONE",
+  "hermes_facade": "ABSENT"
+}

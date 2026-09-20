@@ -1,0 +1,65 @@
+[
+  {
+    "id": "V118-M1",
+    "severity": "MAJOR",
+    "area": "Inventory",
+    "file_slot": "AUTHORITY-FUNCTION-CLASSES.json; authority_slots.py:64,134",
+    "finding": "22 authorizing-array names and 12 decision-function keys omitted; completeness claim false",
+    "evidence": "INVENTORY-OMISSIONS.json; SOURCE-ORACLE.json",
+    "impact": "Reject; complete the declared function/reference universe"
+  },
+  {
+    "id": "V118-M2",
+    "severity": "MAJOR",
+    "area": "Validator semantics",
+    "file_slot": "tools/authority_slots.py:149\u2013151",
+    "finding": "Correctly source-bound diagnostic annotation suppresses governs/controls authority predicates",
+    "evidence": "SCANNER-ATTACKS.json",
+    "impact": "Reject; refuse contradictory authority roles"
+  },
+  {
+    "id": "V118-M3",
+    "severity": "MAJOR",
+    "area": "SDK evidence/object scope",
+    "file_slot": "READ-PRIMITIVES.json probe[2], SNAPSHOT_CAPTURE[24]",
+    "finding": "GetClipProperty assigned TimelineItem; pinned source assigns MediaPoolItem",
+    "evidence": "SDK-READ-REFERENCES.json; SDK stub:2050",
+    "impact": "Reject; correct receiver/object meaning and dependent declarations"
+  },
+  {
+    "id": "V118-M4",
+    "severity": "MAJOR",
+    "area": "SDK evidence/signature",
+    "file_slot": "READ-PRIMITIVES.json probe[19], TRIPWIRE_READ[0]",
+    "finding": "GetProjectLastModifiedTime wrong receiver, arguments and result type",
+    "evidence": "SDK stub:1678; SDK-READ-REFERENCES.json",
+    "impact": "Reject; correct ProjectManager/name/int timestamp contract"
+  },
+  {
+    "id": "V118-N1",
+    "severity": "MINOR",
+    "area": "Scanner contract",
+    "file_slot": "AUTHORITY-FUNCTION-CLASSES.json#slot_discovery_law; authority_slots.py",
+    "finding": "Published signal precedence/own-clause law differs from implementation; unrelated predicate produces false positive",
+    "evidence": "SCANNER-ATTACKS.json clause-4; source law",
+    "impact": "Successor reconcile law and implementation"
+  },
+  {
+    "id": "V118-N2",
+    "severity": "MINOR",
+    "area": "Historical classification",
+    "file_slot": "AUTHORITY-PRECEDENCE.md S18/S28/S32/S37/S61; reference metadata",
+    "finding": "Historical statements assigned DIAGNOSTIC_DECLARATION; equivalent JSON rows classified historical",
+    "evidence": "REFERENCE-SAMPLE.json",
+    "impact": "Successor correct per-reference history roles/counts"
+  },
+  {
+    "id": "V118-N3",
+    "severity": "MINOR",
+    "area": "Current documentation",
+    "file_slot": "TARGET-CONTRACT.json required_future_observations[2].source; MILESTONES.md M0",
+    "finding": "Current evidence-binding prose retains 1.3.0 and 1.6.0 despite active 1.18",
+    "evidence": "Source fields versus current selector/runtime binding",
+    "impact": "Successor remove stale current binding prose"
+  }
+]

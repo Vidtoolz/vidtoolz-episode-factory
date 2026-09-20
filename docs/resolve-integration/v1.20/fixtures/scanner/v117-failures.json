@@ -1,0 +1,1077 @@
+[
+  {
+    "id": "NEG-4",
+    "pass": false,
+    "expected": {
+      "derive_attachment_state": "AUTHORITATIVE"
+    },
+    "actual": {
+      "derive_attachment_state": "DIAGNOSTIC_DECLARATION"
+    },
+    "text": "derive_attachment_state is no longer merely diagnostic; it now refuses invalid authority.",
+    "violations": [],
+    "source": "prepared_fixed"
+  },
+  {
+    "id": "NO-LONGER-DIAGNOSTIC-SINGLE",
+    "text": "derive_attachment_state is no longer diagnostic and is authoritative.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": null,
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state is no longer diagnostic and is authoritative",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "DIAGNOSTIC-REFUSES",
+    "text": "binding no longer resolves, and diagnostic derive_attachment_state refuses.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": null,
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "and diagnostic derive_attachment_state refuses",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "UNRELATED-NEGATION",
+    "text": "derive_attachment_state cannot read metadata and refuses invalid authority.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": null,
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state cannot read metadata and refuses invalid authority",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "MIXED-SAME-CLAUSE",
+    "text": "derive_attachment_state is diagnostic and derive_attachment_state_authorizing is authoritative and commit_eligibility is provisional_until_m3_non_authorizing.",
+    "pass": false,
+    "expect_violation": false,
+    "expect_roles": {
+      "derive_attachment_state": "DIAGNOSTIC_DECLARATION",
+      "derive_attachment_state_authorizing": "AUTHORIZING_DESIGNATION",
+      "commit_eligibility": "DIAGNOSTIC_DECLARATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state is diagnostic and derive_attachment_state_authorizing is authoritative and commit_eligibility is provisional_until_m3_non_authorizing",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        },
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "derive_attachment_state is diagnostic and derive_attachment_state_authorizing is authoritative and commit_eligibility is provisional_until_m3_non_authorizing",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        },
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "commit_eligibility",
+          "function": "commit_eligibility",
+          "clause": "derive_attachment_state is diagnostic and derive_attachment_state_authorizing is authoritative and commit_eligibility is provisional_until_m3_non_authorizing",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "DIAGNOSTIC_DECLARATION",
+          "keypath_role": null,
+          "function_class": "provisional_until_m3_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "CURRENT-HISTORY-corrected",
+    "text": "The corrected compatibility rule is current and derive_attachment_state is authoritative.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": null,
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "The corrected compatibility rule is current and derive_attachment_state is authoritative",
+          "role": "HISTORICAL_STATEMENT",
+          "clause_role": "HISTORICAL_STATEMENT",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "CURRENT-HISTORY-v1.16",
+    "text": "The v1.16 compatibility rule is current and derive_attachment_state is authoritative.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": null,
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "The v1.16 compatibility rule is current and derive_attachment_state is authoritative",
+          "role": "HISTORICAL_STATEMENT",
+          "clause_role": "HISTORICAL_STATEMENT",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "CURRENT-HISTORY-historical",
+    "text": "The historical compatibility rule is current and derive_attachment_state is authoritative.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": null,
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "The historical compatibility rule is current and derive_attachment_state is authoritative",
+          "role": "HISTORICAL_STATEMENT",
+          "clause_role": "HISTORICAL_STATEMENT",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "KEY-DIAGNOSTIC-SUPPRESSION",
+    "text": "derive_attachment_state is authoritative.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": null,
+    "binding": {
+      "key": "unfamiliar.diagnostic_notes"
+    },
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.diagnostic_notes",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state is authoritative",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "AUTHORIZING_DESIGNATION",
+          "keypath_role": "DIAGNOSTIC_DECLARATION",
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "SAFE-KEY-WITHOUT-CLASS",
+    "text": "derive_attachment_state",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": null,
+    "binding": {
+      "key": "unfamiliar.diagnostic_notes"
+    },
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.diagnostic_notes",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state",
+          "role": "DIAGNOSTIC_DECLARATION",
+          "clause_role": "MENTION",
+          "keypath_role": "DIAGNOSTIC_DECLARATION",
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-governs-derive_attachment_state",
+    "text": "derive_attachment_state governs attachment readiness.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": {
+      "derive_attachment_state": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state governs attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state governs attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY",
+          "violation": "UNMARKED_DEMOTED_REFERENCE"
+        }
+      ],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-governs-derive_attachment_state_authorizing",
+    "text": "derive_attachment_state_authorizing governs attachment readiness.",
+    "pass": false,
+    "expect_violation": false,
+    "expect_roles": {
+      "derive_attachment_state_authorizing": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "derive_attachment_state_authorizing governs attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-controls-derive_attachment_state",
+    "text": "derive_attachment_state controls attachment readiness.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": {
+      "derive_attachment_state": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state controls attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state controls attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY",
+          "violation": "UNMARKED_DEMOTED_REFERENCE"
+        }
+      ],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-controls-derive_attachment_state_authorizing",
+    "text": "derive_attachment_state_authorizing controls attachment readiness.",
+    "pass": false,
+    "expect_violation": false,
+    "expect_roles": {
+      "derive_attachment_state_authorizing": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "derive_attachment_state_authorizing controls attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-determines-derive_attachment_state",
+    "text": "derive_attachment_state determines attachment readiness.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": {
+      "derive_attachment_state": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state determines attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state determines attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY",
+          "violation": "UNMARKED_DEMOTED_REFERENCE"
+        }
+      ],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-determines-derive_attachment_state_authorizing",
+    "text": "derive_attachment_state_authorizing determines attachment readiness.",
+    "pass": false,
+    "expect_violation": false,
+    "expect_roles": {
+      "derive_attachment_state_authorizing": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "derive_attachment_state_authorizing determines attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-adjudicates-derive_attachment_state",
+    "text": "derive_attachment_state adjudicates attachment readiness.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": {
+      "derive_attachment_state": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state adjudicates attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state adjudicates attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY",
+          "violation": "UNMARKED_DEMOTED_REFERENCE"
+        }
+      ],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-adjudicates-derive_attachment_state_authorizing",
+    "text": "derive_attachment_state_authorizing adjudicates attachment readiness.",
+    "pass": false,
+    "expect_violation": false,
+    "expect_roles": {
+      "derive_attachment_state_authorizing": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "derive_attachment_state_authorizing adjudicates attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-blocks-derive_attachment_state",
+    "text": "derive_attachment_state blocks attachment readiness.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": {
+      "derive_attachment_state": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state blocks attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state blocks attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY",
+          "violation": "UNMARKED_DEMOTED_REFERENCE"
+        }
+      ],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-blocks-derive_attachment_state_authorizing",
+    "text": "derive_attachment_state_authorizing blocks attachment readiness.",
+    "pass": false,
+    "expect_violation": false,
+    "expect_roles": {
+      "derive_attachment_state_authorizing": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "derive_attachment_state_authorizing blocks attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-permits-derive_attachment_state",
+    "text": "derive_attachment_state permits attachment readiness.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": {
+      "derive_attachment_state": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state permits attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state permits attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY",
+          "violation": "UNMARKED_DEMOTED_REFERENCE"
+        }
+      ],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-permits-derive_attachment_state_authorizing",
+    "text": "derive_attachment_state_authorizing permits attachment readiness.",
+    "pass": false,
+    "expect_violation": false,
+    "expect_roles": {
+      "derive_attachment_state_authorizing": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "derive_attachment_state_authorizing permits attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-certifies-derive_attachment_state",
+    "text": "derive_attachment_state certifies attachment readiness.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": {
+      "derive_attachment_state": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state certifies attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state certifies attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY",
+          "violation": "UNMARKED_DEMOTED_REFERENCE"
+        }
+      ],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-certifies-derive_attachment_state_authorizing",
+    "text": "derive_attachment_state_authorizing certifies attachment readiness.",
+    "pass": false,
+    "expect_violation": false,
+    "expect_roles": {
+      "derive_attachment_state_authorizing": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "derive_attachment_state_authorizing certifies attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-rejects-derive_attachment_state",
+    "text": "derive_attachment_state rejects attachment readiness.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": {
+      "derive_attachment_state": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state rejects attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state rejects attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY",
+          "violation": "UNMARKED_DEMOTED_REFERENCE"
+        }
+      ],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-rejects-derive_attachment_state_authorizing",
+    "text": "derive_attachment_state_authorizing rejects attachment readiness.",
+    "pass": false,
+    "expect_violation": false,
+    "expect_roles": {
+      "derive_attachment_state_authorizing": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "derive_attachment_state_authorizing rejects attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-establishes-derive_attachment_state",
+    "text": "derive_attachment_state establishes attachment readiness.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": {
+      "derive_attachment_state": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state establishes attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "derive_attachment_state establishes attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY",
+          "violation": "UNMARKED_DEMOTED_REFERENCE"
+        }
+      ],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "VERB-establishes-derive_attachment_state_authorizing",
+    "text": "derive_attachment_state_authorizing establishes attachment readiness.",
+    "pass": false,
+    "expect_violation": false,
+    "expect_roles": {
+      "derive_attachment_state_authorizing": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {},
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "derive_attachment_state_authorizing",
+          "function": "derive_attachment_state_authorizing",
+          "clause": "derive_attachment_state_authorizing establishes attachment readiness",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "MODULE-unfamiliar_module",
+    "text": "unfamiliar_module.derive_attachment_state refuses invalid authority.",
+    "pass": false,
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "unfamiliar_module.derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "unfamiliar_module.derive_attachment_state refuses invalid authority",
+          "role": "AUTHORIZING_DESIGNATION",
+          "clause_role": "AUTHORIZING_DESIGNATION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "reference": "unfamiliar_module.derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "unfamiliar_module.derive_attachment_state refuses invalid authority",
+          "role": "AUTHORIZING_DESIGNATION",
+          "clause_role": "AUTHORIZING_DESIGNATION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY",
+          "violation": "DEMOTED_FUNCTION_DESIGNATED_AUTHORITATIVE"
+        }
+      ],
+      "slots": [
+        {
+          "artifact": "SYNTHETIC.json",
+          "location": "unfamiliar.handler",
+          "slot": "SYNTHETIC.json#unfamiliar.handler",
+          "functions": [
+            "derive_attachment_state"
+          ],
+          "classes": [
+            "diagnostic_non_authorizing"
+          ],
+          "document_role": "NORMATIVE_AUTHORITY",
+          "status": "STILL_ACTIVE"
+        }
+      ]
+    },
+    "source": "candidate_additions"
+  },
+  {
+    "id": "WRAP-BULLET",
+    "text": "- derive_attachment_state\n  refuses invalid authority.",
+    "pass": false,
+    "expect_violation": true,
+    "expect_roles": {
+      "derive_attachment_state": "AUTHORIZING_DESIGNATION"
+    },
+    "binding": {
+      "name": "SYNTHETIC.md"
+    },
+    "actual": {
+      "rows": [
+        {
+          "artifact": "SYNTHETIC.md",
+          "location": "line 1",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "- derive_attachment_state",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY"
+        }
+      ],
+      "violations": [
+        {
+          "artifact": "SYNTHETIC.md",
+          "location": "line 1",
+          "reference": "derive_attachment_state",
+          "function": "derive_attachment_state",
+          "clause": "- derive_attachment_state",
+          "role": "MENTION",
+          "clause_role": "MENTION",
+          "keypath_role": null,
+          "function_class": "diagnostic_non_authorizing",
+          "status": "STILL_ACTIVE",
+          "document_role": "NORMATIVE_AUTHORITY",
+          "violation": "UNMARKED_DEMOTED_REFERENCE"
+        }
+      ],
+      "slots": []
+    },
+    "source": "candidate_additions"
+  }
+]

@@ -1,0 +1,101 @@
+{
+  "fixture": "conflict-bound-resolved",
+  "layer_expected_failure": "none",
+  "schema": "provisional/resolveConflict",
+  "check": "semantic_conflict",
+  "expect_error_contains": null,
+  "document": {
+    "schema": "vidtoolz.resolveConflict.v1",
+    "transaction_id": "tx-fixture",
+    "plan_digest": "3fe435366513ba7cc4a12a58b3761cf8b8bfe96900289f8a7775386e4e446d7e",
+    "code": "UNEXPECTED_DELTA",
+    "drift_class": "POSITION_DRIFT",
+    "object": {
+      "item": "it-3"
+    },
+    "expected": {
+      "start": 108694
+    },
+    "observed": {
+      "start": 108700
+    },
+    "policy": "REQUEST_RECONCILIATION",
+    "next_action_non_mutating": "present to Mikko",
+    "authority_effect": "NONE_UNTIL_HUMAN_ADJUDICATION",
+    "resolved": true,
+    "authority_version": "1.20.0"
+  },
+  "plan": {
+    "schema": "vidtoolz.resolveMutationPlan.v1",
+    "transaction_id": "tx-fixture",
+    "session_id": "sess-2026-09-08-0001",
+    "authority_version": "1.20.0",
+    "milestone": "M3",
+    "dry_run": false,
+    "target": {
+      "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+      "project_unique_id": "proj-fixture-0001",
+      "timeline_unique_id": "tl-fixture-0001",
+      "target_epoch": "epoch-fixture-1",
+      "host_name": "vidnux",
+      "library_name": "VIDTOOLZ Resolve Qualification v1",
+      "library_kind": "Disk",
+      "observed_database_name": "VIDTOOLZ Resolve Qualification v1",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_FIXTURE",
+      "timeline_name": "VIDTOOLZ__fixture__r1",
+      "resolve_version": "21.1.0.0014"
+    },
+    "target_epoch": "epoch-fixture-1",
+    "target_contract_digest": "538ed76ca1b603428f4e52f4125c53561697728b9e0223d41317001b5e5a2664",
+    "binding_set_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "handoff_digest_sha256": "3fd9bdd875c9eb489abf77797613abbc2616eef36073503742ebc9fd80f5bf69",
+    "h0_payload_sha256": "c2a2ce0f947ef1efd1cf330fbb398f03ee4d600eb92de91e9aa9d36e0c9eab9a",
+    "h0_guard_digest": "f28132811dfc5f36be4fedd3e260c912e75e84f119ec32ed6477dbbf3a12461b",
+    "capability_matrix_version": "1.20.0-HYPOTHETICAL",
+    "collector_version": "0.0.0-fixture",
+    "timebase_digest": "e8f1f34a8c1c1f63f021c8679e4d515ad7b1be0cf1381ef872d6b8ace7a52d4a",
+    "permission_class": "RESOLVE_ASSEMBLE",
+    "scope": "SCRATCH_QUALIFICATION_LIBRARY",
+    "lease": {},
+    "operations": [
+      {
+        "operation_id": "op-1",
+        "op": "APPEND",
+        "selector": {
+          "library_instance_uuid": "7e11aa60-fe44-4f3e-aa35-515e9a0d30ca",
+          "project_unique_id": "proj-fixture-0001",
+          "timeline_unique_id": "tl-fixture-0001",
+          "target_epoch": "epoch-fixture-1",
+          "track_type": "video",
+          "track_index": 1,
+          "expected_media_pool_item_unique_id": "mp-new"
+        },
+        "expected_old": null,
+        "expected_new": {
+          "start": 110194,
+          "end": 110541
+        },
+        "allowed_created": [
+          "one item"
+        ],
+        "allowed_deleted": [],
+        "declared_side_effects": []
+      }
+    ],
+    "operation_set_digest": "b6f8920e60b7cd3b6a2d1629442bdc71752919b7184c8138fd92b20a0ca3cf19",
+    "plan_digest": "3fe435366513ba7cc4a12a58b3761cf8b8bfe96900289f8a7775386e4e446d7e",
+    "refs": {
+      "m0_exit": "d96089db04e7363c9757ad9239e7527003afc1cb53894ccc03179801cce2ce34",
+      "m1_exit": "94132ae2bf27c59c4397e3edfa4ac6a69162584a37105ddfd911b371bd71b539",
+      "m2_exit": "8ce7f37477b5d8476dda4d88ed7cc5f716f80eb19e95781f051cfdd23533f63f",
+      "authorization": "44fdb4eb137089703817f9ad38cd052fe36e1e8e7e47000503da41453f16fc7a",
+      "exclusive_session": "9e6454d04b2b8c89db565f03d26dd60f884252845f4ec76a125e8352947699d3",
+      "read_only_journal": "ba9b164805dfd7b9712612e9125528de39d19f4c74596e25ab2bf0b954d38241",
+      "media_class": "cca1514333154efea0c49aea607e17eb772db8d901fe7c7b12f4e01ef0603bbc",
+      "destination_timeline": "ec6df9bfbc8f6e18131b9c0f6fa7507b50cd896996a97c399307abe7d548d92e",
+      "journal_prepared": "02da440450f103fbaac4b1edefd0b7d2cc62120510711bd5d12fd204d23f628a",
+      "guard": "8f30477de3c202d05822a05cef1676db49316f4b8fb3760cf14ed7fdaac908fb",
+      "plan_validation": "6cfc84f1c990cfef6ad53423d774250a86ec492066c5affe3fcafb7bdf6db5c1"
+    }
+  }
+}
