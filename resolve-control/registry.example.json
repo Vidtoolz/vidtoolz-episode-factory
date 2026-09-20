@@ -1,0 +1,25 @@
+{
+ "targets": {
+  "vidnux": {
+   "transport": "local",
+   "port": 47021,
+   "secret_file": "~/.config/vidtoolz-resolve-control/secrets/vidnux.key"
+  },
+  "presto": {
+   "transport": "ssh",
+   "ssh_alias": "presto",
+   "local_port": 47121,
+   "remote_port": 47021,
+   "secret_file": "~/.config/vidtoolz-resolve-control/secrets/presto.key",
+   "remote_command": "py -3 C:\\Users\\presto\\.vidtoolz-resolve-worker\\resolve_worker.py --host-id PRESTO --secret-file C:\\Users\\presto\\.vidtoolz-resolve-worker\\worker.key --state-dir C:\\Users\\presto\\.vidtoolz-resolve-worker\\state --exit-with-session"
+  },
+  "vidlap2": {
+   "transport": "ssh",
+   "ssh_alias": "vidlap2",
+   "local_port": 47221,
+   "remote_port": 47021,
+   "secret_file": "~/.config/vidtoolz-resolve-control/secrets/vidlap2.key",
+   "remote_command": "py -3 C:\\Users\\mjp77\\.vidtoolz-resolve-worker\\resolve_worker.py --host-id VIDLAP2 --secret-file C:\\Users\\mjp77\\.vidtoolz-resolve-worker\\worker.key --state-dir C:\\Users\\mjp77\\.vidtoolz-resolve-worker\\state --exit-with-session"
+  }
+ }
+}
