@@ -25,6 +25,7 @@ import os
 import random
 import signal
 import re
+import tempfile
 import sys
 import textwrap
 
@@ -54,16 +55,38 @@ _RUNVAR = [(re.compile(r"resolve-v1[0-9]*-evidence-[A-Za-z0-9_]+"), "resolve-evi
            (re.compile(r"/tmp/[A-Za-z0-9_.-]*evidence[A-Za-z0-9_.-]*"), "<TMPROOT>"),
            # session-derived digests bind the temporary root path and inodes, so they legitimately differ per run.
            # The decision is never scrubbed; only the diagnostic text, so the frozen report stays byte-identical.
-           (re.compile(r"\b[0-9a-f]{64}\b"), "<SHA256>")]
+           (re.compile(r"\b[0-9a-f]{64}\b"), "<SHA256>"),
+           # v1.20 repair: run-unique self-test session ids (pid + 128-bit token) never reach the frozen report
+           (re.compile(r"sess-selftest-[A-Za-z0-9._-]+"), "sess-selftest-<RUN>")]
+
+
+# v1.20 repair (F-120-09): the report is a governed manifest member, so NO detail may carry an environment-bound value.
+# Besides the regex scrubs above, every literal occurrence of the process temp directory (TMPDIR, whatever length the
+# reviewer chose), of the repository checkout root and of the working directory is replaced by a fixed token. A check
+# whose detail still depends on the environment after this is a defect of that check (section report-determinism).
+_ENV_PREFIXES = []
+for _pfx, _tok in ((tempfile.gettempdir(), "<TMPDIR>"), (os.path.realpath(tempfile.gettempdir()), "<TMPDIR>"),
+                   (os.path.dirname(os.path.dirname(os.path.dirname(B))), "<REPO>"), (os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(B)))), "<REPO>"),
+                   (os.getcwd(), "<CWD>"), (os.path.realpath(os.getcwd()), "<CWD>")):
+    if _pfx and _pfx != "/" and (_pfx, _tok) not in _ENV_PREFIXES:
+        _ENV_PREFIXES.append((_pfx, _tok))
+_ENV_PREFIXES.sort(key=lambda x: -len(x[0]))          # longest prefix first, so <TMPDIR> under <REPO> scrubs as itself
+
+
+def scrub_detail(detail):
+    d = str(detail)
+    for pfx, tok in _ENV_PREFIXES:
+        d = d.replace(pfx, tok)
+    for pat, sub in _RUNVAR:
+        d = pat.sub(sub, d)
+    return d
 
 
 def rec(section, name, ok, detail=""):
-    """Record one check. Detail strings are scrubbed of per-run values (temporary directory names, inode numbers) so
-    VALIDATION-REPORT.md is byte-identical across fresh processes; the pass/fail decision is never scrubbed."""
-    d = str(detail)
-    for pat, sub in _RUNVAR:
-        d = pat.sub(sub, d)
-    R.append((section, name, bool(ok), d[:220]))
+    """Record one check. Detail strings are scrubbed of per-run and per-environment values (temporary directory names,
+    inode numbers, digests, the temp directory, the checkout root) so VALIDATION-REPORT.md is byte-identical across fresh
+    processes AND across scratch environments; the pass/fail decision is never scrubbed."""
+    R.append((section, name, bool(ok), scrub_detail(detail)[:220]))
 
 
 def result_of(section, name):
@@ -2592,8 +2615,10 @@ def _v15_call(fn, sec=4):
 
 
 def _v15_sess(tag):
+    # v1.20 repair (F-120-04): a run-unique, collision-resistant self-test id (prefix + tag + pid + 128-bit token), not a
+    # pid + sequence; the testkit removes ONLY the session carrying an id it minted.
     _V15_SEQ[0] += 1
-    return f"sess-v115-{tag}-{os.getpid()}-{_V15_SEQ[0]:03d}"
+    return TK.selftest_session_name(f"v115-{tag}-{_V15_SEQ[0]:03d}")
 
 
 def _v15_author(sid, libroot, verify=True):
@@ -2899,8 +2924,9 @@ try:
 
     # ================================================================ the governed-location suites (real root)
     # v1.15 section 35: these run in BOTH reviewer environments through the testkit's governed self-test seam -
-    # root absent, it creates and removes the whole tree; root present, it creates and removes ONE session directory
-    # and refuses to adopt an existing one. Production authority is untouched: the root is still not configurable.
+    # v1.20 repair (F-120-04): the seam owns and removes ONLY its own uniquely named session; an absent root is created
+    # with the frozen mode and left in place; it refuses to adopt an existing session. Production authority is untouched:
+    # the root is still not configurable. The ownership law is proved against private roots in section selftest-ownership.
     _V15_LIB = os.path.join(V15_ROOT, "lib")
     os.makedirs(_V15_LIB, exist_ok=True)
     _v15_ready, _v15_prepared = _v15_sess("ready"), _v15_sess("prepared")
@@ -2932,11 +2958,14 @@ try:
             L.derive_attachment_state_authorizing(tc, _gp, _V15_ACTIVE)["state"] == "PROVISIONED_NOT_VERIFIED"
             and _gr.evidence_snapshot_digest != _gp.evidence_snapshot_digest
             and _gr.receipt != _gp.receipt)
-        rec("b1-positive", "v1.15 section 35: the suite runs this control in BOTH reviewer environments and leaves the governed root exactly as it found it",
+        rec("b1-positive", "v1.15 section 35 / v1.20 F-120-04: the suite runs this control in BOTH reviewer environments; the seam owns and removes ONLY its own two run-unique sessions, never the governed root or any other entry (root absent at entry: created with the frozen mode and left in place)",
             os.path.isdir(L.GOVERNED_ATTACHMENT_ROOT)
             and inspect.isgeneratorfunction(TK.governed_selftest_session.__wrapped__)
             and "will not adopt an existing governed session" in inspect.getsource(TK.governed_selftest_session)
-            and TK.AUTHORITY_CLASS == "INTERNAL_NON_AUTHORIZING")
+            and TK.AUTHORITY_CLASS == "INTERNAL_NON_AUTHORIZING"
+            and TK.is_selftest_session_name(_v15_ready) and TK.is_selftest_session_name(_v15_prepared) and _v15_ready != _v15_prepared
+            and "created_tree" not in inspect.getsource(TK) and "rmtree(qroot" not in inspect.getsource(TK)
+            and (os.lstat(L.GOVERNED_ATTACHMENT_ROOT).st_mode & 0o777) == L.GOVERNED_ROOT_MODE)
 
         # ---- V114-B1: the carrier cannot be re-pointed at other evidence
         rec("b1-consumed-evidence", "V114-B1 PINNED: the carrier is IMMUTABLE - assigning evidence_set, document_bytes or any provenance field is refused. In v1.14 a plain slot assignment replaced the consumed evidence while the receipt, digest and live file stayed valid, and the authorizing derivation consumed the substituted object.",
@@ -3474,6 +3503,11 @@ import v120_tests
 v120_tests.run(B, rec)
 import v120_defect_tests
 v120_defect_tests.run(B, rec)
+# v1.20 repair (F-120-04): the self-test ownership law, proved against private temporary roots with the same seam code
+# (T04-A present root, T04-B absent root + foreign arrival, T04-C exception path, T04-D concurrent runs, symlink and
+# name-law refusals, and the frozen 1e2ce233 cleanup as a regression fixture that demonstrably deletes the arrival).
+import v120_ownership_tests
+v120_ownership_tests.run(B, rec)
 
 # ---- 21. determinism
 rec("determinism", "vectors_rerun_identical", all(L.digest(L.normalize_snapshot_payload(x["input"]) if x["domain"].startswith("vidtoolz.resolveSnapshotPayload") else x["input"], x["domain"]) == x["sha256"] for x in vec["vectors"]))
@@ -4559,7 +4593,9 @@ try:
         and _inv0["attempt_count"] == sum(1 for e_ in _exp0.values() if e_["kind"] == ES_MOD.KIND_ATTEMPT_MARKER)
         and _inv0["self_path"] == ES_MOD.INVENTORY_FILE and _inv0["finalized_marker_path"] == ES_MOD.FINALIZED_FILE
         and not _me0,
-        f"records={_inv0['record_count']} entries={_inv0['entry_count']} attempts={_inv0['attempt_count']} bytes={_inv0['total_bytes']}")
+        # v1.20 repair (F-120-09): total_bytes sums the BOUNDARY receipt too, whose serialized root path, device and inode
+        # make the number environment-derived; the frozen report records the recomputation outcome, never the raw total.
+        f"records={_inv0['record_count']} entries={_inv0['entry_count']} attempts={_inv0['attempt_count']} total_bytes={'recomputed-equal' if _inv0['total_bytes'] == sum(e_['byte_count'] for e_ in _exp0.values()) else 'MISMATCH'}")
     for _f, _mut in (("record_count", lambda d: d.update(record_count=d["record_count"] + 7)),
                      ("entry_count", lambda d: d.update(entry_count=d["entry_count"] + 7)),
                      ("total_bytes", lambda d: d.update(total_bytes=d["total_bytes"] + 999999)),
@@ -5138,6 +5174,15 @@ rec("m0a-binding", "the published evidence-layer vocabulary is the store's own",
 rec("m0a-binding", "the stdout/stderr retention rule is closed and matches the evidence store",
     M0A_BIND["values"]["stdout_retention"] in L.STDOUT_RETENTION_RULES and M0A_BIND["values"]["stderr_retention"] in L.STDOUT_RETENTION_RULES)
 
+
+# ---- v1.20 repair (F-120-09): the frozen report must not depend on where or under which temp directory it was produced
+_env_leaks = [(s_, n_) for s_, n_, _o, d_ in R for pfx, _t in _ENV_PREFIXES if pfx in d_]
+rec("report-determinism", "no recorded check detail contains the process temp directory, the repository checkout root or the working directory (environment-bound values are scrubbed to fixed tokens)", not _env_leaks, str(_env_leaks[:2]))
+rec("report-determinism", "no recorded check detail contains an unscrubbed temporary evidence root or a run-unique self-test session id", not any(re.search(r"resolve-v1[0-9]*-evidence-|sess-selftest-(?!<RUN>)", d_) for _s, _n, _o, d_ in R))
+# names may cite doctrine such as "no /tmp production path"; what they may not contain is a path UNDER an environment prefix or a run-unique id
+rec("report-determinism", "no recorded check NAME contains an environment-bound value (names are the check-plan identity)", not any((pfx.rstrip("/") + "/") in n_ for _s, n_, _o, _d in R for pfx, _t in _ENV_PREFIXES) and not any(re.search(r"sess-selftest-[A-Za-z0-9._-]{40,}", n_) for _s, n_, _o, _d in R))
+rec("report-determinism", "the inventory-fields control publishes the recomputation OUTCOME, not the environment-derived raw byte total (F-120-09)", any(s_ == "evidence-inventory-fields" and "total_bytes=recomputed-equal" in d_ for s_, _n, _o, d_ in R) and not any(re.search(r"\bbytes=\d+\b", d_) for s_, _n, _o, d_ in R if s_ == "evidence-inventory-fields"))
+rec("report-determinism", "the scrub preserves decisions: it rewrites detail text only, never a pass/fail value", scrub_detail("x") == "x" and "<TMPDIR>" in scrub_detail(tempfile.gettempdir() + "/anything") and ("<REPO>" in scrub_detail(os.path.dirname(os.path.dirname(os.path.dirname(B))) + "/x") or os.path.dirname(os.path.dirname(os.path.dirname(B))) == "/"))
 
 import release_authority as RELEASE
 _check_ids=[]

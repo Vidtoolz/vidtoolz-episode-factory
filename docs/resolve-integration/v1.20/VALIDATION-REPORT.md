@@ -1,6 +1,6 @@
 # VALIDATION REPORT — Resolve authority bundle v1.20
 
-Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; independent review required. Offline synthetic tests only; no operational A2/A2V/A1/A3 execution. Protected runtime tests retained; scanner/release assertions replaced as documented in REQUIRED-VALIDATION-CHECKS.json.
+Result: **3132/3132 checks passed**. IMPLEMENTATION AUTHOR self-validation; independent review required. Offline synthetic tests only; no operational A2/A2V/A1/A3 execution. Protected runtime tests retained; scanner/release assertions replaced as documented in REQUIRED-VALIDATION-CHECKS.json.
 
 | Finding | Sections | Checks | Passed |
 |---|---|---|---|
@@ -178,6 +178,7 @@ Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | re-parser | 23 | 23 |
 | refreeze-law | 15 | 15 |
 | registered-json | 43 | 43 |
+| report-determinism | 5 | 5 |
 | required-check-plan | 1 | 1 |
 | review-law | 11 | 11 |
 | root-law | 26 | 26 |
@@ -187,6 +188,7 @@ Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | s1-profile-law | 5 | 5 |
 | schema-registry | 5 | 5 |
 | schema-wellformed | 21 | 21 |
+| selftest-ownership | 22 | 22 |
 | shim-safety | 17 | 17 |
 | shim-trust | 12 | 12 |
 | stored-chain | 16 | 16 |
@@ -2157,7 +2159,7 @@ Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | root-law | V112-RP1 section 6 / V113-B1 section 7: entry classification happens by lstat BEFORE anything is resolved, realpath is only ever a later alias check, and there is now exactly ONE implementation of it in the CORE | PASS |  |
 | root-law | V112-RP1 section 9/14 PINNED: a SYMLINKED session directory is refused, on load and on derive, even though the document behind it is valid | PASS | SESSION_SYMLINK_REFUSED/SESSION_SYMLINK_REFUSED |
 | root-law | restoring the real session directory restores the workflow, so the refusal was the symlink and not the document | PASS |  |
-| root-law | V112-RP1 section 13 PINNED: a valid evidence set copied to /tmp, a sibling root or an alternate user path is refused before attachment derivation | PASS | /tmp->SET_LOCATION_MISMATCH; a sibling root->SET_LOCATION_MISMATCH; an alternate user path->SET_LOCATION_MISMATCH |
+| root-law | V112-RP1 section 13 PINNED: a valid evidence set copied to /tmp, a sibling root or an alternate user path is refused before attachment derivation | PASS | <TMPDIR>->SET_LOCATION_MISMATCH; a sibling root->SET_LOCATION_MISMATCH; an alternate user path->SET_LOCATION_MISMATCH |
 | root-law | V112-RP1 sections 10/12: the AUTHORIZING derivation refuses every sandboxed document outright, whatever its contents | PASS | SET_NOT_FOUND |
 | root-law | no evidence can appear anywhere but the canonical path: with the frozen root present the production authoring path writes at the canonical location and nowhere else | PASS | root present; production paths are the canonical paths |
 | root-law | the production root resolver is not configurable in either environment: no argument, no override, and the authoring layer delegates to the core constant | PASS |  |
@@ -2276,7 +2278,7 @@ Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | b1-positive | and authorizing eligibility returns eligible=true with reason code ELIGIBLE, so the v1.15 bindings did not turn the authority into refuse-everything | PASS | eligible=True codes=['ELIGIBLE'] |
 | b1-positive | the by-session-id paths and the authoring wrapper agree with the by-object paths | PASS |  |
 | b1-positive | the second session is honestly PROVISIONED_NOT_VERIFIED, so the two carriers hold genuinely different authority - which is what makes the substitution attack below meaningful | PASS |  |
-| b1-positive | v1.15 section 35: the suite runs this control in BOTH reviewer environments and leaves the governed root exactly as it found it | PASS |  |
+| b1-positive | v1.15 section 35 / v1.20 F-120-04: the suite runs this control in BOTH reviewer environments; the seam owns and removes ONLY its own two run-unique sessions, never the governed root or any other entry (root absent at entry: created with the frozen mode and left in place) | PASS |  |
 | b1-consumed-evidence | V114-B1 PINNED: the carrier is IMMUTABLE - assigning evidence_set, document_bytes or any provenance field is refused. In v1.14 a plain slot assignment replaced the consumed evidence while the receipt, digest and live file stayed valid, and the authorizing derivation consumed the substituted object. | PASS |  |
 | b1-consumed-evidence | V114-B1: evidence_set is a read-only PROPERTY that reparses the validated bytes on every access, so mutating what a caller received changes nothing the authority will ever see | PASS |  |
 | b1-consumed-evidence | V114-B1 sections 5/8: no authorizing entry point takes a governed carrier AND a separate evidence argument - there is exactly ONE evidence authority input | PASS |  |
@@ -2913,6 +2915,28 @@ Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | v120-defect-regressions | GetProjectLastModifiedTime-TRIPWIRE_READ-wrong-arg_types | PASS |  |
 | v120-defect-regressions | GetProjectLastModifiedTime-TRIPWIRE_READ-wrong-expected_type | PASS |  |
 | v120-defect-regressions | final-zero-inventory-violations | PASS | [] |
+| selftest-ownership | minted self-test ids are valid SESSION_ID_RE names, carry the self-test prefix and a 128-bit token, and two mints never collide | PASS | sess-selftest-<RUN> |
+| selftest-ownership | a name that is not a minted self-test id is refused before anything is touched: 'sess-v113-prod-foreign' | PASS |  |
+| selftest-ownership | a name that is not a minted self-test id is refused before anything is touched: 'foreign-existing' | PASS |  |
+| selftest-ownership | a name that is not a minted self-test id is refused before anything is touched: '' | PASS |  |
+| selftest-ownership | a name that is not a minted self-test id is refused before anything is touched: '../attachment' | PASS |  |
+| selftest-ownership | a name that is not a minted self-test id is refused before anything is touched: 'sess-selftest-short' | PASS |  |
+| selftest-ownership | T04-A: the seam creates nothing but the (already present) root; the session directory is the caller's to create | PASS |  |
+| selftest-ownership | T04-A: root pre-existing - own session removed, unrelated session intact, root retained | PASS | ['sess-v113-prod-unrelated'] |
+| selftest-ownership | T04-B: an absent qualification tree is created with the frozen mode | PASS |  |
+| selftest-ownership | T04-B: root initially absent - the other writer's session SURVIVES cleanup, own session removed, root remains (empty root is acceptable; root absence at entry is not ownership) | PASS | ['sess-independent-writer-001'] |
+| selftest-ownership | REGRESSION FIXTURE: the pre-repair (1e2ce233) absent-root cleanup silently deletes the other writer's session and the whole tree - the defect is reproduced, so the fixture is a true negative | PASS |  |
+| selftest-ownership | T04-C: on an exception inside the block the seam still removes ONLY its own session; the other session and the root survive and the exception propagates | PASS |  |
+| selftest-ownership | T04-D: both sessions coexist under the shared root | PASS |  |
+| selftest-ownership | T04-D: B's cleanup removed B only; A survives | PASS |  |
+| selftest-ownership | T04-D: A's cleanup removed A only; the root created by A remains for other writers (no cross-delete, no tree removal) | PASS |  |
+| selftest-ownership | T04-D: a sibling run finishing while we are inside is not a failure (ownership, not root-listing, is the law) | PASS |  |
+| selftest-ownership | an existing session with a valid self-test name is still refused, never adopted, never removed | PASS |  |
+| selftest-ownership | a symlink planted at the own session path is refused and NOT followed: the link target survives intact and the refusal is visible | PASS |  |
+| selftest-ownership | removing a name outside the self-test namespace through the cleanup primitive is refused | PASS |  |
+| selftest-ownership | a root pair that is not canonical (root not directly under the qualification root) is refused | PASS |  |
+| selftest-ownership | the seam source contains no whole-tree removal and no root-absence ownership test any more | PASS |  |
+| selftest-ownership | the real governed root was never named by this suite | PASS |  |
 | determinism | vectors_rerun_identical | PASS |  |
 | determinism | evidence record ids recompute | PASS |  |
 | determinism | no_bytecode_cache_written | PASS |  |
@@ -3048,7 +3072,7 @@ Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | evidence-boundary-receipt | the boundary identity is part of the session identity tuple, so root identity is bound (section 2) | PASS |  |
 | evidence-boundary-receipt | SESSION DIRECTORY REPLACEMENT (Codex S110-1, pinned): the same basename and the same content in a NEW directory is refused SESSION_BOUNDARY_CHANGED. v1.9 verified it clean. | PASS | SESSION_BOUNDARY_CHANGED |
 | evidence-boundary-receipt | a boundary-changed session refuses every further authorizing operation | PASS |  |
-| evidence-boundary-receipt | ALTERNATE ROOT (Codex S110-1, pinned): the same session basename copied under another root is refused ROOT_IDENTITY_MISMATCH. v1.9 verified it clean. | PASS | ROOT_IDENTITY_MISMATCH: opened under '<TMPROOT><TMPDIR>/ROOT-B' but the receipt was established under '/tmp/resolve- |
+| evidence-boundary-receipt | ALTERNATE ROOT (Codex S110-1, pinned): the same session basename copied under another root is refused ROOT_IDENTITY_MISMATCH. v1.9 verified it clean. | PASS | ROOT_IDENTITY_MISMATCH: opened under '<TMPDIR>/resolve-evidence-<TMPDIR>/ROOT-B' but the receipt was established under '<TMPDIR>/resolve- |
 | evidence-boundary-receipt | the session in its own root still verifies clean, so the refusal is the root and not the bytes | PASS | clean |
 | evidence-boundary-receipt | a boundary receipt with a mutated root inode is refused in the frozen BOUNDARY precedence class | PASS | ROOT_IDENTITY_MISMATCH |
 | evidence-boundary-receipt | a boundary receipt with a mutated session inode is refused in the frozen BOUNDARY precedence class | PASS | SESSION_BOUNDARY_CHANGED |
@@ -3139,8 +3163,8 @@ Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | evidence-boundary-fields | F110-A pinned: receipt field boundary_sha256 (DERIVED_FROM_SESSION_AUTHORITY) rewritten with a recomputed boundary_sha256 refuses the next canonical operation. v1.10 accepted schema, evidence_store_version, authority_version and platform_scope. | PASS | BOUNDARY_RECEIPT_INVALID: boundary_sha256 is not the digest of this receipt |
 | evidence-boundary-fields | F110-A pinned: receipt field evidence_store_version (FROZEN_CONSTANT) rewritten with a recomputed boundary_sha256 refuses the next canonical operation. v1.10 accepted schema, evidence_store_version, authority_version and platform_scope. | PASS | BOUNDARY_RECEIPT_INVALID: evidence_store_version='vidtoolz.resolveEvidenceStore.v4' is not the frozen FROZ |
 | evidence-boundary-fields | F110-A pinned: receipt field platform_scope (FROZEN_CONSTANT) rewritten with a recomputed boundary_sha256 refuses the next canonical operation. v1.10 accepted schema, evidence_store_version, authority_version and platform_scope. | PASS | BOUNDARY_RECEIPT_INVALID: platform_scope='WINDOWS' is not the frozen FROZEN_CONSTANT 'POSIX' of this evide |
-| evidence-boundary-fields | F110-A pinned: receipt field root_device (DERIVED_FROM_FILESYSTEM) rewritten with a recomputed boundary_sha256 refuses the next canonical operation. v1.10 accepted schema, evidence_store_version, authority_version and platform_scope. | PASS | ROOT_IDENTITY_MISMATCH: <TMPROOT><TMPDIR> is not the root this session was established |
-| evidence-boundary-fields | F110-A pinned: receipt field root_inode (DERIVED_FROM_FILESYSTEM) rewritten with a recomputed boundary_sha256 refuses the next canonical operation. v1.10 accepted schema, evidence_store_version, authority_version and platform_scope. | PASS | ROOT_IDENTITY_MISMATCH: <TMPROOT><TMPDIR> is not the root this session was established |
+| evidence-boundary-fields | F110-A pinned: receipt field root_device (DERIVED_FROM_FILESYSTEM) rewritten with a recomputed boundary_sha256 refuses the next canonical operation. v1.10 accepted schema, evidence_store_version, authority_version and platform_scope. | PASS | ROOT_IDENTITY_MISMATCH: <TMPDIR>/resolve-evidence-<TMPDIR> is not the root this session was established |
+| evidence-boundary-fields | F110-A pinned: receipt field root_inode (DERIVED_FROM_FILESYSTEM) rewritten with a recomputed boundary_sha256 refuses the next canonical operation. v1.10 accepted schema, evidence_store_version, authority_version and platform_scope. | PASS | ROOT_IDENTITY_MISMATCH: <TMPDIR>/resolve-evidence-<TMPDIR> is not the root this session was established |
 | evidence-boundary-fields | F110-A pinned: receipt field root_path (DERIVED_FROM_FILESYSTEM) rewritten with a recomputed boundary_sha256 refuses the next canonical operation. v1.10 accepted schema, evidence_store_version, authority_version and platform_scope. | PASS | ROOT_REPLACED: /somewhere/else no longer exists |
 | evidence-boundary-fields | F110-A pinned: receipt field schema (FROZEN_CONSTANT) rewritten with a recomputed boundary_sha256 refuses the next canonical operation. v1.10 accepted schema, evidence_store_version, authority_version and platform_scope. | PASS | BOUNDARY_RECEIPT_INVALID: schema='vidtoolz.resolveEvidenceBoundary.vFORGED' is not the frozen FROZEN_CONST |
 | evidence-boundary-fields | F110-A pinned: receipt field session_basename (DERIVED_FROM_FILESYSTEM) rewritten with a recomputed boundary_sha256 refuses the next canonical operation. v1.10 accepted schema, evidence_store_version, authority_version and platform_scope. | PASS | BOUNDARY_RECEIPT_INVALID: receipt session_id 'sess-bfields' != session_basename 'other' |
@@ -3162,7 +3186,7 @@ Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | evidence-inventory-fields | EVERY inventory field is accounted for by exactly one reconciliation route: the frozen-property check, the derived-header comparison, mode_table, the entry/directory reconciliations or the digest. Nothing is left self-asserted (self-review 57). | PASS |  |
 | evidence-inventory-fields | the frozen total_bytes scope is published and names exactly the entries finalization can count (section 13) | PASS |  |
 | evidence-inventory-fields | control: the finalized session verifies clean and its stored inventory carries EXACTLY the frozen vocabulary | PASS | clean |
-| evidence-inventory-fields | all six previously self-asserted fields recompute EXACTLY from the independent model and the frozen store layout (sections 11-16) | PASS | records=4 entries=11 attempts=4 bytes=6312 |
+| evidence-inventory-fields | all six previously self-asserted fields recompute EXACTLY from the independent model and the frozen store layout (sections 11-16) | PASS | records=4 entries=11 attempts=4 total_bytes=recomputed-equal |
 | evidence-inventory-fields | F110-B pinned: inventory record_count mutated with a recomputed inventory digest AND an updated finalization reference is refused. v1.10 verified all six clean. | PASS | INVENTORY_TAMPERED |
 | evidence-inventory-fields | F110-B pinned: inventory entry_count mutated with a recomputed inventory digest AND an updated finalization reference is refused. v1.10 verified all six clean. | PASS | INVENTORY_TAMPERED |
 | evidence-inventory-fields | F110-B pinned: inventory total_bytes mutated with a recomputed inventory digest AND an updated finalization reference is refused. v1.10 verified all six clean. | PASS | INVENTORY_TAMPERED |
@@ -3306,7 +3330,7 @@ Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | m0a-binding | published raw_schema_version is the value this bundle actually implements | PASS | published=1.10 actual=1.10 |
 | m0a-binding | published reference_parser_sha256 is the value this bundle actually implements | PASS | published=01a39890a27deecdefd4b173 actual=01a39890a27deecdefd4b173 |
 | m0a-binding | published reference_parser_version is the value this bundle actually implements | PASS | published=vidtoolz.resolveProbePar actual=vidtoolz.resolveProbePar |
-| m0a-binding | published schema_registry_sha256 is the value this bundle actually implements | PASS | published=f3890c31d943a7fca56351b4 actual=f3890c31d943a7fca56351b4 |
+| m0a-binding | published schema_registry_sha256 is the value this bundle actually implements | PASS | published=4b7e03cbbdff89a0f6faf19c actual=4b7e03cbbdff89a0f6faf19c |
 | m0a-binding | published trusted_shim_sha256 is the value this bundle actually implements | PASS | published=caf310438232c65d010942a4 actual=caf310438232c65d010942a4 |
 | m0a-binding | published trusted_shim_source_sha256 is the value this bundle actually implements | PASS | published=4132e5bd30339d68cd80c2bb actual=4132e5bd30339d68cd80c2bb |
 | m0a-binding | published trusted_shim_version is the value this bundle actually implements | PASS | published=vidtoolz.captureShim.ref actual=vidtoolz.captureShim.ref |
@@ -3314,4 +3338,9 @@ Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | m0a-binding | the published canonical store tool path and hash are the store this bundle actually ships | PASS |  |
 | m0a-binding | the published evidence-layer vocabulary is the store's own | PASS |  |
 | m0a-binding | the stdout/stderr retention rule is closed and matches the evidence store | PASS |  |
+| report-determinism | no recorded check detail contains the process temp directory, the repository checkout root or the working directory (environment-bound values are scrubbed to fixed tokens) | PASS | [] |
+| report-determinism | no recorded check detail contains an unscrubbed temporary evidence root or a run-unique self-test session id | PASS |  |
+| report-determinism | no recorded check NAME contains an environment-bound value (names are the check-plan identity) | PASS |  |
+| report-determinism | the inventory-fields control publishes the recomputation OUTCOME, not the environment-derived raw byte total (F-120-09) | PASS |  |
+| report-determinism | the scrub preserves decisions: it rewrites detail text only, never a pass/fail value | PASS |  |
 | required-check-plan | actual check IDs equal required check IDs | PASS | [] |

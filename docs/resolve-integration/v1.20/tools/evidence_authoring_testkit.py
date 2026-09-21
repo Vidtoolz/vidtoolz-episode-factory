@@ -74,64 +74,111 @@ def derive_nonauthorizing(session_id):
 # when the root was ABSENT and then removed the whole tree - silently skipped, and candidate tests that asserted
 # root absence failed. Codex classified that a REVIEW_ENVIRONMENT_EFFECT, not a defect.
 #
+# v1.20 repair (F-120-04, P2). The v1.15 seam still removed the WHOLE tree when the root had been absent at entry, so a
+# session created by ANY other writer after the root appeared was silently deleted (independently reproduced 2026-09-21).
+# Root absence at entry is not ownership of what later appears beneath the root. The law is now:
+#
+#   A self-test run owns EXACTLY ONE filesystem object: <root>/<name>, where <name> is a run-unique, collision-resistant
+#   self-test id minted here that did not exist at entry. Cleanup removes exactly that directory (lstat-checked: a real
+#   directory, not a symlink, directly under the root, basename == name) and NOTHING else - never the root, never a
+#   sibling, never the qualification tree - whether or not the root existed at entry and whether the block exits
+#   normally or by exception. An absent root is created with the frozen mode and LEFT IN PLACE (possibly empty).
+#
 # The production law is untouched: authority_lib.authority_attachment_root() still takes no argument and has no
-# override of any kind. What changes is only how the SUITE obtains a session to exercise it with, so a deterministic
-# candidate validation no longer depends on whether a reviewer happened to create the root first.
-@contextlib.contextmanager
-def governed_selftest_session(name):
-    """Yield a canonical session id under the REAL governed root, in whichever of the two environments applies.
+# override of any kind; owned_selftest_session() is parameterised by root ONLY so that the suite can prove the
+# ownership law against private temporary roots (tools/v120_ownership_tests.py) with the same code that runs against
+# the real root.
+import secrets
+import stat
 
-      * root absent  -> create it with the frozen mode, and remove the whole tree afterwards (v1.14 behaviour);
-      * root present -> create ONLY this uniquely named session directory, and remove only that.
+SELFTEST_SESSION_PREFIX = "sess-selftest-"
 
-    It refuses if the name already exists, so an operator's or a reviewer's evidence is never adopted, overwritten
-    or deleted. INTERNAL_NON_AUTHORIZING: it creates no records and decides nothing; the production constructors and
-    the authorizing core do all the work, unchanged, at the real canonical location."""
-    root, qroot = L.GOVERNED_ATTACHMENT_ROOT, L.QUALIFICATION_EVIDENCE_ROOT
-    created_tree = not os.path.exists(qroot)
-    sdir = L.canonical_session_dir(name)
+
+def selftest_session_name(tag):
+    """Mint a run-unique, collision-resistant self-test session id: prefix + tag + pid + 128-bit random token. Valid
+    under the frozen SESSION_ID_RE. Not a timestamp, not a sequence: two runs on one host or two hosts cannot collide."""
+    tag = "".join(ch for ch in str(tag) if ch.isalnum() or ch in "._-")[:32] or "run"
+    name = f"{SELFTEST_SESSION_PREFIX}{tag}-{os.getpid()}-{secrets.token_hex(16)}"
+    if not L.SESSION_ID_RE.match(name):
+        raise AssertionError(f"minted self-test session id violates SESSION_ID_RE: {name!r}")
+    return name
+
+
+def is_selftest_session_name(name):
+    return isinstance(name, str) and name.startswith(SELFTEST_SESSION_PREFIX) and bool(L.SESSION_ID_RE.match(name)) \
+        and len(name) > len(SELFTEST_SESSION_PREFIX) + 40
+
+
+def _ensure_governed_tree(qroot, root):
+    """Create the qualification tree and the attachment root if absent, with the frozen mode. Records NO ownership:
+    nothing created here is ever removed by the testkit. A pre-existing entry is inspected with lstat and refused
+    if it is not a real directory (a symlink or file at the root path is never followed or replaced)."""
+    for d in (qroot, root):
+        if os.path.lexists(d):
+            st = os.lstat(d)
+            if stat.S_ISLNK(st.st_mode) or not stat.S_ISDIR(st.st_mode):
+                raise AssertionError(f"governed path is not a real directory; refusing to use it: {d}")
+        else:
+            os.mkdir(d, L.GOVERNED_ROOT_MODE)
+            os.chmod(d, L.GOVERNED_ROOT_MODE)
+
+
+def _remove_owned_session(root, name):
+    """Remove EXACTLY <root>/<name>, the one object this run owns. Refuses (loudly) if the path is not a real directory
+    directly under root with that basename, if it is a symlink, or if removal leaves anything behind. Never touches
+    root, its siblings or anything else. Nothing to do if the session was never created."""
+    if not is_selftest_session_name(name):
+        raise AssertionError(f"not a self-test session name; the testkit will not remove it: {name!r}")
+    sdir = os.path.join(root, name)
+    if os.path.dirname(sdir) != root or os.path.basename(sdir) != name or sdir == root:
+        raise AssertionError(f"own session path does not resolve directly under the root: {sdir}")
+    if not os.path.lexists(sdir):
+        return False
+    st = os.lstat(sdir)
+    if stat.S_ISLNK(st.st_mode):
+        raise AssertionError(f"own session path is a symlink; refusing to remove or follow it: {sdir}")
+    if not stat.S_ISDIR(st.st_mode):
+        raise AssertionError(f"own session path is not a directory; refusing to remove it: {sdir}")
+    # sealed evidence is 0400/0500; make our own tree writable without following any symlink inside it
+    for dp, dns, fns in os.walk(sdir, followlinks=False):
+        for x in dns + fns:
+            px = os.path.join(dp, x)
+            try:
+                if not os.path.islink(px):
+                    os.chmod(px, 0o700 if os.path.isdir(px) else 0o600)
+            except OSError:
+                pass
+    os.chmod(sdir, L.GOVERNED_ROOT_MODE)
+    shutil.rmtree(sdir)                       # no ignore_errors: a failure to remove our own session is visible
     if os.path.lexists(sdir):
+        raise AssertionError(f"testkit failed to remove its own governed session: {sdir}")
+    return True
+
+
+@contextlib.contextmanager
+def owned_selftest_session(root, qroot, name):
+    """The ownership law (above) against an explicit root pair. Used by governed_selftest_session with the frozen
+    constants and by the ownership suite with private temporary roots. INTERNAL_NON_AUTHORIZING: creates no records
+    and decides nothing; the production constructors and the authorizing core do all the work, unchanged."""
+    if not is_selftest_session_name(name):
+        raise AssertionError(f"not a self-test session name minted by selftest_session_name(): {name!r}")
+    if not (os.path.isabs(root) and os.path.normpath(root) == root and os.path.dirname(root) == qroot):
+        raise AssertionError(f"governed root pair is not canonical: {qroot!r} / {root!r}")
+    sdir = os.path.join(root, name)
+    _ensure_governed_tree(qroot, root)
+    if os.path.lexists(sdir):
+        # never adopt: an operator's or a reviewer's evidence is never used, overwritten or deleted
         raise AssertionError(f"the testkit will not adopt an existing governed session: {sdir}")
-    if created_tree:
-        os.makedirs(root, mode=L.GOVERNED_ROOT_MODE)
-        os.chmod(qroot, L.GOVERNED_ROOT_MODE)
-        os.chmod(root, L.GOVERNED_ROOT_MODE)
-    before = sorted(os.listdir(root))
     try:
         yield name
     finally:
-        for p_ in (os.path.join(sdir, f) for f in (A.EVIDENCE_SET_FILE, A.WORKFLOW_FILE, "LOCK")):
-            try:
-                os.chmod(p_, 0o600)
-            except OSError:
-                pass
-            try:
-                if os.path.isdir(p_) and not os.path.islink(p_):
-                    os.rmdir(p_)
-                elif os.path.lexists(p_):
-                    os.remove(p_)
-            except OSError:
-                pass
-        try:
-            os.chmod(sdir, L.GOVERNED_ROOT_MODE)
-        except OSError:
-            pass
-        shutil.rmtree(sdir, ignore_errors=True)
-        if created_tree:
-            for dp, dns, fns in os.walk(qroot):
-                for x in dns + fns:
-                    try:
-                        os.chmod(os.path.join(dp, x), 0o700)
-                    except OSError:
-                        pass
-            shutil.rmtree(qroot, ignore_errors=True)
-        else:
-            # Only two things are asserted, so that nested self-test sessions compose: OUR session directory is gone,
-            # and every entry that existed when we entered is still there. Sessions created by an enclosing seam are
-            # neither adopted nor removed here.
-            now = set(os.listdir(root))
-            if os.path.lexists(sdir):
-                raise AssertionError(f"testkit failed to remove its own governed session: {sdir}")
-            leftover = (set(before) - {name}) - now
-            if leftover:
-                raise AssertionError(f"testkit removed governed sessions it did not create: {sorted(leftover)}")
+        _remove_owned_session(root, name)
+
+
+@contextlib.contextmanager
+def governed_selftest_session(name):
+    """Yield a canonical self-test session id under the REAL governed root (frozen constants, not configurable):
+    the root is created if absent and left in place; the run owns and removes ONLY <root>/<name>; it refuses if the
+    name already exists ("the testkit will not adopt an existing governed session") or is not a minted self-test id."""
+    with owned_selftest_session(L.GOVERNED_ATTACHMENT_ROOT, L.QUALIFICATION_EVIDENCE_ROOT, name) as n:
+        yield n

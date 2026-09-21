@@ -27,7 +27,7 @@
     "reference_parser_version": "vidtoolz.resolveProbeParser.v1",
     "reference_parser_sha256": "01a39890a27deecdefd4b1733de573fb0f02d33464097126a86624b0a4a7dcfd",
     "primitive_spec_sha256": "2bb2612672562e90f75d1de3e3b556b0735faee00b30fdee01fbe3f830010d00",
-    "schema_registry_sha256": "f3890c31d943a7fca56351b4e6e1e6cd2de8c38b8d63bef05382d566b6b06f97",
+    "schema_registry_sha256": "4b7e03cbbdff89a0f6faf19cc41dfa322c48d93d08d0ee309e942ad55c279464",
     "schema_registry_file": "SCHEMA-REGISTRY.json",
     "trusted_shim_file": "TRUSTED-SHIM.json",
     "evidence_store_version": "vidtoolz.resolveEvidenceStore.v5",

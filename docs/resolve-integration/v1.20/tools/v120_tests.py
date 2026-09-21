@@ -61,7 +61,7 @@ def run(bundle,rec):
     check('document-universe',not RELEASE.universe_errors(b),RELEASE.universe_errors(b))
     finding_map=json.loads((b/'FINDING-RESOLUTION-MATRIX-v1.20.json').read_text())
     matrix_errors=S.L.internal_schema_errors('resolveFindingResolutionMatrix',finding_map)
-    check('active-finding-map-schema',not matrix_errors and {r['id'] for r in finding_map['findings']}=={'V119-F'+str(i) for i in range(1,6)}|{'P1-F%02d'%i for i in range(7,13)}|{'P1-R%02d'%i for i in range(1,6)}|{'F-120-%02d'%i for i in range(1,9)},matrix_errors)
+    check('active-finding-map-schema',not matrix_errors and {r['id'] for r in finding_map['findings']}=={'V119-F'+str(i) for i in range(1,6)}|{'P1-F%02d'%i for i in range(7,13)}|{'P1-R%02d'%i for i in range(1,6)}|{'F-120-%02d'%i for i in range(1,10)},matrix_errors)
     sel=RELEASE.MARKER.search(doc)
     for id,mutant in [
         ('zero-current',doc[:sel.start()]+doc[sel.end():]),

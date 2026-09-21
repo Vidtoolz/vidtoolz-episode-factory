@@ -22,3 +22,11 @@ REPAIR REQUIRED for three P2 bundle-construction defects (F-120-01 parent-pin by
 authority version 1.20.0, authored on top of `e65ed5a4`, which stays in branch history as the rejected candidate. The repair
 changed generator and validator tooling, the generated records they emit and this bundle's own prose only: v1.18, v1.19,
 `resolve-control/**`, the Phase 1 qualification evidence and Mikko's recorded v1.19 acceptance are unchanged.
+
+The second candidate, `1e2ce233` (manifest `b296dc6a…`), was independently re-reviewed on 2026-09-21 (review manifest
+`79923a9b…`): the three original blockers were confirmed closed, and two further P2 findings were made — F-120-04 (the
+self-test seam could delete another writer's evidence after creating an absent root) and F-120-09 (frozen report bytes
+depended on the scratch environment). This bundle is the final narrow repair of both at the same authority version
+1.20.0, authored on top of `1e2ce233`; both earlier candidates stay in branch history as rejected. Again, only tooling,
+generated records and this bundle's prose changed: v1.18, v1.19, `resolve-control/**`, the Phase 1 qualification
+evidence and Mikko's recorded v1.19 acceptance are unchanged.

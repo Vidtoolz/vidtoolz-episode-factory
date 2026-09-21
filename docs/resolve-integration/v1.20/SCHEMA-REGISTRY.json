@@ -41,7 +41,7 @@
     },
     "resolveFindingResolutionMatrix": {
       "path": "schemas/resolveFindingResolutionMatrix.schema.json",
-      "sha256": "09bcc06867a5a5ca70cfd392bfaf3f75391d5953e6432e46eb38ab783d63de3c",
+      "sha256": "813f08bfe4cb22060dba22afc02ef98fb6bdbb2c5968d123e27aaba34a009cd2",
       "byte_count": 2425
     },
     "resolveFreezeManifest": {
@@ -160,5 +160,5 @@
       "byte_count": 4848
     }
   },
-  "schema_registry_sha256": "f3890c31d943a7fca56351b4e6e1e6cd2de8c38b8d63bef05382d566b6b06f97"
+  "schema_registry_sha256": "4b7e03cbbdff89a0f6faf19cc41dfa322c48d93d08d0ee309e942ad55c279464"
 }

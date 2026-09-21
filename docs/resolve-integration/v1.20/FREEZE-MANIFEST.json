@@ -444,8 +444,8 @@
     },
     {
       "path": "CHANGELOG-v1.20.md",
-      "sha256": "48550e3b1523a26082df26541a1a7712c563571f149cb8f6253d63d11b572bdd",
-      "bytes": 2474,
+      "sha256": "78b1d856a0150cf569b19727bcfaabbd7b7ea87fab8c3d03c07fbaefea9e090f",
+      "bytes": 3222,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -811,8 +811,8 @@
     },
     {
       "path": "FINDING-RESOLUTION-MATRIX-v1.20.json",
-      "sha256": "300431cc9b6f99ea1c1ffc55342d5928e44be494a8c5b52c778135225459c246",
-      "bytes": 17566,
+      "sha256": "85356fb61a99e86c25647e82b613f1b90638e7dd53a9a3fd8dd4ce31773de95e",
+      "bytes": 20035,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -821,8 +821,8 @@
     },
     {
       "path": "FINDING-RESOLUTION-MATRIX-v1.20.md",
-      "sha256": "769b60936db1785f6679e638f74883d7a33e796f85fb25586dce9dc322c87a2e",
-      "bytes": 6782,
+      "sha256": "84ea0308a991012269b2a1cb8d1c64801fd79e90a8e95c6dabe2ccc347a4cae6",
+      "bytes": 8318,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -984,8 +984,8 @@
     },
     {
       "path": "KNOWN-LIMITATIONS-PHASE1.md",
-      "sha256": "56151828d21303a1e11afd3941d0a26bcb0c94388605b65726dc0e3377873c7d",
-      "bytes": 5122,
+      "sha256": "97b59ea5ccf1f2f99317766b62c1b70a5a017275324ea48a6fdb2bc2a26f0671",
+      "bytes": 5490,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -994,8 +994,8 @@
     },
     {
       "path": "LINEAGE.md",
-      "sha256": "7c29a9861e2c67458d15a0b22abc5c21856edb06c198ab7b544197a41e89ad40",
-      "bytes": 1976,
+      "sha256": "3383612b1fbd64fb39c34c8e312d98df5c08a1f4ce23971edae3d5b5129f2b31",
+      "bytes": 2749,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -1028,7 +1028,7 @@
     },
     {
       "path": "M0A-BINDING-VALUES.json",
-      "sha256": "e867b8498552f27081ce45483392f072a4f1211878023f2c26634e0897ab7dd3",
+      "sha256": "116694bef4fd415f7cb39414ba47adb5120a2d72230f50933eaad911d7c2861f",
       "bytes": 24412,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
@@ -1195,8 +1195,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "6866a7a11a72f0989f28c3f153cabf91c8416f54a4d0d286d35c89b4e7bee8a2",
-      "bytes": 9283,
+      "sha256": "788a217f34ebe79002c17e6bd925b6abeafd41c909dea777dae9c5697d7d103f",
+      "bytes": 11311,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -1217,8 +1217,8 @@
     },
     {
       "path": "RELEASE-AUTHORITY.md",
-      "sha256": "1263fc145011f75757b452d07dbb290264936b6a23a8c759cc235e40f220a9ba",
-      "bytes": 2880,
+      "sha256": "1cb188b665093cf8b98f7cd803ba578691b240eebeb52a4ea10ca137a4124e1f",
+      "bytes": 4388,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -1227,8 +1227,8 @@
     },
     {
       "path": "REQUIRED-VALIDATION-CHECKS.json",
-      "sha256": "05c6cc0604173431973cb1423659682fc0ceb9efbbe2849044ee7092ce19d8f3",
-      "bytes": 290645,
+      "sha256": "6fdaf8c5e965e782b27a7f81d9498f52e78ad3e2f0644442416cb7d23708a016",
+      "bytes": 293156,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -1260,7 +1260,7 @@
     },
     {
       "path": "SCHEMA-REGISTRY.json",
-      "sha256": "3e04f39b8e96bda5c04485949f858a913edffa176413bb07b7222d16d4887769",
+      "sha256": "85b50d302174310d6e6167f0e12fafd505fad5a1548cec853b602a5e92d254e0",
       "bytes": 6952,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
@@ -1429,8 +1429,8 @@
     },
     {
       "path": "VALIDATION-REPORT.md",
-      "sha256": "aa6e6e71b0cf56a0ebb68abf62878bc1ffec2986255fe18b481d4965cc438abc",
-      "bytes": 424275,
+      "sha256": "236664a0fb1c39fc27e090e126d1594fc98c57c09da2788df78cac0779152de1",
+      "bytes": 428445,
       "status": "FROZEN_NOW",
       "authority_class": "REPORT",
       "inherited_from_parent": false,
@@ -5723,7 +5723,7 @@
     },
     {
       "path": "schemas/resolveFindingResolutionMatrix.schema.json",
-      "sha256": "09bcc06867a5a5ca70cfd392bfaf3f75391d5953e6432e46eb38ab783d63de3c",
+      "sha256": "813f08bfe4cb22060dba22afc02ef98fb6bdbb2c5968d123e27aaba34a009cd2",
       "bytes": 2425,
       "status": "FROZEN_NOW",
       "authority_class": "SCHEMA",
@@ -5937,7 +5937,7 @@
     },
     {
       "path": "tools/build_v1_20.py",
-      "sha256": "95e83f72331f9efc9b9ffe77206dfe213a272f194c2b2e913f67f360a1904f49",
+      "sha256": "de41bdbc88ee3f71d1079c713c881820a79df3bda9beabcfaceb702a8a55326d",
       "bytes": 379382,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
@@ -5969,12 +5969,12 @@
     },
     {
       "path": "tools/evidence_authoring_testkit.py",
-      "sha256": "cc2a61d793c3fbb94115ce9963fb9cf268165b3548c5273e37ef25c61917b816",
-      "bytes": 7324,
+      "sha256": "906497f0504ede7f6144b06b552aee426743d8c1184b12aae02c9a8dc6f098d3",
+      "bytes": 10564,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
-      "inherited_from_parent": true,
-      "changed_from_parent": false,
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
       "new_in_this_version": false
     },
     {
@@ -6002,8 +6002,8 @@
     },
     {
       "path": "tools/prepare_release_metadata.py",
-      "sha256": "083d0960412e3d3f1a942953ce45aa8862fca94470b1c9e366619ebbe3f91e44",
-      "bytes": 21129,
+      "sha256": "d754074fc53464b343d3484bf1aa8f34a414a2c61aae7846d4833921fdb609f8",
+      "bytes": 24991,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6041,9 +6041,19 @@
       "new_in_this_version": true
     },
     {
+      "path": "tools/v120_ownership_tests.py",
+      "sha256": "b95ac92868c8c6bb77f83c47fc0d3d3149692c02bf2829fed9749223b1e1df67",
+      "bytes": 11646,
+      "status": "FROZEN_NOW",
+      "authority_class": "TOOL",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
       "path": "tools/v120_tests.py",
-      "sha256": "ee86c1e35573e0fd20351600d29797fb25b1dbd9ca084a85b33153aaaf355bed",
-      "bytes": 16466,
+      "sha256": "ae8546b52c810d6179e0ee210e13bc40af5541f6ad4cd74b4950be305b375653",
+      "bytes": 16467,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6052,8 +6062,8 @@
     },
     {
       "path": "tools/validate_v1_20.py",
-      "sha256": "b78747caee23e48ff6c69ea9547d764497dc3df9a803b1a99470d99df5c5880b",
-      "bytes": 484367,
+      "sha256": "637bb8709a58b5f113d5aab2ae80fffcc5aa2fe60120fa4b17258b6fa06691bb",
+      "bytes": 489341,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6175,12 +6185,12 @@
     }
   },
   "counts": {
-    "files": 582,
-    "bytes": 41589498,
-    "frozen_now": 571,
+    "files": 583,
+    "bytes": 41629332,
+    "frozen_now": 572,
     "provisional_until_m3": 11,
-    "inherited_unchanged": 115,
-    "changed_from_parent": 454,
-    "new_in_this_version": 13
+    "inherited_unchanged": 114,
+    "changed_from_parent": 455,
+    "new_in_this_version": 14
   }
 }

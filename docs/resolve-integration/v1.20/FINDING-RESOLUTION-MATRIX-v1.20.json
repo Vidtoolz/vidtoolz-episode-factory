@@ -243,14 +243,15 @@
     },
     {
       "id": "F-120-04",
-      "severity": "MINOR",
-      "codex_finding": "validator positive controls write transient self-test sessions under the shared governed evidence root; concurrent validators on one host interfere (false-positive leftover assertion; absent-root create/remove race)",
-      "prior_defect": "validator positive controls write transient self-test sessions under the shared governed evidence root; concurrent validators on one host interfere (false-positive leftover assertion; absent-root create/remove race)",
-      "correction": "DOCUMENTED operating constraint (README.md, RELEASE-AUTHORITY.md, KNOWN-LIMITATIONS-PHASE1.md): run at most one Resolve authority validator per host at a time; the testkit creates and removes only its own uniquely named session and refuses to adopt an existing one; root isolation or an advisory lock is a later candidate",
+      "severity": "MAJOR",
+      "codex_finding": "validator self-test seam derived ownership from ROOT ABSENCE at entry and removed the whole qualification tree at exit, so a session created by any other writer after the root appeared was silently deleted (independently reproduced 2026-09-21; escalated to P2)",
+      "prior_defect": "validator self-test seam derived ownership from ROOT ABSENCE at entry and removed the whole qualification tree at exit, so a session created by any other writer after the root appeared was silently deleted (independently reproduced 2026-09-21; escalated to P2)",
+      "correction": "CLOSED at seam level: tools/evidence_authoring_testkit.py owns and removes EXACTLY <root>/<name> for a run-unique, collision-resistant self-test id it minted (prefix + pid + 128-bit token) that did not exist at entry; lstat-checked (real directory, not a symlink, directly under the root); never the root, a sibling or the tree, whether or not the root existed and whether the block exits normally or by exception; an absent root is created with the frozen mode and left in place; the root-listing leftover assertion is retired. Section selftest-ownership proves T04-A/B/C/D, symlink and name-law refusals against private roots, and pins the pre-repair cleanup as a regression fixture that demonstrably deletes a foreign arrival. No operating restriction is needed for evidence safety",
       "negative_fixture": "validate_v1_20.py NEGATIVE checks in the named sections (the frozen e65ed5a4 defect replayed against the repaired check)",
       "expected_layer": "release identity (manifest, lineage records, registered schemas)",
       "validation_sections": [
-        "v120-release-scanner"
+        "selftest-ownership",
+        "b1-positive"
       ]
     },
     {
@@ -291,6 +292,19 @@
       "expected_layer": "release identity (manifest, lineage records, registered schemas)",
       "validation_sections": [
         "registered-json"
+      ]
+    },
+    {
+      "id": "F-120-09",
+      "severity": "MAJOR",
+      "codex_finding": "a successful validator run changed governed report bytes across supported scratch environments: four VALIDATION-REPORT.md details carried environment-bound values (an unscrubbed temp-root path in three evidence-store refusal messages, and a raw inventory total_bytes whose BOUNDARY receipt serializes the root path, device and inode), so the regenerated manifest did not reproduce the committed candidate",
+      "prior_defect": "a successful validator run changed governed report bytes across supported scratch environments: four VALIDATION-REPORT.md details carried environment-bound values (an unscrubbed temp-root path in three evidence-store refusal messages, and a raw inventory total_bytes whose BOUNDARY receipt serializes the root path, device and inode), so the regenerated manifest did not reproduce the committed candidate",
+      "correction": "CLOSED: the report scrub now replaces every occurrence of the process temp directory, the checkout root and the working directory with fixed tokens (plus digests, inodes, temp evidence roots and run-unique self-test ids), the inventory-fields control publishes the recomputation outcome instead of the raw total, and section report-determinism fails the run if any detail or check name still carries an environment-bound value; the same source produces byte-identical report and manifest under short, medium and long scratch roots and temp directories (final-repair report MULTI-ROOT-DETERMINISM.md)",
+      "negative_fixture": "validate_v1_20.py NEGATIVE checks in the named sections (the frozen e65ed5a4 defect replayed against the repaired check)",
+      "expected_layer": "release identity (manifest, lineage records, registered schemas)",
+      "validation_sections": [
+        "report-determinism",
+        "evidence-inventory-fields"
       ]
     },
     {
