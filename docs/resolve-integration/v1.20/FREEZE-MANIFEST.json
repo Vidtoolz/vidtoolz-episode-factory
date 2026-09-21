@@ -984,8 +984,8 @@
     },
     {
       "path": "KNOWN-LIMITATIONS-PHASE1.md",
-      "sha256": "97b59ea5ccf1f2f99317766b62c1b70a5a017275324ea48a6fdb2bc2a26f0671",
-      "bytes": 5490,
+      "sha256": "9be36ce9e301ecbee89e566e43cf08bd13127c6b1fa6854578eb7bb5bdeade09",
+      "bytes": 5632,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -6186,7 +6186,7 @@
   },
   "counts": {
     "files": 583,
-    "bytes": 41631349,
+    "bytes": 41631491,
     "frozen_now": 572,
     "provisional_until_m3": 11,
     "inherited_unchanged": 114,
