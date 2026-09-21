@@ -3338,9 +3338,9 @@ Result: **3132/3132 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | m0a-binding | the published canonical store tool path and hash are the store this bundle actually ships | PASS |  |
 | m0a-binding | the published evidence-layer vocabulary is the store's own | PASS |  |
 | m0a-binding | the stdout/stderr retention rule is closed and matches the evidence store | PASS |  |
-| report-determinism | no recorded check detail contains the process temp directory, the repository checkout root or the working directory (environment-bound values are scrubbed to fixed tokens) | PASS | [] |
+| report-determinism | no recorded check detail contains the process temp directory or the repository checkout root (environment-bound values are scrubbed to fixed tokens); canonical roots are never scrubbed | PASS | [] |
 | report-determinism | no recorded check detail contains an unscrubbed temporary evidence root or a run-unique self-test session id | PASS |  |
 | report-determinism | no recorded check NAME contains an environment-bound value (names are the check-plan identity) | PASS |  |
 | report-determinism | the inventory-fields control publishes the recomputation OUTCOME, not the environment-derived raw byte total (F-120-09) | PASS |  |
-| report-determinism | the scrub preserves decisions: it rewrites detail text only, never a pass/fail value | PASS |  |
+| report-determinism | the scrub preserves decisions and canonical paths: it rewrites environment prefixes used as paths only, never a pass/fail value, never a doctrine label, never the governed evidence root | PASS |  |
 | required-check-plan | actual check IDs equal required check IDs | PASS | [] |

@@ -1195,8 +1195,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "788a217f34ebe79002c17e6bd925b6abeafd41c909dea777dae9c5697d7d103f",
-      "bytes": 11311,
+      "sha256": "24e62c495cb80b803af4d0f00e989bf72704c8bd37880c8ee52074f85c9ce948",
+      "bytes": 11437,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -1217,8 +1217,8 @@
     },
     {
       "path": "RELEASE-AUTHORITY.md",
-      "sha256": "1cb188b665093cf8b98f7cd803ba578691b240eebeb52a4ea10ca137a4124e1f",
-      "bytes": 4388,
+      "sha256": "0288ada2fa9b941228555346d0dc6787887ed138343b0dc8a3bbe0f467ab02bc",
+      "bytes": 4527,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -1227,7 +1227,7 @@
     },
     {
       "path": "REQUIRED-VALIDATION-CHECKS.json",
-      "sha256": "6fdaf8c5e965e782b27a7f81d9498f52e78ad3e2f0644442416cb7d23708a016",
+      "sha256": "edba08f344ff86b812de3426f98bac8995ca94b5f3726f74611dcb2ae79db4cd",
       "bytes": 293156,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
@@ -1429,8 +1429,8 @@
     },
     {
       "path": "VALIDATION-REPORT.md",
-      "sha256": "6fdf13b2fa92b8134ed58c4298170876205fb2b0dafca339574359ff5e084935",
-      "bytes": 428328,
+      "sha256": "dbd94f4c6af61288311a5e1d0a9c9ec4abfd601b3b141a54fc135c77fa2e818c",
+      "bytes": 428442,
       "status": "FROZEN_NOW",
       "authority_class": "REPORT",
       "inherited_from_parent": false,
@@ -6002,8 +6002,8 @@
     },
     {
       "path": "tools/prepare_release_metadata.py",
-      "sha256": "d754074fc53464b343d3484bf1aa8f34a414a2c61aae7846d4833921fdb609f8",
-      "bytes": 24991,
+      "sha256": "74f5874bd071f49c604c0d2908ba0d01a7e7f7c87192012366958733a478ada4",
+      "bytes": 25130,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6062,8 +6062,8 @@
     },
     {
       "path": "tools/validate_v1_20.py",
-      "sha256": "e948142868967f9a64d7ed080bbdcf7d271d1834d85a44b7574659e2b8c8955c",
-      "bytes": 489907,
+      "sha256": "c69cc5a3054a9edc0d42beaa01d39929cea0b2816ae23878409f98ae76655e9a",
+      "bytes": 490957,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6186,7 +6186,7 @@
   },
   "counts": {
     "files": 583,
-    "bytes": 41629781,
+    "bytes": 41631349,
     "frozen_now": 572,
     "provisional_until_m3": 11,
     "inherited_unchanged": 114,

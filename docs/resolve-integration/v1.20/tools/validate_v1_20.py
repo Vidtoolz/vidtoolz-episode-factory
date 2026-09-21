@@ -64,11 +64,25 @@ _RUNVAR = [(re.compile(r"resolve-v1[0-9]*-evidence-[A-Za-z0-9_]+"), "resolve-evi
 # Besides the regex scrubs above, every literal occurrence of the process temp directory (TMPDIR, whatever length the
 # reviewer chose), of the repository checkout root and of the working directory is replaced by a fixed token. A check
 # whose detail still depends on the environment after this is a defect of that check (section report-determinism).
+# The working directory is deliberately NOT a scrub prefix: the validator never reads it, and when a reviewer runs from a
+# directory that is an ancestor of a CANONICAL path (e.g. the home directory above the governed evidence root) scrubbing it
+# would rewrite canonical paths and make the report depend on the cwd - observed in this task's medium-root run. For the
+# same reason a prefix that is an ancestor of a canonical root is never scrubbed.
+_CANONICAL_ROOTS = [L.QUALIFICATION_EVIDENCE_ROOT]
+try:
+    _CANONICAL_ROOTS.append(L.strict_load(os.path.join(B, "TARGET-CONTRACT.json"))["library"]["root_path"] or "")
+except Exception:  # noqa: BLE001
+    pass
+
+
+def _is_ancestor_of_canonical(prefix):
+    return any(root and (root == prefix or root.startswith(prefix.rstrip("/") + "/")) for root in _CANONICAL_ROOTS)
+
+
 _ENV_PREFIXES = []
 for _pfx, _tok in ((tempfile.gettempdir(), "<TMPDIR>"), (os.path.realpath(tempfile.gettempdir()), "<TMPDIR>"),
-                   (os.path.dirname(os.path.dirname(os.path.dirname(B))), "<REPO>"), (os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(B)))), "<REPO>"),
-                   (os.getcwd(), "<CWD>"), (os.path.realpath(os.getcwd()), "<CWD>")):
-    if _pfx and _pfx != "/" and (_pfx, _tok) not in _ENV_PREFIXES:
+                   (os.path.dirname(os.path.dirname(os.path.dirname(B))), "<REPO>"), (os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(B)))), "<REPO>")):
+    if _pfx and _pfx != "/" and not _is_ancestor_of_canonical(_pfx) and (_pfx, _tok) not in _ENV_PREFIXES:
         _ENV_PREFIXES.append((_pfx, _tok))
 _ENV_PREFIXES.sort(key=lambda x: -len(x[0]))          # longest prefix first, so <TMPDIR> under <REPO> scrubs as itself
 
@@ -5182,12 +5196,12 @@ rec("m0a-binding", "the stdout/stderr retention rule is closed and matches the e
 
 # ---- v1.20 repair (F-120-09): the frozen report must not depend on where or under which temp directory it was produced
 _env_leaks = [(s_, n_) for s_, n_, _o, d_ in R for pat_, _t in _ENV_PREFIX_RES if pat_.search(d_)]
-rec("report-determinism", "no recorded check detail contains the process temp directory, the repository checkout root or the working directory (environment-bound values are scrubbed to fixed tokens)", not _env_leaks, str(_env_leaks[:2]))
+rec("report-determinism", "no recorded check detail contains the process temp directory or the repository checkout root (environment-bound values are scrubbed to fixed tokens); canonical roots are never scrubbed", not _env_leaks and not any("<CWD>" in d_ for _s, _n, _o, d_ in R) and all(root_ not in dict(_ENV_PREFIXES) for root_ in _CANONICAL_ROOTS), str(_env_leaks[:2]))
 rec("report-determinism", "no recorded check detail contains an unscrubbed temporary evidence root or a run-unique self-test session id", not any(re.search(r"resolve-v1[0-9]*-evidence-|sess-selftest-(?!<RUN>)", d_) for _s, _n, _o, d_ in R))
 # names may cite doctrine such as "no /tmp production path"; what they may not contain is a path UNDER an environment prefix or a run-unique id
 rec("report-determinism", "no recorded check NAME contains an environment-bound value (names are the check-plan identity)", not any((pfx.rstrip("/") + "/") in n_ for _s, n_, _o, _d in R for pfx, _t in _ENV_PREFIXES if pfx.rstrip("/") + "/" != "/tmp/") and not any(re.search(r"sess-selftest-[A-Za-z0-9._-]{40,}", n_) for _s, n_, _o, _d in R))
 rec("report-determinism", "the inventory-fields control publishes the recomputation OUTCOME, not the environment-derived raw byte total (F-120-09)", any(s_ == "evidence-inventory-fields" and "total_bytes=recomputed-equal" in d_ for s_, _n, _o, d_ in R) and not any(re.search(r"\bbytes=\d+\b", d_) for s_, _n, _o, d_ in R if s_ == "evidence-inventory-fields"))
-rec("report-determinism", "the scrub preserves decisions: it rewrites detail text only, never a pass/fail value", scrub_detail("x") == "x" and "<TMPDIR>" in scrub_detail(tempfile.gettempdir() + "/anything") and ("<REPO>" in scrub_detail(os.path.dirname(os.path.dirname(os.path.dirname(B))) + "/x") or os.path.dirname(os.path.dirname(os.path.dirname(B))) == "/"))
+rec("report-determinism", "the scrub preserves decisions and canonical paths: it rewrites environment prefixes used as paths only, never a pass/fail value, never a doctrine label, never the governed evidence root", scrub_detail("x") == "x" and ("<TMPDIR>" in scrub_detail(tempfile.gettempdir() + "/anything") or _is_ancestor_of_canonical(tempfile.gettempdir())) and scrub_detail("/tmp->CODE") == "/tmp->CODE" and scrub_detail(L.GOVERNED_ATTACHMENT_ROOT + "/s1") == L.GOVERNED_ATTACHMENT_ROOT + "/s1")
 
 import release_authority as RELEASE
 _check_ids=[]
