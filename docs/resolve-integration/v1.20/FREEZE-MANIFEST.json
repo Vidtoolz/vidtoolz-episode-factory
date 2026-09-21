@@ -1429,8 +1429,8 @@
     },
     {
       "path": "VALIDATION-REPORT.md",
-      "sha256": "236664a0fb1c39fc27e090e126d1594fc98c57c09da2788df78cac0779152de1",
-      "bytes": 428445,
+      "sha256": "6fdf13b2fa92b8134ed58c4298170876205fb2b0dafca339574359ff5e084935",
+      "bytes": 428328,
       "status": "FROZEN_NOW",
       "authority_class": "REPORT",
       "inherited_from_parent": false,
@@ -6062,8 +6062,8 @@
     },
     {
       "path": "tools/validate_v1_20.py",
-      "sha256": "637bb8709a58b5f113d5aab2ae80fffcc5aa2fe60120fa4b17258b6fa06691bb",
-      "bytes": 489341,
+      "sha256": "e948142868967f9a64d7ed080bbdcf7d271d1834d85a44b7574659e2b8c8955c",
+      "bytes": 489907,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6186,7 +6186,7 @@
   },
   "counts": {
     "files": 583,
-    "bytes": 41629332,
+    "bytes": 41629781,
     "frozen_now": 572,
     "provisional_until_m3": 11,
     "inherited_unchanged": 114,

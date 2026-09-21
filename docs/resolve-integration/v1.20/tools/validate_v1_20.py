@@ -73,10 +73,15 @@ for _pfx, _tok in ((tempfile.gettempdir(), "<TMPDIR>"), (os.path.realpath(tempfi
 _ENV_PREFIXES.sort(key=lambda x: -len(x[0]))          # longest prefix first, so <TMPDIR> under <REPO> scrubs as itself
 
 
+_ENV_PREFIX_RES = [(re.compile(re.escape(pfx) + r"(?=/|['\"]|\s|$)"), tok) for pfx, tok in _ENV_PREFIXES]
+
+
 def scrub_detail(detail):
+    """Idempotent. A prefix is scrubbed only where it is used AS A PATH (followed by '/', a quote, whitespace or the end), so a
+    doctrine label like "/tmp->" or "/tmp," is left alone whatever TMPDIR is. Callers must scrub BEFORE truncating."""
     d = str(detail)
-    for pfx, tok in _ENV_PREFIXES:
-        d = d.replace(pfx, tok)
+    for pat, tok in _ENV_PREFIX_RES:
+        d = pat.sub(tok, d)
     for pat, sub in _RUNVAR:
         d = pat.sub(sub, d)
     return d
@@ -1604,7 +1609,7 @@ with TK.sandbox(W_ROOT):
         except AUTH_MOD.AuthoringError:
             ok, d = True, {"state": "REFUSED_AT_AUTHORING"}
         except Exception as e:  # noqa: BLE001
-            ok, d = False, {"state": "RAW_" + type(e).__name__ + ":" + str(e)[:60]}
+            ok, d = False, {"state": "RAW_" + type(e).__name__ + ":" + scrub_detail(str(e))[:60]}
         _neg.append((label, ok, d["state"]))
         rec("workflow-e2e-negative", f"never ATTACHMENT_READY: {label}", ok, d["state"])
 
@@ -2322,7 +2327,7 @@ try:
             shutil.move(_moved, L.canonical_session_dir(_ctl_sid))
             rec("core-positive", "V113-B1 section 16: with the session directory replaced by a symlink AT the canonical path, the core loader refuses even though the document behind it is the same valid one",
                 _sym_load.code == "RAW_AuthorityTrustError" and "SESSION_SYMLINK_REFUSED" in _sym_load.detail,
-                f"{_sym_load.code}: {_sym_load.detail[:60]}")
+                f"{_sym_load.code}: {scrub_detail(_sym_load.detail)[:60]}")
             rec("core-positive", "after the real directory is restored the authorizing derivation succeeds again, so the refusal was the symlink and not the document",
                 L.derive_attachment_state_for_session(_ctl_sid, tc, _CB_ACTIVE)["state"] == "ATTACHMENT_READY")
             _stale = L.load_governed_evidence_set(_ctl_sid, _CB_ACTIVE)
@@ -3078,7 +3083,7 @@ try:
                    and _o3 == "ok" and any(_want in e for e in _v3))
             _b4.append((_kind, _ok))
             rec("b4-workflow-file", f"V114-B4: WORKFLOW.json as {_kind} is refused {_want} by the loader, by the wrapper and by the published location predicate - with no read through the target and no hang",
-                _ok, f"loader={_o}:{str(_v)[:60]} wrapper={_o2}")
+                _ok, f"loader={_o}:{scrub_detail(str(_v))[:60]} wrapper={_o2}")
             _rm(_wf)
         with open(_wf, "wb") as _f:
             _f.write(_wf_bytes)
@@ -3802,9 +3807,9 @@ def _with_tampered(rel, mutate, fn):
 
 _one_byte = _with_tampered("schemas/resolveSnapshot.schema.json", lambda b: b.replace(b'"type": "object"', b'"type":  "object"', 1), _safe_registry)
 rec("schema-registry", "ONE changed byte in ONE pinned schema file makes the whole registry untrusted and nothing can be validated",
-    _one_byte is not None and "not trusted" in _one_byte, str(_one_byte)[:120])
+    _one_byte is not None and "not trusted" in _one_byte, scrub_detail(str(_one_byte))[:120])
 _missing = _with_tampered(L.SCHEMA_REGISTRY_FILE, lambda b: b.replace(b'"schema_count"', b'"schema_countX"', 1), _safe_registry)
-rec("schema-registry", "a tampered registry record is refused (field set / self digest)", _missing is not None, str(_missing)[:120])
+rec("schema-registry", "a tampered registry record is refused (field set / self digest)", _missing is not None, scrub_detail(str(_missing))[:120])
 
 # ---- C16-B3 the trusted capture shim
 TS_SHIM = L.trusted_capture_shim()
@@ -3977,7 +3982,7 @@ for c_ in ING_CASES["cases"]:
         _r = L.ingest_raw_frame(_b, ENVC, ACTIVE_HYP, rp)
         _got, _detail = None, "ingested"
     except L.RawIngestError as ex:
-        _got, _detail = ex.code, str(ex)[:90]
+        _got, _detail = ex.code, scrub_detail(str(ex))[:90]
     rec("raw-ingestion", f"replayed fixture {c_['name']}: {c_['expected_code'] or 'ingests cleanly'}", _got == c_["expected_code"], f"got {_got}: {_detail}")
 rec("raw-ingestion", "every raw capture fixture in the bundle carries a closed strict-parse receipt",
     all(L.ingest_receipt_errors(r_["ingest_receipt"], r_["capture"]) == [] for es_ in EVS.values() for r_ in es_["records"].values() if r_["record_type"] == "RAW_CAPABILITY_CAPTURE" and "ingest_receipt" in r_))
@@ -4101,7 +4106,7 @@ try:
     shutil.copytree(BR2.dir, os.path.join(Bv, "sess-altroot"))
     _alt = _try_store(lambda: ES_MOD.open_session(Bv, "sess-altroot"))
     rec("evidence-boundary-receipt", "ALTERNATE ROOT (Codex S110-1, pinned): the same session basename copied under another root is refused ROOT_IDENTITY_MISMATCH. v1.9 verified it clean.",
-        _alt.code == "ROOT_IDENTITY_MISMATCH", f"{_alt.code}: {_alt.detail[:110]}")
+        _alt.code == "ROOT_IDENTITY_MISMATCH", f"{_alt.code}: {scrub_detail(_alt.detail)[:110]}")
     rec("evidence-boundary-receipt", "the session in its own root still verifies clean, so the refusal is the root and not the bytes",
         BR2.verify() == [], _codes(BR2.verify()))
     shutil.rmtree(os.path.join(Bv, "sess-altroot"), ignore_errors=True)
@@ -4508,7 +4513,7 @@ try:
         _e = _rewrite_receipt(BF, _mut, recompute=(_f != "boundary_sha256"))
         rec("evidence-boundary-fields",
             f"F110-A pinned: receipt field {_f} ({ES_MOD.BOUNDARY_PROVENANCE[_f]}) rewritten with a recomputed boundary_sha256 refuses the next canonical operation. v1.10 accepted schema, evidence_store_version, authority_version and platform_scope.",
-            _e.code in _BOUND, f"{_e.code}: {_e.detail[:80]}")
+            _e.code in _BOUND, f"{_e.code}: {scrub_detail(_e.detail)[:80]}")
     _ca = _rewrite_receipt(BF, lambda d: d.update(created_at="1999-01-01T00:00:00Z"))
     rec("evidence-boundary-fields",
         "created_at behaves EXACTLY as its documented informational law: a consistently rewritten created_at does NOT refuse, because nothing outside the receipt can attest it",
@@ -4655,7 +4660,7 @@ try:
     _after_att = sorted(os.listdir(os.path.join(MC.dir, ES_MOD.ATTEMPTS_DIR)))
     rec("evidence-marker-cardinality",
         "F110-C pinned (section 23): a SECOND attempt id over the same session, layer, logical identity and bytes is refused MARKER_CARDINALITY_VIOLATION at the write. v1.10 accepted it, then finalized and verified clean.",
-        _e2.code == "MARKER_CARDINALITY_VIOLATION", f"{_e2.code}: {_e2.detail[:90]}")
+        _e2.code == "MARKER_CARDINALITY_VIOLATION", f"{_e2.code}: {scrub_detail(_e2.detail)[:90]}")
     rec("evidence-marker-cardinality", "the refusal happens BEFORE anything is persisted: no second marker, no second record, no journal-visible ambiguity",
         _after_att == _before_att and "card-a2" not in _after_att and MC.active_integrity() == [] and MC.session_state() == "ACTIVE",
         ",".join(_after_att))
@@ -5018,7 +5023,7 @@ for _bad in [1.5, 2 ** 53, "\ud800", object()]:
                 out.append(("err", type(ex).__name__))
         return out
     _r = _both(_bad)
-    rec("canonicalization-equivalence", f"canon() and the reference agree on refusing {type(_bad).__name__} {str(_bad)[:16]!r}", _r[0] == _r[1], str(_r)[:120])
+    rec("canonicalization-equivalence", f"canon() and the reference agree on refusing {type(_bad).__name__} {scrub_detail(str(_bad))[:16]!r}", _r[0] == _r[1], scrub_detail(str(_r))[:120])
 rec("canonicalization-equivalence", "CANONICALIZATION_VERSION is unchanged: v1.7 changes the implementation, never the canonical text",
     L.CANONICALIZATION_VERSION == "1.5")
 
@@ -5164,7 +5169,7 @@ _want = {"raw_schema_id": L.RAW_SCHEMA_ID, "raw_schema_version": L.RECORD_TYPE_V
          "evidence_store_sha256": sha(os.path.join(B, L.EVIDENCE_STORE_MODULE)), "evidence_store_authority_class": L.EVIDENCE_STORE_AUTHORITY_CLASS,
          "path_identifier_constraints": ES_MOD.NAME_RE.pattern}
 for _k, _v in sorted(_want.items()):
-    rec("m0a-binding", f"published {_k} is the value this bundle actually implements", M0A_BIND["values"].get(_k) == _v, f"published={str(M0A_BIND['values'].get(_k))[:24]} actual={str(_v)[:24]}")
+    rec("m0a-binding", f"published {_k} is the value this bundle actually implements", M0A_BIND["values"].get(_k) == _v, f"published={str(M0A_BIND['values'].get(_k))[:24]} actual={scrub_detail(str(_v))[:24]}")
 rec("m0a-binding", "the published closed-world verification rule is stated and names the three required counts (section 22)",
     all(x in M0A_BIND["values"]["closed_world_verification"] for x in ("missing == 0", "unexpected == 0", "changed == 0")))
 rec("m0a-binding", "the published canonical store tool path and hash are the store this bundle actually ships",
@@ -5176,11 +5181,11 @@ rec("m0a-binding", "the stdout/stderr retention rule is closed and matches the e
 
 
 # ---- v1.20 repair (F-120-09): the frozen report must not depend on where or under which temp directory it was produced
-_env_leaks = [(s_, n_) for s_, n_, _o, d_ in R for pfx, _t in _ENV_PREFIXES if pfx in d_]
+_env_leaks = [(s_, n_) for s_, n_, _o, d_ in R for pat_, _t in _ENV_PREFIX_RES if pat_.search(d_)]
 rec("report-determinism", "no recorded check detail contains the process temp directory, the repository checkout root or the working directory (environment-bound values are scrubbed to fixed tokens)", not _env_leaks, str(_env_leaks[:2]))
 rec("report-determinism", "no recorded check detail contains an unscrubbed temporary evidence root or a run-unique self-test session id", not any(re.search(r"resolve-v1[0-9]*-evidence-|sess-selftest-(?!<RUN>)", d_) for _s, _n, _o, d_ in R))
 # names may cite doctrine such as "no /tmp production path"; what they may not contain is a path UNDER an environment prefix or a run-unique id
-rec("report-determinism", "no recorded check NAME contains an environment-bound value (names are the check-plan identity)", not any((pfx.rstrip("/") + "/") in n_ for _s, n_, _o, _d in R for pfx, _t in _ENV_PREFIXES) and not any(re.search(r"sess-selftest-[A-Za-z0-9._-]{40,}", n_) for _s, n_, _o, _d in R))
+rec("report-determinism", "no recorded check NAME contains an environment-bound value (names are the check-plan identity)", not any((pfx.rstrip("/") + "/") in n_ for _s, n_, _o, _d in R for pfx, _t in _ENV_PREFIXES if pfx.rstrip("/") + "/" != "/tmp/") and not any(re.search(r"sess-selftest-[A-Za-z0-9._-]{40,}", n_) for _s, n_, _o, _d in R))
 rec("report-determinism", "the inventory-fields control publishes the recomputation OUTCOME, not the environment-derived raw byte total (F-120-09)", any(s_ == "evidence-inventory-fields" and "total_bytes=recomputed-equal" in d_ for s_, _n, _o, d_ in R) and not any(re.search(r"\bbytes=\d+\b", d_) for s_, _n, _o, d_ in R if s_ == "evidence-inventory-fields"))
 rec("report-determinism", "the scrub preserves decisions: it rewrites detail text only, never a pass/fail value", scrub_detail("x") == "x" and "<TMPDIR>" in scrub_detail(tempfile.gettempdir() + "/anything") and ("<REPO>" in scrub_detail(os.path.dirname(os.path.dirname(os.path.dirname(B))) + "/x") or os.path.dirname(os.path.dirname(os.path.dirname(B))) == "/"))
 
