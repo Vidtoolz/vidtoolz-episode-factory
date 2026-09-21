@@ -8,6 +8,8 @@ v1.20 adds the independently freeze-review-approved **Resolve Control Plane Phas
 
 Validate with `python3 -B tools/validate_v1_20.py` (report: `VALIDATION-REPORT.md`). Read, in this order: `LINEAGE.md`, `CHANGELOG-v1.20.md`, `CONTROL-PLANE.md`, `PHASE1-QUALIFICATION-RECORD.json`, `KNOWN-LIMITATIONS-PHASE1.md`, then the inherited doctrine (`DOCTRINE.md`, `ADJUDICATION-FREEZE-CONTRACT.md` §A4/§A5, `TARGET-CONTRACT.json`, `TRANSPORT.md`, `SNAPSHOT-CONCURRENCY-RECOVERY.md`).
 
+**Validator operating constraint (F-120-04).** Run at most one Resolve authority validator per host at a time while the governed self-test evidence root (`/home/vidtoolz/resolve-qualification-evidence/attachment`) is shared. The positive-control sections create transient, uniquely named self-test sessions there through `tools/evidence_authoring_testkit.py` and remove only those; pre-existing governed production sessions are never adopted, overwritten or removed. Concurrent validator execution is unsupported: it trips the testkit's leftover assertion (a visible FAIL, never a silent pass) and, when the root is absent, two validators can race over creating and removing the whole tree. Validation also requires the repository checkout with `resolve-control/**` present, because section `phase1-pin` re-hashes it against `PHASE1-SOURCE-PIN.json`.
+
 ## The v1.7 correction of v1.6 (historical)
 
 v1.7 is a narrowly scoped correction of the four BLOCKERs and three M0A MAJORs in Codex's final forensic adjudication
@@ -76,3 +78,15 @@ Nothing in v1.10 authorizes M0A, M0B, M0C, M0D or any mutation. No Resolve insta
 ## v1.19 release correction
 
 This candidate corrects V117-I1 and extracted V117-S1 through V117-S5. RELEASE-AUTHORITY.md states the new release tooling law. AUTHORITY-REFERENCE-METADATA.json supplies source-bound per-reference declarations, AUTHORITY-DOCUMENT-UNIVERSE.json publishes inclusion, and REQUIRED-VALIDATION-CHECKS.json pins the mandatory check set. Runtime semantics remain frozen. Author tests are not independent adjudication.
+
+## v1.20 repair candidate (2026-09-21)
+
+The first v1.20 candidate (`e65ed5a4`, manifest `2f58bc3b23693d97e0bda480c0b560ec3ed9eedb375d050b22a1936420f9b6c0`) was independently reviewed and **REJECTED — REPAIR REQUIRED** (review manifest `740c656d1a1c5e261d45a3656922b2aa4bc2e1dbb2901909085e2d7a9b4bc546`; P0 0, P1 0, P2 3). This bundle is its narrow repair at the same authority version 1.20.0:
+
+- **F-120-01** — the parent pin's byte count was read from the v1.18 manifest; `tools/build_manifest.py` now derives path, digest and byte count of every external pin from one resolved file and refuses to write a manifest whose pins do not re-verify (section `external-pins`).
+- **F-120-02** — manifest rule 4 bound records to authority version 1.19.0; the rule text is now generated from the canonical version constant and every version statement is cross-checked (section `authority-version`).
+- **F-120-03** — the bundle's copy of the v1.19 finding matrix was regenerated from a stale v1.17 literal; `tools/build_v1_20.py` now inherits the v1.17, v1.18 and v1.19 matrices byte-asserted from the frozen parent and re-stamps only `authority_version` (section `inherited-matrices`).
+- **F-120-05** — every top-level JSON member now validates against its registered schema or carries an explicit `NO_REGISTERED_SCHEMA:` reason in the manifest (section `registered-json`); the matrix schema admits the historical id and severity forms it is declared on.
+- **F-120-06** — `resolve-control/**` is machine-verified against `PHASE1-SOURCE-PIN.json` (section `phase1-pin`); the pin has a registered schema.
+
+`resolve-control/**` (77c26103), v1.18, v1.19, the Phase 1 qualification evidence and the recorded human v1.19 acceptance are unchanged. `e65ed5a4` remains in branch history as the rejected candidate. The dispositions of all eight review findings are in `FINDING-RESOLUTION-MATRIX-v1.20.{md,json}` and `KNOWN-LIMITATIONS-PHASE1.md`. Still an implementation-author candidate; independent re-review required.

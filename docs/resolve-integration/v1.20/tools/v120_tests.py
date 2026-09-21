@@ -61,7 +61,7 @@ def run(bundle,rec):
     check('document-universe',not RELEASE.universe_errors(b),RELEASE.universe_errors(b))
     finding_map=json.loads((b/'FINDING-RESOLUTION-MATRIX-v1.20.json').read_text())
     matrix_errors=S.L.internal_schema_errors('resolveFindingResolutionMatrix',finding_map)
-    check('active-finding-map-schema',not matrix_errors and {r['id'] for r in finding_map['findings']}=={'V119-F'+str(i) for i in range(1,6)}|{'P1-F%02d'%i for i in range(7,13)}|{'P1-R%02d'%i for i in range(1,6)},matrix_errors)
+    check('active-finding-map-schema',not matrix_errors and {r['id'] for r in finding_map['findings']}=={'V119-F'+str(i) for i in range(1,6)}|{'P1-F%02d'%i for i in range(7,13)}|{'P1-R%02d'%i for i in range(1,6)}|{'F-120-%02d'%i for i in range(1,9)},matrix_errors)
     sel=RELEASE.MARKER.search(doc)
     for id,mutant in [
         ('zero-current',doc[:sel.start()]+doc[sel.end():]),
@@ -79,6 +79,19 @@ def run(bundle,rec):
     check('external-digest-negative','EXTERNAL_DOC_SHA256' in RELEASE.external_errors(b,stale))
     stale['external_pins']['doc_authority']['sha256']='144ccf740b34ed12aa805d8c82ca03e17aa4704f2584234365d79334f9242fcb'
     check('parent-document-pin-negative','EXTERNAL_DOC_SHA256' in RELEASE.external_errors(b,stale))
+    # v1.20 repair regressions: the three frozen e65ed5a4 defects must be refused by the release-identity laws.
+    stale=copy.deepcopy(manifest);stale['external_pins']['v1_19_parent_manifest']['bytes']=(b.parent/'v1.18/FREEZE-MANIFEST.json').stat().st_size
+    check('F-120-01-parent-pin-bytes-negative','EXTERNAL_PIN_SIZE:v1_19_parent_manifest' in RELEASE.pin_errors(b,stale) and 'EXTERNAL_PIN_SIZE:v1_19_parent_manifest' in RELEASE.external_errors(b,stale))
+    stale=copy.deepcopy(manifest);stale['rules']=[r.replace('authority version '+RELEASE.VERSION,'authority version 1.19.0') for r in stale['rules']]
+    check('F-120-02-rule-version-negative',any(e.startswith('MANIFEST_RULE_VERSION') for e in RELEASE.version_coherence_errors(b,stale)) and any(e.startswith('MANIFEST_RULE_VERSION') for e in RELEASE.external_errors(b,stale)))
+    stale_matrix=json.loads((b.parent/'v1.19/FINDING-RESOLUTION-MATRIX-v1.17.json').read_text());stale_matrix['authority_version']=RELEASE.VERSION
+    check('F-120-03-stale-matrix-negative','INHERITED_MATRIX_CONTENT:FINDING-RESOLUTION-MATRIX-v1.19.json' in RELEASE.inherited_matrix_errors(b,overrides={'FINDING-RESOLUTION-MATRIX-v1.19.json':stale_matrix}))
+    check('external-pins-current',not RELEASE.pin_errors(b),RELEASE.pin_errors(b))
+    check('version-coherence-current',not RELEASE.version_coherence_errors(b),RELEASE.version_coherence_errors(b))
+    check('inherited-matrices-current',not RELEASE.inherited_matrix_errors(b),RELEASE.inherited_matrix_errors(b))
+    check('registered-json-current',not RELEASE.registered_json_errors(b),RELEASE.registered_json_errors(b)[:2])
+    check('phase1-pin-current',not RELEASE.phase1_pin_errors(b),RELEASE.phase1_pin_errors(b)[:2])
+    check('parent-matrix-bytes-frozen',RELEASE.sha(b.parent/'v1.19/FINDING-RESOLUTION-MATRIX-v1.19.json')==next(e['sha256'] for e in parent['files'] if e['path']=='FINDING-RESOLUTION-MATRIX-v1.19.json'))
     required=json.loads((b/'REQUIRED-VALIDATION-CHECKS.json').read_text())['check_ids']
     check('check-omission-negative',bool(RELEASE.required_errors(['a'],['a','b'])))
     check('check-duplicate-negative',bool(RELEASE.required_errors(['a','a'],['a'])))

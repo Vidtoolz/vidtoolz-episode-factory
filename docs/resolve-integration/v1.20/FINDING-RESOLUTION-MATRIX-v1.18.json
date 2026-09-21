@@ -1,6 +1,6 @@
 {
   "schema": "vidtoolz.resolveFindingResolutionMatrix.v1.10",
-  "authority_version": "1.18.0",
+  "authority_version": "1.20.0",
   "adjudication": "IMPLEMENTATION AUTHOR candidate. No independent acceptance or human authorization.",
   "law": "V117-I1 and the five extraction IDs are preserved; synthetic cases are regressions, not thirty production findings.",
   "operational_closure": "No operational execution. Independent review required.",

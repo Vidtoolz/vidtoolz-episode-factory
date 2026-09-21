@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vidtoolz.resolveControlPlaneSourcePin.v1",
+  "title": "Resolve Control Plane Phase 1 source pin (v1.20)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority_version",
+    "component",
+    "protocol",
+    "implementation_commit",
+    "implementation_commit_full",
+    "git_tree_sha1_resolve_control",
+    "worker_sha256",
+    "file_count",
+    "files",
+    "law",
+    "governance",
+    "write_authority",
+    "hermes_facade"
+  ],
+  "properties": {
+    "schema": {
+      "const": "vidtoolz.resolveControlPlaneSourcePin.v1"
+    },
+    "authority_version": {
+      "const": "1.20.0"
+    },
+    "component": {
+      "type": "string",
+      "minLength": 1
+    },
+    "protocol": {
+      "const": "vrc.v1"
+    },
+    "implementation_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}$"
+    },
+    "implementation_commit_full": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "git_tree_sha1_resolve_control": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "worker_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "file_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "bytes"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^resolve-control/[^/].*$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "law": {
+      "type": "string",
+      "minLength": 20
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope_adjudication_commit",
+        "a3_provisioning_commit",
+        "records_path",
+        "acceptance_of_parent_v1_19"
+      ],
+      "properties": {
+        "scope_adjudication_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}$"
+        },
+        "a3_provisioning_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}$"
+        },
+        "records_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "acceptance_of_parent_v1_19": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "write_authority": {
+      "const": "NONE"
+    },
+    "hermes_facade": {
+      "const": "ABSENT"
+    }
+  }
+}

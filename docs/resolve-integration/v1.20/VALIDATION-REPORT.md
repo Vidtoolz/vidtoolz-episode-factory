@@ -1,6 +1,6 @@
 # VALIDATION REPORT — Resolve authority bundle v1.20
 
-Result: **2995/2995 checks passed**. IMPLEMENTATION AUTHOR self-validation; independent review required. Offline synthetic tests only; no operational A2/A2V/A1/A3 execution. Protected runtime tests retained; scanner/release assertions replaced as documented in REQUIRED-VALIDATION-CHECKS.json.
+Result: **3105/3105 checks passed**. IMPLEMENTATION AUTHOR self-validation; independent review required. Offline synthetic tests only; no operational A2/A2V/A1/A3 execution. Protected runtime tests retained; scanner/release assertions replaced as documented in REQUIRED-VALIDATION-CHECKS.json.
 
 | Finding | Sections | Checks | Passed |
 |---|---|---|---|
@@ -68,6 +68,7 @@ Result: **2995/2995 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | active-authority | 7 | 7 |
 | append-effect | 3 | 3 |
 | attachment-derived | 104 | 104 |
+| authority-version | 9 | 9 |
 | b1-classification | 9 | 9 |
 | b1-consumed-evidence | 14 | 14 |
 | b1-positive | 5 | 5 |
@@ -123,6 +124,7 @@ Result: **2995/2995 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | evidence-store | 3 | 3 |
 | evidence-traversal | 1 | 1 |
 | exact-manifest | 8 | 8 |
+| external-pins | 29 | 29 |
 | f64-exact | 2 | 2 |
 | fixture-eligibility-negative | 4 | 4 |
 | fixture-layers | 1 | 1 |
@@ -141,6 +143,7 @@ Result: **2995/2995 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | hash-domain-parity | 5 | 5 |
 | identity-duplicates | 8 | 8 |
 | identity-evidence | 10 | 10 |
+| inherited-matrices | 12 | 12 |
 | journal-s1-binding | 6 | 6 |
 | linked-set | 1 | 1 |
 | linked-set-negative | 39 | 39 |
@@ -161,6 +164,7 @@ Result: **2995/2995 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | order-independence | 5 | 5 |
 | parse | 3 | 3 |
 | permission-invariant | 5 | 5 |
+| phase1-pin | 8 | 8 |
 | precedence | 162 | 162 |
 | precedence-retired-terms | 36 | 36 |
 | precedence-supersession | 64 | 64 |
@@ -173,6 +177,7 @@ Result: **2995/2995 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | raw-vs-fake-parse | 36 | 36 |
 | re-parser | 23 | 23 |
 | refreeze-law | 15 | 15 |
+| registered-json | 43 | 43 |
 | required-check-plan | 1 | 1 |
 | review-law | 11 | 11 |
 | root-law | 26 | 26 |
@@ -192,7 +197,7 @@ Result: **2995/2995 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | v115-static | 9 | 9 |
 | v116-static | 5 | 5 |
 | v120-defect-regressions | 323 | 323 |
-| v120-release-scanner | 240 | 240 |
+| v120-release-scanner | 249 | 249 |
 | v17-retained | 5 | 5 |
 | validator-injection | 23 | 23 |
 | workflow-e2e-negative | 29 | 29 |
@@ -1961,6 +1966,107 @@ Result: **2995/2995 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | manifest-negative | wrong size with correct sha | PASS |  |
 | manifest-negative | correct size with wrong sha | PASS |  |
 | manifest-positive | actual bytes equal on disk for every file | PASS |  |
+| external-pins | every external pin resolves to an existing file whose sha256 AND byte count both match; the parent pin names ../v1.19/FREEZE-MANIFEST.json with the accepted digest; the parent digest and every ancestor digest are pinned | PASS | 21 pins |
+| external-pins | pin doc_authority: path exists, sha256 and byte count match | PASS | ../../DOC-AUTHORITY.md pinned bytes=15407 actual=15407 |
+| external-pins | pin v1_0_manifest: path exists, sha256 and byte count match | PASS | ../v1/FREEZE-MANIFEST.json pinned bytes=9425 actual=9425 |
+| external-pins | pin v1_10_manifest: path exists, sha256 and byte count match | PASS | ../v1.10/FREEZE-MANIFEST.json pinned bytes=205458 actual=205458 |
+| external-pins | pin v1_11_manifest: path exists, sha256 and byte count match | PASS | ../v1.11/FREEZE-MANIFEST.json pinned bytes=208198 actual=208198 |
+| external-pins | pin v1_12_manifest: path exists, sha256 and byte count match | PASS | ../v1.12/FREEZE-MANIFEST.json pinned bytes=212038 actual=212038 |
+| external-pins | pin v1_13_manifest: path exists, sha256 and byte count match | PASS | ../v1.13/FREEZE-MANIFEST.json pinned bytes=213844 actual=213844 |
+| external-pins | pin v1_14_manifest: path exists, sha256 and byte count match | PASS | ../v1.14/FREEZE-MANIFEST.json pinned bytes=215311 actual=215311 |
+| external-pins | pin v1_15_manifest: path exists, sha256 and byte count match | PASS | ../v1.15/FREEZE-MANIFEST.json pinned bytes=217152 actual=217152 |
+| external-pins | pin v1_16_parent_manifest: path exists, sha256 and byte count match | PASS | ../v1.16/FREEZE-MANIFEST.json pinned bytes=219439 actual=219439 |
+| external-pins | pin v1_17_manifest: path exists, sha256 and byte count match | PASS | ../v1.17/FREEZE-MANIFEST.json pinned bytes=221581 actual=221581 |
+| external-pins | pin v1_18_manifest: path exists, sha256 and byte count match | PASS | ../v1.18/FREEZE-MANIFEST.json pinned bytes=226487 actual=226487 |
+| external-pins | pin v1_19_parent_manifest: path exists, sha256 and byte count match | PASS | ../v1.19/FREEZE-MANIFEST.json pinned bytes=230003 actual=230003 |
+| external-pins | pin v1_1_manifest: path exists, sha256 and byte count match | PASS | ../v1.1/FREEZE-MANIFEST.json pinned bytes=41527 actual=41527 |
+| external-pins | pin v1_2_manifest: path exists, sha256 and byte count match | PASS | ../v1.2/FREEZE-MANIFEST.json pinned bytes=62217 actual=62217 |
+| external-pins | pin v1_3_manifest: path exists, sha256 and byte count match | PASS | ../v1.3/FREEZE-MANIFEST.json pinned bytes=97853 actual=97853 |
+| external-pins | pin v1_4_manifest: path exists, sha256 and byte count match | PASS | ../v1.4/FREEZE-MANIFEST.json pinned bytes=124499 actual=124499 |
+| external-pins | pin v1_5_manifest: path exists, sha256 and byte count match | PASS | ../v1.5/FREEZE-MANIFEST.json pinned bytes=156968 actual=156968 |
+| external-pins | pin v1_6_manifest: path exists, sha256 and byte count match | PASS | ../v1.6/FREEZE-MANIFEST.json pinned bytes=182934 actual=182934 |
+| external-pins | pin v1_7_manifest: path exists, sha256 and byte count match | PASS | ../v1.7/FREEZE-MANIFEST.json pinned bytes=199064 actual=199064 |
+| external-pins | pin v1_8_manifest: path exists, sha256 and byte count match | PASS | ../v1.8/FREEZE-MANIFEST.json pinned bytes=201195 actual=201195 |
+| external-pins | pin v1_9_manifest: path exists, sha256 and byte count match | PASS | ../v1.9/FREEZE-MANIFEST.json pinned bytes=202907 actual=202907 |
+| external-pins | the parent pin's byte count is the v1.19 manifest's own size and differs from the v1.18 manifest's size | PASS |  |
+| external-pins | NEGATIVE (F-120-01 as frozen in e65ed5a4): the parent pin carrying the v1.18 manifest's byte count is refused | PASS |  |
+| external-pins | NEGATIVE: a pin with the right byte count and a wrong digest is refused | PASS |  |
+| external-pins | NEGATIVE: a pin whose file does not exist is refused | PASS |  |
+| external-pins | NEGATIVE: dropping an ancestor's pin is refused (every ancestor digest must stay pinned) | PASS |  |
+| external-pins | NEGATIVE: a parent pin naming another file or digest is refused | PASS |  |
+| external-pins | release coherence (release_authority.external_errors) now carries the pin law too | PASS |  |
+| authority-version | manifest version, the manifest rule binding records, the DOC-AUTHORITY current selector, TARGET-CONTRACT, MILESTONES and every release-metadata record name the canonical authority version and no other | PASS | 1.20.0 |
+| authority-version | exactly one manifest rule binds records to an authority version, and it is this bundle's | PASS | 1.20.0 |
+| authority-version | the release module, the authority library and the manifest agree on the version constant | PASS |  |
+| authority-version | NEGATIVE (F-120-02 as frozen in e65ed5a4): a manifest rule binding records to authority version 1.19.0 is refused | PASS |  |
+| authority-version | NEGATIVE: a manifest with no rule binding records to an authority version is refused | PASS |  |
+| authority-version | NEGATIVE: TARGET-CONTRACT naming another manifest version as the verifier source is refused | PASS |  |
+| authority-version | NEGATIVE: MILESTONES naming another authority version is refused | PASS |  |
+| authority-version | NEGATIVE: a DOC-AUTHORITY current selector for another version is refused | PASS |  |
+| authority-version | NEGATIVE: a release-metadata record stamped with another version is refused | PASS |  |
+| inherited-matrices | every matrix the active v1.20 matrix inherits equals the accepted parent's frozen copy in every field except the authority_version stamp, and the parent's own matrix still enumerates V118-M1..M4, N1..N3 | PASS | FINDING-RESOLUTION-MATRIX-v1.19.json,FINDING-RESOLUTION-MATRIX-v1.18.json,FINDING-RESOLUTION-MATRIX-v1.16.json,FINDING-RESOLUTION-MATRIX-v1.15.json,FINDING-RESOLUTION-MATRIX-v1.14.json |
+| inherited-matrices | the inherited v1.19 matrix enumerates exactly the seven accepted v1.19 findings | PASS | V118-M1,V118-M2,V118-M3,V118-M4,V118-N1,V118-N2,V118-N3 |
+| inherited-matrices | the inherited v1.19 matrix validates against the pinned matrix schema | PASS |  |
+| inherited-matrices | the inherited v1.19 matrix mirrors its unchanged markdown sibling (every id appears there) | PASS |  |
+| inherited-matrices | the rejected candidate's stale copy (sha 0ead2ece...) is not in this bundle | PASS |  |
+| inherited-matrices | FINDING-RESOLUTION-MATRIX-v1.17.json: this bundle's copy is the parent's frozen copy re-stamped to this authority version and nothing else | PASS |  |
+| inherited-matrices | FINDING-RESOLUTION-MATRIX-v1.18.json: this bundle's copy is the parent's frozen copy re-stamped to this authority version and nothing else | PASS |  |
+| inherited-matrices | FINDING-RESOLUTION-MATRIX-v1.19.json: this bundle's copy is the parent's frozen copy re-stamped to this authority version and nothing else | PASS |  |
+| inherited-matrices | NEGATIVE (F-120-03 as frozen in e65ed5a4): the v1.17 content (one finding, V116-B1) published under the v1.19 name is refused by the parent-equality law and by the accepted-findings law | PASS | INHERITED_MATRIX_CONTENT:FINDING-RESOLUTION-MATRIX-v1.19.json; PARENT_FINDINGS_CHANGED:V116-B1,V118-M1,V118-M2,V118-M3,V118-M4,V118-N1,V118-N2,V118-N3 |
+| inherited-matrices | NEGATIVE: an inherited matrix that lost one accepted finding is refused | PASS |  |
+| inherited-matrices | NEGATIVE: an inherited matrix not re-stamped to this authority version is refused | PASS |  |
+| inherited-matrices | NEGATIVE: the widened matrix schema still refuses an unknown severity class and an unknown finding id | PASS |  |
+| registered-json | every top-level JSON member either validates against the schema its schema field names in SCHEMA-REGISTRY.json or carries an explicit NO_REGISTERED_SCHEMA reason in the manifest; the manifest itself validates; nothing is silently schema-invalid | PASS |  |
+| registered-json | AUTHOR-REGRESSION-RESULTS.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: no schema field; author regression evidence generated under authority 1.19.0 and inherited byte-fo |
+| registered-json | AUTHORITY-DOCUMENT-UNIVERSE.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: vidtoolz.resolveDocumentUniverse.v1 is not pinned; the published universe is re-derived from the p |
+| registered-json | AUTHORITY-FUNCTION-CLASSES.json validates against registered schema resolveAuthorityFunctionClasses | PASS |  |
+| registered-json | AUTHORITY-PRECEDENCE.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: vidtoolz.resolveAuthorityPrecedence.v1.6 is not pinned; statuses, roles, superseded rows and agree |
+| registered-json | AUTHORITY-REFERENCE-METADATA.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: vidtoolz.resolveReferenceMetadata.v1 is not pinned; every declared reference is reconciled against |
+| registered-json | AUTHORITY-SLOT-INVENTORY.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: vidtoolz.resolveAuthoritySlotInventory.v3 is not pinned; generated by tools/authority_slots.py and |
+| registered-json | CANARY-SOURCE-MANIFEST.json validates against registered schema resolveCanarySourceManifest | PASS |  |
+| registered-json | CAPABILITIES.json validates against registered schema resolveCapabilityMatrix | PASS |  |
+| registered-json | EVIDENCE-SET-WORKFLOW.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: vidtoolz.resolveEvidenceSetWorkflowLaw.v1 is not pinned; its persistence, lifecycle, principal and |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.10.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.11.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.12.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.13.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.14.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.15.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.16.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.17.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.18.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.19.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.20.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.7.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.8.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | FINDING-RESOLUTION-MATRIX-v1.9.json validates against registered schema resolveFindingResolutionMatrix | PASS |  |
+| registered-json | INVENTORY-FIELD-PROVENANCE.json validates against registered schema resolveInventoryFieldProvenance | PASS |  |
+| registered-json | M0A-BINDING-VALUES.json validates against registered schema resolveM0ABindingValues | PASS |  |
+| registered-json | M3-PROBES.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: vidtoolz.resolveM3Probes.v1.10 is not pinned; PROVISIONAL_UNTIL_M3 probe list read by the mileston |
+| registered-json | MILESTONE-MATRIX.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: vidtoolz.resolveMilestoneMatrix.v1.10 is not pinned; milestone rows are asserted by the milestone  |
+| registered-json | PERMISSIONS.json validates against registered schema resolvePermissions | PASS |  |
+| registered-json | PHASE1-QUALIFICATION-RECORD.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: vidtoolz.resolveControlPlaneQualificationRecord.v1 is not pinned; content adjudicated by the Phase |
+| registered-json | PHASE1-SOURCE-PIN.json validates against registered schema resolveControlPlaneSourcePin | PASS |  |
+| registered-json | PRINCIPALS.json validates against registered schema resolvePrincipalRegistry | PASS |  |
+| registered-json | QUARANTINE-MANIFEST.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: vidtoolz.resolveQuarantineManifest.v1 is not pinned; frozen 2026-09-08 quarantine record (Mikko-au |
+| registered-json | READ-PRIMITIVES.json validates against registered schema resolveReadPrimitives | PASS |  |
+| registered-json | REQUIRED-VALIDATION-CHECKS.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: vidtoolz.resolveRequiredValidationChecks.v1 is not pinned; exact check-id set parity with the exec |
+| registered-json | SCHEMA-REGISTRY.json validates against registered schema resolveSchemaRegistry | PASS |  |
+| registered-json | TARGET-CONTRACT.json validates against registered schema resolveTargetContract | PASS |  |
+| registered-json | TIMEBASE.json validates against registered schema resolveTimebase | PASS |  |
+| registered-json | TRUSTED-SHIM.json validates against registered schema resolveTrustedCaptureShim | PASS |  |
+| registered-json | V117-REPRODUCTION.json has no registered schema and the manifest states the governed reason | PASS | NO_REGISTERED_SCHEMA: vidtoolz.resolveAuthorReproduction.v1 is not pinned in SCHEMA-REGISTRY.json; author reproduction e |
+| registered-json | NEGATIVE: a member declaring an unregistered schema with no manifest reason is refused | PASS |  |
+| registered-json | NEGATIVE (F-120-03 as frozen in e65ed5a4): a schema-invalid registered member is refused | PASS |  |
+| registered-json | NEGATIVE: a NO_REGISTERED_SCHEMA reason on a member that DOES have a registered schema is refused (a reason cannot opt out of validation) | PASS |  |
+| phase1-pin | resolve-control/** on disk equals PHASE1-SOURCE-PIN.json: same file set, every sha256 and byte count, the pinned file count, the worker digest and the git tree id | PASS | 24 files, tree 5e78e8f52654 |
+| phase1-pin | the pin names implementation 77c26103 (tree 5e78e8f5...), worker 371caf13..., WRITE AUTHORITY NONE and HERMES FACADE ABSENT | PASS |  |
+| phase1-pin | the pin validates against its registered schema | PASS |  |
+| phase1-pin | NEGATIVE: a pin whose file digest differs from the bytes on disk is refused | PASS |  |
+| phase1-pin | NEGATIVE: a pin missing a file that exists on disk is refused | PASS |  |
+| phase1-pin | NEGATIVE: a pin whose worker digest disagrees with the pinned worker file is refused | PASS |  |
+| phase1-pin | NEGATIVE: a pin whose tree id disagrees with the recomputed tree is refused | PASS |  |
+| phase1-pin | NEGATIVE: an absent resolve-control tree is a refusal, never a pass | PASS |  |
 | workflow-persistence | exactly one governed attachment root is frozen, absolute, normalised and none of the forbidden locations | PASS | /home/vidtoolz/resolve-qualification-evidence/attachment |
 | workflow-persistence | the path law is derived from the session id alone: the resolver takes NO argument (V112-RP1) | PASS |  |
 | workflow-persistence | a session id that is not a safe basename is refused, so the path law cannot be escaped | PASS |  |
@@ -2254,6 +2360,15 @@ Result: **2995/2995 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | v120-release-scanner | stale-prose-authoritative version | PASS |  |
 | v120-release-scanner | external-digest-negative | PASS |  |
 | v120-release-scanner | parent-document-pin-negative | PASS |  |
+| v120-release-scanner | F-120-01-parent-pin-bytes-negative | PASS |  |
+| v120-release-scanner | F-120-02-rule-version-negative | PASS |  |
+| v120-release-scanner | F-120-03-stale-matrix-negative | PASS |  |
+| v120-release-scanner | external-pins-current | PASS | [] |
+| v120-release-scanner | version-coherence-current | PASS | [] |
+| v120-release-scanner | inherited-matrices-current | PASS | [] |
+| v120-release-scanner | registered-json-current | PASS | [] |
+| v120-release-scanner | phase1-pin-current | PASS | [] |
+| v120-release-scanner | parent-matrix-bytes-frozen | PASS |  |
 | v120-release-scanner | check-omission-negative | PASS |  |
 | v120-release-scanner | check-duplicate-negative | PASS |  |
 | v120-release-scanner | actual-required-check-omission | PASS | author bootstrap empty plan is never release validation |
@@ -3191,7 +3306,7 @@ Result: **2995/2995 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | m0a-binding | published raw_schema_version is the value this bundle actually implements | PASS | published=1.10 actual=1.10 |
 | m0a-binding | published reference_parser_sha256 is the value this bundle actually implements | PASS | published=01a39890a27deecdefd4b173 actual=01a39890a27deecdefd4b173 |
 | m0a-binding | published reference_parser_version is the value this bundle actually implements | PASS | published=vidtoolz.resolveProbePar actual=vidtoolz.resolveProbePar |
-| m0a-binding | published schema_registry_sha256 is the value this bundle actually implements | PASS | published=ebd95128ee0f5385b7a4cb7e actual=ebd95128ee0f5385b7a4cb7e |
+| m0a-binding | published schema_registry_sha256 is the value this bundle actually implements | PASS | published=f3890c31d943a7fca56351b4 actual=f3890c31d943a7fca56351b4 |
 | m0a-binding | published trusted_shim_sha256 is the value this bundle actually implements | PASS | published=caf310438232c65d010942a4 actual=caf310438232c65d010942a4 |
 | m0a-binding | published trusted_shim_source_sha256 is the value this bundle actually implements | PASS | published=4132e5bd30339d68cd80c2bb actual=4132e5bd30339d68cd80c2bb |
 | m0a-binding | published trusted_shim_version is the value this bundle actually implements | PASS | published=vidtoolz.captureShim.ref actual=vidtoolz.captureShim.ref |

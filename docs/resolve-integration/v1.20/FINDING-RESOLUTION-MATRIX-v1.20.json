@@ -203,6 +203,109 @@
       "validation_sections": [
         "v120-defect-regressions"
       ]
+    },
+    {
+      "id": "F-120-01",
+      "severity": "MAJOR",
+      "codex_finding": "FREEZE-MANIFEST external pin v1_19_parent_manifest carried the v1.18 byte count (226487) for the v1.19 parent manifest (230003): build_manifest.py read the byte count from the v1.18 path",
+      "prior_defect": "FREEZE-MANIFEST external pin v1_19_parent_manifest carried the v1.18 byte count (226487) for the v1.19 parent manifest (230003): build_manifest.py read the byte count from the v1.18 path",
+      "correction": "CLOSED at generator level: build_manifest.py derives path, sha256 and byte count of every external pin from one resolved file, asserts the accepted digest, and refuses to write a manifest whose pins do not re-verify; validate_v1_20.py section external-pins re-verifies every pin (path, sha256, bytes; parent and ancestor parity) and pins the frozen defect as a refused negative",
+      "negative_fixture": "validate_v1_20.py NEGATIVE checks in the named sections (the frozen e65ed5a4 defect replayed against the repaired check)",
+      "expected_layer": "release identity (manifest, lineage records, registered schemas)",
+      "validation_sections": [
+        "external-pins"
+      ]
+    },
+    {
+      "id": "F-120-02",
+      "severity": "MAJOR",
+      "codex_finding": "FREEZE-MANIFEST rule 4 bound records to authority version 1.19.0 while the canonical version, MILESTONES.md and TARGET-CONTRACT.json said 1.20.0 (V118-N3 class recurring inside the identity document)",
+      "prior_defect": "FREEZE-MANIFEST rule 4 bound records to authority version 1.19.0 while the canonical version, MILESTONES.md and TARGET-CONTRACT.json said 1.20.0 (V118-N3 class recurring inside the identity document)",
+      "correction": "CLOSED at generator level: the rule text is generated from the canonical authority version and the build refuses a manifest whose version statements disagree; section authority-version asserts manifest version, rule text, DOC-AUTHORITY selector, TARGET-CONTRACT, MILESTONES and every release-metadata record name one version, and refuses the frozen 1.19.0 rule as a negative",
+      "negative_fixture": "validate_v1_20.py NEGATIVE checks in the named sections (the frozen e65ed5a4 defect replayed against the repaired check)",
+      "expected_layer": "release identity (manifest, lineage records, registered schemas)",
+      "validation_sections": [
+        "authority-version"
+      ]
+    },
+    {
+      "id": "F-120-03",
+      "severity": "MAJOR",
+      "codex_finding": "the bundle copy of FINDING-RESOLUTION-MATRIX-v1.19.json was regenerated from a stale embedded v1.17 literal (one finding, V116-B1), schema-invalid and contradicting its markdown sibling; V118-M1..M4 and N1..N3 vanished from every machine-readable matrix",
+      "prior_defect": "the bundle copy of FINDING-RESOLUTION-MATRIX-v1.19.json was regenerated from a stale embedded v1.17 literal (one finding, V116-B1), schema-invalid and contradicting its markdown sibling; V118-M1..M4 and N1..N3 vanished from every machine-readable matrix",
+      "correction": "CLOSED at generator level: build_v1_20.py inherits the parent matrices (v1.17, v1.18, v1.19) byte-asserted against the frozen parent manifest, asserts their finding ids and re-stamps only authority_version; section inherited-matrices asserts parent equality and the seven accepted v1.19 findings and refuses the stale copy as a negative",
+      "negative_fixture": "validate_v1_20.py NEGATIVE checks in the named sections (the frozen e65ed5a4 defect replayed against the repaired check)",
+      "expected_layer": "release identity (manifest, lineage records, registered schemas)",
+      "validation_sections": [
+        "inherited-matrices",
+        "registered-json"
+      ]
+    },
+    {
+      "id": "F-120-04",
+      "severity": "MINOR",
+      "codex_finding": "validator positive controls write transient self-test sessions under the shared governed evidence root; concurrent validators on one host interfere (false-positive leftover assertion; absent-root create/remove race)",
+      "prior_defect": "validator positive controls write transient self-test sessions under the shared governed evidence root; concurrent validators on one host interfere (false-positive leftover assertion; absent-root create/remove race)",
+      "correction": "DOCUMENTED operating constraint (README.md, RELEASE-AUTHORITY.md, KNOWN-LIMITATIONS-PHASE1.md): run at most one Resolve authority validator per host at a time; the testkit creates and removes only its own uniquely named session and refuses to adopt an existing one; root isolation or an advisory lock is a later candidate",
+      "negative_fixture": "validate_v1_20.py NEGATIVE checks in the named sections (the frozen e65ed5a4 defect replayed against the repaired check)",
+      "expected_layer": "release identity (manifest, lineage records, registered schemas)",
+      "validation_sections": [
+        "v120-release-scanner"
+      ]
+    },
+    {
+      "id": "F-120-05",
+      "severity": "MINOR",
+      "codex_finding": "validator blind spots: external-pin byte counts, rule-text version coherence and the schema validity of every registered JSON member were unchecked, which is why F-120-01..03 passed 2995/2995",
+      "prior_defect": "validator blind spots: external-pin byte counts, rule-text version coherence and the schema validity of every registered JSON member were unchecked, which is why F-120-01..03 passed 2995/2995",
+      "correction": "CLOSED: sections external-pins, authority-version, inherited-matrices and registered-json; the matrix schema now admits the historical id and severity forms it is declared on (pattern, not enum; one finding minimum); every top-level JSON member either validates against its registered schema or carries an explicit NO_REGISTERED_SCHEMA reason in the manifest",
+      "negative_fixture": "validate_v1_20.py NEGATIVE checks in the named sections (the frozen e65ed5a4 defect replayed against the repaired check)",
+      "expected_layer": "release identity (manifest, lineage records, registered schemas)",
+      "validation_sections": [
+        "external-pins",
+        "authority-version",
+        "inherited-matrices",
+        "registered-json"
+      ]
+    },
+    {
+      "id": "F-120-06",
+      "severity": "MINOR",
+      "codex_finding": "PHASE1-SOURCE-PIN.json was not machine-verified against resolve-control/** and the Phase 1 records had no registered schema",
+      "prior_defect": "PHASE1-SOURCE-PIN.json was not machine-verified against resolve-control/** and the Phase 1 records had no registered schema",
+      "correction": "PARTIALLY CLOSED: section phase1-pin re-hashes resolve-control/** (file set, sha256, bytes, worker digest, file count, git tree id) and the pin now validates against a registered schema; PHASE1-QUALIFICATION-RECORD.json and the acceptance record remain schema-less with an explicit manifest reason (follow-up)",
+      "negative_fixture": "validate_v1_20.py NEGATIVE checks in the named sections (the frozen e65ed5a4 defect replayed against the repaired check)",
+      "expected_layer": "release identity (manifest, lineage records, registered schemas)",
+      "validation_sections": [
+        "phase1-pin",
+        "registered-json"
+      ]
+    },
+    {
+      "id": "F-120-07",
+      "severity": "MINOR",
+      "codex_finding": "AUTHOR-REGRESSION-RESULTS.json and V117-REPRODUCTION.json carry v1.19 author metadata while classed NORMATIVE in the manifest",
+      "prior_defect": "AUTHOR-REGRESSION-RESULTS.json and V117-REPRODUCTION.json carry v1.19 author metadata while classed NORMATIVE in the manifest",
+      "correction": "DOCUMENTED provenance semantics: both are author evidence generated under authority 1.19.0, inherited byte-for-byte and registered GENERATED_EVIDENCE in AUTHORITY-PRECEDENCE.json; their manifest qualification_note now states this; no bytes changed",
+      "negative_fixture": "validate_v1_20.py NEGATIVE checks in the named sections (the frozen e65ed5a4 defect replayed against the repaired check)",
+      "expected_layer": "release identity (manifest, lineage records, registered schemas)",
+      "validation_sections": [
+        "registered-json"
+      ]
+    },
+    {
+      "id": "F-120-08",
+      "severity": "MINOR",
+      "codex_finding": "bundle construction used unchecked string replacement: two replacements missed and one rename stayed disabled, producing F-120-01..03",
+      "prior_defect": "bundle construction used unchecked string replacement: two replacements missed and one rename stayed disabled, producing F-120-01..03",
+      "correction": "CLOSED for the three affected values, which are now derived structurally (resolved parent file, canonical version constant, frozen parent bytes) rather than substituted; the out-of-bundle construction script is an author tool and not part of this authority",
+      "negative_fixture": "validate_v1_20.py NEGATIVE checks in the named sections (the frozen e65ed5a4 defect replayed against the repaired check)",
+      "expected_layer": "release identity (manifest, lineage records, registered schemas)",
+      "validation_sections": [
+        "external-pins",
+        "authority-version",
+        "inherited-matrices"
+      ]
     }
   ]
 }

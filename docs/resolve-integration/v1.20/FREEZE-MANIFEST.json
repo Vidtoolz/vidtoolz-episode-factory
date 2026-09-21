@@ -141,7 +141,7 @@
     "a file whose sha256 or byte count differs from this manifest is not the frozen version",
     "v1.0 through v1.19 bytes and manifests are never modified; v1.20 supersedes by reference",
     "SCHEMA-VALID != AUTHORIZED TO MUTATE; PERMISSION DECLARATION != ELIGIBILITY; PROBE_ALLOWED != QUALIFIED_READ; A CAPTURE != EVIDENCE THAT SOMETHING WORKS; attachment state is derived from a coherent, current, envelope-bound evidence set against the ACTIVE reviewed manifest, never declared; contradictory evidence is CONFLICT",
-    "a BUNDLE_VERIFICATION, MILESTONE_EXIT, M3_AUTHORIZATION or REFREEZE_RECORD counts only when bound to this manifest's sha256 and authority version 1.19.0; records for other manifests are historical",
+    "a BUNDLE_VERIFICATION, MILESTONE_EXIT, M3_AUTHORIZATION or REFREEZE_RECORD counts only when bound to this manifest's sha256 and authority version 1.20.0; records for other manifests are historical",
     "mutation-capable schemas remain PROVISIONAL_UNTIL_M3; verification is derived from S0/S1 over the protected surface (verify_transaction) and never declared; commit_eligibility_authorizing -> validate_transaction_set_authorizing over a GovernedEvidenceSet is the ONLY authorizing commit path (v1.15 V114-B2; the bare-dict commit_eligibility/validate_transaction_set pair is PROVISIONAL_UNTIL_M3 and NON-AUTHORIZING, and every per-document helper is INTERNAL_NON_AUTHORIZING); capability meaning is DERIVED by the versioned reference parser from an immutable facts-only raw capture (never from a probe-written flag), the ACTIVE capability authority is the matrix's own content digest, a degraded H0 can never be a write precondition, and schema enforcement in the composed path is mandatory; no adapter mutation implementation exists; no Resolve write was executed; M0 has not begun",
     "v1.7 authority-integrity law: no authority cache may be keyed on Python object identity, mutable container identity or a process-local reference (content digests plus the authority version only); the authorizing entry points take NO schema-validator parameter and resolve schemas from the pinned SCHEMA-REGISTRY.json internally; a capture qualifies only under the exact trusted shim identity pinned by TRUSTED-SHIM.json, which the ACTIVE authority must also name; a promoted matrix row must resolve the EXACT stored raw capture, derived record, current review and current reviewed refreeze by digest, with multiplicity a CONFLICT unless explicit supersession leaves exactly one; identity claims validate receiver-path, handle-token and attempt-id uniqueness before any index exists; raw evidence enters only through the strict byte ingestion boundary; and the append-only evidence store is executable code the validator attacks",
     "v1.8 evidence-store law: there is exactly ONE evidence-storage authority (tools/evidence_store.py, EVIDENCE_STORE_AUTHORIZING); no other module may create a session, write a record, finalize or verify; no caller ever supplies a filesystem path; a FINALIZED session is a CLOSED WORLD whose inventory records every governed file and directory, and verification requires missing == 0, unexpected == 0 and changed == 0",
@@ -168,7 +168,8 @@
       "authority_class": "NORMATIVE",
       "inherited_from_parent": true,
       "changed_from_parent": false,
-      "new_in_this_version": false
+      "new_in_this_version": false,
+      "qualification_note": "NO_REGISTERED_SCHEMA: no schema field; author regression evidence generated under authority 1.19.0 and inherited byte-for-byte; registered GENERATED_EVIDENCE in AUTHORITY-PRECEDENCE.json; historical provenance, not a claim of current authority identity (F-120-07)"
     },
     {
       "path": "AUTHORITY-ARCHITECTURE-ADJUDICATION-M0-M3.md",
@@ -199,7 +200,8 @@
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
       "changed_from_parent": true,
-      "new_in_this_version": false
+      "new_in_this_version": false,
+      "qualification_note": "NO_REGISTERED_SCHEMA: vidtoolz.resolveDocumentUniverse.v1 is not pinned; the published universe is re-derived from the parent registration plus the explicit successor artifacts and compared row for row (release coherence PUBLISHED_UNIVERSE_PARITY, section v120-release-scanner)"
     },
     {
       "path": "AUTHORITY-FUNCTION-CLASSES.json",
@@ -219,7 +221,8 @@
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
       "changed_from_parent": true,
-      "new_in_this_version": false
+      "new_in_this_version": false,
+      "qualification_note": "NO_REGISTERED_SCHEMA: vidtoolz.resolveAuthorityPrecedence.v1.6 is not pinned; statuses, roles, superseded rows and agreement with AUTHORITY-PRECEDENCE.md are asserted field by field in sections precedence and v120-release-scanner"
     },
     {
       "path": "AUTHORITY-PRECEDENCE.md",
@@ -239,7 +242,8 @@
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
       "changed_from_parent": true,
-      "new_in_this_version": false
+      "new_in_this_version": false,
+      "qualification_note": "NO_REGISTERED_SCHEMA: vidtoolz.resolveReferenceMetadata.v1 is not pinned; every declared reference is reconciled against an independent source walk (section v120-release-scanner)"
     },
     {
       "path": "AUTHORITY-SLOT-INVENTORY.json",
@@ -249,7 +253,8 @@
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
       "changed_from_parent": true,
-      "new_in_this_version": false
+      "new_in_this_version": false,
+      "qualification_note": "NO_REGISTERED_SCHEMA: vidtoolz.resolveAuthoritySlotInventory.v3 is not pinned; generated by tools/authority_slots.py and required equal to a fresh derivation (section v120-release-scanner)"
     },
     {
       "path": "AUTHORIZATION-2026-09-08.md",
@@ -439,8 +444,8 @@
     },
     {
       "path": "CHANGELOG-v1.20.md",
-      "sha256": "42210aa90d728e31f66497ae7c739e971d02f78714be251a6145f961f3efe2ee",
-      "bytes": 1362,
+      "sha256": "48550e3b1523a26082df26541a1a7712c563571f149cb8f6253d63d11b572bdd",
+      "bytes": 2474,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -591,7 +596,8 @@
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
       "changed_from_parent": true,
-      "new_in_this_version": false
+      "new_in_this_version": false,
+      "qualification_note": "NO_REGISTERED_SCHEMA: vidtoolz.resolveEvidenceSetWorkflowLaw.v1 is not pinned; its persistence, lifecycle, principal and TOCTOU fields are asserted individually by the workflow sections"
     },
     {
       "path": "FINDING-RESOLUTION-MATRIX-v1.10.json",
@@ -735,12 +741,12 @@
     },
     {
       "path": "FINDING-RESOLUTION-MATRIX-v1.17.json",
-      "sha256": "176ace69de7887e8ecf5617293e0871798520a03bcf2b328b4b36794132ba532",
+      "sha256": "94979298c8b4be44d735de1ccd6ab3eec09086b8b140e2f04c8c5f5c83446bea",
       "bytes": 10923,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
-      "inherited_from_parent": true,
-      "changed_from_parent": false,
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
       "new_in_this_version": false
     },
     {
@@ -755,12 +761,12 @@
     },
     {
       "path": "FINDING-RESOLUTION-MATRIX-v1.18.json",
-      "sha256": "57cc5de2180722e15e8c1a865d342c36f1ff63d985830994134fcac5ad89848c",
+      "sha256": "e850ac89156bcd4824483ba9b06d3e5895d220cc2b9b28bec6d46624ced8ff61",
       "bytes": 4323,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
-      "inherited_from_parent": true,
-      "changed_from_parent": false,
+      "inherited_from_parent": false,
+      "changed_from_parent": true,
       "new_in_this_version": false
     },
     {
@@ -775,8 +781,8 @@
     },
     {
       "path": "FINDING-RESOLUTION-MATRIX-v1.19.json",
-      "sha256": "0ead2ece9c435c8622e23637d3345ae99a6e1324a90679eaecb2fa44a7c677fb",
-      "bytes": 10923,
+      "sha256": "e7d7c13b926ed639b1cb6ca914cbf645a5b777bffecb0cd89985f76b172a945c",
+      "bytes": 4737,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -805,8 +811,8 @@
     },
     {
       "path": "FINDING-RESOLUTION-MATRIX-v1.20.json",
-      "sha256": "7aebf72869d0c8da3ce12d62889688b62e0e16e3e3d470bd194ec57dfc76b30c",
-      "bytes": 8356,
+      "sha256": "300431cc9b6f99ea1c1ffc55342d5928e44be494a8c5b52c778135225459c246",
+      "bytes": 17566,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -815,8 +821,8 @@
     },
     {
       "path": "FINDING-RESOLUTION-MATRIX-v1.20.md",
-      "sha256": "6a18be2cb6257b3f30976b257062d41a0d60377ace589dd925fe76f757d5fc0f",
-      "bytes": 2357,
+      "sha256": "769b60936db1785f6679e638f74883d7a33e796f85fb25586dce9dc322c87a2e",
+      "bytes": 6782,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -978,8 +984,8 @@
     },
     {
       "path": "KNOWN-LIMITATIONS-PHASE1.md",
-      "sha256": "c2739f629bd2a8f2a87ad1e5136f0e2ab045b288d0b8e825270c9809b68aa227",
-      "bytes": 3317,
+      "sha256": "56151828d21303a1e11afd3941d0a26bcb0c94388605b65726dc0e3377873c7d",
+      "bytes": 5122,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -988,8 +994,8 @@
     },
     {
       "path": "LINEAGE.md",
-      "sha256": "3d3324c75217113ce9981cd29876fbd0cf958320e2988b91022a780b1d0aee96",
-      "bytes": 1244,
+      "sha256": "7c29a9861e2c67458d15a0b22abc5c21856edb06c198ab7b544197a41e89ad40",
+      "bytes": 1976,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -1022,7 +1028,7 @@
     },
     {
       "path": "M0A-BINDING-VALUES.json",
-      "sha256": "00b912e2d11f13f54dcfa6f41725b103761cbb51951dbc07a5bfdda863d6bf77",
+      "sha256": "e867b8498552f27081ce45483392f072a4f1211878023f2c26634e0897ab7dd3",
       "bytes": 24412,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
@@ -1064,6 +1070,7 @@
       "inherited_from_parent": true,
       "changed_from_parent": false,
       "new_in_this_version": false,
+      "qualification_note": "NO_REGISTERED_SCHEMA: vidtoolz.resolveM3Probes.v1.10 is not pinned; PROVISIONAL_UNTIL_M3 probe list read by the milestone section; no runtime consumer",
       "blocked_until": "M3"
     },
     {
@@ -1074,7 +1081,8 @@
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
       "changed_from_parent": true,
-      "new_in_this_version": false
+      "new_in_this_version": false,
+      "qualification_note": "NO_REGISTERED_SCHEMA: vidtoolz.resolveMilestoneMatrix.v1.10 is not pinned; milestone rows are asserted by the milestone section against MILESTONES.md"
     },
     {
       "path": "MILESTONES.md",
@@ -1105,7 +1113,8 @@
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
       "changed_from_parent": false,
-      "new_in_this_version": true
+      "new_in_this_version": true,
+      "qualification_note": "NO_REGISTERED_SCHEMA: vidtoolz.resolveControlPlaneQualificationRecord.v1 is not pinned; content adjudicated by the Phase 1 freeze review and re-verified by the v1.20 independent review; its authority_version is checked by section authority-version; schema registration is a follow-up (F-120-06)"
     },
     {
       "path": "PHASE1-SOURCE-PIN.json",
@@ -1157,7 +1166,8 @@
       "authority_class": "NORMATIVE",
       "inherited_from_parent": true,
       "changed_from_parent": false,
-      "new_in_this_version": false
+      "new_in_this_version": false,
+      "qualification_note": "NO_REGISTERED_SCHEMA: vidtoolz.resolveQuarantineManifest.v1 is not pinned; frozen 2026-09-08 quarantine record (Mikko-authorized) inherited byte-for-byte since v1.1; historical record, no current consumer"
     },
     {
       "path": "RAW-CAPTURE.md",
@@ -1185,8 +1195,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "d627d84546f1da66537a701ab24aa5a8f103a836b928e924e35594098a83de03",
-      "bytes": 6416,
+      "sha256": "6866a7a11a72f0989f28c3f153cabf91c8416f54a4d0d286d35c89b4e7bee8a2",
+      "bytes": 9283,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -1207,8 +1217,8 @@
     },
     {
       "path": "RELEASE-AUTHORITY.md",
-      "sha256": "5fa793e9e0a06a89cbdda19dfbe2f1ab94f0194bed1b460ebb2a8ed276ee8f8d",
-      "bytes": 1296,
+      "sha256": "1263fc145011f75757b452d07dbb290264936b6a23a8c759cc235e40f220a9ba",
+      "bytes": 2880,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -1217,13 +1227,14 @@
     },
     {
       "path": "REQUIRED-VALIDATION-CHECKS.json",
-      "sha256": "317ea260d2a12eb9d9a7b1f885cf829e4b251bdbbd42761a2e0b55ddb677dc6e",
-      "bytes": 280744,
+      "sha256": "05c6cc0604173431973cb1423659682fc0ceb9efbbe2849044ee7092ce19d8f3",
+      "bytes": 290645,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
       "changed_from_parent": true,
-      "new_in_this_version": false
+      "new_in_this_version": false,
+      "qualification_note": "NO_REGISTERED_SCHEMA: vidtoolz.resolveRequiredValidationChecks.v1 is not pinned; exact check-id set parity with the executing suite is asserted by section required-check-plan"
     },
     {
       "path": "REVIEW-MARKER-POLICY.md",
@@ -1249,8 +1260,8 @@
     },
     {
       "path": "SCHEMA-REGISTRY.json",
-      "sha256": "ca8bb711e36868b947c54304f7d9a1a59047fc64b5759562adb823ca6d9b52b5",
-      "bytes": 6732,
+      "sha256": "3e04f39b8e96bda5c04485949f858a913edffa176413bb07b7222d16d4887769",
+      "bytes": 6952,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -1413,12 +1424,13 @@
       "authority_class": "NORMATIVE",
       "inherited_from_parent": true,
       "changed_from_parent": false,
-      "new_in_this_version": false
+      "new_in_this_version": false,
+      "qualification_note": "NO_REGISTERED_SCHEMA: vidtoolz.resolveAuthorReproduction.v1 is not pinned in SCHEMA-REGISTRY.json; author reproduction evidence from the v1.17 intake, inherited byte-for-byte; registered GENERATED_EVIDENCE; historical provenance, not a claim of current authority identity (F-120-07)"
     },
     {
       "path": "VALIDATION-REPORT.md",
-      "sha256": "699f9609169e7c8a014e4d8966596c49a8145b9e414e217c384b91e2b2a8c1b7",
-      "bytes": 407902,
+      "sha256": "aa6e6e71b0cf56a0ebb68abf62878bc1ffec2986255fe18b481d4965cc438abc",
+      "bytes": 424275,
       "status": "FROZEN_NOW",
       "authority_class": "REPORT",
       "inherited_from_parent": false,
@@ -5668,6 +5680,16 @@
       "new_in_this_version": false
     },
     {
+      "path": "schemas/resolveControlPlaneSourcePin.schema.json",
+      "sha256": "a638903cc3a8eef717671059281f2b80e63058b63f599c17a3c1b0279c44f337",
+      "bytes": 2749,
+      "status": "FROZEN_NOW",
+      "authority_class": "SCHEMA",
+      "inherited_from_parent": false,
+      "changed_from_parent": false,
+      "new_in_this_version": true
+    },
+    {
       "path": "schemas/resolveEligibilityRequest.schema.json",
       "sha256": "d5bfedbe898a330976c6fc0197bbafa8d4da7b626909bad608c3e51c0956ca79",
       "bytes": 3912,
@@ -5701,8 +5723,8 @@
     },
     {
       "path": "schemas/resolveFindingResolutionMatrix.schema.json",
-      "sha256": "8551ba10557f769c3165d4f27fc9d1862664586462507f277e6451cb6b59c9da",
-      "bytes": 2369,
+      "sha256": "09bcc06867a5a5ca70cfd392bfaf3f75391d5953e6432e46eb38ab783d63de3c",
+      "bytes": 2425,
       "status": "FROZEN_NOW",
       "authority_class": "SCHEMA",
       "inherited_from_parent": false,
@@ -5905,8 +5927,8 @@
     },
     {
       "path": "tools/build_manifest.py",
-      "sha256": "a357d0da27c3e514b7f2907720e616c1caf9dd7883259c6c3f4ebf1942a76c8c",
-      "bytes": 27323,
+      "sha256": "bcc2d082207e6effa457929a204f32db0a808e15202f553050c8281bdc83c679",
+      "bytes": 32758,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -5915,8 +5937,8 @@
     },
     {
       "path": "tools/build_v1_20.py",
-      "sha256": "a462e7291cbfccf6cb2b9070ef2b2afbf660c7dc60f531de4725a85db9ba271e",
-      "bytes": 386730,
+      "sha256": "95e83f72331f9efc9b9ffe77206dfe213a272f194c2b2e913f67f360a1904f49",
+      "bytes": 379382,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -5980,8 +6002,8 @@
     },
     {
       "path": "tools/prepare_release_metadata.py",
-      "sha256": "ff0e0e4ff31bb360c8e51d53cbcd698364117e7147c1c20275e962bf8ac85955",
-      "bytes": 12787,
+      "sha256": "083d0960412e3d3f1a942953ce45aa8862fca94470b1c9e366619ebbe3f91e44",
+      "bytes": 21129,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -5990,8 +6012,8 @@
     },
     {
       "path": "tools/release_authority.py",
-      "sha256": "b0854ea76f7d0464808ab8f3f490ee0853fdb496e63648001a715d9767d8b75c",
-      "bytes": 6296,
+      "sha256": "c30b1c33638857bc60e82ac9e8eea3e8e448bb982f4d41e7dcd77ed95b3dca6c",
+      "bytes": 18084,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6020,8 +6042,8 @@
     },
     {
       "path": "tools/v120_tests.py",
-      "sha256": "ef6483de092b3fac411e2ce6ae3f0abdfca788018d1fac60cc5439cee3c73b5f",
-      "bytes": 14507,
+      "sha256": "ee86c1e35573e0fd20351600d29797fb25b1dbd9ca084a85b33153aaaf355bed",
+      "bytes": 16466,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6030,8 +6052,8 @@
     },
     {
       "path": "tools/validate_v1_20.py",
-      "sha256": "16752ee60c970c4dc97aa9824ab00a8f9dd65b87a5f3fb3cd532454cf65af8a8",
-      "bytes": 468234,
+      "sha256": "b78747caee23e48ff6c69ea9547d764497dc3df9a803b1a99470d99df5c5880b",
+      "bytes": 484367,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6139,21 +6161,26 @@
     "v1_19_parent_manifest": {
       "path": "../v1.19/FREEZE-MANIFEST.json",
       "sha256": "06811f07b422d1cdf30ae6c076bae2bc0b598fc3ac464a0e180a8553a76a2848",
-      "bytes": 226487
+      "bytes": 230003
     },
     "v1_18_manifest": {
       "path": "../v1.18/FREEZE-MANIFEST.json",
       "sha256": "80b108e4e142841af38827d3b6170c1260c543740f21b03ebb3d934278723ae9",
       "bytes": 226487
+    },
+    "v1_17_manifest": {
+      "path": "../v1.17/FREEZE-MANIFEST.json",
+      "sha256": "5dff9c98f1086ea6a4edfab0073770597554ab338e276ed88125e94796eb91af",
+      "bytes": 221581
     }
   },
   "counts": {
-    "files": 581,
-    "bytes": 41508341,
-    "frozen_now": 570,
+    "files": 582,
+    "bytes": 41589498,
+    "frozen_now": 571,
     "provisional_until_m3": 11,
-    "inherited_unchanged": 117,
-    "changed_from_parent": 452,
-    "new_in_this_version": 12
+    "inherited_unchanged": 115,
+    "changed_from_parent": 454,
+    "new_in_this_version": 13
   }
 }

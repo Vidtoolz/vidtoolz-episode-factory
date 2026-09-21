@@ -1166,6 +1166,111 @@ else:
     rec("manifest", "present", False, "FREEZE-MANIFEST.json not built yet")
 
 
+# ================================================================ v1.20 repair: release-identity checks (F-120-01/02/03/05/06)
+# The rejected first v1.20 candidate (e65ed5a4) passed 2995/2995 with a wrong parent-pin byte count, a manifest rule bound to
+# authority version 1.19.0 and a v1.19 finding matrix regenerated from a stale v1.17 literal, because nothing here looked.
+# Each section below asserts the repaired property AND replays the frozen defect as a refused NEGATIVE.
+import release_authority as RELEASE_ID  # noqa: E402
+if os.path.exists(man_path):
+    _man = load("FREEZE-MANIFEST.json")
+    _v18_manifest = os.path.join(os.path.dirname(B), "v1.18", "FREEZE-MANIFEST.json")
+    # ---- external pins (F-120-01)
+    _pe = RELEASE_ID.pin_errors(B, _man)
+    rec("external-pins", "every external pin resolves to an existing file whose sha256 AND byte count both match; the parent pin names ../v1.19/FREEZE-MANIFEST.json with the accepted digest; the parent digest and every ancestor digest are pinned", not _pe, "; ".join(_pe[:3]) or f"{len(_man['external_pins'])} pins")
+    for _k in sorted(_man["external_pins"]):
+        _pin = _man["external_pins"][_k]; _pp = os.path.join(B, _pin["path"])
+        rec("external-pins", f"pin {_k}: path exists, sha256 and byte count match", os.path.isfile(_pp) and sha(_pp) == _pin["sha256"] and os.path.getsize(_pp) == _pin["bytes"], f"{_pin['path']} pinned bytes={_pin['bytes']} actual={os.path.getsize(_pp) if os.path.isfile(_pp) else 'absent'}")
+    rec("external-pins", "the parent pin's byte count is the v1.19 manifest's own size and differs from the v1.18 manifest's size", _man["external_pins"]["v1_19_parent_manifest"]["bytes"] == os.path.getsize(os.path.join(os.path.dirname(B), "v1.19", "FREEZE-MANIFEST.json")) != os.path.getsize(_v18_manifest))
+
+    def _mut_pin(fn):
+        m2 = copy.deepcopy(_man); fn(m2); return RELEASE_ID.pin_errors(B, m2)
+    rec("external-pins", "NEGATIVE (F-120-01 as frozen in e65ed5a4): the parent pin carrying the v1.18 manifest's byte count is refused", "EXTERNAL_PIN_SIZE:v1_19_parent_manifest" in _mut_pin(lambda m: m["external_pins"]["v1_19_parent_manifest"].update(bytes=os.path.getsize(_v18_manifest))))
+    rec("external-pins", "NEGATIVE: a pin with the right byte count and a wrong digest is refused", "EXTERNAL_PIN_SHA256:v1_19_parent_manifest" in _mut_pin(lambda m: m["external_pins"]["v1_19_parent_manifest"].update(sha256="0" * 64)))
+    rec("external-pins", "NEGATIVE: a pin whose file does not exist is refused", "EXTERNAL_PIN_ABSENT:v1_18_manifest" in _mut_pin(lambda m: m["external_pins"]["v1_18_manifest"].update(path="../v1.18/NOT-THERE.json")))
+    rec("external-pins", "NEGATIVE: dropping an ancestor's pin is refused (every ancestor digest must stay pinned)", "ANCESTOR_UNPINNED:1.16.0" in _mut_pin(lambda m: m["external_pins"].pop("v1_16_parent_manifest")))
+    rec("external-pins", "NEGATIVE: a parent pin naming another file or digest is refused", "PARENT_PIN_IDENTITY" in _mut_pin(lambda m: m["external_pins"]["v1_19_parent_manifest"].update(path="../v1.18/FREEZE-MANIFEST.json")))
+    rec("external-pins", "release coherence (release_authority.external_errors) now carries the pin law too", "EXTERNAL_PIN_SIZE:v1_19_parent_manifest" in RELEASE_ID.external_errors(B, (lambda m: (m["external_pins"]["v1_19_parent_manifest"].update(bytes=1), m)[1])(copy.deepcopy(_man))))
+
+    # ---- one authority version everywhere (F-120-02; the V118-N3 class)
+    _ve = RELEASE_ID.version_coherence_errors(B, _man)
+    rec("authority-version", "manifest version, the manifest rule binding records, the DOC-AUTHORITY current selector, TARGET-CONTRACT, MILESTONES and every release-metadata record name the canonical authority version and no other", not _ve and RELEASE_ID.VERSION == L.AUTHORITY_VERSION == _man["version"], "; ".join(_ve[:3]) or L.AUTHORITY_VERSION)
+    _rule_hits = [x for r_ in _man["rules"] for x in RELEASE_ID.RULE_VERSION_RE.findall(r_)]
+    rec("authority-version", "exactly one manifest rule binds records to an authority version, and it is this bundle's", _rule_hits == [L.AUTHORITY_VERSION], ",".join(_rule_hits))
+    rec("authority-version", "the release module, the authority library and the manifest agree on the version constant", RELEASE_ID.VERSION == L.AUTHORITY_VERSION == _man["version"] == load("TARGET-CONTRACT.json")["version"])
+    _stale_rule = copy.deepcopy(_man); _stale_rule["rules"] = [r_.replace("authority version " + L.AUTHORITY_VERSION, "authority version 1.19.0") for r_ in _stale_rule["rules"]]
+    rec("authority-version", "NEGATIVE (F-120-02 as frozen in e65ed5a4): a manifest rule binding records to authority version 1.19.0 is refused", any(e_.startswith("MANIFEST_RULE_VERSION") for e_ in RELEASE_ID.version_coherence_errors(B, _stale_rule)) and any(e_.startswith("MANIFEST_RULE_VERSION") for e_ in RELEASE_ID.external_errors(B, _stale_rule)))
+    _no_rule = copy.deepcopy(_man); _no_rule["rules"] = [r_.replace("authority version " + L.AUTHORITY_VERSION, "any authority version") for r_ in _no_rule["rules"]]
+    rec("authority-version", "NEGATIVE: a manifest with no rule binding records to an authority version is refused", any(e_.startswith("MANIFEST_RULE_VERSION") for e_ in RELEASE_ID.version_coherence_errors(B, _no_rule)))
+    _tc_old = copy.deepcopy(load("TARGET-CONTRACT.json")); _tc_old["required_future_observations"][2]["source"] = _tc_old["required_future_observations"][2]["source"].replace(L.AUTHORITY_VERSION, "1.19.0")
+    rec("authority-version", "NEGATIVE: TARGET-CONTRACT naming another manifest version as the verifier source is refused", "TARGET_CONTRACT_SOURCE_VERSION" in RELEASE_ID.version_coherence_errors(B, _man, overrides={"TARGET-CONTRACT.json": _tc_old}))
+    _ms_old = open(os.path.join(B, "MILESTONES.md"), encoding="utf-8").read().replace("authority " + L.AUTHORITY_VERSION, "authority 1.19.0")
+    rec("authority-version", "NEGATIVE: MILESTONES naming another authority version is refused", any(e_.startswith("MILESTONES_VERSION") for e_ in RELEASE_ID.version_coherence_errors(B, _man, overrides={"MILESTONES.md": _ms_old})))
+    _doc_old = open(os.path.join(os.path.dirname(os.path.dirname(B)), "DOC-AUTHORITY.md"), encoding="utf-8").read().replace('"version":"' + L.AUTHORITY_VERSION + '"', '"version":"1.19.0"')
+    rec("authority-version", "NEGATIVE: a DOC-AUTHORITY current selector for another version is refused", "DOC_AUTHORITY_SELECTOR_VERSION" in RELEASE_ID.version_coherence_errors(B, _man, doc_text=_doc_old))
+    _prec_old = copy.deepcopy(load("AUTHORITY-PRECEDENCE.json")); _prec_old["version"] = "1.19.0"
+    rec("authority-version", "NEGATIVE: a release-metadata record stamped with another version is refused", "VERSION_MISMATCH:AUTHORITY-PRECEDENCE.json" in RELEASE_ID.version_coherence_errors(B, _man, overrides={"AUTHORITY-PRECEDENCE.json": _prec_old}))
+
+    # ---- inherited finding matrices are the accepted parent's frozen copies (F-120-03)
+    _ie = RELEASE_ID.inherited_matrix_errors(B)
+    rec("inherited-matrices", "every matrix the active v1.20 matrix inherits equals the accepted parent's frozen copy in every field except the authority_version stamp, and the parent's own matrix still enumerates V118-M1..M4, N1..N3", not _ie, "; ".join(_ie[:3]) or ",".join(load("FINDING-RESOLUTION-MATRIX-v1.20.json")["inherited_matrices"]))
+    _v19m = load("FINDING-RESOLUTION-MATRIX-v1.19.json")
+    rec("inherited-matrices", "the inherited v1.19 matrix enumerates exactly the seven accepted v1.19 findings", sorted(f_["id"] for f_ in _v19m["findings"]) == sorted(RELEASE_ID.PARENT_FINDING_IDS), ",".join(f_["id"] for f_ in _v19m["findings"]))
+    rec("inherited-matrices", "the inherited v1.19 matrix validates against the pinned matrix schema", not L.internal_schema_errors("resolveFindingResolutionMatrix", _v19m), "; ".join(L.internal_schema_errors("resolveFindingResolutionMatrix", _v19m)[:2]))
+    _v19md = open(os.path.join(B, "FINDING-RESOLUTION-MATRIX-v1.19.md"), encoding="utf-8").read()
+    rec("inherited-matrices", "the inherited v1.19 matrix mirrors its unchanged markdown sibling (every id appears there)", all(f_["id"] in _v19md for f_ in _v19m["findings"]) and _v19md == open(os.path.join(os.path.dirname(B), "v1.19", "FINDING-RESOLUTION-MATRIX-v1.19.md"), encoding="utf-8").read())
+    rec("inherited-matrices", "the rejected candidate's stale copy (sha 0ead2ece...) is not in this bundle", sha(os.path.join(B, "FINDING-RESOLUTION-MATRIX-v1.19.json")) != "0ead2ece9c435c8622e23637d3345ae99a6e1324a90679eaecb2fa44a7c677fb")
+    for _n in ("FINDING-RESOLUTION-MATRIX-v1.17.json", "FINDING-RESOLUTION-MATRIX-v1.18.json", "FINDING-RESOLUTION-MATRIX-v1.19.json"):
+        _cur = load(_n); _par = L.strict_load(os.path.join(os.path.dirname(B), "v1.19", _n))
+        rec("inherited-matrices", f"{_n}: this bundle's copy is the parent's frozen copy re-stamped to this authority version and nothing else", _cur["authority_version"] == L.AUTHORITY_VERSION and {k_: v_ for k_, v_ in _cur.items() if k_ != "authority_version"} == {k_: v_ for k_, v_ in _par.items() if k_ != "authority_version"})
+    _stale = L.strict_load(os.path.join(os.path.dirname(B), "v1.19", "FINDING-RESOLUTION-MATRIX-v1.17.json")); _stale["authority_version"] = L.AUTHORITY_VERSION
+    _ie_stale = RELEASE_ID.inherited_matrix_errors(B, overrides={"FINDING-RESOLUTION-MATRIX-v1.19.json": _stale})
+    rec("inherited-matrices", "NEGATIVE (F-120-03 as frozen in e65ed5a4): the v1.17 content (one finding, V116-B1) published under the v1.19 name is refused by the parent-equality law and by the accepted-findings law", "INHERITED_MATRIX_CONTENT:FINDING-RESOLUTION-MATRIX-v1.19.json" in _ie_stale and any(e_.startswith("PARENT_FINDINGS_CHANGED") for e_ in _ie_stale), "; ".join(_ie_stale[:2]))
+    _dropped = copy.deepcopy(_v19m); _dropped["findings"] = _dropped["findings"][:-1]
+    rec("inherited-matrices", "NEGATIVE: an inherited matrix that lost one accepted finding is refused", any(e_.startswith("PARENT_FINDINGS_CHANGED") for e_ in RELEASE_ID.inherited_matrix_errors(B, overrides={"FINDING-RESOLUTION-MATRIX-v1.19.json": _dropped})))
+    _restamped = copy.deepcopy(_v19m); _restamped["authority_version"] = "1.19.0"
+    rec("inherited-matrices", "NEGATIVE: an inherited matrix not re-stamped to this authority version is refused", "INHERITED_MATRIX_VERSION:FINDING-RESOLUTION-MATRIX-v1.19.json" in RELEASE_ID.inherited_matrix_errors(B, overrides={"FINDING-RESOLUTION-MATRIX-v1.19.json": _restamped}))
+    _bad_sev = copy.deepcopy(_v19m); _bad_sev["findings"][0]["severity"] = "P2"
+    _bad_id = copy.deepcopy(_v19m); _bad_id["findings"][0]["id"] = "V118-M9"
+    rec("inherited-matrices", "NEGATIVE: the widened matrix schema still refuses an unknown severity class and an unknown finding id", bool(L.internal_schema_errors("resolveFindingResolutionMatrix", _bad_sev)) and bool(L.internal_schema_errors("resolveFindingResolutionMatrix", _bad_id)))
+
+    # ---- every registered JSON member validates or carries an explicit reason (F-120-05 check 3)
+    _re = RELEASE_ID.registered_json_errors(B, _man, L.internal_schema_errors)
+    rec("registered-json", "every top-level JSON member either validates against the schema its schema field names in SCHEMA-REGISTRY.json or carries an explicit NO_REGISTERED_SCHEMA reason in the manifest; the manifest itself validates; nothing is silently schema-invalid", not _re, "; ".join(_re[:3]))
+    _reg_ids = {L.strict_load(os.path.join(B, e_["path"])).get("$id"): n_ for n_, e_ in load(L.SCHEMA_REGISTRY_FILE)["schemas"].items()}
+    _notes = {e_["path"]: e_.get("qualification_note", "") for e_ in _man["files"]}
+    for _jp in sorted(glob.glob(os.path.join(B, "*.json"))):
+        _jn = os.path.basename(_jp)
+        if _jn == "FREEZE-MANIFEST.json":
+            continue
+        _jd = load(_jn); _rn = _reg_ids.get(_jd.get("schema") if isinstance(_jd, dict) else None)
+        if _rn:
+            rec("registered-json", f"{_jn} validates against registered schema {_rn}", not L.internal_schema_errors(_rn, _jd) and not _notes.get(_jn, "").startswith(RELEASE_ID.NO_SCHEMA_PREFIX), "; ".join(L.internal_schema_errors(_rn, _jd)[:2]))
+        else:
+            rec("registered-json", f"{_jn} has no registered schema and the manifest states the governed reason", _notes.get(_jn, "").startswith(RELEASE_ID.NO_SCHEMA_PREFIX), _notes.get(_jn, "")[:120])
+    rec("registered-json", "NEGATIVE: a member declaring an unregistered schema with no manifest reason is refused", "UNREGISTERED_SCHEMA_WITHOUT_REASON:UNKNOWN-RECORD.json" in RELEASE_ID.registered_json_errors(B, _man, L.internal_schema_errors, overrides={"UNKNOWN-RECORD.json": {"schema": "vidtoolz.resolveNotARealSchema.v1"}}))
+    rec("registered-json", "NEGATIVE (F-120-03 as frozen in e65ed5a4): a schema-invalid registered member is refused", any(e_.startswith("SCHEMA_INVALID:FINDING-RESOLUTION-MATRIX-v1.19.json") for e_ in RELEASE_ID.registered_json_errors(B, _man, L.internal_schema_errors, overrides={"FINDING-RESOLUTION-MATRIX-v1.19.json": _bad_sev})))
+    _noted_registered = copy.deepcopy(_man); next(e_ for e_ in _noted_registered["files"] if e_["path"] == "TARGET-CONTRACT.json")["qualification_note"] = RELEASE_ID.NO_SCHEMA_PREFIX + " pretend"
+    rec("registered-json", "NEGATIVE: a NO_REGISTERED_SCHEMA reason on a member that DOES have a registered schema is refused (a reason cannot opt out of validation)", "REASON_CONTRADICTS_REGISTRATION:TARGET-CONTRACT.json" in RELEASE_ID.registered_json_errors(B, _noted_registered, L.internal_schema_errors))
+
+    # ---- Phase 1 source pin is machine-verified (F-120-06)
+    _pin = load("PHASE1-SOURCE-PIN.json"); _phe = RELEASE_ID.phase1_pin_errors(B)
+    rec("phase1-pin", "resolve-control/** on disk equals PHASE1-SOURCE-PIN.json: same file set, every sha256 and byte count, the pinned file count, the worker digest and the git tree id", not _phe, "; ".join(_phe[:3]) or f"{_pin['file_count']} files, tree {_pin['git_tree_sha1_resolve_control'][:12]}")
+    rec("phase1-pin", "the pin names implementation 77c26103 (tree 5e78e8f5...), worker 371caf13..., WRITE AUTHORITY NONE and HERMES FACADE ABSENT", _pin["implementation_commit_full"] == "77c26103dfe88c448267a9c1efe7f34a20a39375" and _pin["git_tree_sha1_resolve_control"] == "5e78e8f52654f3f878d842cf10162069e08b6439" and _pin["worker_sha256"] == "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3" and _pin["write_authority"] == "NONE" and _pin["hermes_facade"] == "ABSENT")
+    rec("phase1-pin", "the pin validates against its registered schema", not L.internal_schema_errors("resolveControlPlaneSourcePin", _pin), "; ".join(L.internal_schema_errors("resolveControlPlaneSourcePin", _pin)[:2]))
+    _pin_bad = copy.deepcopy(_pin); _pin_bad["files"][0]["sha256"] = "0" * 64
+    rec("phase1-pin", "NEGATIVE: a pin whose file digest differs from the bytes on disk is refused", any(e_.startswith("PHASE1_SHA256") for e_ in RELEASE_ID.phase1_pin_errors(B, pin=_pin_bad)))
+    _pin_less = copy.deepcopy(_pin); _pin_less["files"] = _pin_less["files"][1:]
+    rec("phase1-pin", "NEGATIVE: a pin missing a file that exists on disk is refused", any(e_.startswith("PHASE1_FILE_SET") for e_ in RELEASE_ID.phase1_pin_errors(B, pin=_pin_less)))
+    _pin_w = copy.deepcopy(_pin); _pin_w["worker_sha256"] = "1" * 64
+    rec("phase1-pin", "NEGATIVE: a pin whose worker digest disagrees with the pinned worker file is refused", "PHASE1_WORKER_SHA256" in RELEASE_ID.phase1_pin_errors(B, pin=_pin_w))
+    _pin_t = copy.deepcopy(_pin); _pin_t["git_tree_sha1_resolve_control"] = "2" * 40
+    rec("phase1-pin", "NEGATIVE: a pin whose tree id disagrees with the recomputed tree is refused", "PHASE1_TREE_SHA1" in RELEASE_ID.phase1_pin_errors(B, pin=_pin_t))
+    rec("phase1-pin", "NEGATIVE: an absent resolve-control tree is a refusal, never a pass", RELEASE_ID.phase1_pin_errors(B, repo_root=os.path.join(B, "fixtures")) == ["PHASE1_SOURCE_ABSENT"])
+else:
+    for _sec in ("external-pins", "authority-version", "inherited-matrices", "registered-json", "phase1-pin"):
+        rec(_sec, "present", False, "FREEZE-MANIFEST.json not built yet")
+
+
 # ================================================================ v1.12 pre-M0A workflow authority (V112-1..V112-4)
 import contextlib                      # noqa: E402
 import io                              # noqa: E402

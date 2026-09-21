@@ -15,3 +15,10 @@ Two successor lines had forked from v1.18: the v1.19 repair candidate (Codex, 20
 layering Phase 1 on top. The Phase 1 commits were transferred onto this freeze branch with `git cherry-pick -x`
 (provenance lines name the originals); `resolve-control/**` is byte-identical to `77c26103` (PHASE1-SOURCE-PIN.json).
 Nothing in v1.18 or v1.19 was modified.
+
+The first v1.20 candidate commit, `e65ed5a4` (manifest `2f58bc3b…`), was independently reviewed on 2026-09-21 and REJECTED —
+REPAIR REQUIRED for three P2 bundle-construction defects (F-120-01 parent-pin byte count, F-120-02 manifest rule bound to
+1.19.0, F-120-03 stale inherited v1.19 matrix; review manifest `740c656d…`). This bundle is its narrow repair at the same
+authority version 1.20.0, authored on top of `e65ed5a4`, which stays in branch history as the rejected candidate. The repair
+changed generator and validator tooling, the generated records they emit and this bundle's own prose only: v1.18, v1.19,
+`resolve-control/**`, the Phase 1 qualification evidence and Mikko's recorded v1.19 acceptance are unchanged.
