@@ -1,0 +1,61 @@
+{
+ "accepted": {
+  "branch": "docs/resolve-authority-freeze-v1.20",
+  "bundle": "docs/resolve-integration/v1.20",
+  "commit": "cdda151ac3101f98e0cca678e522d6e19f528086",
+  "manifest_sha256": "29216e6bd6024a8e4e35b0e77ac2aa7fbba8fa34c2a222b9145f93bb81cfedfb",
+  "version": "1.20.0"
+ },
+ "authorizes": {
+  "current_resolve_authority": true,
+  "scope": "the reviewed read-only Resolve control substrate and nothing else"
+ },
+ "basis": {
+  "independent_review": "~/outputs/resolve-authority-v1.20-cdda151a-independent-review-2026-09-21/",
+  "independent_review_manifest_sha256": "a0d323cb8a40612eeae193c3c769ebb38e2bfa06ac8b105377659662101decac",
+  "p0_p1_p2": 0,
+  "p3": 11,
+  "validator": "3147/3147, fail 0, warnings 0",
+  "verdict": "FREEZE TECHNICALLY APPROVED - MIKKO FINAL ACCEPTANCE REQUIRED"
+ },
+ "decided_by": "Mikko",
+ "decision_chain": [
+  "v1.19 acceptance naming v1.20.0 as successor candidate (2026-09-20 adjudication)",
+  "three independent reviews of v1.20 candidates; the first two returned FREEZE REJECTED",
+  "final independent review of cdda151a: FREEZE TECHNICALLY APPROVED",
+  "Mikko final freeze acceptance (this record)"
+ ],
+ "does_not_grant": [
+  "write authority",
+  "Hermes integration",
+  "Hermes control of Resolve",
+  "persistent worker deployment",
+  "concurrent automated mutation",
+  "native remote Resolve scripting as the production control path",
+  "any capability outside the reviewed v1.20 authority"
+ ],
+ "frozen_bytes_modified": false,
+ "phase1_source_pin": {
+  "commit": "77c26103dfe88c448267a9c1efe7f34a20a39375",
+  "tree": "5e78e8f52654f3f878d842cf10162069e08b6439",
+  "worker_sha256": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3"
+ },
+ "predecessor": {
+  "commit": "5efbcae6a36b76d4a359f3e65e503336576575c7",
+  "manifest_sha256": "06811f07b422d1cdf30ae6c076bae2bc0b598fc3ac464a0e180a8553a76a2848",
+  "status": "HISTORICAL - ACCEPTED (Mikko 2026-09-20); SUPERSEDED by 1.20.0",
+  "version": "1.19.0"
+ },
+ "record_id": "43afa6366201b85bc41b405e5313f6efc20ad430b1695a1b5b5d198d3ce9a911",
+ "record_id_derivation": "sha256 over json.dumps(this object with record_id and record_id_derivation removed, sort_keys=True, separators=(',',':'))",
+ "recorded_at": "2026-09-21",
+ "recorded_by": "Claude Code",
+ "retained_boundaries": {
+  "hermes_facade": "ABSENT",
+  "p3_gates": "all 11 remain binding; freeze does not close any of them",
+  "persistent_workers": "NONE",
+  "resolve_external_scripting": "Local",
+  "write_authority": "NONE"
+ },
+ "schema": "vidtoolz.resolveHumanAcceptance.v1"
+}
