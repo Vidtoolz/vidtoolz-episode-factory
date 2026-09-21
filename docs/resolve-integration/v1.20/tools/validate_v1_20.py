@@ -1917,6 +1917,7 @@ try:
     # -path law publishes. Both branches of that law are the same law, so the frozen report says so in one way.
     _ACCEPTED_LOCATION_REFUSALS = ("NOT_PRODUCTION_ROOT", "ROOT_NOT_FOUND", "SET_NOT_FOUND")
     _RL_OUTCOME = "canonical-path law satisfied in the environment observed"
+    _CP_OUTCOME = "own session removed; shared root retained"
     rec("root-law", "V112-RP1 section 13 PINNED: a valid evidence set copied to /tmp, a sibling root or an alternate user path is refused before attachment derivation",
         all(c == "SET_LOCATION_MISMATCH" for _l, c in _relocs), "; ".join(f"{l}->{c}" for l, c in _relocs))
     rec("root-law", "V112-RP1 sections 10/12: the AUTHORIZING derivation refuses every sandboxed document outright, whatever its contents",
@@ -2408,7 +2409,9 @@ try:
     rec("core-positive", "the suite owns only the session object it minted and never the shared governed root: an absent root is created with the frozen mode and LEFT IN PLACE, and the run's own session and its aside path are both gone afterwards",
         (not os.path.lexists(L.canonical_session_dir(_ctl_sid))) and os.path.isdir(L.GOVERNED_ATTACHMENT_ROOT)
         and not os.path.lexists(os.path.join(L.GOVERNED_ATTACHMENT_ROOT, _ctl_sid + ".aside")),
-        f"root_preexisting={_root_preexisting}; own session removed; shared root retained")
+        # v1.20 repair (F-120-10): whether the root pre-existed is exactly the environment fact this repair exists to
+        # make irrelevant, so the frozen report records the invariant that held, never the pre-state that was observed.
+        _CP_OUTCOME)
 
     # ---- 20.7 / section 18: the production call graph
     _LS_CG = inspect.getsource(L)
@@ -5251,6 +5254,7 @@ rec("report-determinism", "the inventory-fields control publishes the recomputat
 _ENV_SENSITIVE_DETAILS = {
     "no evidence can appear anywhere but the canonical path: with the frozen root present the production authoring path writes at the canonical location and nowhere else, and with the frozen root absent it refuses outright": _RL_OUTCOME,
     "V112-RP1 sections 10/12: the AUTHORIZING derivation refuses every sandboxed document outright, whatever its contents": "refused with an accepted location code",
+    "the suite owns only the session object it minted and never the shared governed root: an absent root is created with the frozen mode and LEFT IN PLACE, and the run's own session and its aside path are both gone afterwards": _CP_OUTCOME,
 }
 _env_detail_bad = [(n_, d_) for _s, n_, _o, d_ in R if n_ in _ENV_SENSITIVE_DETAILS and d_ != _ENV_SENSITIVE_DETAILS[n_]]
 _par_detail = [d_ for s_, n_, _o, d_ in R if s_ == "root-parity" and "authorizing=" in d_]
