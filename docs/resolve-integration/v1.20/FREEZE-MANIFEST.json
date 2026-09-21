@@ -1227,8 +1227,8 @@
     },
     {
       "path": "REQUIRED-VALIDATION-CHECKS.json",
-      "sha256": "edba08f344ff86b812de3426f98bac8995ca94b5f3726f74611dcb2ae79db4cd",
-      "bytes": 293156,
+      "sha256": "56298d4bea54c82694e28ad91cc61e76cf9367203b32f923303702f8194372d6",
+      "bytes": 294413,
       "status": "FROZEN_NOW",
       "authority_class": "NORMATIVE",
       "inherited_from_parent": false,
@@ -1429,8 +1429,8 @@
     },
     {
       "path": "VALIDATION-REPORT.md",
-      "sha256": "dbd94f4c6af61288311a5e1d0a9c9ec4abfd601b3b141a54fc135c77fa2e818c",
-      "bytes": 428442,
+      "sha256": "87176f591cb071bddaf0df8925d0599ed9cf8277fd78e55052eaa48f21474736",
+      "bytes": 431889,
       "status": "FROZEN_NOW",
       "authority_class": "REPORT",
       "inherited_from_parent": false,
@@ -5969,8 +5969,8 @@
     },
     {
       "path": "tools/evidence_authoring_testkit.py",
-      "sha256": "906497f0504ede7f6144b06b552aee426743d8c1184b12aae02c9a8dc6f098d3",
-      "bytes": 10564,
+      "sha256": "af81b41f676d390b711c9c0ca9b3dc4c2cf37c80df5ad612e8449f6a9491559a",
+      "bytes": 12720,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6042,8 +6042,8 @@
     },
     {
       "path": "tools/v120_ownership_tests.py",
-      "sha256": "b95ac92868c8c6bb77f83c47fc0d3d3149692c02bf2829fed9749223b1e1df67",
-      "bytes": 11646,
+      "sha256": "caf97bc6ccfe0e85124844a8eeea73f84d575be4c5ce9c0fb75f897655c79bf1",
+      "bytes": 16383,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6062,8 +6062,8 @@
     },
     {
       "path": "tools/validate_v1_20.py",
-      "sha256": "c69cc5a3054a9edc0d42beaa01d39929cea0b2816ae23878409f98ae76655e9a",
-      "bytes": 490957,
+      "sha256": "30d8b6b5744ca4175f53e42c83ea34d88aa80ff2db5182cdf6099e81e7166579",
+      "bytes": 494862,
       "status": "FROZEN_NOW",
       "authority_class": "TOOL",
       "inherited_from_parent": false,
@@ -6186,7 +6186,7 @@
   },
   "counts": {
     "files": 583,
-    "bytes": 41631491,
+    "bytes": 41646993,
     "frozen_now": 572,
     "provisional_until_m3": 11,
     "inherited_unchanged": 114,

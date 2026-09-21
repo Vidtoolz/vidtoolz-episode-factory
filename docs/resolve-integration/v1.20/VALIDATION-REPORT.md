@@ -1,6 +1,6 @@
 # VALIDATION REPORT — Resolve authority bundle v1.20
 
-Result: **3132/3132 checks passed**. IMPLEMENTATION AUTHOR self-validation; independent review required. Offline synthetic tests only; no operational A2/A2V/A1/A3 execution. Protected runtime tests retained; scanner/release assertions replaced as documented in REQUIRED-VALIDATION-CHECKS.json.
+Result: **3146/3146 checks passed**. IMPLEMENTATION AUTHOR self-validation; independent review required. Offline synthetic tests only; no operational A2/A2V/A1/A3 execution. Protected runtime tests retained; scanner/release assertions replaced as documented in REQUIRED-VALIDATION-CHECKS.json.
 
 | Finding | Sections | Checks | Passed |
 |---|---|---|---|
@@ -14,7 +14,7 @@ Result: **3132/3132 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | V114-M1 malformed nominal carrier leaking a raw AttributeError (MERGE MAJOR) | m1-malformed-carrier | 15 | 15 |
 | V114-N1 canonicalization documentation omitting registered hash domains (MINOR) | hash-domain-parity | 5 | 5 |
 | v1.15 static audits and focused property suites (fixed seed) | v115-static, v115-property | 10 | 10 |
-| V113-B1 forbidden-location evidence authorized by the CORE derivation and eligibility (BLOCKER, authorizing location bypass) | core-authority, core-bypass, core-positive, core-callgraph, core-selflocation, core-static | 52 | 52 |
+| V113-B1 forbidden-location evidence authorized by the CORE derivation and eligibility (BLOCKER, authorizing location bypass) | core-authority, core-bypass, core-positive, core-callgraph, core-selflocation, core-static | 61 | 61 |
 | v1.14 focused property suites (fixed seed) | core-property | 2 | 2 |
 | V112-RP1 caller-selectable and symlinked governed evidence root derived ATTACHMENT_READY (BLOCKER, WORKFLOW_CONTRADICTORY) | root-law, root-parity, root-property, root-static | 38 | 38 |
 | V112-1 no governed persistence location for the evidence-set document (AUTHORITY_UNDERSPECIFIED) | workflow-persistence | 8 | 8 |
@@ -89,7 +89,7 @@ Result: **3132/3132 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | core-authority | 10 | 10 |
 | core-bypass | 19 | 19 |
 | core-callgraph | 7 | 7 |
-| core-positive | 1 | 1 |
+| core-positive | 10 | 10 |
 | core-property | 2 | 2 |
 | core-selflocation | 2 | 2 |
 | core-static | 13 | 13 |
@@ -188,7 +188,7 @@ Result: **3132/3132 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | s1-profile-law | 5 | 5 |
 | schema-registry | 5 | 5 |
 | schema-wellformed | 21 | 21 |
-| selftest-ownership | 22 | 22 |
+| selftest-ownership | 27 | 27 |
 | shim-safety | 17 | 17 |
 | shim-trust | 12 | 12 |
 | stored-chain | 16 | 16 |
@@ -2161,7 +2161,7 @@ Result: **3132/3132 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | root-law | restoring the real session directory restores the workflow, so the refusal was the symlink and not the document | PASS |  |
 | root-law | V112-RP1 section 13 PINNED: a valid evidence set copied to /tmp, a sibling root or an alternate user path is refused before attachment derivation | PASS | /tmp->SET_LOCATION_MISMATCH; a sibling root->SET_LOCATION_MISMATCH; an alternate user path->SET_LOCATION_MISMATCH |
 | root-law | V112-RP1 sections 10/12: the AUTHORIZING derivation refuses every sandboxed document outright, whatever its contents | PASS | SET_NOT_FOUND |
-| root-law | no evidence can appear anywhere but the canonical path: with the frozen root present the production authoring path writes at the canonical location and nowhere else | PASS | root present; production paths are the canonical paths |
+| root-law | no evidence can appear anywhere but the canonical path: with the frozen root present the production authoring path writes at the canonical location and nowhere else, and with the frozen root absent it refuses outright | PASS | root present; production paths are the canonical paths |
 | root-law | the production root resolver is not configurable in either environment: no argument, no override, and the authoring layer delegates to the core constant | PASS |  |
 | root-law | V112-RP1 section 10: neither the Store.v5 evidence root nor any EKA/shared path can become the attachment root; there is no parameter to say so | PASS |  |
 | root-law | V112-RP1 section 5: every forbidden session-id shape is refused SESSION_ID_INVALID, so no traversal is possible through the session id | PASS | 18 rejected shapes |
@@ -2211,7 +2211,16 @@ Result: **3132/3132 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | core-bypass | the classification is lstat-FIRST: the symlink is refused as an entry, so nothing is resolved before it is trusted | PASS |  |
 | core-bypass | V113-B1 section 17: the testkit reaches ATTACHMENT_READY on the DIAGNOSTIC path only; its own document cannot bootstrap the authorizing core or authorizing eligibility | PASS | testkit_diagnostic=ATTACHMENT_READY |
 | core-bypass | the testkit refuses to sandbox the frozen authority root, so no suite path can write evidence there | PASS |  |
-| core-positive | SKIPPED BY DESIGN: the governed evidence root already exists on this host, so the suite must not create, touch or remove operator evidence there. Run the positive authorizing control on a host where it is absent. | PASS | governed root present; positive control not run |
+| core-positive | V113-B1 sections 14/38 MANDATORY: at the REAL canonical governed root the AUTHORIZING core derivation returns ATTACHMENT_READY with authorizing=true, the minted location receipt and the canonical document path | PASS | ATTACHMENT_READY authorizing=True |
+| core-positive | V113-B1 section 38 MANDATORY: authorizing eligibility then returns eligible=true for the M0A read-primitive probe request, so the correction is not merely 'refuse everything' | PASS | eligible=True codes=['ELIGIBLE'] |
+| core-positive | the by-session-id convenience paths agree exactly with the by-object paths, because they are the same code with the loading done inside the core | PASS |  |
+| core-positive | the authoring wrapper agrees with the core at the canonical root and returns the AUTHORIZING result, so v1.13's wrapper law is preserved rather than replaced | PASS | NONE |
+| core-positive | V113-B1 section 15: the SAME BYTES copied outside the governed root cannot authorize - content equivalence alone is not authority | PASS |  |
+| core-positive | V113-B1 section 16: with the session directory replaced by a symlink AT the canonical path, the core loader refuses even though the document behind it is the same valid one | PASS | RAW_AuthorityTrustError: SESSION_SYMLINK_REFUSED: /home/vidtoolz/resolve-qualificatio |
+| core-positive | after the real directory is restored the authorizing derivation succeeds again, so the refusal was the symlink and not the document | PASS |  |
+| core-positive | V113-B1 section 20: possession of a previously valid GovernedEvidenceSet is not authority - the receipt is re-verified against the filesystem on every authorizing call, so a document changed underneath it is refused | PASS | LOCATION_RECEIPT_INVALID: the document changed since it was loaded |
+| core-positive | an object bound to a DIFFERENT active manifest is refused, so a receipt cannot be replayed across authority versions | PASS |  |
+| core-positive | the suite owns only the session object it minted and never the shared governed root: an absent root is created with the frozen mode and LEFT IN PLACE, and the run's own session and its aside path are both gone afterwards | PASS | root_preexisting=True; own session removed; shared root retained |
 | core-callgraph | V113-B1 section 18: no PRODUCTION module calls the diagnostic core derivation or the diagnostic eligibility; the authoring layer routes through the governed loader and the authorizing entry points | PASS |  |
 | core-callgraph | the testkit is the ONLY module in the bundle that calls the DIAGNOSTIC core derivation, and it is INTERNAL_NON_AUTHORIZING; both production CLIs call the authoring wrapper instead, which is the authorizing path | PASS | CLIs -> A.derive_attachment_state -> L.derive_attachment_state_authorizing |
 | core-callgraph | neither production CLI imports the testkit or can reach the diagnostic path through it | PASS |  |
@@ -2916,26 +2925,31 @@ Result: **3132/3132 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | v120-defect-regressions | GetProjectLastModifiedTime-TRIPWIRE_READ-wrong-expected_type | PASS |  |
 | v120-defect-regressions | final-zero-inventory-violations | PASS | [] |
 | selftest-ownership | minted self-test ids are valid SESSION_ID_RE names, carry the self-test prefix and a 128-bit token, and two mints never collide | PASS | sess-selftest-<RUN> |
+| selftest-ownership | F-120-11: a minted id is accepted by its own validator for EVERY tag length, including a one-character tag (acceptance is structural, never a length threshold) | PASS | tags A, x, t04, v114ctl and a*32 all mint and all validate |
 | selftest-ownership | a name that is not a minted self-test id is refused before anything is touched: 'sess-v113-prod-foreign' | PASS |  |
 | selftest-ownership | a name that is not a minted self-test id is refused before anything is touched: 'foreign-existing' | PASS |  |
 | selftest-ownership | a name that is not a minted self-test id is refused before anything is touched: '' | PASS |  |
 | selftest-ownership | a name that is not a minted self-test id is refused before anything is touched: '../attachment' | PASS |  |
-| selftest-ownership | a name that is not a minted self-test id is refused before anything is touched: 'sess-selftest-short' | PASS |  |
-| selftest-ownership | T04-A: the seam creates nothing but the (already present) root; the session directory is the caller's to create | PASS |  |
+| selftest-ownership | a name that is not a minted self-test id is refused before anything is touched: 'sess-selftest-nohex-1-zz' | PASS |  |
+| selftest-ownership | T04-A: the seam creates the owned session ATOMICALLY at entry, so ownership is creation and not an observation that a pathname was free | PASS |  |
 | selftest-ownership | T04-A: root pre-existing - own session removed, unrelated session intact, root retained | PASS | ['sess-v113-prod-unrelated'] |
 | selftest-ownership | T04-B: an absent qualification tree is created with the frozen mode | PASS |  |
-| selftest-ownership | T04-B: root initially absent - the other writer's session SURVIVES cleanup, own session removed, root remains (empty root is acceptable; root absence at entry is not ownership) | PASS | ['sess-independent-writer-001'] |
-| selftest-ownership | REGRESSION FIXTURE: the pre-repair (1e2ce233) absent-root cleanup silently deletes the other writer's session and the whole tree - the defect is reproduced, so the fixture is a true negative | PASS |  |
+| selftest-ownership | T04-B: root initially absent - the other writer's session SURVIVES cleanup, own session removed, the shared root REMAINS (an empty root is the correct end state; root absence at entry is not ownership) | PASS | ['sess-independent-writer-001'] |
+| selftest-ownership | REGRESSION FIXTURE 1: the pre-repair HELPER absent-root cleanup silently deletes the other writer's session and the whole tree - the defect is reproduced, so the fixture is a true negative | PASS |  |
+| selftest-ownership | REGRESSION FIXTURE 2 (F-120-04 as it remained in 06b204f7): the FULL VALIDATOR core-positive branch rmtree'd the whole qualification root in its finally, destroying the other writer's session - reproduced, so the fixture is a true negative | PASS |  |
 | selftest-ownership | T04-C: on an exception inside the block the seam still removes ONLY its own session; the other session and the root survive and the exception propagates | PASS |  |
 | selftest-ownership | T04-D: both sessions coexist under the shared root | PASS |  |
 | selftest-ownership | T04-D: B's cleanup removed B only; A survives | PASS |  |
-| selftest-ownership | T04-D: A's cleanup removed A only; the root created by A remains for other writers (no cross-delete, no tree removal) | PASS |  |
-| selftest-ownership | T04-D: a sibling run finishing while we are inside is not a failure (ownership, not root-listing, is the law) | PASS |  |
-| selftest-ownership | an existing session with a valid self-test name is still refused, never adopted, never removed | PASS |  |
+| selftest-ownership | T04-D: A's cleanup removed A only; the root A created remains for other writers (no cross-delete, no tree removal) | PASS |  |
+| selftest-ownership | T04-E: the owned session is renamed aside and a FOREIGN real directory is put at the same pathname - cleanup REFUSES on the device+inode mismatch and deletes nothing | PASS |  |
+| selftest-ownership | T04-E: the foreign replacement survives intact and our own moved-aside directory is untouched | PASS | ['our-real-session-moved-aside', 'sess-selftest-<RUN>'] |
+| selftest-ownership | T04-F: with the attachment root replaced by a symlink to a foreign tree containing the same session basename, cleanup does NOT follow the symlink - the foreign object is untouched | PASS | foreign decoy intact=True |
+| selftest-ownership | T04-F: cleanup stayed anchored to the real directory object it opened at entry, so it removed its own session there and nothing outside that boundary | PASS | own session removed from the real root; the symlink itself is left for the reviewer to see |
+| selftest-ownership | an existing session with a valid self-test name is refused by the ATOMIC create (EEXIST), never adopted, never removed | PASS |  |
 | selftest-ownership | a symlink planted at the own session path is refused and NOT followed: the link target survives intact and the refusal is visible | PASS |  |
-| selftest-ownership | removing a name outside the self-test namespace through the cleanup primitive is refused | PASS |  |
 | selftest-ownership | a root pair that is not canonical (root not directly under the qualification root) is refused | PASS |  |
-| selftest-ownership | the seam source contains no whole-tree removal and no root-absence ownership test any more | PASS |  |
+| selftest-ownership | the seam derives ownership from atomic creation and device+inode identity, not from a pathname, and holds a retained root descriptor | PASS |  |
+| selftest-ownership | no cleanup path in the seam or in the full validator recursively removes a shared qualification/attachment root | PASS |  |
 | selftest-ownership | the real governed root was never named by this suite | PASS |  |
 | determinism | vectors_rerun_identical | PASS |  |
 | determinism | evidence record ids recompute | PASS |  |

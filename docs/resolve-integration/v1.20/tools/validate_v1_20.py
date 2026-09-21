@@ -33,6 +33,27 @@ sys.dont_write_bytecode = True
 HERE = os.path.dirname(os.path.abspath(__file__))
 B = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+_VS_SELF = open(os.path.abspath(__file__), encoding="utf-8").read()   # this validator's own bytes, for the cleanup-law audit
+
+
+def code_only(src):
+    """Executable code text with comments and string literals removed. A source audit that greps raw bytes finds its
+    own assertion literal and reports the very pattern it exists to forbid; tokenizing first makes the audit see what
+    the interpreter would run, so `"rmtree(X" not in code_only(src)` means there is no such CALL, not no such text."""
+    import io
+    import tokenize as _tok
+    out = []
+    try:
+        for t in _tok.generate_tokens(io.StringIO(src).readline):
+            if t.type in (_tok.COMMENT, _tok.STRING):
+                continue
+            out.append(t.string)
+    except (_tok.TokenError, IndentationError, SyntaxError):
+        return src
+    return " ".join(out)
+
+
+_VS_CODE = None      # filled in after the helper is defined and the file is fully written
 import authority_lib as L  # noqa: E402
 import authority_slots as SLOTS  # noqa: E402
 import fixture_evidence as F  # noqa: E402
@@ -1901,19 +1922,24 @@ try:
     # the reviewer has not yet created the governed root. Absent root -> the production path refuses outright; present
     # root -> the production path writes at the canonical path and nowhere else, which is the same law. Production
     # authority is unchanged either way: the root is still not configurable.
+    # v1.20 repair (F-120-10): ONE check, ONE check id, in BOTH environments. The required-check plan is canonical
+    # authority, so its membership may not depend on whether a permitted evidence root happens to exist yet. The law
+    # itself stays environment-conditional: root absent -> the production authoring path refuses outright; root present
+    # -> it writes at the canonical path and nowhere else. Both are the same law, and the branch is evaluated INSIDE
+    # one check rather than selecting between two differently-named checks.
     _rl_present = os.path.isdir(L.GOVERNED_ATTACHMENT_ROOT)
-    if not _rl_present:
-        _rl = _try_auth(lambda: AUTH_MOD.create_evidence_set(_rp_sess("prod"), _PREP))
-        rec("root-law", "no evidence can appear anywhere by default: with the frozen root absent the production authoring path refuses outright",
-            _rl.code in ("ROOT_NOT_FOUND", "ROOT_NOT_GOVERNED"), f"root absent; {_rl.code}")
+    _rl_sid = f"sess-v115-rootlaw-{os.getpid()}"
+    if _rl_present:
+        _rl_ok = (lambda p: p == L.canonical_document_path(_rl_sid)
+                            and os.path.dirname(p) == L.canonical_session_dir(_rl_sid)
+                            and AUTH_MOD.set_dir(_rl_sid) == L.canonical_session_dir(_rl_sid))(AUTH_MOD.set_path(_rl_sid))
+        _rl_detail = "root present; production paths are the canonical paths"
     else:
-        _rl_sid = f"sess-v115-rootlaw-{os.getpid()}"
-        rec("root-law", "no evidence can appear anywhere but the canonical path: with the frozen root present the production authoring path writes at the canonical location and nowhere else",
-            (lambda: (lambda p: p == L.canonical_document_path(_rl_sid)
-                                and os.path.dirname(p) == L.canonical_session_dir(_rl_sid)
-                                and AUTH_MOD.set_dir(_rl_sid) == L.canonical_session_dir(_rl_sid))(
-                AUTH_MOD.set_path(_rl_sid)))(),
-            "root present; production paths are the canonical paths")
+        _rl_code = _try_auth(lambda: AUTH_MOD.create_evidence_set(_rp_sess("prod"), _PREP)).code
+        _rl_ok = _rl_code in ("ROOT_NOT_FOUND", "ROOT_NOT_GOVERNED")
+        _rl_detail = "root absent; the production authoring path refuses outright"
+    rec("root-law", "no evidence can appear anywhere but the canonical path: with the frozen root present the production authoring path writes at the canonical location and nowhere else, and with the frozen root absent it refuses outright",
+        _rl_ok, _rl_detail)
     rec("root-law", "the production root resolver is not configurable in either environment: no argument, no override, and the authoring layer delegates to the core constant",
         not inspect.signature(L.authority_attachment_root).parameters
         and not inspect.signature(AUTH_MOD.governed_attachment_root).parameters
@@ -2290,18 +2316,27 @@ try:
         and _try_auth(lambda: TK.sandbox(os.path.join(L.GOVERNED_ATTACHMENT_ROOT, "x")).__enter__()).code == "RAW_AssertionError")
 
     # ---- 20.6 / sections 14, 38: the MANDATORY positive authorizing control, at the REAL canonical root
+    # v1.20 repair (F-120-04): the global cleanup law, audited over this validator's EXECUTABLE code only.
+    _VS_CODE_TXT = code_only(_VS_SELF)
+    _ROOT_RMTREE_IN_VALIDATOR = any(
+        re.search(r"rmtree\s*\(\s*" + re.escape(tok), _VS_CODE_TXT)
+        for tok in ("_ROOTP", "L . QUALIFICATION_EVIDENCE_ROOT", "L . GOVERNED_ATTACHMENT_ROOT"))
+
+    # ---- v1.20 repair (F-120-04 + F-120-10) ----
+    # The MANDATORY positive authorizing control now runs in EVERY permitted environment, with the SAME check names, so
+    # the required-check plan is canonical authority rather than something discovered from filesystem pre-state
+    # (F-120-10). It runs inside the ownership seam: the session id is minted per run, the object is created atomically
+    # and identified by device+inode, and cleanup removes THAT OBJECT and nothing else. The shared qualification root is
+    # never owned by this suite - if it was absent it is created with the frozen mode and LEFT IN PLACE, empty. The
+    # previous `shutil.rmtree(QUALIFICATION_EVIDENCE_ROOT)` in a finally block, which deleted whatever any other writer
+    # had put there while the suite ran, is gone (F-120-04).
     _ROOTP = L.QUALIFICATION_EVIDENCE_ROOT
-    if os.path.exists(_ROOTP):
-        rec("core-positive", "SKIPPED BY DESIGN: the governed evidence root already exists on this host, so the suite must not create, touch or remove operator evidence there. Run the positive authorizing control on a host where it is absent.",
-            True, "governed root present; positive control not run")
-    else:
+    _root_preexisting = os.path.exists(_ROOTP)
+    if True:
         _ctl_lib = os.path.join(CB_ROOT, "ctl-lib")
         os.makedirs(_ctl_lib, exist_ok=True)
-        _ctl_sid = "sess-v114-authorizing-control"
-        try:
-            os.makedirs(L.GOVERNED_ATTACHMENT_ROOT, mode=L.GOVERNED_ROOT_MODE)
-            os.chmod(_ROOTP, L.GOVERNED_ROOT_MODE)
-            os.chmod(L.GOVERNED_ATTACHMENT_ROOT, L.GOVERNED_ROOT_MODE)
+        _ctl_sid = TK.selftest_session_name("v114ctl")
+        with TK.governed_selftest_session(_ctl_sid):
             _ctl_roj = _cb_author(_ctl_sid, _ctl_lib)
             _g = L.load_governed_evidence_set(_ctl_sid, _CB_ACTIVE)
             _ctl_d = L.derive_attachment_state_authorizing(tc, _g, _CB_ACTIVE)
@@ -2333,12 +2368,14 @@ try:
                 _reloc_es == _g.evidence_set
                 and L.derive_attachment_state_authorizing(tc, _reloc_es, _CB_ACTIVE)["authorizing"] is False
                 and L.evaluate_eligibility_authorizing(perms, _cb_req(_ctl_roj), rp, caps, tc, _reloc_es, _CB_ACTIVE)["eligible"] is False)
-            _moved = os.path.join(CB_ROOT, "moved-session")
-            shutil.move(L.canonical_session_dir(_ctl_sid), _moved)
+            # the aside-move stays inside the governed root and uses os.rename: a same-filesystem rename preserves
+            # the inode, so the session object this run owns is still the same object when it is moved back.
+            _moved = os.path.join(L.GOVERNED_ATTACHMENT_ROOT, _ctl_sid + ".aside")
+            os.rename(L.canonical_session_dir(_ctl_sid), _moved)
             os.symlink(_moved, L.canonical_session_dir(_ctl_sid))
             _sym_load = _try_auth(lambda: L.load_governed_evidence_set(_ctl_sid, _CB_ACTIVE))
             os.unlink(L.canonical_session_dir(_ctl_sid))
-            shutil.move(_moved, L.canonical_session_dir(_ctl_sid))
+            os.rename(_moved, L.canonical_session_dir(_ctl_sid))
             rec("core-positive", "V113-B1 section 16: with the session directory replaced by a symlink AT the canonical path, the core loader refuses even though the document behind it is the same valid one",
                 _sym_load.code == "RAW_AuthorityTrustError" and "SESSION_SYMLINK_REFUSED" in _sym_load.detail,
                 f"{_sym_load.code}: {scrub_detail(_sym_load.detail)[:60]}")
@@ -2360,16 +2397,11 @@ try:
             rec("core-positive", "an object bound to a DIFFERENT active manifest is refused, so a receipt cannot be replayed across authority versions",
                 any("LOCATION_RECEIPT_INVALID" in e for e in
                     L.governed_provenance_errors(_stale, dict(_CB_ACTIVE, manifest_sha256="d" * 64))))
-        finally:
-            for _dp, _dns, _fns in os.walk(_ROOTP):
-                for _x in _dns + _fns:
-                    try:
-                        os.chmod(os.path.join(_dp, _x), 0o700)
-                    except OSError:
-                        pass
-            shutil.rmtree(_ROOTP, ignore_errors=True)
-        rec("core-positive", "the suite leaves NO artifact at the governed root: it is created only when absent and removed unconditionally in a finally block",
-            not os.path.exists(_ROOTP), f"exists={os.path.exists(_ROOTP)}")
+
+    rec("core-positive", "the suite owns only the session object it minted and never the shared governed root: an absent root is created with the frozen mode and LEFT IN PLACE, and the run's own session and its aside path are both gone afterwards",
+        (not os.path.lexists(L.canonical_session_dir(_ctl_sid))) and os.path.isdir(L.GOVERNED_ATTACHMENT_ROOT)
+        and not os.path.lexists(os.path.join(L.GOVERNED_ATTACHMENT_ROOT, _ctl_sid + ".aside")),
+        f"root_preexisting={_root_preexisting}; own session removed; shared root retained")
 
     # ---- 20.7 / section 18: the production call graph
     _LS_CG = inspect.getsource(L)
@@ -2984,6 +3016,11 @@ try:
             and TK.AUTHORITY_CLASS == "INTERNAL_NON_AUTHORIZING"
             and TK.is_selftest_session_name(_v15_ready) and TK.is_selftest_session_name(_v15_prepared) and _v15_ready != _v15_prepared
             and "created_tree" not in inspect.getsource(TK) and "rmtree(qroot" not in inspect.getsource(TK)
+            # v1.20 repair (F-120-04): ownership is atomic creation plus device+inode identity, anchored to a retained
+            # root descriptor, and NO cleanup path anywhere in this validator removes the shared qualification root.
+            and "os.mkdir(name, L.GOVERNED_ROOT_MODE, dir_fd=rootfd)" in inspect.getsource(TK)
+            and "(st.st_dev, st.st_ino) != ident" in inspect.getsource(TK)
+            and not _ROOT_RMTREE_IN_VALIDATOR
             and (os.lstat(L.GOVERNED_ATTACHMENT_ROOT).st_mode & 0o777) == L.GOVERNED_ROOT_MODE)
 
         # ---- V114-B1: the carrier cannot be re-pointed at other evidence
@@ -5298,8 +5335,23 @@ for sec in sorted(sections):
 lines += ["", "| Section | Check | Result | Detail |", "|---|---|---|---|"]
 for sec, name, ok, det in R:
     lines.append(f"| {sec} | {name.replace('|', '/')} | {'PASS' if ok else 'FAIL'} | {det.replace('|', '/')} |")
-with open(os.path.join(B, "VALIDATION-REPORT.md"), "w", encoding="utf-8") as f:
-    f.write("\n".join(lines) + "\n")
+# v1.20 repair (F-120-10, mission section 20): a validation FAILURE in a permitted environment must not overwrite a
+# previously canonical frozen report with environment-specific failed-run data. Attempting validation may not corrupt
+# authority bytes. The report is written when the run passed, or when no report exists yet (first construction, where
+# the document universe needs the file to appear); otherwise the failed-run text goes to operational diagnostics
+# OUTSIDE the frozen bundle and the committed report is left untouched.
+_report_path = os.path.join(B, "VALIDATION-REPORT.md")
+_report_text = "\n".join(lines) + "\n"
+if passed == total or not os.path.exists(_report_path):
+    with open(_report_path, "w", encoding="utf-8") as f:
+        f.write(_report_text)
+    _report_disposition = "frozen report written"
+else:
+    _diag = os.path.join(tempfile.gettempdir(), f"resolve-v120-failed-validation-{os.getpid()}.md")
+    with open(_diag, "w", encoding="utf-8") as f:
+        f.write(_report_text)
+    _report_disposition = "FAILED RUN: frozen VALIDATION-REPORT.md left untouched; diagnostics written to " + _diag
+    print(_report_disposition)
 print(f"{passed}/{total} passed")
 for sec, name, ok, det in R:
     if not ok:
