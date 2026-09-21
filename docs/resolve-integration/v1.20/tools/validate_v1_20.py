@@ -1913,11 +1913,17 @@ try:
         with TK.sandbox(_dst_root):
             _e = _try_auth(lambda: TK.derive_nonauthorizing(_sid_rel))
         _relocs.append((_label, _e.code))
+    # v1.20 repair (F-120-10): the closed set of accepted location refusals, and the one outcome token the canonical
+    # -path law publishes. Both branches of that law are the same law, so the frozen report says so in one way.
+    _ACCEPTED_LOCATION_REFUSALS = ("NOT_PRODUCTION_ROOT", "ROOT_NOT_FOUND", "SET_NOT_FOUND")
+    _RL_OUTCOME = "canonical-path law satisfied in the environment observed"
     rec("root-law", "V112-RP1 section 13 PINNED: a valid evidence set copied to /tmp, a sibling root or an alternate user path is refused before attachment derivation",
         all(c == "SET_LOCATION_MISMATCH" for _l, c in _relocs), "; ".join(f"{l}->{c}" for l, c in _relocs))
     rec("root-law", "V112-RP1 sections 10/12: the AUTHORIZING derivation refuses every sandboxed document outright, whatever its contents",
-        _try_auth(lambda: AUTH_MOD.derive_attachment_state(_sid_rel)).code in ("NOT_PRODUCTION_ROOT", "ROOT_NOT_FOUND", "SET_NOT_FOUND"),
-        _try_auth(lambda: AUTH_MOD.derive_attachment_state(_sid_rel)).code)
+        _try_auth(lambda: AUTH_MOD.derive_attachment_state(_sid_rel)).code in _ACCEPTED_LOCATION_REFUSALS,
+        # v1.20 repair (F-120-10): WHICH accepted refusal code comes back depends on whether the governed root exists
+        # yet, so the frozen report records that the refusal was in the closed accepted set, not which member it was.
+        "refused with an accepted location code")
     # v1.15 section 35 (REVIEW_ENVIRONMENT_EFFECT): this law is asserted in BOTH environments rather than only when
     # the reviewer has not yet created the governed root. Absent root -> the production path refuses outright; present
     # root -> the production path writes at the canonical path and nowhere else, which is the same law. Production
@@ -1933,11 +1939,11 @@ try:
         _rl_ok = (lambda p: p == L.canonical_document_path(_rl_sid)
                             and os.path.dirname(p) == L.canonical_session_dir(_rl_sid)
                             and AUTH_MOD.set_dir(_rl_sid) == L.canonical_session_dir(_rl_sid))(AUTH_MOD.set_path(_rl_sid))
-        _rl_detail = "root present; production paths are the canonical paths"
+        _rl_detail = _RL_OUTCOME
     else:
         _rl_code = _try_auth(lambda: AUTH_MOD.create_evidence_set(_rp_sess("prod"), _PREP)).code
         _rl_ok = _rl_code in ("ROOT_NOT_FOUND", "ROOT_NOT_GOVERNED")
-        _rl_detail = "root absent; the production authoring path refuses outright"
+        _rl_detail = _RL_OUTCOME
     rec("root-law", "no evidence can appear anywhere but the canonical path: with the frozen root present the production authoring path writes at the canonical location and nowhere else, and with the frozen root absent it refuses outright",
         _rl_ok, _rl_detail)
     rec("root-law", "the production root resolver is not configurable in either environment: no argument, no override, and the authoring layer delegates to the core constant",
@@ -1993,7 +1999,8 @@ try:
     _par_auth = _try_auth(lambda: AUTH_MOD.derive_attachment_state(_sid_par))
     rec("root-parity", "no fixture or test path can establish a state production location policy forbids: the sandboxed document is mechanically sound yet the AUTHORIZING derivation refuses it outright",
         _par_mech == "ATTACHMENT_READY" and _par_auth.code in ("NOT_PRODUCTION_ROOT", "ROOT_NOT_FOUND", "SET_NOT_FOUND"),
-        f"mechanics={_par_mech}; authorizing={_par_auth.code}")
+        f"mechanics={_par_mech}; authorizing=refused with an accepted location code"
+        if _par_auth.code in _ACCEPTED_LOCATION_REFUSALS else f"mechanics={_par_mech}; authorizing={_par_auth.code}")
     rec("root-parity", "the positive ATTACHMENT_READY fixtures carry no evidence-set location at all, so they cannot assert a location production would refuse",
         all("governed_root" not in es_ and "authority_root" not in es_ for es_ in EVS.values()))
 
@@ -5238,6 +5245,18 @@ rec("report-determinism", "no recorded check detail contains an unscrubbed tempo
 # names may cite doctrine such as "no /tmp production path"; what they may not contain is a path UNDER an environment prefix or a run-unique id
 rec("report-determinism", "no recorded check NAME contains an environment-bound value (names are the check-plan identity)", not any((pfx.rstrip("/") + "/") in n_ for _s, n_, _o, _d in R for pfx, _t in _ENV_PREFIXES if pfx.rstrip("/") + "/" != "/tmp/") and not any(re.search(r"sess-selftest-[A-Za-z0-9._-]{40,}", n_) for _s, n_, _o, _d in R))
 rec("report-determinism", "the inventory-fields control publishes the recomputation OUTCOME, not the environment-derived raw byte total (F-120-09)", any(s_ == "evidence-inventory-fields" and "total_bytes=recomputed-equal" in d_ for s_, _n, _o, d_ in R) and not any(re.search(r"\bbytes=\d+\b", d_) for s_, _n, _o, d_ in R if s_ == "evidence-inventory-fields"))
+# v1.20 repair (F-120-10): the three location-law sites whose outcome depends on whether the governed evidence root
+# existed before the run must publish a deterministic token, not the environment-selected value. Other checks may name
+# a refusal code when that code is the same in every permitted environment.
+_ENV_SENSITIVE_DETAILS = {
+    "no evidence can appear anywhere but the canonical path: with the frozen root present the production authoring path writes at the canonical location and nowhere else, and with the frozen root absent it refuses outright": _RL_OUTCOME,
+    "V112-RP1 sections 10/12: the AUTHORIZING derivation refuses every sandboxed document outright, whatever its contents": "refused with an accepted location code",
+}
+_env_detail_bad = [(n_, d_) for _s, n_, _o, d_ in R if n_ in _ENV_SENSITIVE_DETAILS and d_ != _ENV_SENSITIVE_DETAILS[n_]]
+_par_detail = [d_ for s_, n_, _o, d_ in R if s_ == "root-parity" and "authorizing=" in d_]
+rec("report-determinism", "every location-law detail whose value would otherwise be selected by the evidence-root pre-state publishes a deterministic outcome token instead of the environment-selected refusal code",
+    not _env_detail_bad and all("authorizing=refused with an accepted location code" in d_ for d_ in _par_detail),
+    str(_env_detail_bad[:1]) + str([d_[:48] for d_ in _par_detail if "accepted location code" not in d_][:1]))
 rec("report-determinism", "the scrub preserves decisions and canonical paths: it rewrites environment prefixes used as paths only, never a pass/fail value, never a doctrine label, never the governed evidence root", scrub_detail("x") == "x" and ("<TMPDIR>" in scrub_detail(tempfile.gettempdir() + "/anything") or _is_ancestor_of_canonical(tempfile.gettempdir())) and scrub_detail("/tmp->CODE") == "/tmp->CODE" and scrub_detail(L.GOVERNED_ATTACHMENT_ROOT + "/s1") == L.GOVERNED_ATTACHMENT_ROOT + "/s1")
 
 import release_authority as RELEASE

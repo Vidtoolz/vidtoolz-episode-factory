@@ -1,6 +1,6 @@
 # VALIDATION REPORT — Resolve authority bundle v1.20
 
-Result: **3146/3146 checks passed**. IMPLEMENTATION AUTHOR self-validation; independent review required. Offline synthetic tests only; no operational A2/A2V/A1/A3 execution. Protected runtime tests retained; scanner/release assertions replaced as documented in REQUIRED-VALIDATION-CHECKS.json.
+Result: **3147/3147 checks passed**. IMPLEMENTATION AUTHOR self-validation; independent review required. Offline synthetic tests only; no operational A2/A2V/A1/A3 execution. Protected runtime tests retained; scanner/release assertions replaced as documented in REQUIRED-VALIDATION-CHECKS.json.
 
 | Finding | Sections | Checks | Passed |
 |---|---|---|---|
@@ -178,7 +178,7 @@ Result: **3146/3146 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | re-parser | 23 | 23 |
 | refreeze-law | 15 | 15 |
 | registered-json | 43 | 43 |
-| report-determinism | 5 | 5 |
+| report-determinism | 6 | 6 |
 | required-check-plan | 1 | 1 |
 | review-law | 11 | 11 |
 | root-law | 26 | 26 |
@@ -2160,8 +2160,8 @@ Result: **3146/3146 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | root-law | V112-RP1 section 9/14 PINNED: a SYMLINKED session directory is refused, on load and on derive, even though the document behind it is valid | PASS | SESSION_SYMLINK_REFUSED/SESSION_SYMLINK_REFUSED |
 | root-law | restoring the real session directory restores the workflow, so the refusal was the symlink and not the document | PASS |  |
 | root-law | V112-RP1 section 13 PINNED: a valid evidence set copied to /tmp, a sibling root or an alternate user path is refused before attachment derivation | PASS | /tmp->SET_LOCATION_MISMATCH; a sibling root->SET_LOCATION_MISMATCH; an alternate user path->SET_LOCATION_MISMATCH |
-| root-law | V112-RP1 sections 10/12: the AUTHORIZING derivation refuses every sandboxed document outright, whatever its contents | PASS | SET_NOT_FOUND |
-| root-law | no evidence can appear anywhere but the canonical path: with the frozen root present the production authoring path writes at the canonical location and nowhere else, and with the frozen root absent it refuses outright | PASS | root present; production paths are the canonical paths |
+| root-law | V112-RP1 sections 10/12: the AUTHORIZING derivation refuses every sandboxed document outright, whatever its contents | PASS | refused with an accepted location code |
+| root-law | no evidence can appear anywhere but the canonical path: with the frozen root present the production authoring path writes at the canonical location and nowhere else, and with the frozen root absent it refuses outright | PASS | canonical-path law satisfied in the environment observed |
 | root-law | the production root resolver is not configurable in either environment: no argument, no override, and the authoring layer delegates to the core constant | PASS |  |
 | root-law | V112-RP1 section 10: neither the Store.v5 evidence root nor any EKA/shared path can become the attachment root; there is no parameter to say so | PASS |  |
 | root-law | V112-RP1 section 5: every forbidden session-id shape is refused SESSION_ID_INVALID, so no traversal is possible through the session id | PASS | 18 rejected shapes |
@@ -2171,7 +2171,7 @@ Result: **3146/3146 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | root-law | the authoring module never imports the testkit: the arming variable is module-private, and the testkit is the only code that assigns it | PASS |  |
 | root-law | the testkit refuses to sandbox the real authority root, so the suite can never write evidence there | PASS |  |
 | root-parity | V112-RP1 section 19: the sandbox differs from production in the ROOT PREFIX ONLY - the same resolver, the same trust checks and the same freshness law run on the same code | PASS |  |
-| root-parity | no fixture or test path can establish a state production location policy forbids: the sandboxed document is mechanically sound yet the AUTHORIZING derivation refuses it outright | PASS | mechanics=ATTACHMENT_READY; authorizing=SET_NOT_FOUND |
+| root-parity | no fixture or test path can establish a state production location policy forbids: the sandboxed document is mechanically sound yet the AUTHORIZING derivation refuses it outright | PASS | mechanics=ATTACHMENT_READY; authorizing=refused with an accepted location code |
 | root-parity | the positive ATTACHMENT_READY fixtures carry no evidence-set location at all, so they cannot assert a location production would refuse | PASS |  |
 | root-property | 24 seeded root, symlink, relocation, sibling-prefix, relative and normalisation attacks: none yields ATTACHMENT_READY outside the governed root (seed 20261022) | PASS | all refused |
 | root-property | 40 seeded session-id shapes: the safe-basename law and the path law agree exactly, and no traversal is ever accepted (seed 20261022) | PASS | consistent |
@@ -3356,5 +3356,6 @@ Result: **3146/3146 checks passed**. IMPLEMENTATION AUTHOR self-validation; inde
 | report-determinism | no recorded check detail contains an unscrubbed temporary evidence root or a run-unique self-test session id | PASS |  |
 | report-determinism | no recorded check NAME contains an environment-bound value (names are the check-plan identity) | PASS |  |
 | report-determinism | the inventory-fields control publishes the recomputation OUTCOME, not the environment-derived raw byte total (F-120-09) | PASS |  |
+| report-determinism | every location-law detail whose value would otherwise be selected by the evidence-root pre-state publishes a deterministic outcome token instead of the environment-selected refusal code | PASS | [][] |
 | report-determinism | the scrub preserves decisions and canonical paths: it rewrites environment prefixes used as paths only, never a pass/fail value, never a doctrine label, never the governed evidence root | PASS |  |
 | required-check-plan | actual check IDs equal required check IDs | PASS | [] |
