@@ -1,0 +1,86 @@
+{
+  "approval_basis": "Mikko registered the Disk library in the Resolve GUI and instructed resumption of the governed provisioning (2026-09-22); parent record A4-PRESTO-PROVISIONING-RECORD (5098495c\u2026) in this directory, commit e01c7f1c.",
+  "approver": "Mikko",
+  "candidate_under_qualification": {
+    "facade_commit": "8e068fea2d4df5b9709c387f6444502bd7bc2091",
+    "phase1_commit": "77c26103dfe88c448267a9c1efe7f34a20a39375",
+    "worker_sha256": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3",
+    "write_authority": "NONE"
+  },
+  "eka_prohibition": "EKA/nelja never contacted; worker gate refuses them; all journal entries in the window target presto only",
+  "envelope": {
+    "acceptance_commit": "720b2d78313c7749f3516cb39fad1310e13027b2",
+    "authority_version": "1.20.0",
+    "host_name": "PRESTO",
+    "library_name": "VIDTOOLZ Resolve Qualification v1",
+    "library_root": "C:\\Users\\presto\\.vidtoolz-resolve-qualification\\VIDTOOLZ Resolve Qualification v1",
+    "library_uuid": "687c639f-0092-4279-87d3-e7363417c7cd",
+    "manifest_sha256": "29216e6bd6024a8e4e35b0e77ac2aa7fbba8fa34c2a222b9145f93bb81cfedfb"
+  },
+  "evidence": "~/outputs/hermes-resolve-readonly-facade-live-qualification-r5-presto-2026-09-22/",
+  "frozen_bytes_modified": false,
+  "library": {
+    "identity_gate_proof": {
+      "facade_request_id": "68a1a7cffbb941ceaf4e62e38bd26176",
+      "method": "exact frozen worker 371caf13\u2026 (gen 6, instance 67e0567d\u2026) via real facade resolve_identify",
+      "observed": {
+        "DbName": "VIDTOOLZ Resolve Qualification v1",
+        "DbType": "Disk",
+        "product": "DaVinci Resolve Studio",
+        "resolve_pid": 14492,
+        "version": "21.1.0.14"
+      },
+      "vrc_request_id": "d38ddfae15584bf989fa49c06dcb27fc"
+    },
+    "instance_uuid": "687c639f-0092-4279-87d3-e7363417c7cd",
+    "kind": "Disk",
+    "name": "VIDTOOLZ Resolve Qualification v1",
+    "on_disk_provisioning_record_sha256": "48ff95ce528d416e891aef633ab27901c03720513f509fdef7201b7e02e83523",
+    "prohibited": [
+      "EKA",
+      "EKA192.168.50.199",
+      "nelja",
+      "nelja192.168.50.199",
+      "Local Database",
+      "any PostgreSQL/network library"
+    ],
+    "registration": "Resolve GUI (Add Project Library > Disk), by Mikko, 2026-09-22; dblist.conf/activedb.conf never authored or copied",
+    "root_path": "C:\\Users\\presto\\.vidtoolz-resolve-qualification\\VIDTOOLZ Resolve Qualification v1"
+  },
+  "post_state_rule": "fixture preserved as the repeatable governed PRESTO qualification fixture; NO FURTHER FIXTURE MUTATION",
+  "project": {
+    "created_at": "2026-09-22T03:29:28Z",
+    "created_by": "tools/provision_fixture_presto.py (sha256 be3c108c1b089432db402ea1724ab233e6b94b069368588a7f9688b093088b1b) over ssh presto, journaled (provisioning-journal.jsonl, 11 steps, exit 0)",
+    "fingerprint_spec": "vidtoolz.qualFixtureFingerprint.v1",
+    "fixture_fingerprint_before_sha256": "4c722040170ad0389e8e3c5ea63a61e98e98dd3e3e2283f893198277180dba91",
+    "independent_verification": "raw-API re-fingerprint (fp_qual_presto.py) at 03:30Z and after cleanup at 03:32Z: identical 4c722040\u2026; facade resolve_get_project_fingerprint twice: stable",
+    "media": "none (media_pool.root_clips=2 are the two timelines, as in the vidnux fixture)",
+    "name": "VIDTOOLZ_RESOLVE_QUAL_V1_PRESTO",
+    "naming_rule": "TARGET-CONTRACT.json#naming.project_prefix VIDTOOLZ_RESOLVE_QUAL_V1_",
+    "purpose": "disposable qualification fixture for the Hermes read-only facade live qualification on PRESTO; not production content",
+    "settings_applied": {
+      "timelineFrameRate": "25",
+      "timelinePlaybackFrameRate": "25 (SetSetting returned False; derived setting)",
+      "timelineResolutionHeight": "1080",
+      "timelineResolutionWidth": "1920"
+    },
+    "timelines": [
+      {
+        "name": "VIDTOOLZ_RESOLVE_QUAL_V1_PRESTO__TL_A",
+        "uuid": "01bc28e2-ee0e-409d-8fd3-bac787ebb3ee"
+      },
+      {
+        "name": "VIDTOOLZ_RESOLVE_QUAL_V1_PRESTO__TL_B",
+        "uuid": "aac2ad87-58de-4d43-8f9c-6dac41c86a6e"
+      }
+    ],
+    "uuid": "38609cb5-92d0-4abe-b379-2e3b16b79a6d"
+  },
+  "record_class": "A3-class qualification fixture provisioning record for PRESTO (governance record, additive, outside the frozen v1.20 bundle)",
+  "record_id": "ed2d32a4d46900c90023be57fbd4299ab451c067bcd96c609f7944eb28bcbb08",
+  "record_type": "OPERATOR_PROVISIONED_PROJECT",
+  "recorded_at": "2026-09-22",
+  "recorded_by": "Claude Code",
+  "schema": "vidtoolz.resolveOperatorProvisionedProject.v1",
+  "write_authority": "NONE"
+}
